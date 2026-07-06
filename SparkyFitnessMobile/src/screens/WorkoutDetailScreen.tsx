@@ -18,6 +18,9 @@ import {
   getExerciseVolumeKg,
   formatVolume,
   CATEGORY_ICON_MAP,
+  buildSupersetColorMap,
+  getSupersetRuns,
+  SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
 import {
   useDeleteWorkout,
@@ -237,6 +240,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-border-subtle',
   ]) as [string, string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
+
+  // Superset display (view mode only): grouped members get a flat left rail
+  // in a per-group palette color, matching the active-workout screen.
+  const supersetPalette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
+  const supersetColorByEntryId = useMemo(
+    () => buildSupersetColorMap(getSupersetRuns(session.exercises), supersetPalette),
+    [session, supersetPalette],
+  );
 
   const { getImageSource } = useExerciseImageSource();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -469,20 +480,45 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const renderViewExercises = () => (
     <View>
-      {session.exercises.map(exercise => (
-        <ExerciseRow
-          key={exercise.id}
-          exercise={exercise}
-          isExpanded={!!expandedSections[exercise.id]}
-          onToggle={toggleSection}
-          getImageSource={getImageSource}
-          accentPrimary={accentPrimary}
-          textMuted={textMuted}
-          weightUnit={weightUnit}
-          showRestChip={isSparky}
-          onLongPressSet={handleLongPressSet}
-        />
-      ))}
+      {session.exercises.map(exercise => {
+        const railColor = supersetColorByEntryId.get(exercise.id) ?? null;
+        const row = (
+          <ExerciseRow
+            exercise={exercise}
+            isExpanded={!!expandedSections[exercise.id]}
+            onToggle={toggleSection}
+            getImageSource={getImageSource}
+            accentPrimary={accentPrimary}
+            textMuted={textMuted}
+            weightUnit={weightUnit}
+            showRestChip={isSparky}
+            onLongPressSet={handleLongPressSet}
+          />
+        );
+        if (railColor == null) {
+          return <React.Fragment key={exercise.id}>{row}</React.Fragment>;
+        }
+        // Superset members carry a flat 3px left rail in the group color.
+        // Rows are flat (no margins), so full-height rails on consecutive
+        // members read as one continuous line per group.
+        return (
+          <View key={exercise.id} style={{ paddingLeft: 10 }}>
+            <View
+              testID={`superset-rail-${exercise.id}`}
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 3,
+                backgroundColor: railColor,
+              }}
+            />
+            {row}
+          </View>
+        );
+      })}
     </View>
   );
 

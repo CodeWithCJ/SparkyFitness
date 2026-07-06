@@ -205,6 +205,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           exerciseName: exercise.exercise_snapshot?.name ?? 'Unknown',
           exerciseCategory: exercise.exercise_snapshot?.category ?? null,
           images: exercise.exercise_snapshot?.images ?? [],
+          supersetGroup: exercise.superset_group ?? null,
           snapshot: exercise.exercise_snapshot ?? null,
           sets: exercise.sets.map(set => ({
             clientId: generateClientId(),

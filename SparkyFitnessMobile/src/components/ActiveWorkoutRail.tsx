@@ -8,12 +8,24 @@ import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
 
 const THUMB_SIZE = 52;
+/** contentContainer gap-3 — non-last superset bars extend across it. */
+const ITEM_GAP = 12;
+/** Horizontal inset of a superset bar from its item's edges. */
+const BAR_INSET = 4;
+
+export interface SupersetBorder {
+  color: string;
+  /** Last member of its run — the shared bar stops at this thumb. */
+  isLast: boolean;
+}
 
 interface ActiveWorkoutRailProps {
   exercises: ExerciseEntryResponse[];
   completedSetIds: Record<string, true>;
   /** The exercise highlighted with the accent ring (cursor or scroll focus). */
   focusedEntryId: string | null;
+  /** Superset membership: grouped thumbs get a flat bottom bar in the group color. */
+  supersetBorders: Map<string, SupersetBorder>;
   getImageSource: GetImageSource;
   onPressExercise: (entryId: string) => void;
   onPressAdd: () => void;
@@ -27,6 +39,7 @@ function ActiveWorkoutRail({
   exercises,
   completedSetIds,
   focusedEntryId,
+  supersetBorders,
   getImageSource,
   onPressExercise,
   onPressAdd,
@@ -71,6 +84,7 @@ function ActiveWorkoutRail({
           exercise.sets.length > 0 &&
           exercise.sets.every((s) => completedSetIds[String(s.id)]);
         const isFocused = exercise.id === focusedEntryId;
+        const supersetBorder = supersetBorders.get(exercise.id) ?? null;
 
         return (
           <Pressable
@@ -120,6 +134,24 @@ function ActiveWorkoutRail({
                 </View>
               )}
             </View>
+            {supersetBorder && (
+              <View
+                testID={`superset-bar-${exercise.id}`}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  // Flat bar just under the thumb block (thumb + 2px padding
+                  // + 2px ring border on each side).
+                  top: THUMB_SIZE + 8 + 1,
+                  left: BAR_INSET,
+                  // Non-last members bridge the item gap up to the next
+                  // member's inset so the group reads as one shared line.
+                  right: supersetBorder.isLast ? BAR_INSET : -(ITEM_GAP + BAR_INSET),
+                  height: 3,
+                  backgroundColor: supersetBorder.color,
+                }}
+              />
+            )}
             <Text
               numberOfLines={2}
               className={`mt-1 text-center text-[11px] leading-[13px] ${

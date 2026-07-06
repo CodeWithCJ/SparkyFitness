@@ -50,6 +50,7 @@ interface ActiveWorkoutExerciseCardProps {
   onToggleExpanded: (entryId: string) => void;
   onPressRestChip: (entryId: string, currentSec: number | null) => void;
   onPressMetricHeader: (anchor: AnchorRect) => void;
+  onPressOverflow: (entryId: string, anchor: AnchorRect) => void;
   onCompleteActive: () => void;
   onUncomplete: (setId: string) => void;
   onRecomplete: (setId: string) => void;
@@ -101,6 +102,7 @@ function ActiveWorkoutExerciseCard({
   onToggleExpanded,
   onPressRestChip,
   onPressMetricHeader,
+  onPressOverflow,
   onCompleteActive,
   onUncomplete,
   onRecomplete,
@@ -135,6 +137,13 @@ function ActiveWorkoutExerciseCard({
   const metricAnchorRef = useRef<View>(null);
   const openMetricMenu = () => {
     measureAnchoredMenuTrigger(metricAnchorRef.current, onPressMetricHeader);
+  };
+
+  const overflowAnchorRef = useRef<View>(null);
+  const openOverflowMenu = () => {
+    measureAnchoredMenuTrigger(overflowAnchorRef.current, (anchor) =>
+      onPressOverflow(exercise.id, anchor),
+    );
   };
 
   if (!expanded) {
@@ -181,6 +190,17 @@ function ActiveWorkoutExerciseCard({
         <Text numberOfLines={1} className="flex-1 text-base font-semibold text-text-primary">
           {name}
         </Text>
+        <View ref={overflowAnchorRef} collapsable={false}>
+          <Pressable
+            onPress={openOverflowMenu}
+            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel={`More options for ${name}`}
+            className="p-1"
+          >
+            <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
+          </Pressable>
+        </View>
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

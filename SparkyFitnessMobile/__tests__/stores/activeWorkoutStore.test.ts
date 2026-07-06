@@ -1177,6 +1177,9 @@ describe('activeWorkoutStore', () => {
   });
 
   describe('applyServerSession', () => {
+    /** Entry-id order of makeSession() at autosave send time. */
+    const SENT_ENTRY_IDS = ['ex-uuid-1', 'ex-uuid-2'];
+
     /** Same shape as makeSession() but with server-recreated ids. */
     function makeRecreatedSession(): PresetSessionResponse {
       const session = makeSession();
@@ -1198,7 +1201,7 @@ describe('activeWorkoutStore', () => {
 
       const response = makeRecreatedSession();
       response.exercises[0].sets[0].weight = 65;
-      useActiveWorkoutStore.getState().applyServerSession(response, sentRevision);
+      useActiveWorkoutStore.getState().applyServerSession(response, sentRevision, SENT_ENTRY_IDS);
 
       const state = useActiveWorkoutStore.getState();
       expect(state.session).toBe(response);
@@ -1213,7 +1216,7 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().updateSetField('102', { weight: 72.5 });
       const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
 
-      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision);
+      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
       const state = useActiveWorkoutStore.getState();
       expect(state.completedSetIds).toEqual({ '501': true });
       expect(state.activeSetId).toBe('502');
@@ -1228,7 +1231,7 @@ describe('activeWorkoutStore', () => {
       const restBefore = useActiveWorkoutStore.getState().rest;
       mockCancel.mockClear();
 
-      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision);
+      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
       const state = useActiveWorkoutStore.getState();
       expect(state.activeSetId).toBe('502');
       expect(state.rest).toBe(restBefore); // untouched — no cancel, no reset
@@ -1245,7 +1248,7 @@ describe('activeWorkoutStore', () => {
       // Server response lost exercise 1's second set (position gone).
       const response = makeRecreatedSession();
       response.exercises[0].sets = [response.exercises[0].sets[0]];
-      useActiveWorkoutStore.getState().applyServerSession(response, sentRevision);
+      useActiveWorkoutStore.getState().applyServerSession(response, sentRevision, SENT_ENTRY_IDS);
 
       const state = useActiveWorkoutStore.getState();
       expect(state.activeSetId).toBe('601'); // first uncompleted remaining
@@ -1261,7 +1264,7 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-1');
       useActiveWorkoutStore.getState().updateSetField('-1', { weight: 80 });
 
-      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision);
+      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
       const state = useActiveWorkoutStore.getState();
       const ex1Sets = state.session!.exercises[0].sets;
       expect(ex1Sets.map((s) => s.id)).toEqual([501, 502, -1]); // temp id survives
@@ -1279,7 +1282,7 @@ describe('activeWorkoutStore', () => {
       // Set 102 is deleted while the save is in flight.
       useActiveWorkoutStore.getState().deleteSet('102');
 
-      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision);
+      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
       const state = useActiveWorkoutStore.getState();
       const ex1Sets = state.session!.exercises[0].sets;
       expect(ex1Sets).toHaveLength(1); // local delete preserved
@@ -1296,7 +1299,7 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-2'); // mid-flight edit
       const restBefore = useActiveWorkoutStore.getState().rest;
 
-      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision);
+      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
       const state = useActiveWorkoutStore.getState();
       expect(state.completedSetIds).toEqual({ '501': true });
       expect(state.activeSetId).toBe('502');
@@ -1315,7 +1318,7 @@ describe('activeWorkoutStore', () => {
       // The stale autosave response (weight 65) lands afterwards.
       const response = makeSession();
       response.exercises[0].sets[0].weight = 65;
-      useActiveWorkoutStore.getState().applyServerSession(response, sentRevision);
+      useActiveWorkoutStore.getState().applyServerSession(response, sentRevision, SENT_ENTRY_IDS);
 
       const state = useActiveWorkoutStore.getState();
       expect(state.session!.exercises[0].sets[0].weight).toBe(70);
@@ -1326,15 +1329,358 @@ describe('activeWorkoutStore', () => {
       const before = useActiveWorkoutStore.getState();
       const foreign = makeRecreatedSession();
       foreign.id = 'session-other';
-      useActiveWorkoutStore.getState().applyServerSession(foreign, before.sessionRevision);
+      useActiveWorkoutStore.getState().applyServerSession(foreign, before.sessionRevision, SENT_ENTRY_IDS);
       expect(useActiveWorkoutStore.getState().session).toBe(before.session);
     });
 
     it('is a no-op after the workout was cleared', () => {
       useActiveWorkoutStore.getState().clearWorkout();
-      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), 0);
+      useActiveWorkoutStore.getState().applyServerSession(makeRecreatedSession(), 0, SENT_ENTRY_IDS);
       expect(useActiveWorkoutStore.getState().sessionId).toBeNull();
       expect(useActiveWorkoutStore.getState().session).toBeNull();
+    });
+
+    it('reorder-mid-flight: skips the graft and stays dirty when entry order diverged', () => {
+      useActiveWorkoutStore.getState().updateSetField('101', { weight: 65 });
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+
+      // Grouping reorders exercises while the save is in flight.
+      useActiveWorkoutStore.getState().supersetWith('ex-uuid-2', 'ex-uuid-1');
+      const reordered = useActiveWorkoutStore.getState().session;
+      expect(reordered!.exercises.map((e) => e.id)).toEqual(['ex-uuid-2', 'ex-uuid-1']);
+
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
+
+      const state = useActiveWorkoutStore.getState();
+      expect(state.session).toBe(reordered); // untouched — no positional graft
+      expect(state.hasUnsavedChanges).toBe(true);
+    });
+
+    it('exercise-delete-mid-flight: skips the graft when the local list is shorter than sent', () => {
+      useActiveWorkoutStore.getState().updateSetField('101', { weight: 65 });
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+
+      // Deleting ex-uuid-2's only set removes the exercise mid-flight.
+      useActiveWorkoutStore.getState().deleteSet('201');
+      const shortened = useActiveWorkoutStore.getState().session;
+      expect(shortened!.exercises.map((e) => e.id)).toEqual(['ex-uuid-1']);
+
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
+
+      const state = useActiveWorkoutStore.getState();
+      expect(state.session).toBe(shortened);
+      expect(state.hasUnsavedChanges).toBe(true);
+    });
+  });
+
+  describe('supersets', () => {
+    /** Solo Row exercise (one set, rest 45) appended as a grouping candidate. */
+    function makeRowExercise() {
+      return {
+        id: 'ex-uuid-3',
+        exercise_id: 'ex-3',
+        duration_minutes: 10,
+        calories_burned: 80,
+        entry_date: '2026-03-20',
+        notes: null,
+        distance: null,
+        avg_heart_rate: null,
+        source: null,
+        superset_group: null,
+        exercise_snapshot: {
+          id: 'ex-3',
+          name: 'Row',
+          category: 'Strength',
+          calories_per_hour: 300,
+          source: 'system',
+          images: ['row.jpg'],
+        },
+        activity_details: [],
+        sets: [
+          {
+            id: 301,
+            set_number: 1,
+            set_type: 'working',
+            reps: 12,
+            weight: 40,
+            duration: null,
+            rest_time: 45,
+            notes: null,
+            rpe: null,
+          },
+        ],
+      } as any;
+    }
+
+    /** Bench(101,102), Squat(201), Row(301) — all solo. */
+    function makeThreeExerciseSession(): PresetSessionResponse {
+      const session = makeSession();
+      session.exercises.push(makeRowExercise());
+      return session;
+    }
+
+    /** Bench(101,102) + Squat(201,202) grouped as 1 with harmonized rest 60; Row solo. */
+    function makeGroupedSession(): PresetSessionResponse {
+      const session = makeThreeExerciseSession();
+      const [bench, squat] = session.exercises;
+      (bench as any).superset_group = 1;
+      (squat as any).superset_group = 1;
+      squat.sets = [
+        { ...squat.sets[0], rest_time: 60 },
+        { ...squat.sets[0], id: 202, set_number: 2, rest_time: 60 },
+      ];
+      return session;
+    }
+
+    /** Bench + Squat + Row all in group 1 (tri-set), harmonized rest 60. */
+    function makeTriGroupSession(): PresetSessionResponse {
+      const session = makeGroupedSession();
+      const row = session.exercises[2];
+      (row as any).superset_group = 1;
+      row.sets = [{ ...row.sets[0], rest_time: 60 }];
+      return session;
+    }
+
+    describe('step interleaving', () => {
+      it('interleaves grouped exercises into rounds with rest only on round openers', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
+        const { steps } = useActiveWorkoutStore.getState();
+        expect(steps.map((s) => s.setId)).toEqual(['101', '201', '102', '202', '301']);
+        expect(steps.map((s) => s.restSec)).toEqual([60, 0, 60, 0, 45]);
+        expect(steps.map((s) => s.exerciseName)).toEqual([
+          'Bench Press',
+          'Squat',
+          'Bench Press',
+          'Squat',
+          'Row',
+        ]);
+      });
+
+      it('drops exhausted members from later rounds; survivor tail sets each open a round', () => {
+        const session = makeGroupedSession();
+        // Bench gets a 3rd set; Squat is trimmed to one.
+        session.exercises[0].sets.push({
+          ...session.exercises[0].sets[0],
+          id: 103,
+          set_number: 3,
+        });
+        session.exercises[1].sets = [session.exercises[1].sets[0]];
+        useActiveWorkoutStore.getState().startWorkout(session);
+
+        const { steps } = useActiveWorkoutStore.getState();
+        expect(steps.map((s) => s.setId)).toEqual(['101', '201', '102', '103', '301']);
+        expect(steps.map((s) => s.restSec)).toEqual([60, 0, 60, 60, 45]);
+      });
+
+      it('produces unchanged sequential steps for ungrouped sessions (incl. pre-upgrade shape)', () => {
+        // makeSession() exercises lack superset_group entirely — the
+        // pre-upgrade persisted shape.
+        useActiveWorkoutStore.getState().startWorkout(makeSession());
+        const { steps } = useActiveWorkoutStore.getState();
+        expect(steps.map((s) => s.setId)).toEqual(['101', '102', '201']);
+        expect(steps.map((s) => s.restSec)).toEqual([60, 60, 120]);
+      });
+
+      it('jumpToSet over interleaved order marks interleaved priors complete', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
+        useActiveWorkoutStore.getState().jumpToSet('202');
+        const state = useActiveWorkoutStore.getState();
+        expect(state.completedSetIds).toEqual({ '101': true, '201': true, '102': true });
+        expect(state.activeSetId).toBe('202');
+      });
+    });
+
+    describe('round advancement', () => {
+      it('advances without rest inside a round (no timer, no notification)', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
+        useActiveWorkoutStore.getState().completeActiveSet(); // 101 → 201
+
+        const state = useActiveWorkoutStore.getState();
+        expect(state.activeSetId).toBe('201');
+        expect(state.rest.state).toBe('ready');
+        expect(mockSchedule).not.toHaveBeenCalled();
+      });
+
+      it('starts the group rest after the round-final set', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
+        useActiveWorkoutStore.getState().completeActiveSet(); // 101 → 201, no rest
+        useActiveWorkoutStore.getState().completeActiveSet(); // 201 → 102, round done
+
+        const state = useActiveWorkoutStore.getState();
+        expect(state.activeSetId).toBe('102');
+        expect(state.rest.state).toBe('resting');
+        expect(state.rest.durationSec).toBe(60);
+        expect(mockSchedule).toHaveBeenCalledTimes(1);
+        expect(mockSchedule).toHaveBeenCalledWith('Bench Press', 60);
+      });
+    });
+
+    describe('supersetWith', () => {
+      it('groups two non-adjacent solos: reorders adjacent, harmonizes rest, bumps revision', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeThreeExerciseSession());
+        const revBefore = useActiveWorkoutStore.getState().sessionRevision;
+
+        useActiveWorkoutStore.getState().supersetWith('ex-uuid-1', 'ex-uuid-3');
+
+        const state = useActiveWorkoutStore.getState();
+        const exercises = state.session!.exercises;
+        expect(exercises.map((e) => e.id)).toEqual(['ex-uuid-1', 'ex-uuid-3', 'ex-uuid-2']);
+        expect(exercises[0].superset_group).toBe(1);
+        expect(exercises[1].superset_group).toBe(1);
+        expect(exercises[2].superset_group ?? null).toBeNull();
+        // Row's per-set rest (45) is overwritten by the anchor's 60.
+        expect(exercises[1].sets.map((s) => s.rest_time)).toEqual([60]);
+        expect(state.sessionRevision).toBe(revBefore + 1);
+        expect(state.hasUnsavedChanges).toBe(true);
+        expect(state.activeSetId).toBe('101'); // cursor preserved
+        expect(state.steps.map((s) => s.setId)).toEqual(['101', '301', '102', '201']);
+        expect(state.steps.map((s) => s.restSec)).toEqual([60, 0, 60, 120]);
+      });
+
+      it("adds a member to the current run's tail via a grouped card", () => {
+        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
+        useActiveWorkoutStore.getState().supersetWith('ex-uuid-1', 'ex-uuid-3');
+
+        const state = useActiveWorkoutStore.getState();
+        const exercises = state.session!.exercises;
+        expect(exercises.map((e) => e.id)).toEqual(['ex-uuid-1', 'ex-uuid-2', 'ex-uuid-3']);
+        expect(exercises.map((e) => e.superset_group)).toEqual([1, 1, 1]);
+        expect(exercises[2].sets.map((s) => s.rest_time)).toEqual([60]);
+        expect(state.steps.map((s) => s.setId)).toEqual(['101', '201', '301', '102', '202']);
+        expect(state.steps.map((s) => s.restSec)).toEqual([60, 0, 0, 60, 0]);
+      });
+
+      it('generates a fresh group id past stale (singleton) values', () => {
+        const session = makeThreeExerciseSession();
+        (session.exercises[2] as any).superset_group = 5; // stale singleton
+        useActiveWorkoutStore.getState().startWorkout(session);
+
+        useActiveWorkoutStore.getState().supersetWith('ex-uuid-1', 'ex-uuid-2');
+
+        const exercises = useActiveWorkoutStore.getState().session!.exercises;
+        expect(exercises[0].superset_group).toBe(6);
+        expect(exercises[1].superset_group).toBe(6);
+        // Normalization scrubs the stale value in the same edit.
+        expect(exercises[2].superset_group).toBeNull();
+      });
+
+      it('rejects grouping with an already-grouped pick', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
+        const revBefore = useActiveWorkoutStore.getState().sessionRevision;
+        useActiveWorkoutStore.getState().supersetWith('ex-uuid-3', 'ex-uuid-1');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(revBefore);
+      });
+
+      it('preserves cursor, completion, and running rest across grouping', async () => {
+        useActiveWorkoutStore.getState().startWorkout(makeThreeExerciseSession());
+        useActiveWorkoutStore.getState().completeActiveSet(); // 101 done → 102 resting
+        await flushPromises();
+        const restBefore = useActiveWorkoutStore.getState().rest;
+        expect(restBefore.state).toBe('resting');
+
+        useActiveWorkoutStore.getState().supersetWith('ex-uuid-1', 'ex-uuid-3');
+
+        const state = useActiveWorkoutStore.getState();
+        expect(state.completedSetIds).toEqual({ '101': true });
+        expect(state.activeSetId).toBe('102');
+        expect(state.rest).toBe(restBefore); // untouched — cursor didn't move
+      });
+    });
+
+    describe('ungroupExercise', () => {
+      it('ungrouping either member of a 2-group dissolves it entirely', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
+        useActiveWorkoutStore.getState().ungroupExercise('ex-uuid-1');
+
+        const exercises = useActiveWorkoutStore.getState().session!.exercises;
+        expect(exercises.map((e) => e.id)).toEqual(['ex-uuid-1', 'ex-uuid-2', 'ex-uuid-3']);
+        expect(exercises.map((e) => e.superset_group ?? null)).toEqual([null, null, null]);
+        // Steps revert to sequential.
+        expect(useActiveWorkoutStore.getState().steps.map((s) => s.setId)).toEqual([
+          '101',
+          '102',
+          '201',
+          '202',
+          '301',
+        ]);
+      });
+
+      it('ungrouping the first member of a tri-set keeps the other two grouped', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeTriGroupSession());
+        useActiveWorkoutStore.getState().ungroupExercise('ex-uuid-1');
+
+        const exercises = useActiveWorkoutStore.getState().session!.exercises;
+        expect(exercises.map((e) => e.id)).toEqual(['ex-uuid-1', 'ex-uuid-2', 'ex-uuid-3']);
+        expect(exercises.map((e) => e.superset_group)).toEqual([null, 1, 1]);
+      });
+
+      it('ungrouping a middle member moves it after the run so the rest stay adjacent', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeTriGroupSession());
+        useActiveWorkoutStore.getState().ungroupExercise('ex-uuid-2');
+
+        const exercises = useActiveWorkoutStore.getState().session!.exercises;
+        expect(exercises.map((e) => e.id)).toEqual(['ex-uuid-1', 'ex-uuid-3', 'ex-uuid-2']);
+        expect(exercises.map((e) => e.superset_group)).toEqual([1, 1, null]);
+      });
+
+      it('ungrouping the last member of a tri-set keeps the other two grouped', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeTriGroupSession());
+        useActiveWorkoutStore.getState().ungroupExercise('ex-uuid-3');
+
+        const exercises = useActiveWorkoutStore.getState().session!.exercises;
+        expect(exercises.map((e) => e.id)).toEqual(['ex-uuid-1', 'ex-uuid-2', 'ex-uuid-3']);
+        expect(exercises.map((e) => e.superset_group)).toEqual([1, 1, null]);
+      });
+
+      it('is a no-op for an ungrouped exercise', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeThreeExerciseSession());
+        const revBefore = useActiveWorkoutStore.getState().sessionRevision;
+        useActiveWorkoutStore.getState().ungroupExercise('ex-uuid-1');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(revBefore);
+      });
+    });
+
+    describe('normalization', () => {
+      it("deleting a member's last set dissolves the 1-member remainder", () => {
+        const session = makeGroupedSession();
+        session.exercises[1].sets = [session.exercises[1].sets[0]]; // Squat: one set
+        useActiveWorkoutStore.getState().startWorkout(session);
+
+        useActiveWorkoutStore.getState().deleteSet('201'); // removes Squat entirely
+
+        const state = useActiveWorkoutStore.getState();
+        expect(state.session!.exercises.map((e) => e.id)).toEqual(['ex-uuid-1', 'ex-uuid-3']);
+        expect(state.session!.exercises[0].superset_group).toBeNull();
+        expect(state.steps.map((s) => s.setId)).toEqual(['101', '102', '301']);
+        expect(state.steps.map((s) => s.restSec)).toEqual([60, 60, 45]);
+      });
+    });
+
+    describe('group-aware rest', () => {
+      it("a member's rest edit writes every member's sets and the round-opener steps", () => {
+        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
+        useActiveWorkoutStore.getState().setExerciseRest('ex-uuid-2', 150);
+
+        const state = useActiveWorkoutStore.getState();
+        const [bench, squat, row] = state.session!.exercises;
+        expect(bench.sets.map((s) => s.rest_time)).toEqual([150, 150]);
+        expect(squat.sets.map((s) => s.rest_time)).toEqual([150, 150]);
+        expect(row.sets.map((s) => s.rest_time)).toEqual([45]); // untouched
+        expect(state.steps.map((s) => s.restSec)).toEqual([150, 0, 150, 0, 45]);
+      });
+
+      it('solo exercises keep the single-exercise behavior', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
+        useActiveWorkoutStore.getState().setExerciseRest('ex-uuid-3', 30);
+
+        const state = useActiveWorkoutStore.getState();
+        expect(state.session!.exercises[0].sets.map((s) => s.rest_time)).toEqual([60, 60]);
+        expect(state.session!.exercises[2].sets.map((s) => s.rest_time)).toEqual([30]);
+      });
     });
   });
 

@@ -1652,6 +1652,7 @@ async function createGroupedExerciseEntriesWithClient(
       sets: exercise.sets || [],
       duration_minutes: durationMinutes,
       sort_order: exercise.sort_order ?? 0,
+      superset_group: exercise.superset_group ?? null,
       workout_plan_assignment_id: workoutPlanAssignmentId,
       distance: exercise.distance,
       avg_heart_rate: exercise.avg_heart_rate,
@@ -1894,6 +1895,7 @@ async function updateGroupedWorkoutSession(
             sets: ex.sets || [],
             duration_minutes: deriveDurationMinutes(ex),
             sort_order: ex.sort_order ?? 0,
+            superset_group: ex.superset_group ?? null,
             distance: ex.distance,
             avg_heart_rate: ex.avg_heart_rate,
           });
@@ -1906,6 +1908,7 @@ async function updateGroupedWorkoutSession(
               exercise_id: preparedEntry.exercise_id,
               notes: preparedEntry.notes,
               sort_order: preparedEntry.sort_order ?? 0,
+              superset_group: preparedEntry.superset_group ?? null,
               distance: preparedEntry.distance,
               avg_heart_rate: preparedEntry.avg_heart_rate,
               duration_minutes: preparedEntry.duration_minutes,

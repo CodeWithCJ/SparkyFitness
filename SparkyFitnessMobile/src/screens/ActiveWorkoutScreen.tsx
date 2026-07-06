@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCSSVariable } from 'uniwind';
 
 import ActiveWorkoutHeader, {
   buildExerciseProgress,
@@ -30,9 +31,15 @@ import { addLog } from '../services/LogService';
 import { useActiveWorkoutStore, type ActiveSetPatch } from '../stores/activeWorkoutStore';
 import { normalizeDate } from '../utils/dateUtils';
 import {
+  buildSupersetColorMap,
+  getSupersetRuns,
+  SUPERSET_PALETTE_VARS,
+} from '../utils/workoutSession';
+import {
   useAppPreferencesStore,
   type ActiveWorkoutMetricColumn,
 } from '../stores/appPreferencesStore';
+import type { SupersetBorder } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ActiveWorkout'>;
@@ -117,6 +124,24 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       null
     );
   }, [session, activeSetId]);
+
+  // Superset display: adjacent 2+ runs get a flat left rail (log cards) and a
+  // bottom bar (rail thumbs) in a per-group palette color.
+  const supersetPalette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
+  const supersetRuns = useMemo(() => getSupersetRuns(session?.exercises ?? []), [session]);
+  const supersetBorders = useMemo(() => {
+    const colorByEntryId = buildSupersetColorMap(supersetRuns, supersetPalette);
+    const map = new Map<string, SupersetBorder>();
+    for (const run of supersetRuns) {
+      run.entryIds.forEach((entryId, index) => {
+        const color = colorByEntryId.get(entryId);
+        if (color != null) {
+          map.set(entryId, { color, isLast: index === run.entryIds.length - 1 });
+        }
+      });
+    }
+    return map;
+  }, [supersetRuns, supersetPalette]);
 
   // Expanded state: the cursor's exercise auto-expands as the workout
   // advances, auto-collapsing only the previously auto-expanded card — cards
@@ -235,6 +260,63 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
     setMetricMenuAnchor(anchor);
   }, []);
+
+  // Card ⋮ menu. 'main' offers the superset actions; 'pick' swaps in the
+  // candidate list (ungrouped exercises other than the current one) at the
+  // same anchor.
+  const [overflowMenu, setOverflowMenu] = useState<{
+    entryId: string;
+    anchor: AnchorRect;
+    mode: 'main' | 'pick';
+  } | null>(null);
+  const handlePressOverflow = useCallback(
+    (entryId: string, anchor: AnchorRect) => {
+      setOverflowMenu({ entryId, anchor, mode: 'main' });
+    },
+    [],
+  );
+
+  const overflowMenuItems = useMemo(() => {
+    if (overflowMenu == null || session == null) return [];
+    const { entryId, mode } = overflowMenu;
+    const groupedIds = new Set(supersetRuns.flatMap((run) => run.entryIds));
+    const candidates = session.exercises.filter(
+      (e) => e.id !== entryId && !groupedIds.has(e.id),
+    );
+
+    if (mode === 'pick') {
+      return candidates.map((candidate) => ({
+        key: candidate.id,
+        label: candidate.exercise_snapshot?.name ?? 'Exercise',
+        onPress: () => {
+          useActiveWorkoutStore.getState().supersetWith(entryId, candidate.id);
+        },
+      }));
+    }
+
+    const items: { key: string; label: string; onPress: () => void }[] = [];
+    if (candidates.length > 0) {
+      items.push({
+        key: 'superset-with',
+        label: 'Superset with…',
+        onPress: () => {
+          // Re-open at the same anchor with the candidate list. AnchoredMenu
+          // closes first (onClose), then this runs — both land in one commit.
+          setOverflowMenu({ ...overflowMenu, mode: 'pick' });
+        },
+      });
+    }
+    if (groupedIds.has(entryId)) {
+      items.push({
+        key: 'ungroup',
+        label: 'Remove from superset',
+        onPress: () => {
+          useActiveWorkoutStore.getState().ungroupExercise(entryId);
+        },
+      });
+    }
+    return items;
+  }, [overflowMenu, session, supersetRuns]);
 
   const handleCompleteActive = useCallback(() => {
     useActiveWorkoutStore.getState().completeActiveSet();
@@ -441,6 +523,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         exercises={session.exercises}
         completedSetIds={completedSetIds}
         focusedEntryId={focusedExerciseId}
+        supersetBorders={supersetBorders}
         getImageSource={getImageSource}
         onPressExercise={handleRailPress}
         onPressAdd={handleAddExercise}
@@ -459,17 +542,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         keyboardShouldPersistTaps="handled"
         bottomOffset={80}
       >
-        {session.exercises.map((exercise) => (
-          <Animated.View
-            key={exercise.id}
-            layout={LinearTransition.duration(300)}
-            onLayout={(e) => {
-              cardOffsetsRef.current[exercise.id] = e.nativeEvent.layout.y;
-            }}
-          >
+        {session.exercises.map((exercise) => {
+          const isExpanded =
+            userExpandedIds.has(exercise.id) || autoExpandedId === exercise.id;
+          const supersetBorder = supersetBorders.get(exercise.id) ?? null;
+          const card = (
             <ActiveWorkoutExerciseCard
               exercise={exercise}
-              expanded={userExpandedIds.has(exercise.id) || autoExpandedId === exercise.id}
+              expanded={isExpanded}
               completedSetIds={completedSetIds}
               activeSetId={activeSetId}
               metricColumn={metricColumn}
@@ -478,6 +558,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onToggleExpanded={handleToggleExpanded}
               onPressRestChip={handlePressRestChip}
               onPressMetricHeader={handlePressMetricHeader}
+              onPressOverflow={handlePressOverflow}
               onCompleteActive={handleCompleteActive}
               onUncomplete={handleUncomplete}
               onRecomplete={handleRecomplete}
@@ -486,8 +567,42 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onLongPressSet={handleLongPressSet}
               onAddSet={handleAddSet}
             />
-          </Animated.View>
-        ))}
+          );
+
+          return (
+            <Animated.View
+              key={exercise.id}
+              layout={LinearTransition.duration(300)}
+              onLayout={(e) => {
+                cardOffsetsRef.current[exercise.id] = e.nativeEvent.layout.y;
+              }}
+            >
+              {supersetBorder ? (
+                // Grouped members carry a flat 3px left rail. Interior rails
+                // run to the wrapper's bottom — which includes the expanded
+                // card's 8px mb-2 — so consecutive members read as one
+                // continuous line; the run's last member stops at the card.
+                <View style={{ paddingLeft: 10 }}>
+                  <View
+                    testID={`superset-rail-${exercise.id}`}
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: supersetBorder.isLast && isExpanded ? 8 : 0,
+                      width: 3,
+                      backgroundColor: supersetBorder.color,
+                    }}
+                  />
+                  {card}
+                </View>
+              ) : (
+                card
+              )}
+            </Animated.View>
+          );
+        })}
 
         <Button
           variant="primary"
@@ -524,6 +639,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               : METRIC_MENU_LABELS[option],
           onPress: () => setMetricColumn(option),
         }))}
+      />
+
+      <AnchoredMenu
+        visible={overflowMenu != null && overflowMenuItems.length > 0}
+        anchor={overflowMenu?.anchor ?? null}
+        onClose={() => setOverflowMenu(null)}
+        minWidth={200}
+        items={overflowMenuItems}
       />
     </View>
   );

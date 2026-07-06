@@ -282,6 +282,10 @@ async function _updateExerciseEntryWithClient(
       updateData.sort_order !== undefined
         ? updateData.sort_order
         : currentEntry.sort_order,
+    superset_group:
+      updateData.superset_group !== undefined
+        ? updateData.superset_group
+        : currentEntry.superset_group,
     // Snapshot fields - these should ideally come from the exercise itself if exercise_id is updated
     exercise_name: updateData.exercise_name || currentEntry.exercise_name,
     calories_per_hour:
@@ -356,8 +360,9 @@ async function _updateExerciseEntryWithClient(
       sort_order = $24,
       steps = $25,
       water_estimated = $26,
+      superset_group = $27,
       updated_at = now()
-    WHERE id = $27 AND user_id = $28
+    WHERE id = $28 AND user_id = $29
     RETURNING id`,
     [
       mergedData.exercise_id,
@@ -390,6 +395,7 @@ async function _updateExerciseEntryWithClient(
       mergedData.sort_order || 0,
       mergedData.steps || null,
       mergedData.water_estimated || null,
+      mergedData.superset_group ?? null,
       id,
       userId,
     ]
@@ -519,8 +525,9 @@ async function _createExerciseEntryWithClient(
            workout_plan_assignment_id, image_url, created_by_user_id,
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
-           distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28) RETURNING id`,
+           distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated,
+           superset_group
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29) RETURNING id`,
         [
           userId,
           entryData.exercise_id,
@@ -550,6 +557,7 @@ async function _createExerciseEntryWithClient(
           entryData.sort_order || 0,
           entryData.steps || null,
           entryData.water_estimated || null,
+          entryData.superset_group ?? null,
         ]
       );
       newEntryId = entryResult.rows[0].id;

@@ -277,6 +277,63 @@ describe('useActiveWorkoutAutosave', () => {
       });
       expect(getStore().hasUnsavedChanges).toBe(false);
     });
+
+    it('a reorder landing mid-flight skips the graft and the trailing save converges', async () => {
+      renderAutosave();
+      const session = makeSession();
+      session.exercises.push({
+        ...makeSession().exercises[0],
+        id: 'ex-uuid-2',
+        exercise_id: 'ex-2',
+        sets: [{ ...makeSession().exercises[0].sets[0], id: 201 }],
+      } as any);
+      act(() => {
+        getStore().startWorkout(session);
+        getStore().updateSetField('101', { weight: 80 });
+      });
+
+      let resolveFirst!: (session: PresetSessionResponse) => void;
+      mockUpdateWorkout.mockImplementationOnce(
+        () => new Promise((resolve) => {
+          resolveFirst = resolve;
+        }),
+      );
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+      const staleServerEcho = getStore().session!;
+
+      // Grouping reorders the exercises while the save is in flight.
+      act(() => {
+        getStore().supersetWith('ex-uuid-2', 'ex-uuid-1');
+      });
+      expect(getStore().session!.exercises.map((e) => e.id)).toEqual([
+        'ex-uuid-2',
+        'ex-uuid-1',
+      ]);
+
+      await advance(AUTOSAVE_DEBOUNCE_MS); // queue the trailing save
+      await act(async () => {
+        resolveFirst(staleServerEcho);
+        await jest.advanceTimersByTimeAsync(0);
+      });
+
+      // The stale (pre-reorder) response was not grafted positionally, and
+      // the trailing save resent the reordered shape…
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(2);
+      const trailingPayload = mockUpdateWorkout.mock.calls[1][1] as {
+        exercises: { id?: string }[];
+      };
+      expect(trailingPayload.exercises.map((e) => e.id)).toEqual([
+        'ex-uuid-2',
+        'ex-uuid-1',
+      ]);
+      // …whose echo converged the store to clean in the reordered order.
+      expect(getStore().hasUnsavedChanges).toBe(false);
+      expect(getStore().session!.exercises.map((e) => e.id)).toEqual([
+        'ex-uuid-2',
+        'ex-uuid-1',
+      ]);
+    });
   });
 
   describe('failures', () => {
@@ -402,7 +459,7 @@ describe('useActiveWorkoutAutosave', () => {
       );
     });
 
-    it('captures the revision at send time and hands it to applyServerSession', async () => {
+    it('captures the revision and entry-id order at send time and hands them to applyServerSession', async () => {
       startAndEdit();
       const revisionAtSend = getStore().sessionRevision;
       const original = getStore().applyServerSession;
@@ -413,6 +470,7 @@ describe('useActiveWorkoutAutosave', () => {
         expect(spy).toHaveBeenCalledWith(
           expect.objectContaining({ id: 'session-1' }),
           revisionAtSend,
+          ['ex-uuid-1'],
         );
       } finally {
         useActiveWorkoutStore.setState({ applyServerSession: original });

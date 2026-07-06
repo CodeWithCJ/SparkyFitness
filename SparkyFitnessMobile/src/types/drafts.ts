@@ -22,6 +22,8 @@ export interface WorkoutDraftExercise {
   exerciseCategory: string | null;
   images: string[];
   sets: WorkoutDraftSet[];
+  /** Round-tripped opaquely from the server session; the form has no superset UI. */
+  supersetGroup?: number | null;
   /** Present only when editing an existing session — not persisted to drafts. */
   snapshot?: import('@workspace/shared').ExerciseSnapshotResponse | null;
 }

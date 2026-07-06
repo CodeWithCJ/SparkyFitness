@@ -271,6 +271,9 @@ export function buildExercisesPayload(
     exercise_id: exercise.exerciseId,
     sort_order: index,
     duration_minutes: 0,
+    // The form has no superset UI; round-trip the value opaquely so manual
+    // edits don't flatten grouping (the server nulls omitted fields).
+    superset_group: exercise.supersetGroup ?? null,
     sets: exercise.sets.map((set, setIndex) => {
       const weight = parseDecimalInput(set.weight);
       const reps = parseInt(set.reps, 10);
@@ -382,6 +385,9 @@ export function buildSessionExercisesPayload(
     sort_order: index,
     duration_minutes: exercise.duration_minutes ?? 0,
     notes: exercise.notes ?? null,
+    // `?? null` also normalizes `undefined` from sessions persisted before
+    // the superset upgrade.
+    superset_group: exercise.superset_group ?? null,
     sets: exercise.sets.map((set, setIndex) => ({
       ...(allExercisesHaveServerId && !isTempSetId(set.id) ? { id: set.id } : {}),
       set_number: setIndex + 1,
@@ -394,6 +400,81 @@ export function buildSessionExercisesPayload(
       rpe: set.rpe ?? null,
     })),
   }));
+}
+
+// --- Supersets ---
+
+export interface SupersetRun {
+  groupId: number;
+  entryIds: string[];
+}
+
+/**
+ * Derive superset groups as adjacent runs of 2+ exercises sharing a non-null
+ * `superset_group`. Singletons and non-adjacent repeats of the same value
+ * (possible after external edits) are not valid groups: they are ignored here
+ * — and therefore by all display/step logic — but their stored values are
+ * still round-tripped by the payload builders.
+ */
+export function getSupersetRuns(
+  exercises: Pick<ExerciseEntryResponse, 'id' | 'superset_group'>[],
+): SupersetRun[] {
+  const runs: SupersetRun[] = [];
+  const flush = (run: SupersetRun | null) => {
+    if (run !== null && run.entryIds.length >= 2) runs.push(run);
+  };
+
+  let current: SupersetRun | null = null;
+  for (const exercise of exercises) {
+    // `!= null` also covers `undefined` from sessions persisted before the
+    // superset upgrade, which the response type can't express.
+    const groupId = exercise.superset_group ?? null;
+    if (groupId != null && current !== null && current.groupId === groupId) {
+      current.entryIds.push(exercise.id);
+      continue;
+    }
+    flush(current);
+    current = groupId != null ? { groupId, entryIds: [exercise.id] } : null;
+  }
+  flush(current);
+  return runs;
+}
+
+/**
+ * Superset rail colours come from the theme's category palette (the
+ * providerColor.ts pattern): fixed var-name order here, resolved through
+ * useCSSVariable by consumers so they track the active theme.
+ */
+export const SUPERSET_PALETTE_VARS = [
+  '--color-cat-blue',
+  '--color-cat-orange',
+  '--color-cat-violet',
+  '--color-cat-green',
+  '--color-cat-pink',
+  '--color-cat-teal',
+  '--color-cat-amber',
+  '--color-cat-slate',
+];
+
+/**
+ * Maps each grouped entry id to a palette colour by run position
+ * (palette[i % length]) — index assignment, not group-id hashing, so colours
+ * stay collision-free while the visible groups fit the palette.
+ */
+export function buildSupersetColorMap(
+  runs: SupersetRun[],
+  palette: string[],
+): Map<string, string> {
+  const byEntryId = new Map<string, string>();
+  if (palette.length > 0) {
+    runs.forEach((run, index) => {
+      const color = palette[index % palette.length];
+      for (const entryId of run.entryIds) {
+        byEntryId.set(entryId, color);
+      }
+    });
+  }
+  return byEntryId;
 }
 
 // --- Live-start payload builders ---

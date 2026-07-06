@@ -1504,7 +1504,8 @@ CREATE TABLE public.exercise_entries (
     exercise_preset_entry_id uuid,
     sort_order integer DEFAULT 0,
     steps integer,
-    water_estimated integer
+    water_estimated integer,
+    superset_group integer
 );
 
 
@@ -1513,6 +1514,13 @@ CREATE TABLE public.exercise_entries (
 --
 
 COMMENT ON COLUMN public.exercise_entries.steps IS 'Number of steps recorded during this activity, sourced from Garmin or other providers.';
+
+
+--
+-- Name: COLUMN exercise_entries.superset_group; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entries.superset_group IS 'Client-assigned superset group key, scoped to the parent exercise_preset_entry. NULL = not in a superset. Members share the value and are kept adjacent via sort_order.';
 
 
 --

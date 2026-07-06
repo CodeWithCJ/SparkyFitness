@@ -11,6 +11,7 @@ import type { Exercise } from '../types/exercise';
 import {
   DEFAULT_REST_SEC,
   TEMP_EXERCISE_ENTRY_ID_PREFIX,
+  getSupersetRuns,
   isTempExerciseEntryId,
 } from '../utils/workoutSession';
 import {
@@ -139,18 +140,45 @@ export interface ActiveWorkoutState {
    * set removes the exercise from the session entirely.
    */
   deleteSet: (setId: string) => void;
-  /** Set rest_time on every set of an exercise. */
+  /**
+   * Set rest_time on every set of an exercise. For a superset member the
+   * write covers every set of every member — rest is per-round, so the
+   * chips must stay in agreement.
+   */
   setExerciseRest: (entryId: string, seconds: number) => void;
   /** Append a client-built exercise entry (temp string id) with one default set. */
   addExercise: (exercise: Exercise) => void;
+  /**
+   * Superset `picked` with `current`: create a group of the two, or add
+   * `picked` as a member of current's existing group. `picked` moves to sit
+   * immediately after the last member of current's run, and every member's
+   * rest_time is harmonized to the anchor's (deliberately lossy — rest is
+   * per-round). `picked` must be ungrouped; grouped exercises must be
+   * ungrouped first.
+   */
+  supersetWith: (currentEntryId: string, pickedEntryId: string) => void;
+  /**
+   * Remove an exercise from its superset. A middle member also moves to
+   * just after the run so the remaining members stay adjacent; a remaining
+   * 1-member group is dissolved by normalization.
+   */
+  ungroupExercise: (entryId: string) => void;
   /**
    * Fold an autosave response back into the store. `sentRevision` is the
    * `sessionRevision` captured when the request's payload was built: if no
    * edits landed mid-flight the server session is adopted wholesale (and the
    * dirty flag cleared); otherwise only server ids are grafted positionally
    * into the local session, which keeps its newer values and stays dirty.
+   * `sentEntryIds` is the exercise-entry id order captured at the same
+   * moment: a mid-flight reorder or delete breaks the positional graft, so
+   * the graft is skipped when the local prefix no longer matches (the still-
+   * dirty session is resent by the pending debounce or trailing save).
    */
-  applyServerSession: (serverSession: PresetSessionResponse, sentRevision: number) => void;
+  applyServerSession: (
+    serverSession: PresetSessionResponse,
+    sentRevision: number,
+    sentEntryIds: string[],
+  ) => void;
 }
 
 /** Fields the active-workout screen can edit on a set. */
@@ -183,21 +211,61 @@ const initialData: Pick<
   createdByLiveStart: false,
 };
 
+/**
+ * Flatten a session into the step sequence the cursor walks.
+ *
+ * Solo exercises contribute one step per set. Superset runs (adjacent 2+
+ * exercises sharing a `superset_group`) are interleaved into rounds: round
+ * `n` is one set of each member in order (positional — members whose sets
+ * are exhausted drop out). `restSec` is the rest taken *before* a step, so
+ * each round's first step carries the group rest and the rest of the round
+ * carries 0 — rest happens after a full round, not between partners.
+ */
 export function buildStepsFromSession(session: PresetSessionResponse): WorkoutStep[] {
   const steps: WorkoutStep[] = [];
+  const runByFirstEntryId = new Map(
+    getSupersetRuns(session.exercises).map((run) => [run.entryIds[0], run]),
+  );
+  const byEntryId = new Map(session.exercises.map((e) => [e.id, e]));
+  const consumed = new Set<string>();
+
+  const pushStep = (exercise: ExerciseEntryResponse, setId: number, restSec: number) => {
+    steps.push({
+      exerciseId: exercise.id,
+      setId: String(setId),
+      exerciseName: exercise.exercise_snapshot?.name ?? 'Exercise',
+      exerciseImage: exercise.exercise_snapshot?.images?.[0] ?? null,
+      restSec,
+    });
+  };
+
   for (const exercise of session.exercises) {
-    const exerciseName = exercise.exercise_snapshot?.name ?? 'Exercise';
-    const exerciseImage = exercise.exercise_snapshot?.images?.[0] ?? null;
-    const firstSet = exercise.sets[0];
-    const restSec = firstSet?.rest_time ?? DEFAULT_REST_SEC;
-    for (const set of exercise.sets) {
-      steps.push({
-        exerciseId: exercise.id,
-        setId: String(set.id),
-        exerciseName,
-        exerciseImage,
-        restSec,
-      });
+    if (consumed.has(exercise.id)) continue;
+
+    const run = runByFirstEntryId.get(exercise.id);
+    if (!run) {
+      const restSec = exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
+      for (const set of exercise.sets) {
+        pushStep(exercise, set.id, restSec);
+      }
+      continue;
+    }
+
+    const members = run.entryIds.map((id) => byEntryId.get(id)!);
+    for (const id of run.entryIds) consumed.add(id);
+
+    // Rest is per-round; group actions harmonize every member's rest_time,
+    // so the anchor's first set speaks for the whole group.
+    const groupRest = members[0].sets[0]?.rest_time ?? DEFAULT_REST_SEC;
+    const roundCount = Math.max(...members.map((m) => m.sets.length));
+    for (let round = 0; round < roundCount; round++) {
+      let firstInRound = true;
+      for (const member of members) {
+        const set = member.sets[round];
+        if (!set) continue;
+        pushStep(member, set.id, firstInRound ? groupRest : 0);
+        firstInRound = false;
+      }
     }
   }
   return steps;
@@ -206,10 +274,12 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
 /**
  * Map local set ids → server set ids by position (exercise index, set index).
  *
- * Valid because the autosave payload preserves order, the server recreates in
- * order, and every shape-changing edit action is append-only (`addSet`/
- * `addExercise` append, `deleteSet` shifts down). If reorder or insert-in-
- * middle is ever added, this positional mapping must be revisited.
+ * Valid because the autosave payload preserves order and the server recreates
+ * in order. Most shape-changing edits are append-only (`addSet`/`addExercise`
+ * append, `deleteSet` shifts down), but `supersetWith`/`ungroupExercise` can
+ * reorder exercises — so `applyServerSession` guards its graft branch by
+ * comparing the local entry-id prefix against the ids captured at send time
+ * and skips the graft (staying dirty) when they diverge.
  *
  * Positions beyond the shorter side are unmapped — callers keep the local id
  * (temp ids re-save on the next autosave; id churn only, no data loss).
@@ -300,6 +370,32 @@ function makeDefaultSet(id: number, setNumber: number): ExerciseEntrySetResponse
 }
 
 /**
+ * Clear `superset_group` on any entry not part of an adjacent 2+ run — the
+ * one choke point that dissolves 1-member remainders after ungroup/member
+ * deletion and scrubs stale values from external edits. Returns the input
+ * object unchanged when nothing needs clearing.
+ *
+ * Note this also *preserves* any adjacent 2+ run: if a future reorder or
+ * insert-in-middle feature in `useWorkoutForm` made stale same-value entries
+ * adjacent, they would spontaneously form a group here. Unreachable today
+ * (the form has no reorder), but flagging it for that future.
+ */
+function normalizeSupersetGroups(session: PresetSessionResponse): PresetSessionResponse {
+  const grouped = new Set(
+    getSupersetRuns(session.exercises).flatMap((run) => run.entryIds),
+  );
+  const isStale = (e: ExerciseEntryResponse) =>
+    e.superset_group != null && !grouped.has(e.id);
+  if (!session.exercises.some(isStale)) return session;
+  return {
+    ...session,
+    exercises: session.exercises.map((e) =>
+      isStale(e) ? { ...e, superset_group: null } : e,
+    ),
+  };
+}
+
+/**
  * Shared tail of every session-edit action: rebuild steps from the edited
  * session, prune/repoint completion and cursor (same rules as
  * `reconcileWithSession`), bump the revision, and mark unsaved changes.
@@ -310,8 +406,9 @@ function buildSessionEditState(
     ActiveWorkoutState,
     'completedSetIds' | 'activeSetId' | 'rest' | 'sessionRevision'
   >,
-  nextSession: PresetSessionResponse,
+  editedSession: PresetSessionResponse,
 ): Partial<ActiveWorkoutState> {
+  const nextSession = normalizeSupersetGroups(editedSession);
   const newSteps = buildStepsFromSession(nextSession);
   const newSetIds = new Set(newSteps.map((s) => s.setId));
 
@@ -518,7 +615,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set({
           completedSetIds,
           activeSetId: nextStep.setId,
-          rest: startRestForStep(state.steps, nextStep.setId),
+          // A zero-rest step (superset round interior, or an explicit
+          // rest_time of 0) advances straight to ready — no timer flash.
+          rest: nextStep.restSec > 0 ? startRestForStep(state.steps, nextStep.setId) : READY_REST,
         });
       },
 
@@ -787,10 +886,16 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         if (!session) return;
         if (!session.exercises.some((e) => e.id === entryId)) return;
 
+        // Superset rest is per-round: a member's chip writes every member.
+        const run = getSupersetRuns(session.exercises).find((r) =>
+          r.entryIds.includes(entryId),
+        );
+        const targetIds = new Set(run ? run.entryIds : [entryId]);
+
         const next: PresetSessionResponse = {
           ...session,
           exercises: session.exercises.map((e) =>
-            e.id === entryId
+            targetIds.has(e.id)
               ? { ...e, sets: e.sets.map((s) => ({ ...s, rest_time: seconds })) }
               : e,
           ),
@@ -828,6 +933,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           distance: null,
           avg_heart_rate: null,
           source: null,
+          superset_group: null,
           exercise_snapshot: snapshot,
           activity_details: [],
           sets: [makeDefaultSet(nextTempSetId(session), 1)],
@@ -840,7 +946,107 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set(buildSessionEditState(state, next));
       },
 
-      applyServerSession: (serverSession, sentRevision) => {
+      supersetWith: (currentEntryId, pickedEntryId) => {
+        const state = get();
+        const session = state.session;
+        if (!session || currentEntryId === pickedEntryId) return;
+        const picked = session.exercises.find((e) => e.id === pickedEntryId);
+        if (!picked || !session.exercises.some((e) => e.id === currentEntryId)) {
+          return;
+        }
+
+        const runs = getSupersetRuns(session.exercises);
+        // Grouped exercises can't be picked — they must be ungrouped first.
+        if (runs.some((r) => r.entryIds.includes(pickedEntryId))) return;
+
+        const currentRun = runs.find((r) => r.entryIds.includes(currentEntryId));
+        // New group ids are max(existing non-null)+1 — including stale
+        // values, so a fresh id can never collide into an accidental run.
+        let groupId: number;
+        if (currentRun) {
+          groupId = currentRun.groupId;
+        } else {
+          let maxGroupId = 0;
+          for (const e of session.exercises) {
+            if (e.superset_group != null && e.superset_group > maxGroupId) {
+              maxGroupId = e.superset_group;
+            }
+          }
+          groupId = maxGroupId + 1;
+        }
+
+        const memberIds = currentRun
+          ? [...currentRun.entryIds, pickedEntryId]
+          : [currentEntryId, pickedEntryId];
+        const memberIdSet = new Set(memberIds);
+
+        // Rest is per-round: harmonize every member's sets to the anchor's
+        // rest. Deliberately lossy — the picked member's original per-set
+        // rest_time is overwritten and ungrouping does not restore it.
+        const anchor = session.exercises.find((e) => e.id === memberIds[0])!;
+        const groupRest = anchor.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
+
+        // Move picked to sit immediately after the last member of current's
+        // run so the group is one adjacent block.
+        const lastMemberId = currentRun
+          ? currentRun.entryIds[currentRun.entryIds.length - 1]
+          : currentEntryId;
+        const without = session.exercises.filter((e) => e.id !== pickedEntryId);
+        const insertAt = without.findIndex((e) => e.id === lastMemberId) + 1;
+        const reordered = [
+          ...without.slice(0, insertAt),
+          picked,
+          ...without.slice(insertAt),
+        ];
+
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: reordered.map((e) =>
+            memberIdSet.has(e.id)
+              ? {
+                  ...e,
+                  superset_group: groupId,
+                  sets: e.sets.map((s) => ({ ...s, rest_time: groupRest })),
+                }
+              : e,
+          ),
+        };
+        set(buildSessionEditState(state, next));
+      },
+
+      ungroupExercise: (entryId) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const run = getSupersetRuns(session.exercises).find((r) =>
+          r.entryIds.includes(entryId),
+        );
+        if (!run) return;
+
+        let exercises = session.exercises.map((e) =>
+          e.id === entryId ? { ...e, superset_group: null } : e,
+        );
+
+        // Nulling a middle member would leave the remaining members
+        // non-adjacent and normalization would dissolve the whole group —
+        // move it to just after the run instead. End members need no move.
+        const position = run.entryIds.indexOf(entryId);
+        if (position > 0 && position < run.entryIds.length - 1) {
+          const moved = exercises.find((e) => e.id === entryId)!;
+          const without = exercises.filter((e) => e.id !== entryId);
+          const lastMemberId = run.entryIds[run.entryIds.length - 1];
+          const insertAt = without.findIndex((e) => e.id === lastMemberId) + 1;
+          exercises = [
+            ...without.slice(0, insertAt),
+            moved,
+            ...without.slice(insertAt),
+          ];
+        }
+
+        set(buildSessionEditState(state, { ...session, exercises }));
+      },
+
+      applyServerSession: (serverSession, sentRevision, sentEntryIds) => {
         const state = get();
         // The workout may have been cleared or replaced while the save was in
         // flight — a response for a different (or no) session is dropped.
@@ -851,9 +1057,22 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const setIdMap = buildPositionalSetIdMap(local, serverSession);
 
         if (state.sessionRevision !== sentRevision) {
-          // Edits landed after the payload was built. Keep the newer local
-          // values; only graft the server-assigned ids into place. Every
-          // logical set survives this, so the rest timer is never touched.
+          // Edits landed after the payload was built. If they reordered or
+          // deleted exercise entries, the positional assumption behind the
+          // graft is broken — compare against the *sent* order (an
+          // exercise_id comparison would false-pass when the same exercise
+          // appears twice and gets swapped). Skipping leaves the session
+          // dirty at the bumped revision; the pending debounce or trailing
+          // save resends the current shape, whose response grafts cleanly.
+          const prefixLength = Math.min(local.exercises.length, sentEntryIds.length);
+          for (let i = 0; i < prefixLength; i++) {
+            if (local.exercises[i].id !== sentEntryIds[i]) return;
+          }
+          if (local.exercises.length < sentEntryIds.length) return;
+
+          // Keep the newer local values; only graft the server-assigned ids
+          // into place. Every logical set survives this, so the rest timer
+          // is never touched.
           const grafted = graftServerSessionIds(local, serverSession);
           const newSteps = buildStepsFromSession(grafted);
 

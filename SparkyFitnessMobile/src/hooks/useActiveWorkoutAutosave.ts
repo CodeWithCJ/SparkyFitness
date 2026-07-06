@@ -34,11 +34,14 @@ export async function saveActiveWorkoutSession(
   }
 
   const sentRevision = state.sessionRevision;
+  // Entry-id order at send time: applyServerSession compares it against the
+  // local session so a mid-flight reorder/delete can't be grafted positionally.
+  const sentEntryIds = state.session.exercises.map((e) => e.id);
   try {
     const result = await updateWorkout(state.sessionId, {
       exercises: buildSessionExercisesPayload(state.session),
     });
-    useActiveWorkoutStore.getState().applyServerSession(result, sentRevision);
+    useActiveWorkoutStore.getState().applyServerSession(result, sentRevision, sentEntryIds);
     syncExerciseSessionInCache(queryClient, result);
     return 'saved';
   } catch (error) {

@@ -3,6 +3,7 @@ import {
   getWorkoutDraftSubmission,
   type WorkoutDraft,
 } from '../../src/hooks/useWorkoutForm';
+import { buildExercisesPayload } from '../../src/utils/workoutSession';
 import type { Exercise } from '../../src/types/exercise';
 import type { PresetSessionResponse, ExerciseEntrySetResponse } from '@workspace/shared';
 import type { WorkoutPreset } from '../../src/types/workoutPresets';
@@ -703,6 +704,48 @@ describe('workoutFormReducer', () => {
       expect(result.exercises[0].sets[0].restTime).toBe(90);
       expect(result.exercises[0].sets[1].restTime).toBeNull();
     });
+
+    it('round-trips superset_group opaquely through the draft and back into the payload', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession({
+        exercises: [
+          {
+            id: 'ex-uuid-1',
+            exercise_id: 'ex-1',
+            exercise_snapshot: null,
+            duration_minutes: 20,
+            calories_burned: 150,
+            superset_group: 3,
+            sets: [],
+          } as any,
+          {
+            id: 'ex-uuid-2',
+            exercise_id: 'ex-2',
+            exercise_snapshot: null,
+            duration_minutes: 20,
+            calories_burned: 150,
+            superset_group: 3,
+            sets: [],
+          } as any,
+          {
+            id: 'ex-uuid-3',
+            exercise_id: 'ex-3',
+            exercise_snapshot: null,
+            duration_minutes: 20,
+            calories_burned: 150,
+            sets: [],
+          } as any,
+        ],
+      });
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
+
+      expect(result.exercises[0].supersetGroup).toBe(3);
+      expect(result.exercises[1].supersetGroup).toBe(3);
+      expect(result.exercises[2].supersetGroup).toBeNull();
+
+      const payload = buildExercisesPayload(result.exercises, 'kg');
+      expect(payload.map((e) => e.superset_group)).toEqual([3, 3, null]);
+    });
   });
 
   describe('RESTORE_DRAFT — old drafts without serverId/restTime', () => {
@@ -930,6 +973,7 @@ describe('workoutFormReducer', () => {
           exercise_id: 'uuid-1',
           sort_order: 0,
           duration_minutes: 0,
+          superset_group: null,
           sets: [
             {
               set_number: 1,

@@ -109,6 +109,7 @@ function _buildExerciseEntryWithSnapshot(
     distance: (entryData.distance as number) ?? null,
     avg_heart_rate: (entryData.avg_heart_rate as number) ?? null,
     steps: (entryData.steps as number) ?? null,
+    superset_group: (entryData.superset_group as number) ?? null,
     source: (source as string) ?? null,
     image_url: (entryData.image_url as string) ?? null,
     sets: ((entryData.sets as unknown[]) ?? []) as ExerciseEntrySetResponse[],

@@ -100,6 +100,7 @@ export const presetSessionExerciseRequestSchema = z
     sort_order: z.number().int().min(0).default(0),
     duration_minutes: z.number().min(0).default(0),
     notes: z.string().nullable().optional(),
+    superset_group: z.number().int().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).default([]),
   })
   .strict();
@@ -206,6 +207,7 @@ export const exerciseEntryResponseSchema = z
     activity_details: z.array(activityDetailResponseSchema),
     steps: z.number().nullable().optional(),
     category: z.string().nullable().optional(),
+    superset_group: z.number().int().nullable(),
   })
   .strict();
 

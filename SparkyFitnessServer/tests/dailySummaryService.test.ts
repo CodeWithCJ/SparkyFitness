@@ -97,6 +97,7 @@ const activeCaloriesSession: ExerciseSessionResponse = {
   exercise_snapshot: null,
   activity_details: [],
   steps: 1000,
+  superset_group: null,
   name: 'Active Calories',
 };
 

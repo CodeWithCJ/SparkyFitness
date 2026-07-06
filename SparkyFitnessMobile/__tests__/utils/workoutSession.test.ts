@@ -26,6 +26,8 @@ import {
   getExerciseVolumeKg,
   formatVolume,
   getRpeTone,
+  getSupersetRuns,
+  buildSupersetColorMap,
 } from '../../src/utils/workoutSession';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { presetSessionExerciseRequestSchema } from '@workspace/shared';
@@ -54,6 +56,7 @@ const makeIndividual = (overrides?: Partial<IndividualSession>): IndividualSessi
   avg_heart_rate: null,
   notes: null,
   source: null,
+  superset_group: null,
   sets: [],
   exercise_snapshot: {
     id: 'ex-1',
@@ -934,6 +937,20 @@ describe('workoutSession', () => {
       expect(buildExercisesPayload([], 'kg')).toEqual([]);
     });
 
+    it('round-trips supersetGroup opaquely and defaults missing values to null', () => {
+      const payload = buildExercisesPayload(
+        [
+          makeDraftExercise({ supersetGroup: 2 }),
+          makeDraftExercise({ supersetGroup: null }),
+          makeDraftExercise(),
+        ],
+        'kg',
+      );
+      expect(payload[0].superset_group).toBe(2);
+      expect(payload[1].superset_group).toBeNull();
+      expect(payload[2].superset_group).toBeNull();
+    });
+
     it('handles exercise with empty sets array', () => {
       const exercise = makeDraftExercise({ sets: [] });
       const payload = buildExercisesPayload([exercise], 'kg');
@@ -1332,6 +1349,7 @@ describe('workoutSession', () => {
       distance: null,
       avg_heart_rate: null,
       source: null,
+      superset_group: null,
       exercise_snapshot: null,
       activity_details: [],
       sets: [makeSet()],
@@ -1471,6 +1489,25 @@ describe('workoutSession', () => {
     it('emits explicit nulls for absent exercise notes', () => {
       const session = makePreset({ exercises: [makeExercise({ notes: null })] });
       expect(buildSessionExercisesPayload(session)[0].notes).toBeNull();
+    });
+
+    it('round-trips superset_group and normalizes undefined to null', () => {
+      const session = makePreset({
+        exercises: [
+          makeExercise({ superset_group: 1 }),
+          makeExercise({ id: ENTRY_B, exercise_id: EX_2, superset_group: null }),
+          // Sessions persisted before the superset upgrade lack the field
+          // entirely — the type can't express this, but the builder must
+          // still emit an explicit null so the server doesn't reject it.
+          makeExercise({ superset_group: undefined as unknown as null }),
+        ],
+      });
+
+      const payload = buildSessionExercisesPayload(session);
+      expect(payload[0].superset_group).toBe(1);
+      expect(payload[1].superset_group).toBeNull();
+      expect(payload[2].superset_group).toBeNull();
+      expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
     });
   });
 
@@ -1733,6 +1770,90 @@ describe('workoutSession', () => {
         expect(getRpeTone(9)).toBe('hard');
         expect(getRpeTone(9.5)).toBe('hard');
         expect(getRpeTone(10)).toBe('max');
+      });
+    });
+  });
+
+  describe('supersets', () => {
+    const entry = (id: string, group: number | null | undefined) => ({
+      id,
+      superset_group: group as number | null,
+    });
+
+    describe('getSupersetRuns', () => {
+      it('returns adjacent runs of 2+ sharing a non-null group', () => {
+        const runs = getSupersetRuns([
+          entry('a', 1),
+          entry('b', 1),
+          entry('c', null),
+        ]);
+        expect(runs).toEqual([{ groupId: 1, entryIds: ['a', 'b'] }]);
+      });
+
+      it('ignores singleton group values', () => {
+        expect(
+          getSupersetRuns([entry('a', 1), entry('b', null), entry('c', 2)]),
+        ).toEqual([]);
+      });
+
+      it('ignores non-adjacent repeats of the same group value', () => {
+        expect(
+          getSupersetRuns([entry('a', 1), entry('b', null), entry('c', 1)]),
+        ).toEqual([]);
+      });
+
+      it('splits two adjacent groups with different ids', () => {
+        const runs = getSupersetRuns([
+          entry('a', 1),
+          entry('b', 1),
+          entry('c', 2),
+          entry('d', 2),
+          entry('e', 2),
+        ]);
+        expect(runs).toEqual([
+          { groupId: 1, entryIds: ['a', 'b'] },
+          { groupId: 2, entryIds: ['c', 'd', 'e'] },
+        ]);
+      });
+
+      it('treats pre-upgrade exercises without the field as ungrouped', () => {
+        expect(
+          getSupersetRuns([entry('a', undefined), entry('b', undefined)]),
+        ).toEqual([]);
+      });
+    });
+
+    describe('buildSupersetColorMap', () => {
+      const palette = ['red', 'green', 'blue'];
+
+      it('assigns colours by run index and covers every member', () => {
+        const map = buildSupersetColorMap(
+          [
+            { groupId: 5, entryIds: ['a', 'b'] },
+            { groupId: 2, entryIds: ['c', 'd'] },
+          ],
+          palette,
+        );
+        expect(map.get('a')).toBe('red');
+        expect(map.get('b')).toBe('red');
+        expect(map.get('c')).toBe('green');
+        expect(map.get('d')).toBe('green');
+        expect(map.has('e')).toBe(false);
+      });
+
+      it('wraps past the palette length', () => {
+        const runs = ['g1', 'g2', 'g3', 'g4'].map((_, i) => ({
+          groupId: i + 1,
+          entryIds: [`x${i}`],
+        }));
+        const map = buildSupersetColorMap(runs, palette);
+        expect(map.get('x3')).toBe('red');
+      });
+
+      it('returns an empty map for an empty palette', () => {
+        expect(
+          buildSupersetColorMap([{ groupId: 1, entryIds: ['a'] }], []).size,
+        ).toBe(0);
       });
     });
   });
