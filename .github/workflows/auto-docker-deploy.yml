@@ -148,6 +148,7 @@ jobs:
         with:
           subject-name: ghcr.io/${{ steps.repo.outputs.name }}-garmin
           subject-digest: ${{ steps.push-garmin.outputs.digest }}
+          push-to-registry: true
 
 
 
