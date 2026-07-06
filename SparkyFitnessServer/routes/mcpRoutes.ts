@@ -21,18 +21,20 @@ const SERVER_VERSION = versionService.getAppVersion();
  * (e.g. start_date: null) into undefined (omitted) so they satisfy Zod's .optional() validation.
  */
 function stripNulls(val: any): any {
-  if (val === null) {
-    return undefined;
-  }
   if (Array.isArray(val)) {
-    return val.map(stripNulls);
+    return val.map((item) =>
+      item && typeof item === 'object' ? stripNulls(item) : item
+    );
   }
   if (val && typeof val === 'object') {
     const clean: Record<string, any> = {};
     for (const key of Object.keys(val)) {
-      const cleanedVal = stripNulls(val[key]);
-      if (cleanedVal !== undefined) {
-        clean[key] = cleanedVal;
+      const cleanedVal = val[key];
+      if (cleanedVal !== null) {
+        clean[key] =
+          cleanedVal && typeof cleanedVal === 'object'
+            ? stripNulls(cleanedVal)
+            : cleanedVal;
       }
     }
     return clean;
