@@ -52,6 +52,8 @@ spec:
               value: {{ include "sparkyfitness.fullname" . }}-server
             - name: SPARKY_FITNESS_SERVER_PORT
               value: {{ .Values.server.port | quote }}
+            - name: NGINX_LISTEN_PORT
+              value: {{ .Values.frontend.port | quote }}
             - name: NGINX_RATE_LIMIT
               value: {{ .Values.frontend.rateLimit | default "5r/s" | quote }}
             {{- range $k, $v := .Values.frontend.extraEnv }}

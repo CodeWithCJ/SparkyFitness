@@ -29,8 +29,8 @@ RUN pnpm --filter sparkyfitnessfrontend run build
 # Stage 2: Serve the application with Nginx
 FROM nginx:alpine3.22
 
-# Install bash for console access and gettext for envsubst
-RUN apk add --no-cache bash gettext
+# Install bash for console access, gettext for envsubst, and curl for healthcheck
+RUN apk add --no-cache bash gettext curl
 
 # Copy the build output from the builder stage
 COPY --from=builder /app/SparkyFitnessFrontend/dist /usr/share/nginx/html
@@ -41,18 +41,24 @@ COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
 # Copy and set up the entrypoint script
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh \
-    && mkdir -p /var/run/nginx /var/cache/nginx /etc/nginx/conf.d
+    && mkdir -p /var/run/nginx /var/cache/nginx /etc/nginx/conf.d /var/log/nginx \
+    && chmod -R 777 /var/run/nginx /var/cache/nginx /etc/nginx/conf.d /var/log/nginx \
+    && sed -i 's|/var/run/nginx.pid|/var/run/nginx/nginx.pid|g' /etc/nginx/nginx.conf \
+    && sed -i 's|^user|#user|g' /etc/nginx/nginx.conf
 
 # Set default values for environment variables
 ENV SPARKY_FITNESS_SERVER_HOST=sparkyfitness-server
 ENV SPARKY_FITNESS_SERVER_PORT=3010
 ENV NGINX_RATE_LIMIT=5r/s
+ENV NGINX_LISTEN_PORT=8080
+ENV NGINX_ACCESS_LOG=/dev/stdout
+ENV NGINX_ERROR_LOG=/dev/stderr
 
-# Expose port 80
-EXPOSE 80
+# Expose port 8080
+EXPOSE 8080
 
-# Healthcheck
-HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["curl", "-f", "http://127.0.0.1"]
+# Healthcheck (checks the dynamically configured port or defaults to 8080)
+HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["sh", "-c", "curl -f http://127.0.0.1:${NGINX_LISTEN_PORT:-8080}"]
 
 # Start with our custom entrypoint
 CMD ["/docker-entrypoint.sh"]

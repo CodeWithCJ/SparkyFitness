@@ -65,7 +65,7 @@ services:
   sparkyfitness-frontend:
     image: codewithcj/sparkyfitness:latest # Use pre-built image
     ports:
-      - "3004:80" # Map host port 8080 to container port 80 (Nginx)
+      - "3004:8080" # Map host port 3004 to container port 8080 (Nginx)
     environment:
       SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL}
       SPARKY_FITNESS_SERVER_HOST: sparkyfitness-server # Internal Docker service name for the backend
