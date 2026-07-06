@@ -1854,5 +1854,12 @@
     "liveAiContextTitle": "Live AI Context",
     "liveAiContextDescription": "Dit is de huidige context die aan de AI-assistent zou worden verstrekt",
     "loadingAiContext": "AI-context laden..."
+  },
+  "nutrition": {
+    "calories": "Calorieën",
+    "protein": "Proteïne",
+    "carbohydrates": "Koolhydraten",
+    "fat": "Vetten",
+    "saturatedFat": "Verzadigde Vetten"
   }
 }

@@ -3,7 +3,7 @@
     "diary": "Щоденник",
     "checkin": "Відмітка",
     "reports": "Звіти",
-    "foods": "Їжа",
+    "foods": "Продукти",
     "goals": "Цілі",
     "settings": "Налаштування",
     "admin": "Адміністратор"
@@ -37,7 +37,7 @@
       "workoutPresetTab": "Попередньо-налаштовані тренування",
       "onlineTab": "Онлайн",
       "addCustomTab": "Додати власне",
-      "importCSVTab": "Імпорт CSV",
+      "importCSVTab": "Імпорт вправ",
       "nameLabel": "Назва",
       "categoryLabel": "Категорія",
       "selectCategoryPlaceholder": "Оберіть категорію",
@@ -213,7 +213,7 @@
       "addExerciseButton": "Додати вправу"
     },
     "exerciseImportCSV": {
-      "importExerciseData": "Імпорт вправ",
+      "importExerciseData": "Імпорт даних вправ",
       "standardValuesForDropdowns": "Стандартні значення для випадаючих списків",
       "standardValuesDescription": "Під час імпорту вправ переконайтеся, що значення для «Рівень», «Сила» та «Механіка» відповідають цим стандартним параметрам. Ви можете натиснути значок копіювання, щоб швидко скопіювати список дійсних значень для кожного поля.",
       "levelLabel": "Рівень:",
@@ -336,11 +336,11 @@
     "editEntry": "Редагувати запис",
     "deleteEntry": "Видалити запис",
     "unknownExercise": "Невідома вправа",
-    "wgerSource": "",
+    "wgerSource": "Wger",
     "freeExerciseDBSource": "Безкоштовна база даних вправ",
     "customSource": "Власна",
     "activeCalories": "активні калорії",
-    "minutesUnit": "хвилини",
+    "minutesUnit": "хв.",
     "caloriesUnit": "калорії",
     "setsLabel": "Підходи",
     "repsLabel": "Повторення",
@@ -362,7 +362,8 @@
     "exerciseEntryAddedSuccessfully": "Запис вправи успішно додано.",
     "failedToDeleteExerciseEntry": "Не вдалося видалити запис вправи.",
     "exerciseEntryDeletedSuccessfully": "Запис вправи успішно видалено.",
-    "loadingExercises": "Завантаження вправ..."
+    "loadingExercises": "Завантаження вправ...",
+    "nutritionixSource": "Nutritionix"
   },
   "foodSearchDialog": {
     "title": "Пошук і додавання їжі",
@@ -394,7 +395,11 @@
     "addNewFood": "Додати новий продукт",
     "addNewFoodDescription": "Введіть дані нового продукту для додавання до бази.",
     "scanBarcodeDescription": "Наведіть камеру на штрихкод продукту.",
-    "importFromCSVDescription": "Імпортуйте CSV-файл, щоб додати кілька продуктів одразу."
+    "importFromCSVDescription": "Імпортуйте CSV-файл, щоб додати кілька продуктів одразу.",
+    "mealie": "Їжа",
+    "openFoodFacts": "OpenFoodFacts",
+    "nutritionix": "Nutritionix",
+    "fatSecret": "FatSecret"
   },
   "settings": {
     "profileInformation": {
@@ -419,7 +424,7 @@
       "saving": "Збереження..."
     },
     "preferences": {
-      "title": "Налаштування",
+      "title": "Параметри",
       "description": "Налаштуйте параметри додатку та відображення",
       "dateFormat": "Формат дати",
       "weightUnit": "Одиниці ваги",
@@ -441,7 +446,8 @@
       "items": "{{count}} елементів",
       "language": "Мова",
       "english": "Англійська",
-      "savePreferences": "Зберегти налаштування"
+      "savePreferences": "Зберегти налаштування",
+      "tamil": "Тамільська"
     },
     "waterTracking": {
       "title": "Відстеження води",
@@ -471,12 +477,12 @@
     "foodExerciseDataProviders": {
       "title": "Джерела даних про харчування та фізичні вправи",
       "description": "Налаштування зовнішніх джерел даних про харчування та фізичні вправи та синхронізуйте дані з Garmin Connect",
-      "invalidKeyLengthWarning": "Якщо ви зіткнулися з помилкою «Недійсна довжина ключа», переконайтеся, що ваші ключі шифрування та автентифікації JWT у змінних env сервера мають шістнадцятковий формат 64."
+      "invalidKeyLengthWarning": "Якщо ви зіткнулися з помилкою \"Неприпустима довжина ключа\", переконайтеся, що довжина вашого ключа шифрування в змінних оточення сервера становить 64 шістнадцяткових символи."
     },
     "aiService": {
       "title": "Сервіс штучного інтелекту",
       "description": "Керування налаштуваннями функцій на базі штучного інтелекту",
-      "invalidKeyLengthWarning": "Якщо ви зіткнулися з помилкою «Недійсна довжина ключа», переконайтеся, що ваші ключі шифрування та автентифікації JWT у змінних env сервера мають шістнадцятковий формат 64.",
+      "invalidKeyLengthWarning": "Якщо ви зіткнулися з помилкою \"Неприпустима довжина ключа\", переконайтеся, що довжина ключа шифрування в змінних оточення сервера становить 64 шістнадцяткових символи.",
       "globalSettings": {
         "addService": "Додати сервіс",
         "saveChanges": "Зберегти зміни",
@@ -484,7 +490,49 @@
         "edit": "Редагувати",
         "delete": "Видалити",
         "activeService": "Активувати сервіс",
-        "error": "Помилка"
+        "error": "Помилка",
+        "title": "Глобальні налаштування служби ШІ",
+        "description": "Глобальні налаштування служби ШІ є спільними для всіх користувачів. Користувачі можуть замінити їх власними налаштуваннями.",
+        "allowUserConfig": "Дозволити користувачам налаштовувати служби ШІ",
+        "allowUserConfigDescription": "Коли ввімкнено, користувачі можуть додавати та керувати власними конфігураціями служби ШІ. Коли вимкнено, користувачі можуть використовувати лише глобальні налаштування служби ШІ.",
+        "syncFromEnv": "Синхронізувати з середовищем",
+        "addNewService": "Додати новий глобальний сервіс ШІ",
+        "globalServices": "Глобальні служби",
+        "noServices": "Глобальні служби ШІ ще не налаштовані.",
+        "noServicesDescription": "Додайте глобальну службу ШІ, щоб надати налаштування за замовчуванням для всіх користувачів.",
+        "serviceName": "Назва служби",
+        "serviceNamePlaceholder": "Організація, що використовує сервіс OpenAI",
+        "serviceType": "Тип сервісу",
+        "apiKey": "Ключ API",
+        "apiKeyOptional": "Ключ API (необов'язково)",
+        "apiKeyPlaceholder": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "apiKeyPlaceholderOllama": "Не обов'язково для Ollama",
+        "customUrl": "URL-адреса користувача",
+        "customUrlPlaceholderOllama": "http://localhost:11434",
+        "customUrlPlaceholder": "https://api.example.com/v1",
+        "useCustomModel": "Використати власну назву моделі",
+        "model": "Модель",
+        "selectModel": "Виберіть модель",
+        "customModelName": "Назва користувацької моделі",
+        "customModelNamePlaceholder": "Введіть назву користувацької моделі",
+        "systemPrompt": "Системний запит (додаткові інструкції)",
+        "systemPromptPlaceholder": "Додаткові інструкції для ШІ-помічника...",
+        "setAsActive": "Встановити як активну службу",
+        "global": "Глобальні",
+        "success": "Успішно",
+        "errorLoading": "Не вдалося завантажити глобальні ШІ-служби",
+        "errorAdding": "Не вдалося додати глобальну ШІ-службу",
+        "successAdding": "Глобальну ШІ-службу успішно додано",
+        "errorUpdating": "Не вдалося оновити глобальну ШІ-службу",
+        "successUpdating": "Глобальну ШІ-службу успішно оновлено",
+        "errorDeleting": "Не вдалося видалити глобальну ШІ-службу",
+        "successDeleting": "Глобальну ШІ-службу успішно видалено",
+        "errorSyncing": "Не вдалося синхронізувати зі змінними середовища",
+        "successSyncing": "Змінні середовища успішно синхронізовано",
+        "errorUpdatingConfig": "Не вдалося оновити користувацькі налаштування конфігурації ШІ",
+        "successUpdatingConfig": "Користувацькі налаштування конфігурації ШІ успішно оновлено",
+        "errorOriginalNotFound": "Вихідний сервіс не знайдено.",
+        "deleteConfirm": "Ви впевнені, що хочете видалити цей глобальний ШІ-сервіс?"
       }
     },
     "apiKeyManagement": {
@@ -496,7 +544,7 @@
       "generateNewKey": "Згенерувати новий ключ",
       "generating": "Генерування...",
       "noApiKeys": "Ключі API ще не згенеровано.",
-      "noDescription": "Без опису",
+      "noDescription": "Без Опису",
       "copied": "Скопійовано!",
       "apiKeyCopied": "Ключ API скопійовано в буфер обміну.",
       "created": "Створено:",
@@ -529,7 +577,20 @@
       "exporting": "Підготовка...",
       "exportSuccessDescription": "Ваш щоденник успішно експортовано.",
       "exportError": "Помилка експорту",
-      "exportErrorDescription": "Неможливо завантажити ваш щоденник. Будь ласка, спробуйте ще раз."
+      "exportErrorDescription": "Неможливо завантажити ваш щоденник. Будь ласка, спробуйте знову пізніше.",
+      "delimiterLabel": "Роздільник даних в CSV",
+      "delimiterPlaceholder": "Роздільник",
+      "semicolon": "Крапка з комою (;)",
+      "comma": "Кома (,)",
+      "exportSuccess": "Експорт виконано успішно"
+    },
+    "customNutrients": {
+      "title": "Користувальницькі поживні речовини",
+      "subtitle": "Керуйте своїми користувальницькими визначеннями поживних речовин"
+    },
+    "customMeals": {
+      "title": "Користувальницькі прийоми їжі",
+      "subtitle": "Створюйте та керуйте користувальницькими типами прийомів їжі"
     }
   },
   "admin": {
@@ -609,7 +670,7 @@
       "clientId": "Ідентифікатор клієнта",
       "leaveUnchanged": "Не змінюйте, якщо *****",
       "redirectUri": "URI перенаправлення",
-      "redirectUriPlaceholder": "наприклад, {{origin}}/oidc-callback",
+      "redirectUriPlaceholder": "наприклад, {{uri}}",
       "tokenEndpointAuthMethod": "Метод авторизації Token Endpoint",
       "idTokenSignedAlg": "Алгоритм підпису ID Token",
       "userinfoSignedAlg": "Алгоритм підпису Userinfo",
@@ -659,7 +720,7 @@
       "title": "Налаштування Цілі",
       "cascadingGoals": "Каскадні цілі",
       "dailyNutritionGoals": "Щоденні цілі харчування",
-      "changesCascadeInfo": "(Зміни застосовуються на 6 місяців або до наступної цілі)",
+      "changesCascadeInfo": "(Оновлює ваші щоденні цілі на наступні 6 місяців або до наступної зміни запланованої цілі)",
       "calories": "Калорії",
       "protein": "Білки (г)",
       "carbohydrates": "Вуглеводи (г)",
@@ -767,7 +828,7 @@
     },
     "mealDistribution": {
       "selectTemplate": "Виберіть шаблон розподілу",
-      "custom": "Налаштування",
+      "custom": "Налаштований",
       "distributeRemaining": "Розподілити залишок рівномірно",
       "total": "Всього",
       "mustBe100": "Для економії має бути 100%"
@@ -849,8 +910,8 @@
       "title": "Вода",
       "updated": "Споживання води оновлено",
       "updateError": "Не вдалося зберегти дані про воду",
-      "perDrink": "{{volume}} {{unit}} за напій",
-      "defaultPerDrink": "{{volume}} {{unit}} за напій (за замовчуванням)"
+      "perDrink": "{{volume}} {{unit}}",
+      "defaultPerDrink": "{{volume}} {{unit}} (за замовчуванням)"
     },
     "copyFoodEntryDialog": {
       "title": "Копіювання записів про їжу",
@@ -907,7 +968,7 @@
     "couldNotLoadUserProfile": "Не вдалося завантажити профіль користувача.",
     "couldNotLoadUserPreferences": "Не вдалося завантажити налаштування користувача.",
     "bmiMethodRequiredFields": "Для методу BMI потрібні: вага, зріст, вік і стать.",
-    "usNavyMethodRequiredFields": "Для методу ВМС США потрібні: стать, зріст, талія, шия і (для жінок) стегна.",
+    "usNavyMethodRequiredFields": "Для методу ВМС США потрібні: стать, зріст, виміри талії, шиї та (для жінок) стегон.",
     "failedToCalculateBodyFat": "Не вдалося розрахувати жир:",
     "anUnknownErrorOccurred": "Сталася невідома помилка.",
     "bodyFatCalculated": "Відсоток жиру розраховано.",
@@ -976,7 +1037,7 @@
     "foodAdded": "Продукт додано",
     "foodAddedSuccess": "{{foodName}} додано до вашої бази.",
     "userNotAuthenticated": "Користувач не авторизований.",
-    "foodAddedToMealSuccess": "{{foodName}} додано до прийому їжі.",
+    "foodAddedToMealSuccess": "{{foodName}} додано до вашого прийому їжі.",
     "failedToAddFoodToMeal": "Не вдалося додати {{foodName}} до прийому їжі.",
     "system": "Системні",
     "private": "Приватні",
@@ -1054,7 +1115,7 @@
     "noDescription": "Без опису",
     "unshareMeal": "Приховати",
     "shareMeal": "Опублікувати",
-    "editMeal": "Редагувати",
+    "editMeal": "Редагувати прийом їжі",
     "deleteMeal": "Видалити",
     "viewMealDetails": "Переглянути",
     "editMealDialogTitle": "Редагувати страву",
@@ -1095,10 +1156,19 @@
     "cholesterol": "Холестерин",
     "fat": "Жири",
     "potassium": "Калій",
-    "vitaminA": "Вітамін А",
-    "vitaminC": "Вітамін С",
+    "vitaminA": "Вітамін A",
+    "vitaminC": "Вітамін C",
     "calcium": "Кальцій",
-    "iron": "Залізо"
+    "iron": "Залізо",
+    "saturatedFat": "Насичені жири",
+    "polyunsaturatedFat": "Поліненасичені жири",
+    "monounsaturatedFat": "Мононенасичені жири",
+    "transFat": "Трансжири",
+    "netCarbs": "Чисті вуглеводи",
+    "sodium": "Натрій",
+    "dietaryFiber": "Харчові волокна",
+    "fiber": "Клітковина",
+    "sugars": "Цукор"
   },
   "reports": {
     "loadingReports": "Завантажуємо звіти...",
@@ -1119,5 +1189,20 @@
     "endDateLabel": "Дата закінчення",
     "setActiveLabel": "Встановити як активний план",
     "endDateError": "Дата закінчення не може бути до дати початку."
+  },
+  "calculationSettings": {
+    "showNetCarbs": "Показувати чисті вуглеводи (вуглеводи мінус клітковина)",
+    "showNetCarbsHint": "Якщо цю функцію ввімкнено, у звітах про вуглеводи відображається загальна кількість вуглеводів за вирахуванням харчових волокон."
+  },
+  "sync": {
+    "syncAll": "Синхронізувати всіх активних постачальників",
+    "syncingAll": "Синхронізація всіх постачальників...",
+    "noActiveProviders": "Не знайдено активних постачальників для синхронізації.",
+    "syncCompleted_one": "Успішно синхронізовано {{count}} постачальник.",
+    "syncCompleted_few": "Успішно синхронізовано {{count}} постачальники.",
+    "syncCompleted_many": "Успішно синхронізовано {{count}} постачальників.",
+    "syncFailed_one": "Не вдалося синхронізувати {{count}} постачальник.",
+    "syncFailed_few": "Не вдалося синхронізувати {{count}} постачальники.",
+    "syncFailed_many": "Не вдалося синхронізувати {{count}} постачальників."
   }
 }
