@@ -5,7 +5,7 @@ import {
   type PresetDraft,
   type PresetClientIds,
 } from '../../src/hooks/useWorkoutPresetForm';
-import { DEFAULT_REST_SEC } from '../../src/components/RestPeriodChip';
+import { DEFAULT_REST_SEC } from '../../src/utils/workoutSession';
 import { kgToLbs } from '../../src/utils/unitConversions';
 import type { Exercise } from '../../src/types/exercise';
 import type { WorkoutPreset } from '../../src/types/workoutPresets';

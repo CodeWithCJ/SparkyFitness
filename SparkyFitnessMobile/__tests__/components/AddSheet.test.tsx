@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import AddSheet, { type AddSheetRef } from '../../src/components/AddSheet';
 
 const mockBottomSheetControls = {
@@ -43,6 +43,23 @@ jest.mock('@gorhom/bottom-sheet', () => {
   };
 });
 
+function renderAddSheet(overrides: Partial<React.ComponentProps<typeof AddSheet>> = {}) {
+  const ref = React.createRef<AddSheetRef>();
+  const props = {
+    onAddFood: jest.fn(),
+    onStartWorkout: jest.fn(),
+    onAddActivity: jest.fn(),
+    onLogWorkout: jest.fn(),
+    onSyncHealthData: jest.fn(),
+    onBarcodeScan: jest.fn(),
+    onAddMeasurements: jest.fn(),
+    onAskSparky: jest.fn(),
+    ...overrides,
+  };
+  const utils = render(<AddSheet ref={ref} {...props} />);
+  return { ref, props, ...utils };
+}
+
 describe('AddSheet', () => {
   let requestAnimationFrameSpy: jest.SpyInstance<number, [FrameRequestCallback]>;
   let cancelAnimationFrameSpy: jest.SpyInstance<void, [number]>;
@@ -70,108 +87,81 @@ describe('AddSheet', () => {
   });
 
   it('re-presents after dismiss if present is requested while a close is still winding down', () => {
-    const ref = React.createRef<AddSheetRef>();
+    const { ref } = renderAddSheet();
 
-    render(
-      <AddSheet
-        ref={ref}
-        onAddFood={jest.fn()}
-        onAddWorkout={jest.fn()}
-        onAddActivity={jest.fn()}
-        onAddFromPreset={jest.fn()}
-        onSyncHealthData={jest.fn()}
-        onBarcodeScan={jest.fn()}
-        onAddMeasurements={jest.fn()}
-      />,
-    );
-
-    ref.current?.present();
+    act(() => ref.current?.present());
     expect(mockBottomSheetControls.openCount).toBe(1);
 
     mockBottomSheetControls.isPresentBlocked = true;
     mockBottomSheetControls.onAnimate?.(0, -1);
-    ref.current?.present();
+    act(() => ref.current?.present());
 
     expect(mockBottomSheetControls.openCount).toBe(1);
 
     mockBottomSheetControls.isPresentBlocked = false;
-    mockBottomSheetControls.onDismiss?.();
+    act(() => mockBottomSheetControls.onDismiss?.());
 
     expect(mockBottomSheetControls.openCount).toBe(2);
   });
 
   it('does not re-present after dismiss when no new present was requested', () => {
-    const ref = React.createRef<AddSheetRef>();
     const onDismissWithoutAction = jest.fn();
+    const { ref } = renderAddSheet({ onDismissWithoutAction });
 
-    render(
-      <AddSheet
-        ref={ref}
-        onAddFood={jest.fn()}
-        onAddWorkout={jest.fn()}
-        onAddActivity={jest.fn()}
-        onAddFromPreset={jest.fn()}
-        onSyncHealthData={jest.fn()}
-        onBarcodeScan={jest.fn()}
-        onAddMeasurements={jest.fn()}
-        onDismissWithoutAction={onDismissWithoutAction}
-      />,
-    );
-
-    ref.current?.present();
+    act(() => ref.current?.present());
     expect(mockBottomSheetControls.openCount).toBe(1);
 
     mockBottomSheetControls.onAnimate?.(0, -1);
-    mockBottomSheetControls.onDismiss?.();
+    act(() => mockBottomSheetControls.onDismiss?.());
 
     expect(mockBottomSheetControls.openCount).toBe(1);
     expect(onDismissWithoutAction).toHaveBeenCalledTimes(1);
   });
 
   it('renders the Measurements tile in the main grid', () => {
-    const ref = React.createRef<AddSheetRef>();
+    const { ref, getByText } = renderAddSheet();
 
-    const { getByText } = render(
-      <AddSheet
-        ref={ref}
-        onAddFood={jest.fn()}
-        onAddWorkout={jest.fn()}
-        onAddActivity={jest.fn()}
-        onAddFromPreset={jest.fn()}
-        onSyncHealthData={jest.fn()}
-        onBarcodeScan={jest.fn()}
-        onAddMeasurements={jest.fn()}
-      />,
-    );
-
-    ref.current?.present();
+    act(() => ref.current?.present());
     expect(getByText('Measurements')).toBeTruthy();
   });
 
   it('invokes onSyncHealthData when the secondary Sync Health Data row is pressed', () => {
-    const ref = React.createRef<AddSheetRef>();
     const onSyncHealthData = jest.fn();
     const onDismissWithoutAction = jest.fn();
+    const { ref, getByText } = renderAddSheet({ onSyncHealthData, onDismissWithoutAction });
 
-    const { getByText } = render(
-      <AddSheet
-        ref={ref}
-        onAddFood={jest.fn()}
-        onAddWorkout={jest.fn()}
-        onAddActivity={jest.fn()}
-        onAddFromPreset={jest.fn()}
-        onSyncHealthData={onSyncHealthData}
-        onBarcodeScan={jest.fn()}
-        onAddMeasurements={jest.fn()}
-        onDismissWithoutAction={onDismissWithoutAction}
-      />,
-    );
-
-    ref.current?.present();
+    act(() => ref.current?.present());
     fireEvent.press(getByText('Sync Health Data'));
-    mockBottomSheetControls.onDismiss?.();
+    act(() => mockBottomSheetControls.onDismiss?.());
 
     expect(onSyncHealthData).toHaveBeenCalledTimes(1);
     expect(onDismissWithoutAction).not.toHaveBeenCalled();
+  });
+
+  it('offers live start, activity, and past logging in the exercise submenu', () => {
+    const { ref, props, getByText, queryByText } = renderAddSheet();
+
+    act(() => ref.current?.present({ initialMenu: 'exercise' }));
+
+    expect(getByText('Workout')).toBeTruthy();
+    expect(getByText('Live sets & reps')).toBeTruthy();
+    expect(getByText('Activity')).toBeTruthy();
+    expect(getByText('Log Workout')).toBeTruthy();
+    expect(getByText('Past sets & reps')).toBeTruthy();
+    expect(queryByText('Preset')).toBeNull();
+
+    fireEvent.press(getByText('Workout'));
+    expect(props.onStartWorkout).toHaveBeenCalledTimes(1);
+    expect(props.onLogWorkout).not.toHaveBeenCalled();
+  });
+
+  it('fires onLogWorkout from the Log Workout submenu option', () => {
+    const { ref, props, getByText } = renderAddSheet();
+
+    act(() => ref.current?.present({ initialMenu: 'exercise' }));
+    fireEvent.press(getByText('Log Workout'));
+
+    expect(props.onLogWorkout).toHaveBeenCalledTimes(1);
+    expect(props.onStartWorkout).not.toHaveBeenCalled();
   });
 });

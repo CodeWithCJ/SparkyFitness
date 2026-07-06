@@ -1,5 +1,6 @@
 import type {
   ExerciseEntryResponse,
+  ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
   ExerciseSessionResponse,
   PresetSessionExerciseRequest,
@@ -7,6 +8,8 @@ import type {
 } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 import type { WorkoutDraftExercise } from '../types/drafts';
+import type { Exercise } from '../types/exercise';
+import type { WorkoutPreset } from '../types/workoutPresets';
 import type { WorkoutPresetExercisePayload } from '../services/api/workoutPresetsApi';
 import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
 import { parseDecimalInput } from './numericInput';
@@ -391,6 +394,78 @@ export function buildSessionExercisesPayload(
       rpe: set.rpe ?? null,
     })),
   }));
+}
+
+// --- Live-start payload builders ---
+
+/** Default rest period between sets, in seconds. */
+export const DEFAULT_REST_SEC = 90;
+
+/**
+ * Request-shaped sibling of activeWorkoutStore's `makeDefaultSet` (which
+ * builds the response shape with a placeholder id) — keep the two in sync.
+ */
+function makeDefaultStartSet(setNumber: number): ExerciseEntrySetRequest {
+  return {
+    set_number: setNumber,
+    set_type: 'normal',
+    reps: null,
+    weight: null,
+    duration: null,
+    rest_time: DEFAULT_REST_SEC,
+    notes: null,
+    rpe: null,
+  };
+}
+
+/**
+ * Build the `exercises` payload for creating a live session straight from a
+ * saved workout preset. Preset values are already metric (kg) — no unit
+ * conversion. Every set column is emitted explicitly (the server set write
+ * uses `set.x ?? null`; see buildSessionExercisesPayload).
+ *
+ * A preset exercise with zero sets gets one default set: the server accepts
+ * zero-set exercises, but the live workout treats a zero-step session as
+ * already finished. A preset with zero exercises returns [] — callers must
+ * block before creating (the create schema requires at least one exercise).
+ */
+export function buildPresetStartExercisesPayload(
+  preset: WorkoutPreset,
+): PresetSessionExerciseRequest[] {
+  return preset.exercises.map((exercise, index) => ({
+    exercise_id: exercise.exercise_id,
+    sort_order: index,
+    duration_minutes: 0,
+    notes: null,
+    sets:
+      exercise.sets.length === 0
+        ? [makeDefaultStartSet(1)]
+        : exercise.sets.map((set, setIndex) => ({
+            set_number: setIndex + 1,
+            set_type: set.set_type ?? 'normal',
+            reps: set.reps ?? null,
+            weight: set.weight ?? null,
+            duration: set.duration ?? null,
+            rest_time: set.rest_time ?? null,
+            notes: set.notes ?? null,
+            rpe: null,
+          })),
+  }));
+}
+
+/** Single-exercise payload for an empty live start (first-exercise-first flow). */
+export function buildSingleExerciseStartPayload(
+  exercise: Pick<Exercise, 'id'>,
+): PresetSessionExerciseRequest[] {
+  return [
+    {
+      exercise_id: exercise.id,
+      sort_order: 0,
+      duration_minutes: 0,
+      notes: null,
+      sets: [makeDefaultStartSet(1)],
+    },
+  ];
 }
 
 export function buildPresetExercisesPayload(

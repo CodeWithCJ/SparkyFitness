@@ -204,6 +204,28 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().startWorkout(makeSession());
       expect(mockCancel).toHaveBeenCalledWith('leaked-id');
     });
+
+    it('defaults createdByLiveStart to false', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      expect(useActiveWorkoutStore.getState().createdByLiveStart).toBe(false);
+    });
+
+    it('sets createdByLiveStart when the live-start option is passed', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), { createdByLiveStart: true });
+      expect(useActiveWorkoutStore.getState().createdByLiveStart).toBe(true);
+    });
+
+    it('clearWorkout resets createdByLiveStart', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), { createdByLiveStart: true });
+      useActiveWorkoutStore.getState().clearWorkout();
+      expect(useActiveWorkoutStore.getState().createdByLiveStart).toBe(false);
+    });
+
+    it('startWorkoutAtSet always marks the session as not live-start-created', () => {
+      useActiveWorkoutStore.setState({ createdByLiveStart: true });
+      useActiveWorkoutStore.getState().startWorkoutAtSet(makeSession(), '102');
+      expect(useActiveWorkoutStore.getState().createdByLiveStart).toBe(false);
+    });
   });
 
   describe('startWorkoutAtSet', () => {

@@ -8,14 +8,17 @@ import type {
   PresetSessionResponse,
 } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
-import { TEMP_EXERCISE_ENTRY_ID_PREFIX, isTempExerciseEntryId } from '../utils/workoutSession';
+import {
+  DEFAULT_REST_SEC,
+  TEMP_EXERCISE_ENTRY_ID_PREFIX,
+  isTempExerciseEntryId,
+} from '../utils/workoutSession';
 import {
   cancelScheduledNotification,
   fireRestCompleteHaptic,
   scheduleRestNotification,
 } from '../services/notifications';
 
-const DEFAULT_REST_SEC = 90;
 const STORAGE_KEY = '@SparkyFitness/active-workout';
 
 /** Monotonic counter used to reject stale async schedule resolutions. */
@@ -91,8 +94,18 @@ export interface ActiveWorkoutState {
    * edits made just before a cold exit are flushed on next launch.
    */
   hasUnsavedChanges: boolean;
+  /**
+   * True when the session was created by a live-start flow (instant preset
+   * start / empty start) rather than pre-existing in the diary. Discarding
+   * such a workout deletes the session instead of leaving it behind.
+   * Persisted so the distinction survives a cold-start resume.
+   */
+  createdByLiveStart: boolean;
 
-  startWorkout: (session: PresetSessionResponse) => void;
+  startWorkout: (
+    session: PresetSessionResponse,
+    opts?: { createdByLiveStart?: boolean },
+  ) => void;
   startWorkoutAtSet: (session: PresetSessionResponse, setId: string) => void;
   /** Forward-only jump. Marks priors complete; no-op if target is before activeSetId. */
   jumpToSet: (setId: string) => void;
@@ -156,6 +169,7 @@ const initialData: Pick<
   | 'rest'
   | 'sessionRevision'
   | 'hasUnsavedChanges'
+  | 'createdByLiveStart'
 > = {
   sessionId: null,
   session: null,
@@ -166,6 +180,7 @@ const initialData: Pick<
   rest: READY_REST,
   sessionRevision: 0,
   hasUnsavedChanges: false,
+  createdByLiveStart: false,
 };
 
 export function buildStepsFromSession(session: PresetSessionResponse): WorkoutStep[] {
@@ -398,7 +413,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
     (set, get) => ({
       ...initialData,
 
-      startWorkout: (session) => {
+      startWorkout: (session, opts) => {
         cancelCurrentRestNotification(get().rest);
         const steps = buildStepsFromSession(session);
         set({
@@ -411,6 +426,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           rest: READY_REST,
           sessionRevision: 0,
           hasUnsavedChanges: false,
+          createdByLiveStart: opts?.createdByLiveStart ?? false,
         });
       },
 
@@ -435,6 +451,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           rest: READY_REST,
           sessionRevision: 0,
           hasUnsavedChanges: false,
+          createdByLiveStart: false,
         });
       },
 
@@ -910,6 +927,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // Persisted so edits made just before a cold exit are flushed on the
         // next launch. sessionRevision is deliberately transient.
         hasUnsavedChanges: state.hasUnsavedChanges,
+        createdByLiveStart: state.createdByLiveStart,
       }),
       migrate: (persistedState, version) => {
         if (!persistedState || typeof persistedState !== 'object') {

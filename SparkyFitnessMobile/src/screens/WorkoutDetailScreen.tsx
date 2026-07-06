@@ -252,10 +252,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   // Auto-expand the exercise containing the active set while the workout is
-  // running for this session — so tapping the floating HUD lands on the
-  // detail page with the current exercise already open. Never auto-collapses;
-  // the user can still close it manually, and it re-expands only when the
-  // active set advances into a different exercise.
+  // running for this session — so opening the detail page mid-workout (e.g.
+  // from the Diary) lands with the current exercise already open. Never
+  // auto-collapses; the user can still close it manually, and it re-expands
+  // only when the active set advances into a different exercise.
   useEffect(() => {
     if (!isWorkoutActive || activeSetId == null) return;
     const activeExercise = session.exercises.find(ex =>
@@ -390,7 +390,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     void ensureNotificationPermission();
     useActiveWorkoutStore.getState().startWorkout(session);
-    navigation.navigate('ActiveWorkout');
+    navigation.replace('ActiveWorkout');
   };
 
   const handleLongPressSet = (setId: string) => {
@@ -414,7 +414,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           }
           void ensureNotificationPermission();
           useActiveWorkoutStore.getState().startWorkoutAtSet(session, setId);
-          navigation.navigate('ActiveWorkout');
+          navigation.replace('ActiveWorkout');
         },
       });
     }

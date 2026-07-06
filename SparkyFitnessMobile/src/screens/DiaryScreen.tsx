@@ -26,6 +26,7 @@ import {
   type NativeHeaderDatePickerNavigation,
 } from '../utils/nativeHeaderDatePicker';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -256,6 +257,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               onAddExercise={() => addSheetRef.current?.present({ initialMenu: 'exercise' })}
               onPressWorkout={(session) => {
                 if (session.type === 'preset') {
+                  // The live workout's surface is the active screen; detail is
+                  // for reviewing past or planned sessions.
+                  if (useActiveWorkoutStore.getState().sessionId === session.id) {
+                    navigation.navigate('ActiveWorkout');
+                    return;
+                  }
                   navigation.navigate('WorkoutDetail', { session });
                 } else {
                   navigation.navigate('ActivityDetail', { session });

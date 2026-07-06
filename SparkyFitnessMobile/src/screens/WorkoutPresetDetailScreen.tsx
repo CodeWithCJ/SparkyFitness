@@ -13,8 +13,10 @@ import {
   useServerConnection,
 } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { weightFromKg } from '../utils/unitConversions';
+import { buildPresetStartExercisesPayload } from '../utils/workoutSession';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { WorkoutPresetExercise, WorkoutPresetSet } from '../types/workoutPresets';
 
@@ -101,11 +103,22 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     },
   });
 
+  const { startLiveWorkout, isStarting } = useStartLiveWorkout(navigation);
+
+  const handleStartWorkout = useCallback(() => {
+    void startLiveWorkout({
+      name: preset.name,
+      exercises: buildPresetStartExercisesPayload(preset),
+    });
+  }, [startLiveWorkout, preset]);
+
   const navigateToPresetWorkout = useCallback(() => {
     navigation.navigate('WorkoutAdd', { preset, popCount: 2 });
   }, [navigation, preset]);
 
-  const handleStartWorkout = useCallback(async () => {
+  // The form path (retroactive logging) is the one that owns workout drafts,
+  // so the draft-in-progress prompt lives here rather than on the live start.
+  const handleLogPastWorkout = useCallback(async () => {
     const draft = await loadActiveDraft();
     if (!draft) {
       navigateToPresetWorkout();
@@ -186,8 +199,25 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           />
         ))}
 
-        <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
-          <Text className="text-white text-base font-semibold">Start workout</Text>
+        <Button
+          variant="primary"
+          onPress={handleStartWorkout}
+          disabled={isStarting || isDeletePending}
+          className="mt-4"
+        >
+          <Text className="text-white text-base font-semibold">
+            {isStarting ? 'Starting...' : 'Start workout'}
+          </Text>
+        </Button>
+
+        <Button
+          variant="ghost"
+          onPress={() => void handleLogPastWorkout()}
+          disabled={isStarting}
+          className="mt-3"
+          textClassName="text-text-secondary font-medium"
+        >
+          Log past workout
         </Button>
 
         {canManagePreset && (

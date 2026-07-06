@@ -7,6 +7,8 @@ import {
 } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
+import { useQueryClient } from '@tanstack/react-query';
 
 import ActiveWorkoutHeader, {
   buildExerciseProgress,
@@ -18,11 +20,15 @@ import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
 import Button from '../components/ui/Button';
 import { useActiveWorkoutAutosave } from '../hooks/useActiveWorkoutAutosave';
+import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { usePreferences } from '../hooks/usePreferences';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
+import { deleteWorkout } from '../services/api/exerciseApi';
+import { addLog } from '../services/LogService';
 import { useActiveWorkoutStore, type ActiveSetPatch } from '../stores/activeWorkoutStore';
+import { normalizeDate } from '../utils/dateUtils';
 import {
   useAppPreferencesStore,
   type ActiveWorkoutMetricColumn,
@@ -53,6 +59,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const restEndsAt = useActiveWorkoutStore((s) => s.rest.endsAt);
   const restPausedRemainingMs = useActiveWorkoutStore((s) => s.rest.pausedRemainingMs);
   const restDurationSec = useActiveWorkoutStore((s) => s.rest.durationSec);
+  const createdByLiveStart = useActiveWorkoutStore((s) => s.createdByLiveStart);
+  const queryClient = useQueryClient();
 
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
   const setMetricColumn = useAppPreferencesStore((s) => s.setActiveWorkoutMetricColumn);
@@ -301,6 +309,43 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   }, []);
 
   const handleDiscard = useCallback(() => {
+    // Live-start sessions exist on the server only because the user hit Start,
+    // so discarding deletes them instead of leaving a stray diary workout.
+    // Sessions started from WorkoutDetail keep their keep-server-edits discard.
+    if (createdByLiveStart && sessionId != null) {
+      const idToDelete = sessionId;
+      // entry_date can round-trip as an ISO timestamp; un-normalized it would
+      // silently miss the daily-summary cache key on invalidation.
+      const entryDate = session?.entry_date != null ? normalizeDate(session.entry_date) : null;
+      Alert.alert('Discard workout?', 'This deletes the workout from your diary.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            // Clear and exit first: clearing cancels the pending autosave
+            // debounce and frees the user immediately; the delete finishes in
+            // the background (a racing autosave 404s harmlessly server-side).
+            useActiveWorkoutStore.getState().clearWorkout();
+            navigation.goBack();
+            deleteWorkout(idToDelete)
+              .then(() => {
+                if (entryDate != null) invalidateExerciseCache(queryClient, entryDate);
+              })
+              .catch((error: unknown) => {
+                addLog(`Failed to delete discarded live-start workout: ${error}`, 'ERROR');
+                Toast.show({
+                  type: 'error',
+                  text1: "Couldn't delete workout",
+                  text2: 'It remains in your diary.',
+                });
+              });
+          },
+        },
+      ]);
+      return;
+    }
+
     Alert.alert(
       'Discard workout?',
       'Clears your progress on this device and drops unsaved changes. Edits already saved to the server are kept.',
@@ -316,7 +361,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         },
       ],
     );
-  }, [navigation]);
+  }, [createdByLiveStart, sessionId, session, queryClient, navigation]);
 
   const handleFinish = useCallback(async () => {
     // Named so the failure alert's Retry can re-run the same attempt.

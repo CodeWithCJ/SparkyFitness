@@ -3,7 +3,7 @@ import { weightFromKg } from '../utils/unitConversions';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 import type { WorkoutPreset } from '../types/workoutPresets';
-import { DEFAULT_REST_SEC } from '../components/RestPeriodChip';
+import { DEFAULT_REST_SEC } from '../utils/workoutSession';
 
 function generateClientId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);

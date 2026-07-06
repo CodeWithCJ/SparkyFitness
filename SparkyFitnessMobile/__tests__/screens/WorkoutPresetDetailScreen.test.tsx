@@ -5,7 +5,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import WorkoutPresetDetailScreen from '../../src/screens/WorkoutPresetDetailScreen';
 import { usePreferences } from '../../src/hooks';
+import { useStartLiveWorkout } from '../../src/hooks/useStartLiveWorkout';
 import { loadActiveDraft } from '../../src/services/workoutDraftService';
+import { buildPresetStartExercisesPayload } from '../../src/utils/workoutSession';
 import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
 
 jest.mock('../../src/hooks', () => ({
@@ -13,6 +15,10 @@ jest.mock('../../src/hooks', () => ({
   useProfile: jest.fn(() => ({ profile: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
   useDeleteWorkoutPreset: jest.fn(() => ({ confirmAndDelete: jest.fn(), isPending: false })),
+}));
+
+jest.mock('../../src/hooks/useStartLiveWorkout', () => ({
+  useStartLiveWorkout: jest.fn(),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -36,6 +42,9 @@ jest.mock('@react-navigation/native', () => ({
 
 const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
 const mockLoadActiveDraft = loadActiveDraft as jest.MockedFunction<typeof loadActiveDraft>;
+const mockUseStartLiveWorkout = useStartLiveWorkout as jest.MockedFunction<
+  typeof useStartLiveWorkout
+>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -70,6 +79,7 @@ function buildPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
 
 describe('WorkoutPresetDetailScreen', () => {
   const navigation = mockNavigation;
+  const startLiveWorkout = jest.fn();
 
   const renderScreen = (preset: WorkoutPreset) => {
     const route = {
@@ -98,22 +108,47 @@ describe('WorkoutPresetDetailScreen', () => {
       refetch: jest.fn(),
     } as any);
     mockLoadActiveDraft.mockResolvedValue(null);
+    mockUseStartLiveWorkout.mockReturnValue({ startLiveWorkout, isStarting: false });
   });
 
-  it('navigates to WorkoutAdd with the preset and popCount=2 on Start workout', async () => {
-    const preset = buildPreset();
+  it('starts a live workout with the preset-built payload on Start workout', () => {
+    const preset = buildPreset({
+      exercises: [
+        {
+          id: 'pe-1',
+          exercise_id: 'ex-1',
+          exercise_name: 'Bench Press',
+          image_url: null,
+          sets: [buildSet()],
+        },
+      ],
+    });
     const screen = renderScreen(preset);
 
     fireEvent.press(screen.getByText('Start workout'));
+
+    expect(startLiveWorkout).toHaveBeenCalledWith({
+      name: 'Push Day',
+      exercises: buildPresetStartExercisesPayload(preset),
+    });
+    expect(navigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it('navigates to WorkoutAdd with the preset and popCount=2 on Log past workout', async () => {
+    const preset = buildPreset();
+    const screen = renderScreen(preset);
+
+    fireEvent.press(screen.getByText('Log past workout'));
     await waitFor(() => {
       expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd', {
         preset,
         popCount: 2,
       });
     });
+    expect(startLiveWorkout).not.toHaveBeenCalled();
   });
 
-  it('prompts to resume an active draft before starting a preset workout', async () => {
+  it('prompts to resume an active draft before logging a past preset workout', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert');
     mockLoadActiveDraft.mockResolvedValue({
       type: 'workout',
@@ -140,7 +175,7 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(buildPreset());
 
-    fireEvent.press(screen.getByText('Start workout'));
+    fireEvent.press(screen.getByText('Log past workout'));
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(

@@ -20,6 +20,7 @@ import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData } from './src/hooks';
+import { useActiveWorkoutStore } from './src/stores/activeWorkoutStore';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
@@ -386,21 +387,24 @@ function AppContent() {
     navigateFromSheet('FoodScan', { date });
   }, [getActiveDiaryDate, navigateFromSheet]);
 
+  const checkServerConnected = useCallback((message: string): boolean => {
+    const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
+    if (!isConnected) {
+      Alert.alert('No Server Connected', message, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Go to Settings',
+          onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
+        },
+      ]);
+      return false;
+    }
+    return true;
+  }, [navigateFromSheet]);
+
   const handleStartExerciseForm = useCallback(
-    async (screen: 'WorkoutAdd' | 'ActivityAdd' | 'PresetSearch') => {
-      const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
-      if (!isConnected) {
-        Alert.alert(
-          'No Server Connected',
-          'Configure your server connection in Settings to add an exercise.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Go to Settings',
-              onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
-            },
-          ],
-        );
+    async (screen: 'WorkoutAdd' | 'ActivityAdd') => {
+      if (!checkServerConnected('Configure your server connection in Settings to add an exercise.')) {
         return;
       }
 
@@ -427,11 +431,7 @@ function AppContent() {
               style: 'destructive',
               onPress: async () => {
                 await clearDraft();
-                if (screen === 'PresetSearch') {
-                  navigateFromSheet('PresetSearch', { date });
-                } else {
-                  navigateFromSheet(screen, { date, skipDraftLoad: true });
-                }
+                navigateFromSheet(screen, { date, skipDraftLoad: true });
               },
             },
           ],
@@ -439,18 +439,27 @@ function AppContent() {
         return;
       }
 
-      if (screen === 'PresetSearch') {
-        navigateFromSheet('PresetSearch', { date });
-      } else {
-        navigateFromSheet(screen, { date, skipDraftLoad: true });
-      }
+      navigateFromSheet(screen, { date, skipDraftLoad: true });
     },
-    [navigateFromSheet, getActiveDiaryDate],
+    [checkServerConnected, navigateFromSheet, getActiveDiaryDate],
   );
 
-  const handleAddWorkout = useCallback(() => handleStartExerciseForm('WorkoutAdd'), [handleStartExerciseForm]);
+  // Live start: no draft guard (form drafts belong to the Log Workout path) and
+  // no diary date (a live workout is logged to today). Tapping while a workout
+  // is already running resumes it instead of opening the start surface.
+  const handleStartWorkout = useCallback(() => {
+    if (!checkServerConnected('Configure your server connection in Settings to start a workout.')) {
+      return;
+    }
+    if (useActiveWorkoutStore.getState().sessionId !== null) {
+      navigateFromSheet('ActiveWorkout');
+      return;
+    }
+    navigateFromSheet('PresetSearch');
+  }, [checkServerConnected, navigateFromSheet]);
+
+  const handleLogWorkout = useCallback(() => handleStartExerciseForm('WorkoutAdd'), [handleStartExerciseForm]);
   const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityAdd'), [handleStartExerciseForm]);
-  const handleAddFromPreset = useCallback(() => handleStartExerciseForm('PresetSearch'), [handleStartExerciseForm]);
 
   const syncMutation = useSyncHealthData();
 
@@ -994,7 +1003,7 @@ function AppContent() {
           <Stack.Screen
             name="PresetSearch"
             component={SafePresetSearch}
-            options={createStackScreenOptions('Workout Presets')}
+            options={createStackScreenOptions('Start Workout')}
           />
           <Stack.Screen
             name="WorkoutAdd"
@@ -1095,7 +1104,7 @@ function AppContent() {
             options={createStackScreenOptions("What's New", { headerBackTitle: 'Settings' })}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onAskSparky={handleAskSparky} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onStartWorkout={handleStartWorkout} onAddActivity={handleAddActivity} onLogWorkout={handleLogWorkout} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onAskSparky={handleAskSparky} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}

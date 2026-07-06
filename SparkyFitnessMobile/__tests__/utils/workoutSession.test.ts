@@ -14,7 +14,10 @@ import {
   calculateExerciseDuration,
   buildExercisesPayload,
   buildPresetExercisesPayload,
+  buildPresetStartExercisesPayload,
   buildSessionExercisesPayload,
+  buildSingleExerciseStartPayload,
+  DEFAULT_REST_SEC,
   isTempExerciseEntryId,
   isTempSetId,
   epley1RmKg,
@@ -27,6 +30,11 @@ import {
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { presetSessionExerciseRequestSchema } from '@workspace/shared';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
+import type {
+  WorkoutPreset,
+  WorkoutPresetExercise,
+  WorkoutPresetSet,
+} from '../../src/types/workoutPresets';
 
 type IndividualSession = Extract<ExerciseSessionResponse, { type: 'individual' }>;
 type PresetSession = Extract<ExerciseSessionResponse, { type: 'preset' }>;
@@ -1463,6 +1471,185 @@ describe('workoutSession', () => {
     it('emits explicit nulls for absent exercise notes', () => {
       const session = makePreset({ exercises: [makeExercise({ notes: null })] });
       expect(buildSessionExercisesPayload(session)[0].notes).toBeNull();
+    });
+  });
+
+  describe('live-start payload builders', () => {
+    // exercise_id is uuid-validated by presetSessionExerciseRequestSchema.
+    const EX_A = '11111111-1111-4111-8111-111111111111';
+    const EX_B = '22222222-2222-4222-8222-222222222222';
+
+    const makePresetSet = (overrides?: Partial<WorkoutPresetSet>): WorkoutPresetSet => ({
+      id: 'ps-1',
+      set_number: 1,
+      set_type: 'normal',
+      reps: 8,
+      weight: 100,
+      duration: null,
+      rest_time: 120,
+      notes: null,
+      ...overrides,
+    });
+
+    const makePresetExercise = (
+      overrides?: Partial<WorkoutPresetExercise>,
+    ): WorkoutPresetExercise => ({
+      id: 'pe-1',
+      exercise_id: EX_A,
+      image_url: null,
+      exercise_name: 'Bench Press',
+      category: 'Strength',
+      sets: [makePresetSet()],
+      ...overrides,
+    });
+
+    const makeWorkoutPreset = (overrides?: Partial<WorkoutPreset>): WorkoutPreset => ({
+      id: 'preset-1',
+      user_id: 'user-1',
+      name: 'Push Day',
+      description: null,
+      is_public: false,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      exercises: [makePresetExercise()],
+      ...overrides,
+    });
+
+    describe('buildPresetStartExercisesPayload', () => {
+      it('maps preset exercises and sets field-for-field with kg passthrough', () => {
+        const preset = makeWorkoutPreset({
+          exercises: [
+            makePresetExercise({
+              sets: [
+                makePresetSet({
+                  set_type: 'warmup',
+                  reps: 12,
+                  weight: 60,
+                  duration: 45,
+                  rest_time: 60,
+                  notes: 'slow tempo',
+                }),
+              ],
+            }),
+          ],
+        });
+
+        const payload = buildPresetStartExercisesPayload(preset);
+
+        expect(payload).toEqual([
+          {
+            exercise_id: EX_A,
+            sort_order: 0,
+            duration_minutes: 0,
+            notes: null,
+            sets: [
+              {
+                set_number: 1,
+                set_type: 'warmup',
+                reps: 12,
+                weight: 60,
+                duration: 45,
+                rest_time: 60,
+                notes: 'slow tempo',
+                rpe: null,
+              },
+            ],
+          },
+        ]);
+      });
+
+      it('indexes sort_order and renumbers sets sequentially', () => {
+        const preset = makeWorkoutPreset({
+          exercises: [
+            makePresetExercise({
+              sets: [
+                makePresetSet({ set_number: 3 }),
+                makePresetSet({ id: 'ps-2', set_number: 7 }),
+              ],
+            }),
+            makePresetExercise({ id: 'pe-2', exercise_id: EX_B }),
+          ],
+        });
+
+        const payload = buildPresetStartExercisesPayload(preset);
+
+        expect(payload.map(e => e.sort_order)).toEqual([0, 1]);
+        expect(payload[0].sets.map(s => s.set_number)).toEqual([1, 2]);
+      });
+
+      it('never emits exercise or set ids', () => {
+        const payload = buildPresetStartExercisesPayload(makeWorkoutPreset());
+        expect(payload[0]).not.toHaveProperty('id');
+        expect(payload[0].sets[0]).not.toHaveProperty('id');
+      });
+
+      it('injects one default set for a zero-set preset exercise', () => {
+        const preset = makeWorkoutPreset({
+          exercises: [makePresetExercise({ sets: [] })],
+        });
+
+        const payload = buildPresetStartExercisesPayload(preset);
+
+        expect(payload[0].sets).toEqual([
+          {
+            set_number: 1,
+            set_type: 'normal',
+            reps: null,
+            weight: null,
+            duration: null,
+            rest_time: DEFAULT_REST_SEC,
+            notes: null,
+            rpe: null,
+          },
+        ]);
+      });
+
+      it('returns [] for a preset with no exercises', () => {
+        expect(buildPresetStartExercisesPayload(makeWorkoutPreset({ exercises: [] }))).toEqual([]);
+      });
+
+      it('emits exercises that parse under the request schema', () => {
+        const preset = makeWorkoutPreset({
+          exercises: [
+            makePresetExercise({ sets: [makePresetSet({ reps: null, weight: null })] }),
+            makePresetExercise({ id: 'pe-2', exercise_id: EX_B, sets: [] }),
+          ],
+        });
+
+        for (const exercise of buildPresetStartExercisesPayload(preset)) {
+          expect(() => presetSessionExerciseRequestSchema.parse(exercise)).not.toThrow();
+        }
+      });
+    });
+
+    describe('buildSingleExerciseStartPayload', () => {
+      it('builds one exercise with one default set', () => {
+        expect(buildSingleExerciseStartPayload({ id: EX_A })).toEqual([
+          {
+            exercise_id: EX_A,
+            sort_order: 0,
+            duration_minutes: 0,
+            notes: null,
+            sets: [
+              {
+                set_number: 1,
+                set_type: 'normal',
+                reps: null,
+                weight: null,
+                duration: null,
+                rest_time: DEFAULT_REST_SEC,
+                notes: null,
+                rpe: null,
+              },
+            ],
+          },
+        ]);
+      });
+
+      it('parses under the request schema', () => {
+        const [exercise] = buildSingleExerciseStartPayload({ id: EX_A });
+        expect(() => presetSessionExerciseRequestSchema.parse(exercise)).not.toThrow();
+      });
     });
   });
 

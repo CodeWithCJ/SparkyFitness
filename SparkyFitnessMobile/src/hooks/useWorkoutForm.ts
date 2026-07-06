@@ -3,7 +3,7 @@ import { clearDraft } from '../services/workoutDraftService';
 import { useDraftPersistence } from './useDraftPersistence';
 import { getTodayDate, normalizeDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
-import { buildExercisesPayload } from '../utils/workoutSession';
+import { DEFAULT_REST_SEC, buildExercisesPayload } from '../utils/workoutSession';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutDraft, WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 import type { PresetSessionResponse } from '@workspace/shared';
@@ -23,7 +23,7 @@ function formatWorkoutDate(dateString: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function defaultWorkoutName(dateString: string): string {
+export function defaultWorkoutName(dateString: string): string {
   return `Workout - ${formatWorkoutDate(dateString)}`;
 }
 
@@ -118,7 +118,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
             exerciseName: action.exercise.name,
             exerciseCategory: action.exercise.category,
             images: action.exercise.images ?? [],
-            sets: [{ clientId: action.setClientId, weight: '', reps: '', restTime: 90 }],
+            sets: [{ clientId: action.setClientId, weight: '', reps: '', restTime: DEFAULT_REST_SEC }],
           },
         ],
       };
@@ -140,7 +140,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
             clientId: action.setClientId,
             weight: lastSet?.weight ?? '',
             reps: lastSet?.reps ?? '',
-            restTime: firstSet?.restTime ?? 90,
+            restTime: firstSet?.restTime ?? DEFAULT_REST_SEC,
           };
           return { ...exercise, sets: [...exercise.sets, newSet] };
         }),

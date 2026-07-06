@@ -140,7 +140,7 @@ export type RootStackParamList = {
       }
     | undefined;
   ExerciseSearch: { returnKey: string };
-  PresetSearch: { date?: string } | undefined;
+  PresetSearch: { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
   WorkoutAdd: {
     session?: PresetSessionResponse;
     preset?: WorkoutPreset;
