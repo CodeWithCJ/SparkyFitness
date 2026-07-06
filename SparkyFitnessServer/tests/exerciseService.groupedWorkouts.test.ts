@@ -934,3 +934,99 @@ describe('_reconcileExerciseEntrySetsWithClient', () => {
     expect(insert!.sql).toContain(completedAt);
   });
 });
+
+describe('_updateExerciseEntryWithClient snapshot round-trip', () => {
+  let updateEntry: (
+    client: unknown,
+    id: string,
+    userId: string,
+    updateData: Record<string, unknown>,
+    updatedByUserId: string,
+    entrySource: string
+  ) => Promise<unknown>;
+
+  beforeAll(async () => {
+    const mod = (await vi.importActual('../models/exerciseEntry.js')) as {
+      default?: Record<string, unknown>;
+    } & Record<string, unknown>;
+    const exports = (mod.default ?? mod) as Record<string, unknown>;
+    updateEntry = exports._updateExerciseEntryWithClient as typeof updateEntry;
+  });
+
+  // Snapshot list columns come back from `SELECT *` as raw JSON text.
+  const currentEntry = {
+    id: 'entry-a',
+    exercise_id: 'ex-1',
+    duration_minutes: 10,
+    calories_burned: 100,
+    entry_date: '2026-07-06',
+    equipment: '["barbell"]',
+    primary_muscles: '["quadriceps"]',
+    secondary_muscles: null,
+    instructions: '["Keep your back straight."]',
+    images: '["Leg_Press/0.jpg"]',
+  };
+
+  function makeClient() {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    return {
+      calls,
+      query: vi.fn((sql: string, params: unknown[]) => {
+        calls.push({ sql, params });
+        if (/^SELECT \* FROM exercise_entries/.test(sql)) {
+          return Promise.resolve({ rows: [{ ...currentEntry }] });
+        }
+        if (/^UPDATE exercise_entries/.test(sql)) {
+          return Promise.resolve({ rows: [{ id: 'entry-a' }], rowCount: 1 });
+        }
+        // Trailing refetch via _getExerciseEntryByIdWithClient.
+        return Promise.resolve({ rows: [{ id: 'entry-a' }], rowCount: 1 });
+      }),
+    };
+  }
+
+  // Regression for the snapshot-doubling bug: value-only updates (the live
+  // autosave shape) carry no snapshot fields, so the merge falls back to the
+  // raw text — re-encoding it added an escaping layer per save, roughly
+  // doubling the stored columns every autosave.
+  it('writes merged raw-text snapshot columns back byte-identical', async () => {
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { duration_minutes: 12 },
+      'actor-1',
+      'manual'
+    );
+
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(update).toBeDefined();
+    // $19–$23: equipment, primary_muscles, secondary_muscles, instructions, images
+    expect(update!.params[18]).toBe('["barbell"]');
+    expect(update!.params[19]).toBe('["quadriceps"]');
+    expect(update!.params[20]).toBeNull();
+    expect(update!.params[21]).toBe('["Keep your back straight."]');
+    expect(update!.params[22]).toBe('["Leg_Press/0.jpg"]');
+  });
+
+  it('encodes array snapshot values from updateData exactly once', async () => {
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { images: ['new.jpg'], equipment: ['dumbbell'] },
+      'actor-1',
+      'manual'
+    );
+
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(update!.params[18]).toBe('["dumbbell"]');
+    expect(update!.params[22]).toBe('["new.jpg"]');
+  });
+});

@@ -214,6 +214,16 @@ async function _getExerciseEntryByIdWithClient(client: any, id: any) {
   }
   return exerciseEntry;
 }
+// Snapshot list columns (equipment/muscles/instructions/images) are TEXT
+// holding JSON. Merged values may be raw text read straight from the row
+// (`SELECT *`) or arrays from the client/exercise refetch — only encode what
+// isn't already encoded. Stringifying the raw text again would add an
+// escaping layer on every save, doubling the stored value each time.
+function toJsonColumnText(value: unknown): string | null {
+  if (value == null) return null;
+  return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
 async function _updateExerciseEntryWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -383,15 +393,11 @@ async function _updateExerciseEntryWithClient(
       mergedData.force,
       mergedData.level,
       mergedData.mechanic,
-      mergedData.equipment ? JSON.stringify(mergedData.equipment) : null,
-      mergedData.primary_muscles
-        ? JSON.stringify(mergedData.primary_muscles)
-        : null,
-      mergedData.secondary_muscles
-        ? JSON.stringify(mergedData.secondary_muscles)
-        : null,
-      mergedData.instructions ? JSON.stringify(mergedData.instructions) : null,
-      mergedData.images ? JSON.stringify(mergedData.images) : null,
+      toJsonColumnText(mergedData.equipment),
+      toJsonColumnText(mergedData.primary_muscles),
+      toJsonColumnText(mergedData.secondary_muscles),
+      toJsonColumnText(mergedData.instructions),
+      toJsonColumnText(mergedData.images),
       mergedData.sort_order || 0,
       mergedData.steps || null,
       mergedData.water_estimated || null,
