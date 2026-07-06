@@ -42,7 +42,8 @@ COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh \
     && mkdir -p /var/run/nginx /var/cache/nginx /etc/nginx/conf.d /var/log/nginx \
-    && chmod -R 777 /var/run/nginx /var/cache/nginx /etc/nginx/conf.d /var/log/nginx \
+    && chgrp -R 0 /var/run/nginx /var/cache/nginx /etc/nginx/conf.d /var/log/nginx \
+    && chmod -R g+wX /var/run/nginx /var/cache/nginx /etc/nginx/conf.d /var/log/nginx \
     && sed -i 's|/var/run/nginx.pid|/var/run/nginx/nginx.pid|g' /etc/nginx/nginx.conf \
     && sed -i 's|^[[:space:]]*user|#user|g' /etc/nginx/nginx.conf
 

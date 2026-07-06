@@ -6,28 +6,22 @@ if [ "$(id -u)" -eq 0 ]; then
     export NGINX_LISTEN_PORT=${NGINX_LISTEN_PORT:-80}
     export NGINX_ACCESS_LOG=${NGINX_ACCESS_LOG:-/var/log/nginx/access.log}
     export NGINX_ERROR_LOG=${NGINX_ERROR_LOG:-/var/log/nginx/error.log}
-
-    mkdir -p /var/run/nginx \
-         /var/cache/nginx/client-body \
-         /var/cache/nginx/proxy \
-         /var/cache/nginx/fastcgi \
-         /var/cache/nginx/uwsgi \
-         /var/cache/nginx/scgi \
-         /etc/nginx/conf.d 2>/dev/null || true
 else
     NGINX_PERMISSION_MODE="non-root"
-    export NGINX_LISTEN_PORT=${NGINX_LISTEN_PORT:-80}
+    export NGINX_LISTEN_PORT=${NGINX_LISTEN_PORT:-8080}
     export NGINX_ACCESS_LOG=${NGINX_ACCESS_LOG:-/dev/stdout}
     export NGINX_ERROR_LOG=${NGINX_ERROR_LOG:-/dev/stderr}
-
-    mkdir -p /var/run/nginx \
-         /var/cache/nginx/client-body \
-         /var/cache/nginx/proxy \
-         /var/cache/nginx/fastcgi \
-         /var/cache/nginx/uwsgi \
-         /var/cache/nginx/scgi \
-         /etc/nginx/conf.d 2>/dev/null || true
 fi
+
+# Ensure folders exist (required if directories are mounted as emptyDir volumes, e.g. in Kubernetes)
+# We ignore errors in case the filesystem is read-only but directories already exist in the image.
+mkdir -p /var/run/nginx \
+     /var/cache/nginx/client-body \
+     /var/cache/nginx/proxy \
+     /var/cache/nginx/fastcgi \
+     /var/cache/nginx/uwsgi \
+     /var/cache/nginx/scgi \
+     /etc/nginx/conf.d 2>/dev/null || true
 
 echo "Starting SparkyFitness Frontend as ${NGINX_PERMISSION_MODE} with environment variables:"
 echo "  SPARKY_FITNESS_SERVER_HOST=${SPARKY_FITNESS_SERVER_HOST}"
