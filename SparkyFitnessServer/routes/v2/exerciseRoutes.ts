@@ -141,11 +141,20 @@ router.get('/search', searchHandler);
  *           type: string
  *           format: uuid
  *         description: Exercise UUID.
+ *       - in: query
+ *         name: excludePresetEntryId
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: |
+ *           Optional preset-entry UUID to exclude from the baseline. Used by the live active-workout card so today's
+ *           in-progress (or pre-persisted planned) sets do not pollute the historical best/last baseline.
  *     responses:
  *       200:
  *         description: Best set + last set stats.
  *       400:
- *         description: Invalid exerciseId (not a UUID).
+ *         description: Invalid exerciseId or excludePresetEntryId (not a UUID).
  *       401:
  *         description: Unauthenticated.
  *       403:
@@ -165,9 +174,20 @@ const statsHandler: RequestHandler = async (req, res, next) => {
       });
       return;
     }
+    const parsedQuery = z
+      .object({ excludePresetEntryId: z.string().uuid().optional() })
+      .safeParse(req.query);
+    if (!parsedQuery.success) {
+      res.status(400).json({
+        error: 'Invalid excludePresetEntryId',
+        details: parsedQuery.error.flatten().fieldErrors,
+      });
+      return;
+    }
     const stats = await exerciseService.getExerciseStats(
       req.userId,
-      parsed.data.exerciseId
+      parsed.data.exerciseId,
+      parsedQuery.data.excludePresetEntryId ?? null
     );
     const response = exerciseStatsResponseSchema.parse(stats);
     res.status(200).json(response);

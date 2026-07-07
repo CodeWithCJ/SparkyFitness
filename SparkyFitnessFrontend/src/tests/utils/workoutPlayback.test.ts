@@ -150,6 +150,9 @@ describe('workoutPlayback utils', () => {
     expect(payload.exercises?.[0]?.sets).toHaveLength(1);
     expect(payload.exercises?.[0]?.sets?.[0]?.set_number).toBe(1);
     expect(payload.exercises?.[1]?.sets).toHaveLength(1);
+    // Web playback never claims a PR — the server owns detection.
+    expect(payload.exercises?.[0]?.sets?.[0]?.is_pr).toBe(false);
+    expect(payload.exercises?.[1]?.sets?.[0]?.is_pr).toBe(false);
   });
 
   it('stamps completed_at on toggle-on and clears it on toggle-off', () => {

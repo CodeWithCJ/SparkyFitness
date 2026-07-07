@@ -263,6 +263,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
             notes: set.notes,
             rpe: set.rpe,
             completedAt: set.completed_at,
+            isPr: set.is_pr,
             weight: set.weight != null
               ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
               : '',

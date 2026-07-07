@@ -1559,7 +1559,8 @@ CREATE TABLE public.exercise_entry_sets (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     rpe numeric(3,1),
-    completed_at timestamp with time zone
+    completed_at timestamp with time zone,
+    is_pr boolean DEFAULT false NOT NULL
 );
 
 
@@ -1575,6 +1576,13 @@ COMMENT ON COLUMN public.exercise_entry_sets.rpe IS 'Rate of Perceived Exertion 
 --
 
 COMMENT ON COLUMN public.exercise_entry_sets.completed_at IS 'Client-recorded moment the set was checked off during a live workout. NULL = not completed.';
+
+
+--
+-- Name: COLUMN exercise_entry_sets.is_pr; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entry_sets.is_pr IS 'Whether this set was a personal record (heavier than the prior best weight, or more reps at the top weight) when checked off during a live workout. Warmup sets never earn PRs.';
 
 
 --

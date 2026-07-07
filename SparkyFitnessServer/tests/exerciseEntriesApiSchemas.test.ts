@@ -309,6 +309,7 @@ describe('Exercise entry API schemas', () => {
       rest_time: null,
       notes: null,
       rpe: null,
+      is_pr: false,
     };
 
     it('accepts ISO, null, and omitted completed_at on set requests', () => {
@@ -360,6 +361,58 @@ describe('Exercise entry API schemas', () => {
         completed_at: null,
       });
       expect(withNull.success).toBe(true);
+    });
+  });
+
+  describe('is_pr', () => {
+    const baseSetRequest = {
+      set_number: 1,
+      set_type: 'working',
+      reps: 10,
+      weight: 60,
+    };
+
+    const baseSetResponse = {
+      id: 7,
+      set_number: 1,
+      set_type: 'working',
+      reps: 10,
+      weight: 60,
+      duration: null,
+      rest_time: null,
+      notes: null,
+      rpe: null,
+      completed_at: null,
+    };
+
+    it('accepts boolean and omitted is_pr on set requests', () => {
+      const withTrue = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        is_pr: true,
+      });
+      expect(withTrue.success).toBe(true);
+      expect(withTrue.data.is_pr).toBe(true);
+
+      const omitted = runSchema(
+        'exerciseEntrySetRequestSchema',
+        baseSetRequest
+      );
+      expect(omitted.success).toBe(true);
+      expect(omitted.data).not.toHaveProperty('is_pr');
+    });
+
+    it('requires is_pr on set responses', () => {
+      const missing = runSchema(
+        'exerciseEntrySetResponseSchema',
+        baseSetResponse
+      );
+      expect(missing.success).toBe(false);
+
+      const withValue = runSchema('exerciseEntrySetResponseSchema', {
+        ...baseSetResponse,
+        is_pr: true,
+      });
+      expect(withValue.success).toBe(true);
     });
   });
 

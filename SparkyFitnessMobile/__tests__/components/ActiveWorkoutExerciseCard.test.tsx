@@ -39,8 +39,30 @@ jest.mock('../../src/hooks/useExerciseStats', () => ({
   useExerciseStats: jest.fn(() => ({ data: null })),
 }));
 
+// The card only touches the store to capture the PR baseline; a selector-based
+// stub exposes a stable spy for that action.
+jest.mock('../../src/stores/activeWorkoutStore', () => {
+  const capturePrBaseline = jest.fn();
+  return {
+    __esModule: true,
+    useActiveWorkoutStore: (selector: (s: { capturePrBaseline: unknown }) => unknown) =>
+      selector({ capturePrBaseline }),
+    __capturePrBaseline: capturePrBaseline,
+  };
+});
+
 const mockUseExerciseStats = jest.requireMock('../../src/hooks/useExerciseStats')
   .useExerciseStats as jest.Mock;
+const mockCapturePrBaseline = jest.requireMock('../../src/stores/activeWorkoutStore')
+  .__capturePrBaseline as jest.Mock;
+
+/** Stats fixture with a historical best of 100kg × 5. */
+const STATS_WITH_BEST = {
+  data: {
+    bestSet: { entryDate: '2026-04-01', weight: 100, reps: 5, setNumber: 1 },
+    lastSet: null,
+  },
+};
 
 function makeExercise(overrides?: Partial<ExerciseEntryResponse>): ExerciseEntryResponse {
   return {
@@ -121,6 +143,8 @@ function renderCard(expanded: boolean, props?: Partial<CardProps>) {
 describe('ActiveWorkoutExerciseCard', () => {
   beforeEach(() => {
     mockUseExerciseStats.mockClear();
+    mockUseExerciseStats.mockReturnValue({ data: null });
+    mockCapturePrBaseline.mockClear();
   });
 
   it('renders the overflow trigger when expanded and fires onPressOverflow', () => {
@@ -180,7 +204,7 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('skips the exercise stats fetch', () => {
       renderCard(true, { mode: 'view' });
-      expect(mockUseExerciseStats).toHaveBeenCalledWith(null);
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
     });
 
     it('never labels a collapsed exercise as planned', () => {
@@ -268,7 +292,7 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('fetches exercise stats so "Last time" works for drafts', () => {
       renderCard(true, { mode: 'edit' });
-      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1');
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', undefined);
     });
 
     it('never labels a collapsed draft as planned', () => {
@@ -361,6 +385,63 @@ describe('ActiveWorkoutExerciseCard', () => {
         });
         expect(live.callbacks.onCommitField).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('PR surfaces (live mode)', () => {
+    /** Bench Press with a single heavier working set (105kg × 5). */
+    function heavierExercise() {
+      return makeExercise({
+        sets: [{ ...makeExercise().sets[0], id: 101, weight: 105, reps: 5 }],
+      });
+    }
+
+    it('passes the session id as excludePresetEntryId to the stats query', () => {
+      renderCard(true, { mode: 'live', excludePresetEntryId: 'session-1' });
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
+    });
+
+    it('captures the PR baseline once from the resolved best set', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_BEST);
+      renderCard(true, { mode: 'live' });
+      expect(mockCapturePrBaseline).toHaveBeenCalledTimes(1);
+      expect(mockCapturePrBaseline).toHaveBeenCalledWith('ex-1', {
+        weight: 100,
+        reps: 5,
+      });
+    });
+
+    it('captures a null baseline when the exercise has no history', () => {
+      mockUseExerciseStats.mockReturnValue({ data: { bestSet: null, lastSet: null } });
+      renderCard(true, { mode: 'live' });
+      expect(mockCapturePrBaseline).toHaveBeenCalledWith('ex-1', null);
+    });
+
+    it('renders the Best line from the historical best', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_BEST);
+      const { getByText } = renderCard(true, { mode: 'live' });
+      expect(getByText('Best')).toBeTruthy();
+      expect(getByText('100 × 5')).toBeTruthy();
+    });
+
+    it('surfaces the stamped session record when a set earned a PR', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_BEST);
+      const { getByText, queryByText } = renderCard(true, {
+        mode: 'live',
+        exercise: heavierExercise(),
+        prSetIds: { '101': true },
+      });
+      // The new record (105 × 5) replaces the historical best (100 × 5).
+      expect(getByText('105 × 5')).toBeTruthy();
+      expect(queryByText('100 × 5')).toBeNull();
+    });
+
+    it('does not fetch stats or render the Best line in view mode', () => {
+      // View mode passes a null id, so the hook is disabled → no baseline line.
+      const { queryByText } = renderCard(true, { mode: 'view' });
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
+      expect(mockCapturePrBaseline).not.toHaveBeenCalled();
+      expect(queryByText('Best')).toBeNull();
     });
   });
 });

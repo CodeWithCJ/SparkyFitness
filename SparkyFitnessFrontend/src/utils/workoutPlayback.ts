@@ -732,6 +732,9 @@ export function buildPresetSessionCreateRequestFromDraft(
           rpe: toNullableNumber(set.rpe),
           // `?? null` also covers persisted drafts that predate the field.
           completed_at: set.completed_at ?? null,
+          // Web playback makes no PR claims — drafts never carry PRs, and the
+          // server owns PR detection. Always false on create.
+          is_pr: false,
         })),
       };
     })

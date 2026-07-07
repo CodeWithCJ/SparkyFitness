@@ -7,7 +7,7 @@ import type {
 } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 // Type-only, so the store's runtime import of this module stays acyclic.
-import type { CompletedSetMap } from '../stores/activeWorkoutStore';
+import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 import type { WorkoutDraftExercise } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutPreset, WorkoutPresetExercise } from '../types/workoutPresets';
@@ -294,6 +294,7 @@ export function buildExercisesPayload(
         notes: set.notes ?? null,
         rpe: set.rpe ?? null,
         completed_at: set.completedAt ?? null,
+        is_pr: set.isPr ?? false,
       };
     }),
   }));
@@ -471,7 +472,8 @@ export function isTempSetId(id: number): boolean {
  * `completed_at` comes from `completedSetIds` (the store's completion map,
  * the local source of truth during a live workout), not from the session's
  * set objects — an unmapped set deliberately sends `null` so unchecking a
- * set propagates as a clear.
+ * set propagates as a clear. `is_pr` is derived the same way from
+ * `prSetIds` — a missing key sends `false`, so unchecking a PR set clears it.
  *
  * Ids follow the server's "all or none" rule for exercises: if any exercise
  * is client-added (temp id), every exercise AND set id is stripped so the
@@ -482,6 +484,7 @@ export function isTempSetId(id: number): boolean {
 export function buildSessionExercisesPayload(
   session: PresetSessionResponse,
   completedSetIds: CompletedSetMap,
+  prSetIds: PrSetMap,
 ): PresetSessionExerciseRequest[] {
   const allExercisesHaveServerId =
     session.exercises.length > 0 &&
@@ -509,6 +512,7 @@ export function buildSessionExercisesPayload(
         notes: set.notes ?? null,
         rpe: set.rpe ?? null,
         completed_at: completedMs != null ? new Date(completedMs).toISOString() : null,
+        is_pr: prSetIds[String(set.id)] === true,
       };
     }),
   }));
@@ -516,6 +520,123 @@ export function buildSessionExercisesPayload(
 
 /** Set types offered by the long-press set-type pickers. */
 export const SET_TYPE_OPTIONS = ['warmup', 'normal', 'drop', 'failure'] as const;
+
+// --- Personal record (PR) detection ---
+//
+// A PR is a working set that beats the historical best for its exercise —
+// heavier weight, or more reps at the same top weight. Warmups never count.
+// Detection is pure so it can run in the store (both the screen and the HUD
+// complete-set paths) and be exhaustively tested.
+
+/**
+ * True when `set_type` names a warmup, matching the server's SQL filter:
+ * lowercase, strip every non-alphanumeric, prefix-match `warmup`. Catches the
+ * repo's many variants — `warmup`, `Warm-up`, `Warmup`, `Warm up`,
+ * `Warm-up Set`. NULL/undefined counts as a working set.
+ */
+export function isWarmupSetType(setType: string | null | undefined): boolean {
+  if (setType == null) return false;
+  return setType.toLowerCase().replace(/[^a-z0-9]/g, '').startsWith('warmup');
+}
+
+/** A single historical best used as the PR baseline (all weights kg). */
+export interface PrBaselineEntry {
+  weight: number | null;
+  reps: number | null;
+}
+
+/**
+ * Compare two weighted sets by (weight at hundredths precision, then reps).
+ * Returns > 0 when `a` is the better record, < 0 when `b` is, 0 when tied.
+ *
+ * Hundredths, not epsilon: the DB stores `numeric(10,2)`, so a sub-cent
+ * difference round-trips to equality — and rounding also kills the float dust
+ * from lb→kg conversion. Null reps count as 0. Both weights must be non-null.
+ */
+export function compareSetRecords(
+  a: { weight: number; reps: number | null },
+  b: { weight: number; reps: number | null },
+): number {
+  const wa = Math.round(a.weight * 100);
+  const wb = Math.round(b.weight * 100);
+  if (wa !== wb) return wa - wb;
+  return (a.reps ?? 0) - (b.reps ?? 0);
+}
+
+/**
+ * Decide whether completing `candidateSetId` is a PR.
+ *
+ * Never a PR when: the set is a warmup, its weight is null, the exercise's
+ * baseline was never captured (key absent), or the baseline is `null`
+ * (first-ever exercise — nothing to beat). The effective best is the better
+ * of the captured baseline and every already-completed non-warmup weighted
+ * set for the same exercise this session (excluding the candidate), ordered by
+ * `compareSetRecords`. A PR is a strictly heavier set, or an equal-weight set
+ * with strictly more reps.
+ */
+export function isPrSet(
+  session: PresetSessionResponse,
+  candidateSetId: string,
+  completedSetIds: CompletedSetMap,
+  prBaseline: Record<string, PrBaselineEntry | null>,
+): boolean {
+  let candidate: ExerciseEntrySetResponse | undefined;
+  let exerciseId: string | undefined;
+  for (const exercise of session.exercises) {
+    const found = exercise.sets.find((s) => String(s.id) === candidateSetId);
+    if (found) {
+      candidate = found;
+      exerciseId = exercise.exercise_id;
+      break;
+    }
+  }
+  if (!candidate || exerciseId == null) return false;
+  if (candidate.weight == null) return false;
+  if (isWarmupSetType(candidate.set_type)) return false;
+
+  // Baseline key absent = never captured; null = captured with no history.
+  if (!(exerciseId in prBaseline)) return false;
+  const baseline = prBaseline[exerciseId];
+  if (baseline == null) return false;
+
+  // Start the running best from the baseline, then fold in every already-
+  // completed session set for the same exercise (the candidate excluded).
+  let best: { weight: number; reps: number | null } | null =
+    baseline.weight != null ? { weight: baseline.weight, reps: baseline.reps } : null;
+
+  for (const exercise of session.exercises) {
+    if (exercise.exercise_id !== exerciseId) continue;
+    for (const s of exercise.sets) {
+      if (String(s.id) === candidateSetId) continue;
+      if (s.weight == null) continue;
+      if (isWarmupSetType(s.set_type)) continue;
+      if (completedSetIds[String(s.id)] == null) continue;
+      const contender = { weight: s.weight, reps: s.reps };
+      if (best == null || compareSetRecords(contender, best) > 0) best = contender;
+    }
+  }
+
+  // Baseline had no weight and no completed session set to beat — with history
+  // present but no comparable record, stay conservative and award nothing.
+  if (best == null) return false;
+
+  return compareSetRecords({ weight: candidate.weight, reps: candidate.reps }, best) > 0;
+}
+
+/**
+ * Seed the PR-stamp map from server-persisted `is_pr` flags, mirroring
+ * `seedCompletionFromSession`. Used when resuming a workout so previously
+ * earned PRs stay stamped across a cold start.
+ */
+export function seedPrFromSession(session: PresetSessionResponse): PrSetMap {
+  const seeded: PrSetMap = {};
+  for (const exercise of session.exercises) {
+    for (const s of exercise.sets) {
+      if (s.is_pr) seeded[String(s.id)] = true;
+    }
+  }
+  return seeded;
+}
 
 // --- Supersets ---
 

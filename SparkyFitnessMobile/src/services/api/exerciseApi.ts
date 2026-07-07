@@ -36,9 +36,15 @@ export const fetchExerciseHistory = async (
 
 export const fetchExerciseStats = async (
   exerciseId: string,
+  excludePresetEntryId?: string,
 ): Promise<ExerciseStatsResponse> => {
+  // The live active-workout card passes its session id so today's in-progress
+  // (or pre-persisted planned) sets are excluded from the historical baseline.
+  const query = excludePresetEntryId
+    ? `?excludePresetEntryId=${encodeURIComponent(excludePresetEntryId)}`
+    : '';
   return apiFetch<ExerciseStatsResponse>({
-    endpoint: `/api/v2/exercises/${encodeURIComponent(exerciseId)}/stats`,
+    endpoint: `/api/v2/exercises/${encodeURIComponent(exerciseId)}/stats${query}`,
     serviceName: 'Exercise API',
     operation: 'fetch exercise stats',
   });

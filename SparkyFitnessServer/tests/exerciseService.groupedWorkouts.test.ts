@@ -988,6 +988,30 @@ describe('_reconcileExerciseEntrySetsWithClient', () => {
     expect(insert!.sql).toContain('completed_at');
     expect(insert!.sql).toContain(completedAt);
   });
+
+  it('writes is_pr on updates and inserts, clearing it when omitted', async () => {
+    const client = makeClient([1, 2]);
+    await reconcile(client, 'entry-a', [
+      { id: 1, set_number: 1, reps: 10, is_pr: true },
+      { id: 2, set_number: 2, reps: 8 },
+      { set_number: 3, reps: 6, is_pr: true },
+    ]);
+
+    const updates = client.calls.filter(({ sql }) =>
+      /UPDATE exercise_entry_sets/.test(sql)
+    );
+    expect(updates).toHaveLength(2);
+    expect(updates[0].sql).toMatch(/is_pr = \$10/);
+    expect(updates[0].params[9]).toBe(true);
+    // Omitted is_pr means "not a PR" and must clear the column.
+    expect(updates[1].params[9]).toBe(false);
+
+    const insert = client.calls.find(({ sql }) =>
+      /INSERT INTO exercise_entry_sets/.test(sql)
+    );
+    expect(insert).toBeDefined();
+    expect(insert!.sql).toContain('is_pr');
+  });
 });
 
 describe('_updateExerciseEntryWithClient snapshot round-trip', () => {

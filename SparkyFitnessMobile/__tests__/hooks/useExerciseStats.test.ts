@@ -35,7 +35,21 @@ describe('useExerciseStats', () => {
     await waitFor(() => {
       expect(result.current.data).toEqual(data);
     });
-    expect(mockFetchStats).toHaveBeenCalledWith('ex-1');
+    expect(mockFetchStats).toHaveBeenCalledWith('ex-1', undefined);
+  });
+
+  it('forwards excludePresetEntryId to the fetch and query key', async () => {
+    mockFetchStats.mockResolvedValue({ bestSet: null, lastSet: null });
+
+    const { result } = renderHook(
+      () => useExerciseStats('ex-1', 'session-1'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(mockFetchStats).toHaveBeenCalledWith('ex-1', 'session-1');
   });
 
   it('does not fire when exerciseId is null/undefined', () => {

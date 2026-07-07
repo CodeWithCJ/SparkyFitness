@@ -14,6 +14,8 @@ export interface WorkoutDraftSet {
   notes?: string | null;
   /** Round-tripped opaquely; the form has no completion UI. */
   completedAt?: string | null;
+  /** Round-tripped opaquely; the form has no PR UI. Preserves earned PRs on edit. */
+  isPr?: boolean;
 }
 
 /** Patch shape for the form hooks' `updateSetMeta` action. */

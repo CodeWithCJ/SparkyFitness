@@ -64,11 +64,13 @@ describe('exerciseService.getExerciseStats', () => {
     // Both DB calls must have been issued before either resolves -> parallel.
     expect(exerciseEntryDb.getBestSetForExercise).toHaveBeenCalledWith(
       userId,
-      exerciseId
+      exerciseId,
+      null
     );
     expect(exerciseEntryDb.getLastSetForExercise).toHaveBeenCalledWith(
       userId,
-      exerciseId
+      exerciseId,
+      null
     );
 
     resolveBest({
@@ -135,6 +137,31 @@ describe('exerciseService.getExerciseStats', () => {
     const result = await exerciseService.getExerciseStats(userId, exerciseId);
 
     expect(result).toEqual({ bestSet: null, lastSet: null });
+  });
+
+  it('forwards excludePresetEntryId to both model queries', async () => {
+    const excludePresetEntryId = '22222222-2222-4222-8222-222222222222';
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getBestSetForExercise.mockResolvedValue(null);
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getLastSetForExercise.mockResolvedValue(null);
+
+    await exerciseService.getExerciseStats(
+      userId,
+      exerciseId,
+      excludePresetEntryId
+    );
+
+    expect(exerciseEntryDb.getBestSetForExercise).toHaveBeenCalledWith(
+      userId,
+      exerciseId,
+      excludePresetEntryId
+    );
+    expect(exerciseEntryDb.getLastSetForExercise).toHaveBeenCalledWith(
+      userId,
+      exerciseId,
+      excludePresetEntryId
+    );
   });
 
   it('passes entry_date through untouched (already day-string from ::TEXT)', async () => {

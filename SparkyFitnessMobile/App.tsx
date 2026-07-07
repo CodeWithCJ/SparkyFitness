@@ -100,6 +100,7 @@ import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
+import PrCelebrationToast from './src/components/PrCelebrationToast';
 import { NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
 import { createIOSSmallNativeHeaderOptions } from './src/utils/nativeHeaderItems';
 import { useHeaderActionColors } from './src/hooks/useHeaderActionColors';
@@ -1138,6 +1139,7 @@ function AppContent() {
         />
         <ActiveWorkoutBar />
         <SafeAreaToast />
+        <PrCelebrationToast />
       </SafeAreaProvider>
     </NavigationContainer>
   );

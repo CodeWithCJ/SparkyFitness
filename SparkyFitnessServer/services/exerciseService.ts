@@ -211,11 +211,24 @@ function mapSetStatsRow(row: any) {
     setNumber: row.set_number,
   };
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getExerciseStats(userId: any, exerciseId: any) {
+async function getExerciseStats(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exerciseId: any,
+  excludePresetEntryId: string | null = null
+) {
   const [bestRow, lastRow] = await Promise.all([
-    exerciseEntryDb.getBestSetForExercise(userId, exerciseId),
-    exerciseEntryDb.getLastSetForExercise(userId, exerciseId),
+    exerciseEntryDb.getBestSetForExercise(
+      userId,
+      exerciseId,
+      excludePresetEntryId
+    ),
+    exerciseEntryDb.getLastSetForExercise(
+      userId,
+      exerciseId,
+      excludePresetEntryId
+    ),
   ]);
   return {
     bestSet: bestRow ? mapSetStatsRow(bestRow) : null,

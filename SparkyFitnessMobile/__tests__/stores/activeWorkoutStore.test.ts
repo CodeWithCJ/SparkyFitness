@@ -9,11 +9,16 @@ import {
   fireRestCompleteHaptic,
   scheduleRestNotification,
 } from '../../src/services/notifications';
+import { fireSuccessHaptic } from '../../src/services/haptics';
 
 jest.mock('../../src/services/notifications', () => ({
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
   cancelScheduledNotification: jest.fn(async () => undefined),
   fireRestCompleteHaptic: jest.fn(),
+}));
+
+jest.mock('../../src/services/haptics', () => ({
+  fireSuccessHaptic: jest.fn(),
 }));
 
 const mockSchedule = scheduleRestNotification as jest.MockedFunction<
@@ -24,6 +29,9 @@ const mockCancel = cancelScheduledNotification as jest.MockedFunction<
 >;
 const mockHaptic = fireRestCompleteHaptic as jest.MockedFunction<
   typeof fireRestCompleteHaptic
+>;
+const mockSuccessHaptic = fireSuccessHaptic as jest.MockedFunction<
+  typeof fireSuccessHaptic
 >;
 
 const FIXED_NOW = 1_700_000_000_000;
@@ -137,6 +145,7 @@ describe('activeWorkoutStore', () => {
     mockSchedule.mockClear();
     mockCancel.mockClear();
     mockHaptic.mockClear();
+    mockSuccessHaptic.mockClear();
     mockSchedule.mockImplementation(async () => 'notif-abc');
     jest.useFakeTimers();
     jest.setSystemTime(new Date(FIXED_NOW));
@@ -1985,6 +1994,224 @@ describe('activeWorkoutStore', () => {
       const rest = useActiveWorkoutStore.getState().rest;
       expect(rest.state).toBe('paused');
       expect(rest.pausedRemainingMs).toBe(30_000);
+    });
+  });
+
+  describe('PR detection', () => {
+    /** A working set with sane defaults; set_number is assigned by benchSession. */
+    function set(
+      id: number,
+      weight: number | null,
+      reps: number | null,
+      overrides?: Record<string, unknown>,
+    ) {
+      return {
+        id,
+        set_number: 1,
+        set_type: 'working',
+        reps,
+        weight,
+        duration: null,
+        rest_time: 60,
+        notes: null,
+        rpe: null,
+        completed_at: null,
+        is_pr: false,
+        ...overrides,
+      };
+    }
+
+    /** A single-exercise (Bench Press, exercise_id 'ex-1') session. */
+    function benchSession(...sets: ReturnType<typeof set>[]): PresetSessionResponse {
+      const session = makeSession();
+      session.exercises = [
+        {
+          ...session.exercises[0],
+          sets: sets.map((s, i) => ({ ...s, set_number: i + 1 })),
+        },
+      ] as any;
+      return session;
+    }
+
+    const store = () => useActiveWorkoutStore.getState();
+
+    it('stamps a heavier working set as a PR and fires the success haptic', () => {
+      store().startWorkout(benchSession(set(101, 60, 10), set(102, 70, 8)));
+      store().capturePrBaseline('ex-1', { weight: 65, reps: 10 });
+
+      store().completeActiveSet(); // 101 @ 60kg — below baseline, no PR
+      expect(store().prSetIds).toEqual({});
+      expect(mockSuccessHaptic).not.toHaveBeenCalled();
+
+      store().completeActiveSet(); // 102 @ 70kg — beats 65, PR
+      const st = store();
+      expect(st.prSetIds).toEqual({ '102': true });
+      expect(mockSuccessHaptic).toHaveBeenCalledTimes(1);
+      expect(st.lastPrEvent).toMatchObject({
+        setId: '102',
+        exerciseName: 'Bench Press',
+        weightKg: 70,
+        reps: 8,
+      });
+      expect(st.lastPrEvent!.seq).toBeGreaterThan(0);
+    });
+
+    it('stamps a rep-PR at the same top weight', () => {
+      store().startWorkout(benchSession(set(101, 60, 10), set(102, 70, 8)));
+      store().capturePrBaseline('ex-1', { weight: 70, reps: 5 });
+
+      store().completeActiveSet(); // 101 @ 60kg — no PR
+      store().completeActiveSet(); // 102 @ 70kg × 8 reps > baseline 70 × 5 → PR
+      expect(store().prSetIds).toEqual({ '102': true });
+    });
+
+    it('does not award a second PR for repeating the session top set', () => {
+      store().startWorkout(benchSession(set(101, 80, 8), set(102, 80, 8)));
+      store().capturePrBaseline('ex-1', { weight: 75, reps: 8 });
+
+      store().completeActiveSet(); // 101 @ 80kg > 75 → PR
+      expect(store().prSetIds).toEqual({ '101': true });
+      store().completeActiveSet(); // 102 identical — running best is now 80, no PR
+      expect(store().prSetIds).toEqual({ '101': true });
+      expect(mockSuccessHaptic).toHaveBeenCalledTimes(1);
+    });
+
+    it('never awards a PR to a warmup set', () => {
+      store().startWorkout(benchSession(set(101, 999, 1, { set_type: 'warmup' })));
+      store().capturePrBaseline('ex-1', { weight: 60, reps: 10 });
+      store().completeActiveSet();
+      expect(store().prSetIds).toEqual({});
+      expect(mockSuccessHaptic).not.toHaveBeenCalled();
+    });
+
+    it('never awards a PR when the baseline was not captured', () => {
+      store().startWorkout(benchSession(set(101, 100, 5)));
+      store().completeActiveSet();
+      expect(store().prSetIds).toEqual({});
+    });
+
+    it('never awards a PR when the baseline is null (first-ever exercise)', () => {
+      store().startWorkout(benchSession(set(101, 100, 5)));
+      store().capturePrBaseline('ex-1', null);
+      store().completeActiveSet();
+      expect(store().prSetIds).toEqual({});
+    });
+
+    it('treats a sub-cent difference as no PR (hundredths compare)', () => {
+      store().startWorkout(benchSession(set(101, 100.004, 5)));
+      store().capturePrBaseline('ex-1', { weight: 100, reps: 5 });
+      store().completeActiveSet();
+      expect(store().prSetIds).toEqual({});
+    });
+
+    it('clears the stamp when the PR set is unchecked', () => {
+      store().startWorkout(benchSession(set(101, 100, 5)));
+      store().capturePrBaseline('ex-1', { weight: 90, reps: 5 });
+      store().completeActiveSet();
+      expect(store().prSetIds).toEqual({ '101': true });
+
+      store().uncompleteSet('101');
+      expect(store().prSetIds).toEqual({});
+    });
+
+    it('restores the stamp on recomplete without a haptic or new event', () => {
+      store().startWorkout(benchSession(set(101, 100, 5)));
+      store().capturePrBaseline('ex-1', { weight: 90, reps: 5 });
+      store().completeActiveSet();
+      const eventAfterComplete = store().lastPrEvent;
+      store().uncompleteSet('101');
+      mockSuccessHaptic.mockClear();
+
+      store().recompleteSet('101');
+      const st = store();
+      expect(st.prSetIds).toEqual({ '101': true });
+      expect(mockSuccessHaptic).not.toHaveBeenCalled();
+      // Same event reference (seq unchanged) — an undo must not re-celebrate.
+      expect(st.lastPrEvent).toBe(eventAfterComplete);
+    });
+
+    it('seeds stamps from the server is_pr flags on startWorkout', () => {
+      store().startWorkout(
+        benchSession(set(101, 100, 5, { is_pr: true }), set(102, 60, 8)),
+      );
+      expect(store().prSetIds).toEqual({ '101': true });
+    });
+
+    it('remaps stamps positionally across a recreate save', () => {
+      store().startWorkout(makeSession());
+      useActiveWorkoutStore.setState({ prSetIds: { '102': true } });
+      const sentRevision = store().sessionRevision;
+
+      const recreated = makeSession();
+      recreated.exercises[0].sets[0].id = 501; // 101 → 501
+      recreated.exercises[0].sets[1].id = 502; // 102 → 502
+      recreated.exercises[1].sets[0].id = 601; // 201 → 601
+      store().applyServerSession(recreated, sentRevision, ['ex-uuid-1', 'ex-uuid-2']);
+
+      expect(store().prSetIds).toEqual({ '502': true });
+    });
+
+    it('does not stamp priors backfilled by startWorkoutAtSet', () => {
+      store().startWorkoutAtSet(makeSession(), '201');
+      expect(store().prSetIds).toEqual({});
+    });
+
+    it('does not stamp sets backfilled by jumpToSet', () => {
+      store().startWorkout(makeSession());
+      // A low baseline the skipped sets would "beat" if detection ran on jump.
+      store().capturePrBaseline('ex-1', { weight: 50, reps: 5 });
+      store().jumpToSet('201');
+      expect(store().prSetIds).toEqual({});
+    });
+
+    it('does not resurrect a stale stamp when a temp set id is re-minted', () => {
+      store().startWorkout(benchSession(set(101, 60, 10), set(-1, 80, 8)));
+      // The temp set earned a PR earlier this session.
+      useActiveWorkoutStore.setState({ prSetIds: { '-1': true } });
+
+      store().deleteSet('-1'); // pruned by buildSessionEditState
+      expect(store().prSetIds).toEqual({});
+
+      store().addSetToExercise('ex-uuid-1'); // clones set 101, re-mints id -1
+      const sets = store().session!.exercises[0].sets;
+      const newSet = sets[sets.length - 1];
+      expect(newSet.id).toBe(-1);
+      expect(store().prSetIds['-1']).toBeUndefined();
+    });
+
+    it('hydrates safely from v4 state lacking prBaseline/prSetIds', async () => {
+      jest.useRealTimers();
+      const persisted = {
+        state: {
+          sessionId: 'session-1',
+          session: makeSession(),
+          startedAt: FIXED_NOW,
+          steps: [],
+          completedSetIds: {},
+          activeSetId: '101',
+          rest: {
+            state: 'ready',
+            durationSec: 0,
+            endsAt: null,
+            pausedRemainingMs: null,
+            scheduledNotificationId: null,
+            instanceToken: 0,
+          },
+          hasUnsavedChanges: false,
+          createdByLiveStart: false,
+          // No prBaseline / prSetIds — the pre-PR persisted shape.
+        },
+        version: 4,
+      };
+      await AsyncStorage.setItem(
+        '@SparkyFitness/active-workout',
+        JSON.stringify(persisted),
+      );
+      await useActiveWorkoutStore.persist.rehydrate();
+      const st = useActiveWorkoutStore.getState();
+      expect(st.prSetIds).toEqual({});
+      expect(st.prBaseline).toEqual({});
+      expect(st.lastPrEvent).toBeNull();
     });
   });
 });

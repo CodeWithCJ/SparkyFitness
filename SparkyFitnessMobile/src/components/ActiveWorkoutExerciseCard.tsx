@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -16,12 +16,14 @@ import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import { weightFromKg } from '../utils/unitConversions';
 import {
   CATEGORY_ICON_MAP,
+  compareSetRecords,
   formatVolume,
   getExerciseVolumeKg,
   type WorkoutCardExercise,
   type WorkoutCardSet,
 } from '../utils/workoutSession';
-import type { ActiveSetPatch, CompletedSetMap } from '../stores/activeWorkoutStore';
+import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import type { ActiveSetPatch, CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
 
 export const METRIC_COLUMN_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
@@ -67,6 +69,18 @@ interface ActiveWorkoutExerciseCardProps {
    * so completed sets stay editable.
    */
   mode?: 'live' | 'view' | 'edit';
+  /**
+   * Live only: the active session's preset-entry id, forwarded to the stats
+   * query so today's in-progress/planned sets are excluded from the historical
+   * best/last baseline. View/edit modes pass nothing.
+   */
+  excludePresetEntryId?: string;
+  /**
+   * Live only: the store's PR stamps. When any of this exercise's set ids is
+   * stamped, the Best line goes gold and shows the new record (the server
+   * best stays historical by design).
+   */
+  prSetIds?: PrSetMap;
   /** Hide the rest chip entirely (e.g. imported workouts without rest data). */
   showRestChip?: boolean;
   onToggleExpanded: (entryId: string) => void;
@@ -132,6 +146,8 @@ function ActiveWorkoutExerciseCard({
   weightUnit,
   getImageSource,
   mode = 'live',
+  excludePresetEntryId,
+  prSetIds,
   showRestChip = true,
   onToggleExpanded,
   onPressRestChip,
@@ -153,17 +169,66 @@ function ActiveWorkoutExerciseCard({
 }: ActiveWorkoutExerciseCardProps) {
   const readOnly = mode === 'view';
   const isEdit = mode === 'edit';
-  const [textMuted, successColor, accentPrimary] = useCSSVariable([
+  const isLive = mode === 'live';
+  const [textMuted, successColor, accentPrimary, textSecondary, prColor] = useCSSVariable([
     '--color-text-muted',
     '--color-icon-success',
     '--color-accent-primary',
-  ]) as [string, string, string];
+    '--color-text-secondary',
+    '--color-pr',
+  ]) as [string, string, string, string, string];
 
   const name = exercise.exercise_snapshot?.name ?? 'Exercise';
-  // "Last time" only makes sense while performing or planning — skip the
-  // fetch in view mode (the hook gates on a null id).
-  const { data: stats } = useExerciseStats(readOnly ? null : exercise.exercise_id);
+  // "Last time" / "Best" only make sense while performing or planning — skip
+  // the fetch in view mode (the hook gates on a null id). In live mode the
+  // active session is excluded so today's sets don't pollute the baseline.
+  const { data: stats } = useExerciseStats(
+    readOnly ? null : exercise.exercise_id,
+    isLive ? excludePresetEntryId : undefined,
+  );
   const lastSet = stats?.lastSet ?? null;
+  const bestSet = stats?.bestSet ?? null;
+
+  // Capture the historical PR baseline once per exercise. The store no-ops
+  // unless a live workout is active and the key is absent, so view/edit renders
+  // can't clobber it and a re-resolved query is harmless.
+  const capturePrBaseline = useActiveWorkoutStore((s) => s.capturePrBaseline);
+  useEffect(() => {
+    // Wait for the query to resolve (data is null/undefined while loading). A
+    // resolved stats object with a null `bestSet` still captures — that's the
+    // "no history" baseline.
+    if (!isLive || stats == null) return;
+    capturePrBaseline(
+      exercise.exercise_id,
+      stats.bestSet
+        ? { weight: stats.bestSet.weight, reps: stats.bestSet.reps }
+        : null,
+    );
+  }, [isLive, stats, exercise.exercise_id, capturePrBaseline]);
+
+  // The best set to show on the "Best" line: the historical best, or — once a
+  // set this session earns a PR — the better of that and the stamped session
+  // set. The server number stays historical (the stats query excludes this
+  // session), so the stamped set is what surfaces the new record.
+  const stampedBest = useMemo(() => {
+    if (!isLive || !prSetIds) return null;
+    let best: { weight: number; reps: number | null } | null = null;
+    for (const s of exercise.sets) {
+      if (prSetIds[String(s.id)] !== true || s.weight == null) continue;
+      const contender = { weight: s.weight, reps: s.reps };
+      if (best == null || compareSetRecords(contender, best) > 0) best = contender;
+    }
+    return best;
+  }, [isLive, prSetIds, exercise.sets]);
+
+  const bestDisplay =
+    bestSet != null && bestSet.weight != null
+      ? stampedBest != null &&
+        compareSetRecords(stampedBest, { weight: bestSet.weight, reps: bestSet.reps }) > 0
+        ? stampedBest
+        : { weight: bestSet.weight, reps: bestSet.reps }
+      : null;
+  const bestIsPr = stampedBest != null && bestDisplay === stampedBest;
 
   // Edit-only: seed the first still-empty set from "last time" once, when
   // stats arrive. Weight and reps fill independently — a null lastSet field
@@ -292,8 +357,10 @@ function ActiveWorkoutExerciseCard({
         </Pressable>
       </View>
 
-      {(showRestChip || lastSet != null) && (
-        <View className="flex-row items-center gap-4 mt-2 mb-1 px-1">
+      {(showRestChip || lastSet != null || bestDisplay != null) && (
+        // flex-wrap + gap-y so the rest chip, "Last time", and "Best" stack
+        // gracefully on narrow screens instead of shifting off the edge.
+        <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1 px-1">
           {showRestChip && (
             <RestPeriodChip
               value={exercise.sets[0]?.rest_time}
@@ -313,6 +380,21 @@ function ActiveWorkoutExerciseCard({
                 style={{ fontVariant: ['tabular-nums'] }}
               >
                 {parseFloat(weightFromKg(lastSet.weight, weightUnit).toFixed(1))} × {lastSet.reps}
+              </Text>
+            </View>
+          )}
+          {bestDisplay != null && (
+            <View className="flex-row items-baseline gap-1.5">
+              <Text className="text-xs uppercase tracking-wide text-text-muted">Best</Text>
+              <Text
+                className="text-sm"
+                style={{
+                  color: bestIsPr ? prColor : textSecondary,
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
+                {parseFloat(weightFromKg(bestDisplay.weight, weightUnit).toFixed(1))}
+                {bestDisplay.reps != null ? ` × ${bestDisplay.reps}` : ''}
               </Text>
             </View>
           )}

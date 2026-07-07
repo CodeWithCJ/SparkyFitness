@@ -51,6 +51,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const sessionId = useActiveWorkoutStore((s) => s.sessionId);
   const startedAt = useActiveWorkoutStore((s) => s.startedAt);
   const completedSetIds = useActiveWorkoutStore((s) => s.completedSetIds);
+  const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
   const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
   const restState = useActiveWorkoutStore((s) => s.rest.state);
   const restEndsAt = useActiveWorkoutStore((s) => s.rest.endsAt);
@@ -541,6 +542,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               exercise={exercise}
               expanded={isExpanded}
               completedSetIds={completedSetIds}
+              prSetIds={prSetIds}
+              excludePresetEntryId={sessionId ?? undefined}
               activeSetId={activeSetId}
               metricColumn={metricColumn}
               weightUnit={weightUnit}

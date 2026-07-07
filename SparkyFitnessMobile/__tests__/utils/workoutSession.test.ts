@@ -30,6 +30,9 @@ import {
   getRpeTone,
   getSupersetRuns,
   buildSupersetColorMap,
+  isWarmupSetType,
+  seedPrFromSession,
+  compareSetRecords,
 } from '../../src/utils/workoutSession';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { presetSessionExerciseRequestSchema } from '@workspace/shared';
@@ -1136,6 +1139,22 @@ describe('workoutSession', () => {
         expect(payload[0].sets[0].notes).toBe('easy');
         expect(payload[0].sets[0].rpe).toBe(7.5);
       });
+
+      it('round-trips is_pr from the draft, defaulting to false when absent', () => {
+        const payload = buildExercisesPayload(
+          [
+            makeDraftExercise({
+              sets: [
+                { clientId: 's1', weight: '100', reps: '10', isPr: true },
+                { clientId: 's2', weight: '90', reps: '8' },
+              ],
+            }),
+          ],
+          'kg',
+        );
+        expect(payload[0].sets[0].is_pr).toBe(true);
+        expect(payload[0].sets[1].is_pr).toBe(false);
+      });
     });
   });
 
@@ -1562,7 +1581,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session, {});
+      const payload = buildSessionExercisesPayload(session, {}, {});
       expect(payload[0].id).toBe(ENTRY_A);
       expect(payload[0].exercise_id).toBe(EX_1);
       expect(payload[0].sets[0]).toEqual({
@@ -1576,6 +1595,7 @@ describe('workoutSession', () => {
         notes: null,
         rpe: null,
         completed_at: null,
+        is_pr: false,
       });
       expect(payload[0].sets[1]).toEqual({
         id: 102,
@@ -1588,6 +1608,7 @@ describe('workoutSession', () => {
         notes: 'felt heavy',
         rpe: 9,
         completed_at: null,
+        is_pr: false,
       });
       expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
       expectNoTempIds(payload);
@@ -1602,7 +1623,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session, {});
+      const payload = buildSessionExercisesPayload(session, {}, {});
       expect(payload[0].id).toBe(ENTRY_A);
       expect((payload[0].sets[0] as any).id).toBe(101);
       expect(payload[0].sets[1]).not.toHaveProperty('id');
@@ -1623,7 +1644,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session, {});
+      const payload = buildSessionExercisesPayload(session, {}, {});
       expect(payload[0]).not.toHaveProperty('id');
       expect(payload[0].sets[0]).not.toHaveProperty('id');
       expect(payload[1]).not.toHaveProperty('id');
@@ -1637,7 +1658,7 @@ describe('workoutSession', () => {
       const session = makePreset({
         exercises: [makeExercise({ sets: [makeSet({ weight: 102.5 })] })],
       });
-      expect(buildSessionExercisesPayload(session, {})[0].sets[0].weight).toBe(102.5);
+      expect(buildSessionExercisesPayload(session, {}, {})[0].sets[0].weight).toBe(102.5);
     });
 
     it('assigns positional set_number and sort_order regardless of stored values', () => {
@@ -1652,7 +1673,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session, {});
+      const payload = buildSessionExercisesPayload(session, {}, {});
       expect(payload[0].sort_order).toBe(0);
       expect(payload[1].sort_order).toBe(1);
       expect(payload[0].sets[0].set_number).toBe(1);
@@ -1663,14 +1684,14 @@ describe('workoutSession', () => {
       const session = makePreset({
         exercises: [makeExercise({ notes: 'superset next time', duration_minutes: 25 })],
       });
-      const payload = buildSessionExercisesPayload(session, {});
+      const payload = buildSessionExercisesPayload(session, {}, {});
       expect(payload[0].notes).toBe('superset next time');
       expect(payload[0].duration_minutes).toBe(25);
     });
 
     it('emits explicit nulls for absent exercise notes', () => {
       const session = makePreset({ exercises: [makeExercise({ notes: null })] });
-      expect(buildSessionExercisesPayload(session, {})[0].notes).toBeNull();
+      expect(buildSessionExercisesPayload(session, {}, {})[0].notes).toBeNull();
     });
 
     it('round-trips superset_group and normalizes undefined to null', () => {
@@ -1685,7 +1706,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session, {});
+      const payload = buildSessionExercisesPayload(session, {}, {});
       expect(payload[0].superset_group).toBe(1);
       expect(payload[1].superset_group).toBeNull();
       expect(payload[2].superset_group).toBeNull();
@@ -1702,7 +1723,7 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session, { '101': completedMs });
+      const payload = buildSessionExercisesPayload(session, { '101': completedMs }, {});
       expect(payload[0].sets[0].completed_at).toBe(new Date(completedMs).toISOString());
       // Unmapped sets send an explicit null so unchecking propagates as a clear.
       expect(payload[0].sets[1].completed_at).toBeNull();
@@ -1722,15 +1743,111 @@ describe('workoutSession', () => {
         ],
       });
 
-      const payload = buildSessionExercisesPayload(session, {
-        '101': completedMs,
-        '-1': completedMs,
-      });
+      const payload = buildSessionExercisesPayload(
+        session,
+        {
+          '101': completedMs,
+          '-1': completedMs,
+        },
+        {},
+      );
       // Ids are stripped (delete-and-recreate), but completion travels in the rows.
       expect(payload[0].sets[0]).not.toHaveProperty('id');
       expect(payload[0].sets[0].completed_at).toBe(new Date(completedMs).toISOString());
       expect(payload[1].sets[0]).not.toHaveProperty('id');
       expect(payload[1].sets[0].completed_at).toBe(new Date(completedMs).toISOString());
+    });
+
+    it('emits is_pr from the stamp map: true for stamped ids, false otherwise', () => {
+      const session = makePreset({
+        exercises: [
+          makeExercise({
+            sets: [makeSet({ id: 101 }), makeSet({ id: 102, set_number: 2 })],
+          }),
+        ],
+      });
+
+      const payload = buildSessionExercisesPayload(session, {}, { '101': true });
+      expect(payload[0].sets[0].is_pr).toBe(true);
+      // Unstamped sets send an explicit false so unchecking a PR clears it.
+      expect(payload[0].sets[1].is_pr).toBe(false);
+      expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
+    });
+
+    it('carries is_pr on id-less sets in the recreate path', () => {
+      const session = makePreset({
+        exercises: [
+          makeExercise({ id: ENTRY_A, sets: [makeSet({ id: 101 })] }),
+          makeExercise({
+            id: 'temp-abc123',
+            exercise_id: EX_2,
+            sets: [makeSet({ id: -1 })],
+          }),
+        ],
+      });
+
+      const payload = buildSessionExercisesPayload(session, {}, { '101': true, '-1': true });
+      expect(payload[0].sets[0]).not.toHaveProperty('id');
+      expect(payload[0].sets[0].is_pr).toBe(true);
+      expect(payload[1].sets[0]).not.toHaveProperty('id');
+      expect(payload[1].sets[0].is_pr).toBe(true);
+    });
+  });
+
+  describe('isWarmupSetType', () => {
+    it('matches every repo warmup variant after normalization', () => {
+      for (const variant of [
+        'warmup',
+        'Warmup',
+        'Warm-up',
+        'Warm up',
+        'Warm-up Set',
+        'WARMUP',
+      ]) {
+        expect(isWarmupSetType(variant)).toBe(true);
+      }
+    });
+
+    it('treats working set types and null as non-warmup', () => {
+      for (const variant of ['normal', 'Working Set', 'drop', 'failure']) {
+        expect(isWarmupSetType(variant)).toBe(false);
+      }
+      expect(isWarmupSetType(null)).toBe(false);
+      expect(isWarmupSetType(undefined)).toBe(false);
+    });
+  });
+
+  describe('compareSetRecords', () => {
+    it('orders by weight at hundredths precision, then reps', () => {
+      expect(compareSetRecords({ weight: 100, reps: 5 }, { weight: 90, reps: 8 })).toBeGreaterThan(0);
+      expect(compareSetRecords({ weight: 90, reps: 8 }, { weight: 100, reps: 5 })).toBeLessThan(0);
+      // Equal weight → reps break the tie (null reps count as 0).
+      expect(compareSetRecords({ weight: 100, reps: 6 }, { weight: 100, reps: 5 })).toBeGreaterThan(0);
+      expect(compareSetRecords({ weight: 100, reps: null }, { weight: 100, reps: 0 })).toBe(0);
+    });
+
+    it('rounds sub-cent differences to equality (numeric(10,2) round-trip)', () => {
+      // 100 vs 100.004 → both round to 10000 hundredths → tie on weight.
+      expect(compareSetRecords({ weight: 100, reps: 5 }, { weight: 100.004, reps: 5 })).toBe(0);
+    });
+  });
+
+  describe('seedPrFromSession', () => {
+    it('stamps only sets whose is_pr is true', () => {
+      const session = {
+        ...makePreset(),
+        exercises: [
+          {
+            sets: [
+              { id: 101, is_pr: true },
+              { id: 102, is_pr: false },
+              { id: 103 },
+            ],
+          },
+        ],
+      } as unknown as PresetSession;
+
+      expect(seedPrFromSession(session)).toEqual({ '101': true });
     });
   });
 

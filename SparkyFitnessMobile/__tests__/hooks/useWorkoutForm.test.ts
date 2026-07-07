@@ -1244,6 +1244,7 @@ describe('workoutFormReducer', () => {
               notes: null,
               rpe: null,
               completed_at: null,
+              is_pr: false,
             },
           ],
         },

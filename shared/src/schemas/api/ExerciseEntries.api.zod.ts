@@ -65,6 +65,7 @@ export const exerciseEntrySetResponseSchema = z
     notes: z.string().nullable(),
     rpe: z.number().nullable(),
     completed_at: z.string().nullable(),
+    is_pr: z.boolean(),
   })
   .strict();
 
@@ -92,6 +93,7 @@ export const exerciseEntrySetRequestSchema = z
     notes: z.string().nullable().optional(),
     rpe: z.number().nullable().optional(),
     completed_at: z.iso.datetime().nullable().optional(),
+    is_pr: z.boolean().optional(),
   })
   .strict();
 
