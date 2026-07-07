@@ -1342,7 +1342,8 @@
       "resetLayout": "Reset layout",
       "maximize": "Maximize",
       "restore": "Restore",
-      "hide": "Hide"
+      "hide": "Hide",
+      "layoutErrorNotice": "The customizable layout hit an error, so a simple view is shown. Your saved layout is kept."
     },
     "nutrientLabels": {
       "cal": "cal",

@@ -60,10 +60,15 @@ export const useDashboardLayout = (pageKey: string) => {
     [queryClient, queryKey, saveMutate]
   );
 
-  const reset = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    resetMutate();
-  }, [resetMutate]);
+  const reset = useCallback(
+    (options?: { onSuccess?: () => void }) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      // The mutation's own onSuccess (cache -> null) runs first; the per-call
+      // onSuccess fires afterwards, so callers can react once state has settled.
+      resetMutate(undefined, options);
+    },
+    [resetMutate]
+  );
 
   useEffect(
     () => () => {
