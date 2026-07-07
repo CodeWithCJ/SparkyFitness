@@ -5,8 +5,11 @@ import {
   loadChatHistory,
   clearChatHistory,
 } from '@/api/Chatbot/sparkyChatService';
-export { getChatStreamUrl } from '@/api/Chatbot/sparkyChatService';
 import { chatbotKeys } from '@/api/keys/ai';
+
+// Re-exported so consumers reach the chat-stream URL through the hooks layer,
+// keeping the api/ layer boundary consistent with the rest of the chat surface.
+export { getChatStreamUrl } from '@/api/Chatbot/sparkyChatService';
 
 export const useChatPreferencesQuery = () => {
   const { t } = useTranslation();

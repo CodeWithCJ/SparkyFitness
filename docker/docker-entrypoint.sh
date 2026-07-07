@@ -5,6 +5,10 @@ NGINX_TEMPLATE_VARS='$SPARKY_FITNESS_SERVER_HOST $SPARKY_FITNESS_SERVER_PORT $NG
 
 normalize_base_path() {
     local value="${1:-/}"
+    if [[ "$value" != /* ]]; then
+        echo "WARNING: SPARKY_BASE_PATH should start with '/'; using '/${value}'" >&2
+        value="/${value}"
+    fi
     if [[ "$value" != */ ]]; then
         echo "WARNING: SPARKY_BASE_PATH should end with '/'; using '${value}/'" >&2
         value="${value}/"

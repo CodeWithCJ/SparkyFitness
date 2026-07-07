@@ -301,168 +301,165 @@ const ReportsWrapper = () => {
   return <Reports key={timezone} />;
 };
 
-const router = createBrowserRouter(
-  [
-    {
-      Component: Root,
-      ErrorBoundary: RootErrorBoundary,
-      children: [
-        { path: '/login', Component: Auth, ErrorBoundary: RootErrorBoundary },
-        {
-          path: '/forgot-password',
-          Component: ForgotPassword,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        {
-          path: '/reset-password',
-          Component: ResetPassword,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        {
-          path: '/login/magic-link',
-          Component: Auth,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        { path: '/error', Component: Auth, ErrorBoundary: RootErrorBoundary },
-        {
-          path: '/withings/callback',
-          Component: WithingsCallback,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        {
-          path: '/fitbit/callback',
-          Component: FitbitCallback,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        {
-          path: '/oura/callback',
-          Component: OuraCallback,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        {
-          path: '/polar/callback',
-          Component: PolarCallback,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        {
-          path: '/strava/callback',
-          Component: StravaCallback,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        {
-          path: '/googlehealth/callback',
-          Component: GoogleHealthCallback,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        {
-          path: '/oidc-callback',
-          Component: OidcCallback,
-          ErrorBoundary: RootErrorBoundary,
-        },
-        {
-          path: '/',
-          element: (
-            <PrivateRoute>
-              <IndexWrapper />
-            </PrivateRoute>
-          ),
-          ErrorBoundary: RootErrorBoundary,
-          children: [
-            {
-              index: true,
-              Component: Diary,
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'checkin',
-              Component: CheckIn,
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'reports',
-              element: (
-                <PermissionRoute permission="reports">
-                  <ReportsWrapper />
-                </PermissionRoute>
-              ),
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'foods',
-              Component: FoodDatabaseManager,
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'exercises',
-              Component: ExerciseDatabaseManager,
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'workout-playback',
-              Component: WorkoutPlaybackPage,
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'goals',
-              Component: GoalsSettings,
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'medications',
-              Component: Medications,
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'cycle',
-              Component: CyclePage,
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'settings',
-              Component: Settings,
-              ErrorBoundary: RouteErrorBoundary,
-            },
-            {
-              path: 'admin',
-              ErrorBoundary: RouteErrorBoundary,
-              children: [
-                {
-                  index: true,
-                  element: (
-                    <PermissionRoute permission="admin">
-                      <AdminPage />
-                    </PermissionRoute>
-                  ),
-                  ErrorBoundary: RouteErrorBoundary,
-                },
-                {
-                  path: 'oidc-settings',
-                  element: (
-                    <PermissionRoute permission="admin">
-                      <AuthenticationSettings />
-                    </PermissionRoute>
-                  ),
-                  ErrorBoundary: RouteErrorBoundary,
-                },
-                {
-                  path: 'user-management',
-                  element: (
-                    <PermissionRoute permission="admin">
-                      <UserManagement />
-                    </PermissionRoute>
-                  ),
-                  ErrorBoundary: RouteErrorBoundary,
-                },
-              ],
-            },
-          ],
-        },
-        { path: '*', Component: NotFound },
-      ],
-    },
-  ],
-  { basename: getRouterBasename() }
-);
+const routes = [
+  {
+    Component: Root,
+    ErrorBoundary: RootErrorBoundary,
+    children: [
+      { path: '/login', Component: Auth, ErrorBoundary: RootErrorBoundary },
+      {
+        path: '/forgot-password',
+        Component: ForgotPassword,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/reset-password',
+        Component: ResetPassword,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/login/magic-link',
+        Component: Auth,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      { path: '/error', Component: Auth, ErrorBoundary: RootErrorBoundary },
+      {
+        path: '/withings/callback',
+        Component: WithingsCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/fitbit/callback',
+        Component: FitbitCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/oura/callback',
+        Component: OuraCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/polar/callback',
+        Component: PolarCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/strava/callback',
+        Component: StravaCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/googlehealth/callback',
+        Component: GoogleHealthCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/oidc-callback',
+        Component: OidcCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/',
+        element: (
+          <PrivateRoute>
+            <IndexWrapper />
+          </PrivateRoute>
+        ),
+        ErrorBoundary: RootErrorBoundary,
+        children: [
+          { index: true, Component: Diary, ErrorBoundary: RouteErrorBoundary },
+          {
+            path: 'checkin',
+            Component: CheckIn,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'reports',
+            element: (
+              <PermissionRoute permission="reports">
+                <ReportsWrapper />
+              </PermissionRoute>
+            ),
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'foods',
+            Component: FoodDatabaseManager,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'exercises',
+            Component: ExerciseDatabaseManager,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'workout-playback',
+            Component: WorkoutPlaybackPage,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'goals',
+            Component: GoalsSettings,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'medications',
+            Component: Medications,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'cycle',
+            Component: CyclePage,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'settings',
+            Component: Settings,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'admin',
+            ErrorBoundary: RouteErrorBoundary,
+            children: [
+              {
+                index: true,
+                element: (
+                  <PermissionRoute permission="admin">
+                    <AdminPage />
+                  </PermissionRoute>
+                ),
+                ErrorBoundary: RouteErrorBoundary,
+              },
+              {
+                path: 'oidc-settings',
+                element: (
+                  <PermissionRoute permission="admin">
+                    <AuthenticationSettings />
+                  </PermissionRoute>
+                ),
+                ErrorBoundary: RouteErrorBoundary,
+              },
+              {
+                path: 'user-management',
+                element: (
+                  <PermissionRoute permission="admin">
+                    <UserManagement />
+                  </PermissionRoute>
+                ),
+                ErrorBoundary: RouteErrorBoundary,
+              },
+            ],
+          },
+        ],
+      },
+      { path: '*', Component: NotFound },
+    ],
+  },
+];
+
+const router = createBrowserRouter(routes, {
+  basename: getRouterBasename(),
+});
 
 const App = () => {
   return (
