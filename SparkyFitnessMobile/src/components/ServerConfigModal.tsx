@@ -591,14 +591,14 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const getSegments = () => {
     const segments = [];
-    const hasEmail = !authSettings || authSettings.email.enabled;
+    const hasEmail = authSettings?.email.enabled ?? false;
     const hasOidc = authSettings?.oidc.enabled && authSettings.oidc.providers.length > 0;
     
     if (hasEmail) {
       segments.push({ key: 'signIn' as const, label: 'Sign In' });
     } else if (hasOidc) {
       segments.push({ key: 'signIn' as const, label: 'SSO' });
-    } else if (authSettings) {
+    } else {
       segments.push({ key: 'signIn' as const, label: 'Passkey' });
     }
     
@@ -607,12 +607,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   };
 
   const renderForm = () => {
-    const hasEmail = !authSettings || authSettings.email.enabled;
+    const hasEmail = authSettings?.email.enabled ?? false;
     const hasOidc = authSettings?.oidc.enabled && authSettings.oidc.providers.length > 0;
 
     return (
       <>
-        {/* Frontend URL */}
+        {/* Frontend URL — always visible */}
         <View className="mb-3">
           <Text className="text-sm mb-2 text-text-secondary">Frontend URL</Text>
           <View className="flex-row items-center">
@@ -642,139 +642,175 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           </View>
         ) : null}
 
-        {/* Auth Mode */}
-        {getSegments().length > 1 && (
-          <View className="mb-3">
-            <SegmentedControl
-              segments={getSegments()}
-              activeKey={authTab}
-              onSelect={setAuthTab}
-            />
-          </View>
-        )}
-
-        {/* Sign In fields */}
-        {authTab === 'signIn' && (
+        {/* Auth options — only shown after settings are fetched */}
+        {authSettings && (
           <>
-            {hasEmail && (
-              <>
-                <View className="mb-3">
-                  <Text className="text-sm mb-2 text-text-secondary">Email</Text>
-                  <FormInput
-                    placeholder="email@example.com"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    autoComplete="email"
-                  />
-                </View>
-                <View className="mb-4">
-                  <Text className="text-sm mb-2 text-text-secondary">Password</Text>
-                  <View className="flex-row items-center">
-                    <FormInput
-                      className="flex-1 rounded-lg"
-                      placeholder="Password"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      autoComplete="password"
-                      style={{ paddingRight: 40 }}
-                    />
-                    <Button
-                      variant="ghost"
-                      onPress={() => setShowPassword(!showPassword)}
-                      accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-                      className="absolute right-1 p-2 py-2 px-2 rounded-lg"
-                    >
-                      <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
-                    </Button>
-                  </View>
-                </View>
-              </>
-            )}
-
-            {hasOidc && (
-              <>
-                {hasEmail && (
-                  <View className="flex-row items-center my-4">
-                    <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
-                    <Text className="mx-3 text-xs text-text-muted uppercase" style={{ marginHorizontal: 12 }}>Or sign in with</Text>
-                    <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
-                  </View>
-                )}
-                <View className="gap-2">
-                  {authSettings.oidc.providers.map((provider: OidcProvider) => (
-                    <Button
-                      key={provider.id}
-                      variant="outline"
-                      onPress={() => handleOidcLogin(provider.id)}
-                      disabled={loading}
-                      className="w-full flex-row items-center justify-center p-2.5 rounded-lg border bg-raised"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: borderSubtle,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: 8,
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        {provider.logo_url && (
-                          <Image
-                            source={{
-                              uri: provider.logo_url.startsWith('http')
-                                ? provider.logo_url
-                                : `${normalizeUrl(serverUrl)}${provider.logo_url}`,
-                            }}
-                            style={{ width: 20, height: 20, marginRight: 8 }}
-                            resizeMode="contain"
-                          />
-                        )}
-                        <Text className="text-base font-semibold text-text-primary">
-                          {provider.display_name || `Sign in with ${provider.id}`}
-                        </Text>
-                      </View>
-                    </Button>
-                  ))}
-                </View>
-              </>
-            )}
-
-            {authSettings && (
-              <View style={{ marginTop: 8 }}>
-                <Button
-                  variant="outline"
-                  onPress={handlePasskeyLogin}
-                  disabled={loading}
-                  className="w-full flex-row items-center justify-center p-2.5 rounded-lg border bg-raised"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: borderSubtle,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: 8,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ marginRight: 8 }}>
-                      <Icon name="fingerprint" size={20} color={accentPrimary} />
-                    </View>
-                    <Text className="text-base font-semibold text-text-primary">
-                      Sign in with Passkey
-                    </Text>
-                  </View>
-                </Button>
+            {/* Auth Mode */}
+            {getSegments().length > 1 && (
+              <View className="mb-3">
+                <SegmentedControl
+                  segments={getSegments()}
+                  activeKey={authTab}
+                  onSelect={setAuthTab}
+                />
               </View>
             )}
 
-            {authSettings && !hasEmail && !hasOidc && (
-              <View className="py-6 px-4 items-center bg-raised rounded-lg border mb-4" style={{ borderWidth: 1, borderColor: borderSubtle }}>
-                <Text className="text-center text-sm text-text-secondary">
-                  No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.
-                </Text>
+            {/* Sign In fields */}
+            {authTab === 'signIn' && (
+              <>
+                {hasEmail && (
+                  <>
+                    <View className="mb-3">
+                      <Text className="text-sm mb-2 text-text-secondary">Email</Text>
+                      <FormInput
+                        placeholder="email@example.com"
+                        value={email}
+                        onChangeText={setEmail}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
+                        autoComplete="email"
+                      />
+                    </View>
+                    <View className="mb-4">
+                      <Text className="text-sm mb-2 text-text-secondary">Password</Text>
+                      <View className="flex-row items-center">
+                        <FormInput
+                          className="flex-1 rounded-lg"
+                          placeholder="Password"
+                          value={password}
+                          onChangeText={setPassword}
+                          secureTextEntry={!showPassword}
+                          autoComplete="password"
+                          style={{ paddingRight: 40 }}
+                        />
+                        <Button
+                          variant="ghost"
+                          onPress={() => setShowPassword(!showPassword)}
+                          accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                          className="absolute right-1 p-2 py-2 px-2 rounded-lg"
+                        >
+                          <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
+                        </Button>
+                      </View>
+                    </View>
+                  </>
+                )}
+
+                {hasOidc && (
+                  <>
+                    {hasEmail && (
+                      <View className="flex-row items-center my-4">
+                        <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
+                        <Text className="mx-3 text-xs text-text-muted uppercase" style={{ marginHorizontal: 12 }}>Or sign in with</Text>
+                        <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
+                      </View>
+                    )}
+                    <View className="gap-2">
+                      {authSettings.oidc.providers.map((provider: OidcProvider) => (
+                        <Button
+                          key={provider.id}
+                          variant="outline"
+                          onPress={() => handleOidcLogin(provider.id)}
+                          disabled={loading}
+                          className="w-full flex-row items-center justify-center p-2.5 rounded-lg border bg-raised"
+                          style={{
+                            borderWidth: 1,
+                            borderColor: borderSubtle,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: 8,
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            {provider.logo_url && (
+                              <Image
+                                source={{
+                                  uri: provider.logo_url.startsWith('http')
+                                    ? provider.logo_url
+                                    : `${normalizeUrl(serverUrl)}${provider.logo_url}`,
+                                }}
+                                style={{ width: 20, height: 20, marginRight: 8 }}
+                                resizeMode="contain"
+                              />
+                            )}
+                            <Text className="text-base font-semibold text-text-primary">
+                              {provider.display_name || `Sign in with ${provider.id}`}
+                            </Text>
+                          </View>
+                        </Button>
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                <View style={{ marginTop: 8 }}>
+                  <Button
+                    variant="outline"
+                    onPress={handlePasskeyLogin}
+                    disabled={loading}
+                    className="w-full flex-row items-center justify-center p-2.5 rounded-lg border bg-raised"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: borderSubtle,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ marginRight: 8 }}>
+                        <Icon name="fingerprint" size={20} color={accentPrimary} />
+                      </View>
+                      <Text className="text-base font-semibold text-text-primary">
+                        Sign in with Passkey
+                      </Text>
+                    </View>
+                  </Button>
+                </View>
+
+                {!hasEmail && !hasOidc && (
+                  <View className="py-6 px-4 items-center bg-raised rounded-lg border mb-4" style={{ borderWidth: 1, borderColor: borderSubtle }}>
+                    <Text className="text-center text-sm text-text-secondary">
+                      No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* API Key field */}
+            {authTab === 'apiKey' && (
+              <View className="mb-4">
+                <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
+                <View className="flex-row items-center">
+                  <FormInput
+                    className="flex-1 rounded-lg"
+                    placeholder="Uds3d8i..."
+                    value={apiKey}
+                    onChangeText={setApiKey}
+                    secureTextEntry={!showApiKey}
+                    style={{ paddingRight: 75 }}
+                  />
+                  <Button
+                    variant="ghost"
+                    onPress={async () => setApiKey(await Clipboard.getString())}
+                    accessibilityLabel="Paste API key from clipboard"
+                    className="absolute right-9 p-2 py-2 px-2 rounded-lg"
+                  >
+                    <Icon name="paste" size={20} color={textSecondary} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onPress={() => setShowApiKey(!showApiKey)}
+                    accessibilityLabel={showApiKey ? "Hide API key" : "Show API key"}
+                    className="absolute right-1 p-2 py-2 px-2 rounded-lg"
+                  >
+                    <Icon name={showApiKey ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
+                  </Button>
+                </View>
               </View>
             )}
           </>
@@ -817,40 +853,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               <>
                 {renderForm()}
 
-                {/* API Key field */}
-                {authTab === 'apiKey' && (
-                  <View className="mb-4">
-                    <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
-                    <View className="flex-row items-center">
-                      <FormInput
-                        className="flex-1 rounded-lg"
-                        placeholder="Uds3d8i..."
-                        value={apiKey}
-                        onChangeText={setApiKey}
-                        secureTextEntry={!showApiKey}
-                        style={{ paddingRight: 75 }}
-                      />
-                      <Button
-                        variant="ghost"
-                        onPress={async () => setApiKey(await Clipboard.getString())}
-                        accessibilityLabel="Paste API key from clipboard"
-                        className="absolute right-9 p-2 py-2 px-2 rounded-lg"
-                      >
-                        <Icon name="paste" size={20} color={textSecondary} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onPress={() => setShowApiKey(!showApiKey)}
-                        accessibilityLabel={showApiKey ? "Hide API key" : "Show API key"}
-                        className="absolute right-1 p-2 py-2 px-2 rounded-lg"
-                      >
-                        <Icon name={showApiKey ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
-                      </Button>
-                    </View>
-                  </View>
-                )}
-
-                {/* Advanced — Proxy Headers */}
+                {/* Advanced — Proxy Headers (always visible) */}
                 <TouchableOpacity
                   className="flex-row items-center gap-1 self-start"
                   onPress={toggleAdvanced}
@@ -935,7 +938,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
                 {/* Actions */}
                 <View className="gap-2 mt-4">
-                  {(authTab === 'apiKey' || (!authSettings || authSettings.email.enabled)) && (
+                  {authSettings && (authTab === 'apiKey' || authSettings.email.enabled) && (
                     <PrimaryButton
                       label="Connect"
                       onPress={handleConnect}
