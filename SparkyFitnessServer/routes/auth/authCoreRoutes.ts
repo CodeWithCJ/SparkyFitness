@@ -6,7 +6,7 @@ import globalSettingsRepository from '../../models/globalSettingsRepository.js';
 import oidcProviderRepository from '../../models/oidcProviderRepository.js';
 import userRepository from '../../models/userRepository.js';
 import authModule from '../../auth.js';
-import { serializeSignedCookie } from 'better-call';
+import { fromNodeHeaders } from 'better-auth/node';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -190,7 +190,9 @@ router.get('/web-login/callback', async (req, res) => {
   const { auth } = authModule;
 
   try {
-    const session = await auth.api.getSession({ headers: req.headers });
+    const session = await auth.api.getSession({
+      headers: fromNodeHeaders(req.headers),
+    });
     if (!session || !session.session) {
       log('error', '[WEB LOGIN] Callback: No active session found.');
       return res.status(400).send('No active session found.');

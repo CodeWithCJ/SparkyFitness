@@ -158,11 +158,14 @@ const apiKeyPlugin = apiKey({
 });
 let passkeyRpID: string | undefined;
 try {
+  const frontendUrl = process.env.SPARKY_FITNESS_FRONTEND_URL;
   const urlString =
     process.env.BETTER_AUTH_URL ||
-    (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('http')
-      ? process.env.SPARKY_FITNESS_FRONTEND_URL
-      : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`);
+    (frontendUrl
+      ? frontendUrl.startsWith('http')
+        ? frontendUrl
+        : `https://${frontendUrl}`
+      : undefined);
   if (urlString) {
     const url = new URL(urlString);
     passkeyRpID = url.hostname;

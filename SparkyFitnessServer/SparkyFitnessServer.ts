@@ -229,13 +229,12 @@ app.use(async (req, res, next) => {
         const cookieName = `${secureCookiePrefix}${prefix}.session_token`;
         try {
           const signed = await serializeSignedCookie(
-            '',
+            cookieName,
             token,
             // @ts-expect-error TS(2345)
             auth.options.secret
           );
-          const signedValue = signed.replace('=', '');
-          const cookieHeader = `${cookieName}=${signedValue}`;
+          const cookieHeader = signed.split(';')[0];
           req.headers.cookie = req.headers.cookie
             ? `${req.headers.cookie}; ${cookieHeader}`
             : cookieHeader;

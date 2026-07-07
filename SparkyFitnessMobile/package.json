@@ -129,8 +129,20 @@
       "^@babel/runtime/(.*)$": "<rootDir>/node_modules/@babel/runtime/$1",
       "^remend$": "<rootDir>/node_modules/remend/dist/index.js"
     },
+    "transform": {
+      "^.+\\.mjs$": [
+        "babel-jest",
+        {
+          "presets": [
+            "babel-preset-expo"
+          ],
+          "babelrc": false,
+          "configFile": false
+        }
+      ]
+    },
     "transformIgnorePatterns": [
-      "node_modules/(?!(?:.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo[^/]*|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@shopify/react-native-skia|react-native-ui-datepicker|@workspace/shared|remend|zod|better-auth|@better-auth/.*|@better-fetch/.*|nanostores)/)"
+      "node_modules/(?!(?:.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo[^/]*|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@shopify/react-native-skia|react-native-ui-datepicker|@workspace/shared|remend|zod|better-auth|@better-auth/.*|@better-fetch/.*|nanostores|jose|@noble/.*|better-call|defu)/)"
     ],
     "collectCoverage": true,
     "collectCoverageFrom": [

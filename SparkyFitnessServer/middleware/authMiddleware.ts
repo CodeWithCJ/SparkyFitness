@@ -44,13 +44,12 @@ const authenticate = async (req: any, res: any, next: any) => {
           : '';
         const cookieName = `${secureCookiePrefix}${prefix}.session_token`;
         const signed = await serializeSignedCookie(
-          '',
+          cookieName,
           token,
           // @ts-expect-error TS(2345): Argument of type 'string | undefined' is not assig... Remove this comment to see the full error message
           auth.options.secret
         );
-        const signedValue = signed.replace('=', ''); // Strip leading = from empty cookie name
-        const cookieHeader = `${cookieName}=${signedValue}`;
+        const cookieHeader = signed.split(';')[0];
         req.headers.cookie = req.headers.cookie
           ? `${req.headers.cookie}; ${cookieHeader}`
           : cookieHeader;

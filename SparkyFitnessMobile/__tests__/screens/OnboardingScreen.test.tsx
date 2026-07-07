@@ -97,7 +97,7 @@ describe('OnboardingScreen', () => {
         fireEvent.press(getByText('Next'));
       });
 
-      expect(getByText(/Enter a valid SparkyFitness URL/)).toBeTruthy();
+      expect(getByText(/Enter a valid Frontend URL/)).toBeTruthy();
       expect(mockFetch).not.toHaveBeenCalled();
     });
 

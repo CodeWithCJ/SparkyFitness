@@ -191,6 +191,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       isMounted = false;
       clearTimeout(timeout);
     };
+    // Re-fetch only when the URL or visibility changes; `cleanedHeaders()` is read
+    // at fetch time so proxy-header keystrokes don't re-trigger the debounced fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverUrl, visible]);
 
   // Adjust selected tab if current one becomes disabled by the settings
@@ -202,6 +205,8 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         setAuthTab('apiKey');
       }
     }
+    // `getSegments()` derives from `authSettings`, which is already a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authSettings, authTab]);
 
   const toggleAdvanced = () => {
