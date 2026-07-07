@@ -13,7 +13,6 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "prebuild": "expo prebuild --clean",
-    "postinstall": "node scripts/patch-expo-jsi.js",
     "lint": "expo lint src App.tsx index.js __tests__ --max-warnings 0",
     "lint:compiler": "eslint --no-config-lookup --config eslint.compiler.config.js src App.tsx",
     "start": "expo start",
