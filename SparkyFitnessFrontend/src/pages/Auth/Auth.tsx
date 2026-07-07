@@ -646,36 +646,55 @@ const Auth = () => {
                   )}
                 </Tabs>
               ) : (
-                <div>
+                <div className="space-y-4">
+                  {/* Passkey is always available */}
+                  <Button
+                    variant="outline"
+                    className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
+                    onClick={handlePasskeySignIn}
+                    disabled={loading}
+                  >
+                    <Fingerprint className="h-4 w-4 mr-2 text-primary" /> Sign
+                    in with Passkey
+                  </Button>
+
                   {loginSettings?.oidc.enabled &&
-                  loginSettings.oidc.providers?.length > 0 ? (
-                    loginSettings.oidc.providers.map((provider) => (
-                      <Button
-                        key={provider.id}
-                        variant="outline"
-                        className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
-                        onClick={() => {
-                          if (provider.id) {
-                            initiateOidcLogin({ providerId: provider.id });
-                          }
-                        }}
-                      >
-                        {provider.logo_url && (
-                          <img
-                            src={provider.logo_url}
-                            alt={`${provider.display_name} logo`}
-                            className="h-5 w-5 mr-2"
-                          />
-                        )}
-                        {provider.display_name || 'Sign In with OIDC'}
-                      </Button>
-                    ))
-                  ) : (
-                    <p className="text-center text-red-500">
-                      No login methods are currently enabled. Please contact an
-                      administrator.
-                    </p>
-                  )}
+                    loginSettings.oidc.providers?.length > 0 && (
+                      <>
+                        <div className="flex items-center my-4">
+                          <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
+                          <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">
+                            Or sign in with
+                          </span>
+                          <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
+                        </div>
+                        <div className="space-y-2">
+                          {loginSettings.oidc.providers.map((provider) => (
+                            <Button
+                              key={provider.id}
+                              variant="outline"
+                              className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
+                              onClick={() => {
+                                if (provider.id) {
+                                  initiateOidcLogin({
+                                    providerId: provider.id,
+                                  });
+                                }
+                              }}
+                            >
+                              {provider.logo_url && (
+                                <img
+                                  src={provider.logo_url}
+                                  alt={`${provider.display_name} logo`}
+                                  className="h-5 w-5 mr-2"
+                                />
+                              )}
+                              {provider.display_name || 'Sign In with OIDC'}
+                            </Button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                 </div>
               )}
             </CardContent>

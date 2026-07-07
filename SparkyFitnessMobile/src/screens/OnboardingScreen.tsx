@@ -7,6 +7,7 @@ import {
   Pressable,
   LayoutAnimation,
   Keyboard,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -135,11 +136,17 @@ export default function OnboardingScreen({ navigation }: Props) {
   const handleNext = async () => {
     const url = normalizeUrl(serverUrl);
     if (!url) {
-      setError('Enter a valid SparkyFitness URL');
+      setError('Enter a valid Frontend URL');
       return;
     }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
-      setError('HTTPS is required for server connections.');
+    
+    const lowerUrl = url.toLowerCase();
+    const isSecure = lowerUrl.startsWith('https://');
+    const isDevLocal = __DEV__ && (lowerUrl.includes('localhost') || lowerUrl.includes('127.0.0.1') || lowerUrl.includes('192.168.'));
+    
+    if (!isSecure && !isDevLocal) {
+      const healthPolicy = Platform.OS === 'ios' ? 'Apple Health' : 'Google Health';
+      setError(`HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`);
       return;
     }
 
@@ -152,12 +159,12 @@ export default function OnboardingScreen({ navigation }: Props) {
 
       const hasEmail = settings.email.enabled;
       const hasOidc = settings.oidc.enabled && settings.oidc.providers.length > 0;
-      if (!hasEmail && hasOidc) {
+      const hasPasskey = true; // Always supported since settings loaded successfully
+      
+      if (hasEmail || hasOidc || hasPasskey) {
         setAuthTab('signIn');
-      } else if (!hasEmail && !hasOidc) {
-        setAuthTab('apiKey');
       } else {
-        setAuthTab('signIn');
+        setAuthTab('apiKey');
       }
 
       setError('');
@@ -476,7 +483,7 @@ export default function OnboardingScreen({ navigation }: Props) {
 
       {/* Server URL input */}
       <View className="mb-6">
-        <Text className="text-sm mb-2 text-text-secondary">SparkyFitness URL</Text>
+        <Text className="text-sm mb-2 text-text-secondary">Frontend URL</Text>
         <View
           className="flex-row items-center rounded-lg pr-2.5 bg-raised"
           style={{ borderWidth: 1, borderColor: isServerUrlFocused ? accentPrimary : borderSubtle }}
@@ -575,6 +582,8 @@ export default function OnboardingScreen({ navigation }: Props) {
       segments.push({ key: 'signIn' as const, label: 'Sign In' });
     } else if (hasOidc) {
       segments.push({ key: 'signIn' as const, label: 'SSO' });
+    } else if (authSettings) {
+      segments.push({ key: 'signIn' as const, label: 'Passkey' });
     }
     
     segments.push({ key: 'apiKey' as const, label: 'API Key' });

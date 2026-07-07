@@ -435,13 +435,19 @@ export interface AuthSettings {
 /**
  * Queries the public auth settings from the frontend/server.
  */
-export const fetchAuthSettings = async (serverUrl: string): Promise<AuthSettings> => {
+export const fetchAuthSettings = async (
+  serverUrl: string,
+  customHeaders?: Record<string, string>
+): Promise<AuthSettings> => {
   const baseUrl = normalizeUrl(serverUrl);
   const response = await fetch(`${baseUrl}/api/auth/settings`, {
     method: 'GET',
     credentials: 'omit',
     cache: 'no-store',
-    headers: { ...pendingProxyHeaders },
+    headers: {
+      ...pendingProxyHeaders,
+      ...customHeaders,
+    },
   });
 
   if (!response.ok) {

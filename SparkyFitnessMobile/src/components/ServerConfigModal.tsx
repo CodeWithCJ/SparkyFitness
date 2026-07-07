@@ -102,9 +102,16 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const [mfaCode, setMfaCode] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
 
-  // Reset form when modal opens
+  // Reset form when modal opens or closes
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      setServerUrl('');
+      setError('');
+      setAuthSettings(null);
+      setApiKey('');
+      setProxyHeaders([]);
+      return;
+    }
 
     setError('');
     setLoading(false);
@@ -144,7 +151,18 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     }
 
     const url = normalizeUrl(serverUrl);
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.startsWith('http://') || lowerUrl.startsWith('https://')) {
+      const validationError = getHttpsValidationError(url);
+      if (validationError) {
+        setError(validationError);
+        setAuthSettings(null);
+        return;
+      }
+      
+      // Clear HTTP warning if URL is now secure/valid
+      setError('');
+    } else {
       setAuthSettings(null);
       return;
     }
@@ -152,7 +170,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     let isMounted = true;
     const fetchSettings = async () => {
       try {
-        const settings = await fetchAuthSettings(url);
+        const settings = await fetchAuthSettings(url, proxyHeadersToRecord(cleanedHeaders()));
         if (isMounted) {
           setAuthSettings(settings);
         }
@@ -178,9 +196,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   // Adjust selected tab if current one becomes disabled by the settings
   useEffect(() => {
     if (authSettings) {
-      const hasEmail = authSettings.email.enabled;
-      const hasOidc = authSettings.oidc.enabled && authSettings.oidc.providers.length > 0;
-      if (authTab === 'signIn' && !hasEmail && !hasOidc) {
+      const segments = getSegments();
+      const hasSignInTab = segments.some(s => s.key === 'signIn');
+      if (authTab === 'signIn' && !hasSignInTab) {
         setAuthTab('apiKey');
       }
     }
@@ -207,6 +225,18 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, '');
 
+  const getHttpsValidationError = (url: string): string | null => {
+    const lowerUrl = url.toLowerCase();
+    const isSecure = lowerUrl.startsWith('https://');
+    const isDevLocal = __DEV__ && (lowerUrl.includes('localhost') || lowerUrl.includes('127.0.0.1') || lowerUrl.includes('192.168.'));
+    
+    if (!isSecure && !isDevLocal) {
+      const healthPolicy = Platform.OS === 'ios' ? 'Apple Health' : 'Google Health';
+      return `HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`;
+    }
+    return null;
+  };
+
   /** Strip empty rows so we only persist real headers. */
   const cleanedHeaders = () => proxyHeaders.filter(h => h.name.trim() && h.value.trim());
 
@@ -226,11 +256,13 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleSignIn = async () => {
     const url = normalizeUrl(serverUrl);
-    if (!url) { setError('Enter a valid SparkyFitness URL'); return; }
+    if (!url) { setError('Enter a valid Frontend URL'); return; }
     if (!email.trim()) { setError('Please enter your email.'); return; }
     if (!password) { setError('Please enter your password.'); return; }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
-      setError('HTTPS is required for server connections.');
+    
+    const validationError = getHttpsValidationError(url);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -306,11 +338,13 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const handlePasskeyLogin = async () => {
     const url = normalizeUrl(serverUrl);
     if (!url) {
-      setError('Please enter your server URL first.');
+      setError('Please enter your Frontend URL first.');
       return;
     }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
-      setError('HTTPS is required for server connections.');
+    
+    const validationError = getHttpsValidationError(url);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -426,10 +460,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleConnectApiKey = async () => {
     const url = normalizeUrl(serverUrl);
-    if (!url) { setError('Enter a valid SparkyFitness URL'); return; }
+    if (!url) { setError('Enter a valid Frontend URL'); return; }
     if (!apiKey.trim()) { setError('Please enter an API key.'); return; }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
-      setError('HTTPS is required for server connections.');
+    
+    const validationError = getHttpsValidationError(url);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -475,9 +511,11 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleSaveWithoutAuth = async () => {
     const url = normalizeUrl(serverUrl);
-    if (!url) { setError('Enter a valid SparkyFitness URL'); return; }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
-      setError('HTTPS is required for server connections.');
+    if (!url) { setError('Enter a valid Frontend URL'); return; }
+    
+    const validationError = getHttpsValidationError(url);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -560,6 +598,8 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       segments.push({ key: 'signIn' as const, label: 'Sign In' });
     } else if (hasOidc) {
       segments.push({ key: 'signIn' as const, label: 'SSO' });
+    } else if (authSettings) {
+      segments.push({ key: 'signIn' as const, label: 'Passkey' });
     }
     
     segments.push({ key: 'apiKey' as const, label: 'API Key' });
@@ -572,9 +612,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
     return (
       <>
-        {/* Server URL */}
+        {/* Frontend URL */}
         <View className="mb-3">
-          <Text className="text-sm mb-2 text-text-secondary">Server URL</Text>
+          <Text className="text-sm mb-2 text-text-secondary">Frontend URL</Text>
           <View className="flex-row items-center">
             <FormInput
               className="flex-1 rounded-lg"
@@ -595,6 +635,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
             </Button>
           </View>
         </View>
+
+        {error ? (
+          <View className="mb-3">
+            <ErrorBanner message={error} />
+          </View>
+        ) : null}
 
         {/* Auth Mode */}
         {getSegments().length > 1 && (
@@ -886,7 +932,6 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   </View>
                 )}
 
-                <ErrorBanner message={error} />
 
                 {/* Actions */}
                 <View className="gap-2 mt-4">
