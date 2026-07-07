@@ -64,6 +64,7 @@ function makeSet(overrides?: Partial<ExerciseEntrySetResponse>): ExerciseEntrySe
     rest_time: 90,
     notes: null,
     rpe: null,
+    completed_at: null,
     ...overrides,
   };
 }
@@ -74,6 +75,7 @@ interface RenderOverrides {
   metricColumn?: ActiveWorkoutMetricColumn;
   weightUnit?: 'kg' | 'lbs';
   displayNumber?: number;
+  readOnly?: boolean;
 }
 
 function renderRow(overrides?: RenderOverrides) {
@@ -92,6 +94,7 @@ function renderRow(overrides?: RenderOverrides) {
       state={overrides?.state ?? 'current'}
       metricColumn={overrides?.metricColumn ?? 'rpe'}
       weightUnit={overrides?.weightUnit ?? 'kg'}
+      readOnly={overrides?.readOnly}
       {...callbacks}
     />,
   );
@@ -245,6 +248,70 @@ describe('ActiveWorkoutSetRow', () => {
     it('is not dimmed', () => {
       const { getByTestId } = renderRow({ state: 'upcoming' });
       expect(StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity).toBeUndefined();
+    });
+  });
+
+  describe('readOnly', () => {
+    it('renders a static checkmark on done rows with no un-complete control', () => {
+      const { getByTestId, queryByLabelText } = renderRow({ state: 'done', readOnly: true });
+      expect(getByTestId('icon-checkmark')).toBeTruthy();
+      expect(queryByLabelText('Un-complete set 1')).toBeNull();
+    });
+
+    it('does not dim done rows', () => {
+      const { getByTestId } = renderRow({ state: 'done', readOnly: true });
+      expect(StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity).toBeUndefined();
+    });
+
+    it('offers no swipe-delete and no re-complete control', () => {
+      const done = renderRow({ state: 'done', readOnly: true });
+      expect(done.queryByTestId('reanimated-swipeable')).toBeNull();
+      expect(done.queryByLabelText('Delete set 1')).toBeNull();
+
+      const upcoming = renderRow({ state: 'upcoming', readOnly: true });
+      expect(upcoming.queryByLabelText('Mark set 1 complete')).toBeNull();
+    });
+
+    it('coerces a current state to a plain row with no editing chrome', () => {
+      const { queryByTestId, queryByLabelText, getByText } = renderRow({
+        state: 'current',
+        readOnly: true,
+      });
+      expect(queryByTestId('stepper-input-decimal-pad')).toBeNull();
+      expect(queryByTestId('stepper-input-number-pad')).toBeNull();
+      expect(queryByLabelText('Log set')).toBeNull();
+      expect(queryByLabelText('RPE')).toBeNull();
+      expect(getByText('60')).toBeTruthy();
+    });
+
+    it('still fires onLongPress with the set id', () => {
+      const { getByTestId, callbacks } = renderRow({ state: 'done', readOnly: true });
+      fireEvent(getByTestId('set-row'), 'longPress');
+      expect(callbacks.onLongPress).toHaveBeenCalledWith('101');
+    });
+
+    it('renders the metric column', () => {
+      const { getByText } = renderRow({
+        state: 'done',
+        readOnly: true,
+        metricColumn: 'volume',
+      });
+      expect(getByText('600')).toBeTruthy();
+    });
+
+    it('renders without the mutating callbacks', () => {
+      const { getByTestId } = render(
+        <ActiveWorkoutSetRow
+          set={makeSet()}
+          displayNumber={1}
+          state="done"
+          metricColumn="rpe"
+          weightUnit="kg"
+          readOnly
+          onLongPress={jest.fn()}
+        />,
+      );
+      expect(getByTestId('set-row')).toBeTruthy();
     });
   });
 

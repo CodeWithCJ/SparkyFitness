@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,15 +9,17 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
-import SafeImage from '../components/SafeImage';
 import WorkoutEditableExerciseList from '../components/WorkoutEditableExerciseList';
-import RestPeriodChip from '../components/RestPeriodChip';
+import ActiveWorkoutExerciseCard, {
+  METRIC_MENU_LABELS,
+  METRIC_OPTIONS,
+} from '../components/ActiveWorkoutExerciseCard';
+import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
 import {
   getSourceLabel,
   getWorkoutSummary,
   getExerciseVolumeKg,
   formatVolume,
-  CATEGORY_ICON_MAP,
   buildSupersetColorMap,
   getSupersetRuns,
   SUPERSET_PALETTE_VARS,
@@ -33,210 +35,24 @@ import { useWorkoutForm, getWorkoutDraftSubmission } from '../hooks/useWorkoutFo
 import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
-import { weightFromKg } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import { extractActivitySummary } from '../utils/activityDetails';
-import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import {
+  seedCompletionFromSession,
+  useActiveWorkoutStore,
+} from '../stores/activeWorkoutStore';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { ensureNotificationPermission } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import type { SupersetBorder } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
-import type {
-  ExerciseEntryResponse,
-  ExerciseEntrySetResponse,
-  UpdatePresetSessionRequest,
-} from '@workspace/shared';
+import type { UpdatePresetSessionRequest } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
-
-function getExerciseSetSummary(exercise: ExerciseEntryResponse, weightUnit: string): string {
-  if (exercise.sets.length === 0) return '';
-  const firstSet = exercise.sets[0];
-  const allSame = exercise.sets.every(
-    s => s.weight === firstSet.weight && s.reps === firstSet.reps
-  );
-  if (allSame && firstSet.weight != null && firstSet.reps != null) {
-    const displayWeight = parseFloat(weightFromKg(firstSet.weight, weightUnit as 'kg' | 'lbs').toFixed(1));
-    return `${exercise.sets.length} × ${firstSet.reps} @ ${displayWeight} ${weightUnit}`;
-  }
-  return `${exercise.sets.length} sets`;
-}
-
-interface SetTableRowProps {
-  set: ExerciseEntrySetResponse;
-  onLongPress: (setId: string) => void;
-  weightUnit: string;
-  successColor: string;
-}
-
-const SetTableRow = React.memo(({ set, onLongPress, weightUnit, successColor }: SetTableRowProps) => {
-  const displayWeight = set.weight != null
-    ? `${parseFloat(weightFromKg(set.weight, weightUnit as 'kg' | 'lbs').toFixed(1))} ${weightUnit}`
-    : '\u2014';
-  const displayReps = set.reps != null ? String(set.reps) : '\u2014';
-
-  return (
-    <Pressable
-      onLongPress={() => onLongPress(String(set.id))}
-      delayLongPress={400}
-      className="flex-row items-center py-1.5"
-    >
-      <View className="w-10 items-center justify-center">
-        <Text className="text-sm text-text-muted">{set.set_number}</Text>
-      </View>
-      <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
-      <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
-      {/* Last-saved server state: a live session's just-tapped checkmarks
-          appear here only after the autosave lands. */}
-      <View className="w-6 items-center justify-center">
-        {set.completed_at != null && (
-          <Icon name="checkmark" size={14} color={successColor} weight="bold" />
-        )}
-      </View>
-    </Pressable>
-  );
-});
-
-SetTableRow.displayName = 'SetTableRow';
-
-interface ExerciseRowProps {
-  exercise: ExerciseEntryResponse;
-  isExpanded: boolean;
-  onToggle: (exerciseId: string) => void;
-  getImageSource: ReturnType<typeof useExerciseImageSource>['getImageSource'];
-  accentPrimary: string;
-  textMuted: string;
-  successColor: string;
-  weightUnit: string;
-  showRestChip: boolean;
-  onLongPressSet: (setId: string) => void;
-}
-
-const ExerciseRow = React.memo(({
-  exercise,
-  isExpanded,
-  onToggle,
-  getImageSource,
-  accentPrimary,
-  textMuted,
-  successColor,
-  weightUnit,
-  showRestChip,
-  onLongPressSet,
-}: ExerciseRowProps) => {
-  const snapshot = exercise.exercise_snapshot;
-  const metadataItems = [snapshot?.category, snapshot?.level, snapshot?.force, snapshot?.mechanic].filter(Boolean);
-  const volume = getExerciseVolumeKg(exercise);
-  const exerciseIcon = (snapshot?.category && CATEGORY_ICON_MAP[snapshot.category]) || 'exercise-weights';
-
-  const rotation = useSharedValue(isExpanded ? 0 : -90);
-
-  useEffect(() => {
-    rotation.value = withTiming(isExpanded ? 0 : -90, { duration: 200 });
-  }, [isExpanded, rotation]);
-
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
-
-  const renderSetTable = () => {
-    if (exercise.sets.length === 0) return null;
-    return (
-      <View className="mt-2">
-        <View className="flex-row py-1 mb-1">
-          <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
-          <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
-          <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
-          <View className="w-6" />
-        </View>
-        {exercise.sets.map(set => (
-          <SetTableRow
-            key={set.id}
-            set={set}
-            onLongPress={onLongPressSet}
-            weightUnit={weightUnit}
-            successColor={successColor}
-          />
-        ))}
-      </View>
-    );
-  };
-
-  return (
-    <View>
-      <View className="border-t border-border-subtle" />
-      <TouchableOpacity
-        className="pt-4 pb-2"
-        onPress={() => onToggle(exercise.id)}
-        activeOpacity={0.7}
-      >
-        <View className="flex-row items-center">
-          <View className="mr-3 items-center justify-center" style={{ width: 64, height: 64, marginTop: 2 }}>
-            <SafeImage
-              source={snapshot?.images?.[0] ? getImageSource(snapshot.images[0]) : null}
-              style={{ width: 64, height: 64, borderRadius: 8, opacity: 0.8 }}
-              fallback={<Icon name={exerciseIcon} size={28} color={accentPrimary} />}
-            />
-          </View>
-          <View className="flex-1">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-lg font-semibold text-text-primary flex-1 mr-2" numberOfLines={1}>
-                {snapshot?.name ?? 'Unknown exercise'}
-              </Text>
-              <Animated.View style={chevronStyle}>
-                <Icon name="chevron-down" size={18} color={textMuted} />
-              </Animated.View>
-            </View>
-
-            {isExpanded && metadataItems.length > 0 && (
-              <FadeView key="metadata">
-                <Text className="text-xs text-text-muted mt-1">
-                  {metadataItems.join(' \u2022 ')}
-                </Text>
-              </FadeView>
-            )}
-
-            {isExpanded && showRestChip && (
-              <FadeView key="rest-chip">
-                <View className="flex-row self-start mt-1.5">
-                  <RestPeriodChip readOnly value={exercise.sets[0]?.rest_time} />
-                </View>
-              </FadeView>
-            )}
-
-            {!isExpanded && exercise.sets.length > 0 && (
-              <FadeView key="collapsed">
-                <View className="mt-1">
-                  <Text className="text-sm text-text-secondary">
-                    {getExerciseSetSummary(exercise, weightUnit)}
-                  </Text>
-                  {volume > 0 && (
-                    <Text className="text-sm text-text-muted mt-0.5">
-                      Volume: {formatVolume(volume, weightUnit)}
-                    </Text>
-                  )}
-                </View>
-              </FadeView>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-
-      {isExpanded && exercise.sets.length > 0 && (
-        <FadeView key="expanded">
-          <View className="pb-2">
-            {renderSetTable()}
-          </View>
-        </FadeView>
-      )}
-    </View>
-  );
-});
-
-ExerciseRow.displayName = 'ExerciseRow';
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [session, setSession] = useState(route.params.session);
@@ -246,24 +62,46 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle, successColor] = useCSSVariable([
+  const [accentPrimary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-muted',
     '--color-border-subtle',
-    '--color-icon-success',
-  ]) as [string, string, string, string];
+  ]) as [string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   // Superset display (view mode only): grouped members get a flat left rail
   // in a per-group palette color, matching the active-workout screen.
   const supersetPalette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
-  const supersetColorByEntryId = useMemo(
-    () => buildSupersetColorMap(getSupersetRuns(session.exercises), supersetPalette),
-    [session, supersetPalette],
-  );
+  const supersetRuns = useMemo(() => getSupersetRuns(session.exercises), [session]);
+  const supersetBorders = useMemo(() => {
+    const colorByEntryId = buildSupersetColorMap(supersetRuns, supersetPalette);
+    const map = new Map<string, SupersetBorder>();
+    for (const run of supersetRuns) {
+      run.entryIds.forEach((entryId, index) => {
+        const color = colorByEntryId.get(entryId);
+        if (color != null) {
+          map.set(entryId, { color, isLast: index === run.entryIds.length - 1 });
+        }
+      });
+    }
+    return map;
+  }, [supersetRuns, supersetPalette]);
 
   const { getImageSource } = useExerciseImageSource();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  // Last-saved server state: a live session's just-tapped checkmarks appear
+  // here only after the autosave lands (the focus refresh below swaps in the
+  // store's session snapshot).
+  const completedSetIds = useMemo(() => seedCompletionFromSession(session), [session]);
+
+  // Metric column is shared with the active-workout screen — changing it on
+  // either screen changes both (intended).
+  const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
+  const setMetricColumn = useAppPreferencesStore((s) => s.setActiveWorkoutMetricColumn);
+  const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
+  const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
+    setMetricMenuAnchor(anchor);
+  }, []);
 
   // Active workout state (narrow selectors — avoid re-rendering on unrelated changes)
   const activeSessionId = useActiveWorkoutStore((s) => s.sessionId);
@@ -271,9 +109,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const isWorkoutActive = activeSessionId === session.id;
 
-  const toggleSection = (key: string) => {
+  const toggleSection = useCallback((key: string) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  }, []);
 
   // Auto-expand the exercise containing the active set while the workout is
   // running for this session — so opening the detail page mid-workout (e.g.
@@ -417,37 +255,40 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.replace('ActiveWorkout');
   };
 
-  const handleLongPressSet = (setId: string) => {
-    const buttons: {
-      text: string;
-      style?: 'cancel' | 'destructive';
-      onPress?: () => void;
-    }[] = [];
+  const handleLongPressSet = useCallback(
+    (setId: string) => {
+      const buttons: {
+        text: string;
+        style?: 'cancel' | 'destructive';
+        onPress?: () => void;
+      }[] = [];
 
-    if (isSparky) {
-      buttons.push({ text: 'Edit', onPress: startEditing });
-    }
+      if (isSparky) {
+        buttons.push({ text: 'Edit', onPress: startEditing });
+      }
 
-    if (!isWorkoutActive) {
-      buttons.push({
-        text: 'Start workout here',
-        onPress: () => {
-          if (useActiveWorkoutStore.getState().sessionId !== null) {
-            Alert.alert('Another workout is in progress', 'Finish or clear it first.');
-            return;
-          }
-          void ensureNotificationPermission();
-          useActiveWorkoutStore.getState().startWorkoutAtSet(session, setId);
-          navigation.replace('ActiveWorkout');
-        },
-      });
-    }
+      if (!isWorkoutActive) {
+        buttons.push({
+          text: 'Start workout here',
+          onPress: () => {
+            if (useActiveWorkoutStore.getState().sessionId !== null) {
+              Alert.alert('Another workout is in progress', 'Finish or clear it first.');
+              return;
+            }
+            void ensureNotificationPermission();
+            useActiveWorkoutStore.getState().startWorkoutAtSet(session, setId);
+            navigation.replace('ActiveWorkout');
+          },
+        });
+      }
 
-    if (buttons.length === 0) return;
+      if (buttons.length === 0) return;
 
-    buttons.push({ text: 'Cancel', style: 'cancel' });
-    Alert.alert(name, undefined, buttons);
-  };
+      buttons.push({ text: 'Cancel', style: 'cancel' });
+      Alert.alert(name, undefined, buttons);
+    },
+    [isSparky, isWorkoutActive, session, name, startEditing, navigation],
+  );
 
   const openExerciseSearch = () => {
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
@@ -492,45 +333,52 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // --- Read-only render helpers ---
 
   const renderViewExercises = () => (
-    <View>
+    <View className="mt-4">
       {session.exercises.map(exercise => {
-        const railColor = supersetColorByEntryId.get(exercise.id) ?? null;
-        const row = (
-          <ExerciseRow
+        const isExpanded = !!expandedSections[exercise.id];
+        const supersetBorder = supersetBorders.get(exercise.id) ?? null;
+        const card = (
+          <ActiveWorkoutExerciseCard
             exercise={exercise}
-            isExpanded={!!expandedSections[exercise.id]}
-            onToggle={toggleSection}
+            mode="view"
+            expanded={isExpanded}
+            completedSetIds={completedSetIds}
+            activeSetId={null}
+            metricColumn={metricColumn}
+            weightUnit={weightUnit as 'kg' | 'lbs'}
             getImageSource={getImageSource}
-            accentPrimary={accentPrimary}
-            textMuted={textMuted}
-            successColor={successColor}
-            weightUnit={weightUnit}
             showRestChip={isSparky}
+            onToggleExpanded={toggleSection}
+            onPressMetricHeader={handlePressMetricHeader}
             onLongPressSet={handleLongPressSet}
           />
         );
-        if (railColor == null) {
-          return <React.Fragment key={exercise.id}>{row}</React.Fragment>;
-        }
-        // Superset members carry a flat 3px left rail in the group color.
-        // Rows are flat (no margins), so full-height rails on consecutive
-        // members read as one continuous line per group.
         return (
-          <View key={exercise.id} style={{ paddingLeft: 10 }}>
-            <View
-              testID={`superset-rail-${exercise.id}`}
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: 3,
-                backgroundColor: railColor,
-              }}
-            />
-            {row}
-          </View>
+          <Animated.View key={exercise.id} layout={LinearTransition.duration(300)}>
+            {supersetBorder ? (
+              // Grouped members carry a flat 3px left rail. Interior rails
+              // run to the wrapper's bottom — which includes the expanded
+              // card's 8px mb-2 — so consecutive members read as one
+              // continuous line; the run's last member stops at the card.
+              <View style={{ paddingLeft: 10 }}>
+                <View
+                  testID={`superset-rail-${exercise.id}`}
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: supersetBorder.isLast && isExpanded ? 8 : 0,
+                    width: 3,
+                    backgroundColor: supersetBorder.color,
+                  }}
+                />
+                {card}
+              </View>
+            ) : (
+              card
+            )}
+          </Animated.View>
         );
       })}
     </View>
@@ -781,6 +629,21 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         ref={calendarSheetRef}
         selectedDate={isEditing ? formState.entryDate : normalizedDate}
         onSelectDate={setFormDate}
+      />
+
+      <AnchoredMenu
+        visible={metricMenuAnchor != null}
+        anchor={metricMenuAnchor}
+        onClose={() => setMetricMenuAnchor(null)}
+        minWidth={160}
+        items={METRIC_OPTIONS.map((option) => ({
+          key: option,
+          label:
+            option === metricColumn
+              ? `✓ ${METRIC_MENU_LABELS[option]}`
+              : METRIC_MENU_LABELS[option],
+          onPress: () => setMetricColumn(option),
+        }))}
       />
     </>
   );

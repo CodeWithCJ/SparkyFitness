@@ -15,7 +15,10 @@ import ActiveWorkoutHeader, {
   buildExerciseProgress,
 } from '../components/ActiveWorkoutHeader';
 import ActiveWorkoutRail from '../components/ActiveWorkoutRail';
-import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
+import ActiveWorkoutExerciseCard, {
+  METRIC_MENU_LABELS,
+  METRIC_OPTIONS,
+} from '../components/ActiveWorkoutExerciseCard';
 import ActiveWorkoutRestBar from '../components/ActiveWorkoutRestBar';
 import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
@@ -35,25 +38,13 @@ import {
   getSupersetRuns,
   SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
-import {
-  useAppPreferencesStore,
-  type ActiveWorkoutMetricColumn,
-} from '../stores/appPreferencesStore';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { SupersetBorder } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ActiveWorkout'>;
 
 const SET_TYPE_OPTIONS = ['warmup', 'normal', 'drop', 'failure'] as const;
-
-const METRIC_OPTIONS: ActiveWorkoutMetricColumn[] = ['rpe', 'volume', 'e1rm', 'tenrm'];
-
-const METRIC_MENU_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
-  rpe: 'RPE',
-  volume: 'Volume',
-  e1rm: 'Est. 1RM',
-  tenrm: 'Est. 10RM',
-};
 
 function ActiveWorkoutScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();

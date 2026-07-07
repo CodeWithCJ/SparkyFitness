@@ -380,9 +380,10 @@ function makeDefaultSet(id: number, setNumber: number): ExerciseEntrySetResponse
 /**
  * Seed the completion map from server-persisted `completed_at` timestamps so
  * a workout started from a session with prior progress resumes where it left
- * off. Missing or unparseable timestamps count as not completed.
+ * off. Missing or unparseable timestamps count as not completed. Also used by
+ * read-only session views to derive done/upcoming per set.
  */
-function seedCompletionFromSession(session: PresetSessionResponse): CompletedSetMap {
+export function seedCompletionFromSession(session: PresetSessionResponse): CompletedSetMap {
   const seeded: CompletedSetMap = {};
   for (const exercise of session.exercises) {
     for (const s of exercise.sets) {

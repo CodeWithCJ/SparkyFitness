@@ -70,11 +70,16 @@ interface ActiveWorkoutSetRowProps {
   state: SetRowState;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
-  onCompleteActive: () => void;
-  onUncomplete: (setId: string) => void;
-  onRecomplete: (setId: string) => void;
-  onCommitField: (setId: string, patch: ActiveSetPatch) => void;
-  onDelete: (setId: string) => void;
+  /**
+   * Render without logging affordances: static check on done rows, no
+   * un-complete/re-complete controls, no swipe-delete, no done-row dim.
+   */
+  readOnly?: boolean;
+  onCompleteActive?: () => void;
+  onUncomplete?: (setId: string) => void;
+  onRecomplete?: (setId: string) => void;
+  onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
+  onDelete?: (setId: string) => void;
   onLongPress: (setId: string) => void;
 }
 
@@ -101,9 +106,10 @@ function LogCircle({ color }: { color: string }) {
 function ActiveWorkoutSetRow({
   set,
   displayNumber,
-  state,
+  state: stateProp,
   metricColumn,
   weightUnit,
+  readOnly = false,
   onCompleteActive,
   onUncomplete,
   onRecomplete,
@@ -111,6 +117,10 @@ function ActiveWorkoutSetRow({
   onDelete,
   onLongPress,
 }: ActiveWorkoutSetRowProps) {
+  // Read-only surfaces pass activeSetId={null}, so 'current' is unreachable
+  // there — coerce anyway so the editing chrome can never render.
+  const state = readOnly && stateProp === 'current' ? 'upcoming' : stateProp;
+
   const [
     accentPrimary,
     successColor,
@@ -169,7 +179,7 @@ function ActiveWorkoutSetRow({
   const commitWeight = useCallback(
     (text: string) => {
       const value = parseDecimalInput(text);
-      onCommitField(setId, {
+      onCommitField?.(setId, {
         weight: Number.isNaN(value) ? null : weightToKg(value, weightUnit),
       });
     },
@@ -179,7 +189,7 @@ function ActiveWorkoutSetRow({
   const commitReps = useCallback(
     (text: string) => {
       const value = parseInt(text, 10);
-      onCommitField(setId, { reps: Number.isNaN(value) ? null : value });
+      onCommitField?.(setId, { reps: Number.isNaN(value) ? null : value });
     },
     [onCommitField, setId],
   );
@@ -188,7 +198,7 @@ function ActiveWorkoutSetRow({
     (text: string) => {
       const value = parseRpeInput(text);
       setRpeDraft(value != null ? formatRpe(value) : '');
-      onCommitField(setId, { rpe: value });
+      onCommitField?.(setId, { rpe: value });
     },
     [onCommitField, setId],
   );
@@ -219,7 +229,7 @@ function ActiveWorkoutSetRow({
     commitWeight(weightDraft);
     commitReps(repsDraft);
     if (metricColumn === 'rpe') commitRpe(rpeDraft);
-    onCompleteActive();
+    onCompleteActive?.();
   }, [
     commitWeight,
     commitReps,
@@ -266,9 +276,19 @@ function ActiveWorkoutSetRow({
 
   const checkControl = (() => {
     if (state === 'done') {
+      if (readOnly) {
+        return (
+          <View
+            className="h-7 w-7 rounded-full items-center justify-center"
+            style={{ backgroundColor: successColor }}
+          >
+            <Icon name="checkmark" size={16} color="#ffffff" weight="bold" />
+          </View>
+        );
+      }
       return (
         <Pressable
-          onPress={() => onUncomplete(setId)}
+          onPress={() => onUncomplete?.(setId)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={`Un-complete set ${set.set_number}`}
@@ -291,9 +311,12 @@ function ActiveWorkoutSetRow({
         </Pressable>
       );
     }
+    // The w-10 wrapper stays for column alignment; read-only upcoming rows
+    // just leave it empty.
+    if (readOnly) return null;
     return (
       <Pressable
-        onPress={() => onRecomplete(setId)}
+        onPress={() => onRecomplete?.(setId)}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
         accessibilityLabel={`Mark set ${set.set_number} complete`}
@@ -403,13 +426,50 @@ function ActiveWorkoutSetRow({
   const displayWeight = set.weight != null ? formatDisplayWeight(set.weight, weightUnit) : '—';
   const displayReps = set.reps != null ? String(set.reps) : '—';
 
+  // Read-only surfaces don't dim done rows: a finished workout is all done
+  // rows, and dimming everything would read as disabled.
+  const row = (
+    <Pressable
+      testID="set-row"
+      onLongPress={() => onLongPress(setId)}
+      className="flex-row items-center py-2.5 px-3 bg-background"
+      style={!readOnly && state === 'done' ? { opacity: 0.62 } : undefined}
+    >
+      <View className="w-9 items-center">{setIndicator}</View>
+      <Text
+        className="flex-1 text-center text-sm text-text-primary"
+        style={{ fontVariant: ['tabular-nums'] }}
+      >
+        {displayWeight}
+      </Text>
+      <Text
+        className="flex-1 text-center text-sm text-text-primary"
+        style={{ fontVariant: ['tabular-nums'] }}
+      >
+        {displayReps}
+      </Text>
+      <Text
+        className="w-14 text-center text-sm"
+        style={[
+          { fontVariant: ['tabular-nums'] },
+          { color: metricValue.color ?? textMuted },
+        ]}
+      >
+        {metricValue.text}
+      </Text>
+      <View className="w-10 items-center">{checkControl}</View>
+    </Pressable>
+  );
+
+  if (readOnly) return row;
+
   return (
     <ReanimatedSwipeable
       renderRightActions={() => (
         <TouchableOpacity
           className="bg-bg-danger justify-center items-center"
           style={{ width: 72 }}
-          onPress={() => onDelete(setId)}
+          onPress={() => onDelete?.(setId)}
           activeOpacity={0.7}
           accessibilityLabel={`Delete set ${set.set_number}`}
         >
@@ -419,36 +479,7 @@ function ActiveWorkoutSetRow({
       overshootRight={false}
       rightThreshold={40}
     >
-      <Pressable
-        testID="set-row"
-        onLongPress={() => onLongPress(setId)}
-        className="flex-row items-center py-2.5 px-3 bg-background"
-        style={state === 'done' ? { opacity: 0.62 } : undefined}
-      >
-        <View className="w-9 items-center">{setIndicator}</View>
-        <Text
-          className="flex-1 text-center text-sm text-text-primary"
-          style={{ fontVariant: ['tabular-nums'] }}
-        >
-          {displayWeight}
-        </Text>
-        <Text
-          className="flex-1 text-center text-sm text-text-primary"
-          style={{ fontVariant: ['tabular-nums'] }}
-        >
-          {displayReps}
-        </Text>
-        <Text
-          className="w-14 text-center text-sm"
-          style={[
-            { fontVariant: ['tabular-nums'] },
-            { color: metricValue.color ?? textMuted },
-          ]}
-        >
-          {metricValue.text}
-        </Text>
-        <View className="w-10 items-center">{checkControl}</View>
-      </Pressable>
+      {row}
     </ReanimatedSwipeable>
   );
 }

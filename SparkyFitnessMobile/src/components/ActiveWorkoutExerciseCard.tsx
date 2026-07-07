@@ -30,6 +30,16 @@ export const METRIC_COLUMN_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
   tenrm: '10RM',
 };
 
+/** Options and labels for the metric-column picker menu the header opens. */
+export const METRIC_OPTIONS: ActiveWorkoutMetricColumn[] = ['rpe', 'volume', 'e1rm', 'tenrm'];
+
+export const METRIC_MENU_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
+  rpe: 'RPE',
+  volume: 'Volume',
+  e1rm: 'Est. 1RM',
+  tenrm: 'Est. 10RM',
+};
+
 /** Working-set numbers per set index; warmups repeat the previous number (they render the `W` pill instead). */
 function buildWorkingSetNumbers(sets: ExerciseEntryResponse['sets']): number[] {
   let workingNumber = 0;
@@ -47,17 +57,25 @@ interface ActiveWorkoutExerciseCardProps {
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
   getImageSource: GetImageSource;
+  /**
+   * 'view' renders the read-only variant (workout detail): no logging,
+   * editing, overflow menu, add-set, or "Last time" stats fetch. The metric
+   * column and its picker stay live in both modes.
+   */
+  mode?: 'live' | 'view';
+  /** Hide the rest chip entirely (e.g. imported workouts without rest data). */
+  showRestChip?: boolean;
   onToggleExpanded: (entryId: string) => void;
-  onPressRestChip: (entryId: string, currentSec: number | null) => void;
+  onPressRestChip?: (entryId: string, currentSec: number | null) => void;
   onPressMetricHeader: (anchor: AnchorRect) => void;
-  onPressOverflow: (entryId: string, anchor: AnchorRect) => void;
-  onCompleteActive: () => void;
-  onUncomplete: (setId: string) => void;
-  onRecomplete: (setId: string) => void;
-  onCommitField: (setId: string, patch: ActiveSetPatch) => void;
-  onDeleteSet: (setId: string) => void;
+  onPressOverflow?: (entryId: string, anchor: AnchorRect) => void;
+  onCompleteActive?: () => void;
+  onUncomplete?: (setId: string) => void;
+  onRecomplete?: (setId: string) => void;
+  onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
+  onDeleteSet?: (setId: string) => void;
   onLongPressSet: (setId: string) => void;
-  onAddSet: (entryId: string) => void;
+  onAddSet?: (entryId: string) => void;
 }
 
 function ExerciseThumb({
@@ -99,6 +117,8 @@ function ActiveWorkoutExerciseCard({
   metricColumn,
   weightUnit,
   getImageSource,
+  mode = 'live',
+  showRestChip = true,
   onToggleExpanded,
   onPressRestChip,
   onPressMetricHeader,
@@ -111,6 +131,7 @@ function ActiveWorkoutExerciseCard({
   onLongPressSet,
   onAddSet,
 }: ActiveWorkoutExerciseCardProps) {
+  const readOnly = mode === 'view';
   const [textMuted, successColor, accentPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-icon-success',
@@ -118,7 +139,9 @@ function ActiveWorkoutExerciseCard({
   ]) as [string, string, string];
 
   const name = exercise.exercise_snapshot?.name ?? 'Exercise';
-  const { data: stats } = useExerciseStats(exercise.exercise_id);
+  // "Last time" only makes sense while performing — skip the fetch in view
+  // mode (the hook gates on a null id).
+  const { data: stats } = useExerciseStats(readOnly ? null : exercise.exercise_id);
   const lastSet = stats?.lastSet ?? null;
 
   const isDone =
@@ -142,15 +165,18 @@ function ActiveWorkoutExerciseCard({
   const overflowAnchorRef = useRef<View>(null);
   const openOverflowMenu = () => {
     measureAnchoredMenuTrigger(overflowAnchorRef.current, (anchor) =>
-      onPressOverflow(exercise.id, anchor),
+      onPressOverflow?.(exercise.id, anchor),
     );
   };
 
   if (!expanded) {
     const volumeKg = getExerciseVolumeKg(exercise);
-    const subtitle = anyComplete
-      ? `${exercise.sets.length} sets${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
-      : `${exercise.sets.length} sets planned`;
+    // "planned" describes a live workout that hasn't reached the exercise yet;
+    // historical/imported workouts (view mode) never show it.
+    const subtitle =
+      readOnly || anyComplete
+        ? `${exercise.sets.length} sets${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
+        : `${exercise.sets.length} sets planned`;
 
     return (
       <Pressable
@@ -190,17 +216,19 @@ function ActiveWorkoutExerciseCard({
         <Text numberOfLines={1} className="flex-1 text-base font-semibold text-text-primary">
           {name}
         </Text>
-        <View ref={overflowAnchorRef} collapsable={false}>
-          <Pressable
-            onPress={openOverflowMenu}
-            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-            accessibilityRole="button"
-            accessibilityLabel={`More options for ${name}`}
-            className="p-1"
-          >
-            <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
-          </Pressable>
-        </View>
+        {!readOnly && (
+          <View ref={overflowAnchorRef} collapsable={false}>
+            <Pressable
+              onPress={openOverflowMenu}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel={`More options for ${name}`}
+              className="p-1"
+            >
+              <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
+            </Pressable>
+          </View>
+        )}
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -214,53 +242,64 @@ function ActiveWorkoutExerciseCard({
         </Pressable>
       </View>
 
-      <View className="flex-row items-center gap-4 mt-2 mb-1 px-1">
-        <RestPeriodChip
-          value={exercise.sets[0]?.rest_time}
-          onPress={() => onPressRestChip(exercise.id, exercise.sets[0]?.rest_time ?? null)}
-        />
-        {lastSet && lastSet.weight != null && lastSet.reps != null && (
-          <View className="flex-row items-baseline gap-1.5">
-            <Text className="text-xs uppercase tracking-wide text-text-muted">Last time</Text>
-            <Text
-              className="text-sm text-text-secondary"
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {parseFloat(weightFromKg(lastSet.weight, weightUnit).toFixed(1))} × {lastSet.reps}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View className="flex-row items-center px-3 py-1.5">
-        <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
-          Set
-        </Text>
-        <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-          {weightUnit === 'kg' ? 'KG' : 'LB'}
-        </Text>
-        <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-          Reps
-        </Text>
-        <View ref={metricAnchorRef} collapsable={false} className="w-14 items-center">
-          <Pressable
-            onPress={openMetricMenu}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityRole="button"
-            accessibilityLabel="Change metric column"
-            className="flex-row items-center gap-0.5"
-          >
-            <Text
-              className="text-xs font-semibold uppercase"
-              style={{ color: accentPrimary }}
-            >
-              {METRIC_COLUMN_LABELS[metricColumn]}
-            </Text>
-            <Icon name="chevron-down" size={10} color={accentPrimary} />
-          </Pressable>
+      {(showRestChip || lastSet != null) && (
+        <View className="flex-row items-center gap-4 mt-2 mb-1 px-1">
+          {showRestChip && (
+            <RestPeriodChip
+              value={exercise.sets[0]?.rest_time}
+              readOnly={readOnly}
+              onPress={
+                readOnly
+                  ? undefined
+                  : () => onPressRestChip?.(exercise.id, exercise.sets[0]?.rest_time ?? null)
+              }
+            />
+          )}
+          {lastSet && lastSet.weight != null && lastSet.reps != null && (
+            <View className="flex-row items-baseline gap-1.5">
+              <Text className="text-xs uppercase tracking-wide text-text-muted">Last time</Text>
+              <Text
+                className="text-sm text-text-secondary"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {parseFloat(weightFromKg(lastSet.weight, weightUnit).toFixed(1))} × {lastSet.reps}
+              </Text>
+            </View>
+          )}
         </View>
-        <View className="w-10" />
-      </View>
+      )}
+
+      {exercise.sets.length > 0 && (
+        <View className="flex-row items-center px-3 py-1.5">
+          <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
+            Set
+          </Text>
+          <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+            {weightUnit === 'kg' ? 'KG' : 'LB'}
+          </Text>
+          <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+            Reps
+          </Text>
+          <View ref={metricAnchorRef} collapsable={false} className="w-14 items-center">
+            <Pressable
+              onPress={openMetricMenu}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Change metric column"
+              className="flex-row items-center gap-0.5"
+            >
+              <Text
+                className="text-xs font-semibold uppercase"
+                style={{ color: accentPrimary }}
+              >
+                {METRIC_COLUMN_LABELS[metricColumn]}
+              </Text>
+              <Icon name="chevron-down" size={10} color={accentPrimary} />
+            </Pressable>
+          </View>
+          <View className="w-10" />
+        </View>
+      )}
 
       {exercise.sets.map((set, index) => {
         const setId = String(set.id);
@@ -277,6 +316,7 @@ function ActiveWorkoutExerciseCard({
             state={state}
             metricColumn={metricColumn}
             weightUnit={weightUnit}
+            readOnly={readOnly}
             onCompleteActive={onCompleteActive}
             onUncomplete={onUncomplete}
             onRecomplete={onRecomplete}
@@ -287,17 +327,19 @@ function ActiveWorkoutExerciseCard({
         );
       })}
 
-      <Pressable
-        onPress={() => onAddSet(exercise.id)}
-        accessibilityRole="button"
-        accessibilityLabel={`Add set to ${name}`}
-        className="flex-row items-center justify-center gap-1.5 py-2.5 mt-1"
-      >
-        <Icon name="add" size={15} color={accentPrimary} />
-        <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
-          Add set
-        </Text>
-      </Pressable>
+      {!readOnly && (
+        <Pressable
+          onPress={() => onAddSet?.(exercise.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`Add set to ${name}`}
+          className="flex-row items-center justify-center gap-1.5 py-2.5 mt-1"
+        >
+          <Icon name="add" size={15} color={accentPrimary} />
+          <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
+            Add set
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
