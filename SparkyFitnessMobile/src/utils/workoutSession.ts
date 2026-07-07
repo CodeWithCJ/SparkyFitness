@@ -1,5 +1,4 @@
 import type {
-  ExerciseEntryResponse,
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
   ExerciseSessionResponse,
@@ -11,7 +10,7 @@ import type { IconName } from '../components/Icon';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import type { WorkoutDraftExercise } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
-import type { WorkoutPreset } from '../types/workoutPresets';
+import type { WorkoutPreset, WorkoutPresetExercise } from '../types/workoutPresets';
 import type { WorkoutPresetExercisePayload } from '../services/api/workoutPresetsApi';
 import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
 import { parseDecimalInput } from './numericInput';
@@ -325,11 +324,111 @@ export function setVolumeKg(set: Pick<ExerciseEntrySetResponse, 'weight' | 'reps
 }
 
 /** Total working volume for an exercise entry. Warmup sets are excluded. */
-export function getExerciseVolumeKg(exercise: ExerciseEntryResponse): number {
+export function getExerciseVolumeKg(exercise: { sets: WorkoutCardSet[] }): number {
   return exercise.sets.reduce(
     (total, set) => (set.set_type === 'warmup' ? total : total + setVolumeKg(set)),
     0,
   );
+}
+
+// --- Card-stack input shapes ---
+//
+// The active-workout card and set row accept these narrow structural
+// interfaces so one card stack serves live sessions (`ExerciseEntryResponse`
+// satisfies them as-is), form drafts, and preset templates. Do NOT fabricate
+// `ExerciseEntryResponse` objects with synthetic ids for the form surfaces —
+// map through the adapters below instead.
+
+export interface WorkoutCardSet {
+  /** Server set id (number) or `WorkoutDraftSet.clientId` (string). */
+  id: string | number;
+  set_number: number;
+  set_type?: string | null;
+  /** ALWAYS kg — display conversion happens in the row. */
+  weight: number | null;
+  reps: number | null;
+  rpe?: number | null;
+  rest_time?: number | null;
+  duration?: number | null;
+  /** Raw draft strings backing the edit-mode controlled inputs (draft mapper only). */
+  editWeightText?: string;
+  editRepsText?: string;
+}
+
+export interface WorkoutCardExercise {
+  /** Entry id or `WorkoutDraftExercise.clientId`. */
+  id: string;
+  exercise_id: string;
+  superset_group?: number | null;
+  exercise_snapshot: {
+    name?: string | null;
+    category?: string | null;
+    images?: string[] | null;
+  } | null;
+  sets: WorkoutCardSet[];
+}
+
+/**
+ * Adapt a form-draft exercise for the card stack. Weight parsing matches
+ * `buildExercisesPayload` exactly (parseDecimalInput → weightToKg, NaN → null)
+ * so what the card displays is what a save would persist.
+ */
+export function draftExerciseToCardExercise(
+  exercise: WorkoutDraftExercise,
+  weightUnit: 'kg' | 'lbs',
+): WorkoutCardExercise {
+  return {
+    id: exercise.clientId,
+    exercise_id: exercise.exerciseId,
+    superset_group: exercise.supersetGroup ?? null,
+    exercise_snapshot: exercise.snapshot ?? {
+      name: exercise.exerciseName,
+      category: exercise.exerciseCategory,
+      images: exercise.images,
+    },
+    sets: exercise.sets.map((set, index) => {
+      const weight = parseDecimalInput(set.weight);
+      const reps = parseInt(set.reps, 10);
+      return {
+        id: set.clientId,
+        set_number: index + 1,
+        set_type: set.setType ?? null,
+        weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
+        reps: isNaN(reps) ? null : reps,
+        rpe: set.rpe ?? null,
+        rest_time: set.restTime ?? null,
+        duration: set.duration ?? null,
+        editWeightText: set.weight,
+        editRepsText: set.reps,
+      };
+    }),
+  };
+}
+
+/** Adapt a saved preset exercise for the card stack (weights already kg). */
+export function presetExerciseToCardExercise(
+  exercise: WorkoutPresetExercise,
+): WorkoutCardExercise {
+  return {
+    id: String(exercise.id),
+    exercise_id: exercise.exercise_id,
+    superset_group: exercise.superset_group ?? null,
+    exercise_snapshot: {
+      name: exercise.exercise_name,
+      category: exercise.category ?? null,
+      images: exercise.image_url ? [exercise.image_url] : [],
+    },
+    sets: exercise.sets.map((set, index) => ({
+      id: set.id,
+      set_number: index + 1,
+      set_type: set.set_type ?? null,
+      weight: set.weight ?? null,
+      reps: set.reps ?? null,
+      rpe: null,
+      rest_time: set.rest_time ?? null,
+      duration: set.duration ?? null,
+    })),
+  };
 }
 
 export function formatVolume(volumeKg: number, weightUnit: string): string {
@@ -415,6 +514,9 @@ export function buildSessionExercisesPayload(
   }));
 }
 
+/** Set types offered by the long-press set-type pickers. */
+export const SET_TYPE_OPTIONS = ['warmup', 'normal', 'drop', 'failure'] as const;
+
 // --- Supersets ---
 
 export interface SupersetRun {
@@ -430,7 +532,7 @@ export interface SupersetRun {
  * still round-tripped by the payload builders.
  */
 export function getSupersetRuns(
-  exercises: Pick<ExerciseEntryResponse, 'id' | 'superset_group'>[],
+  exercises: { id: string; superset_group?: number | null }[],
 ): SupersetRun[] {
   const runs: SupersetRun[] = [];
   const flush = (run: SupersetRun | null) => {
@@ -451,6 +553,116 @@ export function getSupersetRuns(
   }
   flush(current);
   return runs;
+}
+
+/** Runs over form drafts, keyed by `clientId` instead of entry id. */
+export function getDraftSupersetRuns(exercises: WorkoutDraftExercise[]): SupersetRun[] {
+  return getSupersetRuns(
+    exercises.map(e => ({ id: e.clientId, superset_group: e.supersetGroup ?? null })),
+  );
+}
+
+/**
+ * Clear `supersetGroup` on any draft exercise not part of an adjacent 2+ run —
+ * the draft sibling of the store's `normalizeSupersetGroups`. Dissolves
+ * 1-member remainders after ungroup/member removal. Returns the input array
+ * unchanged when nothing needs clearing.
+ */
+export function normalizeDraftSupersetGroups(
+  exercises: WorkoutDraftExercise[],
+): WorkoutDraftExercise[] {
+  const grouped = new Set(getDraftSupersetRuns(exercises).flatMap(run => run.entryIds));
+  const isStale = (e: WorkoutDraftExercise) => e.supersetGroup != null && !grouped.has(e.clientId);
+  if (!exercises.some(isStale)) return exercises;
+  return exercises.map(e => (isStale(e) ? { ...e, supersetGroup: null } : e));
+}
+
+/**
+ * Group `picked` with `current`, mirroring the store's `supersetWith`:
+ * grouped exercises can't be picked, new group ids are max(existing)+1, the
+ * picked member moves to sit immediately after the current run so the group
+ * is one adjacent block, and every member's per-set rest is harmonized to the
+ * anchor's (deliberately lossy, like the live screen). Returns the input
+ * array unchanged when the pick is invalid.
+ */
+export function supersetDraftExercises(
+  exercises: WorkoutDraftExercise[],
+  currentClientId: string,
+  pickedClientId: string,
+): WorkoutDraftExercise[] {
+  if (currentClientId === pickedClientId) return exercises;
+  const picked = exercises.find(e => e.clientId === pickedClientId);
+  if (!picked || !exercises.some(e => e.clientId === currentClientId)) return exercises;
+
+  const runs = getDraftSupersetRuns(exercises);
+  if (runs.some(r => r.entryIds.includes(pickedClientId))) return exercises;
+
+  const currentRun = runs.find(r => r.entryIds.includes(currentClientId));
+  let groupId: number;
+  if (currentRun) {
+    groupId = currentRun.groupId;
+  } else {
+    let maxGroupId = 0;
+    for (const e of exercises) {
+      if (e.supersetGroup != null && e.supersetGroup > maxGroupId) {
+        maxGroupId = e.supersetGroup;
+      }
+    }
+    groupId = maxGroupId + 1;
+  }
+
+  const memberIds = currentRun
+    ? [...currentRun.entryIds, pickedClientId]
+    : [currentClientId, pickedClientId];
+  const memberIdSet = new Set(memberIds);
+
+  const anchor = exercises.find(e => e.clientId === memberIds[0])!;
+  const groupRest = anchor.sets[0]?.restTime ?? DEFAULT_REST_SEC;
+
+  const lastMemberId = currentRun
+    ? currentRun.entryIds[currentRun.entryIds.length - 1]
+    : currentClientId;
+  const without = exercises.filter(e => e.clientId !== pickedClientId);
+  const insertAt = without.findIndex(e => e.clientId === lastMemberId) + 1;
+  const reordered = [...without.slice(0, insertAt), picked, ...without.slice(insertAt)];
+
+  return normalizeDraftSupersetGroups(
+    reordered.map(e =>
+      memberIdSet.has(e.clientId)
+        ? {
+            ...e,
+            supersetGroup: groupId,
+            sets: e.sets.map(s => ({ ...s, restTime: groupRest })),
+          }
+        : e,
+    ),
+  );
+}
+
+/**
+ * Remove one draft exercise from its superset run (store's `ungroupExercise`):
+ * a middle member is moved to just after the run so the remaining members
+ * stay adjacent, then <2-member remainders are dissolved.
+ */
+export function ungroupDraftExercise(
+  exercises: WorkoutDraftExercise[],
+  clientId: string,
+): WorkoutDraftExercise[] {
+  const run = getDraftSupersetRuns(exercises).find(r => r.entryIds.includes(clientId));
+  if (!run) return exercises;
+
+  let next = exercises.map(e => (e.clientId === clientId ? { ...e, supersetGroup: null } : e));
+
+  const position = run.entryIds.indexOf(clientId);
+  if (position > 0 && position < run.entryIds.length - 1) {
+    const moved = next.find(e => e.clientId === clientId)!;
+    const without = next.filter(e => e.clientId !== clientId);
+    const lastMemberId = run.entryIds[run.entryIds.length - 1];
+    const insertAt = without.findIndex(e => e.clientId === lastMemberId) + 1;
+    next = [...without.slice(0, insertAt), moved, ...without.slice(insertAt)];
+  }
+
+  return normalizeDraftSupersetGroups(next);
 }
 
 /**
@@ -532,6 +744,8 @@ export function buildPresetStartExercisesPayload(
     sort_order: index,
     duration_minutes: 0,
     notes: null,
+    // Live sessions started from a preset inherit its superset grouping.
+    superset_group: exercise.superset_group ?? null,
     sets:
       exercise.sets.length === 0
         ? [makeDefaultStartSet(1)]
@@ -575,6 +789,7 @@ export function buildPresetExercisesPayload(
     exercise_id: exercise.exerciseId,
     image_url: exercise.images[0] ?? null,
     sort_order: index,
+    superset_group: exercise.supersetGroup ?? null,
     sets: exercise.sets.map((set, setIndex) => {
       const weight = parseDecimalInput(set.weight);
       const reps = parseInt(set.reps, 10);

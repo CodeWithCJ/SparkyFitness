@@ -16,7 +16,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
-import WorkoutEditableExerciseList from '../components/WorkoutEditableExerciseList';
+import WorkoutFormExerciseList from '../components/WorkoutFormExerciseList';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useWorkoutForm, getWorkoutDraftSubmission } from '../hooks/useWorkoutForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
@@ -67,7 +67,10 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     addSet,
     removeSet,
     updateSetField,
+    updateSetMeta,
     setExerciseRest,
+    supersetWith,
+    ungroupExercise,
     setName,
     setDate,
     populate,
@@ -307,20 +310,23 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
                 </TouchableOpacity>
 
-                <WorkoutEditableExerciseList
+                <WorkoutFormExerciseList
                   exercises={state.exercises}
-                  getImageSource={getImageSource}
                   weightUnit={weightUnit as 'kg' | 'lbs'}
+                  getImageSource={getImageSource}
                   activeSetKey={activeSetKey}
                   activeSetField={activeSetField}
                   onActivateSet={activateSet}
                   onDeactivateSet={deactivateSet}
-                  onUpdateSetField={updateSetField}
-                  onRemoveSet={removeSet}
+                  updateSetField={updateSetField}
+                  updateSetMeta={updateSetMeta}
+                  removeSet={removeSet}
                   onAddSet={handleAddSet}
                   onRemoveExercise={handleRemoveExercise}
+                  setExerciseRest={setExerciseRest}
+                  supersetWith={supersetWith}
+                  ungroupExercise={ungroupExercise}
                   onAddExercisePress={openExerciseSearch}
-                  onChangeRest={setExerciseRest}
                   isEligibleForPrefill={isEligibleForPrefill}
                 />
 

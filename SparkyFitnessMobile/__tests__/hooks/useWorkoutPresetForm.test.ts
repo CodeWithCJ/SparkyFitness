@@ -5,9 +5,10 @@ import {
   type PresetDraft,
   type PresetClientIds,
 } from '../../src/hooks/useWorkoutPresetForm';
-import { DEFAULT_REST_SEC } from '../../src/utils/workoutSession';
+import { DEFAULT_REST_SEC, buildPresetExercisesPayload } from '../../src/utils/workoutSession';
 import { kgToLbs } from '../../src/utils/unitConversions';
 import type { Exercise } from '../../src/types/exercise';
+import type { WorkoutDraftExercise } from '../../src/types/drafts';
 import type { WorkoutPreset } from '../../src/types/workoutPresets';
 
 function exercise(overrides: Partial<Exercise> = {}): Exercise {
@@ -173,6 +174,91 @@ describe('presetFormReducer', () => {
     expect(next.exercises[0].sets.every((s) => s.restTime === 45)).toBe(true);
   });
 
+  describe('UPDATE_SET_META', () => {
+    it('patches setType on the targeted set and round-trips into the preset payload', () => {
+      const next = presetFormReducer(draftWithExercise(), {
+        type: 'UPDATE_SET_META',
+        exerciseClientId: 'e1',
+        setClientId: 's1',
+        patch: { setType: 'warmup' },
+      });
+
+      expect(next.exercises[0].sets[0].setType).toBe('warmup');
+      expect(next.exercises[0].sets[1].setType).toBeUndefined();
+
+      const payload = buildPresetExercisesPayload(next.exercises, 'kg');
+      expect(payload[0].sets[0].set_type).toBe('warmup');
+      // Preset sets have no rpe column; a stray rpe patch must not leak out.
+      expect(payload[0].sets[0]).not.toHaveProperty('rpe');
+    });
+  });
+
+  describe('superset actions', () => {
+    const makeDraftEx = (
+      clientId: string,
+      restTime: number,
+      overrides?: Partial<WorkoutDraftExercise>,
+    ): WorkoutDraftExercise => ({
+      clientId,
+      exerciseId: `x-${clientId}`,
+      exerciseName: clientId.toUpperCase(),
+      exerciseCategory: null,
+      images: [],
+      sets: [{ clientId: `${clientId}-s1`, weight: '100', reps: '5', restTime }],
+      ...overrides,
+    });
+
+    const threeSolo = (): PresetDraft => ({
+      name: 'Push',
+      description: '',
+      exercises: [makeDraftEx('a', 60), makeDraftEx('b', 120), makeDraftEx('c', 45)],
+    });
+
+    it('groups two solos: reorders adjacent, harmonizes rest, round-trips into the payload', () => {
+      const next = presetFormReducer(threeSolo(), {
+        type: 'SUPERSET_WITH',
+        currentClientId: 'a',
+        pickedClientId: 'c',
+      });
+
+      expect(next.exercises.map(e => e.clientId)).toEqual(['a', 'c', 'b']);
+      expect(next.exercises.map(e => e.supersetGroup ?? null)).toEqual([1, 1, null]);
+      expect(next.exercises[1].sets.map(s => s.restTime)).toEqual([60]);
+
+      const payload = buildPresetExercisesPayload(next.exercises, 'kg');
+      expect(payload.map(e => e.superset_group)).toEqual([1, 1, null]);
+    });
+
+    it('ungrouping either member of a 2-group dissolves it entirely', () => {
+      const groupedState = presetFormReducer(threeSolo(), {
+        type: 'SUPERSET_WITH',
+        currentClientId: 'a',
+        pickedClientId: 'b',
+      });
+      const next = presetFormReducer(groupedState, {
+        type: 'UNGROUP_EXERCISE',
+        clientId: 'b',
+      });
+
+      expect(next.exercises.map(e => e.supersetGroup ?? null)).toEqual([null, null, null]);
+    });
+
+    it('REMOVE_EXERCISE of a group member dissolves the 1-member remainder', () => {
+      const groupedState = presetFormReducer(threeSolo(), {
+        type: 'SUPERSET_WITH',
+        currentClientId: 'a',
+        pickedClientId: 'b',
+      });
+      const next = presetFormReducer(groupedState, {
+        type: 'REMOVE_EXERCISE',
+        clientId: 'a',
+      });
+
+      expect(next.exercises.map(e => e.clientId)).toEqual(['b', 'c']);
+      expect(next.exercises[0].supersetGroup).toBeNull();
+    });
+  });
+
   describe('POPULATE_FROM_PRESET', () => {
     function preset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
       return {
@@ -264,6 +350,29 @@ describe('presetFormReducer', () => {
       );
       expect(next.exercises[0].sets[1].weight).toBe('');
       expect(next.exercises[0].sets[1].reps).toBe('');
+    });
+
+    it('maps superset_group into the draft, defaulting to null', () => {
+      const grouped = preset({
+        exercises: [
+          { ...preset().exercises[0], superset_group: 3 },
+          { ...preset().exercises[0], id: 802, exercise_id: 'ex-2', superset_group: null },
+        ],
+      });
+      const next = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        {
+          type: 'POPULATE_FROM_PRESET',
+          preset: grouped,
+          weightUnit: 'kg',
+          clientIds: [
+            { exerciseClientId: 'e1', setClientIds: ['s1', 's2'] },
+            { exerciseClientId: 'e2', setClientIds: ['s3', 's4'] },
+          ],
+        },
+      );
+      expect(next.exercises[0].supersetGroup).toBe(3);
+      expect(next.exercises[1].supersetGroup).toBeNull();
     });
 
     it('falls back to an empty description and no images when those are absent', () => {

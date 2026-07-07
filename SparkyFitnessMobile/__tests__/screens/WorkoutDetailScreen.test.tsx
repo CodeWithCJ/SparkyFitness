@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { Alert } from 'react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import WorkoutDetailScreen from '../../src/screens/WorkoutDetailScreen';
@@ -19,13 +20,28 @@ jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: jest.fn(),
 }));
 
-jest.mock('../../src/hooks/useExerciseMutations', () => ({
-  useDeleteWorkout: jest.fn(() => ({ confirmAndDelete: jest.fn(), isPending: false })),
-  useUpdateWorkout: jest.fn(() => ({
-    updateSession: jest.fn(),
-    isPending: false,
-    invalidateCache: jest.fn(),
-  })),
+jest.mock('../../src/hooks/useExerciseMutations', () => {
+  const updateSession = jest.fn();
+  return {
+    __mockUpdateSession: updateSession,
+    useDeleteWorkout: jest.fn(() => ({ confirmAndDelete: jest.fn(), isPending: false })),
+    useUpdateWorkout: jest.fn(() => ({
+      updateSession,
+      isPending: false,
+      invalidateCache: jest.fn(),
+    })),
+  };
+});
+
+const mockUpdateSession = jest.requireMock('../../src/hooks/useExerciseMutations')
+  .__mockUpdateSession as jest.Mock;
+
+// Force the screen-owned (custom) header so the Edit/Save header actions are
+// in the tree — on the native path useScreenHeader mirrors them into
+// unstable_header*Items, which the test renderer can't press.
+jest.mock('../../src/services/nativeTabBarPreference', () => ({
+  useNativeIOSTabsActive: jest.fn(() => false),
+  useNativeIOSHeadersActive: jest.fn(() => false),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -221,6 +237,64 @@ describe('WorkoutDetailScreen', () => {
     const imported = renderScreen(buildSession({ source: 'healthkit' }));
     fireEvent.press(imported.getByLabelText('Expand Bench Press'));
     expect(imported.queryByText('Rest · 1:30')).toBeNull();
+  });
+
+  describe('edit mode', () => {
+    it('renders edit cards and saves set_type/rpe edits through the payload', async () => {
+      mockUpdateSession.mockResolvedValue(buildSession());
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      const screen = renderScreen(buildSession());
+
+      fireEvent.press(screen.getByLabelText('Edit workout'));
+
+      // The form list renders the shared card in edit mode with its form
+      // affordances.
+      expect(screen.getByLabelText('Add set to Bench Press')).toBeTruthy();
+      expect(screen.getByLabelText('More options for Bench Press')).toBeTruthy();
+
+      // Long-press → set-type picker → Warmup.
+      fireEvent(screen.getAllByTestId('set-row')[0], 'longPress');
+      const setTypeCall = alertSpy.mock.calls.find(call => call[1] === 'Set type');
+      expect(setTypeCall).toBeTruthy();
+      const warmupButton = (setTypeCall![2] as { text: string; onPress?: () => void }[]).find(
+        b => b.text.includes('Warmup'),
+      );
+      warmupButton!.onPress!();
+
+      // Activate the row, type an RPE, blur to snap it to 0.5 steps.
+      fireEvent.press(screen.getByLabelText('Edit weight for set 1'));
+      const rpeInput = screen.getByLabelText('RPE');
+      fireEvent.changeText(rpeInput, '8.6');
+      fireEvent(rpeInput, 'blur');
+
+      fireEvent.press(screen.getByLabelText('Save'));
+
+      await waitFor(() => expect(mockUpdateSession).toHaveBeenCalled());
+      const { payload } = mockUpdateSession.mock.calls[0][0];
+      expect(payload.exercises[0].sets[0].set_type).toBe('warmup');
+      expect(payload.exercises[0].sets[0].rpe).toBe(8.5);
+      alertSpy.mockRestore();
+    });
+
+    it('keeps completed sets editable with a static badge', () => {
+      const screen = renderScreen(
+        buildSession({
+          exercises: [
+            buildExercise({
+              sets: [buildSet({ completed_at: '2026-07-01T10:00:00.000Z' })],
+            }),
+          ],
+        }),
+      );
+
+      fireEvent.press(screen.getByLabelText('Edit workout'));
+
+      expect(screen.getByTestId('completed-badge')).toBeTruthy();
+      expect(screen.queryByLabelText('Un-complete set 1')).toBeNull();
+      // The cell still activates for editing.
+      fireEvent.press(screen.getByLabelText('Edit weight for set 1'));
+      expect(screen.getByLabelText('RPE')).toBeTruthy();
+    });
   });
 
   it('renders a superset rail on each grouped exercise', () => {

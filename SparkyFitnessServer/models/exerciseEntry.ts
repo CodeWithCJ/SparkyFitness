@@ -220,7 +220,7 @@ async function _getExerciseEntryByIdWithClient(client: any, id: any) {
 // isn't already encoded. Stringifying the raw text again would add an
 // escaping layer on every save, doubling the stored value each time.
 function toJsonColumnText(value: unknown): string | null {
-  if (value == null) return null;
+  if (value === null || value === undefined) return null;
   return typeof value === 'string' ? value : JSON.stringify(value);
 }
 

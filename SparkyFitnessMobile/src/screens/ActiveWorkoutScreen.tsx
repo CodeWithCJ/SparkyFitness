@@ -36,6 +36,7 @@ import { normalizeDate } from '../utils/dateUtils';
 import {
   buildSupersetColorMap,
   getSupersetRuns,
+  SET_TYPE_OPTIONS,
   SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -43,8 +44,6 @@ import type { SupersetBorder } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ActiveWorkout'>;
-
-const SET_TYPE_OPTIONS = ['warmup', 'normal', 'drop', 'failure'] as const;
 
 function ActiveWorkoutScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();

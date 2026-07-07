@@ -19,16 +19,17 @@ jest.mock('../../src/components/SafeImage', () => {
   };
 });
 
-// Surface state/readOnly on the stub so tests can assert what the card
+// Surface state/mode/badge on the stub so tests can assert what the card
 // derived for each row.
 jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ set, state, readOnly }: any) => (
+    default: ({ set, state, mode, completedBadge, nextSetId, entryId }: any) => (
       <View
         testID={`set-row-${set.id}`}
-        accessibilityLabel={`row ${set.id} ${state}${readOnly ? ' read-only' : ''}`}
+        accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}`}
+        accessibilityHint={`next:${nextSetId ?? 'none'} entry:${entryId ?? 'none'}`}
       />
     ),
   };
@@ -222,6 +223,144 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(getByTestId('set-row-102').props.accessibilityLabel).toBe(
         'row 102 done read-only',
       );
+    });
+  });
+
+  describe('edit mode', () => {
+    it('derives the current row from activeSetId', () => {
+      const { getByTestId } = renderCard(true, { mode: 'edit', activeSetId: '101' });
+      expect(getByTestId('set-row-101').props.accessibilityLabel).toBe('row 101 current');
+    });
+
+    it('never marks rows done — completed sets stay editable with a badge', () => {
+      const { getByTestId } = renderCard(true, {
+        mode: 'edit',
+        activeSetId: null,
+        completedSetIds: { '101': Date.parse('2026-07-06T10:00:00.000Z') },
+      });
+      expect(getByTestId('set-row-101').props.accessibilityLabel).toBe(
+        'row 101 upcoming badged',
+      );
+    });
+
+    it('threads nextSetId and entryId to the rows', () => {
+      const exercise = makeExercise({
+        sets: [
+          ...makeExercise().sets,
+          { ...makeExercise().sets[0], id: 102, set_number: 2 },
+        ],
+      });
+      const { getByTestId } = renderCard(true, { mode: 'edit', exercise });
+      expect(getByTestId('set-row-101').props.accessibilityHint).toBe(
+        'next:102 entry:ex-uuid-1',
+      );
+      expect(getByTestId('set-row-102').props.accessibilityHint).toBe(
+        'next:none entry:ex-uuid-1',
+      );
+    });
+
+    it('keeps the overflow menu and Add set visible', () => {
+      const { getByLabelText, callbacks } = renderCard(true, { mode: 'edit' });
+      expect(getByLabelText('More options for Bench Press')).toBeTruthy();
+      fireEvent.press(getByLabelText('Add set to Bench Press'));
+      expect(callbacks.onAddSet).toHaveBeenCalledWith('ex-uuid-1');
+    });
+
+    it('fetches exercise stats so "Last time" works for drafts', () => {
+      renderCard(true, { mode: 'edit' });
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1');
+    });
+
+    it('never labels a collapsed draft as planned', () => {
+      const { getByText, queryByText } = renderCard(false, { mode: 'edit' });
+      expect(queryByText('1 sets planned')).toBeNull();
+      expect(getByText('1 sets · 600 kg')).toBeTruthy();
+    });
+
+    describe('prefill', () => {
+      const lastSet = { entryDate: '2026-07-01', weight: 90, reps: 5, setNumber: 1 };
+      const emptyFirstSet = () =>
+        makeExercise({
+          sets: [{ ...makeExercise().sets[0], weight: null, reps: null }],
+        });
+
+      beforeEach(() => {
+        mockUseExerciseStats.mockReturnValue({ data: { lastSet, bestSet: null } });
+      });
+
+      afterEach(() => {
+        mockUseExerciseStats.mockReturnValue({ data: null });
+      });
+
+      it('commits last-time values once for an empty first set', () => {
+        const { callbacks, rerender } = renderCard(true, {
+          mode: 'edit',
+          exercise: emptyFirstSet(),
+          eligibleForPrefill: true,
+        });
+        expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          weight: 90,
+          reps: 5,
+        });
+
+        rerender(
+          <ActiveWorkoutExerciseCard
+            exercise={emptyFirstSet()}
+            expanded
+            completedSetIds={{}}
+            activeSetId={null}
+            metricColumn="rpe"
+            weightUnit="kg"
+            getImageSource={() => null}
+            mode="edit"
+            eligibleForPrefill
+            onToggleExpanded={callbacks.onToggleExpanded}
+            onPressMetricHeader={callbacks.onPressMetricHeader}
+            onCommitField={callbacks.onCommitField}
+          />,
+        );
+        expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+      });
+
+      it('fills weight and reps independently — typed fields are not clobbered', () => {
+        const exercise = makeExercise({
+          sets: [{ ...makeExercise().sets[0], weight: 80, reps: null }],
+        });
+        const { callbacks } = renderCard(true, {
+          mode: 'edit',
+          exercise,
+          eligibleForPrefill: true,
+        });
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 5 });
+      });
+
+      it('a null last-time weight fills nothing for that field', () => {
+        mockUseExerciseStats.mockReturnValue({
+          data: { lastSet: { ...lastSet, weight: null }, bestSet: null },
+        });
+        const { callbacks } = renderCard(true, {
+          mode: 'edit',
+          exercise: emptyFirstSet(),
+          eligibleForPrefill: true,
+        });
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 5 });
+      });
+
+      it('does not prefill without eligibility or outside edit mode', () => {
+        const ineligible = renderCard(true, {
+          mode: 'edit',
+          exercise: emptyFirstSet(),
+          eligibleForPrefill: false,
+        });
+        expect(ineligible.callbacks.onCommitField).not.toHaveBeenCalled();
+
+        const live = renderCard(true, {
+          exercise: emptyFirstSet(),
+          eligibleForPrefill: true,
+        });
+        expect(live.callbacks.onCommitField).not.toHaveBeenCalled();
+      });
     });
   });
 });

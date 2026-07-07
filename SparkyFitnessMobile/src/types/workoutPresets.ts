@@ -1,37 +1,13 @@
-export interface WorkoutPresetSet {
-  id: string;
-  set_number: number;
-  set_type: string;
-  reps: number | null;
-  weight: number | null;
-  duration: number | null;
-  rest_time: number | null;
-  notes: string | null;
-}
+import type {
+  WorkoutPresetResponse,
+  WorkoutPresetExerciseResponse,
+  WorkoutPresetSetResponse,
+  WorkoutPresetsListResponse,
+} from '@workspace/shared';
 
-export interface WorkoutPresetExercise {
-  id: string;
-  exercise_id: string;
-  image_url: string | null;
-  exercise_name: string;
-  category?: string | null;
-  sets: WorkoutPresetSet[];
-}
-
-export interface WorkoutPreset {
-  id: string;
-  user_id: string;
-  name: string;
-  description: string | null;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-  exercises: WorkoutPresetExercise[];
-}
-
-export interface WorkoutPresetsResponse {
-  presets: WorkoutPreset[];
-  total: number;
-  page: number;
-  limit: number;
-}
+// Preset wire types come from the shared API schemas; these aliases keep the
+// mobile-local names the screens and hooks were written against.
+export type WorkoutPresetSet = WorkoutPresetSetResponse;
+export type WorkoutPresetExercise = WorkoutPresetExerciseResponse;
+export type WorkoutPreset = WorkoutPresetResponse;
+export type WorkoutPresetsResponse = WorkoutPresetsListResponse;

@@ -156,6 +156,30 @@ describe('WorkoutPresetFormScreen — buildPresetEditPayload', () => {
     expect(payload.exercises?.[0].sets[0].reps).toBe(10);
   });
 
+  it('emits superset_group when exercises are modified', () => {
+    const state: PresetDraft = {
+      ...baseDraft,
+      exercises: [
+        { ...baseDraft.exercises[0], supersetGroup: 1 },
+        {
+          ...baseDraft.exercises[0],
+          clientId: 'c2',
+          exerciseId: 'ex-2',
+          supersetGroup: 1,
+        },
+        { ...baseDraft.exercises[0], clientId: 'c3', exerciseId: 'ex-3' },
+      ],
+    };
+    const payload = buildPresetEditPayload({
+      state,
+      initialPreset: basePreset,
+      initialDescription: basePreset.description ?? '',
+      exercisesModified: true,
+      weightUnit: 'kg',
+    });
+    expect(payload.exercises?.map(e => e.superset_group)).toEqual([1, 1, null]);
+  });
+
   it('round-trips set_type, duration, and notes via exercises payload', () => {
     const state: PresetDraft = {
       ...baseDraft,

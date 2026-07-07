@@ -21,13 +21,14 @@ async function createWorkoutPreset(presetData: any) {
     if (presetData.exercises && presetData.exercises.length > 0) {
       for (const exercise of presetData.exercises) {
         const exerciseResult = await client.query(
-          `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
-           VALUES ($1, $2, $3, $4) RETURNING id`,
+          `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order, superset_group)
+           VALUES ($1, $2, $3, $4, $5) RETURNING id`,
           [
             newPreset.id,
             exercise.exercise_id,
             exercise.image_url,
             exercise.sort_order || 0,
+            exercise.superset_group ?? null,
           ]
         );
         const newExerciseId = exerciseResult.rows[0].id;
@@ -77,6 +78,7 @@ async function getWorkoutPresetByName(userId: any, name: any) {
                wpe.exercise_id,
                wpe.image_url,
                wpe.sort_order,
+               wpe.superset_group,
                e.name as exercise_name,
                e.category as category,
                COALESCE(
@@ -128,6 +130,7 @@ async function getWorkoutPresets(userId: any, page = 1, limit = 10) {
                 wpe.id,
                 wpe.exercise_id,
                 wpe.image_url,
+                wpe.superset_group,
                 e.name as exercise_name,
                 e.category as category,
                 COALESCE(
@@ -177,6 +180,7 @@ async function getWorkoutPresetById(presetId: any, userId: any) {
                 wpe.id,
                 wpe.exercise_id,
                 wpe.image_url,
+                wpe.superset_group,
                 e.name as exercise_name,
                 e.category as category,
                 COALESCE(
@@ -238,13 +242,14 @@ async function updateWorkoutPreset(
       if (updateData.exercises.length > 0) {
         for (const exercise of updateData.exercises) {
           const exerciseResult = await client.query(
-            `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
-             VALUES ($1, $2, $3, $4) RETURNING id`,
+            `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order, superset_group)
+             VALUES ($1, $2, $3, $4, $5) RETURNING id`,
             [
               presetId,
               exercise.exercise_id,
               exercise.image_url,
               exercise.sort_order || 0,
+              exercise.superset_group ?? null,
             ]
           );
           const newExerciseId = exerciseResult.rows[0].id;
@@ -411,6 +416,7 @@ async function searchWorkoutPresets(
                wpe.id,
                wpe.exercise_id,
                wpe.image_url,
+               wpe.superset_group,
                e.name as exercise_name,
                e.category as category,
                COALESCE(

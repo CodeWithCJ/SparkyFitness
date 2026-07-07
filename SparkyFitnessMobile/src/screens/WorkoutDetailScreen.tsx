@@ -9,7 +9,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
-import WorkoutEditableExerciseList from '../components/WorkoutEditableExerciseList';
+import WorkoutFormExerciseList from '../components/WorkoutFormExerciseList';
 import ActiveWorkoutExerciseCard, {
   METRIC_MENU_LABELS,
   METRIC_OPTIONS,
@@ -166,7 +166,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     addSet,
     removeSet,
     updateSetField,
+    updateSetMeta,
     setExerciseRest,
+    supersetWith,
+    ungroupExercise,
     setName: setFormName,
     setDate: setFormDate,
     populate,
@@ -561,22 +564,24 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Exercises */}
         {isEditing ? (
-          <WorkoutEditableExerciseList
+          <WorkoutFormExerciseList
             exercises={formState.exercises}
-            getImageSource={getImageSource}
             weightUnit={weightUnit as 'kg' | 'lbs'}
+            getImageSource={getImageSource}
             activeSetKey={activeSetKey}
             activeSetField={activeSetField}
             onActivateSet={activateSet}
             onDeactivateSet={deactivateSet}
-            onUpdateSetField={updateSetField}
-            onRemoveSet={removeSet}
+            updateSetField={updateSetField}
+            updateSetMeta={updateSetMeta}
+            removeSet={removeSet}
             onAddSet={handleAddSet}
             onRemoveExercise={handleRemoveExercise}
+            setExerciseRest={setExerciseRest}
+            supersetWith={supersetWith}
+            ungroupExercise={ungroupExercise}
             onAddExercisePress={openExerciseSearch}
-            onChangeRest={setExerciseRest}
             isEligibleForPrefill={isEligibleForPrefill}
-            mode="detail"
           />
         ) : renderViewExercises()}
 

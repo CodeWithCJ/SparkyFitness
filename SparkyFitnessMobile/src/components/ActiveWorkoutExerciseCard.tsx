@@ -6,7 +6,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
-import type { ExerciseEntryResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
 import RestPeriodChip from './RestPeriodChip';
@@ -19,6 +18,8 @@ import {
   CATEGORY_ICON_MAP,
   formatVolume,
   getExerciseVolumeKg,
+  type WorkoutCardExercise,
+  type WorkoutCardSet,
 } from '../utils/workoutSession';
 import type { ActiveSetPatch, CompletedSetMap } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
@@ -41,7 +42,7 @@ export const METRIC_MENU_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
 };
 
 /** Working-set numbers per set index; warmups repeat the previous number (they render the `W` pill instead). */
-function buildWorkingSetNumbers(sets: ExerciseEntryResponse['sets']): number[] {
+function buildWorkingSetNumbers(sets: WorkoutCardSet[]): number[] {
   let workingNumber = 0;
   return sets.map((set) => {
     if (set.set_type !== 'warmup') workingNumber += 1;
@@ -50,7 +51,7 @@ function buildWorkingSetNumbers(sets: ExerciseEntryResponse['sets']): number[] {
 }
 
 interface ActiveWorkoutExerciseCardProps {
-  exercise: ExerciseEntryResponse;
+  exercise: WorkoutCardExercise;
   expanded: boolean;
   completedSetIds: CompletedSetMap;
   activeSetId: string | null;
@@ -60,9 +61,12 @@ interface ActiveWorkoutExerciseCardProps {
   /**
    * 'view' renders the read-only variant (workout detail): no logging,
    * editing, overflow menu, add-set, or "Last time" stats fetch. The metric
-   * column and its picker stay live in both modes.
+   * column and its picker stay live in all modes. 'edit' renders form-draft
+   * rows (see ActiveWorkoutSetRow) with the overflow menu, add-set, rest chip,
+   * and stats line active; completion state is display-only (completedBadge)
+   * so completed sets stay editable.
    */
-  mode?: 'live' | 'view';
+  mode?: 'live' | 'view' | 'edit';
   /** Hide the rest chip entirely (e.g. imported workouts without rest data). */
   showRestChip?: boolean;
   onToggleExpanded: (entryId: string) => void;
@@ -74,8 +78,18 @@ interface ActiveWorkoutExerciseCardProps {
   onRecomplete?: (setId: string) => void;
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
   onDeleteSet?: (setId: string) => void;
-  onLongPressSet: (setId: string) => void;
+  onLongPressSet?: (setId: string) => void;
   onAddSet?: (entryId: string) => void;
+  // --- edit-mode props ---
+  /** Active row's focused field (form-owned state). */
+  activeField?: 'weight' | 'reps';
+  /** False hides the RPE input on active rows (preset sets store no RPE). */
+  rpeEditable?: boolean;
+  /** Prefill the first empty set from "last time" once stats arrive. */
+  eligibleForPrefill?: boolean;
+  onActivateSet?: (setId: string, field: 'weight' | 'reps') => void;
+  onDeactivateSet?: () => void;
+  onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
 }
 
 function ExerciseThumb({
@@ -83,7 +97,7 @@ function ExerciseThumb({
   getImageSource,
   size,
 }: {
-  exercise: ExerciseEntryResponse;
+  exercise: WorkoutCardExercise;
   getImageSource: GetImageSource;
   size: number;
 }) {
@@ -130,8 +144,15 @@ function ActiveWorkoutExerciseCard({
   onDeleteSet,
   onLongPressSet,
   onAddSet,
+  activeField,
+  rpeEditable,
+  eligibleForPrefill = false,
+  onActivateSet,
+  onDeactivateSet,
+  onEditFieldChange,
 }: ActiveWorkoutExerciseCardProps) {
   const readOnly = mode === 'view';
+  const isEdit = mode === 'edit';
   const [textMuted, successColor, accentPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-icon-success',
@@ -139,10 +160,38 @@ function ActiveWorkoutExerciseCard({
   ]) as [string, string, string];
 
   const name = exercise.exercise_snapshot?.name ?? 'Exercise';
-  // "Last time" only makes sense while performing — skip the fetch in view
-  // mode (the hook gates on a null id).
+  // "Last time" only makes sense while performing or planning — skip the
+  // fetch in view mode (the hook gates on a null id).
   const { data: stats } = useExerciseStats(readOnly ? null : exercise.exercise_id);
   const lastSet = stats?.lastSet ?? null;
+
+  // Edit-only: seed the first still-empty set from "last time" once, when
+  // stats arrive. Weight and reps fill independently — a null lastSet field
+  // must not clobber a value the user already typed (a typed character makes
+  // the mapped field non-null and skips that side).
+  const didPrefillRef = useRef(false);
+  const firstSet = exercise.sets[0];
+  const firstSetId = firstSet != null ? String(firstSet.id) : null;
+  const firstSetWeightEmpty = firstSet != null && firstSet.weight == null;
+  const firstSetRepsEmpty = firstSet != null && firstSet.reps == null;
+  useEffect(() => {
+    if (!isEdit || didPrefillRef.current) return;
+    if (!eligibleForPrefill || !lastSet || firstSetId == null) return;
+
+    didPrefillRef.current = true;
+    const patch: ActiveSetPatch = {};
+    if (firstSetWeightEmpty && lastSet.weight != null) patch.weight = lastSet.weight;
+    if (firstSetRepsEmpty && lastSet.reps != null) patch.reps = lastSet.reps;
+    if (Object.keys(patch).length > 0) onCommitField?.(firstSetId, patch);
+  }, [
+    isEdit,
+    eligibleForPrefill,
+    lastSet,
+    firstSetId,
+    firstSetWeightEmpty,
+    firstSetRepsEmpty,
+    onCommitField,
+  ]);
 
   const isDone =
     exercise.sets.length > 0 &&
@@ -172,9 +221,10 @@ function ActiveWorkoutExerciseCard({
   if (!expanded) {
     const volumeKg = getExerciseVolumeKg(exercise);
     // "planned" describes a live workout that hasn't reached the exercise yet;
-    // historical/imported workouts (view mode) never show it.
+    // historical/imported workouts (view mode) and form drafts (edit mode)
+    // never show it.
     const subtitle =
-      readOnly || anyComplete
+      readOnly || isEdit || anyComplete
         ? `${exercise.sets.length} sets${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
         : `${exercise.sets.length} sets planned`;
 
@@ -303,11 +353,18 @@ function ActiveWorkoutExerciseCard({
 
       {exercise.sets.map((set, index) => {
         const setId = String(set.id);
-        const state = completedSetIds[setId]
-          ? 'done'
-          : setId === activeSetId
+        // Edit mode never surfaces 'done' — completed sets stay editable and
+        // show the static completedBadge instead.
+        const state = isEdit
+          ? setId === activeSetId
             ? 'current'
-            : 'upcoming';
+            : 'upcoming'
+          : completedSetIds[setId]
+            ? 'done'
+            : setId === activeSetId
+              ? 'current'
+              : 'upcoming';
+        const nextSet = exercise.sets[index + 1];
         return (
           <ActiveWorkoutSetRow
             key={setId}
@@ -316,13 +373,22 @@ function ActiveWorkoutExerciseCard({
             state={state}
             metricColumn={metricColumn}
             weightUnit={weightUnit}
-            readOnly={readOnly}
+            mode={mode}
             onCompleteActive={onCompleteActive}
             onUncomplete={onUncomplete}
             onRecomplete={onRecomplete}
             onCommitField={onCommitField}
             onDelete={onDeleteSet}
             onLongPress={onLongPressSet}
+            activeField={activeField}
+            nextSetId={nextSet != null ? String(nextSet.id) : null}
+            entryId={exercise.id}
+            rpeEditable={rpeEditable}
+            completedBadge={isEdit && !!completedSetIds[setId]}
+            onActivateSet={onActivateSet}
+            onDeactivate={onDeactivateSet}
+            onEditFieldChange={onEditFieldChange}
+            onAddSet={onAddSet}
           />
         );
       })}

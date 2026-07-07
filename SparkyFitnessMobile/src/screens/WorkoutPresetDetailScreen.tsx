@@ -1,9 +1,14 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, View, Text, ScrollView } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
-import RestPeriodChip, { formatRest } from '../components/RestPeriodChip';
+import ActiveWorkoutExerciseCard, {
+  METRIC_MENU_LABELS,
+  METRIC_OPTIONS,
+} from '../components/ActiveWorkoutExerciseCard';
+import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { clearDraft, loadActiveDraft } from '../services/workoutDraftService';
 import {
@@ -12,65 +17,22 @@ import {
   useProfile,
   useServerConnection,
 } from '../hooks';
+import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { weightFromKg } from '../utils/unitConversions';
-import { buildPresetStartExercisesPayload } from '../utils/workoutSession';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  buildPresetStartExercisesPayload,
+  buildSupersetColorMap,
+  getSupersetRuns,
+  presetExerciseToCardExercise,
+  SUPERSET_PALETTE_VARS,
+} from '../utils/workoutSession';
+import type { SupersetBorder } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
-import type { WorkoutPresetExercise, WorkoutPresetSet } from '../types/workoutPresets';
 
 type WorkoutPresetDetailScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
-
-const EM_DASH = '—';
-
-function formatSetSummary(set: WorkoutPresetSet, weightUnit: 'kg' | 'lbs'): string {
-  // Time-based set: render duration only — these are stored without reps/weight,
-  // so falling back to "— × —" would look like missing data.
-  if (set.duration != null) {
-    return formatRest(set.duration);
-  }
-  const repsText = set.reps != null ? String(set.reps) : EM_DASH;
-  const weightText = set.weight != null
-    ? `${parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1))} ${weightUnit}`
-    : EM_DASH;
-  return `${repsText} × ${weightText}`;
-}
-
-interface PresetExerciseRowProps {
-  exercise: WorkoutPresetExercise;
-  weightUnit: 'kg' | 'lbs';
-}
-
-const PresetExerciseRow: React.FC<PresetExerciseRowProps> = ({ exercise, weightUnit }) => {
-  return (
-    <View className="bg-surface rounded-xl px-4 py-4 mb-3">
-      <Text className="text-base font-semibold text-text-primary mb-2">
-        {exercise.exercise_name}
-      </Text>
-      {exercise.sets.length === 0 ? (
-        <Text className="text-sm text-text-secondary">No sets</Text>
-      ) : (
-        exercise.sets.map((set, index) => (
-          <View
-            key={set.id}
-            className={`flex-row items-center justify-between py-2 ${
-              index < exercise.sets.length - 1 ? 'border-b border-border-subtle' : ''
-            }`}
-          >
-            <View className="flex-row items-center flex-1">
-              <Text className="text-sm text-text-muted w-10">{set.set_number}</Text>
-              <Text className="text-sm text-text-primary ml-2">
-                {formatSetSummary(set, weightUnit)}
-              </Text>
-            </View>
-            <RestPeriodChip readOnly value={set.rest_time} />
-          </View>
-        ))
-      )}
-    </View>
-  );
-};
 
 const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   navigation,
@@ -88,6 +50,44 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   const weightUnit: 'kg' | 'lbs' =
     preferences?.default_weight_unit === 'kg' ? 'kg' : 'lbs';
   const exerciseCount = preset.exercises?.length ?? 0;
+
+  const { getImageSource } = useExerciseImageSource();
+  const cardExercises = useMemo(
+    () => (preset.exercises ?? []).map(presetExerciseToCardExercise),
+    [preset.exercises],
+  );
+
+  // Preset templates read best fully laid out (the old static table showed
+  // every set): cards default expanded, collapsing allowed.
+  const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
+  const toggleExpanded = useCallback((entryId: string) => {
+    setCollapsedIds(prev => ({ ...prev, [entryId]: !prev[entryId] }));
+  }, []);
+
+  // Metric column is shared with the workout screens (intended).
+  const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
+  const setMetricColumn = useAppPreferencesStore(s => s.setActiveWorkoutMetricColumn);
+  const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
+  const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
+    setMetricMenuAnchor(anchor);
+  }, []);
+
+  // Superset rails, matching the workout detail presentation.
+  const supersetPalette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
+  const supersetBorders = useMemo(() => {
+    const runs = getSupersetRuns(cardExercises);
+    const colorByEntryId = buildSupersetColorMap(runs, supersetPalette);
+    const map = new Map<string, SupersetBorder>();
+    for (const run of runs) {
+      run.entryIds.forEach((entryId, index) => {
+        const color = colorByEntryId.get(entryId);
+        if (color != null) {
+          map.set(entryId, { color, isLast: index === run.entryIds.length - 1 });
+        }
+      });
+    }
+    return map;
+  }, [cardExercises, supersetPalette]);
 
   // WorkoutPreset uses snake_case `user_id` (it's a thin wrapper over server
   // JSON), unlike Exercise/FoodInfoItem which use camelCase `userId`.
@@ -191,13 +191,46 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
         </Text>
 
-        {preset.exercises?.map((exercise) => (
-          <PresetExerciseRow
-            key={exercise.id}
-            exercise={exercise}
-            weightUnit={weightUnit}
-          />
-        ))}
+        {cardExercises.map(cardExercise => {
+          const isExpanded = !collapsedIds[cardExercise.id];
+          const supersetBorder = supersetBorders.get(cardExercise.id) ?? null;
+          return (
+            // Grouped members carry a flat 3px left rail; interior rails run
+            // to the wrapper's bottom so consecutive members read as one line.
+            <View
+              key={cardExercise.id}
+              style={supersetBorder ? { paddingLeft: 10 } : undefined}
+            >
+              {supersetBorder && (
+                <View
+                  testID={`superset-rail-${cardExercise.id}`}
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: supersetBorder.isLast && isExpanded ? 8 : 0,
+                    width: 3,
+                    backgroundColor: supersetBorder.color,
+                  }}
+                />
+              )}
+              <ActiveWorkoutExerciseCard
+                exercise={cardExercise}
+                mode="view"
+                expanded={isExpanded}
+                completedSetIds={{}}
+                activeSetId={null}
+                metricColumn={metricColumn}
+                weightUnit={weightUnit}
+                getImageSource={getImageSource}
+                showRestChip={cardExercise.sets.length > 0}
+                onToggleExpanded={toggleExpanded}
+                onPressMetricHeader={handlePressMetricHeader}
+              />
+            </View>
+          );
+        })}
 
         <Button
           variant="primary"
@@ -232,6 +265,21 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           </Button>
         )}
       </ScrollView>
+
+      <AnchoredMenu
+        visible={metricMenuAnchor != null}
+        anchor={metricMenuAnchor}
+        onClose={() => setMetricMenuAnchor(null)}
+        minWidth={160}
+        items={METRIC_OPTIONS.map(option => ({
+          key: option,
+          label:
+            option === metricColumn
+              ? `✓ ${METRIC_MENU_LABELS[option]}`
+              : METRIC_MENU_LABELS[option],
+          onPress: () => setMetricColumn(option),
+        }))}
+      />
     </View>
   );
 };

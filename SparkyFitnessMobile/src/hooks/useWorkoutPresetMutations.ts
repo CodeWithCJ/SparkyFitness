@@ -49,7 +49,7 @@ export function useCreateWorkoutPreset() {
 export function useUpdateWorkoutPreset() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: WorkoutPresetUpdatePayload }) =>
+    mutationFn: ({ id, payload }: { id: number; payload: WorkoutPresetUpdatePayload }) =>
       updateWorkoutPreset(id, payload),
     onSuccess: () => {
       invalidateWorkoutPresetCaches(queryClient);
@@ -64,7 +64,7 @@ export function useUpdateWorkoutPreset() {
 
   return {
     updatePresetAsync: mutation.mutateAsync as (args: {
-      id: string;
+      id: number;
       payload: WorkoutPresetUpdatePayload;
     }) => Promise<WorkoutPreset>,
     isPending: mutation.isPending,
@@ -72,7 +72,7 @@ export function useUpdateWorkoutPreset() {
 }
 
 interface UseDeleteWorkoutPresetOptions {
-  presetId: string;
+  presetId: number;
   onSuccess?: () => void;
 }
 

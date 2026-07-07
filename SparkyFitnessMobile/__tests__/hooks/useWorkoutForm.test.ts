@@ -2,6 +2,7 @@ import {
   workoutFormReducer,
   getWorkoutDraftSubmission,
   type WorkoutDraft,
+  type WorkoutDraftExercise,
 } from '../../src/hooks/useWorkoutForm';
 import { buildExercisesPayload } from '../../src/utils/workoutSession';
 import type { Exercise } from '../../src/types/exercise';
@@ -776,6 +777,215 @@ describe('workoutFormReducer', () => {
     });
   });
 
+  describe('UPDATE_SET_META', () => {
+    const stateWithSets = (): WorkoutDraft => ({
+      ...makeEmptyDraft(),
+      exercises: [
+        {
+          clientId: 'a',
+          exerciseId: 'ex-1',
+          exerciseName: 'Bench Press',
+          exerciseCategory: null,
+          images: [],
+          sets: [
+            { clientId: 'a-s1', weight: '100', reps: '5' },
+            { clientId: 'a-s2', weight: '100', reps: '5' },
+          ],
+        },
+      ],
+    });
+
+    it('patches setType and rpe on the targeted set only and round-trips into the payload', () => {
+      let state = workoutFormReducer(stateWithSets(), {
+        type: 'UPDATE_SET_META',
+        exerciseClientId: 'a',
+        setClientId: 'a-s1',
+        patch: { setType: 'warmup' },
+      });
+      state = workoutFormReducer(state, {
+        type: 'UPDATE_SET_META',
+        exerciseClientId: 'a',
+        setClientId: 'a-s1',
+        patch: { rpe: 8.5 },
+      });
+
+      expect(state.exercises[0].sets[0].setType).toBe('warmup');
+      expect(state.exercises[0].sets[0].rpe).toBe(8.5);
+      expect(state.exercises[0].sets[1].setType).toBeUndefined();
+      expect(state.exercises[0].sets[1].rpe).toBeUndefined();
+
+      const payload = buildExercisesPayload(state.exercises, 'kg');
+      expect(payload[0].sets[0].set_type).toBe('warmup');
+      expect(payload[0].sets[0].rpe).toBe(8.5);
+      expect(payload[0].sets[1].set_type).toBeNull();
+      expect(payload[0].sets[1].rpe).toBeNull();
+    });
+
+    it('clears rpe with an explicit null patch', () => {
+      let state = workoutFormReducer(stateWithSets(), {
+        type: 'UPDATE_SET_META',
+        exerciseClientId: 'a',
+        setClientId: 'a-s1',
+        patch: { rpe: 9 },
+      });
+      state = workoutFormReducer(state, {
+        type: 'UPDATE_SET_META',
+        exerciseClientId: 'a',
+        setClientId: 'a-s1',
+        patch: { rpe: null },
+      });
+      expect(state.exercises[0].sets[0].rpe).toBeNull();
+    });
+  });
+
+  describe('superset actions', () => {
+    const makeDraftEx = (
+      clientId: string,
+      restTime: number,
+      overrides?: Partial<WorkoutDraftExercise>,
+    ): WorkoutDraftExercise => ({
+      clientId,
+      exerciseId: `x-${clientId}`,
+      exerciseName: clientId.toUpperCase(),
+      exerciseCategory: null,
+      images: [],
+      sets: [{ clientId: `${clientId}-s1`, weight: '100', reps: '5', restTime }],
+      ...overrides,
+    });
+
+    const threeSolo = (): WorkoutDraft => ({
+      ...makeEmptyDraft(),
+      exercises: [makeDraftEx('a', 60), makeDraftEx('b', 120), makeDraftEx('c', 45)],
+    });
+
+    const grouped = (): WorkoutDraft => ({
+      ...makeEmptyDraft(),
+      exercises: [
+        makeDraftEx('a', 60, { supersetGroup: 1 }),
+        makeDraftEx('b', 60, { supersetGroup: 1 }),
+        makeDraftEx('c', 45),
+      ],
+    });
+
+    const triGroup = (): WorkoutDraft => ({
+      ...makeEmptyDraft(),
+      exercises: [
+        makeDraftEx('a', 60, { supersetGroup: 1 }),
+        makeDraftEx('b', 60, { supersetGroup: 1 }),
+        makeDraftEx('c', 60, { supersetGroup: 1 }),
+      ],
+    });
+
+    it('groups two non-adjacent solos: reorders adjacent, harmonizes rest to the anchor', () => {
+      const next = workoutFormReducer(threeSolo(), {
+        type: 'SUPERSET_WITH',
+        currentClientId: 'a',
+        pickedClientId: 'c',
+      });
+
+      expect(next.exercises.map(e => e.clientId)).toEqual(['a', 'c', 'b']);
+      expect(next.exercises.map(e => e.supersetGroup ?? null)).toEqual([1, 1, null]);
+      // c's per-set rest (45) is overwritten by the anchor's 60.
+      expect(next.exercises[1].sets.map(s => s.restTime)).toEqual([60]);
+    });
+
+    it("adds a member to the current run's tail", () => {
+      const next = workoutFormReducer(grouped(), {
+        type: 'SUPERSET_WITH',
+        currentClientId: 'a',
+        pickedClientId: 'c',
+      });
+
+      expect(next.exercises.map(e => e.clientId)).toEqual(['a', 'b', 'c']);
+      expect(next.exercises.map(e => e.supersetGroup)).toEqual([1, 1, 1]);
+      expect(next.exercises[2].sets.map(s => s.restTime)).toEqual([60]);
+    });
+
+    it('generates a fresh group id past stale singleton values and scrubs them', () => {
+      const state = threeSolo();
+      state.exercises[2] = { ...state.exercises[2], supersetGroup: 5 };
+
+      const next = workoutFormReducer(state, {
+        type: 'SUPERSET_WITH',
+        currentClientId: 'a',
+        pickedClientId: 'b',
+      });
+
+      expect(next.exercises[0].supersetGroup).toBe(6);
+      expect(next.exercises[1].supersetGroup).toBe(6);
+      expect(next.exercises[2].supersetGroup).toBeNull();
+    });
+
+    it('rejects grouping with an already-grouped pick', () => {
+      const state = grouped();
+      const next = workoutFormReducer(state, {
+        type: 'SUPERSET_WITH',
+        currentClientId: 'c',
+        pickedClientId: 'a',
+      });
+      expect(next.exercises).toBe(state.exercises);
+    });
+
+    it('ungrouping either member of a 2-group dissolves it entirely', () => {
+      const next = workoutFormReducer(grouped(), {
+        type: 'UNGROUP_EXERCISE',
+        clientId: 'a',
+      });
+
+      expect(next.exercises.map(e => e.clientId)).toEqual(['a', 'b', 'c']);
+      expect(next.exercises.map(e => e.supersetGroup ?? null)).toEqual([null, null, null]);
+    });
+
+    it('ungrouping a middle member moves it after the run so the rest stay adjacent', () => {
+      const next = workoutFormReducer(triGroup(), {
+        type: 'UNGROUP_EXERCISE',
+        clientId: 'b',
+      });
+
+      expect(next.exercises.map(e => e.clientId)).toEqual(['a', 'c', 'b']);
+      expect(next.exercises.map(e => e.supersetGroup ?? null)).toEqual([1, 1, null]);
+    });
+
+    it('ungrouping an end member of a tri-set keeps the other two grouped', () => {
+      const next = workoutFormReducer(triGroup(), {
+        type: 'UNGROUP_EXERCISE',
+        clientId: 'c',
+      });
+
+      expect(next.exercises.map(e => e.clientId)).toEqual(['a', 'b', 'c']);
+      expect(next.exercises.map(e => e.supersetGroup ?? null)).toEqual([1, 1, null]);
+    });
+
+    it('is a no-op for an ungrouped exercise', () => {
+      const state = threeSolo();
+      const next = workoutFormReducer(state, {
+        type: 'UNGROUP_EXERCISE',
+        clientId: 'a',
+      });
+      expect(next.exercises).toBe(state.exercises);
+    });
+
+    it('REMOVE_EXERCISE of a group member dissolves the 1-member remainder', () => {
+      const next = workoutFormReducer(grouped(), {
+        type: 'REMOVE_EXERCISE',
+        clientId: 'b',
+      });
+
+      expect(next.exercises.map(e => e.clientId)).toEqual(['a', 'c']);
+      expect(next.exercises[0].supersetGroup).toBeNull();
+    });
+
+    it('round-trips draft groups into the session payload', () => {
+      const next = workoutFormReducer(threeSolo(), {
+        type: 'SUPERSET_WITH',
+        currentClientId: 'a',
+        pickedClientId: 'b',
+      });
+      const payload = buildExercisesPayload(next.exercises, 'kg');
+      expect(payload.map(e => e.superset_group)).toEqual([1, 1, null]);
+    });
+  });
+
   describe('POPULATE_FROM_PRESET', () => {
     const makePreset = (overrides?: Partial<WorkoutPreset>): WorkoutPreset => ({
       id: 'preset-1',
@@ -901,6 +1111,54 @@ describe('workoutFormReducer', () => {
 
       expect(result.exercises[0].sets[0].restTime).toBe(120);
       expect(result.exercises[0].sets[1].restTime).toBeNull();
+    });
+
+    it('maps superset_group, set_type, duration, and notes and round-trips them to the save payload', () => {
+      const state = makeEmptyDraft();
+      const preset = makePreset({
+        exercises: [
+          {
+            id: 'pe-1',
+            exercise_id: 'ex-1',
+            exercise_name: 'Bench Press',
+            image_url: null,
+            superset_group: 1,
+            sets: [
+              { id: 's-1', set_number: 1, set_type: 'warmup', reps: 12, weight: 40, duration: 45, rest_time: 60, notes: 'slow tempo' },
+            ],
+          },
+          {
+            id: 'pe-2',
+            exercise_id: 'ex-2',
+            exercise_name: 'Bent Row',
+            image_url: null,
+            superset_group: null,
+            sets: [{ id: 's-2', set_number: 1, set_type: 'normal', reps: 10, weight: 60, duration: null, rest_time: null, notes: null }],
+          },
+        ],
+      });
+      const result = workoutFormReducer(state, {
+        type: 'POPULATE_FROM_PRESET',
+        preset,
+        weightUnit: 'kg',
+        clientIds: presetClientIds(preset),
+      });
+
+      expect(result.exercises[0].supersetGroup).toBe(1);
+      expect(result.exercises[1].supersetGroup).toBeNull();
+      expect(result.exercises[0].sets[0].setType).toBe('warmup');
+      expect(result.exercises[0].sets[0].duration).toBe(45);
+      expect(result.exercises[0].sets[0].notes).toBe('slow tempo');
+
+      // "Log past workout" saves through buildExercisesPayload, which writes
+      // every column with `?? null` — the populated draft must carry these
+      // fields or the save would permanently null them.
+      const payload = buildExercisesPayload(result.exercises, 'kg');
+      expect(payload[0].superset_group).toBe(1);
+      expect(payload[1].superset_group).toBeNull();
+      expect(payload[0].sets[0].set_type).toBe('warmup');
+      expect(payload[0].sets[0].duration).toBe(45);
+      expect(payload[0].sets[0].notes).toBe('slow tempo');
     });
 
     it('handles preset with multiple exercises', () => {

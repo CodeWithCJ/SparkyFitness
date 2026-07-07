@@ -38,6 +38,9 @@ const mockNavigation = {
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
+  // useExerciseImageSource refreshes its cache on focus; a no-op keeps
+  // rendering synchronous outside a NavigationContainer.
+  useFocusEffect: jest.fn(),
 }));
 
 const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
@@ -210,7 +213,7 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(screen.getByText('Bench Press')).toBeTruthy();
   });
 
-  it('formats reps × weight sets in the user’s weight unit (kg)', () => {
+  it('renders set weight/reps in the card table, expanded by default (kg)', () => {
     const preset = buildPreset({
       exercises: [
         {
@@ -224,7 +227,10 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('5 × 100 kg')).toBeTruthy();
+    // No expand tap needed — preset cards default expanded.
+    expect(screen.getByText('KG')).toBeTruthy();
+    expect(screen.getByText('100')).toBeTruthy();
+    expect(screen.getByText('5')).toBeTruthy();
   });
 
   it('converts kg to lbs when the user prefers lbs', () => {
@@ -248,7 +254,8 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     // 100kg → ~220.5 lbs
-    expect(screen.getByText('5 × 220.5 lbs')).toBeTruthy();
+    expect(screen.getByText('LB')).toBeTruthy();
+    expect(screen.getByText('220.5')).toBeTruthy();
   });
 
   it('coerces st_lbs to lbs for display rather than passing it to weightFromKg', () => {
@@ -271,10 +278,10 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('5 × 220.5 lbs')).toBeTruthy();
+    expect(screen.getByText('220.5')).toBeTruthy();
   });
 
-  it('renders per-set rest_time so mixed-rest presets keep their accuracy', () => {
+  it('shows one exercise-level rest chip from the first set (mixed rest degrades to it)', () => {
     const preset = buildPreset({
       exercises: [
         {
@@ -293,8 +300,44 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     expect(screen.getByText('Rest · 45s')).toBeTruthy();
-    expect(screen.getByText('Rest · 1:30')).toBeTruthy();
-    expect(screen.getByText('Rest · 2:00')).toBeTruthy();
+    expect(screen.queryByText('Rest · 1:30')).toBeNull();
+    expect(screen.queryByText('Rest · 2:00')).toBeNull();
+  });
+
+  it('renders a superset rail on each grouped exercise', () => {
+    const preset = buildPreset({
+      exercises: [
+        {
+          id: 801,
+          exercise_id: 'ex-1',
+          exercise_name: 'Bench Press',
+          image_url: null,
+          superset_group: 1,
+          sets: [buildSet({ id: 's-1' })],
+        },
+        {
+          id: 802,
+          exercise_id: 'ex-2',
+          exercise_name: 'Bent-over Row',
+          image_url: null,
+          superset_group: 1,
+          sets: [buildSet({ id: 's-2' })],
+        },
+        {
+          id: 803,
+          exercise_id: 'ex-3',
+          exercise_name: 'Plank',
+          image_url: null,
+          superset_group: null,
+          sets: [buildSet({ id: 's-3' })],
+        },
+      ],
+    } as never);
+    const screen = renderScreen(preset);
+
+    expect(screen.getByTestId('superset-rail-801')).toBeTruthy();
+    expect(screen.getByTestId('superset-rail-802')).toBeTruthy();
+    expect(screen.queryByTestId('superset-rail-803')).toBeNull();
   });
 
   it('renders time-based (duration-only) sets as a duration string', () => {

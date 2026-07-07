@@ -1,9 +1,18 @@
 import { useCallback, useReducer, useRef } from 'react';
 import { weightFromKg } from '../utils/unitConversions';
 import type { Exercise } from '../types/exercise';
-import type { WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
+import type {
+  WorkoutDraftExercise,
+  WorkoutDraftSet,
+  WorkoutSetMetaPatch,
+} from '../types/drafts';
 import type { WorkoutPreset } from '../types/workoutPresets';
-import { DEFAULT_REST_SEC } from '../utils/workoutSession';
+import {
+  DEFAULT_REST_SEC,
+  normalizeDraftSupersetGroups,
+  supersetDraftExercises,
+  ungroupDraftExercise,
+} from '../utils/workoutSession';
 
 function generateClientId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -39,7 +48,10 @@ type PresetFormAction =
       field: 'weight' | 'reps';
       value: string;
     }
+  | { type: 'UPDATE_SET_META'; exerciseClientId: string; setClientId: string; patch: WorkoutSetMetaPatch }
   | { type: 'SET_EXERCISE_REST'; exerciseClientId: string; seconds: number }
+  | { type: 'SUPERSET_WITH'; currentClientId: string; pickedClientId: string }
+  | { type: 'UNGROUP_EXERCISE'; clientId: string }
   | {
       type: 'POPULATE_FROM_PRESET';
       preset: WorkoutPreset;
@@ -81,7 +93,9 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
     case 'REMOVE_EXERCISE':
       return {
         ...state,
-        exercises: state.exercises.filter(e => e.clientId !== action.clientId),
+        exercises: normalizeDraftSupersetGroups(
+          state.exercises.filter(e => e.clientId !== action.clientId),
+        ),
       };
 
     case 'ADD_SET':
@@ -140,6 +154,36 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
         }),
       };
 
+    case 'UPDATE_SET_META':
+      return {
+        ...state,
+        exercises: state.exercises.map(exercise => {
+          if (exercise.clientId !== action.exerciseClientId) return exercise;
+          return {
+            ...exercise,
+            sets: exercise.sets.map(set =>
+              set.clientId === action.setClientId ? { ...set, ...action.patch } : set,
+            ),
+          };
+        }),
+      };
+
+    case 'SUPERSET_WITH':
+      return {
+        ...state,
+        exercises: supersetDraftExercises(
+          state.exercises,
+          action.currentClientId,
+          action.pickedClientId,
+        ),
+      };
+
+    case 'UNGROUP_EXERCISE':
+      return {
+        ...state,
+        exercises: ungroupDraftExercise(state.exercises, action.clientId),
+      };
+
     case 'POPULATE_FROM_PRESET':
       return {
         name: action.preset.name,
@@ -150,6 +194,7 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
           exerciseName: exercise.exercise_name,
           exerciseCategory: exercise.category ?? null,
           images: exercise.image_url ? [exercise.image_url] : [],
+          supersetGroup: exercise.superset_group ?? null,
           sets: exercise.sets.map((set, setIdx) => ({
             clientId: action.clientIds[exerciseIdx].setClientIds[setIdx],
             restTime: set.rest_time,
@@ -158,7 +203,7 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
                 ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
                 : '',
             reps: set.reps != null ? String(set.reps) : '',
-            setType: set.set_type,
+            setType: set.set_type ?? undefined,
             duration: set.duration,
             notes: set.notes,
           })),
@@ -224,9 +269,27 @@ export function useWorkoutPresetForm() {
     [],
   );
 
+  const updateSetMeta = useCallback(
+    (exerciseClientId: string, setClientId: string, patch: WorkoutSetMetaPatch) => {
+      exercisesModifiedRef.current = true;
+      dispatch({ type: 'UPDATE_SET_META', exerciseClientId, setClientId, patch });
+    },
+    [],
+  );
+
   const setExerciseRest = useCallback((exerciseClientId: string, seconds: number) => {
     exercisesModifiedRef.current = true;
     dispatch({ type: 'SET_EXERCISE_REST', exerciseClientId, seconds });
+  }, []);
+
+  const supersetWith = useCallback((currentClientId: string, pickedClientId: string) => {
+    exercisesModifiedRef.current = true;
+    dispatch({ type: 'SUPERSET_WITH', currentClientId, pickedClientId });
+  }, []);
+
+  const ungroupExercise = useCallback((clientId: string) => {
+    exercisesModifiedRef.current = true;
+    dispatch({ type: 'UNGROUP_EXERCISE', clientId });
   }, []);
 
   const populateFromPreset = useCallback(
@@ -252,7 +315,10 @@ export function useWorkoutPresetForm() {
     addSet,
     removeSet,
     updateSetField,
+    updateSetMeta,
     setExerciseRest,
+    supersetWith,
+    ungroupExercise,
     populateFromPreset,
     exercisesModifiedRef,
     initialDescriptionRef,

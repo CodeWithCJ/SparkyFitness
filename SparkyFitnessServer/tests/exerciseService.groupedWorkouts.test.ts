@@ -186,6 +186,61 @@ describe('exerciseService grouped workouts', () => {
     expect(createCalls[1][2]).toMatchObject({ superset_group: null });
     expect(client.query).toHaveBeenCalledWith('COMMIT');
   });
+  it('copies superset_group from preset exercises when starting from a preset', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    workoutPresetRepository.getWorkoutPresetById.mockResolvedValue({
+      id: 42,
+      name: 'Push Day',
+      description: 'Preset',
+      exercises: [
+        {
+          exercise_id: '11111111-1111-4111-8111-111111111111',
+          sort_order: 0,
+          superset_group: 1,
+          sets: [],
+        },
+        {
+          exercise_id: '22222222-2222-4222-8222-222222222222',
+          sort_order: 1,
+          superset_group: null,
+          sets: [],
+        },
+      ],
+    });
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exercisePresetEntryRepository.createExercisePresetEntryWithClient.mockResolvedValue(
+      { id: 'preset-entry-1' }
+    );
+    // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist on ty... Remove this comment to see the full error message
+    resolveExerciseIdToUuid.mockImplementation(async (id: string) => id);
+    // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist on ty... Remove this comment to see the full error message
+    exerciseDb.getExerciseById.mockImplementation(async (id: string) => ({
+      id,
+      name: 'Test Exercise',
+      calories_per_hour: 300,
+    }));
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValue(
+      300
+    );
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
+      id: 'new-entry',
+    });
+
+    await exerciseService.createGroupedWorkoutSession('user-1', 'actor-1', {
+      workout_preset_id: 42,
+      entry_date: '2026-03-12',
+      source: 'manual',
+    });
+
+    const createCalls = vi.mocked(
+      exerciseEntryDb._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(createCalls[0][2]).toMatchObject({ superset_group: 1 });
+    expect(createCalls[1][2]).toMatchObject({ superset_group: null });
+    expect(client.query).toHaveBeenCalledWith('COMMIT');
+  });
   it('propagates entry_date changes to existing child entries on header-only updates', async () => {
     getGroupedExerciseSessionByIdWithClient
       // @ts-expect-error TS(2339): Property 'mockResolvedValueOnce' does not exist on... Remove this comment to see the full error message

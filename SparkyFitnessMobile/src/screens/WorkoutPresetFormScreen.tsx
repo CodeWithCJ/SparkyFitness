@@ -4,7 +4,7 @@ import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import FormInput from '../components/FormInput';
 import FormScreenChrome from '../components/FormScreenChrome';
-import WorkoutEditableExerciseList from '../components/WorkoutEditableExerciseList';
+import WorkoutFormExerciseList from '../components/WorkoutFormExerciseList';
 import {
   useCreateWorkoutPreset,
   useUpdateWorkoutPreset,
@@ -17,6 +17,7 @@ import { useWorkoutPresetForm, type PresetDraft } from '../hooks/useWorkoutPrese
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import { buildPresetExercisesPayload } from '../utils/workoutSession';
+import type { WorkoutSetMetaPatch } from '../types/drafts';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type {
   RootStackParamList,
@@ -45,8 +46,15 @@ interface PresetFormBodyProps {
     field: 'weight' | 'reps',
     value: string,
   ) => void;
+  updateSetMeta: (
+    exerciseClientId: string,
+    setClientId: string,
+    patch: WorkoutSetMetaPatch,
+  ) => void;
   removeSet: (exerciseClientId: string, setClientId: string) => void;
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
+  supersetWith: (currentClientId: string, pickedClientId: string) => void;
+  ungroupExercise: (clientId: string) => void;
   isEligibleForPrefill: (clientId: string) => boolean;
   onAddExercisePress: () => void;
 }
@@ -58,8 +66,11 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   weightUnit,
   exerciseSetEditing,
   updateSetField,
+  updateSetMeta,
   removeSet,
   setExerciseRest,
+  supersetWith,
+  ungroupExercise,
   isEligibleForPrefill,
   onAddExercisePress,
 }) => {
@@ -95,22 +106,25 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
       </View>
 
       <View className="bg-surface rounded-xl p-4 shadow-sm">
-        <WorkoutEditableExerciseList
-          mode="add"
+        <WorkoutFormExerciseList
           exercises={state.exercises}
-          getImageSource={getImageSource}
           weightUnit={weightUnit}
+          getImageSource={getImageSource}
           activeSetKey={exerciseSetEditing.activeSetKey}
           activeSetField={exerciseSetEditing.activeSetField}
           onActivateSet={exerciseSetEditing.activateSet}
           onDeactivateSet={exerciseSetEditing.deactivateSet}
-          onUpdateSetField={updateSetField}
-          onRemoveSet={removeSet}
+          updateSetField={updateSetField}
+          updateSetMeta={updateSetMeta}
+          removeSet={removeSet}
           onAddSet={exerciseSetEditing.handleAddSet}
           onRemoveExercise={exerciseSetEditing.handleRemoveExercise}
+          setExerciseRest={setExerciseRest}
+          supersetWith={supersetWith}
+          ungroupExercise={ungroupExercise}
           onAddExercisePress={onAddExercisePress}
-          onChangeRest={setExerciseRest}
           isEligibleForPrefill={isEligibleForPrefill}
+          rpeEditable={false}
         />
       </View>
     </View>
@@ -142,7 +156,10 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     addSet,
     removeSet,
     updateSetField,
+    updateSetMeta,
     setExerciseRest,
+    supersetWith,
+    ungroupExercise,
   } = useWorkoutPresetForm();
 
   const [eligibleIds, setEligibleIds] = useState<Set<string>>(() => new Set());
@@ -241,8 +258,11 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         weightUnit={weightUnit}
         exerciseSetEditing={exerciseSetEditing}
         updateSetField={updateSetField}
+        updateSetMeta={updateSetMeta}
         removeSet={removeSet}
         setExerciseRest={setExerciseRest}
+        supersetWith={supersetWith}
+        ungroupExercise={ungroupExercise}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
       />
@@ -300,7 +320,10 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     addSet,
     removeSet,
     updateSetField,
+    updateSetMeta,
     setExerciseRest,
+    supersetWith,
+    ungroupExercise,
     populateFromPreset,
     exercisesModifiedRef,
     initialDescriptionRef,
@@ -402,8 +425,11 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         weightUnit={weightUnit}
         exerciseSetEditing={exerciseSetEditing}
         updateSetField={updateSetField}
+        updateSetMeta={updateSetMeta}
         removeSet={removeSet}
         setExerciseRest={setExerciseRest}
+        supersetWith={supersetWith}
+        ungroupExercise={ungroupExercise}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
       />

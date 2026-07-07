@@ -17,6 +17,8 @@ import {
   buildPresetStartExercisesPayload,
   buildSessionExercisesPayload,
   buildSingleExerciseStartPayload,
+  draftExerciseToCardExercise,
+  presetExerciseToCardExercise,
   DEFAULT_REST_SEC,
   isTempExerciseEntryId,
   isTempSetId,
@@ -31,6 +33,7 @@ import {
 } from '../../src/utils/workoutSession';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { presetSessionExerciseRequestSchema } from '@workspace/shared';
+import { weightFromKg } from '../../src/utils/unitConversions';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
 import type {
   WorkoutPreset,
@@ -1255,6 +1258,18 @@ describe('workoutSession', () => {
       expect(payload[0].sets[0].notes).toBe('easy set');
     });
 
+    it('emits superset_group from the draft, defaulting to null', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({ exerciseId: 'ex-1', supersetGroup: 2 }),
+          makeDraftExercise({ exerciseId: 'ex-2' }),
+        ],
+        'kg',
+      );
+      expect(payload[0].superset_group).toBe(2);
+      expect(payload[1].superset_group).toBeNull();
+    });
+
     it('defaults duration and notes to null when not provided', () => {
       const payload = buildPresetExercisesPayload(
         [
@@ -1332,6 +1347,152 @@ describe('workoutSession', () => {
       expect(payload[0].sets[1].set_number).toBe(2);
       expect(payload[1].sort_order).toBe(1);
       expect(payload[1].sets[0].set_number).toBe(1);
+    });
+  });
+
+  describe('card adapters', () => {
+    describe('draftExerciseToCardExercise', () => {
+      const makeDraftExercise = (
+        overrides?: Partial<WorkoutDraftExercise>,
+      ): WorkoutDraftExercise => ({
+        clientId: 'c1',
+        exerciseId: 'ex-1',
+        exerciseName: 'Bench Press',
+        exerciseCategory: 'Strength',
+        images: ['bench.png'],
+        sets: [{ clientId: 's1', weight: '100', reps: '5', restTime: 90 }],
+        ...overrides,
+      });
+
+      it('maps client ids, snapshot fallback, and superset group', () => {
+        const card = draftExerciseToCardExercise(
+          makeDraftExercise({ supersetGroup: 2 }),
+          'kg',
+        );
+        expect(card.id).toBe('c1');
+        expect(card.exercise_id).toBe('ex-1');
+        expect(card.superset_group).toBe(2);
+        expect(card.exercise_snapshot).toEqual({
+          name: 'Bench Press',
+          category: 'Strength',
+          images: ['bench.png'],
+        });
+        expect(card.sets[0]).toMatchObject({
+          id: 's1',
+          set_number: 1,
+          weight: 100,
+          reps: 5,
+          rest_time: 90,
+          editWeightText: '100',
+          editRepsText: '5',
+        });
+      });
+
+      it('prefers the server snapshot when editing an existing session', () => {
+        const snapshot = { id: 'ex-1', name: 'Snap Name', category: 'Snap', images: [] };
+        const card = draftExerciseToCardExercise(
+          makeDraftExercise({ snapshot: snapshot as never }),
+          'kg',
+        );
+        expect(card.exercise_snapshot).toBe(snapshot);
+      });
+
+      it('maps empty draft strings to null weight/reps', () => {
+        const card = draftExerciseToCardExercise(
+          makeDraftExercise({ sets: [{ clientId: 's1', weight: '', reps: '' }] }),
+          'kg',
+        );
+        expect(card.sets[0].weight).toBeNull();
+        expect(card.sets[0].reps).toBeNull();
+      });
+
+      it('pins the lbs precision path: "100" lbs round-trips to display "100"', () => {
+        const card = draftExerciseToCardExercise(makeDraftExercise(), 'lbs');
+        expect(card.sets[0].weight).toBeCloseTo(45.359, 3);
+        // The row's display formatting for the mapped kg value.
+        const display = String(
+          parseFloat(weightFromKg(card.sets[0].weight!, 'lbs').toFixed(1)),
+        );
+        expect(display).toBe('100');
+        // The raw draft string survives untouched for the controlled inputs.
+        expect(card.sets[0].editWeightText).toBe('100');
+      });
+
+      it('carries setType, rpe, and duration', () => {
+        const card = draftExerciseToCardExercise(
+          makeDraftExercise({
+            sets: [
+              {
+                clientId: 's1',
+                weight: '40',
+                reps: '12',
+                setType: 'warmup',
+                rpe: 8.5,
+                duration: 45,
+              },
+            ],
+          }),
+          'kg',
+        );
+        expect(card.sets[0].set_type).toBe('warmup');
+        expect(card.sets[0].rpe).toBe(8.5);
+        expect(card.sets[0].duration).toBe(45);
+      });
+    });
+
+    describe('presetExerciseToCardExercise', () => {
+      const presetExercise = (
+        overrides?: Partial<WorkoutPresetExercise>,
+      ): WorkoutPresetExercise => ({
+        id: 801,
+        exercise_id: 'ex-1',
+        image_url: 'img.png',
+        exercise_name: 'Squat',
+        category: 'legs',
+        superset_group: 3,
+        sets: [
+          {
+            id: 901,
+            set_number: 4,
+            set_type: 'warmup',
+            reps: 5,
+            weight: 100,
+            duration: 60,
+            rest_time: 120,
+            notes: null,
+          },
+        ],
+        ...overrides,
+      });
+
+      it('maps preset fields with kg passthrough and stringified ids', () => {
+        const card = presetExerciseToCardExercise(presetExercise());
+        expect(card.id).toBe('801');
+        expect(card.superset_group).toBe(3);
+        expect(card.exercise_snapshot).toEqual({
+          name: 'Squat',
+          category: 'legs',
+          images: ['img.png'],
+        });
+        expect(card.sets[0]).toEqual({
+          id: 901,
+          set_number: 1,
+          set_type: 'warmup',
+          weight: 100,
+          reps: 5,
+          rpe: null,
+          rest_time: 120,
+          duration: 60,
+        });
+      });
+
+      it('defaults null image and superset group', () => {
+        const card = presetExerciseToCardExercise(
+          presetExercise({ image_url: null, superset_group: null }),
+        );
+        expect(card.exercise_snapshot?.images).toEqual([]);
+        expect(card.superset_group).toBeNull();
+      });
     });
   });
 
@@ -1579,7 +1740,7 @@ describe('workoutSession', () => {
     const EX_B = '22222222-2222-4222-8222-222222222222';
 
     const makePresetSet = (overrides?: Partial<WorkoutPresetSet>): WorkoutPresetSet => ({
-      id: 'ps-1',
+      id: 901,
       set_number: 1,
       set_type: 'normal',
       reps: 8,
@@ -1593,17 +1754,18 @@ describe('workoutSession', () => {
     const makePresetExercise = (
       overrides?: Partial<WorkoutPresetExercise>,
     ): WorkoutPresetExercise => ({
-      id: 'pe-1',
+      id: 801,
       exercise_id: EX_A,
       image_url: null,
       exercise_name: 'Bench Press',
       category: 'Strength',
+      superset_group: null,
       sets: [makePresetSet()],
       ...overrides,
     });
 
     const makeWorkoutPreset = (overrides?: Partial<WorkoutPreset>): WorkoutPreset => ({
-      id: 'preset-1',
+      id: 5,
       user_id: 'user-1',
       name: 'Push Day',
       description: null,
@@ -1641,6 +1803,7 @@ describe('workoutSession', () => {
             sort_order: 0,
             duration_minutes: 0,
             notes: null,
+            superset_group: null,
             sets: [
               {
                 set_number: 1,
@@ -1658,16 +1821,30 @@ describe('workoutSession', () => {
         ]);
       });
 
+      it('threads superset_group from the preset into the live-start payload', () => {
+        const preset = makeWorkoutPreset({
+          exercises: [
+            makePresetExercise({ superset_group: 1 }),
+            makePresetExercise({ id: 802, exercise_id: EX_B, superset_group: 1 }),
+            makePresetExercise({ id: 803, exercise_id: EX_A, superset_group: null }),
+          ],
+        });
+
+        const payload = buildPresetStartExercisesPayload(preset);
+
+        expect(payload.map(e => e.superset_group)).toEqual([1, 1, null]);
+      });
+
       it('indexes sort_order and renumbers sets sequentially', () => {
         const preset = makeWorkoutPreset({
           exercises: [
             makePresetExercise({
               sets: [
                 makePresetSet({ set_number: 3 }),
-                makePresetSet({ id: 'ps-2', set_number: 7 }),
+                makePresetSet({ id: 902, set_number: 7 }),
               ],
             }),
-            makePresetExercise({ id: 'pe-2', exercise_id: EX_B }),
+            makePresetExercise({ id: 802, exercise_id: EX_B }),
           ],
         });
 
@@ -1713,7 +1890,7 @@ describe('workoutSession', () => {
         const preset = makeWorkoutPreset({
           exercises: [
             makePresetExercise({ sets: [makePresetSet({ reps: null, weight: null })] }),
-            makePresetExercise({ id: 'pe-2', exercise_id: EX_B, sets: [] }),
+            makePresetExercise({ id: 802, exercise_id: EX_B, sets: [] }),
           ],
         });
 

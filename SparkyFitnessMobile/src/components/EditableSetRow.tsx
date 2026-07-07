@@ -1,3 +1,5 @@
+// Sole consumer: ActivityDetailScreen (via EditableSetList). The workout and
+// preset forms use the card-based ActiveWorkoutSetRow in edit mode.
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Alert, View, Text, TextInput, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';

@@ -1,3 +1,5 @@
+// Sole consumer: ActivityDetailScreen. The workout/preset forms use the
+// card-based WorkoutFormExerciseList (ActiveWorkoutExerciseCard in edit mode).
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';

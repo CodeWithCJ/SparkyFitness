@@ -16,9 +16,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
-import type { ExerciseEntrySetResponse } from '@workspace/shared';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
+import { formatRest } from './RestPeriodChip';
 import { parseDecimalInput } from '../utils/numericInput';
 import { weightFromKg, weightToKg } from '../utils/unitConversions';
 import {
@@ -27,6 +27,7 @@ import {
   getRpeTone,
   setVolumeKg,
   type RpeTone,
+  type WorkoutCardSet,
 } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
@@ -63,24 +64,43 @@ export function parseRpeInput(text: string): number | null {
   return Math.min(10, Math.max(1, snapped));
 }
 
+export type SetRowMode = 'live' | 'view' | 'edit';
+
 interface ActiveWorkoutSetRowProps {
-  set: ExerciseEntrySetResponse;
+  set: WorkoutCardSet;
   /** Working-set number. Warmup rows show the `W` pill instead. */
   displayNumber: number;
   state: SetRowState;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
   /**
-   * Render without logging affordances: static check on done rows, no
+   * 'view' renders without logging affordances: static check on done rows, no
    * un-complete/re-complete controls, no swipe-delete, no done-row dim.
+   * 'edit' renders form-draft rows: controlled inputs on the active row,
+   * tap-to-activate display cells, delete instead of log, Done/Next accessory.
    */
-  readOnly?: boolean;
+  mode?: SetRowMode;
   onCompleteActive?: () => void;
   onUncomplete?: (setId: string) => void;
   onRecomplete?: (setId: string) => void;
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
   onDelete?: (setId: string) => void;
-  onLongPress: (setId: string) => void;
+  onLongPress?: (setId: string) => void;
+  // --- edit-mode props (values come from the form reducer; see WorkoutCardSet) ---
+  /** Which field of the active row holds focus; drives the Next accessory. */
+  activeField?: 'weight' | 'reps';
+  /** Id of the following set, for Next-to-next-row advance. Null on the last set. */
+  nextSetId?: string | null;
+  /** Owning entry id so the last row's Next can add a set. */
+  entryId?: string;
+  /** False hides the RPE input (preset sets store no RPE). */
+  rpeEditable?: boolean;
+  /** Static completion check on inactive rows (draft `completedAt`). */
+  completedBadge?: boolean;
+  onActivateSet?: (setId: string, field: 'weight' | 'reps') => void;
+  onDeactivate?: () => void;
+  onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
+  onAddSet?: (entryId: string) => void;
 }
 
 /** Pulsing accent ring — the tap-to-log target on the current row. */
@@ -109,14 +129,25 @@ function ActiveWorkoutSetRow({
   state: stateProp,
   metricColumn,
   weightUnit,
-  readOnly = false,
+  mode = 'live',
   onCompleteActive,
   onUncomplete,
   onRecomplete,
   onCommitField,
   onDelete,
   onLongPress,
+  activeField = 'weight',
+  nextSetId,
+  entryId,
+  rpeEditable = true,
+  completedBadge = false,
+  onActivateSet,
+  onDeactivate,
+  onEditFieldChange,
+  onAddSet,
 }: ActiveWorkoutSetRowProps) {
+  const readOnly = mode === 'view';
+  const isEdit = mode === 'edit';
   // Read-only surfaces pass activeSetId={null}, so 'current' is unreachable
   // there — coerce anyway so the editing chrome can never render.
   const state = readOnly && stateProp === 'current' ? 'upcoming' : stateProp;
@@ -127,6 +158,7 @@ function ActiveWorkoutSetRow({
     textMuted,
     chromeBg,
     chromeBorder,
+    dangerColor,
     rpeEasy,
     rpeModerate,
     rpeHard,
@@ -137,11 +169,12 @@ function ActiveWorkoutSetRow({
     '--color-text-muted',
     '--color-chrome',
     '--color-chrome-border',
+    '--color-bg-danger',
     RPE_TONE_VARS.easy,
     RPE_TONE_VARS.moderate,
     RPE_TONE_VARS.hard,
     RPE_TONE_VARS.max,
-  ]) as [string, string, string, string, string, string, string, string, string];
+  ]) as [string, string, string, string, string, string, string, string, string, string];
 
   const rpeToneColors: Record<RpeTone, string> = useMemo(
     () => ({ easy: rpeEasy, moderate: rpeModerate, hard: rpeHard, max: rpeMax }),
@@ -175,6 +208,67 @@ function ActiveWorkoutSetRow({
   const weightInputRef = useRef<TextInput>(null);
   const repsInputRef = useRef<TextInput>(null);
   const rpeInputRef = useRef<TextInput>(null);
+
+  // Edit mode drives focus from parent-owned state so both initial activation
+  // (tapping a display cell) and within-row advance (Next moves weight → reps)
+  // reliably move the keyboard to the right input.
+  const isEditActive = isEdit && state === 'current';
+  useEffect(() => {
+    if (!isEditActive) return;
+    const ref = activeField === 'reps' ? repsInputRef : weightInputRef;
+    ref.current?.focus();
+  }, [isEditActive, activeField]);
+
+  // Edit-mode inputs are CONTROLLED by the form reducer (raw draft strings),
+  // so the reducer is always current when Save reads it — no flush step, and
+  // raw keystrokes like "102.55" survive to save without a kg round-trip.
+  const editWeightText = set.editWeightText ?? '';
+  const editRepsText = set.editRepsText ?? '';
+
+  const handleEditStepWeight = useCallback(
+    (direction: number) => {
+      const current = parseDecimalInput(editWeightText) || 0;
+      const next = Math.max(0, current + direction * 5);
+      onEditFieldChange?.(setId, 'weight', String(next));
+    },
+    [editWeightText, onEditFieldChange, setId],
+  );
+
+  const handleEditStepReps = useCallback(
+    (direction: number) => {
+      const current = parseInt(editRepsText, 10) || 0;
+      const next = Math.max(0, current + direction);
+      onEditFieldChange?.(setId, 'reps', String(next));
+    },
+    [editRepsText, onEditFieldChange, setId],
+  );
+
+  // Per-keystroke-when-parseable so the reducer at most lags a trailing ".";
+  // blur snaps through commitRpe (parseRpeInput + echo) like the live screen.
+  const handleEditRpeChange = useCallback(
+    (text: string) => {
+      setRpeDraft(text);
+      const value = parseDecimalInput(text);
+      if (!Number.isNaN(value)) onCommitField?.(setId, { rpe: value });
+    },
+    [onCommitField, setId],
+  );
+
+  // For within-row advance, move focus directly via ref so iOS keeps the
+  // keyboard + InputAccessoryView attached. Going through parent state would
+  // briefly leave no TextInput focused, which drops the accessory. Next skips
+  // the RPE input (reachable by tap).
+  const handleAdvance = useCallback(() => {
+    if (activeField === 'weight') {
+      repsInputRef.current?.focus();
+      return;
+    }
+    if (nextSetId) {
+      onActivateSet?.(nextSetId, 'weight');
+      return;
+    }
+    if (entryId) onAddSet?.(entryId);
+  }, [activeField, entryId, nextSetId, onActivateSet, onAddSet]);
 
   const commitWeight = useCallback(
     (text: string) => {
@@ -335,7 +429,7 @@ function ActiveWorkoutSetRow({
       <>
         <Pressable
           testID="set-row"
-          onLongPress={() => onLongPress(setId)}
+          onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
           className="flex-row items-center py-2 px-3 rounded-xl"
           style={{ backgroundColor: `${accentPrimary}1f` }}
         >
@@ -343,35 +437,47 @@ function ActiveWorkoutSetRow({
           <View className="flex-1 items-center">
             <StepperInput
               compact
-              value={weightDraft}
-              onChangeText={setWeightDraft}
-              onBlur={() => commitWeight(weightDraft)}
-              onIncrement={() => handleStepWeight(1)}
-              onDecrement={() => handleStepWeight(-1)}
+              value={isEdit ? editWeightText : weightDraft}
+              onChangeText={
+                isEdit ? (text) => onEditFieldChange?.(setId, 'weight', text) : setWeightDraft
+              }
+              onBlur={isEdit ? undefined : () => commitWeight(weightDraft)}
+              onIncrement={() => (isEdit ? handleEditStepWeight(1) : handleStepWeight(1))}
+              onDecrement={() => (isEdit ? handleEditStepWeight(-1) : handleStepWeight(-1))}
               keyboardType="decimal-pad"
               inputRef={weightInputRef}
-              inputProps={iosAccessoryProps}
+              inputProps={
+                isEdit
+                  ? { onFocus: () => onActivateSet?.(setId, 'weight'), ...iosAccessoryProps }
+                  : iosAccessoryProps
+              }
             />
           </View>
           <View className="flex-1 items-center">
             <StepperInput
               compact
-              value={repsDraft}
-              onChangeText={setRepsDraft}
-              onBlur={() => commitReps(repsDraft)}
-              onIncrement={() => handleStepReps(1)}
-              onDecrement={() => handleStepReps(-1)}
+              value={isEdit ? editRepsText : repsDraft}
+              onChangeText={
+                isEdit ? (text) => onEditFieldChange?.(setId, 'reps', text) : setRepsDraft
+              }
+              onBlur={isEdit ? undefined : () => commitReps(repsDraft)}
+              onIncrement={() => (isEdit ? handleEditStepReps(1) : handleStepReps(1))}
+              onDecrement={() => (isEdit ? handleEditStepReps(-1) : handleStepReps(-1))}
               keyboardType="number-pad"
               inputRef={repsInputRef}
-              inputProps={iosAccessoryProps}
+              inputProps={
+                isEdit
+                  ? { onFocus: () => onActivateSet?.(setId, 'reps'), ...iosAccessoryProps }
+                  : iosAccessoryProps
+              }
             />
           </View>
           <View className="w-14 items-center">
-            {metricColumn === 'rpe' ? (
+            {metricColumn === 'rpe' && (!isEdit || rpeEditable) ? (
               <TextInput
                 ref={rpeInputRef}
                 value={rpeDraft}
-                onChangeText={setRpeDraft}
+                onChangeText={isEdit ? handleEditRpeChange : setRpeDraft}
                 onBlur={() => commitRpe(rpeDraft)}
                 keyboardType="decimal-pad"
                 placeholder="–"
@@ -389,14 +495,28 @@ function ActiveWorkoutSetRow({
               </Text>
             )}
           </View>
-          <View className="w-10 items-center">{checkControl}</View>
+          <View className="w-10 items-center">
+            {isEdit ? (
+              <Pressable
+                onPress={() => onDelete?.(setId)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Delete set ${set.set_number}`}
+              >
+                <Icon name="remove-circle" size={18} color={dangerColor} />
+              </Pressable>
+            ) : (
+              checkControl
+            )}
+          </View>
         </Pressable>
         {Platform.OS === 'ios' && (
           <InputAccessoryView nativeID={accessoryId}>
             <View
               style={{
                 flexDirection: 'row',
-                justifyContent: 'flex-end',
+                justifyContent: isEdit ? 'space-between' : 'flex-end',
+                alignItems: 'center',
                 paddingHorizontal: 16,
                 paddingVertical: 8,
                 backgroundColor: chromeBg,
@@ -406,6 +526,7 @@ function ActiveWorkoutSetRow({
             >
               <TouchableOpacity
                 onPress={() => {
+                  if (isEdit) onDeactivate?.();
                   weightInputRef.current?.blur();
                   repsInputRef.current?.blur();
                   rpeInputRef.current?.blur();
@@ -416,6 +537,16 @@ function ActiveWorkoutSetRow({
                   Done
                 </Text>
               </TouchableOpacity>
+              {isEdit && (
+                <TouchableOpacity
+                  onPress={handleAdvance}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
+                    {activeField === 'weight' ? 'Next' : 'Next Set'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </InputAccessoryView>
         )}
@@ -423,31 +554,72 @@ function ActiveWorkoutSetRow({
     );
   }
 
-  const displayWeight = set.weight != null ? formatDisplayWeight(set.weight, weightUnit) : '—';
-  const displayReps = set.reps != null ? String(set.reps) : '—';
+  // Time-based sets (e.g. plank in a preset) have no weight/reps to show —
+  // surface the duration in the weight cell on the non-live surfaces.
+  const showDurationFallback =
+    (readOnly || isEdit) && set.weight == null && set.reps == null && set.duration != null;
+  const displayWeight = showDurationFallback
+    ? formatRest(set.duration)
+    : isEdit
+      ? editWeightText || '—'
+      : set.weight != null
+        ? formatDisplayWeight(set.weight, weightUnit)
+        : '—';
+  const displayReps = isEdit ? editRepsText || '—' : set.reps != null ? String(set.reps) : '—';
+
+  const weightCellText = (
+    <Text
+      className={`text-center text-sm text-text-primary ${isEdit ? '' : 'flex-1'}`}
+      style={{ fontVariant: ['tabular-nums'] }}
+    >
+      {displayWeight}
+    </Text>
+  );
+  const repsCellText = (
+    <Text
+      className={`text-center text-sm text-text-primary ${isEdit ? '' : 'flex-1'}`}
+      style={{ fontVariant: ['tabular-nums'] }}
+    >
+      {displayReps}
+    </Text>
+  );
 
   // Read-only surfaces don't dim done rows: a finished workout is all done
   // rows, and dimming everything would read as disabled.
   const row = (
     <Pressable
       testID="set-row"
-      onLongPress={() => onLongPress(setId)}
+      onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
       className="flex-row items-center py-2.5 px-3 bg-background"
       style={!readOnly && state === 'done' ? { opacity: 0.62 } : undefined}
     >
       <View className="w-9 items-center">{setIndicator}</View>
-      <Text
-        className="flex-1 text-center text-sm text-text-primary"
-        style={{ fontVariant: ['tabular-nums'] }}
-      >
-        {displayWeight}
-      </Text>
-      <Text
-        className="flex-1 text-center text-sm text-text-primary"
-        style={{ fontVariant: ['tabular-nums'] }}
-      >
-        {displayReps}
-      </Text>
+      {isEdit ? (
+        <Pressable
+          className="flex-1 py-1"
+          onPress={() => onActivateSet?.(setId, 'weight')}
+          onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit weight for set ${set.set_number}`}
+        >
+          {weightCellText}
+        </Pressable>
+      ) : (
+        weightCellText
+      )}
+      {isEdit ? (
+        <Pressable
+          className="flex-1 py-1"
+          onPress={() => onActivateSet?.(setId, 'reps')}
+          onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit reps for set ${set.set_number}`}
+        >
+          {repsCellText}
+        </Pressable>
+      ) : (
+        repsCellText
+      )}
       <Text
         className="w-14 text-center text-sm"
         style={[
@@ -457,7 +629,21 @@ function ActiveWorkoutSetRow({
       >
         {metricValue.text}
       </Text>
-      <View className="w-10 items-center">{checkControl}</View>
+      <View className="w-10 items-center">
+        {isEdit ? (
+          completedBadge ? (
+            <View
+              testID="completed-badge"
+              className="h-7 w-7 rounded-full items-center justify-center"
+              style={{ backgroundColor: successColor }}
+            >
+              <Icon name="checkmark" size={16} color="#ffffff" weight="bold" />
+            </View>
+          ) : null
+        ) : (
+          checkControl
+        )}
+      </View>
     </Pressable>
   );
 

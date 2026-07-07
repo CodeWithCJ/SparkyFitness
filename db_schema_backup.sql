@@ -3621,7 +3621,8 @@ CREATE TABLE public.workout_preset_exercises (
     image_url text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    sort_order integer DEFAULT 0
+    sort_order integer DEFAULT 0,
+    superset_group integer
 );
 
 

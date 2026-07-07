@@ -5,8 +5,10 @@ import { useCSSVariable } from 'uniwind';
 import type { ExerciseEntrySetResponse } from '@workspace/shared';
 import ActiveWorkoutSetRow, {
   parseRpeInput,
+  type SetRowMode,
   type SetRowState,
 } from '../../src/components/ActiveWorkoutSetRow';
+import type { WorkoutCardSet } from '../../src/utils/workoutSession';
 import type { ActiveWorkoutMetricColumn } from '../../src/stores/appPreferencesStore';
 
 jest.mock('../../src/components/Icon', () => {
@@ -70,12 +72,18 @@ function makeSet(overrides?: Partial<ExerciseEntrySetResponse>): ExerciseEntrySe
 }
 
 interface RenderOverrides {
-  set?: Partial<ExerciseEntrySetResponse>;
+  set?: Partial<WorkoutCardSet>;
   state?: SetRowState;
   metricColumn?: ActiveWorkoutMetricColumn;
   weightUnit?: 'kg' | 'lbs';
   displayNumber?: number;
   readOnly?: boolean;
+  mode?: SetRowMode;
+  activeField?: 'weight' | 'reps';
+  nextSetId?: string | null;
+  entryId?: string;
+  rpeEditable?: boolean;
+  completedBadge?: boolean;
 }
 
 function renderRow(overrides?: RenderOverrides) {
@@ -86,15 +94,24 @@ function renderRow(overrides?: RenderOverrides) {
     onCommitField: jest.fn(),
     onDelete: jest.fn(),
     onLongPress: jest.fn(),
+    onActivateSet: jest.fn(),
+    onDeactivate: jest.fn(),
+    onEditFieldChange: jest.fn(),
+    onAddSet: jest.fn(),
   };
   const utils = render(
     <ActiveWorkoutSetRow
-      set={makeSet(overrides?.set)}
+      set={makeSet(overrides?.set as Partial<ExerciseEntrySetResponse>)}
       displayNumber={overrides?.displayNumber ?? 1}
       state={overrides?.state ?? 'current'}
       metricColumn={overrides?.metricColumn ?? 'rpe'}
       weightUnit={overrides?.weightUnit ?? 'kg'}
-      readOnly={overrides?.readOnly}
+      mode={overrides?.mode ?? (overrides?.readOnly ? 'view' : undefined)}
+      activeField={overrides?.activeField}
+      nextSetId={overrides?.nextSetId}
+      entryId={overrides?.entryId}
+      rpeEditable={overrides?.rpeEditable}
+      completedBadge={overrides?.completedBadge}
       {...callbacks}
     />,
   );
@@ -307,11 +324,215 @@ describe('ActiveWorkoutSetRow', () => {
           state="done"
           metricColumn="rpe"
           weightUnit="kg"
-          readOnly
+          mode="view"
           onLongPress={jest.fn()}
         />,
       );
       expect(getByTestId('set-row')).toBeTruthy();
+    });
+
+    it('renders without onLongPress (preset detail passes none)', () => {
+      const { getByTestId } = render(
+        <ActiveWorkoutSetRow
+          set={makeSet()}
+          displayNumber={1}
+          state="upcoming"
+          metricColumn="rpe"
+          weightUnit="kg"
+          mode="view"
+        />,
+      );
+      fireEvent(getByTestId('set-row'), 'longPress');
+      expect(getByTestId('set-row')).toBeTruthy();
+    });
+
+    it('shows the duration in the weight cell for time-based sets', () => {
+      const { getByText } = renderRow({
+        state: 'upcoming',
+        readOnly: true,
+        set: { weight: null, reps: null, duration: 90 },
+      });
+      expect(getByText('1:30')).toBeTruthy();
+    });
+  });
+
+  describe('edit mode', () => {
+    const editSet = (overrides?: Partial<WorkoutCardSet>): Partial<WorkoutCardSet> => ({
+      editWeightText: '100',
+      editRepsText: '5',
+      ...overrides,
+    });
+
+    describe('active row (controlled inputs)', () => {
+      it('renders the raw draft strings and dispatches per keystroke', () => {
+        const { getByTestId, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          set: editSet({ editWeightText: '102.55' }),
+        });
+        const weightInput = getByTestId('stepper-input-decimal-pad');
+        expect(weightInput.props.value).toBe('102.55');
+
+        fireEvent.changeText(weightInput, '102.556');
+        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'weight', '102.556');
+        // No commit path on typing — the reducer is the single source.
+        expect(callbacks.onCommitField).not.toHaveBeenCalled();
+
+        fireEvent.changeText(getByTestId('stepper-input-number-pad'), '6');
+        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'reps', '6');
+      });
+
+      it('steppers parse the draft text and dispatch ±5/±1 as strings', () => {
+        const { getByTestId, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          set: editSet(),
+        });
+        fireEvent.press(getByTestId('stepper-increment-decimal-pad'));
+        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'weight', '105');
+        fireEvent.press(getByTestId('stepper-decrement-number-pad'));
+        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'reps', '4');
+      });
+
+      it('replaces the log circle with a delete button', () => {
+        const { getByLabelText, queryByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          set: editSet(),
+        });
+        expect(queryByLabelText('Log set')).toBeNull();
+        fireEvent.press(getByLabelText('Delete set 1'));
+        expect(callbacks.onDelete).toHaveBeenCalledWith('101');
+      });
+
+      it('Next on the weight field keeps focus in-row; on reps it activates the next set', () => {
+        const withNext = renderRow({
+          mode: 'edit',
+          state: 'current',
+          activeField: 'reps',
+          nextSetId: '202',
+          entryId: 'entry-1',
+          set: editSet(),
+        });
+        fireEvent.press(withNext.getByText('Next Set'));
+        expect(withNext.callbacks.onActivateSet).toHaveBeenCalledWith('202', 'weight');
+        expect(withNext.callbacks.onAddSet).not.toHaveBeenCalled();
+      });
+
+      it('Next on the last set adds a set to the owning exercise', () => {
+        const { getByText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          activeField: 'reps',
+          nextSetId: null,
+          entryId: 'entry-1',
+          set: editSet(),
+        });
+        fireEvent.press(getByText('Next Set'));
+        expect(callbacks.onAddSet).toHaveBeenCalledWith('entry-1');
+      });
+
+      it('Done deactivates the set', () => {
+        const { getByText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          set: editSet(),
+        });
+        fireEvent.press(getByText('Done'));
+        expect(callbacks.onDeactivate).toHaveBeenCalledTimes(1);
+      });
+
+      it('dispatches parseable RPE keystrokes and snaps on blur', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          metricColumn: 'rpe',
+          set: editSet(),
+        });
+        const rpe = getByLabelText('RPE');
+        fireEvent.changeText(rpe, '8.');
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
+        fireEvent.changeText(rpe, '8.3');
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8.3 });
+        fireEvent(rpe, 'blur');
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 8.5 });
+      });
+
+      it('hides the RPE input when rpeEditable is false', () => {
+        const { queryByLabelText } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          metricColumn: 'rpe',
+          rpeEditable: false,
+          set: editSet(),
+        });
+        expect(queryByLabelText('RPE')).toBeNull();
+      });
+    });
+
+    describe('inactive rows', () => {
+      it('shows the draft strings and activates the tapped field', () => {
+        const { getByLabelText, getByText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          set: editSet({ editWeightText: '102.55', editRepsText: '8' }),
+        });
+        expect(getByText('102.55')).toBeTruthy();
+        fireEvent.press(getByLabelText('Edit weight for set 1'));
+        expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
+        fireEvent.press(getByLabelText('Edit reps for set 1'));
+        expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'reps');
+      });
+
+      it('renders the completed badge without any un-complete control', () => {
+        const { getByTestId, queryByLabelText } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          completedBadge: true,
+          set: editSet(),
+        });
+        expect(getByTestId('completed-badge')).toBeTruthy();
+        expect(queryByLabelText('Un-complete set 1')).toBeNull();
+        expect(queryByLabelText('Mark set 1 complete')).toBeNull();
+      });
+
+      it('keeps swipe-delete and does not dim', () => {
+        const { getByLabelText, getByTestId, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          set: editSet(),
+        });
+        expect(
+          StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity,
+        ).toBeUndefined();
+        fireEvent.press(getByLabelText('Delete set 1'));
+        expect(callbacks.onDelete).toHaveBeenCalledWith('101');
+      });
+
+      it('long-presses the cells through onLongPress', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          set: editSet(),
+        });
+        fireEvent(getByLabelText('Edit weight for set 1'), 'longPress');
+        expect(callbacks.onLongPress).toHaveBeenCalledWith('101');
+      });
+
+      it('shows the duration in the weight cell for time-based sets', () => {
+        const { getByText } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          set: {
+            weight: null,
+            reps: null,
+            duration: 45,
+            editWeightText: '',
+            editRepsText: '',
+          },
+        });
+        expect(getByText('45s')).toBeTruthy();
+      });
     });
   });
 
