@@ -18,7 +18,7 @@ import {
 
 jest.mock('../../src/services/api/authService', () => ({
   login: jest.fn(),
-  LoginError: jest.requireActual('../../src/services/api/authService').LoginError,
+  LoginError: jest.requireActual('../../src/services/api/authErrors').LoginError,
   clearAuthCookies: jest.fn().mockResolvedValue(undefined),
   fetchMfaFactors: jest.fn(),
   verifyTotp: jest.fn(),

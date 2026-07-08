@@ -6,13 +6,12 @@ import { ssoClient } from '@better-auth/sso/client';
 import * as WebBrowser from 'expo-web-browser';
 import { clearSessionToken, ServerConfig } from '../storage';
 import { addLog } from '../LogService';
+import { LoginError } from './authErrors';
 
-export class LoginError extends Error {
-  constructor(message: string, public statusCode?: number) {
-    super(message);
-    this.name = 'LoginError';
-  }
-}
+// Re-exported so existing `import { LoginError } from '.../authService'` call
+// sites keep working; the class itself lives in the dependency-light authErrors
+// module so error-only consumers don't pull better-auth into their graph.
+export { LoginError };
 
 interface LoginSuccess {
   type: 'success';
@@ -592,11 +591,14 @@ export const loginWithPasskey = async (serverUrl: string): Promise<LoginSuccess>
   let role: string | undefined = undefined;
 
   try {
-    const httpUrl = result.url.replace(/^sparkyfitnessmobile:/, 'http:');
-    const urlObj = new URL(httpUrl);
-    sessionToken = urlObj.searchParams.get('token');
-    email = urlObj.searchParams.get('email');
-    role = urlObj.searchParams.get('role') || undefined;
+    // Session details ride in the URL fragment (after #), never the query
+    // string, so the raw token is not sent to the server or captured in proxy
+    // / access logs. Parse the fragment directly.
+    const fragment = result.url.split('#')[1] ?? '';
+    const params = new URLSearchParams(fragment);
+    sessionToken = params.get('token');
+    email = params.get('email');
+    role = params.get('role') || undefined;
   } catch (parseErr) {
     addLog(`[AuthService] Error parsing redirect URL: ${parseErr}`, 'ERROR');
   }
@@ -648,12 +650,14 @@ export const getPasskeys = async (serverUrl: string, sessionToken: string): Prom
 /**
  * Registers a new passkey with the server.
  */
-export const addPasskey = async (serverUrl: string, sessionToken: string, name: string): Promise<any> => {
+export const addPasskey = async (serverUrl: string, sessionToken: string, name: string): Promise<void> => {
   const baseUrl = normalizeUrl(serverUrl);
 
   addLog('[AuthService] Initiating browser-based passkey registration flow', 'INFO');
 
-  const registerUrl = `${baseUrl}/api/auth/web-login/register-passkey?token=${encodeURIComponent(
+  // Pass the session token in the URL fragment, not the query string: fragments
+  // are never sent to the server, so the token can't leak into access / proxy logs.
+  const registerUrl = `${baseUrl}/api/auth/web-login/register-passkey#token=${encodeURIComponent(
     sessionToken
   )}&name=${encodeURIComponent(name)}`;
 
@@ -667,12 +671,11 @@ export const addPasskey = async (serverUrl: string, sessionToken: string, name: 
     throw new Error('Passkey registration cancelled or did not complete.');
   }
 
-  if (!result.url.includes('status=success')) {
+  if (!result.url || !result.url.includes('status=success')) {
     throw new Error('Passkey registration did not succeed.');
   }
 
   addLog('[AuthService] Passkey successfully registered via browser flow.', 'INFO');
-  return { success: true };
 };
 
 /**

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Add Passkey</title>
-    <script src="https://unpkg.com/@simplewebauthn/browser@10.0.0/dist/bundle/index.umd.min.js"></script>
+    <script src="/api/auth/web-login/simplewebauthn-browser.umd.min.js"></script>
     <style>
       body {
         background-color: #0b0f19;
@@ -100,10 +100,14 @@
     <script>
       const { startRegistration } = SimpleWebAuthnBrowser;
 
-      // Get query parameters
-      const urlParams = new URLSearchParams(window.location.search);
-      const sessionToken = urlParams.get('token');
-      const passkeyName = urlParams.get('name') || 'Mobile Device';
+      // Read params from the URL fragment (after #), not the query string.
+      // Fragments are never sent to the server, so the session token can't leak
+      // into access / proxy logs.
+      const hashParams = new URLSearchParams(
+        window.location.hash.replace(/^#/, '')
+      );
+      const sessionToken = hashParams.get('token');
+      const passkeyName = hashParams.get('name') || 'Mobile Device';
 
       async function doRegister() {
         const errorDiv = document.getElementById('error-msg');
@@ -136,7 +140,7 @@
           const options = await optionsRes.json();
 
           // 2. Trigger browser's native passkey registration
-          const credential = await startRegistration(options);
+          const credential = await startRegistration({ optionsJSON: options });
 
           // 3. Post verification credential back to server
           const verifyRes = await fetch(

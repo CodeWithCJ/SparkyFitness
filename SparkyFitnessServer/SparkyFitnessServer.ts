@@ -7,7 +7,7 @@ import express from 'express';
 import cors from 'cors';
 // @ts-expect-error TS7016
 import cookieParser from 'cookie-parser';
-import { serializeSignedCookie } from 'better-call';
+import { bridgeBearerAuthHeader } from './utils/bearerAuthBridge.js';
 import { endPool } from './db/poolManager.js';
 import { log } from './config/logging.js';
 import { authenticate } from './middleware/authMiddleware.js';
@@ -212,44 +212,17 @@ app.use(async (req, res, next) => {
       return next();
     }
 
-    // Translate Bearer token to cookie before passing to Better Auth handler.
-    // This is required to resolve compatibility issues with Buffer secrets in @better-auth/utils/hmac.
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith('Bearer ')
-    ) {
-      const token = req.headers.authorization.split(' ')[1];
-      const isApiKey = token && token.length >= 64 && !token.includes('.');
-      if (token && !isApiKey) {
-        const { auth } = authModule;
-        const prefix = auth.options.advanced?.cookiePrefix || 'better-auth';
-        const secureCookiePrefix = auth.options.advanced?.useSecureCookies
-          ? '__Secure-'
-          : '';
-        const cookieName = `${secureCookiePrefix}${prefix}.session_token`;
-        try {
-          const signed = await serializeSignedCookie(
-            cookieName,
-            token,
-            // @ts-expect-error TS(2345)
-            auth.options.secret
-          );
-          const cookieHeader = signed.split(';')[0];
-          req.headers.cookie = req.headers.cookie
-            ? `${req.headers.cookie}; ${cookieHeader}`
-            : cookieHeader;
-          delete req.headers.authorization;
-          log(
-            'debug',
-            'Authentication: Converted Bearer session token to cookie for early auth request.'
-          );
-        } catch (e) {
-          log(
-            'error',
-            `Failed to serialize signed cookie in early interceptor: ${e}`
-          );
-        }
-      }
+    // Translate Bearer token to cookie / x-api-key before passing to the Better
+    // Auth handler. This resolves compatibility issues with Buffer secrets in
+    // @better-auth/utils/hmac and is shared with middleware/authMiddleware.ts via
+    // bridgeBearerAuthHeader so the two paths can't drift.
+    try {
+      await bridgeBearerAuthHeader(req);
+    } catch (e) {
+      log(
+        'error',
+        `Failed to bridge Bearer auth header in early interceptor: ${e}`
+      );
     }
 
     // 2. Manual Sign-Out Cleanup: preserve sparky_active_user_id delete

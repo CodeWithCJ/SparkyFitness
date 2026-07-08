@@ -78,7 +78,6 @@
     "react-native-keyboard-controller": "1.21.6",
     "react-native-nitro-modules": "^0.35.5",
     "react-native-pager-view": "8.0.1",
-    "react-native-passkey": "^3.5.0",
     "react-native-reanimated": "~4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.25.2",
@@ -126,7 +125,9 @@
     "moduleNameMapper": {
       "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",
       "^@babel/runtime/(.*)$": "<rootDir>/node_modules/@babel/runtime/$1",
-      "^remend$": "<rootDir>/node_modules/remend/dist/index.js"
+      "^remend$": "<rootDir>/node_modules/remend/dist/index.js",
+      "^react$": "<rootDir>/node_modules/react",
+      "^react/(.*)$": "<rootDir>/node_modules/react/$1"
     },
     "transform": {
       "^.+\\.mjs$": [

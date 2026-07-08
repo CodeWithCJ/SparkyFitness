@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Passkey Login</title>
-    <script src="https://unpkg.com/@simplewebauthn/browser@10.0.0/dist/bundle/index.umd.min.js"></script>
+    <script src="/api/auth/web-login/simplewebauthn-browser.umd.min.js"></script>
     <style>
       body {
         background-color: #0b0f19;
@@ -126,7 +126,7 @@
           const options = await optionsRes.json();
 
           // 2. Trigger the browser's native passkey prompt
-          const assertion = await startAuthentication(options);
+          const assertion = await startAuthentication({ optionsJSON: options });
 
           // 3. Post verification assertion to the server
           const verifyRes = await fetch(

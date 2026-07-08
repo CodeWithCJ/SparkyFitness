@@ -4,3 +4,5 @@ dist/
 node_modules/
 pnpm-lock.yaml
 package-lock.json
+# Vendored third-party bundles (e.g. self-hosted @simplewebauthn browser lib)
+*.min.js

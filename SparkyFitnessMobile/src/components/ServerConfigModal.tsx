@@ -43,6 +43,7 @@ import {
   type ProxyHeader,
 } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 
 type AuthTab = 'signIn' | 'apiKey';
 
@@ -63,12 +64,11 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   onSuccess,
   onDismiss,
 }) => {
-  const [textMuted, textSecondary, accentPrimary, borderSubtle] = useCSSVariable([
+  const [textMuted, textSecondary, accentPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-text-secondary',
     '--color-accent-primary',
-    '--color-border-subtle',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string];
 
   const chevronRotation = useSharedValue(-90);
   const chevronStyle = useAnimatedStyle(() => ({
@@ -153,7 +153,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     const url = normalizeUrl(serverUrl);
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.startsWith('http://') || lowerUrl.startsWith('https://')) {
-      const validationError = getHttpsValidationError(url);
+      const validationError = getInsecureUrlError(url);
       if (validationError) {
         setError(validationError);
         setAuthSettings(null);
@@ -196,19 +196,6 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverUrl, visible]);
 
-  // Adjust selected tab if current one becomes disabled by the settings
-  useEffect(() => {
-    if (authSettings) {
-      const segments = getSegments();
-      const hasSignInTab = segments.some(s => s.key === 'signIn');
-      if (authTab === 'signIn' && !hasSignInTab) {
-        setAuthTab('apiKey');
-      }
-    }
-    // `getSegments()` derives from `authSettings`, which is already a dependency.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authSettings, authTab]);
-
   const toggleAdvanced = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const next = !advancedExpanded;
@@ -226,20 +213,6 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleChangeHeader = (index: number, field: 'name' | 'value', text: string) => {
     setProxyHeaders(proxyHeaders.map((h, i) => (i === index ? { ...h, [field]: text } : h)));
-  };
-
-  const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, '');
-
-  const getHttpsValidationError = (url: string): string | null => {
-    const lowerUrl = url.toLowerCase();
-    const isSecure = lowerUrl.startsWith('https://');
-    const isDevLocal = __DEV__ && (lowerUrl.includes('localhost') || lowerUrl.includes('127.0.0.1') || lowerUrl.includes('192.168.'));
-    
-    if (!isSecure && !isDevLocal) {
-      const healthPolicy = Platform.OS === 'ios' ? 'Apple Health' : 'Google Health';
-      return `HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`;
-    }
-    return null;
   };
 
   /** Strip empty rows so we only persist real headers. */
@@ -265,7 +238,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     if (!email.trim()) { setError('Please enter your email.'); return; }
     if (!password) { setError('Please enter your password.'); return; }
     
-    const validationError = getHttpsValidationError(url);
+    const validationError = getInsecureUrlError(url);
     if (validationError) {
       setError(validationError);
       return;
@@ -314,6 +287,17 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleOidcLogin = async (providerId: string) => {
     const url = normalizeUrl(serverUrl);
+    if (!url) {
+      setError('Please enter your Frontend URL first.');
+      return;
+    }
+
+    const validationError = getInsecureUrlError(url);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setLoading(true);
     setError('');
     setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
@@ -347,7 +331,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       return;
     }
     
-    const validationError = getHttpsValidationError(url);
+    const validationError = getInsecureUrlError(url);
     if (validationError) {
       setError(validationError);
       return;
@@ -468,7 +452,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     if (!url) { setError('Enter a valid Frontend URL'); return; }
     if (!apiKey.trim()) { setError('Please enter an API key.'); return; }
     
-    const validationError = getHttpsValidationError(url);
+    const validationError = getInsecureUrlError(url);
     if (validationError) {
       setError(validationError);
       return;
@@ -518,7 +502,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     const url = normalizeUrl(serverUrl);
     if (!url) { setError('Enter a valid Frontend URL'); return; }
     
-    const validationError = getHttpsValidationError(url);
+    const validationError = getInsecureUrlError(url);
     if (validationError) {
       setError(validationError);
       return;
@@ -651,15 +635,13 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         {authSettings && (
           <>
             {/* Auth Mode */}
-            {getSegments().length > 1 && (
-              <View className="mb-3">
-                <SegmentedControl
-                  segments={getSegments()}
-                  activeKey={authTab}
-                  onSelect={setAuthTab}
-                />
-              </View>
-            )}
+            <View className="mb-3">
+              <SegmentedControl
+                segments={getSegments()}
+                activeKey={authTab}
+                onSelect={setAuthTab}
+              />
+            </View>
 
             {/* Sign In fields */}
             {authTab === 'signIn' && (
@@ -706,9 +688,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   <>
                     {hasEmail && (
                       <View className="flex-row items-center my-4">
-                        <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
-                        <Text className="mx-3 text-xs text-text-muted uppercase" style={{ marginHorizontal: 12 }}>Or sign in with</Text>
-                        <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
+                        <View className="flex-1 h-px bg-border-subtle" />
+                        <Text className="mx-3 text-xs text-text-muted uppercase">Or sign in with</Text>
+                        <View className="flex-1 h-px bg-border-subtle" />
                       </View>
                     )}
                     <View className="gap-2">
@@ -718,17 +700,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                           variant="outline"
                           onPress={() => handleOidcLogin(provider.id)}
                           disabled={loading}
-                          className="w-full flex-row items-center justify-center p-2.5 rounded-lg border bg-raised"
-                          style={{
-                            borderWidth: 1,
-                            borderColor: borderSubtle,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginBottom: 8,
-                          }}
+                          className="w-full flex-row items-center justify-center p-2.5 mb-2 rounded-lg border border-border-subtle bg-raised"
                         >
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View className="flex-row items-center">
                             {provider.logo_url && (
                               <Image
                                 source={{
@@ -736,7 +710,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                                     ? provider.logo_url
                                     : `${normalizeUrl(serverUrl)}${provider.logo_url}`,
                                 }}
-                                style={{ width: 20, height: 20, marginRight: 8 }}
+                                className="w-5 h-5 mr-2"
                                 resizeMode="contain"
                               />
                             )}
@@ -750,23 +724,15 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   </>
                 )}
 
-                <View style={{ marginTop: 8 }}>
+                <View className="mt-2">
                   <Button
                     variant="outline"
                     onPress={handlePasskeyLogin}
                     disabled={loading}
-                    className="w-full flex-row items-center justify-center p-2.5 rounded-lg border bg-raised"
-                    style={{
-                      borderWidth: 1,
-                      borderColor: borderSubtle,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: 8,
-                    }}
+                    className="w-full flex-row items-center justify-center p-2.5 mb-2 rounded-lg border border-border-subtle bg-raised"
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ marginRight: 8 }}>
+                    <View className="flex-row items-center">
+                      <View className="mr-2">
                         <Icon name="fingerprint" size={20} color={accentPrimary} />
                       </View>
                       <Text className="text-base font-semibold text-text-primary">
@@ -777,7 +743,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 </View>
 
                 {!hasEmail && !hasOidc && (
-                  <View className="py-6 px-4 items-center bg-raised rounded-lg border mb-4" style={{ borderWidth: 1, borderColor: borderSubtle }}>
+                  <View className="py-6 px-4 items-center bg-raised rounded-lg border border-border-subtle mb-4">
                     <Text className="text-center text-sm text-text-secondary">
                       No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.
                     </Text>
@@ -836,10 +802,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
+          className="bg-black/50"
           contentContainerClassName="justify-center items-center p-6"
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           bounces={false}
         >
           <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm">

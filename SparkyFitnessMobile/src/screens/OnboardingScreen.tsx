@@ -7,7 +7,6 @@ import {
   Pressable,
   LayoutAnimation,
   Keyboard,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -36,6 +35,7 @@ import {
 } from '../services/api/authService';
 import { saveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 import { markCurrentVersionSeen } from '../services/whatsNewBanner';
 import { queryClient, serverConnectionQueryKey } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -43,8 +43,6 @@ import type { RootStackScreenProps } from '../types/navigation';
 type AuthTab = 'signIn' | 'apiKey';
 
 const LEARN_MORE_SECTION_MIN_HEIGHT = 208;
-
-const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, '');
 
 const checkReachability = async (url: string): Promise<boolean> => {
   try {
@@ -139,14 +137,10 @@ export default function OnboardingScreen({ navigation }: Props) {
       setError('Enter a valid Frontend URL');
       return;
     }
-    
-    const lowerUrl = url.toLowerCase();
-    const isSecure = lowerUrl.startsWith('https://');
-    const isDevLocal = __DEV__ && (lowerUrl.includes('localhost') || lowerUrl.includes('127.0.0.1') || lowerUrl.includes('192.168.'));
-    
-    if (!isSecure && !isDevLocal) {
-      const healthPolicy = Platform.OS === 'ios' ? 'Apple Health' : 'Google Health';
-      setError(`HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`);
+
+    const validationError = getInsecureUrlError(url);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -157,15 +151,9 @@ export default function OnboardingScreen({ navigation }: Props) {
       const settings = await fetchAuthSettings(url);
       setAuthSettings(settings);
 
-      const hasEmail = settings.email.enabled;
-      const hasOidc = settings.oidc.enabled && settings.oidc.providers.length > 0;
-      const hasPasskey = true; // Always supported since settings loaded successfully
-      
-      if (hasEmail || hasOidc || hasPasskey) {
-        setAuthTab('signIn');
-      } else {
-        setAuthTab('apiKey');
-      }
+      // Passkey sign-in is always offered once settings load, so the Sign In
+      // tab is always the sensible default here.
+      setAuthTab('signIn');
 
       setError('');
       setPage(2);

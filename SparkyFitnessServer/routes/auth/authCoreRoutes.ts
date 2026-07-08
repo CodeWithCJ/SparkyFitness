@@ -178,6 +178,16 @@ router.get('/mfa-factors', mfaFactorsRateLimit, async (req, res) => {
 
 // --- Browser-Based Passkey Web Bridge Routes ---
 
+// Self-hosted @simplewebauthn/browser bundle so the passkey pages have no CDN
+// dependency (works offline / on air-gapped servers and can't be swapped by a
+// third party). Kept in sync with @simplewebauthn/server via the vendored file.
+router.get('/web-login/simplewebauthn-browser.umd.min.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile(
+    path.join(__dirname, 'templates', 'simplewebauthn-browser.umd.min.js')
+  );
+});
+
 router.get('/web-login/passkey', (req, res) => {
   res.sendFile(path.join(__dirname, 'templates', 'passkey-login.html'));
 });
@@ -202,9 +212,11 @@ router.get('/web-login/callback', async (req, res) => {
     const email = session.user.email;
     const role = (session.user as any).role || '';
 
-    // Redirect to the mobile app schema with session details in query parameters
+    // Redirect to the mobile app scheme with session details in the URL
+    // FRAGMENT (after #), not the query string. Fragments are never sent to a
+    // server, so the raw session token can't leak into access / proxy logs.
     res.redirect(
-      `sparkyfitnessmobile://oauth-callback?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`
+      `sparkyfitnessmobile://oauth-callback#token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`
     );
   } catch (err) {
     log('error', `[WEB LOGIN] Callback error: ${err}`);
