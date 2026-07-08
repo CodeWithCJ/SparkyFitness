@@ -23,6 +23,7 @@ import {
   verifyEmailOtp,
   setPendingProxyHeaders,
   clearPendingProxyHeaders,
+  loginWithPasskey,
   type MfaFactors,
 } from '../services/api/authService';
 import {
@@ -161,6 +162,32 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
         setError(err.message);
       } else {
         setError('Could not connect to server. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    if (!currentUrl) { setError('No server selected.'); return; }
+    if (!__DEV__ && currentUrl.toLowerCase().startsWith('http://')) {
+      setError('HTTPS is required for server connections.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await loginWithPasskey(currentUrl);
+      await saveSessionConfig(result.sessionToken);
+      clearPendingProxyHeaders();
+      onLoginSuccess();
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(String(err));
       }
     } finally {
       setLoading(false);
@@ -359,6 +386,27 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                 <ErrorBanner message={error} />
 
                 <PrimaryButton label="Sign In" onPress={handleSignIn} loading={loading} />
+
+                <Button
+                  variant="outline"
+                  onPress={handlePasskeySignIn}
+                  disabled={loading}
+                  className="mt-2 w-full flex-row items-center justify-center p-2.5 rounded-lg border bg-raised"
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ marginRight: 8 }}>
+                      <Icon name="fingerprint" size={20} color={accentPrimary} />
+                    </View>
+                    <Text className="text-base font-semibold text-text-primary">
+                      Sign in with Passkey
+                    </Text>
+                  </View>
+                </Button>
 
                 {onSwitchToApiKey && (
                   <Button

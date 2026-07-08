@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 // @ts-expect-error TS7016
 import cookieParser from 'cookie-parser';
+import { bridgeBearerAuthHeader } from './utils/bearerAuthBridge.js';
 import { endPool } from './db/poolManager.js';
 import { log } from './config/logging.js';
 import { authenticate } from './middleware/authMiddleware.js';
@@ -102,6 +103,7 @@ import adminAuthRoutes from './routes/adminAuthRoutes.js';
 import workoutPresetRoutes from './routes/workoutPresetRoutes.js';
 import workoutPlanTemplateRoutes from './routes/workoutPlanTemplateRoutes.js';
 import { cleanupSessions } from './auth.js';
+import { deleteExpiredTickets } from './services/passkeyTicketService.js';
 import withingsServiceCentral from './services/withingsService.js';
 import { upsertEnvOidcProvider } from './utils/oidcEnvConfig.js';
 import userRepository from './models/userRepository.js';
@@ -204,9 +206,24 @@ app.use(async (req, res, next) => {
   if (req.originalUrl.startsWith('/api/auth') && betterAuthHandlerInstance) {
     // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
     const isDiscovery =
-      req.path === '/api/auth/settings' || req.path === '/api/auth/mfa-factors';
+      req.path === '/api/auth/settings' ||
+      req.path === '/api/auth/mfa-factors' ||
+      req.path.startsWith('/api/auth/web-login');
     if (isDiscovery) {
       return next();
+    }
+
+    // Translate Bearer token to cookie / x-api-key before passing to the Better
+    // Auth handler. This resolves compatibility issues with Buffer secrets in
+    // @better-auth/utils/hmac and is shared with middleware/authMiddleware.ts via
+    // bridgeBearerAuthHeader so the two paths can't drift.
+    try {
+      await bridgeBearerAuthHeader(req);
+    } catch (e) {
+      log(
+        'error',
+        `Failed to bridge Bearer auth header in early interceptor: ${e}`
+      );
     }
 
     // 2. Manual Sign-Out Cleanup: preserve sparky_active_user_id delete
@@ -398,6 +415,7 @@ const isPublicApiDocsEnabled =
 const publicRoutes = [
   '/api/auth/settings',
   '/api/auth/mfa-factors',
+  '/api/auth/web-login',
   '/api/health',
   '/api/version',
   '/api/uploads',
@@ -516,6 +534,17 @@ const scheduleSessionCleanup = async () => {
       await cleanupSessions();
     } catch (error) {
       console.error('[CRON] Session cleanup failed:', error);
+    }
+    try {
+      const removed = await deleteExpiredTickets();
+      if (removed > 0) {
+        log(
+          'info',
+          `[CRON] Removed ${removed} used/expired passkey ticket(s).`
+        );
+      }
+    } catch (error) {
+      console.error('[CRON] Passkey ticket cleanup failed:', error);
     }
   });
 };

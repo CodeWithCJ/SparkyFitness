@@ -120,6 +120,10 @@ const ICON_MAP = {
 
   // AI features
   'sparkles': { sf: 'sparkles', ion: 'sparkles' },
+
+  // Biometrics/Security
+  'fingerprint': { sf: 'touchid', ion: 'finger-print-outline' },
+  'lock-closed': { sf: 'lock.fill', ion: 'lock-closed-outline' },
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

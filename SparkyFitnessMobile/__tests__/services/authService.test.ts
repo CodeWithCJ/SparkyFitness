@@ -12,14 +12,25 @@ import {
   verifyEmailOtp,
   logout,
   clearAuthCookies,
+  requestPasskeyRegistrationTicket,
+  addPasskey,
   _clearTrustedOriginCache,
   _setTrustedOriginCache,
 } from '../../src/services/api/authService';
 import { clearSessionToken, ServerConfig } from '../../src/services/storage';
+import * as WebBrowser from 'expo-web-browser';
 
 jest.mock('../../src/services/storage', () => ({
   clearSessionToken: jest.fn(),
 }));
+
+jest.mock('expo-web-browser', () => ({
+  openAuthSessionAsync: jest.fn(),
+}));
+
+const mockOpenAuthSession = WebBrowser.openAuthSessionAsync as jest.MockedFunction<
+  typeof WebBrowser.openAuthSessionAsync
+>;
 
 const mockClearSessionToken = clearSessionToken as jest.MockedFunction<
   typeof clearSessionToken
@@ -658,6 +669,89 @@ describe('authService', () => {
 
       // Total: 2 from first call + 1 from second call = 3
       expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('requestPasskeyRegistrationTicket', () => {
+    it('POSTs to register-ticket with Bearer and returns the ticket', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ ticket: 'ticket-abc' }),
+      });
+
+      const ticket = await requestPasskeyRegistrationTicket(
+        'https://s.com',
+        'sess-tok'
+      );
+
+      expect(ticket).toBe('ticket-abc');
+      const [url, opts] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://s.com/api/auth/web-login/register-ticket');
+      expect(opts.method).toBe('POST');
+      expect(opts.headers.Authorization).toBe('Bearer sess-tok');
+    });
+
+    it('throws LoginError SESSION_NOT_FRESH on 403', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ code: 'SESSION_NOT_FRESH' }),
+      });
+
+      await expect(
+        requestPasskeyRegistrationTicket('https://s.com', 'tok')
+      ).rejects.toMatchObject({ message: 'SESSION_NOT_FRESH', statusCode: 403 });
+    });
+
+    it('throws on non-OK responses', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({ message: 'boom' }),
+      });
+      await expect(
+        requestPasskeyRegistrationTicket('https://s.com', 'tok')
+      ).rejects.toThrow('boom');
+    });
+  });
+
+  describe('addPasskey', () => {
+    it('mints a ticket then opens the register page with the ticket in the fragment (no raw token)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ ticket: 'ticket-xyz' }),
+      });
+      mockOpenAuthSession.mockResolvedValueOnce({
+        type: 'success',
+        url: 'sparkyfitnessmobile://oauth-callback?status=success',
+      } as never);
+
+      await addPasskey('https://s.com', 'sess-tok', 'My Phone');
+
+      expect(mockFetch.mock.calls[0][0]).toBe(
+        'https://s.com/api/auth/web-login/register-ticket'
+      );
+      const openedUrl = mockOpenAuthSession.mock.calls[0][0] as string;
+      expect(openedUrl).toContain(
+        '/web-login/register-passkey#ticket=ticket-xyz'
+      );
+      expect(openedUrl).not.toContain('token=sess-tok');
+      expect(openedUrl).not.toContain('?token=');
+    });
+
+    it('propagates SESSION_NOT_FRESH without opening the browser', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ code: 'SESSION_NOT_FRESH' }),
+      });
+
+      await expect(
+        addPasskey('https://s.com', 'tok', 'My Phone')
+      ).rejects.toMatchObject({ message: 'SESSION_NOT_FRESH' });
+      expect(mockOpenAuthSession).not.toHaveBeenCalled();
     });
   });
 });

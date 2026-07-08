@@ -99,7 +99,8 @@ BEGIN
     'pregnancy_checklist_state',
     'health_appointments',
     'user_custom_moods',
-    'user_mood_display_preferences'
+    'user_mood_display_preferences',
+    'passkey_registration_tickets'
   ]::text[])
   LOOP
     EXECUTE 'ALTER TABLE public.' || quote_ident(table_name) || ' ENABLE ROW LEVEL SECURITY;';
@@ -888,3 +889,9 @@ SELECT create_medication_policy('user_custom_symptom_locations');
 -- Medications Display Preferences (Tier 2 - Owner-Only Write, Delegate Read)
 CREATE POLICY select_policy ON public.user_medication_display_preferences FOR SELECT TO PUBLIC USING (has_medication_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_medication_display_preferences FOR ALL TO PUBLIC USING (authenticated_user_id() = user_id) WITH CHECK (authenticated_user_id() = user_id);
+
+-- Passkey registration tickets (Tier 3 - system/internal). These short-lived,
+-- single-use rows are only ever read/written by getSystemClient (which bypasses
+-- RLS). Deny the app role entirely as defense-in-depth so a stray GRANT can
+-- never expose session material to user-scoped queries.
+CREATE POLICY deny_all_policy ON public.passkey_registration_tickets FOR ALL TO PUBLIC USING (false) WITH CHECK (false);

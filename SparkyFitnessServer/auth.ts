@@ -18,6 +18,8 @@ import { apiKey } from '@better-auth/api-key';
 import { v4 } from 'uuid';
 import { emailOTP, magicLink, admin, twoFactor } from 'better-auth/plugins';
 import { sso } from '@better-auth/sso';
+import { expo } from '@better-auth/expo';
+import { expoSsoCookieRelay } from './utils/expoSsoCookieRelay.js';
 import { passkey } from '@better-auth/passkey';
 
 const hashAsync = promisify(bcrypt.hash);
@@ -154,6 +156,24 @@ const apiKeyPlugin = apiKey({
     },
   },
 });
+let passkeyRpID: string | undefined;
+try {
+  const frontendUrl = process.env.SPARKY_FITNESS_FRONTEND_URL;
+  const urlString =
+    process.env.BETTER_AUTH_URL ||
+    (frontendUrl
+      ? frontendUrl.startsWith('http')
+        ? frontendUrl
+        : `https://${frontendUrl}`
+      : undefined);
+  if (urlString) {
+    const url = new URL(urlString);
+    passkeyRpID = url.hostname;
+  }
+} catch {
+  // Fall back to default
+}
+
 const auth = betterAuth({
   database: authPool,
   // @ts-expect-error
@@ -205,6 +225,13 @@ const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // Update session every 24 hours
+    // freshAge keeps Better Auth's default 24h "fresh session" requirement.
+    // Passkey registration (generate-register-options) is gated on it via
+    // freshSessionMiddleware — planting a new login credential should require a
+    // recent login. The mobile app satisfies this by minting a short-lived,
+    // single-use registration ticket from a fresh session (re-authenticating
+    // via ReauthModal when the session is stale). See
+    // routes/auth/authCoreRoutes.ts (web-login/register-ticket).
     cookieCache: {
       enabled: false, // Disabled to prevent stale data after manual DB updates
     },
@@ -321,7 +348,7 @@ const auth = betterAuth({
   // Trust proxy (for Docker/Nginx deployments)
   // NOTE: Better Auth calls this with the raw Request object directly (not a context wrapper)
   trustedOrigins: (request) => {
-    const cleanOrigins = getBaseTrustedOrigins();
+    const cleanOrigins = [...getBaseTrustedOrigins(), 'sparkyfitnessmobile://'];
     const { origin: originHeader, referer: refererHeader } =
       extractRequestHeaders(request);
     // Identify if this is a non-primary origin (IP, extra domain, etc.) or null
@@ -600,6 +627,12 @@ const auth = betterAuth({
     },
   },
   plugins: [
+    // Expo mobile app support: maps the app's expo-origin header to origin and
+    // serves /expo-authorization-proxy so the system browser carries the OAuth
+    // state cookie. The relay plugin forwards the session cookie to the app on
+    // /sso/callback redirects (the official plugin only covers /callback paths).
+    expo(),
+    expoSsoCookieRelay(),
     emailOTP({
       // @ts-expect-error
       async sendVerificationOTP({ user, otp }) {
@@ -659,6 +692,8 @@ const auth = betterAuth({
       },
     }),
     passkey({
+      rpID: passkeyRpID,
+      rpName: 'SparkyFitness',
       schema: {
         passkey: {
           modelName: 'passkey',

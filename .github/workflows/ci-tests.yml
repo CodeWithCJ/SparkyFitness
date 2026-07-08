@@ -177,7 +177,10 @@ jobs:
         run: pnpm run test:ci
         env:
           NODE_ENV: test
-          SPARKY_FITNESS_API_ENCRYPTION_KEY: WBBc73sX/IpeLHlraZa73S1BfVBiUnmZXYyzQKNgMIk=
+          # SPARKY_FITNESS_API_ENCRYPTION_KEY and BETTER_AUTH_SECRET are left
+          # unset here on purpose: vitest.config.ts generates per-run random
+          # fallbacks so no secret literal lives in the repo (secret scanners
+          # like GitGuardian flag hardcoded keys on every push).
           # This job has no database. The RLS matrix runs by default, so skip it
           # here; it is exercised in the migration-check job (which provisions
           # Postgres). Without this it would fail trying to connect.

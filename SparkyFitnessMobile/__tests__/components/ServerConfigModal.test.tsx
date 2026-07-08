@@ -9,6 +9,8 @@ import {
   verifyTotp,
   sendEmailOtp,
   verifyEmailOtp,
+  fetchAuthSettings,
+  type AuthSettings,
 } from '../../src/services/api/authService';
 import {
   saveServerConfig,
@@ -16,7 +18,7 @@ import {
 
 jest.mock('../../src/services/api/authService', () => ({
   login: jest.fn(),
-  LoginError: jest.requireActual('../../src/services/api/authService').LoginError,
+  LoginError: jest.requireActual('../../src/services/api/authErrors').LoginError,
   clearAuthCookies: jest.fn().mockResolvedValue(undefined),
   fetchMfaFactors: jest.fn(),
   verifyTotp: jest.fn(),
@@ -24,6 +26,9 @@ jest.mock('../../src/services/api/authService', () => ({
   verifyEmailOtp: jest.fn(),
   setPendingProxyHeaders: jest.fn(),
   clearPendingProxyHeaders: jest.fn(),
+  fetchAuthSettings: jest.fn(),
+  loginWithOidc: jest.fn(),
+  loginWithPasskey: jest.fn(),
 }));
 
 jest.mock('../../src/services/storage', () => ({
@@ -49,7 +54,19 @@ const mockFetchMfaFactors = fetchMfaFactors as jest.MockedFunction<typeof fetchM
 const mockVerifyTotp = verifyTotp as jest.MockedFunction<typeof verifyTotp>;
 const mockSendEmailOtp = sendEmailOtp as jest.MockedFunction<typeof sendEmailOtp>;
 const mockVerifyEmailOtp = verifyEmailOtp as jest.MockedFunction<typeof verifyEmailOtp>;
+const mockFetchAuthSettings = fetchAuthSettings as jest.MockedFunction<typeof fetchAuthSettings>;
 const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<typeof saveServerConfig>;
+
+const URL_PLACEHOLDER = 'https://your-server-url.com';
+const EMAIL_PLACEHOLDER = 'email@example.com';
+
+/** Default settings: email sign-in enabled, no OIDC. */
+const emailAuthSettings: AuthSettings = {
+  trusted_origin: null,
+  email: { enabled: true },
+  oidc: { enabled: false, providers: [] },
+  signup_disabled: false,
+};
 
 const defaultProps = {
   visible: true,
@@ -64,8 +81,28 @@ function renderModal(props: Partial<React.ComponentProps<typeof ServerConfigModa
 
 async function waitForForm(result: ReturnType<typeof renderModal>) {
   await waitFor(() =>
-    expect(result.getByPlaceholderText('https://your-server-url.com')).toBeTruthy(),
+    expect(result.getByPlaceholderText(URL_PLACEHOLDER)).toBeTruthy(),
   );
+}
+
+/**
+ * The auth options (tabs, email/password, Connect) are only rendered after the
+ * server's auth settings are fetched. `Sign In` is the sign-in segment label,
+ * which renders exactly once whenever email auth is enabled.
+ */
+async function waitForAuthReady(result: ReturnType<typeof renderModal>) {
+  await waitFor(() => expect(result.getByText('Sign In')).toBeTruthy(), {
+    timeout: 3000,
+  });
+}
+
+/** Types a URL and waits for the dynamically-fetched auth options to render. */
+async function enterUrl(
+  result: ReturnType<typeof renderModal>,
+  url = 'https://my-server.com',
+) {
+  fireEvent.changeText(result.getByPlaceholderText(URL_PLACEHOLDER), url);
+  await waitForAuthReady(result);
 }
 
 function pressConnectButton(result: ReturnType<typeof renderModal>) {
@@ -77,15 +114,17 @@ describe('ServerConfigModal', () => {
     jest.clearAllMocks();
     mockClearAuthCookies.mockResolvedValue(undefined);
     mockSaveServerConfig.mockResolvedValue(undefined);
+    mockFetchAuthSettings.mockResolvedValue(emailAuthSettings);
   });
 
   describe('form rendering', () => {
-    it('renders the form with URL input and Sign In tab by default', async () => {
+    it('reveals auth options after a URL is entered', async () => {
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
-      expect(result.getByPlaceholderText('https://your-server-url.com')).toBeTruthy();
-      expect(result.getByPlaceholderText('email@example.com')).toBeTruthy();
+      expect(result.getByPlaceholderText(URL_PLACEHOLDER)).toBeTruthy();
+      expect(result.getByPlaceholderText(EMAIL_PLACEHOLDER)).toBeTruthy();
       expect(result.getByPlaceholderText('Password')).toBeTruthy();
       expect(result.getByText('Sign In')).toBeTruthy();
       expect(result.getByText('API Key')).toBeTruthy();
@@ -96,11 +135,12 @@ describe('ServerConfigModal', () => {
     it('shows API key field when API Key tab is selected', async () => {
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
 
       expect(result.getByPlaceholderText('Uds3d8i...')).toBeTruthy();
-      expect(result.queryByPlaceholderText('email@example.com')).toBeNull();
+      expect(result.queryByPlaceholderText(EMAIL_PLACEHOLDER)).toBeNull();
       expect(result.queryByPlaceholderText('Password')).toBeNull();
     });
 
@@ -135,6 +175,7 @@ describe('ServerConfigModal', () => {
         },
       });
       await waitForForm(result);
+      await waitForAuthReady(result);
 
       expect(result.getByDisplayValue('https://example.com')).toBeTruthy();
       // API Key tab should be active, so API key field is shown
@@ -152,40 +193,35 @@ describe('ServerConfigModal', () => {
         },
       });
       await waitForForm(result);
+      await waitForAuthReady(result);
 
       expect(result.getByDisplayValue('https://example.com')).toBeTruthy();
-      expect(result.getByPlaceholderText('email@example.com')).toBeTruthy();
+      expect(result.getByPlaceholderText(EMAIL_PLACEHOLDER)).toBeTruthy();
     });
 
     it('respects defaultAuthTab prop', async () => {
       const result = renderModal({ defaultAuthTab: 'apiKey' });
       await waitForForm(result);
+      await enterUrl(result);
 
       expect(result.getByPlaceholderText('Uds3d8i...')).toBeTruthy();
     });
   });
 
   describe('sign in validation', () => {
-    it('shows error when server URL is empty', async () => {
+    it('does not show auth options until a URL is entered', async () => {
       const result = renderModal();
       await waitForForm(result);
 
-      await act(async () => {
-        pressConnectButton(result);
-      });
-
-      expect(result.getByText('Enter a valid SparkyFitness URL')).toBeTruthy();
+      expect(result.queryByText('Connect')).toBeNull();
+      expect(result.queryByPlaceholderText(EMAIL_PLACEHOLDER)).toBeNull();
       expect(mockLogin).not.toHaveBeenCalled();
     });
 
     it('shows error when email is empty', async () => {
       const result = renderModal();
       await waitForForm(result);
-
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
+      await enterUrl(result);
 
       await act(async () => {
         pressConnectButton(result);
@@ -198,13 +234,10 @@ describe('ServerConfigModal', () => {
     it('shows error when password is empty', async () => {
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
       fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-      fireEvent.changeText(
-        result.getByPlaceholderText('email@example.com'),
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
         'user@example.com',
       );
 
@@ -228,13 +261,10 @@ describe('ServerConfigModal', () => {
       const onSuccess = jest.fn();
       const result = renderModal({ onSuccess });
       await waitForForm(result);
+      await enterUrl(result);
 
       fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-      fireEvent.changeText(
-        result.getByPlaceholderText('email@example.com'),
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
         'user@example.com',
       );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'password123');
@@ -267,12 +297,9 @@ describe('ServerConfigModal', () => {
 
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result, 'https://my-server.com/');
 
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com/',
-      );
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'a@b.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -303,8 +330,9 @@ describe('ServerConfigModal', () => {
         },
       });
       await waitForForm(result);
+      await waitForAuthReady(result);
 
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'user@example.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'user@example.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -329,12 +357,9 @@ describe('ServerConfigModal', () => {
 
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'a@b.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'wrong');
 
       await act(async () => {
@@ -349,12 +374,9 @@ describe('ServerConfigModal', () => {
 
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result, 'https://server.com');
 
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://server.com',
-      );
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'a@b.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -371,12 +393,9 @@ describe('ServerConfigModal', () => {
     it('validates API key is required', async () => {
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
 
       await act(async () => {
         pressConnectButton(result);
@@ -394,12 +413,9 @@ describe('ServerConfigModal', () => {
       const onSuccess = jest.fn();
       const result = renderModal({ onSuccess });
       await waitForForm(result);
+      await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
       fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'my-api-key');
 
       await act(async () => {
@@ -433,12 +449,9 @@ describe('ServerConfigModal', () => {
 
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
       fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'bad-key');
 
       await act(async () => {
@@ -454,12 +467,9 @@ describe('ServerConfigModal', () => {
 
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
       fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'my-key');
 
       await act(async () => {
@@ -482,12 +492,9 @@ describe('ServerConfigModal', () => {
       mockFetchMfaFactors.mockResolvedValue(factors);
 
       await waitForForm(result);
+      await enterUrl(result);
 
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'user@test.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'user@test.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -611,12 +618,9 @@ describe('ServerConfigModal', () => {
       });
 
       await waitForForm(result);
+      await enterUrl(result);
 
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'a@b.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -675,7 +679,7 @@ describe('ServerConfigModal', () => {
       });
 
       await waitFor(() => {
-        expect(result.getByPlaceholderText('email@example.com')).toBeTruthy();
+        expect(result.getByPlaceholderText(EMAIL_PLACEHOLDER)).toBeTruthy();
       });
     });
 
@@ -708,12 +712,9 @@ describe('ServerConfigModal', () => {
 
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'a@b.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -746,12 +747,9 @@ describe('ServerConfigModal', () => {
 
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'a@b.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'wrong');
 
       await act(async () => {
@@ -764,10 +762,11 @@ describe('ServerConfigModal', () => {
       result.rerender(<ServerConfigModal {...defaultProps} visible={false} />);
       result.rerender(<ServerConfigModal {...defaultProps} visible={true} />);
 
+      // URL is cleared on reset, so the auth options (email field) collapse away.
       await waitFor(() => {
-        expect(result.getByPlaceholderText('email@example.com').props.value).toBe('');
-        expect(result.getByPlaceholderText('Password').props.value).toBe('');
+        expect(result.getByPlaceholderText(URL_PLACEHOLDER).props.value).toBe('');
       });
+      expect(result.queryByPlaceholderText(EMAIL_PLACEHOLDER)).toBeNull();
     });
   });
 
@@ -784,6 +783,7 @@ describe('ServerConfigModal', () => {
     it('shows Save button when editing an existing config', async () => {
       const result = renderModal({ editingConfig });
       await waitForForm(result);
+      await waitForAuthReady(result);
 
       expect(result.getByText('Save')).toBeTruthy();
       expect(result.getByText('Connect')).toBeTruthy();
@@ -792,6 +792,7 @@ describe('ServerConfigModal', () => {
     it('does not show Save button when adding a new config', async () => {
       const result = renderModal({ editingConfig: null });
       await waitForForm(result);
+      await enterUrl(result);
 
       expect(result.queryByText('Save')).toBeNull();
       expect(result.getByText('Connect')).toBeTruthy();
@@ -838,7 +839,7 @@ describe('ServerConfigModal', () => {
         fireEvent.press(result.getByText('Save'));
       });
 
-      expect(result.getByText('Enter a valid SparkyFitness URL')).toBeTruthy();
+      expect(result.getByText('Enter a valid Frontend URL')).toBeTruthy();
       expect(mockSaveServerConfig).not.toHaveBeenCalled();
     });
 
@@ -846,6 +847,7 @@ describe('ServerConfigModal', () => {
       const onSuccess = jest.fn();
       const result = renderModal({ editingConfig, onSuccess });
       await waitForForm(result);
+      await waitForAuthReady(result);
 
       // Switch to API Key tab and enter a key
       fireEvent.press(result.getByText('API Key'));
@@ -870,6 +872,7 @@ describe('ServerConfigModal', () => {
       const onSuccess = jest.fn();
       const result = renderModal({ editingConfig, onSuccess });
       await waitForForm(result);
+      await waitForAuthReady(result);
 
       // Switch to API Key tab but leave key empty
       fireEvent.press(result.getByText('API Key'));
@@ -908,8 +911,9 @@ describe('ServerConfigModal', () => {
         },
       });
       await waitForForm(result);
+      await waitForAuthReady(result);
 
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'user@example.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'user@example.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -934,12 +938,9 @@ describe('ServerConfigModal', () => {
 
       const result = renderModal();
       await waitForForm(result);
+      await enterUrl(result);
 
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'a@b.com');
+      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {

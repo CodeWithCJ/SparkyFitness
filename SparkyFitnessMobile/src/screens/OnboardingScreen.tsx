@@ -26,24 +26,23 @@ import {
   verifyTotp,
   sendEmailOtp,
   verifyEmailOtp,
+  fetchAuthSettings,
+  loginWithOidc,
+  loginWithPasskey,
   type MfaFactors,
+  type AuthSettings,
+  type OidcProvider,
 } from '../services/api/authService';
 import { saveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 import { markCurrentVersionSeen } from '../services/whatsNewBanner';
 import { queryClient, serverConnectionQueryKey } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type AuthTab = 'signIn' | 'apiKey';
 
-const AUTH_SEGMENTS: { key: AuthTab; label: string }[] = [
-  { key: 'signIn', label: 'Sign In' },
-  { key: 'apiKey', label: 'API Key' },
-];
-
 const LEARN_MORE_SECTION_MIN_HEIGHT = 208;
-
-const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, '');
 
 const checkReachability = async (url: string): Promise<boolean> => {
   try {
@@ -84,6 +83,7 @@ export default function OnboardingScreen({ navigation }: Props) {
 
   // Auth state (page 2)
   const [authTab, setAuthTab] = useState<AuthTab>('signIn');
+  const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -134,28 +134,49 @@ export default function OnboardingScreen({ navigation }: Props) {
   const handleNext = async () => {
     const url = normalizeUrl(serverUrl);
     if (!url) {
-      setError('Enter a valid SparkyFitness URL');
+      setError('Enter a valid Frontend URL');
       return;
     }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
-      setError('HTTPS is required for server connections.');
+
+    const validationError = getInsecureUrlError(url);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setCheckingUrl(true);
     setError('');
 
-    const reachable = await checkReachability(url);
+    try {
+      const settings = await fetchAuthSettings(url);
+      setAuthSettings(settings);
 
-    setCheckingUrl(false);
+      // Passkey sign-in is always offered once settings load, so the Sign In
+      // tab is always the sensible default here.
+      setAuthTab('signIn');
 
-    if (!reachable) {
-      setError('Could not reach server. Check the URL and try again.');
-      return;
+      setError('');
+      setPage(2);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      addLog(`[Onboarding] Settings fetch failed for ${url}: ${message}. Trying fallback reachability...`, 'WARNING');
+      
+      const reachable = await checkReachability(url);
+      if (reachable) {
+        setAuthSettings({
+          trusted_origin: null,
+          email: { enabled: true },
+          oidc: { enabled: false, providers: [] },
+          signup_disabled: false,
+        });
+        setError('');
+        setPage(2);
+      } else {
+        setError('Could not reach server. Check the URL and try again.');
+      }
+    } finally {
+      setCheckingUrl(false);
     }
-
-    setError('');
-    setPage(2);
   };
 
   // --- Page 2: Auth handlers ---
@@ -221,6 +242,62 @@ export default function OnboardingScreen({ navigation }: Props) {
         setError(err.message);
       } else {
         setError('Could not connect to server. Check the URL and try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOidcLogin = async (providerId: string) => {
+    const url = normalizeUrl(serverUrl);
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await loginWithOidc(url, providerId);
+
+      if (result.type === 'success') {
+        await saveConfig(url, {
+          authType: 'session',
+          sessionToken: result.sessionToken,
+        });
+
+        addLog(`Connected via OIDC provider ${providerId}.`, 'INFO');
+        await finishWithConnection();
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(String(err));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    const url = normalizeUrl(serverUrl);
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await loginWithPasskey(url);
+
+      if (result.type === 'success') {
+        await saveConfig(url, {
+          authType: 'session',
+          sessionToken: result.sessionToken,
+        });
+
+        addLog('Connected via Passkey.', 'INFO');
+        await finishWithConnection();
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(String(err));
       }
     } finally {
       setLoading(false);
@@ -394,7 +471,7 @@ export default function OnboardingScreen({ navigation }: Props) {
 
       {/* Server URL input */}
       <View className="mb-6">
-        <Text className="text-sm mb-2 text-text-secondary">SparkyFitness URL</Text>
+        <Text className="text-sm mb-2 text-text-secondary">Frontend URL</Text>
         <View
           className="flex-row items-center rounded-lg pr-2.5 bg-raised"
           style={{ borderWidth: 1, borderColor: isServerUrlFocused ? accentPrimary : borderSubtle }}
@@ -484,108 +561,221 @@ export default function OnboardingScreen({ navigation }: Props) {
     </>
   );
 
-  const renderPage2Auth = () => (
-    <>
-      {/* Header with server URL */}
-      <View className="items-center mb-5">
-        <Text className="text-2xl font-bold text-text-primary">
-          Connect to SparkyFitness
-        </Text>
-        <Text
-          className="text-base text-text-secondary mt-1"
-          numberOfLines={1}
-        >
-          {normalizeUrl(serverUrl)}
-        </Text>
-      </View>
+  const getSegments = () => {
+    const segments = [];
+    const hasEmail = !authSettings || authSettings.email.enabled;
+    const hasOidc = authSettings?.oidc.enabled && authSettings.oidc.providers.length > 0;
+    
+    if (hasEmail) {
+      segments.push({ key: 'signIn' as const, label: 'Sign In' });
+    } else if (hasOidc) {
+      segments.push({ key: 'signIn' as const, label: 'SSO' });
+    } else if (authSettings) {
+      segments.push({ key: 'signIn' as const, label: 'Passkey' });
+    }
+    
+    segments.push({ key: 'apiKey' as const, label: 'API Key' });
+    return segments;
+  };
 
-      {/* Auth type toggle */}
-      <View className="mb-3">
-        <SegmentedControl
-          segments={AUTH_SEGMENTS}
-          activeKey={authTab}
-          onSelect={setAuthTab}
-        />
-      </View>
+  const renderPage2Auth = () => {
+    const hasEmail = !authSettings || authSettings.email.enabled;
+    const hasOidc = authSettings?.oidc.enabled && authSettings.oidc.providers.length > 0;
 
-      {/* Sign In fields */}
-      {authTab === 'signIn' && (
-        <>
-          <View className="mb-3">
-            <Text className="text-sm mb-2 text-text-secondary">Email</Text>
-            <FormInput
-              placeholder="email@example.com"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-            />
-          </View>
-          <View className="mb-4">
-            <Text className="text-sm mb-2 text-text-secondary">Password</Text>
-            <FormInput
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="password"
-            />
-          </View>
-        </>
-      )}
-
-      {/* API Key field */}
-      {authTab === 'apiKey' && (
-        <View className="mb-4">
-          <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
-          <View
-            className="flex-row items-center rounded-lg pr-2.5 bg-raised"
-            style={{ borderWidth: 1, borderColor: isApiKeyFocused ? accentPrimary : borderSubtle }}
+    return (
+      <>
+        {/* Header with server URL */}
+        <View className="items-center mb-5">
+          <Text className="text-2xl font-bold text-text-primary">
+            Connect to SparkyFitness
+          </Text>
+          <Text
+            className="text-base text-text-secondary mt-1"
+            numberOfLines={1}
           >
-            <View className="flex-1">
-              <TextInput
-                className="p-2.5 text-base text-text-primary"
-                style={{ lineHeight: 20 }}
-                placeholder="Uds3d8i..."
-                placeholderTextColor={textMuted}
-                value={apiKey}
-                onChangeText={setApiKey}
-                onFocus={() => setIsApiKeyFocused(true)}
-                onBlur={() => setIsApiKeyFocused(false)}
-                secureTextEntry
-              />
-            </View>
-            <Button
-              variant="ghost"
-              onPress={async () => setApiKey(await Clipboard.getString())}
-              accessibilityLabel="Paste API key from clipboard"
-              className="p-2 py-2 px-2 rounded-lg"
-            >
-              <Icon name="paste" size={20} color={textSecondary} />
-            </Button>
-          </View>
+            {normalizeUrl(serverUrl)}
+          </Text>
         </View>
-      )}
 
-      <ErrorBanner message={error} />
+        {/* Auth type toggle */}
+        {getSegments().length > 1 && (
+          <View className="mb-3">
+            <SegmentedControl
+              segments={getSegments()}
+              activeKey={authTab}
+              onSelect={setAuthTab}
+            />
+          </View>
+        )}
 
-      {/* Actions */}
-      <View className="gap-3 mt-4">
-        <PrimaryButton
-          label="Connect"
-          onPress={handleConnect}
-          loading={loading}
-        />
-        <Button
-          variant="ghost"
-          onPress={finishOnboarding}
-        >
-          Later
-        </Button>
-      </View>
-    </>
-  );
+        {/* Sign In fields */}
+        {authTab === 'signIn' && (
+          <>
+            {hasEmail && (
+              <>
+                <View className="mb-3">
+                  <Text className="text-sm mb-2 text-text-secondary">Email</Text>
+                  <FormInput
+                    placeholder="email@example.com"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoComplete="email"
+                  />
+                </View>
+                <View className="mb-4">
+                  <Text className="text-sm mb-2 text-text-secondary">Password</Text>
+                  <FormInput
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    autoComplete="password"
+                  />
+                </View>
+              </>
+            )}
+
+            {hasOidc && (
+              <>
+                {hasEmail && (
+                  <View className="flex-row items-center my-4">
+                    <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
+                    <Text className="mx-3 text-xs text-text-muted uppercase" style={{ marginHorizontal: 12 }}>Or sign in with</Text>
+                    <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
+                  </View>
+                )}
+                <View className="gap-2">
+                  {authSettings.oidc.providers.map((provider: OidcProvider) => (
+                    <Button
+                      key={provider.id}
+                      variant="outline"
+                      onPress={() => handleOidcLogin(provider.id)}
+                      disabled={loading}
+                      className="w-full flex-row items-center justify-center p-2.5 rounded-lg border bg-raised"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: borderSubtle,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        {provider.logo_url && (
+                          <Image
+                            source={{
+                              uri: provider.logo_url.startsWith('http')
+                                ? provider.logo_url
+                                : `${normalizeUrl(serverUrl)}${provider.logo_url}`,
+                            }}
+                            style={{ width: 20, height: 20, marginRight: 8 }}
+                            resizeMode="contain"
+                          />
+                        )}
+                        <Text className="text-base font-semibold text-text-primary">
+                          {provider.display_name || `Sign in with ${provider.id}`}
+                        </Text>
+                      </View>
+                    </Button>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {authSettings && (
+              <View style={{ marginTop: 8 }}>
+                <Button
+                  variant="outline"
+                  onPress={handlePasskeyLogin}
+                  disabled={loading}
+                  className="w-full flex-row items-center justify-center p-2.5 rounded-lg border bg-raised"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: borderSubtle,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginTop: 8,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ marginRight: 8 }}>
+                      <Icon name="fingerprint" size={20} color={accentPrimary} />
+                    </View>
+                    <Text className="text-base font-semibold text-text-primary">
+                      Sign in with Passkey
+                    </Text>
+                  </View>
+                </Button>
+              </View>
+            )}
+
+            {authSettings && !hasEmail && !hasOidc && (
+              <View className="py-6 px-4 items-center bg-raised rounded-lg border" style={{ borderWidth: 1, borderColor: borderSubtle }}>
+                <Text className="text-center text-sm text-text-secondary">
+                  No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+
+        {/* API Key field */}
+        {authTab === 'apiKey' && (
+          <View className="mb-4">
+            <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
+            <View
+              className="flex-row items-center rounded-lg pr-2.5 bg-raised"
+              style={{ borderWidth: 1, borderColor: isApiKeyFocused ? accentPrimary : borderSubtle }}
+            >
+              <View className="flex-1">
+                <TextInput
+                  className="p-2.5 text-base text-text-primary"
+                  style={{ lineHeight: 20 }}
+                  placeholder="Uds3d8i..."
+                  placeholderTextColor={textMuted}
+                  value={apiKey}
+                  onChangeText={setApiKey}
+                  onFocus={() => setIsApiKeyFocused(true)}
+                  onBlur={() => setIsApiKeyFocused(false)}
+                  secureTextEntry
+                />
+              </View>
+              <Button
+                variant="ghost"
+                onPress={async () => setApiKey(await Clipboard.getString())}
+                accessibilityLabel="Paste API key from clipboard"
+                className="p-2 py-2 px-2 rounded-lg"
+              >
+                <Icon name="paste" size={20} color={textSecondary} />
+              </Button>
+            </View>
+          </View>
+        )}
+
+        <ErrorBanner message={error} />
+
+        {/* Actions */}
+        <View className="gap-3 mt-4">
+          {(authTab === 'apiKey' || hasEmail) && (
+            <PrimaryButton
+              label="Connect"
+              onPress={handleConnect}
+              loading={loading}
+            />
+          )}
+          <Button
+            variant="ghost"
+            onPress={finishOnboarding}
+          >
+            Later
+          </Button>
+        </View>
+      </>
+    );
+  };
 
   const renderPage2Mfa = () => (
     <>
