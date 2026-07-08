@@ -114,6 +114,8 @@ interface ActiveWorkoutExerciseCardProps {
   onActivateSet?: (setId: string, field: 'weight' | 'reps') => void;
   /** Live only: tap the RPE column to focus the RPE input on that row. */
   onActivateRpe?: (setId: string) => void;
+  /** Edit only: tap the last-column check to toggle a set's completion. */
+  onToggleComplete?: (setId: string) => void;
   onDeactivateSet?: () => void;
   onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
 }
@@ -182,6 +184,7 @@ function ActiveWorkoutExerciseCard({
   eligibleForPrefill = false,
   onActivateSet,
   onActivateRpe,
+  onToggleComplete,
   onDeactivateSet,
   onEditFieldChange,
 }: ActiveWorkoutExerciseCardProps) {
@@ -320,7 +323,7 @@ function ActiveWorkoutExerciseCard({
     const subtitle =
       readOnly || isEdit || anyComplete
         ? `${exercise.sets.length} sets${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
-        : `${exercise.sets.length} sets planned`;
+        : `${exercise.sets.length} sets`;
 
     return (
       <Pressable
@@ -469,7 +472,7 @@ function ActiveWorkoutExerciseCard({
             Set
           </Text>
           <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-            {weightUnit === 'kg' ? 'KG' : 'LB'}
+            {weightUnit === 'kg' ? 'KG' : 'LBS'}
           </Text>
           <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
             Reps
@@ -529,6 +532,7 @@ function ActiveWorkoutExerciseCard({
             entryId={exercise.id}
             rpeEditable={rpeEditable}
             completedBadge={isEdit && !!completedSetIds[setId]}
+            onToggleComplete={onToggleComplete}
             onActivateSet={onActivateSet}
             onActivateRpe={onActivateRpe}
             onDeactivate={onDeactivateSet}

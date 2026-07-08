@@ -1260,6 +1260,23 @@ describe('activeWorkoutStore', () => {
       });
     });
 
+    describe('renameSession', () => {
+      it('updates the session name, trims it, and marks unsaved', () => {
+        useActiveWorkoutStore.getState().renameSession('  Leg Day  ');
+        const state = useActiveWorkoutStore.getState();
+        expect(state.session!.name).toBe('Leg Day');
+        expect(state.hasUnsavedChanges).toBe(true);
+      });
+
+      it('is a no-op for an empty or unchanged name', () => {
+        useActiveWorkoutStore.getState().renameSession('   ');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+        useActiveWorkoutStore.getState().renameSession('Push Day');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+        expect(useActiveWorkoutStore.getState().hasUnsavedChanges).toBe(false);
+      });
+    });
+
     describe('addExercise', () => {
       const newExercise = {
         id: 'ex-3',

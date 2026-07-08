@@ -107,8 +107,13 @@ interface ActiveWorkoutSetRowProps {
   entryId?: string;
   /** False hides the RPE input (preset sets store no RPE). */
   rpeEditable?: boolean;
-  /** Static completion check on inactive rows (draft `completedAt`). */
+  /** Whether this set is completed (draft `completedAt`) — drives the check. */
   completedBadge?: boolean;
+  /**
+   * Edit only: tap the last-column check to toggle this set's completion. When
+   * omitted the check is static (no completion UI, e.g. preset forms).
+   */
+  onToggleComplete?: (setId: string) => void;
   onActivateSet?: (setId: string, field: 'weight' | 'reps') => void;
   /** Live only: tap the RPE column to focus the RPE input on that row. */
   onActivateRpe?: (setId: string) => void;
@@ -206,6 +211,7 @@ function ActiveWorkoutSetRow({
   entryId,
   rpeEditable = true,
   completedBadge = false,
+  onToggleComplete,
   onActivateSet,
   onActivateRpe,
   onDeactivate,
@@ -230,7 +236,6 @@ function ActiveWorkoutSetRow({
     textMuted,
     chromeBg,
     chromeBorder,
-    dangerColor,
     rpeEasy,
     rpeModerate,
     rpeHard,
@@ -241,13 +246,11 @@ function ActiveWorkoutSetRow({
     '--color-text-muted',
     '--color-chrome',
     '--color-chrome-border',
-    '--color-bg-danger',
     RPE_TONE_VARS.easy,
     RPE_TONE_VARS.moderate,
     RPE_TONE_VARS.hard,
     RPE_TONE_VARS.max,
   ]) as [
-    string,
     string,
     string,
     string,
@@ -318,13 +321,15 @@ function ActiveWorkoutSetRow({
   const editWeightText = set.editWeightText ?? '';
   const editRepsText = set.editRepsText ?? '';
 
-  // Per-keystroke-when-parseable so the reducer at most lags a trailing ".";
-  // blur snaps through commitRpe (parseRpeInput + echo) like the live screen.
+  // Commit the parsed+clamped value on every keystroke — including empty → null
+  // — so WorkoutDetailScreen's header Save, which reads the reducer synchronously
+  // without waiting for blur, can never persist a stale or out-of-range RPE (e.g.
+  // a cleared field keeping the old value, or an unclamped "11"). Raw text stays
+  // in rpeDraft for display; blur still echoes the snapped value via commitRpe.
   const handleEditRpeChange = useCallback(
     (text: string) => {
       setRpeDraft(text);
-      const value = parseDecimalInput(text);
-      if (!Number.isNaN(value)) onCommitField?.(setId, { rpe: value });
+      onCommitField?.(setId, { rpe: parseRpeInput(text) });
     },
     [onCommitField, setId],
   );
@@ -485,6 +490,41 @@ function ActiveWorkoutSetRow({
     return null;
   })();
 
+  // Edit mode's last-column control. With a toggle handler it's a tappable
+  // completion checkbox (green check when done, empty ring otherwise); without
+  // one it's a static check (e.g. preset forms, which have no completion). Set
+  // deletion in edit mode lives on swipe + the long-press menu, not here.
+  const completedCheck = (
+    <View
+      testID="completed-badge"
+      className="h-7 w-7 rounded-full items-center justify-center"
+      style={{ backgroundColor: successColor }}
+    >
+      <Icon name="checkmark" size={16} color="#ffffff" weight="bold" />
+    </View>
+  );
+  const editLastCell = onToggleComplete ? (
+    <Pressable
+      onPress={() => onToggleComplete(setId)}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityRole="button"
+      accessibilityLabel={
+        completedBadge ? `Un-complete set ${set.set_number}` : `Mark set ${set.set_number} complete`
+      }
+    >
+      {completedBadge ? (
+        completedCheck
+      ) : (
+        <View
+          className="h-7 w-7 rounded-full border-2 items-center justify-center"
+          style={{ borderColor: textMuted }}
+        />
+      )}
+    </Pressable>
+  ) : completedBadge ? (
+    completedCheck
+  ) : null;
+
   const showRpeInput = metricColumn === 'rpe' && (!isEdit || rpeEditable);
 
   // Each input gets its OWN InputAccessoryView (unique nativeID). iOS attaches a
@@ -618,20 +658,7 @@ function ActiveWorkoutSetRow({
               </Text>
             )}
           </View>
-          <View className="w-10 items-center">
-            {isEdit ? (
-              <Pressable
-                onPress={() => onDelete?.(setId)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityRole="button"
-                accessibilityLabel={`Delete set ${set.set_number}`}
-              >
-                <Icon name="remove-circle" size={18} color={dangerColor} />
-              </Pressable>
-            ) : (
-              checkControl
-            )}
-          </View>
+          <View className="w-10 items-center">{isEdit ? editLastCell : checkControl}</View>
         </Pressable>
         {isIOS && (
           <>
@@ -727,7 +754,7 @@ function ActiveWorkoutSetRow({
       ) : (
         repsCellText
       )}
-      {isLive && metricColumn === 'rpe' ? (
+      {(isLive || isEdit) && showRpeInput ? (
         <Pressable
           className="w-14 items-center py-1"
           onPress={() => onActivateRpe?.(setId)}
@@ -756,21 +783,7 @@ function ActiveWorkoutSetRow({
           {metricValue.text}
         </Text>
       )}
-      <View className="w-10 items-center">
-        {isEdit ? (
-          completedBadge ? (
-            <View
-              testID="completed-badge"
-              className="h-7 w-7 rounded-full items-center justify-center"
-              style={{ backgroundColor: successColor }}
-            >
-              <Icon name="checkmark" size={16} color="#ffffff" weight="bold" />
-            </View>
-          ) : null
-        ) : (
-          checkControl
-        )}
-      </View>
+      <View className="w-10 items-center">{isEdit ? editLastCell : checkControl}</View>
     </Pressable>
   );
 

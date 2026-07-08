@@ -91,7 +91,11 @@ const AnchoredMenu: React.FC<Props> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      // No transition: a fade-out leaves the Modal mid-dismiss for ~300ms, and
+      // iOS swallows a present that lands in that window — the cause of the
+      // "tap opens, tap closes, next tap does nothing" every-other-tap bug (and
+      // it also breaks handing off from this menu straight into another modal).
+      animationType="none"
       onRequestClose={onClose}
     >
       <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Dismiss menu">

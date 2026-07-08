@@ -22,6 +22,8 @@ export interface WorkoutDraftSet {
 export interface WorkoutSetMetaPatch {
   setType?: string;
   rpe?: number | null;
+  /** ISO string to mark the set complete, null to clear it. */
+  completedAt?: string | null;
 }
 
 export interface WorkoutDraftExercise {

@@ -38,7 +38,11 @@ export async function saveActiveWorkoutSession(
   // local session so a mid-flight reorder/delete can't be grafted positionally.
   const sentEntryIds = state.session.exercises.map((e) => e.id);
   try {
+    const trimmedName = state.session.name.trim();
     const result = await updateWorkout(state.sessionId, {
+      // Persist the (possibly renamed) session name; skip an empty string so
+      // the server's min(1) name validation isn't tripped.
+      ...(trimmedName.length > 0 ? { name: trimmedName } : {}),
       exercises: buildSessionExercisesPayload(
         state.session,
         state.completedSetIds,

@@ -223,6 +223,7 @@ describe('useActiveWorkoutAutosave', () => {
       await advance(1);
       expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
       expect(mockUpdateWorkout).toHaveBeenCalledWith('session-1', {
+        name: 'Push Day',
         exercises: expect.any(Array),
       });
     });

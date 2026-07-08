@@ -541,18 +541,15 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View className="mb-4">
           {isEditing ? (
             <FadeView key="edit-title">
-              {/* Accent underline + pencil so the name reads as an editable
-                  field rather than static title text. */}
-              <View
-                className="flex-row items-center mb-1"
-                style={{ borderBottomWidth: 1, borderBottomColor: accentPrimary }}
-              >
+              {/* Trailing pencil so the name reads as an editable field rather
+                  than static title text. */}
+              <View className="flex-row items-center mb-1">
                 <FormInput
                   value={formState.name}
                   onChangeText={setFormName}
                   placeholder="Workout Name"
                   className="flex-1 text-xl font-bold text-text-primary"
-                  style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 4, fontSize: 20 }}
+                  style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 2, paddingBottom: 2, fontSize: 20, lineHeight: 26 }}
                 />
                 <Icon name="pencil" size={16} color={accentPrimary} />
               </View>
@@ -614,6 +611,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             onReorderExercises={reorderExercises}
             onAddExercisePress={openExerciseSearch}
             isEligibleForPrefill={isEligibleForPrefill}
+            showCompletion
           />
         ) : renderViewExercises()}
 

@@ -50,6 +50,7 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
               mode: props.mode,
               expanded: props.expanded,
               activeSetId: props.activeSetId,
+              metricColumn: props.metricColumn,
               rpeEditable: props.rpeEditable,
               eligibleForPrefill: props.eligibleForPrefill,
               editWeight0: props.exercise.sets[0]?.editWeightText ?? null,
@@ -68,6 +69,10 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
           <Pressable
             testID={`card-${id}-rest`}
             onPress={() => props.onPressRestChip?.(id, props.exercise.sets[0]?.rest_time ?? null)}
+          />
+          <Pressable
+            testID={`card-${id}-metric-header`}
+            onPress={() => props.onPressMetricHeader?.({ x: 0, y: 0, width: 0, height: 0 })}
           />
           <Pressable
             testID={`card-${id}-longpress`}
@@ -90,6 +95,10 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
             onPress={() => props.onEditFieldChange?.(firstSetId, 'weight', '105.5')}
           />
           <Pressable testID={`card-${id}-delete-set`} onPress={() => props.onDeleteSet?.(firstSetId)} />
+          <Pressable
+            testID={`card-${id}-toggle-complete`}
+            onPress={() => props.onToggleComplete?.(firstSetId)}
+          />
         </View>
       );
     },
@@ -363,13 +372,55 @@ describe('WorkoutFormExerciseList', () => {
       '✓ Normal',
       'Drop',
       'Failure',
+      'Delete set',
       'Cancel',
     ]);
     buttons[0].onPress?.();
     expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', {
       setType: 'warmup',
     });
+    // The long-press menu also offers delete (active rows have no swipe).
+    buttons.find(b => b.text === 'Delete set')?.onPress?.();
+    expect(utils.callbacks.removeSet).toHaveBeenCalledWith('a', 'a-s1');
     alertSpy.mockRestore();
+  });
+
+  describe('completion toggle', () => {
+    it('stamps completedAt when toggling an incomplete set (showCompletion)', () => {
+      const utils = renderList(
+        [makeExercise('a', { sets: [{ clientId: 'a-s1', weight: '100', reps: '5' }] })],
+        { showCompletion: true },
+      );
+      fireEvent.press(utils.getByTestId('card-a-toggle-complete'));
+      expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', {
+        completedAt: expect.any(String),
+      });
+    });
+
+    it('clears completedAt when toggling an already-complete set', () => {
+      const utils = renderList(
+        [
+          makeExercise('a', {
+            sets: [
+              { clientId: 'a-s1', weight: '100', reps: '5', completedAt: '2026-07-06T10:00:00.000Z' },
+            ],
+          }),
+        ],
+        { showCompletion: true },
+      );
+      fireEvent.press(utils.getByTestId('card-a-toggle-complete'));
+      expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', {
+        completedAt: null,
+      });
+    });
+
+    it('does not wire the toggle without showCompletion (preset form)', () => {
+      const utils = renderList([
+        makeExercise('a', { sets: [{ clientId: 'a-s1', weight: '100', reps: '5' }] }),
+      ]);
+      fireEvent.press(utils.getByTestId('card-a-toggle-complete'));
+      expect(utils.callbacks.updateSetMeta).not.toHaveBeenCalled();
+    });
   });
 
   it('targets the rest sheet at the pressed exercise', () => {
@@ -407,5 +458,27 @@ describe('WorkoutFormExerciseList', () => {
     const utils = renderList([makeExercise('a')]);
     fireEvent.press(utils.getByText('Add Exercise'));
     expect(utils.callbacks.onAddExercisePress).toHaveBeenCalledTimes(1);
+  });
+
+  describe('preset RPE handling (rpeEditable=false)', () => {
+    it('omits RPE from the metric column picker', () => {
+      const utils = renderList([makeExercise('a')], { rpeEditable: false });
+      fireEvent.press(utils.getByTestId('card-a-metric-header'));
+      expect(utils.queryByTestId('menu-item-rpe')).toBeNull();
+      expect(utils.getByTestId('menu-item-volume')).toBeTruthy();
+    });
+
+    it('coerces a global RPE column to volume for display', () => {
+      // Default preference column is 'rpe'; presets fall back to volume.
+      const utils = renderList([makeExercise('a')], { rpeEditable: false });
+      expect(cardInfo(utils, 'a').metricColumn).toBe('volume');
+    });
+
+    it('keeps RPE for the workout form (rpeEditable=true)', () => {
+      const utils = renderList([makeExercise('a')]);
+      fireEvent.press(utils.getByTestId('card-a-metric-header'));
+      expect(utils.getByTestId('menu-item-rpe')).toBeTruthy();
+      expect(cardInfo(utils, 'a').metricColumn).toBe('rpe');
+    });
   });
 });

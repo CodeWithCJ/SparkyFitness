@@ -10,7 +10,9 @@ interface ExerciseSetEditingActions {
 
 export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
   const [activeSetKey, setActiveSetKey] = useState<string | null>(null);
-  const [activeSetField, setActiveSetField] = useState<'weight' | 'reps'>('weight');
+  // 'rpe' is only reachable on the card-based workout/preset forms (tapping the
+  // RPE column). The activity forms only ever set 'weight' | 'reps'.
+  const [activeSetField, setActiveSetField] = useState<'weight' | 'reps' | 'rpe'>('weight');
 
   const handleAddExercise = useCallback((exercise: Exercise) => {
     const { exerciseClientId, setClientId } = actions.addExercise(exercise);
@@ -47,7 +49,7 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property
   }, [actions.addSet]);
 
-  const activateSet = useCallback((setKey: string, field: 'weight' | 'reps') => {
+  const activateSet = useCallback((setKey: string, field: 'weight' | 'reps' | 'rpe') => {
     setActiveSetField(field);
     setActiveSetKey(setKey);
   }, []);

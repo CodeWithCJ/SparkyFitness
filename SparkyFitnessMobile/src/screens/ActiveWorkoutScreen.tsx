@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Keyboard, Text, View } from 'react-native';
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import {
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type TextInput,
+} from 'react-native';
 import {
   KeyboardAwareScrollView,
   type KeyboardAwareScrollViewRef,
@@ -24,6 +35,7 @@ import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
 import WorkoutReorderList from '../components/WorkoutReorderList';
 import Button from '../components/ui/Button';
+import FormInput from '../components/FormInput';
 import { useActiveWorkoutAutosave } from '../hooks/useActiveWorkoutAutosave';
 import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
@@ -48,6 +60,81 @@ import type { SupersetBorder } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ActiveWorkout'>;
+
+/**
+ * Centered modal prompt for renaming the live workout. Rendered here rather
+ * than reaching for `Alert.prompt` because that is iOS-only; this works on both
+ * platforms and matches the app's themed controls.
+ */
+function RenameWorkoutDialog({
+  visible,
+  initialName,
+  onCancel,
+  onSubmit,
+}: {
+  visible: boolean;
+  initialName: string;
+  onCancel: () => void;
+  onSubmit: (name: string) => void;
+}) {
+  const inputRef = useRef<TextInput>(null);
+  const [value, setValue] = useState(initialName);
+  // Re-seed the field to the current name each time the dialog opens.
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) setValue(initialName);
+  }
+  const trimmed = value.trim();
+  const submit = () => {
+    if (trimmed.length > 0) onSubmit(trimmed);
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+      onShow={() => inputRef.current?.focus()}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1"
+      >
+        <Pressable
+          className="flex-1 justify-center px-6"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onPress={onCancel}
+          accessibilityLabel="Dismiss rename"
+        >
+          {/* Absorb taps on the card so only the backdrop dismisses. */}
+          <Pressable className="bg-surface rounded-2xl p-5" onPress={() => {}} accessible={false}>
+            <Text className="text-lg font-semibold text-text-primary mb-3">Rename workout</Text>
+            <FormInput
+              ref={inputRef}
+              value={value}
+              onChangeText={setValue}
+              placeholder="Workout name"
+              autoCapitalize="words"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={submit}
+            />
+            <View className="flex-row justify-end gap-2 mt-4">
+              <Button variant="ghost" onPress={onCancel}>
+                Cancel
+              </Button>
+              <Button variant="primary" onPress={submit} disabled={trimmed.length === 0}>
+                Save
+              </Button>
+            </View>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
 
 function ActiveWorkoutScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
@@ -375,6 +462,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
   const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
     setMetricMenuAnchor(anchor);
+  }, []);
+
+  // Rename dialog.
+  const [renameVisible, setRenameVisible] = useState(false);
+  const handleRenameSubmit = useCallback((newName: string) => {
+    useActiveWorkoutStore.getState().renameSession(newName);
+    setRenameVisible(false);
   }, []);
 
   // Card ⋮ menu. 'main' offers the superset actions; 'pick' swaps in the
@@ -735,6 +829,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         progress={progress}
         onBack={() => navigation.goBack()}
         onDiscard={handleDiscard}
+        onRename={() => setRenameVisible(true)}
         onAddExercise={handleAddExercise}
         onReorder={reorderItemCount >= 2 ? handleOpenReorder : undefined}
         onClearAllSets={hasAnyCompletedSets ? handleClearAllSets : undefined}
@@ -863,6 +958,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       )}
 
       <RestPeriodSheet ref={restSheetRef} onChange={handleRestChanged} />
+
+      <RenameWorkoutDialog
+        visible={renameVisible}
+        initialName={session.name}
+        onCancel={() => setRenameVisible(false)}
+        onSubmit={handleRenameSubmit}
+      />
 
       <AnchoredMenu
         visible={metricMenuAnchor != null}

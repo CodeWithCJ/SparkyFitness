@@ -221,6 +221,11 @@ export interface ActiveWorkoutState {
    * chips must stay in agreement.
    */
   setExerciseRest: (entryId: string, seconds: number) => void;
+  /**
+   * Rename the live session. A no-op for an empty or unchanged name; otherwise
+   * marks the session dirty so autosave persists the new name to the server.
+   */
+  renameSession: (name: string) => void;
   /** Append a client-built exercise entry (temp string id) with one default set. */
   addExercise: (exercise: Exercise) => void;
   /**
@@ -1239,6 +1244,15 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           ),
         };
         set(buildSessionEditState(state, next));
+      },
+
+      renameSession: (name) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const trimmed = name.trim();
+        if (trimmed.length === 0 || trimmed === session.name) return;
+        set(buildSessionEditState(state, { ...session, name: trimmed }));
       },
 
       addExercise: (exercise) => {

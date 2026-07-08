@@ -12,7 +12,8 @@ interface EditableSetListProps {
   exerciseClientId: string;
   sets: WorkoutDraftSet[];
   activeSetKey: string | null;
-  activeSetField: 'weight' | 'reps';
+  // 'rpe' comes from the shared editing hook but never occurs for activities.
+  activeSetField: 'weight' | 'reps' | 'rpe';
   weightUnit: string;
   onActivateSet: (setKey: string, field: 'weight' | 'reps') => void;
   onDeactivateSet: () => void;

@@ -276,7 +276,7 @@ describe('WorkoutDetailScreen', () => {
       alertSpy.mockRestore();
     });
 
-    it('keeps completed sets editable with a static badge', () => {
+    it('keeps completed sets editable and lets you toggle completion', () => {
       const screen = renderScreen(
         buildSession({
           exercises: [
@@ -289,11 +289,33 @@ describe('WorkoutDetailScreen', () => {
 
       fireEvent.press(screen.getByLabelText('Edit workout'));
 
+      // The completed set shows a green check that now toggles completion.
       expect(screen.getByTestId('completed-badge')).toBeTruthy();
-      expect(screen.queryByLabelText('Un-complete set 1')).toBeNull();
-      // The cell still activates for editing.
+      expect(screen.getByLabelText('Un-complete set 1')).toBeTruthy();
+      // The value cell still activates for editing.
       fireEvent.press(screen.getByLabelText('Edit weight for set 1'));
       expect(screen.getByLabelText('RPE')).toBeTruthy();
+    });
+
+    it('persists a completion toggle through the save payload', async () => {
+      mockUpdateSession.mockResolvedValue(buildSession());
+      const screen = renderScreen(
+        buildSession({
+          exercises: [
+            buildExercise({
+              sets: [buildSet({ completed_at: '2026-07-01T10:00:00.000Z' })],
+            }),
+          ],
+        }),
+      );
+
+      fireEvent.press(screen.getByLabelText('Edit workout'));
+      fireEvent.press(screen.getByLabelText('Un-complete set 1'));
+      fireEvent.press(screen.getByLabelText('Save'));
+
+      await waitFor(() => expect(mockUpdateSession).toHaveBeenCalled());
+      const { payload } = mockUpdateSession.mock.calls[0][0];
+      expect(payload.exercises[0].sets[0].completed_at).toBeNull();
     });
   });
 

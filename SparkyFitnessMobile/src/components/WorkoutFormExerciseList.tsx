@@ -37,8 +37,8 @@ interface WorkoutFormExerciseListProps {
   getImageSource: GetImageSource;
   /** `${exerciseClientId}:${setClientId}` from useExerciseSetEditing. */
   activeSetKey: string | null;
-  activeSetField: 'weight' | 'reps';
-  onActivateSet: (setKey: string, field: 'weight' | 'reps') => void;
+  activeSetField: 'weight' | 'reps' | 'rpe';
+  onActivateSet: (setKey: string, field: 'weight' | 'reps' | 'rpe') => void;
   onDeactivateSet: () => void;
   updateSetField: (
     exerciseClientId: string,
@@ -63,6 +63,11 @@ interface WorkoutFormExerciseListProps {
   isEligibleForPrefill?: (clientId: string) => boolean;
   /** False for the preset form — preset sets store no RPE. */
   rpeEditable?: boolean;
+  /**
+   * Enables the per-set completion toggle (workout sessions). Off for the
+   * preset form, which has no completion concept.
+   */
+  showCompletion?: boolean;
 }
 
 /** Imperative handle so the owning screen's header can open the reorder overlay. */
@@ -101,6 +106,7 @@ const WorkoutFormExerciseList = forwardRef<
     onAddExercisePress,
     isEligibleForPrefill,
     rpeEditable = true,
+    showCompletion = false,
   },
   ref,
 ) {
@@ -180,6 +186,15 @@ const WorkoutFormExerciseList = forwardRef<
     [setOwnerByClientId, onActivateSet],
   );
 
+  // Tapping the RPE column makes the row active and focuses its RPE input.
+  const handleActivateRpe = useCallback(
+    (setId: string) => {
+      const owner = setOwnerByClientId.get(setId);
+      if (owner) onActivateSet(`${owner}:${setId}`, 'rpe');
+    },
+    [setOwnerByClientId, onActivateSet],
+  );
+
   const handleEditFieldChange = useCallback(
     (setId: string, field: 'weight' | 'reps', text: string) => {
       const owner = setOwnerByClientId.get(setId);
@@ -219,6 +234,20 @@ const WorkoutFormExerciseList = forwardRef<
     [setOwnerByClientId, removeSet],
   );
 
+  // Toggle a set's completion (stamp/clear completedAt), which round-trips to
+  // the server through the draft on save.
+  const handleToggleComplete = useCallback(
+    (setId: string) => {
+      const owner = exercises.find(e => e.sets.some(s => s.clientId === setId));
+      const set = owner?.sets.find(s => s.clientId === setId);
+      if (!owner || !set) return;
+      updateSetMeta(owner.clientId, setId, {
+        completedAt: set.completedAt ? null : new Date().toISOString(),
+      });
+    },
+    [exercises, updateSetMeta],
+  );
+
   const handleLongPressSet = useCallback(
     (setId: string) => {
       const owner = exercises.find(e => e.sets.some(s => s.clientId === setId));
@@ -227,15 +256,20 @@ const WorkoutFormExerciseList = forwardRef<
       const set = owner.sets[setIndex];
 
       const currentType = set.setType ?? 'normal';
-      const buttons: { text: string; style?: 'cancel'; onPress?: () => void }[] =
+      const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] =
         SET_TYPE_OPTIONS.map(type => ({
           text: `${type === currentType ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
           onPress: () => updateSetMeta(owner.clientId, setId, { setType: type }),
         }));
+      buttons.push({
+        text: 'Delete set',
+        style: 'destructive',
+        onPress: () => removeSet(owner.clientId, setId),
+      });
       buttons.push({ text: 'Cancel', style: 'cancel' });
       Alert.alert(`${owner.exerciseName} · Set ${setIndex + 1}`, 'Set type', buttons);
     },
-    [exercises, updateSetMeta],
+    [exercises, updateSetMeta, removeSet],
   );
 
   // Rest sheet (per-exercise rest duration).
@@ -256,6 +290,14 @@ const WorkoutFormExerciseList = forwardRef<
   // Metric column is shared with the active-workout screen (intended).
   const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
   const setMetricColumn = useAppPreferencesStore(s => s.setActiveWorkoutMetricColumn);
+  // Preset sets store no RPE, so the preset form hides RPE from the column
+  // picker and falls the shared 'rpe' selection back to volume for display.
+  const metricOptions = useMemo(
+    () => (rpeEditable ? METRIC_OPTIONS : METRIC_OPTIONS.filter(option => option !== 'rpe')),
+    [rpeEditable],
+  );
+  const effectiveMetricColumn =
+    !rpeEditable && metricColumn === 'rpe' ? 'volume' : metricColumn;
   const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
   const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
     setMetricMenuAnchor(anchor);
@@ -345,7 +387,7 @@ const WorkoutFormExerciseList = forwardRef<
             completedSetIds={completedSetIds}
             activeSetId={cardActiveSetId}
             activeField={cardActiveSetId != null ? activeSetField : undefined}
-            metricColumn={metricColumn}
+            metricColumn={effectiveMetricColumn}
             weightUnit={weightUnit}
             getImageSource={getImageSource}
             rpeEditable={rpeEditable}
@@ -359,6 +401,8 @@ const WorkoutFormExerciseList = forwardRef<
             onLongPressSet={handleLongPressSet}
             onAddSet={onAddSet}
             onActivateSet={handleActivateSet}
+            onActivateRpe={handleActivateRpe}
+            onToggleComplete={showCompletion ? handleToggleComplete : undefined}
             onDeactivateSet={onDeactivateSet}
             onEditFieldChange={handleEditFieldChange}
           />
@@ -418,10 +462,10 @@ const WorkoutFormExerciseList = forwardRef<
         anchor={metricMenuAnchor}
         onClose={() => setMetricMenuAnchor(null)}
         minWidth={160}
-        items={METRIC_OPTIONS.map(option => ({
+        items={metricOptions.map(option => ({
           key: option,
           label:
-            option === metricColumn
+            option === effectiveMetricColumn
               ? `✓ ${METRIC_MENU_LABELS[option]}`
               : METRIC_MENU_LABELS[option],
           onPress: () => setMetricColumn(option),

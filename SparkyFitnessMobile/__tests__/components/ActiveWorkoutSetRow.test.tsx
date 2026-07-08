@@ -64,6 +64,8 @@ interface RenderOverrides {
   entryId?: string;
   rpeEditable?: boolean;
   completedBadge?: boolean;
+  /** Wire the edit-mode completion toggle (otherwise the check is static). */
+  enableToggle?: boolean;
 }
 
 function renderRow(overrides?: RenderOverrides) {
@@ -75,10 +77,14 @@ function renderRow(overrides?: RenderOverrides) {
     onLongPress: jest.fn(),
     onActivateSet: jest.fn(),
     onActivateRpe: jest.fn(),
+    onToggleComplete: jest.fn(),
     onDeactivate: jest.fn(),
     onEditFieldChange: jest.fn(),
     onAddSet: jest.fn(),
   };
+  // onToggleComplete is opt-in (via enableToggle) so most tests exercise the
+  // static-check fallback.
+  const { onToggleComplete, ...spreadCallbacks } = callbacks;
   const utils = render(
     <ActiveWorkoutSetRow
       set={makeSet(overrides?.set as Partial<ExerciseEntrySetResponse>)}
@@ -93,7 +99,8 @@ function renderRow(overrides?: RenderOverrides) {
       entryId={overrides?.entryId}
       rpeEditable={overrides?.rpeEditable}
       completedBadge={overrides?.completedBadge}
-      {...callbacks}
+      {...spreadCallbacks}
+      onToggleComplete={overrides?.enableToggle ? onToggleComplete : undefined}
     />,
   );
   return { ...utils, callbacks };
@@ -426,15 +433,26 @@ describe('ActiveWorkoutSetRow', () => {
         expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'reps', '6');
       });
 
-      it('replaces the log ring with a delete button', () => {
-        const { getByLabelText, queryByLabelText, callbacks } = renderRow({
+      it('shows no log ring and no delete button (delete is swipe / long-press)', () => {
+        const { queryByLabelText } = renderRow({
           mode: 'edit',
           state: 'current',
           set: editSet(),
         });
         expect(queryByLabelText('Log set')).toBeNull();
-        fireEvent.press(getByLabelText('Delete set 1'));
-        expect(callbacks.onDelete).toHaveBeenCalledWith('101');
+        // The last column no longer hosts a delete button on the active row.
+        expect(queryByLabelText('Delete set 1')).toBeNull();
+      });
+
+      it('toggles completion from the last-column check when enabled', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          enableToggle: true,
+          set: editSet(),
+        });
+        fireEvent.press(getByLabelText('Mark set 1 complete'));
+        expect(callbacks.onToggleComplete).toHaveBeenCalledWith('101');
       });
 
       // Each input has its own InputAccessoryView (unique nativeID; iOS won't
@@ -477,7 +495,10 @@ describe('ActiveWorkoutSetRow', () => {
         expect(callbacks.onDeactivate).toHaveBeenCalledTimes(1);
       });
 
-      it('dispatches parseable RPE keystrokes and snaps on blur', () => {
+      // The header Save path reads the reducer synchronously, so edit-mode RPE
+      // must commit an already-snapped/clamped value on every keystroke — not
+      // wait for blur like the live screen.
+      it('commits the snapped+clamped RPE on every keystroke', () => {
         const { getByLabelText, callbacks } = renderRow({
           mode: 'edit',
           state: 'current',
@@ -486,11 +507,34 @@ describe('ActiveWorkoutSetRow', () => {
         });
         const rpe = getByLabelText('RPE');
         fireEvent.changeText(rpe, '8.');
-        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 8 });
+        // Snaps to 0.5 steps live (8.3 → 8.5), not just on blur.
         fireEvent.changeText(rpe, '8.3');
-        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8.3 });
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 8.5 });
         fireEvent(rpe, 'blur');
         expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 8.5 });
+      });
+
+      it('commits null when the RPE field is cleared, so Save drops a stale value', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          metricColumn: 'rpe',
+          set: editSet({ rpe: 8 }),
+        });
+        fireEvent.changeText(getByLabelText('RPE'), '');
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: null });
+      });
+
+      it('clamps an out-of-range RPE on keystroke, so Save can never persist 11', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          metricColumn: 'rpe',
+          set: editSet(),
+        });
+        fireEvent.changeText(getByLabelText('RPE'), '11');
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 10 });
       });
 
       it('hides the RPE input when rpeEditable is false', () => {
@@ -519,7 +563,30 @@ describe('ActiveWorkoutSetRow', () => {
         expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'reps');
       });
 
-      it('renders the completed badge without any un-complete control', () => {
+      it('activates RPE when the RPE column cell is tapped (rpeEditable)', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          metricColumn: 'rpe',
+          rpeEditable: true,
+          set: editSet(),
+        });
+        fireEvent.press(getByLabelText('Edit RPE for set 1'));
+        expect(callbacks.onActivateRpe).toHaveBeenCalledWith('101');
+      });
+
+      it('does not make the RPE column tappable when RPE is not editable (preset)', () => {
+        const { queryByLabelText } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          metricColumn: 'rpe',
+          rpeEditable: false,
+          set: editSet(),
+        });
+        expect(queryByLabelText('Edit RPE for set 1')).toBeNull();
+      });
+
+      it('renders a static completed badge when the toggle is disabled', () => {
         const { getByTestId, queryByLabelText } = renderRow({
           mode: 'edit',
           state: 'upcoming',
@@ -529,6 +596,18 @@ describe('ActiveWorkoutSetRow', () => {
         expect(getByTestId('completed-badge')).toBeTruthy();
         expect(queryByLabelText('Un-complete set 1')).toBeNull();
         expect(queryByLabelText('Mark set 1 complete')).toBeNull();
+      });
+
+      it('un-completes a completed set via the toggle when enabled', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          completedBadge: true,
+          enableToggle: true,
+          set: editSet(),
+        });
+        fireEvent.press(getByLabelText('Un-complete set 1'));
+        expect(callbacks.onToggleComplete).toHaveBeenCalledWith('101');
       });
 
       it('keeps swipe-delete and does not dim', () => {

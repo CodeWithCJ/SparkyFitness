@@ -254,7 +254,7 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     // 100kg → ~220.5 lbs
-    expect(screen.getByText('LB')).toBeTruthy();
+    expect(screen.getByText('LBS')).toBeTruthy();
     expect(screen.getByText('220.5')).toBeTruthy();
   });
 

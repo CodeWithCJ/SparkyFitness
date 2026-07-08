@@ -17,8 +17,10 @@ interface EditableSetRowProps {
   setNumber: number;
   isActive: boolean;
   /** The currently-active field for this row. Controls which input is focused
-   *  and what the keyboard accessory's "Next" button does. */
-  activeField?: 'weight' | 'reps';
+   *  and what the keyboard accessory's "Next" button does. ('rpe' comes from the
+   *  shared editing hook but never occurs for activities — it falls through to
+   *  the weight input, which is unreachable here.) */
+  activeField?: 'weight' | 'reps' | 'rpe';
   weightUnit: string;
   nextSetKey?: string | null;
   onActivateSet: (setKey: string, field: 'weight' | 'reps') => void;
@@ -205,8 +207,8 @@ function EditableSetRow({
     );
   }
 
-  const displayWeight = weight ? `${weight} ${weightUnit}` : '\u2014';
-  const displayReps = reps || '\u2014';
+  const displayWeight = weight ? `${weight} ${weightUnit}` : '\u2013';
+  const displayReps = reps || '\u2013';
 
   return (
     <ReanimatedSwipeable

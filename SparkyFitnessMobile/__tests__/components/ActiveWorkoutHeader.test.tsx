@@ -36,17 +36,17 @@ function makeSession(): PresetSessionResponse {
 }
 
 describe('formatElapsed', () => {
-  it('formats HH:MM:SS from startedAt', () => {
+  it('formats MM:SS under an hour and adds hours once crossed', () => {
     const start = 1_700_000_000_000;
-    expect(formatElapsed(start, start)).toBe('00:00:00');
-    expect(formatElapsed(start, start + 59_000)).toBe('00:00:59');
-    expect(formatElapsed(start, start + 61_000)).toBe('00:01:01');
+    expect(formatElapsed(start, start)).toBe('00:00');
+    expect(formatElapsed(start, start + 59_000)).toBe('00:59');
+    expect(formatElapsed(start, start + 61_000)).toBe('01:01');
     expect(formatElapsed(start, start + 3_600_000 + 125_000)).toBe('01:02:05');
   });
 
   it('shows zero when startedAt is null or in the future', () => {
-    expect(formatElapsed(null, 123)).toBe('00:00:00');
-    expect(formatElapsed(2_000, 1_000)).toBe('00:00:00');
+    expect(formatElapsed(null, 123)).toBe('00:00');
+    expect(formatElapsed(2_000, 1_000)).toBe('00:00');
   });
 });
 
@@ -74,6 +74,7 @@ describe('ActiveWorkoutHeader', () => {
     overrides?: {
       onBack?: () => void;
       onDiscard?: () => void;
+      onRename?: () => void;
       onReorder?: () => void;
       onAddExercise?: () => void;
       onClearAllSets?: () => void;
@@ -88,6 +89,7 @@ describe('ActiveWorkoutHeader', () => {
         progress={progress}
         onBack={overrides?.onBack ?? jest.fn()}
         onDiscard={overrides?.onDiscard ?? jest.fn()}
+        onRename={overrides?.onRename}
         onReorder={overrides?.onReorder}
         onAddExercise={overrides?.onAddExercise}
         onClearAllSets={overrides?.onClearAllSets}
@@ -98,7 +100,7 @@ describe('ActiveWorkoutHeader', () => {
   it('renders the name and elapsed clock', () => {
     const { getByText } = renderHeaderComponent({});
     expect(getByText('Push Day')).toBeTruthy();
-    expect(getByText('00:01:02 elapsed')).toBeTruthy();
+    expect(getByText('01:02 elapsed')).toBeTruthy();
   });
 
   it('shows one segment per exercise and the done count', () => {
@@ -140,6 +142,20 @@ describe('ActiveWorkoutHeader', () => {
     fireEvent.press(getByLabelText('Workout menu'));
     fireEvent.press(getByText('Discard workout'));
     expect(onDiscard).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Rename workout and fires onRename when provided', () => {
+    const onRename = jest.fn();
+    const { getByLabelText, getByText } = renderHeaderComponent({}, { onRename });
+    fireEvent.press(getByLabelText('Workout menu'));
+    fireEvent.press(getByText('Rename workout'));
+    expect(onRename).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits Rename workout when onRename is not provided', () => {
+    const { getByLabelText, queryByText } = renderHeaderComponent({});
+    fireEvent.press(getByLabelText('Workout menu'));
+    expect(queryByText('Rename workout')).toBeNull();
   });
 
   it('omits Reorder exercises when onReorder is not provided', () => {

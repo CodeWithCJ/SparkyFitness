@@ -34,7 +34,11 @@ export function formatElapsed(startedAt: number | null, now: number): string {
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  // Drop the hours segment until the workout actually crosses an hour, so a
+  // one-minute set reads "01:00" rather than "00:01:00".
+  return hours > 0
+    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
 }
 
 interface ActiveWorkoutHeaderProps {
@@ -45,6 +49,8 @@ interface ActiveWorkoutHeaderProps {
   progress: ExerciseProgress[];
   onBack: () => void;
   onDiscard: () => void;
+  /** Opens the rename dialog from a "Rename workout" menu action. */
+  onRename?: () => void;
   /** Adds an "Add exercise" action at the top of the menu. */
   onAddExercise?: () => void;
   /** When provided, adds a "Reorder exercises" action above Discard. */
@@ -65,6 +71,7 @@ function ActiveWorkoutHeader({
   progress,
   onBack,
   onDiscard,
+  onRename,
   onAddExercise,
   onReorder,
   onClearAllSets,
@@ -93,6 +100,14 @@ function ActiveWorkoutHeader({
   ).length;
 
   const menuItems: AnchoredMenuItem[] = [];
+  if (onRename) {
+    menuItems.push({
+      key: 'rename',
+      label: 'Rename workout',
+      icon: 'pencil',
+      onPress: onRename,
+    });
+  }
   if (onAddExercise) {
     menuItems.push({
       key: 'add-exercise',
