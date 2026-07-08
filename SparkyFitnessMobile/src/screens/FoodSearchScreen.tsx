@@ -1,4 +1,11 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   View,
   Text,
@@ -434,6 +441,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // Local results are still settling while the debounced query has not caught up
   // to the typed term, or while a fetch is in flight.
   const localPending = isSearching || isMealSearching || !isSearchActive;
+  // The foods and meals queries settle independently, so localPending can blip
+  // false->true->false within a keystroke or two. Stick to "pending" for a
+  // short window after it goes false so the status row's spinner/text swap
+  // doesn't flicker mid-typing; becoming pending is still immediate.
+  const [stableLocalPending, setStableLocalPending] = useState(localPending);
+  useEffect(() => {
+    if (localPending) {
+      setStableLocalPending(true);
+      return;
+    }
+    const timer = setTimeout(() => setStableLocalPending(false), 150);
+    return () => clearTimeout(timer);
+  }, [localPending]);
   const hasLocalResults =
     searchResults.length > 0 || (!isMealBuilderMode && mealResults.length > 0);
   // Only show online results from the currently selected provider. On a swap,
@@ -581,7 +601,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         key: 'local-status',
         kind: 'status',
         title: null,
-        data: [{ type: 'local-status', pending: localPending }],
+        data: [{ type: 'local-status', pending: stableLocalPending }],
       });
     }
 
@@ -654,7 +674,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     return sections;
   }, [
     hasLocalResults,
-    localPending,
+    stableLocalPending,
     searchResults,
     mealResults,
     isMealBuilderMode,
