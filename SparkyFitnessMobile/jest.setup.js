@@ -189,8 +189,28 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
   const View = require('react-native').View;
+  // A chainable gesture builder: every method returns the same object so
+  // `.activateAfterLongPress(150).onStart(fn).onEnd(fn)` chains resolve to a
+  // gesture stub (the drag itself is device-verified, not unit-tested).
+  const makeChainableGesture = () => {
+    const gesture = new Proxy({}, { get: () => () => gesture });
+    return gesture;
+  };
   return {
     GestureHandlerRootView: View,
+    GestureDetector: ({ children }) => children,
+    Gesture: {
+      Pan: makeChainableGesture,
+      Tap: makeChainableGesture,
+      LongPress: makeChainableGesture,
+      Fling: makeChainableGesture,
+      Pinch: makeChainableGesture,
+      Rotation: makeChainableGesture,
+      Race: makeChainableGesture,
+      Simultaneous: makeChainableGesture,
+      Exclusive: makeChainableGesture,
+      Native: makeChainableGesture,
+    },
     Swipeable: View,
     TouchableOpacity: View,
     DrawerLayout: View,
@@ -243,11 +263,11 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 // Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
   const React = require('react');
-  const { View } = require('react-native');
+  const { View, ScrollView } = require('react-native');
   const createAnimationMock = () => ({ duration: () => createAnimationMock() });
   return {
     __esModule: true,
-    default: { View },
+    default: { View, ScrollView, createAnimatedComponent: (Component) => Component },
     useSharedValue: (init) => React.useRef({ value: init }).current,
     useAnimatedStyle: (fn) => fn(),
     useDerivedValue: (fn) => ({ value: fn() }),
@@ -256,6 +276,14 @@ jest.mock('react-native-reanimated', () => {
     withSequence: (...args) => args[args.length - 1],
     withRepeat: (animation) => animation,
     useAnimatedReaction: jest.fn(),
+    // Drag-reorder worklet plumbing — runOnJS returns the fn so callers can
+    // invoke it synchronously; the scroll/frame helpers are inert stubs.
+    runOnJS: (fn) => fn,
+    useAnimatedRef: () => React.useRef(null),
+    useAnimatedScrollHandler: (handler) => handler,
+    useFrameCallback: () => ({ setActive: jest.fn() }),
+    scrollTo: jest.fn(),
+    measure: jest.fn(() => null),
     Easing: {
       linear: jest.fn(),
       ease: jest.fn(),

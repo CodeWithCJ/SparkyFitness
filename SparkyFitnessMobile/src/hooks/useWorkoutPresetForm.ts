@@ -9,6 +9,7 @@ import type {
 import type { WorkoutPreset } from '../types/workoutPresets';
 import {
   DEFAULT_REST_SEC,
+  moveDraftExerciseItem,
   normalizeDraftSupersetGroups,
   supersetDraftExercises,
   ungroupDraftExercise,
@@ -52,6 +53,7 @@ type PresetFormAction =
   | { type: 'SET_EXERCISE_REST'; exerciseClientId: string; seconds: number }
   | { type: 'SUPERSET_WITH'; currentClientId: string; pickedClientId: string }
   | { type: 'UNGROUP_EXERCISE'; clientId: string }
+  | { type: 'REORDER_EXERCISES'; fromItemIndex: number; toItemIndex: number }
   | {
       type: 'POPULATE_FROM_PRESET';
       preset: WorkoutPreset;
@@ -184,6 +186,18 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
         exercises: ungroupDraftExercise(state.exercises, action.clientId),
       };
 
+    // Runs move atomically and the mover pre-clears stale group values, so no
+    // remainders can form — normalizeDraftSupersetGroups is unnecessary here.
+    case 'REORDER_EXERCISES':
+      return {
+        ...state,
+        exercises: moveDraftExerciseItem(
+          state.exercises,
+          action.fromItemIndex,
+          action.toItemIndex,
+        ),
+      };
+
     case 'POPULATE_FROM_PRESET':
       return {
         name: action.preset.name,
@@ -292,6 +306,14 @@ export function useWorkoutPresetForm() {
     dispatch({ type: 'UNGROUP_EXERCISE', clientId });
   }, []);
 
+  const reorderExercises = useCallback((fromItemIndex: number, toItemIndex: number) => {
+    // Critical: preset save only includes `exercises` when exercisesModified is
+    // true, and handleSave silently goBack()s on an empty payload — so a
+    // reorder-only edit must flip this flag or it never persists.
+    exercisesModifiedRef.current = true;
+    dispatch({ type: 'REORDER_EXERCISES', fromItemIndex, toItemIndex });
+  }, []);
+
   const populateFromPreset = useCallback(
     (preset: WorkoutPreset, weightUnit: 'kg' | 'lbs'): string[] => {
       const clientIds: PresetClientIds = preset.exercises.map(e => ({
@@ -319,6 +341,7 @@ export function useWorkoutPresetForm() {
     setExerciseRest,
     supersetWith,
     ungroupExercise,
+    reorderExercises,
     populateFromPreset,
     exercisesModifiedRef,
     initialDescriptionRef,

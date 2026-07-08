@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Keyboard, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -9,8 +9,10 @@ import ActiveWorkoutExerciseCard, {
 } from './ActiveWorkoutExerciseCard';
 import AnchoredMenu, { type AnchorRect } from './AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from './RestPeriodSheet';
+import WorkoutReorderList from './WorkoutReorderList';
 import { weightFromKg } from '../utils/unitConversions';
 import {
+  buildExerciseReorderItems,
   buildSupersetColorMap,
   draftExerciseToCardExercise,
   getDraftSupersetRuns,
@@ -49,6 +51,8 @@ interface WorkoutFormExerciseListProps {
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
   supersetWith: (currentClientId: string, pickedClientId: string) => void;
   ungroupExercise: (clientId: string) => void;
+  /** Move a draggable item (solo or whole run) from one item index to another. */
+  onReorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
   onAddExercisePress: () => void;
   isEligibleForPrefill?: (clientId: string) => boolean;
   /** False for the preset form — preset sets store no RPE. */
@@ -77,6 +81,7 @@ function WorkoutFormExerciseList({
   setExerciseRest,
   supersetWith,
   ungroupExercise,
+  onReorderExercises,
   onAddExercisePress,
   isEligibleForPrefill,
   rpeEditable = true,
@@ -87,6 +92,22 @@ function WorkoutFormExerciseList({
     () => exercises.map(exercise => draftExerciseToCardExercise(exercise, weightUnit)),
     [exercises, weightUnit],
   );
+
+  // Reorder overlay. Gated on ≥2 draggable items (two exercises fused into one
+  // run collapse to a single item → nothing to reorder). Derived from
+  // cardExercises so item indices agree with moveDraftExerciseItem's derivation
+  // against the drafts (same order and superset values).
+  const [reorderVisible, setReorderVisible] = useState(false);
+  const canReorder = useMemo(
+    () => buildExerciseReorderItems(cardExercises).length >= 2,
+    [cardExercises],
+  );
+  const handleOpenReorder = useCallback(() => {
+    // Commit a focused set input's edit before the overlay covers it.
+    onDeactivateSet();
+    Keyboard.dismiss();
+    setReorderVisible(true);
+  }, [onDeactivateSet]);
 
   // Form cards default expanded; the map tracks explicit collapses.
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
@@ -268,6 +289,13 @@ function WorkoutFormExerciseList({
         onPress: () => ungroupExercise(clientId),
       });
     }
+    if (canReorder) {
+      items.push({
+        key: 'reorder',
+        label: 'Reorder exercises',
+        onPress: handleOpenReorder,
+      });
+    }
     items.push({
       key: 'remove',
       label: 'Remove exercise',
@@ -277,7 +305,16 @@ function WorkoutFormExerciseList({
       },
     });
     return items;
-  }, [overflowMenu, exercises, supersetRuns, supersetWith, ungroupExercise, onRemoveExercise]);
+  }, [
+    overflowMenu,
+    exercises,
+    supersetRuns,
+    supersetWith,
+    ungroupExercise,
+    onRemoveExercise,
+    canReorder,
+    handleOpenReorder,
+  ]);
 
   return (
     <Animated.View layout={LinearTransition.duration(300)}>
@@ -387,6 +424,14 @@ function WorkoutFormExerciseList({
         onClose={() => setOverflowMenu(null)}
         minWidth={200}
         items={overflowMenuItems}
+      />
+
+      <WorkoutReorderList
+        visible={reorderVisible}
+        exercises={cardExercises}
+        getImageSource={getImageSource}
+        onMoveItem={onReorderExercises}
+        onDone={() => setReorderVisible(false)}
       />
     </Animated.View>
   );

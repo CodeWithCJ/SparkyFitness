@@ -71,6 +71,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     setExerciseRest,
     supersetWith,
     ungroupExercise,
+    reorderExercises,
     setName,
     setDate,
     populate,
@@ -326,6 +327,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   setExerciseRest={setExerciseRest}
                   supersetWith={supersetWith}
                   ungroupExercise={ungroupExercise}
+                  onReorderExercises={reorderExercises}
                   onAddExercisePress={openExerciseSearch}
                   isEligibleForPrefill={isEligibleForPrefill}
                 />

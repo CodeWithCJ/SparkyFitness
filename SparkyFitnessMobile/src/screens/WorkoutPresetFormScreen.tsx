@@ -55,6 +55,7 @@ interface PresetFormBodyProps {
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
   supersetWith: (currentClientId: string, pickedClientId: string) => void;
   ungroupExercise: (clientId: string) => void;
+  reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
   isEligibleForPrefill: (clientId: string) => boolean;
   onAddExercisePress: () => void;
 }
@@ -71,6 +72,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   setExerciseRest,
   supersetWith,
   ungroupExercise,
+  reorderExercises,
   isEligibleForPrefill,
   onAddExercisePress,
 }) => {
@@ -122,6 +124,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           setExerciseRest={setExerciseRest}
           supersetWith={supersetWith}
           ungroupExercise={ungroupExercise}
+          onReorderExercises={reorderExercises}
           onAddExercisePress={onAddExercisePress}
           isEligibleForPrefill={isEligibleForPrefill}
           rpeEditable={false}
@@ -160,6 +163,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     setExerciseRest,
     supersetWith,
     ungroupExercise,
+    reorderExercises,
   } = useWorkoutPresetForm();
 
   const [eligibleIds, setEligibleIds] = useState<Set<string>>(() => new Set());
@@ -263,6 +267,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         setExerciseRest={setExerciseRest}
         supersetWith={supersetWith}
         ungroupExercise={ungroupExercise}
+        reorderExercises={reorderExercises}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
       />
@@ -324,6 +329,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     setExerciseRest,
     supersetWith,
     ungroupExercise,
+    reorderExercises,
     populateFromPreset,
     exercisesModifiedRef,
     initialDescriptionRef,
@@ -430,6 +436,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         setExerciseRest={setExerciseRest}
         supersetWith={supersetWith}
         ungroupExercise={ungroupExercise}
+        reorderExercises={reorderExercises}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
       />

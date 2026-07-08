@@ -30,11 +30,14 @@ import {
   getRpeTone,
   getSupersetRuns,
   buildSupersetColorMap,
+  buildExerciseReorderItems,
+  moveSessionExerciseItem,
+  moveDraftExerciseItem,
   isWarmupSetType,
   seedPrFromSession,
   compareSetRecords,
 } from '../../src/utils/workoutSession';
-import type { ExerciseSessionResponse } from '@workspace/shared';
+import type { ExerciseEntryResponse, ExerciseSessionResponse } from '@workspace/shared';
 import { presetSessionExerciseRequestSchema } from '@workspace/shared';
 import { weightFromKg } from '../../src/utils/unitConversions';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
@@ -2213,6 +2216,153 @@ describe('workoutSession', () => {
         expect(
           buildSupersetColorMap([{ groupId: 1, entryIds: ['a'] }], []).size,
         ).toBe(0);
+      });
+    });
+  });
+
+  describe('exercise reordering', () => {
+    // The movers only read id/superset_group and spread the rest, so a narrow
+    // shape stands in for a full ExerciseEntryResponse.
+    const sEntry = (id: string, group: number | null): ExerciseEntryResponse =>
+      ({ id, superset_group: group }) as unknown as ExerciseEntryResponse;
+
+    const dEntry = (clientId: string, group: number | null): WorkoutDraftExercise => ({
+      clientId,
+      exerciseId: `ex-${clientId}`,
+      exerciseName: clientId,
+      exerciseCategory: null,
+      images: [],
+      supersetGroup: group,
+      sets: [],
+    });
+
+    describe('buildExerciseReorderItems', () => {
+      it('returns one item per solo exercise', () => {
+        expect(
+          buildExerciseReorderItems([
+            { id: 'a', superset_group: null },
+            { id: 'b', superset_group: null },
+          ]),
+        ).toEqual([
+          { key: 'a', entryIds: ['a'], groupId: null },
+          { key: 'b', entryIds: ['b'], groupId: null },
+        ]);
+      });
+
+      it('collapses an adjacent run into one item', () => {
+        expect(
+          buildExerciseReorderItems([
+            { id: 'a', superset_group: 1 },
+            { id: 'b', superset_group: 1 },
+            { id: 'c', superset_group: null },
+          ]),
+        ).toEqual([
+          { key: 'a', entryIds: ['a', 'b'], groupId: 1 },
+          { key: 'c', entryIds: ['c'], groupId: null },
+        ]);
+      });
+
+      it('treats stale same-value singletons as solo items', () => {
+        // Non-adjacent repeats of group 1 are not a run.
+        expect(
+          buildExerciseReorderItems([
+            { id: 'a', superset_group: 1 },
+            { id: 'b', superset_group: null },
+            { id: 'c', superset_group: 1 },
+          ]),
+        ).toEqual([
+          { key: 'a', entryIds: ['a'], groupId: null },
+          { key: 'b', entryIds: ['b'], groupId: null },
+          { key: 'c', entryIds: ['c'], groupId: null },
+        ]);
+      });
+    });
+
+    describe('moveSessionExerciseItem', () => {
+      const ids = (arr: ExerciseEntryResponse[]) => arr.map((e) => e.id);
+
+      it('moves a solo item down', () => {
+        const input = [sEntry('a', null), sEntry('b', null), sEntry('c', null)];
+        expect(ids(moveSessionExerciseItem(input, 0, 2))).toEqual(['b', 'c', 'a']);
+      });
+
+      it('moves a solo item up', () => {
+        const input = [sEntry('a', null), sEntry('b', null), sEntry('c', null)];
+        expect(ids(moveSessionExerciseItem(input, 2, 0))).toEqual(['c', 'a', 'b']);
+      });
+
+      it('swaps first and last (both directions)', () => {
+        const input = [sEntry('a', null), sEntry('b', null)];
+        expect(ids(moveSessionExerciseItem(input, 0, 1))).toEqual(['b', 'a']);
+        expect(ids(moveSessionExerciseItem(input, 1, 0))).toEqual(['b', 'a']);
+      });
+
+      it('returns the input array identity on a same-index move', () => {
+        const input = [sEntry('a', null), sEntry('b', null)];
+        expect(moveSessionExerciseItem(input, 1, 1)).toBe(input);
+      });
+
+      it('returns the input array identity on an out-of-range move', () => {
+        const input = [sEntry('a', null), sEntry('b', null)];
+        expect(moveSessionExerciseItem(input, 0, 5)).toBe(input);
+        expect(moveSessionExerciseItem(input, -1, 0)).toBe(input);
+      });
+
+      it('moves a whole run as one indivisible block', () => {
+        // items: [x], [a+b run], [y] — move the run (item 1) to the front.
+        const input = [sEntry('x', null), sEntry('a', 1), sEntry('b', 1), sEntry('y', null)];
+        expect(ids(moveSessionExerciseItem(input, 1, 0))).toEqual(['a', 'b', 'x', 'y']);
+      });
+
+      it('never drops a solo into the middle of a run', () => {
+        // items: [a+b run], [c] — moving c to the front lands before the run.
+        const input = [sEntry('a', 1), sEntry('b', 1), sEntry('c', null)];
+        expect(ids(moveSessionExerciseItem(input, 1, 0))).toEqual(['c', 'a', 'b']);
+      });
+
+      it('clears stale singleton groups so a move cannot fuse them', () => {
+        // Two non-adjacent group-1 singletons; sliding the middle solo out
+        // makes them adjacent, which must NOT spawn a group-1 run.
+        const input = [sEntry('a', 1), sEntry('m', null), sEntry('b', 1)];
+        const out = moveSessionExerciseItem(input, 1, 2);
+        expect(ids(out)).toEqual(['a', 'b', 'm']);
+        expect(getSupersetRuns(out)).toEqual([]);
+        expect(out.map((e) => e.superset_group)).toEqual([null, null, null]);
+      });
+
+      it('does not mutate the input array or its entries', () => {
+        const a = sEntry('a', 1);
+        const b = sEntry('b', 1);
+        const c = sEntry('c', null);
+        const input = [a, b, c];
+        const snapshot = input.map((e) => ({ ...e }));
+        moveSessionExerciseItem(input, 1, 0);
+        expect(input).toEqual(snapshot);
+        expect(input[0]).toBe(a);
+      });
+    });
+
+    describe('moveDraftExerciseItem', () => {
+      const ids = (arr: WorkoutDraftExercise[]) => arr.map((e) => e.clientId);
+
+      it('derives items identically to the session mover (mirrored order/groups)', () => {
+        const draft = [dEntry('a', 1), dEntry('b', 1), dEntry('c', null)];
+        const session = draft.map((e) => sEntry(e.clientId, e.supersetGroup ?? null));
+        expect(ids(moveDraftExerciseItem(draft, 1, 0))).toEqual(
+          moveSessionExerciseItem(session, 1, 0).map((e) => e.id),
+        );
+      });
+
+      it('clears stale draft singleton groups on a move', () => {
+        const draft = [dEntry('a', 1), dEntry('m', null), dEntry('b', 1)];
+        const out = moveDraftExerciseItem(draft, 1, 2);
+        expect(ids(out)).toEqual(['a', 'b', 'm']);
+        expect(out.map((e) => e.supersetGroup)).toEqual([null, null, null]);
+      });
+
+      it('returns identity on a no-op move', () => {
+        const draft = [dEntry('a', null), dEntry('b', null)];
+        expect(moveDraftExerciseItem(draft, 0, 0)).toBe(draft);
       });
     });
   });

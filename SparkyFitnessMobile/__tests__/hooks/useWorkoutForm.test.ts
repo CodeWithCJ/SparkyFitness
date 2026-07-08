@@ -984,6 +984,36 @@ describe('workoutFormReducer', () => {
       const payload = buildExercisesPayload(next.exercises, 'kg');
       expect(payload.map(e => e.superset_group)).toEqual([1, 1, null]);
     });
+
+    it('REORDER_EXERCISES moves a solo exercise to a new position', () => {
+      const next = workoutFormReducer(threeSolo(), {
+        type: 'REORDER_EXERCISES',
+        fromItemIndex: 0,
+        toItemIndex: 2,
+      });
+      expect(next.exercises.map(e => e.clientId)).toEqual(['b', 'c', 'a']);
+    });
+
+    it('REORDER_EXERCISES moves a whole run as one block', () => {
+      // grouped(): [a(1), b(1), c] → items [ab run], [c]. Move c before the run.
+      const next = workoutFormReducer(grouped(), {
+        type: 'REORDER_EXERCISES',
+        fromItemIndex: 1,
+        toItemIndex: 0,
+      });
+      expect(next.exercises.map(e => e.clientId)).toEqual(['c', 'a', 'b']);
+      expect(next.exercises.map(e => e.supersetGroup ?? null)).toEqual([null, 1, 1]);
+    });
+
+    it('REORDER_EXERCISES is a no-op on an out-of-range index', () => {
+      const state = threeSolo();
+      const next = workoutFormReducer(state, {
+        type: 'REORDER_EXERCISES',
+        fromItemIndex: 0,
+        toItemIndex: 9,
+      });
+      expect(next.exercises).toBe(state.exercises);
+    });
   });
 
   describe('POPULATE_FROM_PRESET', () => {

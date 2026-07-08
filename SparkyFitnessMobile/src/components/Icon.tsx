@@ -50,6 +50,9 @@ const ICON_MAP = {
   'forward': { sf: 'forward.fill', ion: 'play-skip-forward' },
   'measurements': { sf: 'ruler', ion: 'analytics-outline' },
   'scale': { sf: 'scalemass', ion: 'scale-outline' },
+  // Android uses -outline variants for stroke-weight consistency with the set.
+  'reorder-handle': { sf: 'line.3.horizontal', ion: 'reorder-three-outline' },
+  'swap-vertical': { sf: 'arrow.up.arrow.down', ion: 'swap-vertical-outline' },
 
   // Status
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },

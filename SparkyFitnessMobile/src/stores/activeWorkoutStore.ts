@@ -14,6 +14,7 @@ import {
   getSupersetRuns,
   isPrSet,
   isTempExerciseEntryId,
+  moveSessionExerciseItem,
   seedPrFromSession,
 } from '../utils/workoutSession';
 import type { PrBaselineEntry } from '../utils/workoutSession';
@@ -228,6 +229,13 @@ export interface ActiveWorkoutState {
    * 1-member group is dissolved by normalization.
    */
   ungroupExercise: (entryId: string) => void;
+  /**
+   * Reorder exercises by draggable item — a solo exercise or a whole superset
+   * run, which moves as one indivisible block. `fromItemIndex`/`toItemIndex`
+   * index the item list from `buildExerciseReorderItems`. A no-op / out-of-range
+   * move or a null session leaves state untouched.
+   */
+  reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
   /**
    * Fold an autosave response back into the store. `sentRevision` is the
    * `sessionRevision` captured when the request's payload was built: if no
@@ -478,10 +486,11 @@ export function seedCompletionFromSession(session: PresetSessionResponse): Compl
  * deletion and scrubs stale values from external edits. Returns the input
  * object unchanged when nothing needs clearing.
  *
- * Note this also *preserves* any adjacent 2+ run: if a future reorder or
- * insert-in-middle feature in `useWorkoutForm` made stale same-value entries
- * adjacent, they would spontaneously form a group here. Unreachable today
- * (the form has no reorder), but flagging it for that future.
+ * Note this also *preserves* any adjacent 2+ run: making stale same-value
+ * singletons adjacent would fuse them into a group here. The reorder helpers
+ * (`moveSessionExerciseItem`/`moveDraftExerciseItem`) pre-clear such stale
+ * values before moving, so a drag reorder can't trigger that fusion; any future
+ * insert-in-middle feature would need the same guard.
  */
 function normalizeSupersetGroups(session: PresetSessionResponse): PresetSessionResponse {
   const grouped = new Set(
@@ -1262,6 +1271,21 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         }
 
         set(buildSessionEditState(state, { ...session, exercises }));
+      },
+
+      reorderExercises: (fromItemIndex, toItemIndex) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const moved = moveSessionExerciseItem(
+          session.exercises,
+          fromItemIndex,
+          toItemIndex,
+        );
+        // Identity return = no-op / out-of-range move: leave state untouched so
+        // no spurious revision bump or autosave is triggered.
+        if (moved === session.exercises) return;
+        set(buildSessionEditState(state, { ...session, exercises: moved }));
       },
 
       applyServerSession: (serverSession, sentRevision, sentEntryIds) => {

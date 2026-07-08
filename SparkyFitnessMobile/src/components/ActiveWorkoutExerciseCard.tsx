@@ -106,7 +106,11 @@ interface ActiveWorkoutExerciseCardProps {
   onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
 }
 
-function ExerciseThumb({
+/**
+ * Exercise image with a category-icon fallback. Exported so the reorder list
+ * can reuse the exact thumbnail treatment.
+ */
+export function ExerciseThumb({
   exercise,
   getImageSource,
   size,

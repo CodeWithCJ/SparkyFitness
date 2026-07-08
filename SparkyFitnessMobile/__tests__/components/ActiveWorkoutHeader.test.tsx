@@ -71,7 +71,7 @@ describe('ActiveWorkoutHeader', () => {
 
   function renderHeaderComponent(
     completedSetIds: Record<string, true>,
-    overrides?: { onBack?: () => void; onDiscard?: () => void },
+    overrides?: { onBack?: () => void; onDiscard?: () => void; onReorder?: () => void },
   ) {
     const progress = buildExerciseProgress(makeSession(), completedSetIds);
     return render(
@@ -82,6 +82,7 @@ describe('ActiveWorkoutHeader', () => {
         progress={progress}
         onBack={overrides?.onBack ?? jest.fn()}
         onDiscard={overrides?.onDiscard ?? jest.fn()}
+        onReorder={overrides?.onReorder}
       />,
     );
   }
@@ -131,5 +132,19 @@ describe('ActiveWorkoutHeader', () => {
     fireEvent.press(getByLabelText('Workout menu'));
     fireEvent.press(getByText('Discard workout'));
     expect(onDiscard).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits Reorder exercises when onReorder is not provided', () => {
+    const { getByLabelText, queryByText } = renderHeaderComponent({});
+    fireEvent.press(getByLabelText('Workout menu'));
+    expect(queryByText('Reorder exercises')).toBeNull();
+  });
+
+  it('shows Reorder exercises and fires onReorder when provided', () => {
+    const onReorder = jest.fn();
+    const { getByLabelText, getByText } = renderHeaderComponent({}, { onReorder });
+    fireEvent.press(getByLabelText('Workout menu'));
+    fireEvent.press(getByText('Reorder exercises'));
+    expect(onReorder).toHaveBeenCalledTimes(1);
   });
 });

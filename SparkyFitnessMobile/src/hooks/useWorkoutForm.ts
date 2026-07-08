@@ -6,6 +6,7 @@ import { weightFromKg } from '../utils/unitConversions';
 import {
   DEFAULT_REST_SEC,
   buildExercisesPayload,
+  moveDraftExerciseItem,
   normalizeDraftSupersetGroups,
   supersetDraftExercises,
   ungroupDraftExercise,
@@ -91,6 +92,7 @@ type WorkoutFormAction =
   | { type: 'SET_EXERCISE_REST'; exerciseClientId: string; seconds: number }
   | { type: 'SUPERSET_WITH'; currentClientId: string; pickedClientId: string }
   | { type: 'UNGROUP_EXERCISE'; clientId: string }
+  | { type: 'REORDER_EXERCISES'; fromItemIndex: number; toItemIndex: number }
   | { type: 'RESET' }
   | { type: 'POPULATE'; session: PresetSessionResponse; weightUnit: 'kg' | 'lbs' }
   | {
@@ -234,6 +236,18 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
       return {
         ...state,
         exercises: ungroupDraftExercise(state.exercises, action.clientId),
+      };
+
+    // Runs move atomically and the mover pre-clears stale group values, so no
+    // remainders can form — normalizeDraftSupersetGroups is unnecessary here.
+    case 'REORDER_EXERCISES':
+      return {
+        ...state,
+        exercises: moveDraftExerciseItem(
+          state.exercises,
+          action.fromItemIndex,
+          action.toItemIndex,
+        ),
       };
 
     case 'RESET':
@@ -387,6 +401,11 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     dispatch({ type: 'UNGROUP_EXERCISE', clientId });
   }, []);
 
+  const reorderExercises = useCallback((fromItemIndex: number, toItemIndex: number) => {
+    exercisesModifiedRef.current = true;
+    dispatch({ type: 'REORDER_EXERCISES', fromItemIndex, toItemIndex });
+  }, []);
+
   const setName = useCallback((name: string) => {
     dispatch({ type: 'SET_NAME', name });
   }, []);
@@ -437,6 +456,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     setExerciseRest,
     supersetWith,
     ungroupExercise,
+    reorderExercises,
     setName,
     setDate,
     reset,

@@ -1,9 +1,25 @@
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Keyboard } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import WorkoutFormExerciseList from '../../src/components/WorkoutFormExerciseList';
 import { __resetAppPreferencesStoreForTests } from '../../src/stores/appPreferencesStore';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
+
+// Drive the reorder overlay through pressable stubs (established pattern).
+jest.mock('../../src/components/WorkoutReorderList', () => {
+  const React = require('react');
+  const { View, Pressable } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ visible, onMoveItem, onDone }: any) =>
+      visible ? (
+        <View testID="reorder-list">
+          <Pressable testID="reorder-move" onPress={() => onMoveItem(0, 1)} />
+          <Pressable testID="reorder-done" onPress={onDone} />
+        </View>
+      ) : null,
+  };
+});
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -159,6 +175,7 @@ function renderList(
     setExerciseRest: jest.fn(),
     supersetWith: jest.fn(),
     ungroupExercise: jest.fn(),
+    onReorderExercises: jest.fn(),
     onAddExercisePress: jest.fn(),
   };
   const utils = render(
@@ -295,6 +312,50 @@ describe('WorkoutFormExerciseList', () => {
       fireEvent.press(utils.getByTestId('card-b-overflow'));
       fireEvent.press(utils.getByTestId('menu-item-remove'));
       expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(exercises[1]);
+    });
+
+    it('offers Reorder exercises when there are 2+ draggable items', () => {
+      const utils = renderList([makeExercise('a'), makeExercise('b')]);
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      expect(utils.getByText('Reorder exercises')).toBeTruthy();
+    });
+
+    it('hides Reorder exercises with a single exercise', () => {
+      const utils = renderList([makeExercise('a')]);
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      expect(utils.queryByText('Reorder exercises')).toBeNull();
+    });
+
+    it('hides Reorder exercises when two exercises are fused into one run', () => {
+      // One run = one draggable item → nothing to reorder.
+      const utils = renderList([
+        makeExercise('a', { supersetGroup: 1 }),
+        makeExercise('b', { supersetGroup: 1 }),
+      ]);
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      expect(utils.queryByText('Reorder exercises')).toBeNull();
+    });
+  });
+
+  describe('reorder overlay', () => {
+    it('opens the overlay (dismissing the active set + keyboard) and commits a move', () => {
+      const dismissSpy = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => {});
+      const utils = renderList([makeExercise('a'), makeExercise('b')]);
+      expect(utils.queryByTestId('reorder-list')).toBeNull();
+
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      fireEvent.press(utils.getByTestId('menu-item-reorder'));
+
+      expect(utils.callbacks.onDeactivateSet).toHaveBeenCalled();
+      expect(dismissSpy).toHaveBeenCalled();
+      expect(utils.getByTestId('reorder-list')).toBeTruthy();
+
+      fireEvent.press(utils.getByTestId('reorder-move'));
+      expect(utils.callbacks.onReorderExercises).toHaveBeenCalledWith(0, 1);
+
+      fireEvent.press(utils.getByTestId('reorder-done'));
+      expect(utils.queryByTestId('reorder-list')).toBeNull();
+      dismissSpy.mockRestore();
     });
   });
 

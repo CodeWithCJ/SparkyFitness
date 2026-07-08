@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Keyboard, Text, View } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import {
   KeyboardAwareScrollView,
@@ -22,6 +22,7 @@ import ActiveWorkoutExerciseCard, {
 import ActiveWorkoutRestBar from '../components/ActiveWorkoutRestBar';
 import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
+import WorkoutReorderList from '../components/WorkoutReorderList';
 import Button from '../components/ui/Button';
 import { useActiveWorkoutAutosave } from '../hooks/useActiveWorkoutAutosave';
 import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
@@ -34,6 +35,7 @@ import { addLog } from '../services/LogService';
 import { useActiveWorkoutStore, type ActiveSetPatch } from '../stores/activeWorkoutStore';
 import { normalizeDate } from '../utils/dateUtils';
 import {
+  buildExerciseReorderItems,
   buildSupersetColorMap,
   getSupersetRuns,
   SET_TYPE_OPTIONS,
@@ -115,6 +117,20 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       null
     );
   }, [session, activeSetId]);
+
+  // Reorder overlay. Gated on ≥2 draggable items (a lone exercise or a single
+  // all-in-one superset run has nothing to reorder).
+  const [reorderVisible, setReorderVisible] = useState(false);
+  const reorderItemCount = useMemo(
+    () => buildExerciseReorderItems(session?.exercises ?? []).length,
+    [session],
+  );
+  const handleOpenReorder = useCallback(() => {
+    // Live set inputs commit on blur — dismiss the keyboard so a focused edit
+    // lands before the overlay covers the list.
+    Keyboard.dismiss();
+    setReorderVisible(true);
+  }, []);
 
   // Superset display: adjacent 2+ runs get a flat left rail (log cards) and a
   // bottom bar (rail thumbs) in a per-group palette color.
@@ -306,8 +322,15 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         },
       });
     }
+    if (reorderItemCount >= 2) {
+      items.push({
+        key: 'reorder',
+        label: 'Reorder exercises',
+        onPress: handleOpenReorder,
+      });
+    }
     return items;
-  }, [overflowMenu, session, supersetRuns]);
+  }, [overflowMenu, session, supersetRuns, reorderItemCount, handleOpenReorder]);
 
   const handleCompleteActive = useCallback(() => {
     useActiveWorkoutStore.getState().completeActiveSet();
@@ -508,6 +531,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         progress={progress}
         onBack={() => navigation.goBack()}
         onDiscard={handleDiscard}
+        onReorder={reorderItemCount >= 2 ? handleOpenReorder : undefined}
       />
 
       <ActiveWorkoutRail
@@ -640,6 +664,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onClose={() => setOverflowMenu(null)}
         minWidth={200}
         items={overflowMenuItems}
+      />
+
+      <WorkoutReorderList
+        visible={reorderVisible}
+        exercises={session.exercises}
+        getImageSource={getImageSource}
+        onMoveItem={(from, to) =>
+          useActiveWorkoutStore.getState().reorderExercises(from, to)
+        }
+        onDone={() => setReorderVisible(false)}
       />
     </View>
   );

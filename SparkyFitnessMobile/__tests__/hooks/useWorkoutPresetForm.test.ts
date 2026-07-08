@@ -257,6 +257,31 @@ describe('presetFormReducer', () => {
       expect(next.exercises.map(e => e.clientId)).toEqual(['b', 'c']);
       expect(next.exercises[0].supersetGroup).toBeNull();
     });
+
+    it('REORDER_EXERCISES moves a solo exercise to a new position', () => {
+      const next = presetFormReducer(threeSolo(), {
+        type: 'REORDER_EXERCISES',
+        fromItemIndex: 2,
+        toItemIndex: 0,
+      });
+      expect(next.exercises.map(e => e.clientId)).toEqual(['c', 'a', 'b']);
+    });
+
+    it('REORDER_EXERCISES moves a whole run as one block', () => {
+      const groupedState = presetFormReducer(threeSolo(), {
+        type: 'SUPERSET_WITH',
+        currentClientId: 'a',
+        pickedClientId: 'b',
+      });
+      // items after grouping: [ab run], [c]. Move c before the run.
+      const next = presetFormReducer(groupedState, {
+        type: 'REORDER_EXERCISES',
+        fromItemIndex: 1,
+        toItemIndex: 0,
+      });
+      expect(next.exercises.map(e => e.clientId)).toEqual(['c', 'a', 'b']);
+      expect(next.exercises.map(e => e.supersetGroup ?? null)).toEqual([null, 1, 1]);
+    });
   });
 
   describe('POPULATE_FROM_PRESET', () => {
@@ -501,6 +526,33 @@ describe('useWorkoutPresetForm', () => {
     result.current.exercisesModifiedRef.current = false;
     act(() => result.current.removeExercise(exerciseClientId));
     expect(result.current.state.exercises).toHaveLength(0);
+    expect(result.current.exercisesModifiedRef.current).toBe(true);
+  });
+
+  it('reorderExercises reorders the draft and flips the modified flag (guards the silent-save bug)', () => {
+    const { result } = renderHook(() => useWorkoutPresetForm());
+
+    let firstId = '';
+    let secondId = '';
+    act(() => {
+      firstId = result.current.addExercise(exercise()).exerciseClientId;
+    });
+    act(() => {
+      secondId = result.current.addExercise(
+        exercise({ id: 'ex-2', name: 'Squat' }),
+      ).exerciseClientId;
+    });
+
+    // Reset the flag so we prove a reorder *alone* flips it — that is exactly
+    // what makes buildPresetEditPayload include exercises for a reorder-only
+    // preset edit instead of silently goBack()ing on an empty payload.
+    result.current.exercisesModifiedRef.current = false;
+    act(() => result.current.reorderExercises(0, 1));
+
+    expect(result.current.state.exercises.map(e => e.clientId)).toEqual([
+      secondId,
+      firstId,
+    ]);
     expect(result.current.exercisesModifiedRef.current).toBe(true);
   });
 

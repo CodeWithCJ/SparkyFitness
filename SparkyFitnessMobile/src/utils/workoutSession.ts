@@ -1,4 +1,5 @@
 import type {
+  ExerciseEntryResponse,
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
   ExerciseSessionResponse,
@@ -784,6 +785,123 @@ export function ungroupDraftExercise(
   }
 
   return normalizeDraftSupersetGroups(next);
+}
+
+// --- Exercise reordering (drag-and-drop) ---
+
+/**
+ * One draggable unit in the reorder UI: a solo exercise or a whole adjacent
+ * superset run (its members drag as one indivisible block). `key` is the first
+ * member's id (stable within a render); `entryIds` are the member ids in order;
+ * `groupId` is the run's superset group, or `null` for a solo item.
+ */
+export interface ExerciseReorderItem {
+  key: string;
+  entryIds: string[];
+  groupId: number | null;
+}
+
+/**
+ * Collapse an exercise list into draggable items — solos plus one item per
+ * adjacent 2+ superset run (same walk as `buildStepsFromSession`). Stale
+ * same-value singletons (non-adjacent repeats) aren't runs, so they surface as
+ * solo items. Shape matches both session entries and `WorkoutCardExercise`.
+ */
+export function buildExerciseReorderItems(
+  exercises: { id: string; superset_group?: number | null }[],
+): ExerciseReorderItem[] {
+  const runByFirstId = new Map(
+    getSupersetRuns(exercises).map((run) => [run.entryIds[0], run]),
+  );
+  const consumed = new Set<string>();
+  const items: ExerciseReorderItem[] = [];
+  for (const exercise of exercises) {
+    if (consumed.has(exercise.id)) continue;
+    const run = runByFirstId.get(exercise.id);
+    if (run) {
+      for (const id of run.entryIds) consumed.add(id);
+      items.push({ key: run.entryIds[0], entryIds: [...run.entryIds], groupId: run.groupId });
+    } else {
+      items.push({ key: exercise.id, entryIds: [exercise.id], groupId: null });
+    }
+  }
+  return items;
+}
+
+/**
+ * Shared reorder core for both session entries and form drafts, keyed by the
+ * two field names that differ between them (`id`/`superset_group` vs
+ * `clientId`/`supersetGroup`).
+ *
+ * `from`/`to` are *item* indices (see {@link buildExerciseReorderItems}) with
+ * remove-then-insert semantics: `to` is the target index in the array after the
+ * moved item is removed — matching `computeReorderTargetIndex`'s output
+ * convention. A no-op or out-of-range move returns the input array by identity.
+ *
+ * Before moving, any group value not part of an adjacent 2+ run is cleared:
+ * `startWorkout`/form POPULATE paths don't normalize, so stale same-value
+ * singletons can exist, and a move that landed two of them adjacent would
+ * otherwise fuse them into a spurious group in `normalize*SupersetGroups`.
+ *
+ * Consciously accepted edge: two *separate* runs sharing the same group id
+ * (only reachable via pathological external data) merge into one run when a
+ * move makes them adjacent — adjacency is already app-wide truth for grouping.
+ */
+function moveExerciseItemByFields<T extends object>(
+  exercises: T[],
+  from: number,
+  to: number,
+  idField: keyof T & string,
+  groupField: keyof T & string,
+): T[] {
+  const items = buildExerciseReorderItems(
+    exercises.map((e) => ({
+      id: e[idField] as unknown as string,
+      superset_group: (e[groupField] as unknown as number | null | undefined) ?? null,
+    })),
+  );
+  if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) {
+    return exercises;
+  }
+
+  // Ids that belong to a real run keep their group; every other non-null group
+  // value is a stale singleton and is cleared so it can't fuse after the move.
+  const grouped = new Set(
+    items.filter((item) => item.groupId != null).flatMap((item) => item.entryIds),
+  );
+  const clearedById = new Map<string, T>();
+  for (const exercise of exercises) {
+    const id = exercise[idField] as unknown as string;
+    const group = exercise[groupField] as unknown as number | null | undefined;
+    clearedById.set(
+      id,
+      group != null && !grouped.has(id) ? ({ ...exercise, [groupField]: null } as T) : exercise,
+    );
+  }
+
+  const nextItems = [...items];
+  const [moved] = nextItems.splice(from, 1);
+  nextItems.splice(to, 0, moved);
+
+  return nextItems.flatMap((item) => item.entryIds.map((id) => clearedById.get(id)!));
+}
+
+/** Reorder live-session entries by draggable item (see {@link moveExerciseItemByFields}). */
+export function moveSessionExerciseItem(
+  exercises: ExerciseEntryResponse[],
+  from: number,
+  to: number,
+): ExerciseEntryResponse[] {
+  return moveExerciseItemByFields(exercises, from, to, 'id', 'superset_group');
+}
+
+/** Reorder form-draft exercises by draggable item (see {@link moveExerciseItemByFields}). */
+export function moveDraftExerciseItem(
+  exercises: WorkoutDraftExercise[],
+  from: number,
+  to: number,
+): WorkoutDraftExercise[] {
+  return moveExerciseItemByFields(exercises, from, to, 'clientId', 'supersetGroup');
 }
 
 /**

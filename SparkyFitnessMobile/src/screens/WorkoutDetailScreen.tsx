@@ -170,6 +170,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setExerciseRest,
     supersetWith,
     ungroupExercise,
+    reorderExercises,
     setName: setFormName,
     setDate: setFormDate,
     populate,
@@ -580,6 +581,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             setExerciseRest={setExerciseRest}
             supersetWith={supersetWith}
             ungroupExercise={ungroupExercise}
+            onReorderExercises={reorderExercises}
             onAddExercisePress={openExerciseSearch}
             isEligibleForPrefill={isEligibleForPrefill}
           />

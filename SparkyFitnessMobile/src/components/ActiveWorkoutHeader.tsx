@@ -7,6 +7,7 @@ import Icon from './Icon';
 import AnchoredMenu, {
   measureAnchoredMenuTrigger,
   type AnchorRect,
+  type AnchoredMenuItem,
 } from './AnchoredMenu';
 
 /** Per-exercise completion used by the segmented progress bar. */
@@ -44,6 +45,8 @@ interface ActiveWorkoutHeaderProps {
   progress: ExerciseProgress[];
   onBack: () => void;
   onDiscard: () => void;
+  /** When provided, adds a "Reorder exercises" action above Discard. */
+  onReorder?: () => void;
 }
 
 /**
@@ -58,6 +61,7 @@ function ActiveWorkoutHeader({
   progress,
   onBack,
   onDiscard,
+  onReorder,
 }: ActiveWorkoutHeaderProps) {
   const [textPrimary, textMuted, accentPrimary, successColor, trackColor] = useCSSVariable([
     '--color-text-primary',
@@ -81,6 +85,22 @@ function ActiveWorkoutHeader({
   const doneCount = progress.filter(
     (p) => p.totalSets > 0 && p.completedSets >= p.totalSets,
   ).length;
+
+  const menuItems: AnchoredMenuItem[] = [];
+  if (onReorder) {
+    menuItems.push({
+      key: 'reorder',
+      label: 'Reorder exercises',
+      icon: 'swap-vertical',
+      onPress: onReorder,
+    });
+  }
+  menuItems.push({
+    key: 'discard',
+    label: 'Discard workout',
+    icon: 'trash',
+    onPress: onDiscard,
+  });
 
   return (
     <View className="px-3 pb-2 border-b border-border-subtle bg-background">
@@ -156,14 +176,7 @@ function ActiveWorkoutHeader({
         visible={menuVisible}
         anchor={menuAnchor}
         onClose={() => setMenuVisible(false)}
-        items={[
-          {
-            key: 'discard',
-            label: 'Discard workout',
-            icon: 'trash',
-            onPress: onDiscard,
-          },
-        ]}
+        items={menuItems}
       />
     </View>
   );

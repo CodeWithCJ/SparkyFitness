@@ -1523,6 +1523,99 @@ describe('activeWorkoutStore', () => {
       expect(state.session).toBe(shortened);
       expect(state.hasUnsavedChanges).toBe(true);
     });
+
+    it('drag-reorder-mid-flight: skips the graft and stays dirty when reorderExercises diverged the order', () => {
+      useActiveWorkoutStore.getState().updateSetField('101', { weight: 65 });
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+
+      // A drag reorder swaps the two exercises while the save is in flight.
+      useActiveWorkoutStore.getState().reorderExercises(0, 1);
+      const reordered = useActiveWorkoutStore.getState().session;
+      expect(reordered!.exercises.map((e) => e.id)).toEqual(['ex-uuid-2', 'ex-uuid-1']);
+
+      // The response still carries the pre-reorder order, so the positional
+      // graft must be skipped rather than pairing ids to the wrong entries.
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(makeRecreatedSession(), sentRevision, SENT_ENTRY_IDS);
+
+      const state = useActiveWorkoutStore.getState();
+      expect(state.session).toBe(reordered); // untouched — no positional graft
+      expect(state.hasUnsavedChanges).toBe(true);
+    });
+  });
+
+  describe('reorderExercises', () => {
+    beforeEach(() => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+    });
+
+    it('reorders exercises and rebuilds steps in the new order', () => {
+      // items: [ex-uuid-1 (101,102)], [ex-uuid-2 (201)]. Move item 0 after 1.
+      useActiveWorkoutStore.getState().reorderExercises(0, 1);
+      const state = useActiveWorkoutStore.getState();
+      expect(state.session!.exercises.map((e) => e.id)).toEqual([
+        'ex-uuid-2',
+        'ex-uuid-1',
+      ]);
+      expect(state.steps.map((s) => s.setId)).toEqual(['201', '101', '102']);
+    });
+
+    it('bumps the revision and marks unsaved changes', () => {
+      expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      useActiveWorkoutStore.getState().reorderExercises(0, 1);
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sessionRevision).toBe(1);
+      expect(state.hasUnsavedChanges).toBe(true);
+    });
+
+    it('leaves the cursor and a running rest untouched when the active set survives', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done, cursor → 102, resting
+      await flushPromises();
+      const restBefore = useActiveWorkoutStore.getState().rest;
+      expect(restBefore.state).toBe('resting');
+      mockCancel.mockClear();
+
+      useActiveWorkoutStore.getState().reorderExercises(0, 1);
+
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('102'); // still present, cursor unmoved
+      expect(state.rest).toBe(restBefore); // rest object untouched
+      expect(mockCancel).not.toHaveBeenCalled();
+      expect(state.completedSetIds).toEqual({ '101': FIXED_NOW }); // completion intact
+    });
+
+    it('preserves PR stamps for surviving sets across a reorder', () => {
+      useActiveWorkoutStore.setState({ prSetIds: { '201': true } });
+      useActiveWorkoutStore.getState().reorderExercises(0, 1);
+      expect(useActiveWorkoutStore.getState().prSetIds).toEqual({ '201': true });
+    });
+
+    it('leaves an uncompleted set moved before the forward-only cursor behind (hole semantics)', () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done, cursor → 102
+      // Move ex-uuid-2 (uncompleted 201) to sit before ex-uuid-1. The cursor
+      // stays on 102 (still present) even though 201 is now an uncompleted step
+      // before it — a hole, matching uncompleteSet's forward-only semantics.
+      useActiveWorkoutStore.getState().reorderExercises(1, 0);
+      const state = useActiveWorkoutStore.getState();
+      expect(state.steps.map((s) => s.setId)).toEqual(['201', '101', '102']);
+      expect(state.activeSetId).toBe('102');
+      expect(state.completedSetIds['201']).toBeUndefined();
+    });
+
+    it('no-ops on an out-of-range index (no revision bump)', () => {
+      useActiveWorkoutStore.getState().reorderExercises(0, 5);
+      expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      expect(useActiveWorkoutStore.getState().hasUnsavedChanges).toBe(false);
+    });
+
+    it('no-ops when there is no active session', () => {
+      useActiveWorkoutStore.getState().clearWorkout();
+      useActiveWorkoutStore.getState().reorderExercises(0, 1);
+      const state = useActiveWorkoutStore.getState();
+      expect(state.session).toBeNull();
+      expect(state.sessionRevision).toBe(0);
+    });
   });
 
   describe('supersets', () => {
