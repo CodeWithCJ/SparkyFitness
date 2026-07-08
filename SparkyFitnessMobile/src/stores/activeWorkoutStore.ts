@@ -499,6 +499,59 @@ function findSessionSet(
   return undefined;
 }
 
+/**
+ * Locate a set's owning exercise and its index within that exercise. The index
+ * doubles as the superset round the set belongs to (round `n` is the `n`th set
+ * of each member). Returns null when the id isn't in the session.
+ */
+function locateSet(
+  session: PresetSessionResponse,
+  setId: string,
+): { exercise: ExerciseEntryResponse; setIndex: number } | null {
+  for (const exercise of session.exercises) {
+    const setIndex = exercise.sets.findIndex((s) => String(s.id) === setId);
+    if (setIndex >= 0) return { exercise, setIndex };
+  }
+  return null;
+}
+
+/**
+ * The rest to run before `nextSetId` given that `completedSetId` was just
+ * logged. Rest is per-round: superset partners in the same round go
+ * back-to-back (0), and the group rest is taken before moving on to a new
+ * round or exercise. The step-baked `restSec` also encodes this, but only for
+ * the planned interleaving — out-of-order logging makes the cursor land on an
+ * interior partner (baked 0) when a real between-rounds rest is actually owed,
+ * so derive the rest from the true relationship between the two sets instead.
+ * Solo exercises always rest their configured duration.
+ */
+function restSecBeforeNextSet(
+  session: PresetSessionResponse,
+  completedSetId: string,
+  nextSetId: string,
+): number {
+  const to = locateSet(session, nextSetId);
+  if (!to) return DEFAULT_REST_SEC;
+  const toRest = to.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
+
+  const from = locateSet(session, completedSetId);
+  if (!from) return toRest;
+
+  // Back-to-back superset partners: same run, different member, same round.
+  const toRun = getSupersetRuns(session.exercises).find((r) =>
+    r.entryIds.includes(to.exercise.id),
+  );
+  if (
+    toRun != null &&
+    toRun.entryIds.includes(from.exercise.id) &&
+    from.exercise.id !== to.exercise.id &&
+    from.setIndex === to.setIndex
+  ) {
+    return 0;
+  }
+  return toRest;
+}
+
 export function seedCompletionFromSession(session: PresetSessionResponse): CompletedSetMap {
   const seeded: CompletedSetMap = {};
   for (const exercise of session.exercises) {
@@ -668,9 +721,10 @@ function startRestForStep(
   steps: WorkoutStep[],
   setId: string,
   session: PresetSessionResponse | null,
+  durationSecOverride?: number,
 ): Rest {
   const step = steps.find((s) => s.setId === setId);
-  const durationSec = step?.restSec ?? DEFAULT_REST_SEC;
+  const durationSec = durationSecOverride ?? step?.restSec ?? DEFAULT_REST_SEC;
   const token = ++restInstanceCounter;
   const endsAt = Date.now() + durationSec * 1000;
 
@@ -838,16 +892,25 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           return;
         }
 
+        // The rest is the break before the next-up set, derived from the true
+        // relationship between the two sets rather than the step-baked
+        // `restSec` — so out-of-order logging still rests between superset
+        // rounds instead of skipping the timer on an interior partner.
+        const restSec =
+          state.session != null
+            ? restSecBeforeNextSet(state.session, setId, nextStep.setId)
+            : nextStep.restSec;
+
         set({
           completedSetIds,
           prSetIds,
           lastPrEvent,
           activeSetId: nextStep.setId,
-          // A zero-rest step (superset round interior, or an explicit
-          // rest_time of 0) advances straight to ready — no timer flash.
+          // Zero rest (back-to-back superset partners, or an explicit rest_time
+          // of 0) advances straight to ready — no timer flash.
           rest:
-            nextStep.restSec > 0
-              ? startRestForStep(state.steps, nextStep.setId, state.session)
+            restSec > 0
+              ? startRestForStep(state.steps, nextStep.setId, state.session, restSec)
               : READY_REST,
           sessionRevision: state.sessionRevision + 1,
           hasUnsavedChanges: true,

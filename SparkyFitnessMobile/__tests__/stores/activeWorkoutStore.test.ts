@@ -138,6 +138,49 @@ function makeSession(overrides?: Partial<PresetSessionResponse>): PresetSessionR
   };
 }
 
+/**
+ * A superset of two exercises (X ids 301+, Y ids 401+) sharing one group, each
+ * with `rounds` sets at a 90s group rest. Steps interleave rounds — X0, Y0, X1,
+ * Y1, … — so the interior partner (Y) carries a step-baked 0 rest.
+ */
+function makeSupersetSession(rounds = 2): PresetSessionResponse {
+  const makeSets = (base: number) =>
+    Array.from({ length: rounds }, (_, i) => ({
+      id: base + i,
+      set_number: i + 1,
+      set_type: 'working',
+      reps: 8,
+      weight: 50,
+      duration: null,
+      rest_time: 90,
+      notes: null,
+      rpe: null,
+      completed_at: null,
+    }));
+  const makeMember = (entryId: string, exId: string, name: string, base: number) =>
+    ({
+      id: entryId,
+      exercise_id: exId,
+      duration_minutes: 0,
+      calories_burned: 0,
+      entry_date: '2026-03-20',
+      notes: null,
+      distance: null,
+      avg_heart_rate: null,
+      source: null,
+      superset_group: 1,
+      exercise_snapshot: { id: exId, name, images: [`${exId}.jpg`] } as any,
+      activity_details: [],
+      sets: makeSets(base),
+    }) as any;
+  return makeSession({
+    exercises: [
+      makeMember('ex-x', 'x', 'Curl', 301),
+      makeMember('ex-y', 'y', 'Pushdown', 401),
+    ],
+  });
+}
+
 /** Flush all pending microtasks (resolved promises). */
 async function flushPromises(): Promise<void> {
   await jest.advanceTimersByTimeAsync(0);
@@ -689,6 +732,53 @@ describe('activeWorkoutStore', () => {
       const before = useActiveWorkoutStore.getState();
       useActiveWorkoutStore.getState().completeSet('nope');
       expect(useActiveWorkoutStore.getState()).toEqual(before);
+    });
+  });
+
+  describe('completeSet rest (supersets)', () => {
+    // Steps: 301(90), 401(0), 302(90), 402(0).
+    beforeEach(() => {
+      useActiveWorkoutStore.getState().startWorkout(makeSupersetSession(2));
+    });
+
+    it('rests between rounds but not between partners when logged in order', async () => {
+      // Partner within the round → no rest.
+      useActiveWorkoutStore.getState().completeSet('301');
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      // Finishing the round → rest before the next round.
+      useActiveWorkoutStore.getState().completeSet('401');
+      const afterRound = useActiveWorkoutStore.getState();
+      expect(afterRound.activeSetId).toBe('302');
+      expect(afterRound.rest.state).toBe('resting');
+      expect(afterRound.rest.durationSec).toBe(90);
+      await flushPromises();
+    });
+
+    it('rests after a round finished out of order (regression)', async () => {
+      // Log both X sets first, skipping the Y partners. Each lands on its own
+      // round's Y partner (back-to-back) → no rest.
+      useActiveWorkoutStore.getState().completeSet('301');
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      useActiveWorkoutStore.getState().completeSet('302');
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      // Fill round 0's Y partner: round 0 is now complete and the cursor lands
+      // on round 1's Y (402), a between-rounds move — a rest must start even
+      // though 402's step-baked restSec is 0.
+      useActiveWorkoutStore.getState().completeSet('401');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('402');
+      expect(state.rest.state).toBe('resting');
+      expect(state.rest.durationSec).toBe(90);
+      await flushPromises();
+    });
+
+    it('stays back-to-back when the cursor lands on the same-round partner', () => {
+      // Logging X of round 1 out of order lands on its own partner (402),
+      // which is still a within-round transition → no rest.
+      useActiveWorkoutStore.getState().completeSet('302');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('402');
+      expect(state.rest.state).toBe('ready');
     });
   });
 
