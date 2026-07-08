@@ -103,6 +103,7 @@ import adminAuthRoutes from './routes/adminAuthRoutes.js';
 import workoutPresetRoutes from './routes/workoutPresetRoutes.js';
 import workoutPlanTemplateRoutes from './routes/workoutPlanTemplateRoutes.js';
 import { cleanupSessions } from './auth.js';
+import { deleteExpiredTickets } from './services/passkeyTicketService.js';
 import withingsServiceCentral from './services/withingsService.js';
 import { upsertEnvOidcProvider } from './utils/oidcEnvConfig.js';
 import userRepository from './models/userRepository.js';
@@ -533,6 +534,17 @@ const scheduleSessionCleanup = async () => {
       await cleanupSessions();
     } catch (error) {
       console.error('[CRON] Session cleanup failed:', error);
+    }
+    try {
+      const removed = await deleteExpiredTickets();
+      if (removed > 0) {
+        log(
+          'info',
+          `[CRON] Removed ${removed} used/expired passkey ticket(s).`
+        );
+      }
+    } catch (error) {
+      console.error('[CRON] Passkey ticket cleanup failed:', error);
     }
   });
 };
