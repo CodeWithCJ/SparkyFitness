@@ -106,6 +106,13 @@ const ALL_PROVIDERS_VALUE = '__all__';
 // online results are also on screen.
 const LOCAL_RESULT_CAP = 6;
 
+// Minimum height for the local-loading/empty-local status row, matched to the
+// empty-state text's natural height at standard font scale. A shared minHeight
+// (not a hard height) keeps the spinner and empty-text states the same size in
+// the common case, avoiding a scroll shift, while still letting the text grow
+// past it if accessibility font scaling needs more room.
+const LOCAL_STATUS_ROW_MIN_HEIGHT = 72;
+
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
@@ -845,13 +852,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         return renderProviderSkeleton();
       case 'local-loading':
         return (
-          <View className="px-4 py-6 items-center justify-center">
+          <View
+            className="px-4 py-6 items-center justify-center"
+            style={{ minHeight: LOCAL_STATUS_ROW_MIN_HEIGHT }}
+          >
             <ActivityIndicator size="small" color={accentColor} />
           </View>
         );
       case 'empty-local':
         return (
-          <View className="px-4 py-6 items-center justify-center">
+          <View
+            className="px-4 py-6 items-center justify-center"
+            style={{ minHeight: LOCAL_STATUS_ROW_MIN_HEIGHT }}
+          >
             <Text className="text-text-secondary text-base text-center">
               {isMealBuilderMode
                 ? 'No saved foods found'
