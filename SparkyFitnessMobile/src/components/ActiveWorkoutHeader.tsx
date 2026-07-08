@@ -49,6 +49,8 @@ interface ActiveWorkoutHeaderProps {
   progress: ExerciseProgress[];
   onBack: () => void;
   onDiscard: () => void;
+  /** Adds an "End workout" action (the finish flow) at the top of the menu. */
+  onEndWorkout?: () => void;
   /** Opens the rename dialog from a "Rename workout" menu action. */
   onRename?: () => void;
   /** Adds an "Add exercise" action at the top of the menu. */
@@ -71,6 +73,7 @@ function ActiveWorkoutHeader({
   progress,
   onBack,
   onDiscard,
+  onEndWorkout,
   onRename,
   onAddExercise,
   onReorder,
@@ -100,6 +103,14 @@ function ActiveWorkoutHeader({
   ).length;
 
   const menuItems: AnchoredMenuItem[] = [];
+  if (onEndWorkout) {
+    menuItems.push({
+      key: 'end-workout',
+      label: 'End workout',
+      icon: 'checkmark-circle',
+      onPress: onEndWorkout,
+    });
+  }
   if (onRename) {
     menuItems.push({
       key: 'rename',

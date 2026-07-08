@@ -16,6 +16,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
+import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import FormInput from './FormInput';
 import CompletionCheck from './CompletionCheck';
 import { formatRest } from './RestPeriodChip';
@@ -88,6 +89,13 @@ interface ActiveWorkoutSetRowProps {
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
   onDelete?: (setId: string) => void;
   onLongPress?: (setId: string) => void;
+  /**
+   * Live/edit only: change this set's type. Tapping the set number (or
+   * long-pressing the row) opens a set-type menu anchored to the number. When
+   * provided it takes over the row's long-press from `onLongPress`, so a
+   * consumer wires exactly one of the two.
+   */
+  onPressSetType?: (setId: string, anchor: AnchorRect) => void;
   // --- edit-mode props (values come from the form reducer; see WorkoutCardSet) ---
   /**
    * Which field of the active row holds focus; drives the Next accessory. In
@@ -206,6 +214,7 @@ function ActiveWorkoutSetRow({
   onCommitField,
   onDelete,
   onLongPress,
+  onPressSetType,
   activeField = 'weight',
   isFocused = false,
   nextSetId,
@@ -457,6 +466,41 @@ function ActiveWorkoutSetRow({
     </Text>
   );
 
+  // Tap the set number (or long-press the row) to change this set's type. The
+  // menu anchors to the number cell, measured on demand.
+  const setNumberRef = useRef<View>(null);
+  const openSetTypeMenu = useCallback(() => {
+    if (!onPressSetType) return;
+    measureAnchoredMenuTrigger(setNumberRef.current, (anchor) =>
+      onPressSetType(setId, anchor),
+    );
+  }, [onPressSetType, setId]);
+
+  // A set-type handler takes over the long-press; otherwise fall back to the
+  // consumer's plain long-press (view mode's "Start workout here").
+  const longPress = onPressSetType
+    ? openSetTypeMenu
+    : onLongPress
+      ? () => onLongPress(setId)
+      : undefined;
+
+  const setNumberControl = (
+    <View ref={setNumberRef} collapsable={false} className="w-9 items-center">
+      {onPressSetType ? (
+        <Pressable
+          onPress={openSetTypeMenu}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={`Change type for set ${set.set_number}`}
+        >
+          {setIndicator}
+        </Pressable>
+      ) : (
+        setIndicator
+      )}
+    </View>
+  );
+
   const checkControl = (() => {
     if (state === 'done') {
       if (readOnly) {
@@ -604,11 +648,11 @@ function ActiveWorkoutSetRow({
       <>
         <Pressable
           testID="set-row"
-          onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+          onLongPress={longPress}
           className={`flex-row items-center py-2 px-3 rounded-xl ${state === 'current' ? '' : 'bg-background'}`}
           style={state === 'current' ? { backgroundColor: `${accentPrimary}1f` } : undefined}
         >
-          <View className="w-9 items-center">{setIndicator}</View>
+          {setNumberControl}
           <View className="flex-1 items-center">
             <SetCellInput
               inputRef={weightInputRef}
@@ -728,7 +772,7 @@ function ActiveWorkoutSetRow({
   const row = (
     <Pressable
       testID="set-row"
-      onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+      onLongPress={longPress}
       className={`flex-row items-center py-2.5 px-3 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
       style={isCursor ? { backgroundColor: `${accentPrimary}1f` } : undefined}
     >
@@ -739,12 +783,12 @@ function ActiveWorkoutSetRow({
         className="flex-1 flex-row items-center"
         style={doneDim ? { opacity: 0.62 } : undefined}
       >
-        <View className="w-9 items-center">{setIndicator}</View>
+        {setNumberControl}
         {editable ? (
           <Pressable
             className="flex-1 py-1"
             onPress={() => onActivateSet?.(setId, 'weight')}
-            onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+            onLongPress={longPress}
             accessibilityRole="button"
             accessibilityLabel={`Edit weight for set ${set.set_number}`}
           >
@@ -757,7 +801,7 @@ function ActiveWorkoutSetRow({
           <Pressable
             className="flex-1 py-1"
             onPress={() => onActivateSet?.(setId, 'reps')}
-            onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+            onLongPress={longPress}
             accessibilityRole="button"
             accessibilityLabel={`Edit reps for set ${set.set_number}`}
           >
@@ -770,7 +814,7 @@ function ActiveWorkoutSetRow({
           <Pressable
             className="w-14 items-center py-1"
             onPress={() => onActivateRpe?.(setId)}
-            onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+            onLongPress={longPress}
             accessibilityRole="button"
             accessibilityLabel={`Edit RPE for set ${set.set_number}`}
           >

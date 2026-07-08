@@ -1,5 +1,4 @@
 import React from 'react';
-import { Alert } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -242,7 +241,6 @@ describe('WorkoutDetailScreen', () => {
   describe('edit mode', () => {
     it('renders edit cards and saves set_type/rpe edits through the payload', async () => {
       mockUpdateSession.mockResolvedValue(buildSession());
-      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       const screen = renderScreen(buildSession());
 
       fireEvent.press(screen.getByLabelText('Edit workout'));
@@ -252,14 +250,9 @@ describe('WorkoutDetailScreen', () => {
       expect(screen.getByLabelText('Add set to Bench Press')).toBeTruthy();
       expect(screen.getByLabelText('More options for Bench Press')).toBeTruthy();
 
-      // Long-press → set-type picker → Warmup.
-      fireEvent(screen.getAllByTestId('set-row')[0], 'longPress');
-      const setTypeCall = alertSpy.mock.calls.find(call => call[1] === 'Set type');
-      expect(setTypeCall).toBeTruthy();
-      const warmupButton = (setTypeCall![2] as { text: string; onPress?: () => void }[]).find(
-        b => b.text.includes('Warmup'),
-      );
-      warmupButton!.onPress!();
+      // Tap the set number → set-type menu → Warmup.
+      fireEvent.press(screen.getByLabelText('Change type for set 1'));
+      fireEvent.press(screen.getByLabelText('Warmup'));
 
       // Activate the row, type an RPE, blur to snap it to 0.5 steps.
       fireEvent.press(screen.getByLabelText('Edit weight for set 1'));
@@ -273,7 +266,6 @@ describe('WorkoutDetailScreen', () => {
       const { payload } = mockUpdateSession.mock.calls[0][0];
       expect(payload.exercises[0].sets[0].set_type).toBe('warmup');
       expect(payload.exercises[0].sets[0].rpe).toBe(8.5);
-      alertSpy.mockRestore();
     });
 
     it('keeps completed sets editable and lets you toggle completion', () => {

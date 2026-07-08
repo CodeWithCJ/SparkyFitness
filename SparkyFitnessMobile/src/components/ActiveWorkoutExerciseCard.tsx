@@ -95,6 +95,8 @@ interface ActiveWorkoutExerciseCardProps {
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
   onDeleteSet?: (setId: string) => void;
   onLongPressSet?: (setId: string) => void;
+  /** Live/edit only: tap a set number (or long-press the row) to change its type. */
+  onPressSetType?: (setId: string, anchor: AnchorRect) => void;
   onAddSet?: (entryId: string) => void;
   // --- edit + live editing props ---
   /**
@@ -178,6 +180,7 @@ function ActiveWorkoutExerciseCard({
   onCommitField,
   onDeleteSet,
   onLongPressSet,
+  onPressSetType,
   onAddSet,
   activeField,
   focusedSetId,
@@ -535,6 +538,7 @@ function ActiveWorkoutExerciseCard({
             onCommitField={onCommitField}
             onDelete={onDeleteSet}
             onLongPress={onLongPressSet}
+            onPressSetType={onPressSetType}
             activeField={activeField}
             isFocused={isLive && focusedSetId === setId}
             nextSetId={nextSet != null ? String(nextSet.id) : null}

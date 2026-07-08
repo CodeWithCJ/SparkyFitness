@@ -603,6 +603,21 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     // keyboard so the rest bar is unobstructed and the logged inputs collapse.
     setFocusedSetId(null);
     Keyboard.dismiss();
+    // When that was the last unlogged set, the cursor has nowhere to advance,
+    // so the follow-cursor scroll won't fire. Surface the End Workout button
+    // instead. Deferred so the just-logged card's collapse/layout settles;
+    // guarded so handleScroll doesn't re-home the focused exercise mid-scroll.
+    const store = useActiveWorkoutStore.getState();
+    const completed = store.completedSetIds;
+    const remaining =
+      store.session?.exercises.reduce(
+        (sum, e) => sum + e.sets.filter((s) => !completed[String(s.id)]).length,
+        0,
+      ) ?? 0;
+    if (remaining === 0) {
+      programmaticScrollUntilRef.current = Date.now() + 600;
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 350);
+    }
   }, []);
   const handleUncomplete = useCallback((setId: string) => {
     useActiveWorkoutStore.getState().uncompleteSet(setId);
@@ -638,25 +653,32 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     store.deleteSet(setId);
   }, []);
 
-  const handleLongPressSet = useCallback((setId: string) => {
-    const store = useActiveWorkoutStore.getState();
-    const exercise = store.session?.exercises.find((e) =>
-      e.sets.some((s) => String(s.id) === setId),
-    );
-    const set = exercise?.sets.find((s) => String(s.id) === setId);
-    if (!exercise || !set) return;
-
-    const currentType = set.set_type ?? 'normal';
-    const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] =
-      SET_TYPE_OPTIONS.map((type) => ({
-        text: `${type === currentType ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
-        onPress: () => useActiveWorkoutStore.getState().updateSetField(setId, { set_type: type }),
-      }));
-    buttons.push({ text: 'Cancel', style: 'cancel' });
-
-    const name = exercise.exercise_snapshot?.name ?? 'Exercise';
-    Alert.alert(`${name} · Set ${set.set_number}`, 'Set type', buttons);
+  // Set-type menu: tapping a set number (or long-pressing the row) anchors a
+  // menu of the set types here. Replaces an Alert, which capped at 3 buttons on
+  // Android and hid half the options.
+  const [setTypeMenu, setSetTypeMenu] = useState<{ setId: string; anchor: AnchorRect } | null>(
+    null,
+  );
+  const handlePressSetType = useCallback((setId: string, anchor: AnchorRect) => {
+    setSetTypeMenu({ setId, anchor });
   }, []);
+  const setTypeMenuItems = useMemo(() => {
+    if (setTypeMenu == null || session == null) return [];
+    const { setId } = setTypeMenu;
+    let currentType = 'normal';
+    for (const exercise of session.exercises) {
+      const set = exercise.sets.find((s) => String(s.id) === setId);
+      if (set) {
+        currentType = set.set_type ?? 'normal';
+        break;
+      }
+    }
+    return SET_TYPE_OPTIONS.map((type) => ({
+      key: type,
+      label: `${type === currentType ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
+      onPress: () => useActiveWorkoutStore.getState().updateSetField(setId, { set_type: type }),
+    }));
+  }, [setTypeMenu, session]);
 
   const handleDiscard = useCallback(() => {
     // Live-start sessions exist on the server only because the user hit Start,
@@ -825,6 +847,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         progress={progress}
         onBack={() => navigation.goBack()}
         onDiscard={handleDiscard}
+        onEndWorkout={handleConfirmEnd}
         onRename={() => setRenameVisible(true)}
         onAddExercise={handleAddExercise}
         onReorder={reorderItemCount >= 2 ? handleOpenReorder : undefined}
@@ -881,7 +904,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onUncomplete={handleUncomplete}
               onCommitField={handleCommitField}
               onDeleteSet={handleDeleteSet}
-              onLongPressSet={handleLongPressSet}
+              onPressSetType={handlePressSetType}
               onAddSet={handleAddSet}
               onActivateSet={handleActivateSet}
               onActivateRpe={handleActivateRpe}
@@ -983,6 +1006,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onClose={() => setOverflowMenu(null)}
         minWidth={200}
         items={overflowMenuItems}
+      />
+
+      <AnchoredMenu
+        visible={setTypeMenu != null && setTypeMenuItems.length > 0}
+        anchor={setTypeMenu?.anchor ?? null}
+        onClose={() => setSetTypeMenu(null)}
+        minWidth={180}
+        items={setTypeMenuItems}
       />
 
       <WorkoutReorderList

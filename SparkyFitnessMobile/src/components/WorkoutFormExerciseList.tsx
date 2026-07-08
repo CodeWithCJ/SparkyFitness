@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Alert, Keyboard, Text, TouchableOpacity, View } from 'react-native';
+import { Keyboard, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -14,7 +14,7 @@ import ActiveWorkoutExerciseCard, {
   METRIC_MENU_LABELS,
   METRIC_OPTIONS,
 } from './ActiveWorkoutExerciseCard';
-import AnchoredMenu, { type AnchorRect } from './AnchoredMenu';
+import AnchoredMenu, { type AnchorRect, type AnchoredMenuItem } from './AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from './RestPeriodSheet';
 import WorkoutReorderList from './WorkoutReorderList';
 import { weightFromKg } from '../utils/unitConversions';
@@ -256,29 +256,35 @@ const WorkoutFormExerciseList = forwardRef<
     [exercises, updateSetMeta],
   );
 
-  const handleLongPressSet = useCallback(
-    (setId: string) => {
-      const owner = exercises.find(e => e.sets.some(s => s.clientId === setId));
-      const setIndex = owner?.sets.findIndex(s => s.clientId === setId) ?? -1;
-      if (!owner || setIndex < 0) return;
-      const set = owner.sets[setIndex];
-
-      const currentType = set.setType ?? 'normal';
-      const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] =
-        SET_TYPE_OPTIONS.map(type => ({
-          text: `${type === currentType ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
-          onPress: () => updateSetMeta(owner.clientId, setId, { setType: type }),
-        }));
-      buttons.push({
-        text: 'Delete set',
-        style: 'destructive',
-        onPress: () => removeSet(owner.clientId, setId),
-      });
-      buttons.push({ text: 'Cancel', style: 'cancel' });
-      Alert.alert(`${owner.exerciseName} · Set ${setIndex + 1}`, 'Set type', buttons);
-    },
-    [exercises, updateSetMeta, removeSet],
+  // Set-type menu: tapping a set number (or long-pressing the row) anchors a
+  // menu of set types + Delete here. Replaces an Alert, which capped at 3
+  // buttons on Android and hid most of the six options.
+  const [setTypeMenu, setSetTypeMenu] = useState<{ setId: string; anchor: AnchorRect } | null>(
+    null,
   );
+  const handlePressSetType = useCallback((setId: string, anchor: AnchorRect) => {
+    setSetTypeMenu({ setId, anchor });
+  }, []);
+  const setTypeMenuItems = useMemo<AnchoredMenuItem[]>(() => {
+    if (setTypeMenu == null) return [];
+    const { setId } = setTypeMenu;
+    const owner = exercises.find(e => e.sets.some(s => s.clientId === setId));
+    const set = owner?.sets.find(s => s.clientId === setId);
+    if (!owner || !set) return [];
+    const currentType = set.setType ?? 'normal';
+    const items: AnchoredMenuItem[] = SET_TYPE_OPTIONS.map(type => ({
+      key: type,
+      label: `${type === currentType ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
+      onPress: () => updateSetMeta(owner.clientId, setId, { setType: type }),
+    }));
+    items.push({
+      key: 'delete',
+      label: 'Delete set',
+      icon: 'trash',
+      onPress: () => removeSet(owner.clientId, setId),
+    });
+    return items;
+  }, [setTypeMenu, exercises, updateSetMeta, removeSet]);
 
   // Open the library Exercise Detail for a draft row (thumbnail tap + ⋮ menu).
   // Existing-session drafts carry a full snapshot; freshly-added ones are
@@ -428,7 +434,7 @@ const WorkoutFormExerciseList = forwardRef<
             onPressOverflow={handlePressOverflow}
             onCommitField={handleCommitField}
             onDeleteSet={handleDeleteSet}
-            onLongPressSet={handleLongPressSet}
+            onPressSetType={handlePressSetType}
             onAddSet={onAddSet}
             onActivateSet={handleActivateSet}
             onActivateRpe={handleActivateRpe}
@@ -508,6 +514,14 @@ const WorkoutFormExerciseList = forwardRef<
         onClose={() => setOverflowMenu(null)}
         minWidth={200}
         items={overflowMenuItems}
+      />
+
+      <AnchoredMenu
+        visible={setTypeMenu != null && setTypeMenuItems.length > 0}
+        anchor={setTypeMenu?.anchor ?? null}
+        onClose={() => setSetTypeMenu(null)}
+        minWidth={180}
+        items={setTypeMenuItems}
       />
 
       <WorkoutReorderList

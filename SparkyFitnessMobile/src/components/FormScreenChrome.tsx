@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Platform } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
@@ -52,16 +53,15 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
     >
       {header}
 
-      <KeyboardAvoidingView className="flex-1" behavior="padding">
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-4 pt-4 pb-20 gap-4"
-          keyboardShouldPersistTaps="handled"
-          contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
-        >
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <KeyboardAwareScrollView
+        className="flex-1"
+        contentContainerClassName="px-4 pt-4 pb-20 gap-4"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={20}
+        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
+      >
+        {children}
+      </KeyboardAwareScrollView>
     </View>
   );
 };

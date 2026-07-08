@@ -97,6 +97,7 @@ import { initNotifications } from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { FullWindowOverlay } from 'react-native-screens';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
@@ -1147,7 +1148,13 @@ function AppContent() {
 
 function SafeAreaToast() {
   const insets = useSafeAreaInsets();
-  return <Toast config={toastConfig} topOffset={insets.top + 8} />;
+  const toast = <Toast config={toastConfig} topOffset={insets.top + 8} />;
+  // On iOS a plain Toast renders in the normal view tree, so it appears *under*
+  // native modals (rename dialogs, form sheets, anchored menus). A
+  // FullWindowOverlay hoists it above every window — matching how the app's
+  // bottom sheets escape modal contexts. Android modal layering doesn't have
+  // this problem, and FullWindowOverlay is a no-op there.
+  return Platform.OS === 'ios' ? <FullWindowOverlay>{toast}</FullWindowOverlay> : toast;
 }
 
 function UniwindInsetsBridge() {

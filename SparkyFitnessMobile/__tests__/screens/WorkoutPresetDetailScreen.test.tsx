@@ -207,7 +207,11 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('Push Day')).toBeTruthy();
+    // The name lives in the (native) header title now; the body keeps the
+    // description, exercise count, and the exercise card.
+    expect(navigation.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Push Day' }),
+    );
     expect(screen.getByText('Chest, shoulders, triceps')).toBeTruthy();
     expect(screen.getByText('1 exercise')).toBeTruthy();
     expect(screen.getByText('Bench Press')).toBeTruthy();

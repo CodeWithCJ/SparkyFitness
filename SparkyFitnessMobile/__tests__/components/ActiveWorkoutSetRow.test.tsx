@@ -66,6 +66,8 @@ interface RenderOverrides {
   completedBadge?: boolean;
   /** Wire the edit-mode completion toggle (otherwise the check is static). */
   enableToggle?: boolean;
+  /** Wire the set-type handler (makes the set number a menu trigger). */
+  enableSetType?: boolean;
 }
 
 function renderRow(overrides?: RenderOverrides) {
@@ -81,10 +83,12 @@ function renderRow(overrides?: RenderOverrides) {
     onDeactivate: jest.fn(),
     onEditFieldChange: jest.fn(),
     onAddSet: jest.fn(),
+    onPressSetType: jest.fn(),
   };
-  // onToggleComplete is opt-in (via enableToggle) so most tests exercise the
-  // static-check fallback.
-  const { onToggleComplete, ...spreadCallbacks } = callbacks;
+  // onToggleComplete and onPressSetType are opt-in (via enableToggle /
+  // enableSetType) so most tests exercise the static-check + onLongPress
+  // fallbacks.
+  const { onToggleComplete, onPressSetType, ...spreadCallbacks } = callbacks;
   const utils = render(
     <ActiveWorkoutSetRow
       set={makeSet(overrides?.set as Partial<ExerciseEntrySetResponse>)}
@@ -101,6 +105,7 @@ function renderRow(overrides?: RenderOverrides) {
       completedBadge={overrides?.completedBadge}
       {...spreadCallbacks}
       onToggleComplete={overrides?.enableToggle ? onToggleComplete : undefined}
+      onPressSetType={overrides?.enableSetType ? onPressSetType : undefined}
     />,
   );
   return { ...utils, callbacks };
@@ -683,6 +688,32 @@ describe('ActiveWorkoutSetRow', () => {
     const { getByTestId, callbacks } = renderRow({ state: 'upcoming' });
     fireEvent(getByTestId('set-row'), 'longPress');
     expect(callbacks.onLongPress).toHaveBeenCalledWith('101');
+  });
+
+  describe('set-type menu', () => {
+    it('opens the set-type menu when the set number is tapped', () => {
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'upcoming',
+        enableSetType: true,
+      });
+      fireEvent.press(getByLabelText('Change type for set 1'));
+      expect(callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
+    });
+
+    it('routes the row long-press to the set-type menu, not onLongPress', () => {
+      const { getByTestId, callbacks } = renderRow({
+        state: 'upcoming',
+        enableSetType: true,
+      });
+      fireEvent(getByTestId('set-row'), 'longPress');
+      expect(callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
+      expect(callbacks.onLongPress).not.toHaveBeenCalled();
+    });
+
+    it('leaves the set number inert without a set-type handler', () => {
+      const { queryByLabelText } = renderRow({ state: 'upcoming' });
+      expect(queryByLabelText('Change type for set 1')).toBeNull();
+    });
   });
 
   it('shows the W pill instead of the set number for warmups', () => {
