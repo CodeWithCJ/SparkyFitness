@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict JE9XSa3bBDxPfxaugcjjk4H12gSPpPtzWpzI01CNytm4iXmpGhz1ZMp6wVvDqkU
+\restrict 3BJqNCfG9JISJ9Sq7CLbUXpMJNtDSE0hGZTqHxGqAgyum3vzcYPKBhmOddcYqUG
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -2463,6 +2463,21 @@ CREATE TABLE public.passkey (
 
 
 --
+-- Name: passkey_registration_tickets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.passkey_registration_tickets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    ticket_hash text NOT NULL,
+    user_id uuid NOT NULL,
+    session_token text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    used_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: pregnancies; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4228,6 +4243,22 @@ ALTER TABLE ONLY public.passkey
 
 
 --
+-- Name: passkey_registration_tickets passkey_registration_tickets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkey_registration_tickets
+    ADD CONSTRAINT passkey_registration_tickets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: passkey_registration_tickets passkey_registration_tickets_ticket_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkey_registration_tickets
+    ADD CONSTRAINT passkey_registration_tickets_ticket_hash_key UNIQUE (ticket_hash);
+
+
+--
 -- Name: pregnancies pregnancies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5096,6 +5127,13 @@ CREATE INDEX idx_medications_is_glp1 ON public.medications USING btree (user_id,
 --
 
 CREATE INDEX idx_medications_user_id ON public.medications USING btree (user_id);
+
+
+--
+-- Name: idx_passkey_reg_tickets_expires_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_passkey_reg_tickets_expires_at ON public.passkey_registration_tickets USING btree (expires_at);
 
 
 --
@@ -6448,6 +6486,14 @@ ALTER TABLE ONLY public.onboarding_data
 
 ALTER TABLE ONLY public.onboarding_status
     ADD CONSTRAINT onboarding_status_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: passkey_registration_tickets passkey_registration_tickets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.passkey_registration_tickets
+    ADD CONSTRAINT passkey_registration_tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7889,6 +7935,12 @@ CREATE POLICY owner_policy ON public.workout_plan_template_assignments USING ((E
    FROM public.workout_plan_templates wpt
   WHERE ((wpt.id = workout_plan_template_assignments.template_id) AND public.has_diary_access(wpt.user_id)))));
 
+
+--
+-- Name: passkey_registration_tickets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.passkey_registration_tickets ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: pregnancies; Type: ROW SECURITY; Schema: public; Owner: -
@@ -9481,6 +9533,15 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky uat";
 
 
 --
+-- Name: TABLE passkey_registration_tickets; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO sparky_uat;
+
+
+--
 -- Name: TABLE pregnancies; Type: ACL; Schema: public; Owner: -
 --
 
@@ -10006,5 +10067,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict JE9XSa3bBDxPfxaugcjjk4H12gSPpPtzWpzI01CNytm4iXmpGhz1ZMp6wVvDqkU
+\unrestrict 3BJqNCfG9JISJ9Sq7CLbUXpMJNtDSE0hGZTqHxGqAgyum3vzcYPKBhmOddcYqUG
 

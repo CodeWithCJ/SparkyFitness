@@ -648,17 +648,65 @@ export const getPasskeys = async (serverUrl: string, sessionToken: string): Prom
 };
 
 /**
- * Registers a new passkey with the server.
+ * Mints a single-use, short-lived passkey registration ticket from the server.
+ * The ticket (not the raw session token) is what gets handed to the browser
+ * registration page, so the long-lived session token never appears in a URL.
+ *
+ * Throws `LoginError('SESSION_NOT_FRESH', 403)` when the server rejects the
+ * session as stale — the caller should re-authenticate and retry.
  */
-export const addPasskey = async (serverUrl: string, sessionToken: string, name: string): Promise<void> => {
+export const requestPasskeyRegistrationTicket = async (
+  serverUrl: string,
+  sessionToken: string
+): Promise<string> => {
+  const baseUrl = normalizeUrl(serverUrl);
+  const res = await fetch(`${baseUrl}/api/auth/web-login/register-ticket`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      ...pendingProxyHeaders,
+      Authorization: `Bearer ${sessionToken}`,
+    },
+  });
+
+  if (res.status === 403) {
+    const body = await res.json().catch(() => ({}));
+    if (body?.code === 'SESSION_NOT_FRESH') {
+      throw new LoginError('SESSION_NOT_FRESH', 403);
+    }
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.message || 'Failed to start passkey registration.');
+  }
+
+  const data = await res.json();
+  if (!data?.ticket) {
+    throw new Error('Server did not return a registration ticket.');
+  }
+  return data.ticket as string;
+};
+
+/**
+ * Registers a new passkey with the server via the browser bridge. Mints a
+ * one-time ticket first (so the raw session token never rides in a URL), then
+ * opens the register page with the ticket in the URL fragment.
+ */
+export const addPasskey = async (
+  serverUrl: string,
+  sessionToken: string,
+  name: string
+): Promise<void> => {
   const baseUrl = normalizeUrl(serverUrl);
 
-  addLog('[AuthService] Initiating browser-based passkey registration flow', 'INFO');
+  addLog('[AuthService] Requesting passkey registration ticket', 'INFO');
+  const ticket = await requestPasskeyRegistrationTicket(baseUrl, sessionToken);
 
-  // Pass the session token in the URL fragment, not the query string: fragments
-  // are never sent to the server, so the token can't leak into access / proxy logs.
-  const registerUrl = `${baseUrl}/api/auth/web-login/register-passkey#token=${encodeURIComponent(
-    sessionToken
+  addLog('[AuthService] Opening browser-based passkey registration flow', 'INFO');
+  // Ticket rides in the fragment (never sent to the server) and is single-use,
+  // so it can't be replayed even if the URL leaks.
+  const registerUrl = `${baseUrl}/api/auth/web-login/register-passkey#ticket=${encodeURIComponent(
+    ticket
   )}&name=${encodeURIComponent(name)}`;
 
   const result = await WebBrowser.openAuthSessionAsync(
@@ -666,12 +714,15 @@ export const addPasskey = async (serverUrl: string, sessionToken: string, name: 
     SSO_CALLBACK_URL
   );
 
-  if (result.type !== 'success') {
+  if (result.type !== 'success' || !result.url) {
     addLog('[AuthService] Browser-based passkey registration was cancelled or failed.', 'ERROR');
     throw new Error('Passkey registration cancelled or did not complete.');
   }
 
-  if (!result.url || !result.url.includes('status=success')) {
+  if (result.url.includes('status=expired')) {
+    throw new Error('This registration link expired. Please try again.');
+  }
+  if (!result.url.includes('status=success')) {
     throw new Error('Passkey registration did not succeed.');
   }
 
@@ -683,17 +734,35 @@ export const addPasskey = async (serverUrl: string, sessionToken: string, name: 
  */
 export const deletePasskey = async (serverUrl: string, sessionToken: string, id: string): Promise<void> => {
   const baseUrl = normalizeUrl(serverUrl);
-  const authClient = createSsoAuthClient(baseUrl, { Authorization: `Bearer ${sessionToken}` });
 
   addLog(`[AuthService] Deleting passkey: ${id}`, 'INFO');
-  const res = await authClient.$fetch('/passkey/delete-passkey', {
+  // Use a plain fetch (not the better-auth client) so the Authorization header
+  // is sent exactly as given — the better-fetch client dropped it when per-call
+  // headers were supplied, leaving delete requests unauthenticated. The server's
+  // /api/auth interceptor converts this Bearer token into the session cookie.
+  const response = await fetch(`${baseUrl}/api/auth/passkey/delete-passkey`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    headers: {
+      ...pendingProxyHeaders,
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionToken}`,
+      // Better Auth rejects state-changing requests with a missing/null Origin.
+      // The app scheme is a trusted origin (see auth.ts trustedOrigins), so send
+      // it explicitly — native fetch (unlike a browser) allows setting Origin.
+      Origin: 'sparkyfitnessmobile://',
+    },
     body: JSON.stringify({ id }),
   });
 
-  if (res.error) {
-    const msg = res.error.message || 'Failed to delete passkey';
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    let msg = 'Failed to delete passkey';
+    try {
+      msg = JSON.parse(errText).message || msg;
+    } catch {
+      // non-JSON error body; keep the default message
+    }
     addLog(`[AuthService] Failed to delete passkey: ${msg}`, 'ERROR');
     throw new Error(msg);
   }

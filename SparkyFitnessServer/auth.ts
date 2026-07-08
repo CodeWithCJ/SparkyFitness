@@ -225,14 +225,13 @@ const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // Update session every 24 hours
-    // Disable the "fresh session" requirement. Better Auth defaults freshAge to
-    // 24h, and the passkey plugin's generate-register-options is gated on it via
-    // freshSessionMiddleware — so on our long-lived (30-day) mobile sessions,
-    // any user adding a passkey >24h after signing in would hit a 403 (issue
-    // surfaced in review). Passkey registration is already protected by a valid
-    // session token plus the in-browser biometric ceremony, so the extra
-    // freshness gate only breaks the flow without adding meaningful protection.
-    freshAge: 0,
+    // freshAge keeps Better Auth's default 24h "fresh session" requirement.
+    // Passkey registration (generate-register-options) is gated on it via
+    // freshSessionMiddleware — planting a new login credential should require a
+    // recent login. The mobile app satisfies this by minting a short-lived,
+    // single-use registration ticket from a fresh session (re-authenticating
+    // via ReauthModal when the session is stale). See
+    // routes/auth/authCoreRoutes.ts (web-login/register-ticket).
     cookieCache: {
       enabled: false, // Disabled to prevent stale data after manual DB updates
     },

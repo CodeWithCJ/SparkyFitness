@@ -99,7 +99,8 @@ BEGIN
     'pregnancy_checklist_state',
     'health_appointments',
     'user_custom_moods',
-    'user_mood_display_preferences'
+    'user_mood_display_preferences',
+    'passkey_registration_tickets'
   ]::text[])
   LOOP
     EXECUTE 'ALTER TABLE public.' || quote_ident(table_name) || ' ENABLE ROW LEVEL SECURITY;';

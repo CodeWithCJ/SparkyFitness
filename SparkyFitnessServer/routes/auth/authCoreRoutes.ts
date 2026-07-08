@@ -7,6 +7,11 @@ import oidcProviderRepository from '../../models/oidcProviderRepository.js';
 import userRepository from '../../models/userRepository.js';
 import authModule from '../../auth.js';
 import { fromNodeHeaders } from 'better-auth/node';
+import { bridgeBearerAuthHeader } from '../../utils/bearerAuthBridge.js';
+import {
+  mintRegistrationTicket,
+  redeemRegistrationTicket,
+} from '../../services/passkeyTicketService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -195,6 +200,152 @@ router.get('/web-login/passkey', (req, res) => {
 router.get('/web-login/register-passkey', (req, res) => {
   res.sendFile(path.join(__dirname, 'templates', 'passkey-register.html'));
 });
+
+// Per-IP rate limiter factory (sliding fixed window), mirroring mfaFactorsRateLimit.
+function makeIpRateLimit(max: number, windowMs: number) {
+  const hits = new Map<string, { start: number; count: number }>();
+  let lastSweepAt = 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (req: any, res: any, next: any) => {
+    const ip = req.ip;
+    const now = Date.now();
+    if (hits.size > 0 && now - lastSweepAt >= windowMs) {
+      for (const [k, e] of hits) if (now - e.start >= windowMs) hits.delete(k);
+      lastSweepAt = now;
+    }
+    const entry = hits.get(ip);
+    if (!entry || now - entry.start >= windowMs) {
+      hits.set(ip, { start: now, count: 1 });
+      return next();
+    }
+    if (entry.count < max) {
+      entry.count++;
+      return next();
+    }
+    const retryAfter = Math.ceil((entry.start + windowMs - now) / 1000);
+    res.set('X-Retry-After', String(retryAfter));
+    return res
+      .status(429)
+      .json({ message: 'Too many requests. Please try again later.' });
+  };
+}
+const registerTicketRateLimit = makeIpRateLimit(10, 60 * 1000);
+const redeemTicketRateLimit = makeIpRateLimit(20, 60 * 1000);
+
+/**
+ * @swagger
+ * /auth/web-login/register-ticket:
+ *   post:
+ *     summary: Mint a single-use, short-lived passkey registration ticket
+ *     description: >
+ *       Authenticated with the caller's Bearer session token. Requires a fresh
+ *       session (recent login); returns 403 SESSION_NOT_FRESH otherwise so the
+ *       client can re-authenticate. The returned ticket is handed to the browser
+ *       registration page so the raw session token never appears in a URL.
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Ticket minted
+ *       401:
+ *         description: Missing or invalid session
+ *       403:
+ *         description: Session not fresh; re-authentication required
+ */
+router.post(
+  '/web-login/register-ticket',
+  registerTicketRateLimit,
+  async (req, res) => {
+    try {
+      const authz = req.headers.authorization;
+      const rawToken =
+        typeof authz === 'string' && authz.startsWith('Bearer ')
+          ? authz.split(' ')[1]
+          : null;
+      if (!rawToken) {
+        return res.status(401).json({ message: 'Authentication required.' });
+      }
+
+      const { auth } = authModule;
+      // Convert the Bearer session token into the cookie getSession expects.
+      await bridgeBearerAuthHeader(req);
+      const session = await auth.api.getSession({
+        headers: fromNodeHeaders(req.headers),
+      });
+      if (!session || !session.session || !session.user) {
+        return res.status(401).json({ message: 'Invalid or expired session.' });
+      }
+
+      // Freshness gate: planting a new login credential requires a recent login
+      // (Better Auth default freshAge = 24h).
+      const freshAge = auth.options.session?.freshAge ?? 60 * 60 * 24;
+      if (freshAge > 0) {
+        const lastUpdated = new Date(
+          session.session.updatedAt ?? session.session.createdAt
+        ).getTime();
+        if (Date.now() - lastUpdated >= freshAge * 1000) {
+          return res.status(403).json({
+            code: 'SESSION_NOT_FRESH',
+            message: 'Please re-authenticate to add a passkey.',
+          });
+        }
+      }
+
+      const ticket = await mintRegistrationTicket(session.user.id, rawToken);
+      return res.json({ ticket });
+    } catch (err) {
+      log('error', `[WEB LOGIN] register-ticket error: ${err}`);
+      return res
+        .status(500)
+        .json({ message: 'Failed to create registration ticket.' });
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /auth/web-login/redeem-ticket:
+ *   post:
+ *     summary: Redeem a single-use passkey registration ticket
+ *     description: >
+ *       Public (the ticket is the credential) and rate-limited. Returns the
+ *       session token in the JSON body exactly once; the ticket is then consumed.
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Session token returned
+ *       400:
+ *         description: Invalid, used, or expired ticket
+ */
+router.post(
+  '/web-login/redeem-ticket',
+  redeemTicketRateLimit,
+  async (req, res) => {
+    try {
+      const ticket =
+        typeof req.body?.ticket === 'string' ? req.body.ticket : '';
+      if (!ticket || ticket.length > 512) {
+        return res.status(400).json({
+          code: 'INVALID_TICKET',
+          message: 'Invalid registration ticket.',
+        });
+      }
+      const result = await redeemRegistrationTicket(ticket);
+      if (!result) {
+        return res.status(400).json({
+          code: 'INVALID_TICKET',
+          message:
+            'This registration link has expired. Please try again from the app.',
+        });
+      }
+      return res.json({ token: result.sessionToken });
+    } catch (err) {
+      log('error', `[WEB LOGIN] redeem-ticket error: ${err}`);
+      return res
+        .status(500)
+        .json({ message: 'Failed to redeem registration ticket.' });
+    }
+  }
+);
 
 router.get('/web-login/callback', async (req, res) => {
   const { auth } = authModule;

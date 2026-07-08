@@ -106,7 +106,7 @@
       const hashParams = new URLSearchParams(
         window.location.hash.replace(/^#/, '')
       );
-      const sessionToken = hashParams.get('token');
+      const ticket = hashParams.get('ticket');
       const passkeyName = hashParams.get('name') || 'Mobile Device';
 
       async function doRegister() {
@@ -123,6 +123,23 @@
         desc.innerText = 'Please complete the biometric registration prompt.';
 
         try {
+          // 0. Redeem the single-use ticket for the session token. The token is
+          // returned in the POST response body, so it never appears in any URL
+          // (and can't leak into access/proxy logs or history).
+          const redeemRes = await fetch('/api/auth/web-login/redeem-ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket: ticket }),
+          });
+          if (!redeemRes.ok) {
+            const redeemErr = await redeemRes.json().catch(() => ({}));
+            throw new Error(
+              redeemErr.message ||
+                'This registration link has expired. Please try again from the app.'
+            );
+          }
+          const { token: sessionToken } = await redeemRes.json();
+
           // 1. Fetch registration options from the server
           const optionsRes = await fetch(
             '/api/auth/passkey/generate-register-options?name=' +

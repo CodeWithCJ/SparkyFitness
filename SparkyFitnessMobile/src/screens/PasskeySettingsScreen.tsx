@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -25,8 +25,11 @@ import {
   getPasskeys,
   addPasskey,
   deletePasskey,
+  LoginError,
   type MobilePasskeyRecord,
 } from '../services/api/authService';
+import ReauthModal from '../components/ReauthModal';
+import { getActiveServerConfig } from '../services/storage';
 
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -56,6 +59,8 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   // New Passkey Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [newPasskeyName, setNewPasskeyName] = useState('');
+  const [reauthVisible, setReauthVisible] = useState(false);
+  const pendingPasskeyName = useRef<string | null>(null);
 
   const fetchList = React.useCallback(async () => {
     if (!activeConfig || activeConfig.authType !== 'session' || !activeConfig.sessionToken) {
@@ -84,6 +89,34 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
     fetchList();
   }, [fetchList]);
 
+  const registerPasskeyWithConfig = async (
+    url: string,
+    token: string,
+    name: string
+  ) => {
+    await addPasskey(url, token, name);
+    Toast.show({
+      type: 'success',
+      text1: 'Success',
+      text2: 'Passkey registered successfully!',
+    });
+    setNewPasskeyName('');
+    await fetchList();
+  };
+
+  const reportAddError = (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('cancelled') || msg.includes('cancel')) {
+      Toast.show({
+        type: 'info',
+        text1: 'Cancelled',
+        text2: 'Passkey registration was cancelled.',
+      });
+    } else {
+      Alert.alert('Registration Failed', msg);
+    }
+  };
+
   const handleAddPasskey = async () => {
     if (!activeConfig || !activeConfig.sessionToken) return;
     const name = newPasskeyName.trim();
@@ -96,26 +129,41 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
     setActionLoading(true);
 
     try {
-      await addPasskey(activeConfig.url, activeConfig.sessionToken, name);
-      Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Passkey registered successfully!',
-      });
-      setNewPasskeyName('');
-      await fetchList();
+      await registerPasskeyWithConfig(
+        activeConfig.url,
+        activeConfig.sessionToken,
+        name
+      );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('cancelled') || msg.includes('cancel')) {
-        // Silent cancel or simple Toast
-        Toast.show({
-          type: 'info',
-          text1: 'Cancelled',
-          text2: 'Passkey registration was cancelled.',
-        });
-      } else {
-        Alert.alert('Registration Failed', msg);
+      // Adding a credential requires a fresh session; on a stale one the server
+      // returns SESSION_NOT_FRESH — re-authenticate, then retry once.
+      if (err instanceof LoginError && err.message === 'SESSION_NOT_FRESH') {
+        pendingPasskeyName.current = name;
+        setReauthVisible(true);
+        return;
       }
+      reportAddError(err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReauthSuccess = async () => {
+    setReauthVisible(false);
+    const name = pendingPasskeyName.current;
+    pendingPasskeyName.current = null;
+    if (!name) return;
+
+    setActionLoading(true);
+    try {
+      // Re-read the config so we use the freshly-minted session token.
+      const fresh = await getActiveServerConfig();
+      if (!fresh || !fresh.sessionToken) {
+        throw new Error('No active session. Please sign in again.');
+      }
+      await registerPasskeyWithConfig(fresh.url, fresh.sessionToken, name);
+    } catch (err) {
+      reportAddError(err);
     } finally {
       setActionLoading(false);
     }
@@ -323,6 +371,16 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ReauthModal
+        visible={reauthVisible}
+        expiredConfigId={activeConfig?.id ?? null}
+        onLoginSuccess={handleReauthSuccess}
+        onDismiss={() => {
+          pendingPasskeyName.current = null;
+          setReauthVisible(false);
+        }}
+      />
     </View>
   );
 };

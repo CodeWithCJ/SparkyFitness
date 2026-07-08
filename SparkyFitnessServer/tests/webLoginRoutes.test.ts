@@ -23,6 +23,22 @@ vi.mock('../auth.js', () => {
   };
 });
 
+// bearerAuthBridge is a no-op in tests (it needs real Better Auth secrets).
+vi.mock('../utils/bearerAuthBridge.js', () => ({
+  bridgeBearerAuthHeader: vi.fn().mockResolvedValue({ apiKeyToken: null }),
+}));
+
+// The ticket service is mocked so route logic (auth, freshness, response shape)
+// can be tested without a database.
+const mintMock = vi.fn();
+const redeemMock = vi.fn();
+vi.mock('../services/passkeyTicketService.js', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mintRegistrationTicket: (...args: any[]) => mintMock(...args),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  redeemRegistrationTicket: (...args: any[]) => redeemMock(...args),
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let router: any;
 
@@ -33,6 +49,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   getSessionMock.mockReset();
+  mintMock.mockReset();
+  redeemMock.mockReset();
 });
 
 function getHandler(routePath: string) {
@@ -71,6 +89,14 @@ function makeRes() {
     },
     send(b: unknown) {
       res.sendBody = b;
+      return res;
+    },
+    jsonBody: null,
+    json(b: unknown) {
+      res.jsonBody = b;
+      return res;
+    },
+    set() {
       return res;
     },
   };
@@ -132,5 +158,89 @@ describe('GET /web-login/callback', () => {
     const res = makeRes();
     await getHandler('/web-login/callback')({ headers: {} }, res);
     expect(res.statusCode).toBe(500);
+  });
+});
+
+describe('POST /web-login/register-ticket', () => {
+  it('returns 401 when no Bearer token is present', async () => {
+    const res = makeRes();
+    await getHandler('/web-login/register-ticket')({ headers: {} }, res);
+    expect(res.statusCode).toBe(401);
+    expect(mintMock).not.toHaveBeenCalled();
+  });
+
+  it('mints a ticket for a fresh session and returns it', async () => {
+    getSessionMock.mockResolvedValue({
+      session: { updatedAt: new Date() }, // fresh
+      user: { id: 'user-1' },
+    });
+    mintMock.mockResolvedValue('opaque-ticket-code');
+    const res = makeRes();
+    await getHandler('/web-login/register-ticket')(
+      { headers: { authorization: 'Bearer tok-abc' } },
+      res
+    );
+    expect(mintMock).toHaveBeenCalledWith('user-1', 'tok-abc');
+    expect(res.jsonBody).toEqual({ ticket: 'opaque-ticket-code' });
+  });
+
+  it('returns 403 SESSION_NOT_FRESH for a stale session', async () => {
+    getSessionMock.mockResolvedValue({
+      session: { updatedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) }, // 25h old
+      user: { id: 'user-1' },
+    });
+    const res = makeRes();
+    await getHandler('/web-login/register-ticket')(
+      { headers: { authorization: 'Bearer tok-abc' } },
+      res
+    );
+    expect(res.statusCode).toBe(403);
+    expect((res.jsonBody as { code: string }).code).toBe('SESSION_NOT_FRESH');
+    expect(mintMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when the session cannot be resolved', async () => {
+    getSessionMock.mockResolvedValue(null);
+    const res = makeRes();
+    await getHandler('/web-login/register-ticket')(
+      { headers: { authorization: 'Bearer tok-abc' } },
+      res
+    );
+    expect(res.statusCode).toBe(401);
+    expect(mintMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /web-login/redeem-ticket', () => {
+  it('returns the session token for a valid ticket', async () => {
+    redeemMock.mockResolvedValue({ sessionToken: 'sess-tok-xyz' });
+    const res = makeRes();
+    await getHandler('/web-login/redeem-ticket')(
+      { headers: {}, body: { ticket: 'good-ticket' } },
+      res
+    );
+    expect(redeemMock).toHaveBeenCalledWith('good-ticket');
+    expect(res.jsonBody).toEqual({ token: 'sess-tok-xyz' });
+  });
+
+  it('returns 400 INVALID_TICKET for an invalid/used/expired ticket', async () => {
+    redeemMock.mockResolvedValue(null);
+    const res = makeRes();
+    await getHandler('/web-login/redeem-ticket')(
+      { headers: {}, body: { ticket: 'bad-ticket' } },
+      res
+    );
+    expect(res.statusCode).toBe(400);
+    expect((res.jsonBody as { code: string }).code).toBe('INVALID_TICKET');
+  });
+
+  it('returns 400 when no ticket is supplied', async () => {
+    const res = makeRes();
+    await getHandler('/web-login/redeem-ticket')(
+      { headers: {}, body: {} },
+      res
+    );
+    expect(res.statusCode).toBe(400);
+    expect(redeemMock).not.toHaveBeenCalled();
   });
 });
