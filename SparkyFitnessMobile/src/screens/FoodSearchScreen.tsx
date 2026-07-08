@@ -77,8 +77,7 @@ type ResultRow =
   | { type: 'show-all'; provider: ExternalProvider; count: number }
   | { type: 'show-all-local'; section: 'foods' | 'meals'; count: number }
   | { type: 'provider-skeleton' }
-  | { type: 'empty-local' }
-  | { type: 'local-loading' };
+  | { type: 'local-status'; pending: boolean };
 
 type ResultSection = {
   key: string;
@@ -105,13 +104,6 @@ const ALL_PROVIDERS_VALUE = '__all__';
 // How many local rows to show per section before the "Show all" expander, while
 // online results are also on screen.
 const LOCAL_RESULT_CAP = 6;
-
-// Minimum height for the local-loading/empty-local status row, matched to the
-// empty-state text's natural height at standard font scale. A shared minHeight
-// (not a hard height) keeps the spinner and empty-text states the same size in
-// the common case, avoiding a scroll shift, while still letting the text grow
-// past it if accessibility font scaling needs more room.
-const LOCAL_STATUS_ROW_MIN_HEIGHT = 72;
 
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
@@ -589,7 +581,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         key: 'local-status',
         kind: 'status',
         title: null,
-        data: [localPending ? { type: 'local-loading' } : { type: 'empty-local' }],
+        data: [{ type: 'local-status', pending: localPending }],
       });
     }
 
@@ -850,26 +842,22 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         return renderLocalShowAllRow(item.section, item.count);
       case 'provider-skeleton':
         return renderProviderSkeleton();
-      case 'local-loading':
+      case 'local-status':
         return (
-          <View
-            className="px-4 py-6 items-center justify-center"
-            style={{ minHeight: LOCAL_STATUS_ROW_MIN_HEIGHT }}
-          >
-            <ActivityIndicator size="small" color={accentColor} />
-          </View>
-        );
-      case 'empty-local':
-        return (
-          <View
-            className="px-4 py-6 items-center justify-center"
-            style={{ minHeight: LOCAL_STATUS_ROW_MIN_HEIGHT }}
-          >
-            <Text className="text-text-secondary text-base text-center">
+          <View className="px-4 py-6 items-center justify-center">
+            <Text
+              className="text-text-secondary text-base text-center"
+              style={{ opacity: item.pending ? 0 : 1 }}
+            >
               {isMealBuilderMode
                 ? 'No saved foods found'
                 : 'No saved foods or meals found'}
             </Text>
+            {item.pending ? (
+              <View className="absolute inset-0 items-center justify-center">
+                <ActivityIndicator size="small" color={accentColor} />
+              </View>
+            ) : null}
           </View>
         );
     }
