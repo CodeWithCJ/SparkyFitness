@@ -467,6 +467,9 @@ importers:
       expo-web-browser:
         specifier: ~56.0.5
         version: 56.0.5(expo@56.0.13)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))
+      ipaddr.js:
+        specifier: ^2.3.0
+        version: 2.3.0
       react:
         specifier: 19.2.3
         version: 19.2.3

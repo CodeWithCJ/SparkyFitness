@@ -69,6 +69,7 @@
     "expo-system-ui": "~56.0.5",
     "expo-task-manager": "~56.0.20",
     "expo-web-browser": "~56.0.5",
+    "ipaddr.js": "^2.3.0",
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-bottom-tabs": "^1.3.1",

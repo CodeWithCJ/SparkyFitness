@@ -1,3 +1,4 @@
+import ipaddr from 'ipaddr.js';
 import { Platform } from 'react-native';
 
 /** Trims whitespace and any trailing slashes from a server URL. */
@@ -11,22 +12,26 @@ const extractHost = (url: string): string => {
   const withoutScheme = url.trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
   const authority = withoutScheme.split('/')[0].split('?')[0].split('#')[0];
   const hostPort = authority.split('@').pop() ?? '';
-  // IPv6 literal, e.g. [::1]:3000
+  // IPv6 literal, e.g. [::1]:3000 → ::1
   const ipv6 = hostPort.match(/^\[([^\]]+)\]/);
   if (ipv6) return ipv6[1].toLowerCase();
   return hostPort.split(':')[0].toLowerCase().replace(/\.$/, '');
 };
 
+// Same private/local ranges the server classifies in utils/corsHelper.ts.
+const PRIVATE_IP_RANGES = ['loopback', 'private', 'linkLocal', 'uniqueLocal'];
+
 /**
- * True when the URL points at a loopback address, an RFC-1918 private range, a
- * link-local address, or a local-only TLD (.local/.lan/.internal/.home.arpa).
- * These are LAN / self-hosting targets where plain HTTP is expected during
- * local development.
+ * True when the URL points at a loopback/RFC-1918/link-local/unique-local IP
+ * (classified with ipaddr.js, matching the server's `isPrivateNetworkAddress`)
+ * or a local-only TLD (.local/.lan/.internal/.home.arpa). These are LAN /
+ * self-hosting targets where plain HTTP is expected during local development.
  */
 export const isPrivateOrLocalHost = (url: string): boolean => {
   const host = extractHost(url);
   if (!host) return false;
 
+  // Local-only hostnames / mDNS TLDs — ipaddr.js only classifies IP literals.
   if (host === 'localhost' || host.endsWith('.localhost')) return true;
   if (
     host.endsWith('.local') ||
@@ -36,17 +41,20 @@ export const isPrivateOrLocalHost = (url: string): boolean => {
   ) {
     return true;
   }
-  if (host === '::1' || host.startsWith('fc') || host.startsWith('fd')) return true; // IPv6 loopback + ULA
 
-  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (ipv4) {
-    const a = Number(ipv4[1]);
-    const b = Number(ipv4[2]);
-    if (a === 127) return true; // 127.0.0.0/8 loopback
-    if (a === 10) return true; // 10.0.0.0/8
-    if (a === 192 && b === 168) return true; // 192.168.0.0/16
-    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
-    if (a === 169 && b === 254) return true; // 169.254.0.0/16 link-local
+  // IP literals: classify the range with ipaddr.js.
+  try {
+    const addr = ipaddr.parse(host);
+    if (PRIVATE_IP_RANGES.includes(addr.range())) return true;
+    // IPv4-mapped IPv6 (e.g. ::ffff:192.168.1.1) → check the embedded IPv4.
+    if (addr.kind() === 'ipv6') {
+      const v6 = addr as ipaddr.IPv6;
+      if (v6.isIPv4MappedAddress() && PRIVATE_IP_RANGES.includes(v6.toIPv4Address().range())) {
+        return true;
+      }
+    }
+  } catch {
+    // Not an IP literal (public domain, etc.) → not private.
   }
   return false;
 };
