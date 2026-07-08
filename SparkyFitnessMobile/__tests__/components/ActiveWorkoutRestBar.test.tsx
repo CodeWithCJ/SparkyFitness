@@ -31,6 +31,8 @@ function renderBar(
     label: 'Incline DB Press · Set 3',
     onAdjust: jest.fn(),
     onSkip: jest.fn(),
+    onPause: jest.fn(),
+    onResume: jest.fn(),
     ...overrides,
   };
   const utils = render(
@@ -74,6 +76,11 @@ describe('ActiveWorkoutRestBar', () => {
     expect(getByText('Incline DB Press · Set 3')).toBeTruthy();
   });
 
+  it('renders the target line when a next-set target is provided', () => {
+    const { getByText } = renderBar({ nextSetText: '135 lbs × 8' });
+    expect(getByText('Target 135 lbs × 8')).toBeTruthy();
+  });
+
   it('sets the progress fill width to the remaining fraction', () => {
     const { getByTestId } = renderBar({ remainingMs: 45_000, durationSec: 90 });
     expect(fillStyle(getByTestId).width).toBe('50%');
@@ -112,5 +119,19 @@ describe('ActiveWorkoutRestBar', () => {
     const { getByLabelText, props } = renderBar();
     fireEvent.press(getByLabelText('Skip rest'));
     expect(props.onSkip).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires onPause from the pause control while resting', () => {
+    const { getByLabelText, props } = renderBar({ paused: false });
+    fireEvent.press(getByLabelText('Pause rest'));
+    expect(props.onPause).toHaveBeenCalledTimes(1);
+    expect(props.onResume).not.toHaveBeenCalled();
+  });
+
+  it('fires onResume from the pause control while paused', () => {
+    const { getByLabelText, props } = renderBar({ paused: true });
+    fireEvent.press(getByLabelText('Resume rest'));
+    expect(props.onResume).toHaveBeenCalledTimes(1);
+    expect(props.onPause).not.toHaveBeenCalled();
   });
 });

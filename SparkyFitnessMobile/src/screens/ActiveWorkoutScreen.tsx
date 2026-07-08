@@ -974,6 +974,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           nextSetText={restNextSetText}
           onAdjust={(deltaSec) => useActiveWorkoutStore.getState().adjustRest(deltaSec)}
           onSkip={() => useActiveWorkoutStore.getState().dismissRest()}
+          onPause={() => useActiveWorkoutStore.getState().pauseRest()}
+          onResume={() => useActiveWorkoutStore.getState().resumeRest()}
         />
       )}
 

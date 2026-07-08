@@ -404,7 +404,7 @@ function ActiveWorkoutExerciseCard({
           accessibilityRole="button"
           accessibilityLabel={`Collapse ${name}`}
         >
-          <Text numberOfLines={1} className="text-base font-semibold text-text-primary">
+          <Text numberOfLines={2} className="text-base font-semibold text-text-primary">
             {name}
           </Text>
         </Pressable>
