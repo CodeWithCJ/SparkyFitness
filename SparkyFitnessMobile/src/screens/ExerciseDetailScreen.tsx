@@ -13,6 +13,8 @@ import {
   useProfile,
   useServerConnection,
 } from '../hooks';
+import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
+import { buildSingleExerciseStartPayload } from '../utils/workoutSession';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -62,6 +64,11 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
       navigation.goBack();
     },
   });
+
+  const { startLiveWorkout, isStarting } = useStartLiveWorkout(navigation);
+  const handleStartWorkout = () => {
+    void startLiveWorkout({ exercises: buildSingleExerciseStartPayload({ id: exercise.id }) });
+  };
 
   const imageSources = useMemo(() => {
     return (exercise.images ?? [])
@@ -358,8 +365,14 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
           </TouchableOpacity>
         ) : null}
 
-        <Button variant="primary" onPress={handleLog}>
-          <Text className="text-white text-base font-semibold">Log Exercise</Text>
+        <Button variant="primary" onPress={handleStartWorkout} disabled={isStarting}>
+          <Text className="text-white text-base font-semibold">
+            {isStarting ? 'Starting…' : 'Start Workout'}
+          </Text>
+        </Button>
+
+        <Button variant="ghost" onPress={handleLog}>
+          <Text className="text-accent-primary text-base font-semibold">Log Exercise</Text>
         </Button>
 
         {canManageExercise && (

@@ -574,6 +574,32 @@ function cancelCurrentRestNotification(rest: Rest): void {
 }
 
 /**
+ * Build the rest-complete notification's title/body from the upcoming set, so
+ * the alert says what's next (exercise, set N of M, rep target) instead of just
+ * the exercise name.
+ */
+function buildRestNotificationContent(
+  session: PresetSessionResponse | null,
+  setId: string | null,
+  fallbackExerciseName: string,
+): { title: string; body: string } {
+  if (session != null && setId != null) {
+    for (const exercise of session.exercises) {
+      const set = exercise.sets.find((s) => String(s.id) === setId);
+      if (set != null) {
+        const name = exercise.exercise_snapshot?.name ?? fallbackExerciseName;
+        let body = `${name} · Set ${set.set_number} of ${exercise.sets.length}`;
+        if (set.reps != null) {
+          body += ` · ${set.reps} rep${set.reps === 1 ? '' : 's'} target`;
+        }
+        return { title: 'Rest complete — next set up', body };
+      }
+    }
+  }
+  return { title: 'Rest complete', body: fallbackExerciseName };
+}
+
+/**
  * Schedule the rest-complete notification for the rest identified by `token`,
  * writing the notification id back into state only if that exact rest is still
  * running by the time the async schedule resolves. Otherwise (paused, cleared,
@@ -583,8 +609,9 @@ function scheduleGuardedRestNotification(
   exerciseName: string,
   seconds: number,
   token: number,
+  content?: { title?: string; body?: string },
 ): void {
-  void scheduleRestNotification(exerciseName, seconds).then((notifId) => {
+  void scheduleRestNotification(exerciseName, seconds, content).then((notifId) => {
     if (!notifId) return;
     const current = useActiveWorkoutStore.getState().rest;
     if (
@@ -606,7 +633,11 @@ function scheduleGuardedRestNotification(
  * notification and wiring up the stale-resolution guard on the returned
  * promise. Returns the new Rest value the caller should commit to state.
  */
-function startRestForStep(steps: WorkoutStep[], setId: string): Rest {
+function startRestForStep(
+  steps: WorkoutStep[],
+  setId: string,
+  session: PresetSessionResponse | null,
+): Rest {
   const step = steps.find((s) => s.setId === setId);
   const durationSec = step?.restSec ?? DEFAULT_REST_SEC;
   const token = ++restInstanceCounter;
@@ -621,7 +652,9 @@ function startRestForStep(steps: WorkoutStep[], setId: string): Rest {
     instanceToken: token,
   };
 
-  scheduleGuardedRestNotification(step?.exerciseName ?? 'Rest', durationSec, token);
+  const exerciseName = step?.exerciseName ?? 'Rest';
+  const content = buildRestNotificationContent(session, setId, exerciseName);
+  scheduleGuardedRestNotification(exerciseName, durationSec, token, content);
 
   return rest;
 }
@@ -810,7 +843,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           activeSetId: nextStep.setId,
           // A zero-rest step (superset round interior, or an explicit
           // rest_time of 0) advances straight to ready — no timer flash.
-          rest: nextStep.restSec > 0 ? startRestForStep(state.steps, nextStep.setId) : READY_REST,
+          rest:
+            nextStep.restSec > 0
+              ? startRestForStep(state.steps, nextStep.setId, state.session)
+              : READY_REST,
           sessionRevision: state.sessionRevision + 1,
           hasUnsavedChanges: true,
         });
@@ -893,7 +929,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const step = activeSetId != null ? steps.find((s) => s.setId === activeSetId) : null;
         const exerciseName = step?.exerciseName ?? 'Rest';
         const seconds = Math.max(1, Math.ceil(remainingMs / 1000));
-        scheduleGuardedRestNotification(exerciseName, seconds, token);
+        const content = buildRestNotificationContent(state.session, activeSetId, exerciseName);
+        scheduleGuardedRestNotification(exerciseName, seconds, token, content);
       },
 
       adjustRest: (deltaSec) => {
@@ -924,8 +961,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           });
 
           const step = activeSetId != null ? steps.find((s) => s.setId === activeSetId) : null;
+          const exerciseName = step?.exerciseName ?? 'Rest';
           const seconds = Math.max(1, Math.ceil((newEndsAt - Date.now()) / 1000));
-          scheduleGuardedRestNotification(step?.exerciseName ?? 'Rest', seconds, token);
+          const content = buildRestNotificationContent(state.session, activeSetId, exerciseName);
+          scheduleGuardedRestNotification(exerciseName, seconds, token, content);
           return;
         }
 

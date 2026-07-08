@@ -83,6 +83,8 @@ interface ActiveWorkoutExerciseCardProps {
   prSetIds?: PrSetMap;
   /** Hide the rest chip entirely (e.g. imported workouts without rest data). */
   showRestChip?: boolean;
+  /** Tapping the exercise thumbnail opens its library detail. */
+  onPressThumb?: (entryId: string) => void;
   onToggleExpanded: (entryId: string) => void;
   onPressRestChip?: (entryId: string, currentSec: number | null) => void;
   onPressMetricHeader: (anchor: AnchorRect) => void;
@@ -153,6 +155,7 @@ function ActiveWorkoutExerciseCard({
   excludePresetEntryId,
   prSetIds,
   showRestChip = true,
+  onPressThumb,
   onToggleExpanded,
   onPressRestChip,
   onPressMetricHeader,
@@ -304,14 +307,11 @@ function ActiveWorkoutExerciseCard({
         accessibilityLabel={`Expand ${name}`}
         className="flex-row items-center gap-3 px-4 py-3.5 border-b border-border-subtle"
       >
-        {isDone ? (
-          <Icon name="checkmark" size={16} color={successColor} weight="bold" />
-        ) : (
-          <View
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: textMuted, opacity: 0.6 }}
-          />
-        )}
+        <View className="w-4 items-center">
+          {isDone && (
+            <Icon name="checkmark" size={16} color={successColor} weight="bold" />
+          )}
+        </View>
         <Text
           numberOfLines={1}
           className={`flex-1 text-base ${isDone ? 'text-text-secondary' : 'text-text-primary'}`}
@@ -331,10 +331,27 @@ function ActiveWorkoutExerciseCard({
   return (
     <View className="bg-surface rounded-2xl px-3 pt-3 pb-2 mb-2">
       <View className="flex-row items-center gap-3">
-        <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
-        <Text numberOfLines={1} className="flex-1 text-base font-semibold text-text-primary">
-          {name}
-        </Text>
+        {onPressThumb ? (
+          <Pressable
+            onPress={() => onPressThumb(exercise.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${name} details`}
+          >
+            <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
+          </Pressable>
+        ) : (
+          <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
+        )}
+        <Pressable
+          onPress={() => onToggleExpanded(exercise.id)}
+          className="flex-1"
+          accessibilityRole="button"
+          accessibilityLabel={`Collapse ${name}`}
+        >
+          <Text numberOfLines={1} className="text-base font-semibold text-text-primary">
+            {name}
+          </Text>
+        </Pressable>
         {!readOnly && (
           <View ref={overflowAnchorRef} collapsable={false}>
             <Pressable

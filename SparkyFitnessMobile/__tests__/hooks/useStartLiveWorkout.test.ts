@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import type { PresetSessionResponse } from '@workspace/shared';
@@ -10,6 +10,7 @@ import {
 import { createWorkout } from '../../src/services/api/exerciseApi';
 import { invalidateExerciseCache } from '../../src/hooks/invalidateExerciseCache';
 import { ensureNotificationPermission } from '../../src/services/notifications';
+import { flushActiveWorkoutBeforeClear } from '../../src/hooks/useActiveWorkoutAutosave';
 import { serverConnectionQueryKey } from '../../src/hooks/queryKeys';
 import { defaultWorkoutName } from '../../src/hooks/useWorkoutForm';
 import { getTodayDate } from '../../src/utils/dateUtils';
@@ -31,6 +32,10 @@ jest.mock('../../src/services/notifications', () => ({
   fireRestCompleteHaptic: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({
+  flushActiveWorkoutBeforeClear: jest.fn(async () => true),
+}));
+
 const mockCreateWorkout = createWorkout as jest.MockedFunction<typeof createWorkout>;
 const mockInvalidate = invalidateExerciseCache as jest.MockedFunction<
   typeof invalidateExerciseCache
@@ -39,6 +44,9 @@ const mockEnsurePermission = ensureNotificationPermission as jest.MockedFunction
   typeof ensureNotificationPermission
 >;
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
+const mockFlushBeforeClear = flushActiveWorkoutBeforeClear as jest.MockedFunction<
+  typeof flushActiveWorkoutBeforeClear
+>;
 
 const EXERCISES = buildSingleExerciseStartPayload({ id: 'ex-1' });
 
@@ -186,10 +194,38 @@ describe('useStartLiveWorkout', () => {
     });
 
     expect(alertSpy).toHaveBeenCalledWith(
-      'Another workout is in progress',
-      'Finish or clear it first.',
+      'Replace current workout?',
+      expect.stringContaining('workout in progress'),
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'Clear & Start' }),
+      ]),
     );
+    // Without confirming the prompt, nothing is created.
     expect(mockCreateWorkout).not.toHaveBeenCalled();
+  });
+
+  it('clears the in-progress workout and starts the new one when replace is confirmed', async () => {
+    const { result, navigation } = setup();
+    act(() => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+    });
+
+    // Simulate tapping the destructive "Clear & Start" button.
+    alertSpy.mockImplementation((_title, _message, buttons) => {
+      const confirm = (buttons as { text: string; onPress?: () => void }[] | undefined)?.find(
+        (b) => b.text === 'Clear & Start',
+      );
+      confirm?.onPress?.();
+      return undefined as never;
+    });
+
+    await act(async () => {
+      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES });
+    });
+
+    await waitFor(() => expect(mockCreateWorkout).toHaveBeenCalled());
+    expect(mockFlushBeforeClear).toHaveBeenCalled();
+    expect(navigation.replace).toHaveBeenCalledWith('ActiveWorkout');
   });
 
   it('toasts and does not create for an empty exercises payload', async () => {

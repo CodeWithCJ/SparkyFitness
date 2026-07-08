@@ -520,13 +520,21 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View className="mb-4">
           {isEditing ? (
             <FadeView key="edit-title">
-              <FormInput
-                value={formState.name}
-                onChangeText={setFormName}
-                placeholder="Workout Name"
-                className="text-xl font-bold text-text-primary mb-1"
-                style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 0, fontSize: 20 }}
-              />
+              {/* Accent underline + pencil so the name reads as an editable
+                  field rather than static title text. */}
+              <View
+                className="flex-row items-center mb-1"
+                style={{ borderBottomWidth: 1, borderBottomColor: accentPrimary }}
+              >
+                <FormInput
+                  value={formState.name}
+                  onChangeText={setFormName}
+                  placeholder="Workout Name"
+                  className="flex-1 text-xl font-bold text-text-primary"
+                  style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 4, fontSize: 20 }}
+                />
+                <Icon name="pencil" size={16} color={accentPrimary} />
+              </View>
             </FadeView>
           ) : !usesNativeHeader ? (
             <FadeView key="view-title">

@@ -24,6 +24,10 @@ jest.mock('../../src/hooks/useExerciseImageSource', () => ({
   useExerciseImageSource: jest.fn(() => ({ getImageSource: jest.fn(() => null) })),
 }));
 
+jest.mock('../../src/hooks/useStartLiveWorkout', () => ({
+  useStartLiveWorkout: jest.fn(() => ({ startLiveWorkout: jest.fn(), isStarting: false })),
+}));
+
 jest.mock('uniwind', () => ({
   useCSSVariable: (keys: string | string[]) =>
     Array.isArray(keys) ? keys.map(() => '#111827') : '#111827',

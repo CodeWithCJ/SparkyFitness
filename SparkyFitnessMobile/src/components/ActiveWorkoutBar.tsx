@@ -42,7 +42,7 @@ import { withAlpha } from '../utils/colors';
  */
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-const BAR_CONTENT_HEIGHT = 52;
+const BAR_CONTENT_HEIGHT = 60;
 const PROGRESS_BAR_BOTTOM_OFFSET = 1;
 const SLIDE_ANIMATION_DURATION_MS = 220;
 

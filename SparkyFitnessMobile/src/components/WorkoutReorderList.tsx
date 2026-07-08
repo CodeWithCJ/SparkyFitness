@@ -375,6 +375,9 @@ function WorkoutReorderList({
     if (!pendingReset.current) return;
     pendingReset.current = false;
     committing.value = false;
+    // Writing Reanimated shared values from an effect is the supported API; the
+    // compiler's immutability rule flags it as a mutation regardless.
+    // eslint-disable-next-line react-hooks/immutability
     activeIndex.value = -1;
     panY.value = 0;
   }, [items, committing, activeIndex, panY]);

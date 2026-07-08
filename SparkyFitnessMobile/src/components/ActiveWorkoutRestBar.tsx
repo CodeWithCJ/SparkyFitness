@@ -16,20 +16,23 @@ interface ActiveWorkoutRestBarProps {
   paused: boolean;
   /** What's up next, e.g. "Incline DB Press · Set 3". */
   label: string;
+  /** Target load for the on-deck set, e.g. "135 lbs × 8". Null hides the line. */
+  nextSetText?: string | null;
   onAdjust: (deltaSec: number) => void;
   onSkip: () => void;
 }
 
 /**
  * Bottom-docked rest bar, visible only while a rest timer exists (resting or
- * paused). A thin progress track on top, the big countdown on the left, the
- * on-deck set on the right, and −15s / +15s / Skip rest controls.
+ * paused). A thin progress track on top, the countdown on the left, the on-deck
+ * set + target on the right, and −15s / +15s / Skip rest controls.
  */
 function ActiveWorkoutRestBar({
   remainingMs,
   durationSec,
   paused,
   label,
+  nextSetText,
   onAdjust,
   onSkip,
 }: ActiveWorkoutRestBarProps) {
@@ -45,11 +48,11 @@ function ActiveWorkoutRestBar({
 
   return (
     <View
-      className="bg-surface border-t border-border-subtle px-4 pt-3"
-      style={{ paddingBottom: Math.max(insets.bottom, 10) }}
+      className="bg-surface border-t border-border-subtle px-4 pt-2"
+      style={{ paddingBottom: Math.max(insets.bottom, 8) }}
     >
       <View
-        className="h-1 rounded-full overflow-hidden mb-2.5"
+        className="h-1 rounded-full overflow-hidden mb-1.5"
         style={{ backgroundColor: trackColor }}
       >
         <View
@@ -62,9 +65,9 @@ function ActiveWorkoutRestBar({
         />
       </View>
 
-      <View className="flex-row items-center mb-2.5">
+      <View className="flex-row items-center gap-2">
         <Text
-          className="text-3xl font-bold"
+          className="text-2xl font-bold"
           style={{
             color: paused ? textMuted : accentPrimary,
             fontVariant: ['tabular-nums'],
@@ -72,20 +75,33 @@ function ActiveWorkoutRestBar({
         >
           {formatRestCountdown(remainingMs)}
         </Text>
-        <Text
-          numberOfLines={1}
-          className="flex-1 text-right text-sm font-medium text-text-primary ml-3"
-        >
-          {label}
-        </Text>
+        {label.length > 0 && (
+          <View className="flex-1 items-end">
+            <Text
+              numberOfLines={1}
+              className="text-sm font-medium text-text-primary"
+            >
+              {label}
+            </Text>
+            {nextSetText != null && nextSetText.length > 0 && (
+              <Text
+                numberOfLines={1}
+                className="text-xs text-text-secondary"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                Target {nextSetText}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
-      <View className="flex-row items-center gap-2">
+      <View className="flex-row items-center gap-2 mt-2">
         <Pressable
           onPress={() => onAdjust(-15)}
           accessibilityRole="button"
           accessibilityLabel="Shorten rest by 15 seconds"
-          className="rounded-full bg-raised px-4 py-2"
+          className="rounded-full bg-raised px-4 py-1.5"
         >
           <Text
             className="text-sm font-semibold text-text-primary"
@@ -98,7 +114,7 @@ function ActiveWorkoutRestBar({
           onPress={() => onAdjust(15)}
           accessibilityRole="button"
           accessibilityLabel="Extend rest by 15 seconds"
-          className="rounded-full bg-raised px-4 py-2"
+          className="rounded-full bg-raised px-4 py-1.5"
         >
           <Text
             className="text-sm font-semibold text-text-primary"
@@ -112,7 +128,7 @@ function ActiveWorkoutRestBar({
           onPress={onSkip}
           accessibilityRole="button"
           accessibilityLabel="Skip rest"
-          className="rounded-full px-4 py-2"
+          className="rounded-full px-4 py-1.5"
           style={{ backgroundColor: accentPrimary }}
         >
           <Text className="text-sm font-semibold text-white">Skip rest</Text>

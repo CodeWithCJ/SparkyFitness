@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { PresetSessionExerciseRequest } from '@workspace/shared';
 import { useCreateWorkout } from './useExerciseMutations';
+import { flushActiveWorkoutBeforeClear } from './useActiveWorkoutAutosave';
 import { serverConnectionQueryKey } from './queryKeys';
 import { defaultWorkoutName } from './useWorkoutForm';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
@@ -43,19 +44,11 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
   const inFlightRef = useRef(false);
   const [isStarting, setIsStarting] = useState(false);
 
-  const startLiveWorkout = useCallback(
+  // The actual create → seed store → navigate flow, run once the active-session
+  // guard has cleared. Split out so the "replace current workout?" prompt can
+  // clear the in-progress session and then call straight through.
+  const runStart = useCallback(
     async ({ name, exercises }: StartLiveWorkoutArgs) => {
-      if (!queryClient.getQueryData(serverConnectionQueryKey)) {
-        Alert.alert(
-          'No Server Connected',
-          'Configure your server connection in Settings to start a workout.',
-        );
-        return;
-      }
-      if (useActiveWorkoutStore.getState().sessionId !== null) {
-        Alert.alert('Another workout is in progress', 'Finish or clear it first.');
-        return;
-      }
       if (exercises.length === 0) {
         Toast.show({
           type: 'error',
@@ -90,7 +83,44 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         setIsStarting(false);
       }
     },
-    [queryClient, createSession, invalidateCache, navigation],
+    [createSession, invalidateCache, navigation],
+  );
+
+  const startLiveWorkout = useCallback(
+    async (args: StartLiveWorkoutArgs) => {
+      if (!queryClient.getQueryData(serverConnectionQueryKey)) {
+        Alert.alert(
+          'No Server Connected',
+          'Configure your server connection in Settings to start a workout.',
+        );
+        return;
+      }
+      if (useActiveWorkoutStore.getState().sessionId !== null) {
+        Alert.alert(
+          'Replace current workout?',
+          'You already have a workout in progress. Starting a new one clears it here — any sets already saved stay in your diary.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Clear & Start',
+              style: 'destructive',
+              onPress: () => {
+                void (async () => {
+                  // Best-effort save of the in-progress session before dropping
+                  // it locally, mirroring the HUD's Clear action.
+                  await flushActiveWorkoutBeforeClear(queryClient);
+                  useActiveWorkoutStore.getState().clearWorkout();
+                  await runStart(args);
+                })();
+              },
+            },
+          ],
+        );
+        return;
+      }
+      await runStart(args);
+    },
+    [queryClient, runStart],
   );
 
   return { startLiveWorkout, isStarting };

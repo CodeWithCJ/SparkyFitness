@@ -764,7 +764,7 @@ describe('activeWorkoutStore', () => {
       expect(rest.durationSec).toBe(75);
       expect(mockCancel).toHaveBeenCalledWith('notif-initial');
       // Rescheduled for the remaining 65s, labeled with the active step's exercise.
-      expect(mockSchedule).toHaveBeenLastCalledWith('Bench Press', 65);
+      expect(mockSchedule).toHaveBeenLastCalledWith('Bench Press', 65, expect.anything());
       await flushPromises();
       expect(useActiveWorkoutStore.getState().rest.scheduledNotificationId).toBe(
         'notif-extended',
@@ -877,7 +877,7 @@ describe('activeWorkoutStore', () => {
       expect(rest.endsAt).toBe(FIXED_NOW + 80_000);
       expect(rest.pausedRemainingMs).toBeNull();
       // Rest is before the active set, which is now set 102 (Bench Press).
-      expect(mockSchedule).toHaveBeenLastCalledWith('Bench Press', 50);
+      expect(mockSchedule).toHaveBeenLastCalledWith('Bench Press', 50, expect.anything());
       await flushPromises();
       expect(useActiveWorkoutStore.getState().rest.scheduledNotificationId).toBe(
         'notif-resumed',
@@ -1757,7 +1757,15 @@ describe('activeWorkoutStore', () => {
         expect(state.rest.state).toBe('resting');
         expect(state.rest.durationSec).toBe(60);
         expect(mockSchedule).toHaveBeenCalledTimes(1);
-        expect(mockSchedule).toHaveBeenCalledWith('Bench Press', 60);
+        // The rest-complete notification describes the upcoming set (#1).
+        expect(mockSchedule).toHaveBeenCalledWith(
+          'Bench Press',
+          60,
+          expect.objectContaining({
+            title: expect.stringContaining('Rest complete'),
+            body: expect.stringContaining('Set'),
+          }),
+        );
       });
     });
 

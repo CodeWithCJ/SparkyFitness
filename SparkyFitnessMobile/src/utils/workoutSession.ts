@@ -3,6 +3,7 @@ import type {
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
   ExerciseSessionResponse,
+  ExerciseSnapshotResponse,
   PresetSessionExerciseRequest,
   PresetSessionResponse,
 } from '@workspace/shared';
@@ -1000,6 +1001,37 @@ export function buildPresetStartExercisesPayload(
             completed_at: null,
           })),
   }));
+}
+
+/**
+ * Build a full `Exercise` from a session's `exercise_snapshot` so a workout
+ * card can open the library Exercise Detail screen. The snapshot carries the
+ * same fields the catalog does (muscles, equipment, instructions, etc.);
+ * missing ones fall back to empty so the detail screen still renders cleanly.
+ */
+export function exerciseFromSnapshot(
+  snapshot: ExerciseSnapshotResponse | null,
+  exerciseId: string,
+): Exercise {
+  return {
+    id: snapshot?.id ?? exerciseId,
+    name: snapshot?.name ?? 'Exercise',
+    category: snapshot?.category ?? null,
+    equipment: snapshot?.equipment ?? [],
+    primary_muscles: snapshot?.primary_muscles ?? [],
+    secondary_muscles: snapshot?.secondary_muscles ?? [],
+    calories_per_hour: snapshot?.calories_per_hour ?? 0,
+    source: snapshot?.source ?? '',
+    images: snapshot?.images ?? [],
+    tags: snapshot?.tags ?? [],
+    force: snapshot?.force ?? null,
+    level: snapshot?.level ?? null,
+    mechanic: snapshot?.mechanic ?? null,
+    instructions: snapshot?.instructions ?? undefined,
+    description: snapshot?.description ?? undefined,
+    userId: snapshot?.user_id ?? null,
+    isCustom: snapshot?.is_custom ?? undefined,
+  };
 }
 
 /** Single-exercise payload for an empty live start (first-exercise-first flow). */

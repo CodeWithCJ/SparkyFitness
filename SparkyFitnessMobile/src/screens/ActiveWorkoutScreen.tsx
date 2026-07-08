@@ -34,9 +34,11 @@ import { deleteWorkout } from '../services/api/exerciseApi';
 import { addLog } from '../services/LogService';
 import { useActiveWorkoutStore, type ActiveSetPatch } from '../stores/activeWorkoutStore';
 import { normalizeDate } from '../utils/dateUtils';
+import { weightFromKg } from '../utils/unitConversions';
 import {
   buildExerciseReorderItems,
   buildSupersetColorMap,
+  exerciseFromSnapshot,
   getSupersetRuns,
   SET_TYPE_OPTIONS,
   SUPERSET_PALETTE_VARS,
@@ -237,9 +239,23 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     if (candidate != null) setFocusedExerciseId(candidate);
   }, []);
 
-  // Add-exercise return from ExerciseSearch.
+  // Add-exercise return from ExerciseSearch. addExercise appends to the end
+  // without moving the cursor, so expand the new card and scroll it into view
+  // (deferred so the card has a measured offset before scrolling).
   useSelectedExercise(route.params, (exercise) => {
     useActiveWorkoutStore.getState().addExercise(exercise);
+    const exercises = useActiveWorkoutStore.getState().session?.exercises ?? [];
+    const added = exercises[exercises.length - 1];
+    if (added != null) {
+      const id = added.id;
+      setUserExpandedIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+      setFocusedExerciseId(id);
+      setTimeout(() => scrollToExercise(id), 350);
+    }
   });
 
   const handleAddExercise = useCallback(() => {
@@ -247,6 +263,22 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       navigation.navigate('ExerciseSearch', { returnKey: route.key });
     });
   }, [navigation, route.key, runNavigationAction]);
+
+  // Tap an exercise thumbnail → its library detail. Maps the session's full
+  // snapshot to an Exercise so the detail screen gets muscles/equipment/etc.
+  const handlePressThumb = useCallback(
+    (entryId: string) => {
+      const entry = useActiveWorkoutStore
+        .getState()
+        .session?.exercises.find((e) => e.id === entryId);
+      if (entry == null) return;
+      const exercise = exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id);
+      runNavigationAction(() => {
+        navigation.navigate('ExerciseDetail', { item: exercise });
+      });
+    },
+    [navigation, runNavigationAction],
+  );
 
   // Rest sheet (per-exercise rest duration).
   const restSheetRef = useRef<RestPeriodSheetRef>(null);
@@ -488,6 +520,25 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     await attempt();
   }, [flush, navigation]);
 
+  const handleConfirmEnd = useCallback(() => {
+    const totalSets =
+      session?.exercises.reduce((sum, e) => sum + e.sets.length, 0) ?? 0;
+    const doneSets =
+      session?.exercises.reduce(
+        (sum, e) => sum + e.sets.filter((s) => completedSetIds[String(s.id)]).length,
+        0,
+      ) ?? 0;
+    const remaining = totalSets - doneSets;
+    const message =
+      remaining > 0
+        ? `${doneSets} of ${totalSets} sets logged — ${remaining} still unlogged.`
+        : `All ${totalSets} sets logged. Nice work!`;
+    Alert.alert('End workout?', message, [
+      { text: 'Keep going', style: 'cancel' },
+      { text: 'End Workout', style: 'default', onPress: () => void handleFinish() },
+    ]);
+  }, [session, completedSetIds, handleFinish]);
+
   if (session == null || sessionId == null) {
     return (
       <View
@@ -520,6 +571,26 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       }
     }
     return '';
+  })();
+  // Target load for the upcoming set, shown under the rest label so the user
+  // knows what's next while resting.
+  const restNextSetText = (() => {
+    if (activeSetId == null) return null;
+    for (const exercise of session.exercises) {
+      const set = exercise.sets.find((s) => String(s.id) === activeSetId);
+      if (!set) continue;
+      if (set.weight != null && set.reps != null) {
+        const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
+        return `${w} ${weightUnit} × ${set.reps}`;
+      }
+      if (set.reps != null) return `${set.reps} reps`;
+      if (set.weight != null) {
+        const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
+        return `${w} ${weightUnit}`;
+      }
+      return null;
+    }
+    return null;
   })();
 
   return (
@@ -572,6 +643,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               metricColumn={metricColumn}
               weightUnit={weightUnit}
               getImageSource={getImageSource}
+              onPressThumb={handlePressThumb}
               onToggleExpanded={handleToggleExpanded}
               onPressRestChip={handlePressRestChip}
               onPressMetricHeader={handlePressMetricHeader}
@@ -622,9 +694,17 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         })}
 
         <Button
+          variant="ghost"
+          onPress={handleAddExercise}
+          className="mt-5 mx-1"
+        >
+          Add Exercise
+        </Button>
+
+        <Button
           variant="primary"
-          onPress={() => void handleFinish()}
-          className="mt-6 mb-2 mx-1"
+          onPress={handleConfirmEnd}
+          className="mt-2 mb-2 mx-1"
         >
           End Workout
         </Button>
@@ -636,6 +716,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           durationSec={restDurationSec}
           paused={restState === 'paused'}
           label={restLabel}
+          nextSetText={restNextSetText}
           onAdjust={(deltaSec) => useActiveWorkoutStore.getState().adjustRest(deltaSec)}
           onSkip={() => useActiveWorkoutStore.getState().dismissRest()}
         />
