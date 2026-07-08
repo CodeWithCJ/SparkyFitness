@@ -106,13 +106,6 @@ const ALL_PROVIDERS_VALUE = '__all__';
 // online results are also on screen.
 const LOCAL_RESULT_CAP = 6;
 
-// Exact (not min) height for the local-loading/empty-local status row. A hard
-// height, rather than a min-height, avoids a re-measure pass when the row's
-// content swaps between the spinner and the (possibly two-line) empty-state
-// text, which otherwise causes a brief scroll shift in the sections below it
-// (e.g. Online Results) since the list has no getItemLayout.
-const LOCAL_STATUS_ROW_HEIGHT = 72;
-
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
@@ -852,23 +845,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         return renderProviderSkeleton();
       case 'local-loading':
         return (
-          <View
-            className="px-4 items-center justify-center"
-            style={{ height: LOCAL_STATUS_ROW_HEIGHT }}
-          >
+          <View className="px-4 py-6 items-center justify-center">
             <ActivityIndicator size="small" color={accentColor} />
           </View>
         );
       case 'empty-local':
         return (
-          <View
-            className="px-4 items-center justify-center"
-            style={{ height: LOCAL_STATUS_ROW_HEIGHT }}
-          >
-            <Text
-              className="text-text-secondary text-base text-center"
-              numberOfLines={2}
-            >
+          <View className="px-4 py-6 items-center justify-center">
+            <Text className="text-text-secondary text-base text-center">
               {isMealBuilderMode
                 ? 'No saved foods found'
                 : 'No saved foods or meals found'}
@@ -1113,7 +1097,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           borderColor: isSearchFocused ? accentColor : 'transparent',
         }}
       >
-        <View className="w-[18px] h-[18px] items-center justify-center">
+        <View className="w-[20px] h-[20px] items-center justify-center">
           {!!searchText.trim() &&
           (isSearching || isMealSearching || isOnlineSearching) ? (
             <ActivityIndicator size="small" color={textMuted} />
