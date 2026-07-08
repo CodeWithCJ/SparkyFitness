@@ -56,7 +56,14 @@ export type RootStackParamList = {
     pendingScannedBarcode?: string;
     scannedBarcodeNonce?: number;
   };
-  ExerciseDetail: { item: Exercise; updatedItem?: Exercise };
+  ExerciseDetail: {
+    item: Exercise;
+    updatedItem?: Exercise;
+    // Suppress the Start Workout / Log Exercise buttons when opened from within
+    // a workout context (active workout, workout builder/edit, preset form),
+    // where starting or logging this single exercise would be redundant.
+    hideWorkoutActions?: boolean;
+  };
   FoodSearch:
     | {
         date?: string;

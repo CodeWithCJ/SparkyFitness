@@ -292,7 +292,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
         onViewExercise={(exercise) =>
-          navigation.navigate('ExerciseDetail', { item: exercise })
+          navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
         }
         listRef={exerciseListRef}
       />
@@ -479,7 +479,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
         onViewExercise={(exercise) =>
-          navigation.navigate('ExerciseDetail', { item: exercise })
+          navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
         }
         listRef={exerciseListRef}
       />

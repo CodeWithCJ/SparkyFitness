@@ -48,7 +48,7 @@ const cleanSteps = (steps: string[] | undefined) =>
     .filter((step): step is string => Boolean(step && step.length > 0));
 
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation, route }) => {
-  const { item, updatedItem } = route.params;
+  const { item, updatedItem, hideWorkoutActions } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -384,15 +384,19 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
           </TouchableOpacity>
         ) : null}
 
-        <Button variant="primary" onPress={handleStartWorkout} disabled={isStarting}>
-          <Text className="text-white text-base font-semibold">
-            {isStarting ? 'Starting…' : 'Start Workout'}
-          </Text>
-        </Button>
+        {!hideWorkoutActions && (
+          <>
+            <Button variant="primary" onPress={handleStartWorkout} disabled={isStarting}>
+              <Text className="text-white text-base font-semibold">
+                {isStarting ? 'Starting…' : 'Start Workout'}
+              </Text>
+            </Button>
 
-        <Button variant="ghost" onPress={handleLog}>
-          <Text className="text-accent-primary text-base font-semibold">Log Exercise</Text>
-        </Button>
+            <Button variant="ghost" onPress={handleLog}>
+              <Text className="text-accent-primary text-base font-semibold">Log Exercise</Text>
+            </Button>
+          </>
+        )}
 
         {canManageExercise && (
           <Button

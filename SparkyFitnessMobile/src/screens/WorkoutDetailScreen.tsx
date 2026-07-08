@@ -346,6 +346,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       if (!entry) return;
       navigation.navigate('ExerciseDetail', {
         item: exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id),
+        hideWorkoutActions: true,
       });
     },
     [session, navigation],
@@ -662,7 +663,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             onReorderExercises={reorderExercises}
             onAddExercisePress={openExerciseSearch}
             onViewExercise={(exercise) =>
-              navigation.navigate('ExerciseDetail', { item: exercise })
+              navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
             }
             isEligibleForPrefill={isEligibleForPrefill}
             showCompletion

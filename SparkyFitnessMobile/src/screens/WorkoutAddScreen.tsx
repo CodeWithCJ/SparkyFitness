@@ -349,7 +349,10 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   onReorderExercises={reorderExercises}
                   onAddExercisePress={openExerciseSearch}
                   onViewExercise={(exercise) =>
-                    navigation.navigate('ExerciseDetail', { item: exercise })
+                    navigation.navigate('ExerciseDetail', {
+                      item: exercise,
+                      hideWorkoutActions: true,
+                    })
                   }
                   isEligibleForPrefill={isEligibleForPrefill}
                 />

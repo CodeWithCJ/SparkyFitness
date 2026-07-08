@@ -168,6 +168,29 @@ describe('ExerciseDetailScreen', () => {
     );
   });
 
+  it('shows Start Workout and Log Exercise by default', () => {
+    const screen = renderScreen();
+
+    expect(screen.queryByText('Start Workout')).toBeTruthy();
+    expect(screen.queryByText('Log Exercise')).toBeTruthy();
+  });
+
+  it('hides Start Workout and Log Exercise when hideWorkoutActions is set', () => {
+    const route = {
+      key: 'ExerciseDetail-key',
+      name: 'ExerciseDetail' as const,
+      params: { item: baseExercise, hideWorkoutActions: true },
+    };
+    const screen = render(
+      <Providers>
+        <ExerciseDetailScreen navigation={navigation} route={route as any} />
+      </Providers>,
+    );
+
+    expect(screen.queryByText('Start Workout')).toBeNull();
+    expect(screen.queryByText('Log Exercise')).toBeNull();
+  });
+
   it('hides empty optional sections', () => {
     const screen = renderScreen({
       equipment: [],

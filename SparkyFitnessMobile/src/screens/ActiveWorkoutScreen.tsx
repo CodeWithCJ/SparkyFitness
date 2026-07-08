@@ -440,7 +440,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       if (entry == null) return;
       const exercise = exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id);
       runNavigationAction(() => {
-        navigation.navigate('ExerciseDetail', { item: exercise });
+        navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true });
       });
     },
     [navigation, runNavigationAction],
