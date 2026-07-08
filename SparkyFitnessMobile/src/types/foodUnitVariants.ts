@@ -37,6 +37,7 @@ export interface EquivalentUnit {
   serving_size: number;
   serving_unit: string;
   _clientKey?: string;
+  _sizeText?: string;
 }
 
 export type FoodUnitSelectionResult =
