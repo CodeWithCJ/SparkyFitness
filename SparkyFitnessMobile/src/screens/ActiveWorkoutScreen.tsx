@@ -364,14 +364,28 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     return items;
   }, [overflowMenu, session, supersetRuns, reorderItemCount, handleOpenReorder]);
 
+  // Live editing: which set cell is tap-focused (the keyboard target). Distinct
+  // from activeSetId (the cursor / log ring), so tapping an earlier set to fix a
+  // value doesn't move the cursor.
+  const [focusedSetId, setFocusedSetId] = useState<string | null>(null);
+  const [focusedField, setFocusedField] = useState<'weight' | 'reps'>('weight');
+  const handleActivateSet = useCallback((setId: string, field: 'weight' | 'reps') => {
+    setFocusedField(field);
+    setFocusedSetId(setId);
+  }, []);
+  const handleDeactivateSet = useCallback(() => {
+    setFocusedSetId(null);
+  }, []);
+
   const handleCompleteActive = useCallback(() => {
     useActiveWorkoutStore.getState().completeActiveSet();
+    // Logging advances the cursor and (usually) starts a rest — drop the
+    // keyboard so the rest bar is unobstructed and the logged inputs collapse.
+    setFocusedSetId(null);
+    Keyboard.dismiss();
   }, []);
   const handleUncomplete = useCallback((setId: string) => {
     useActiveWorkoutStore.getState().uncompleteSet(setId);
-  }, []);
-  const handleRecomplete = useCallback((setId: string) => {
-    useActiveWorkoutStore.getState().recompleteSet(setId);
   }, []);
   const handleCommitField = useCallback((setId: string, patch: ActiveSetPatch) => {
     useActiveWorkoutStore.getState().updateSetField(setId, patch);
@@ -640,6 +654,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               prSetIds={prSetIds}
               excludePresetEntryId={sessionId ?? undefined}
               activeSetId={activeSetId}
+              focusedSetId={focusedSetId}
+              activeField={focusedField}
               metricColumn={metricColumn}
               weightUnit={weightUnit}
               getImageSource={getImageSource}
@@ -650,11 +666,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onPressOverflow={handlePressOverflow}
               onCompleteActive={handleCompleteActive}
               onUncomplete={handleUncomplete}
-              onRecomplete={handleRecomplete}
               onCommitField={handleCommitField}
               onDeleteSet={handleDeleteSet}
               onLongPressSet={handleLongPressSet}
               onAddSet={handleAddSet}
+              onActivateSet={handleActivateSet}
+              onDeactivateSet={handleDeactivateSet}
             />
           );
 

@@ -25,10 +25,10 @@ jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ set, state, mode, completedBadge, nextSetId, entryId }: any) => (
+    default: ({ set, state, mode, completedBadge, isFocused, nextSetId, entryId }: any) => (
       <View
         testID={`set-row-${set.id}`}
-        accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}`}
+        accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}${isFocused ? ' focused' : ''}`}
         accessibilityHint={`next:${nextSetId ?? 'none'} entry:${entryId ?? 'none'}`}
       />
     ),
@@ -118,7 +118,6 @@ function renderCard(expanded: boolean, props?: Partial<CardProps>) {
     onPressOverflow: jest.fn(),
     onCompleteActive: jest.fn(),
     onUncomplete: jest.fn(),
-    onRecomplete: jest.fn(),
     onCommitField: jest.fn(),
     onDeleteSet: jest.fn(),
     onLongPressSet: jest.fn(),
@@ -399,6 +398,19 @@ describe('ActiveWorkoutExerciseCard', () => {
     it('passes the session id as excludePresetEntryId to the stats query', () => {
       renderCard(true, { mode: 'live', excludePresetEntryId: 'session-1' });
       expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
+    });
+
+    it('marks the tap-focused row from focusedSetId (distinct from the cursor)', () => {
+      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetId: '101' });
+      // Cursor (activeSetId) still drives 'current'; focus is an added flag.
+      expect(getByTestId('set-row-101').props.accessibilityLabel).toBe(
+        'row 101 current focused',
+      );
+    });
+
+    it('marks no row focused when focusedSetId is null', () => {
+      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetId: null });
+      expect(getByTestId('set-row-101').props.accessibilityLabel).toBe('row 101 current');
     });
 
     it('captures the PR baseline once from the resolved best set', () => {

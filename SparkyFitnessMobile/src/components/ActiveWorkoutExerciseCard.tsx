@@ -91,14 +91,21 @@ interface ActiveWorkoutExerciseCardProps {
   onPressOverflow?: (entryId: string, anchor: AnchorRect) => void;
   onCompleteActive?: () => void;
   onUncomplete?: (setId: string) => void;
-  onRecomplete?: (setId: string) => void;
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
   onDeleteSet?: (setId: string) => void;
   onLongPressSet?: (setId: string) => void;
   onAddSet?: (entryId: string) => void;
-  // --- edit-mode props ---
-  /** Active row's focused field (form-owned state). */
+  // --- edit + live editing props ---
+  /**
+   * Focused row's field. Edit: form-owned. Live: the screen-owned focused-cell
+   * field, seeding the tapped row before its Next chain takes over.
+   */
   activeField?: 'weight' | 'reps';
+  /**
+   * Live only: the tap-focused set id (distinct from `activeSetId`, the
+   * cursor). Marks which row renders inputs; the cursor still owns the log ring.
+   */
+  focusedSetId?: string | null;
   /** False hides the RPE input on active rows (preset sets store no RPE). */
   rpeEditable?: boolean;
   /** Prefill the first empty set from "last time" once stats arrive. */
@@ -162,12 +169,12 @@ function ActiveWorkoutExerciseCard({
   onPressOverflow,
   onCompleteActive,
   onUncomplete,
-  onRecomplete,
   onCommitField,
   onDeleteSet,
   onLongPressSet,
   onAddSet,
   activeField,
+  focusedSetId,
   rpeEditable,
   eligibleForPrefill = false,
   onActivateSet,
@@ -479,11 +486,11 @@ function ActiveWorkoutExerciseCard({
             mode={mode}
             onCompleteActive={onCompleteActive}
             onUncomplete={onUncomplete}
-            onRecomplete={onRecomplete}
             onCommitField={onCommitField}
             onDelete={onDeleteSet}
             onLongPress={onLongPressSet}
             activeField={activeField}
+            isFocused={isLive && focusedSetId === setId}
             nextSetId={nextSet != null ? String(nextSet.id) : null}
             entryId={exercise.id}
             rpeEditable={rpeEditable}

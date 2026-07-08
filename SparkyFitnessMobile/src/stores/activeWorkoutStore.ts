@@ -23,7 +23,7 @@ import {
   fireRestCompleteHaptic,
   scheduleRestNotification,
 } from '../services/notifications';
-import { fireSuccessHaptic } from '../services/haptics';
+import { fireSelectionHaptic, fireSuccessHaptic } from '../services/haptics';
 
 const STORAGE_KEY = '@SparkyFitness/active-workout';
 
@@ -179,10 +179,12 @@ export interface ActiveWorkoutState {
   clearWorkout: () => void;
   /** Complete the active set and advance the cursor. Starts rest before the next set. */
   completeActiveSet: () => void;
-  /** Remove a set from the completed map. Does not move the cursor. */
+  /**
+   * Un-complete a set (undo). Retracts its PR stamp and rewinds the cursor to
+   * the earliest uncompleted step, so the set stays re-loggable via its log
+   * ring instead of being stranded behind a forward-only cursor.
+   */
   uncompleteSet: (setId: string) => void;
-  /** Re-mark a set complete without advancing the cursor. Used to undo an accidental uncheck. */
-  recompleteSet: (setId: string) => void;
   pauseRest: () => void;
   resumeRest: () => void;
   /**
@@ -722,7 +724,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           hasUnsavedChanges: addedPriors,
           createdByLiveStart: false,
           // Backfilled priors are never PRs (detection lives only in
-          // completeActiveSet/recompleteSet); stamps resume from the server.
+          // completeActiveSet); stamps resume from the server.
           prBaseline: {},
           prSetIds: seedPrFromSession(session),
           lastPrEvent: null,
@@ -794,9 +796,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         };
 
         // PR detection runs against the pre-completion map (the candidate is
-        // excluded internally). On a hit: stamp the set, fire the success
-        // haptic (regular completions stay silent, so the PR buzz reads), and
-        // publish the one-shot the celebration listener consumes.
+        // excluded internally). On a hit: stamp the set, fire the strong
+        // success haptic, and publish the one-shot the celebration listener
+        // consumes. A regular log fires only the light selection tick, so the
+        // PR buzz still stands out against it.
         let prSetIds = state.prSetIds;
         let lastPrEvent = state.lastPrEvent;
         if (
@@ -813,12 +816,14 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             reps: set0?.reps ?? null,
             seq: ++prEventCounter,
           };
+        } else {
+          fireSelectionHaptic();
         }
 
         // Advance to the next *uncompleted* step — completion maps can have
-        // holes (server completions preserved across a mid-workout restart,
-        // or an upcoming set re-checked via recompleteSet), and landing on a
-        // done row would strand the cursor.
+        // holes (server completions preserved across a mid-workout restart, or
+        // the cursor rewound by an uncheck), and landing on a done row would
+        // strand the cursor.
         const nextStep = state.steps
           .slice(activeIndex + 1)
           .find((s) => completedSetIds[s.setId] == null);
@@ -861,31 +866,26 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // completed can't hold a record.
         const nextPr = { ...state.prSetIds };
         delete nextPr[setId];
+
+        // Un-checking is an undo, so restore the cursor invariant (activeSetId =
+        // earliest uncompleted step). The cursor only moves forward on its own,
+        // so without this the unchecked set — now a hole behind the cursor —
+        // could never be re-logged (the out-of-order recomplete control is gone
+        // under sequential logging). Un-checking a set that's still ahead of an
+        // earlier hole leaves the cursor put; un-checking the new earliest hole
+        // rewinds to it and clears the now-stale rest.
+        const nextActiveSetId = state.steps.find((s) => next[s.setId] == null)?.setId ?? null;
+        let nextRest = state.rest;
+        if (nextActiveSetId !== state.activeSetId) {
+          cancelCurrentRestNotification(state.rest);
+          nextRest = READY_REST;
+        }
+
         set({
           completedSetIds: next,
           prSetIds: nextPr,
-          sessionRevision: state.sessionRevision + 1,
-          hasUnsavedChanges: true,
-        });
-      },
-
-      recompleteSet: (setId) => {
-        const state = get();
-        if (state.completedSetIds[setId] != null) return;
-        if (!state.steps.some((s) => s.setId === setId)) return;
-        // Re-checking re-runs detection and re-stamps if it still qualifies,
-        // but stays silent (no haptic, no celebration) — this is an undo, not
-        // a fresh achievement.
-        let prSetIds = state.prSetIds;
-        if (
-          state.session != null &&
-          isPrSet(state.session, setId, state.completedSetIds, state.prBaseline)
-        ) {
-          prSetIds = { ...state.prSetIds, [setId]: true };
-        }
-        set({
-          completedSetIds: { ...state.completedSetIds, [setId]: Date.now() },
-          prSetIds,
+          activeSetId: nextActiveSetId,
+          rest: nextRest,
           sessionRevision: state.sessionRevision + 1,
           hasUnsavedChanges: true,
         });

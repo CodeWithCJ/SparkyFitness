@@ -19,29 +19,6 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
-// Stub the shared stepper so weight/reps commits are drivable through plain
-// testIDs (keyboardType distinguishes weight `decimal-pad` from reps
-// `number-pad`).
-jest.mock('../../src/components/StepperInput', () => {
-  const React = require('react');
-  const { Pressable, TextInput, View } = require('react-native');
-  return {
-    __esModule: true,
-    default: ({ value, onChangeText, onBlur, onIncrement, onDecrement, keyboardType }: any) => (
-      <View>
-        <Pressable testID={`stepper-decrement-${keyboardType}`} onPress={onDecrement} />
-        <TextInput
-          testID={`stepper-input-${keyboardType}`}
-          value={value}
-          onChangeText={onChangeText}
-          onBlur={onBlur}
-        />
-        <Pressable testID={`stepper-increment-${keyboardType}`} onPress={onIncrement} />
-      </View>
-    ),
-  };
-});
-
 // Distinct values per CSS variable so RPE tone-color assertions mean something
 // (the global uniwind mock returns the same color for everything).
 const COLORS: Record<string, string> = {
@@ -50,6 +27,8 @@ const COLORS: Record<string, string> = {
   '--color-text-muted': '#9ca3af',
   '--color-chrome': '#111111',
   '--color-chrome-border': '#222222',
+  '--color-bg-danger': '#7f1d1d',
+  '--color-border-subtle': '#333333',
   '--color-cat-amber': '#f59e0b',
   '--color-cat-orange': '#f97316',
   '--color-icon-danger': '#ef4444',
@@ -80,6 +59,7 @@ interface RenderOverrides {
   readOnly?: boolean;
   mode?: SetRowMode;
   activeField?: 'weight' | 'reps';
+  isFocused?: boolean;
   nextSetId?: string | null;
   entryId?: string;
   rpeEditable?: boolean;
@@ -90,7 +70,6 @@ function renderRow(overrides?: RenderOverrides) {
   const callbacks = {
     onCompleteActive: jest.fn(),
     onUncomplete: jest.fn(),
-    onRecomplete: jest.fn(),
     onCommitField: jest.fn(),
     onDelete: jest.fn(),
     onLongPress: jest.fn(),
@@ -108,6 +87,7 @@ function renderRow(overrides?: RenderOverrides) {
       weightUnit={overrides?.weightUnit ?? 'kg'}
       mode={overrides?.mode ?? (overrides?.readOnly ? 'view' : undefined)}
       activeField={overrides?.activeField}
+      isFocused={overrides?.isFocused}
       nextSetId={overrides?.nextSetId}
       entryId={overrides?.entryId}
       rpeEditable={overrides?.rpeEditable}
@@ -169,10 +149,39 @@ describe('ActiveWorkoutSetRow', () => {
     });
   });
 
-  describe('current state', () => {
+  // The cursor (next-unlogged) row when the keyboard is elsewhere: it shows
+  // planned values as tap-to-edit display cells plus the pulsing log ring.
+  describe('current state — cursor, not focused', () => {
+    it('logs from the pulsing ring, committing current values first', () => {
+      const { getByLabelText, callbacks } = renderRow({ state: 'current' });
+      fireEvent.press(getByLabelText('Log set'));
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 60 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 10 });
+      expect(callbacks.onCompleteActive).toHaveBeenCalledTimes(1);
+      const completeOrder = callbacks.onCompleteActive.mock.invocationCallOrder[0];
+      for (const order of callbacks.onCommitField.mock.invocationCallOrder) {
+        expect(order).toBeLessThan(completeOrder);
+      }
+    });
+
+    it('activates the tapped cell instead of showing inputs inline', () => {
+      const { getByLabelText, queryByLabelText, callbacks } = renderRow({ state: 'current' });
+      expect(queryByLabelText('Weight')).toBeNull();
+      fireEvent.press(getByLabelText('Edit weight for set 1'));
+      expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
+      fireEvent.press(getByLabelText('Edit reps for set 1'));
+      expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'reps');
+    });
+  });
+
+  describe('current state — focused, editing', () => {
     it('commits weight in kg on blur', () => {
-      const { getByTestId, callbacks } = renderRow({ state: 'current', weightUnit: 'kg' });
-      const input = getByTestId('stepper-input-decimal-pad');
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+        weightUnit: 'kg',
+      });
+      const input = getByLabelText('Weight');
       expect(input.props.value).toBe('60');
       fireEvent.changeText(input, '105');
       fireEvent(input, 'blur');
@@ -180,8 +189,12 @@ describe('ActiveWorkoutSetRow', () => {
     });
 
     it('converts a typed lbs weight to kg on commit', () => {
-      const { getByTestId, callbacks } = renderRow({ state: 'current', weightUnit: 'lbs' });
-      const input = getByTestId('stepper-input-decimal-pad');
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+        weightUnit: 'lbs',
+      });
+      const input = getByLabelText('Weight');
       expect(input.props.value).toBe('132.3');
       fireEvent.changeText(input, '135');
       fireEvent(input, 'blur');
@@ -190,40 +203,30 @@ describe('ActiveWorkoutSetRow', () => {
     });
 
     it('commits a cleared weight as null', () => {
-      const { getByTestId, callbacks } = renderRow({ state: 'current' });
-      const input = getByTestId('stepper-input-decimal-pad');
+      const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true });
+      const input = getByLabelText('Weight');
       fireEvent.changeText(input, '');
       fireEvent(input, 'blur');
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: null });
     });
 
-    it('steps weight by 5 and commits immediately', () => {
-      const { getByTestId, callbacks } = renderRow({ state: 'current' });
-      fireEvent.press(getByTestId('stepper-increment-decimal-pad'));
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 65 });
-      fireEvent.press(getByTestId('stepper-decrement-decimal-pad'));
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 60 });
-    });
-
-    it('commits reps on blur and steps by 1', () => {
-      const { getByTestId, callbacks } = renderRow({ state: 'current' });
-      const input = getByTestId('stepper-input-number-pad');
+    it('commits reps on blur', () => {
+      const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true });
+      const input = getByLabelText('Reps');
       expect(input.props.value).toBe('10');
       fireEvent.changeText(input, '12');
       fireEvent(input, 'blur');
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 12 });
-
-      fireEvent.press(getByTestId('stepper-increment-number-pad'));
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 13 });
     });
 
     it('logging commits all drafts, then completes the set', () => {
-      const { getByTestId, getByLabelText, callbacks } = renderRow({
+      const { getByLabelText, callbacks } = renderRow({
         state: 'current',
+        isFocused: true,
         metricColumn: 'rpe',
       });
-      fireEvent.changeText(getByTestId('stepper-input-decimal-pad'), '80');
-      fireEvent.changeText(getByTestId('stepper-input-number-pad'), '8');
+      fireEvent.changeText(getByLabelText('Weight'), '80');
+      fireEvent.changeText(getByLabelText('Reps'), '8');
       fireEvent.changeText(getByLabelText('RPE'), '8.2');
 
       fireEvent.press(getByLabelText('Log set'));
@@ -243,23 +246,47 @@ describe('ActiveWorkoutSetRow', () => {
     it('hides the RPE input for non-RPE metric columns', () => {
       const { queryByLabelText, getByText } = renderRow({
         state: 'current',
+        isFocused: true,
         metricColumn: 'volume',
       });
       expect(queryByLabelText('RPE')).toBeNull();
       expect(getByText('600')).toBeTruthy();
     });
 
-    it('does not wrap the current row in a swipeable', () => {
-      const { queryByTestId } = renderRow({ state: 'current' });
+    it('does not wrap the actively-edited row in a swipeable', () => {
+      const { queryByTestId } = renderRow({ state: 'current', isFocused: true });
       expect(queryByTestId('reanimated-swipeable')).toBeNull();
+    });
+
+    it('gives each input a distinct accessory id so the keyboard bar shows on all three', () => {
+      // iOS attaches a shared InputAccessoryView to only the first input, so a
+      // single id would leave reps/RPE with a bare keyboard.
+      const { getByLabelText } = renderRow({
+        state: 'current',
+        isFocused: true,
+        metricColumn: 'rpe',
+      });
+      const ids = [
+        getByLabelText('Weight').props.inputAccessoryViewID,
+        getByLabelText('Reps').props.inputAccessoryViewID,
+        getByLabelText('RPE').props.inputAccessoryViewID,
+      ];
+      expect(ids.every(Boolean)).toBe(true);
+      expect(new Set(ids).size).toBe(3);
     });
   });
 
   describe('upcoming state', () => {
-    it('re-completes from the hollow circle', () => {
+    it('carries no completion control (sequential logging only)', () => {
+      const { queryByLabelText } = renderRow({ state: 'upcoming' });
+      expect(queryByLabelText('Mark set 1 complete')).toBeNull();
+      expect(queryByLabelText('Log set')).toBeNull();
+    });
+
+    it('still lets an upcoming cell be tapped to edit (pre-fill)', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'upcoming' });
-      fireEvent.press(getByLabelText('Mark set 1 complete'));
-      expect(callbacks.onRecomplete).toHaveBeenCalledWith('101');
+      fireEvent.press(getByLabelText('Edit weight for set 1'));
+      expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
     });
 
     it('is not dimmed', () => {
@@ -280,7 +307,7 @@ describe('ActiveWorkoutSetRow', () => {
       expect(StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity).toBeUndefined();
     });
 
-    it('offers no swipe-delete and no re-complete control', () => {
+    it('offers no swipe-delete and no completion control', () => {
       const done = renderRow({ state: 'done', readOnly: true });
       expect(done.queryByTestId('reanimated-swipeable')).toBeNull();
       expect(done.queryByLabelText('Delete set 1')).toBeNull();
@@ -290,14 +317,16 @@ describe('ActiveWorkoutSetRow', () => {
     });
 
     it('coerces a current state to a plain row with no editing chrome', () => {
-      const { queryByTestId, queryByLabelText, getByText } = renderRow({
+      const { queryByLabelText, getByText } = renderRow({
         state: 'current',
         readOnly: true,
       });
-      expect(queryByTestId('stepper-input-decimal-pad')).toBeNull();
-      expect(queryByTestId('stepper-input-number-pad')).toBeNull();
+      expect(queryByLabelText('Weight')).toBeNull();
+      expect(queryByLabelText('Reps')).toBeNull();
       expect(queryByLabelText('Log set')).toBeNull();
       expect(queryByLabelText('RPE')).toBeNull();
+      // Read-only cells are flat text, not tap-to-activate.
+      expect(queryByLabelText('Edit weight for set 1')).toBeNull();
       expect(getByText('60')).toBeTruthy();
     });
 
@@ -365,12 +394,12 @@ describe('ActiveWorkoutSetRow', () => {
 
     describe('active row (controlled inputs)', () => {
       it('renders the raw draft strings and dispatches per keystroke', () => {
-        const { getByTestId, callbacks } = renderRow({
+        const { getByLabelText, callbacks } = renderRow({
           mode: 'edit',
           state: 'current',
           set: editSet({ editWeightText: '102.55' }),
         });
-        const weightInput = getByTestId('stepper-input-decimal-pad');
+        const weightInput = getByLabelText('Weight');
         expect(weightInput.props.value).toBe('102.55');
 
         fireEvent.changeText(weightInput, '102.556');
@@ -378,23 +407,11 @@ describe('ActiveWorkoutSetRow', () => {
         // No commit path on typing — the reducer is the single source.
         expect(callbacks.onCommitField).not.toHaveBeenCalled();
 
-        fireEvent.changeText(getByTestId('stepper-input-number-pad'), '6');
+        fireEvent.changeText(getByLabelText('Reps'), '6');
         expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'reps', '6');
       });
 
-      it('steppers parse the draft text and dispatch ±5/±1 as strings', () => {
-        const { getByTestId, callbacks } = renderRow({
-          mode: 'edit',
-          state: 'current',
-          set: editSet(),
-        });
-        fireEvent.press(getByTestId('stepper-increment-decimal-pad'));
-        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'weight', '105');
-        fireEvent.press(getByTestId('stepper-decrement-number-pad'));
-        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'reps', '4');
-      });
-
-      it('replaces the log circle with a delete button', () => {
+      it('replaces the log ring with a delete button', () => {
         const { getByLabelText, queryByLabelText, callbacks } = renderRow({
           mode: 'edit',
           state: 'current',
@@ -405,6 +422,9 @@ describe('ActiveWorkoutSetRow', () => {
         expect(callbacks.onDelete).toHaveBeenCalledWith('101');
       });
 
+      // Each input has its own InputAccessoryView (unique nativeID; iOS won't
+      // share one across inputs), so the bar's buttons appear once per input —
+      // all wired to the same handler, so pressing the first is equivalent.
       it('Next on the weight field keeps focus in-row; on reps it activates the next set', () => {
         const withNext = renderRow({
           mode: 'edit',
@@ -414,13 +434,13 @@ describe('ActiveWorkoutSetRow', () => {
           entryId: 'entry-1',
           set: editSet(),
         });
-        fireEvent.press(withNext.getByText('Next Set'));
+        fireEvent.press(withNext.getAllByText('Next Set')[0]);
         expect(withNext.callbacks.onActivateSet).toHaveBeenCalledWith('202', 'weight');
         expect(withNext.callbacks.onAddSet).not.toHaveBeenCalled();
       });
 
       it('Next on the last set adds a set to the owning exercise', () => {
-        const { getByText, callbacks } = renderRow({
+        const { getAllByText, callbacks } = renderRow({
           mode: 'edit',
           state: 'current',
           activeField: 'reps',
@@ -428,17 +448,17 @@ describe('ActiveWorkoutSetRow', () => {
           entryId: 'entry-1',
           set: editSet(),
         });
-        fireEvent.press(getByText('Next Set'));
+        fireEvent.press(getAllByText('Next Set')[0]);
         expect(callbacks.onAddSet).toHaveBeenCalledWith('entry-1');
       });
 
       it('Done deactivates the set', () => {
-        const { getByText, callbacks } = renderRow({
+        const { getAllByText, callbacks } = renderRow({
           mode: 'edit',
           state: 'current',
           set: editSet(),
         });
-        fireEvent.press(getByText('Done'));
+        fireEvent.press(getAllByText('Done')[0]);
         expect(callbacks.onDeactivate).toHaveBeenCalledTimes(1);
       });
 
