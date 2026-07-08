@@ -1,6 +1,5 @@
 import React, {
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -35,6 +34,7 @@ import {
   useExternalFoodSearch,
   useAllProvidersSearch,
   usePreferences,
+  useDebounce,
 } from '../hooks';
 import { ExternalProvider } from '../types/externalProviders';
 import Toast from 'react-native-toast-message';
@@ -442,18 +442,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // to the typed term, or while a fetch is in flight.
   const localPending = isSearching || isMealSearching || !isSearchActive;
   // The foods and meals queries settle independently, so localPending can blip
-  // false->true->false within a keystroke or two. Stick to "pending" for a
-  // short window after it goes false so the status row's spinner/text swap
-  // doesn't flicker mid-typing; becoming pending is still immediate.
-  const [stableLocalPending, setStableLocalPending] = useState(localPending);
-  useEffect(() => {
-    if (localPending) {
-      setStableLocalPending(true);
-      return;
-    }
-    const timer = setTimeout(() => setStableLocalPending(false), 150);
-    return () => clearTimeout(timer);
-  }, [localPending]);
+  // false->true->false within a keystroke or two. Debounce just the
+  // false-going transition so the status row's spinner/text swap doesn't
+  // flicker mid-typing; becoming pending is still immediate via the ||.
+  const debouncedNotPending = useDebounce(!localPending, 150);
+  const stableLocalPending = localPending || !debouncedNotPending;
   const hasLocalResults =
     searchResults.length > 0 || (!isMealBuilderMode && mealResults.length > 0);
   // Only show online results from the currently selected provider. On a swap,
