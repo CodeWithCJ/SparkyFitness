@@ -5,6 +5,7 @@ _Last updated: 2026-07-08_
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
 **Quick Links for AI Tools:** See `../agent-docs/README.md` for:
+
 - `file-and-domain-reference.md` — Where to find server code by feature
 - `testing-patterns.md` — How to test routes, services, repositories, and RLS
 - `architecture-permissions.md` — Permission types and RLS patterns
