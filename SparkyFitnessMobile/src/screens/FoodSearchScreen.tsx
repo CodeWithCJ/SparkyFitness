@@ -106,10 +106,12 @@ const ALL_PROVIDERS_VALUE = '__all__';
 // online results are also on screen.
 const LOCAL_RESULT_CAP = 6;
 
-// Fixed height for the local-loading/empty-local status row so switching
-// between the spinner and the empty-state text never shifts the sections
-// below it (e.g. Online Results).
-const LOCAL_STATUS_ROW_MIN_HEIGHT = 72;
+// Exact (not min) height for the local-loading/empty-local status row. A hard
+// height, rather than a min-height, avoids a re-measure pass when the row's
+// content swaps between the spinner and the (possibly two-line) empty-state
+// text, which otherwise causes a brief scroll shift in the sections below it
+// (e.g. Online Results) since the list has no getItemLayout.
+const LOCAL_STATUS_ROW_HEIGHT = 72;
 
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
@@ -851,8 +853,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       case 'local-loading':
         return (
           <View
-            className="px-4 py-6 items-center justify-center"
-            style={{ minHeight: LOCAL_STATUS_ROW_MIN_HEIGHT }}
+            className="px-4 items-center justify-center"
+            style={{ height: LOCAL_STATUS_ROW_HEIGHT }}
           >
             <ActivityIndicator size="small" color={accentColor} />
           </View>
@@ -860,10 +862,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       case 'empty-local':
         return (
           <View
-            className="px-4 py-6 items-center justify-center"
-            style={{ minHeight: LOCAL_STATUS_ROW_MIN_HEIGHT }}
+            className="px-4 items-center justify-center"
+            style={{ height: LOCAL_STATUS_ROW_HEIGHT }}
           >
-            <Text className="text-text-secondary text-base text-center">
+            <Text
+              className="text-text-secondary text-base text-center"
+              numberOfLines={2}
+            >
               {isMealBuilderMode
                 ? 'No saved foods found'
                 : 'No saved foods or meals found'}
