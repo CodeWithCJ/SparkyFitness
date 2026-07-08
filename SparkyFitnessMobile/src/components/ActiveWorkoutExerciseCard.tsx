@@ -98,9 +98,10 @@ interface ActiveWorkoutExerciseCardProps {
   // --- edit + live editing props ---
   /**
    * Focused row's field. Edit: form-owned. Live: the screen-owned focused-cell
-   * field, seeding the tapped row before its Next chain takes over.
+   * field, seeding the tapped row before its Next chain takes over (`'rpe'` is
+   * live-only, set by tapping the RPE column).
    */
-  activeField?: 'weight' | 'reps';
+  activeField?: 'weight' | 'reps' | 'rpe';
   /**
    * Live only: the tap-focused set id (distinct from `activeSetId`, the
    * cursor). Marks which row renders inputs; the cursor still owns the log ring.
@@ -111,6 +112,8 @@ interface ActiveWorkoutExerciseCardProps {
   /** Prefill the first empty set from "last time" once stats arrive. */
   eligibleForPrefill?: boolean;
   onActivateSet?: (setId: string, field: 'weight' | 'reps') => void;
+  /** Live only: tap the RPE column to focus the RPE input on that row. */
+  onActivateRpe?: (setId: string) => void;
   onDeactivateSet?: () => void;
   onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
 }
@@ -178,6 +181,7 @@ function ActiveWorkoutExerciseCard({
   rpeEditable,
   eligibleForPrefill = false,
   onActivateSet,
+  onActivateRpe,
   onDeactivateSet,
   onEditFieldChange,
 }: ActiveWorkoutExerciseCardProps) {
@@ -348,6 +352,22 @@ function ActiveWorkoutExerciseCard({
 
   const workingSetNumbers = buildWorkingSetNumbers(exercise.sets);
 
+  // A finished exercise's card now stays expanded (no auto-collapse), so the
+  // completion check moves onto the thumbnail instead of the collapsed summary.
+  const thumb = (
+    <View>
+      <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
+      {isDone && !isEdit && (
+        <View
+          className="absolute items-center justify-center rounded-full"
+          style={{ right: -3, top: -3, width: 15, height: 15, backgroundColor: successColor }}
+        >
+          <Icon name="checkmark" size={9} color="#ffffff" weight="bold" />
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <View className="bg-surface rounded-2xl px-3 pt-3 pb-2 mb-2">
       <View className="flex-row items-center gap-3">
@@ -357,10 +377,10 @@ function ActiveWorkoutExerciseCard({
             accessibilityRole="button"
             accessibilityLabel={`View ${name} details`}
           >
-            <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
+            {thumb}
           </Pressable>
         ) : (
-          <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
+          thumb
         )}
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
@@ -510,6 +530,7 @@ function ActiveWorkoutExerciseCard({
             rpeEditable={rpeEditable}
             completedBadge={isEdit && !!completedSetIds[setId]}
             onActivateSet={onActivateSet}
+            onActivateRpe={onActivateRpe}
             onDeactivate={onDeactivateSet}
             onEditFieldChange={onEditFieldChange}
             onAddSet={onAddSet}

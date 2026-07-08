@@ -709,7 +709,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
         onPress={handleDoneSet}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel="Done — start next set"
+        accessibilityLabel="Done, start next set"
         className="p-2"
       >
         <Icon name="play" size={20} color={accentPrimary} weight="bold" />

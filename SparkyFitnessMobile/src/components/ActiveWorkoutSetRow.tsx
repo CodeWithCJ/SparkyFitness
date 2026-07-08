@@ -16,6 +16,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
+import FormInput from './FormInput';
 import Icon from './Icon';
 import { formatRest } from './RestPeriodChip';
 import { parseDecimalInput } from '../utils/numericInput';
@@ -90,9 +91,10 @@ interface ActiveWorkoutSetRowProps {
   /**
    * Which field of the active row holds focus; drives the Next accessory. In
    * `live` this seeds the focused field when a cell is tapped; within-row Next
-   * then advances a row-local field (which can reach RPE).
+   * then advances a row-local field (which can reach RPE). `'rpe'` is only ever
+   * set on the live path (tapping the RPE column).
    */
-  activeField?: 'weight' | 'reps';
+  activeField?: 'weight' | 'reps' | 'rpe';
   /**
    * Live only: this row is the tap-focused editing cell (distinct from the
    * cursor, which `state === 'current'` still marks). Non-null activates the
@@ -108,6 +110,8 @@ interface ActiveWorkoutSetRowProps {
   /** Static completion check on inactive rows (draft `completedAt`). */
   completedBadge?: boolean;
   onActivateSet?: (setId: string, field: 'weight' | 'reps') => void;
+  /** Live only: tap the RPE column to focus the RPE input on that row. */
+  onActivateRpe?: (setId: string) => void;
   onDeactivate?: () => void;
   onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
   onAddSet?: (entryId: string) => void;
@@ -136,8 +140,10 @@ function LogCircle({ color }: { color: string }) {
 /**
  * Plain number cell used for the weight/reps/RPE inputs on an active editing
  * row (both `live` and `edit`). Replaces the `−/number/+` stepper: tap to type,
- * with an accent focus ring. The parent owns the value + commit semantics; this
- * component only tracks its own focus so the ring can highlight.
+ * with an accent focus ring. Delegates to {@link FormInput} so it inherits the
+ * iOS fontSize/lineHeight alignment fix and the themed subtle→accent focus
+ * border; only the compact grid padding is overridden. The parent owns the
+ * value + commit semantics.
  */
 interface SetCellInputProps {
   value: string;
@@ -147,9 +153,6 @@ interface SetCellInputProps {
   keyboardType: 'decimal-pad' | 'number-pad';
   accessibilityLabel: string;
   inputRef: React.Ref<TextInput>;
-  accentColor: string;
-  restingBorder: string;
-  mutedColor: string;
   accessoryId?: string;
   className?: string;
 }
@@ -162,34 +165,24 @@ function SetCellInput({
   keyboardType,
   accessibilityLabel,
   inputRef,
-  accentColor,
-  restingBorder,
-  mutedColor,
   accessoryId,
   className,
 }: SetCellInputProps) {
-  const [focused, setFocused] = useState(false);
   const iosProps = accessoryId != null ? { inputAccessoryViewID: accessoryId } : {};
   return (
-    <TextInput
+    <FormInput
       ref={inputRef}
       value={value}
       onChangeText={onChangeText}
-      onFocus={() => {
-        setFocused(true);
-        onFocus?.();
-      }}
-      onBlur={() => {
-        setFocused(false);
-        onBlur?.();
-      }}
+      onFocus={onFocus}
+      onBlur={onBlur}
       keyboardType={keyboardType}
       selectTextOnFocus
       placeholder="–"
-      placeholderTextColor={mutedColor}
       accessibilityLabel={accessibilityLabel}
-      className={`rounded-lg bg-raised px-1 py-1.5 text-center text-base text-text-primary ${className ?? ''}`}
-      style={{ borderWidth: 1, borderColor: focused ? accentColor : restingBorder }}
+      className={`text-center ${className ?? ''}`}
+      // Tighter than FormInput's default 10/12 so the cell fits the 5-column row.
+      style={{ paddingTop: 6, paddingBottom: 6, paddingLeft: 4, paddingRight: 4 }}
       {...iosProps}
     />
   );
@@ -214,6 +207,7 @@ function ActiveWorkoutSetRow({
   rpeEditable = true,
   completedBadge = false,
   onActivateSet,
+  onActivateRpe,
   onDeactivate,
   onEditFieldChange,
   onAddSet,
@@ -237,7 +231,6 @@ function ActiveWorkoutSetRow({
     chromeBg,
     chromeBorder,
     dangerColor,
-    borderSubtle,
     rpeEasy,
     rpeModerate,
     rpeHard,
@@ -249,13 +242,11 @@ function ActiveWorkoutSetRow({
     '--color-chrome',
     '--color-chrome-border',
     '--color-bg-danger',
-    '--color-border-subtle',
     RPE_TONE_VARS.easy,
     RPE_TONE_VARS.moderate,
     RPE_TONE_VARS.hard,
     RPE_TONE_VARS.max,
   ]) as [
-    string,
     string,
     string,
     string,
@@ -312,7 +303,13 @@ function ActiveWorkoutSetRow({
   // (edit). The focused input's onFocus then records the field.
   useEffect(() => {
     if (!isActiveEditRow) return;
-    (activeField === 'reps' ? repsInputRef : weightInputRef).current?.focus();
+    const ref =
+      activeField === 'reps'
+        ? repsInputRef
+        : activeField === 'rpe'
+          ? rpeInputRef
+          : weightInputRef;
+    ref.current?.focus();
   }, [isActiveEditRow, activeField]);
 
   // Edit-mode inputs are CONTROLLED by the form reducer (raw draft strings),
@@ -578,9 +575,6 @@ function ActiveWorkoutSetRow({
               }
               keyboardType="decimal-pad"
               accessibilityLabel="Weight"
-              accentColor={accentPrimary}
-              restingBorder={borderSubtle}
-              mutedColor={textMuted}
               accessoryId={weightAccessoryId}
               className="w-16"
             />
@@ -598,9 +592,6 @@ function ActiveWorkoutSetRow({
               }
               keyboardType="number-pad"
               accessibilityLabel="Reps"
-              accentColor={accentPrimary}
-              restingBorder={borderSubtle}
-              mutedColor={textMuted}
               accessoryId={repsAccessoryId}
               className="w-16"
             />
@@ -615,9 +606,6 @@ function ActiveWorkoutSetRow({
                 onFocus={isLive ? () => setLiveField('rpe') : undefined}
                 keyboardType="decimal-pad"
                 accessibilityLabel="RPE"
-                accentColor={accentPrimary}
-                restingBorder={borderSubtle}
-                mutedColor={textMuted}
                 accessoryId={rpeAccessoryId}
                 className="w-11"
               />
@@ -671,11 +659,11 @@ function ActiveWorkoutSetRow({
   const displayWeight = showDurationFallback
     ? formatRest(set.duration)
     : isEdit
-      ? editWeightText || '—'
+      ? editWeightText || '–'
       : set.weight != null
         ? formatDisplayWeight(set.weight, weightUnit)
-        : '—';
-  const displayReps = isEdit ? editRepsText || '—' : set.reps != null ? String(set.reps) : '—';
+        : '–';
+  const displayReps = isEdit ? editRepsText || '–' : set.reps != null ? String(set.reps) : '–';
 
   // live + edit render tap-to-activate display cells (tap → the input variant
   // above focuses that field); view keeps flat text.
@@ -739,15 +727,35 @@ function ActiveWorkoutSetRow({
       ) : (
         repsCellText
       )}
-      <Text
-        className="w-14 text-center text-sm"
-        style={[
-          { fontVariant: ['tabular-nums'] },
-          { color: metricValue.color ?? textMuted },
-        ]}
-      >
-        {metricValue.text}
-      </Text>
+      {isLive && metricColumn === 'rpe' ? (
+        <Pressable
+          className="w-14 items-center py-1"
+          onPress={() => onActivateRpe?.(setId)}
+          onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit RPE for set ${set.set_number}`}
+        >
+          <Text
+            className="text-center text-sm"
+            style={[
+              { fontVariant: ['tabular-nums'] },
+              { color: metricValue.color ?? textMuted },
+            ]}
+          >
+            {metricValue.text}
+          </Text>
+        </Pressable>
+      ) : (
+        <Text
+          className="w-14 text-center text-sm"
+          style={[
+            { fontVariant: ['tabular-nums'] },
+            { color: metricValue.color ?? textMuted },
+          ]}
+        >
+          {metricValue.text}
+        </Text>
+      )}
       <View className="w-10 items-center">
         {isEdit ? (
           completedBadge ? (

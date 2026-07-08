@@ -74,6 +74,7 @@ function renderRow(overrides?: RenderOverrides) {
     onDelete: jest.fn(),
     onLongPress: jest.fn(),
     onActivateSet: jest.fn(),
+    onActivateRpe: jest.fn(),
     onDeactivate: jest.fn(),
     onEditFieldChange: jest.fn(),
     onAddSet: jest.fn(),
@@ -171,6 +172,20 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
       fireEvent.press(getByLabelText('Edit reps for set 1'));
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'reps');
+    });
+
+    it('activates RPE when the RPE column cell is tapped', () => {
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        metricColumn: 'rpe',
+      });
+      fireEvent.press(getByLabelText('Edit RPE for set 1'));
+      expect(callbacks.onActivateRpe).toHaveBeenCalledWith('101');
+    });
+
+    it('does not make a non-RPE metric column tappable', () => {
+      const { queryByLabelText } = renderRow({ state: 'current', metricColumn: 'volume' });
+      expect(queryByLabelText('Edit RPE for set 1')).toBeNull();
     });
   });
 
@@ -614,10 +629,12 @@ describe('ActiveWorkoutSetRow', () => {
     });
 
     it('shows an en-dash when a metric cannot be computed', () => {
+      // weight 0 keeps the weight/reps cells populated ("0" / "10") so the only
+      // en-dash on the row is the uncomputable volume metric.
       const { getByText } = renderRow({
         state: 'upcoming',
         metricColumn: 'volume',
-        set: { reps: null },
+        set: { weight: 0, reps: 10 },
       });
       expect(getByText('–')).toBeTruthy();
     });

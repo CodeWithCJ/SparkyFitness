@@ -79,6 +79,7 @@ describe('ActiveWorkoutRail superset borders', () => {
         exercises={exercises}
         completedSetIds={{}}
         focusedEntryId={null}
+        activeEntryId={null}
         supersetBorders={supersetBorders}
         getImageSource={() => null}
         onPressExercise={jest.fn()}
@@ -107,5 +108,44 @@ describe('ActiveWorkoutRail superset borders', () => {
   it('draws no bar for ungrouped exercises', () => {
     const { queryByTestId } = renderRail();
     expect(queryByTestId('superset-bar-ex-c')).toBeNull();
+  });
+});
+
+describe('ActiveWorkoutRail focus ring vs current marker', () => {
+  const exercises = [makeExercise('ex-a', 'Bench Press'), makeExercise('ex-b', 'Squat')];
+
+  function renderRail(activeEntryId: string | null, focusedEntryId: string | null = null) {
+    return render(
+      <ActiveWorkoutRail
+        exercises={exercises}
+        completedSetIds={{}}
+        focusedEntryId={focusedEntryId}
+        activeEntryId={activeEntryId}
+        supersetBorders={new Map()}
+        getImageSource={() => null}
+        onPressExercise={jest.fn()}
+        onPressAdd={jest.fn()}
+      />,
+    );
+  }
+
+  it('rings the scroll-focused exercise, independent of the current one', () => {
+    const { getByTestId } = renderRail('ex-b', 'ex-a');
+    const focused = StyleSheet.flatten(getByTestId('rail-ring-ex-a').props.style);
+    const other = StyleSheet.flatten(getByTestId('rail-ring-ex-b').props.style);
+    expect(focused.borderColor).not.toBe('transparent');
+    expect(other.borderColor).toBe('transparent');
+  });
+
+  it('marks the current (cursor) exercise with the play badge, not the focused one', () => {
+    const { getByTestId, queryByTestId } = renderRail('ex-b', 'ex-a');
+    expect(getByTestId('rail-current-ex-b')).toBeTruthy();
+    expect(queryByTestId('rail-current-ex-a')).toBeNull();
+  });
+
+  it('shows no current marker when the workout is complete', () => {
+    const { queryByTestId } = renderRail(null);
+    expect(queryByTestId('rail-current-ex-a')).toBeNull();
+    expect(queryByTestId('rail-current-ex-b')).toBeNull();
   });
 });

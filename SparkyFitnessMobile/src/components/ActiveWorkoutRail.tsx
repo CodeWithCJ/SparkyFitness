@@ -23,8 +23,11 @@ export interface SupersetBorder {
 interface ActiveWorkoutRailProps {
   exercises: ExerciseEntryResponse[];
   completedSetIds: CompletedSetMap;
-  /** The exercise highlighted with the accent ring (cursor or scroll focus). */
+  /** The scroll-focused exercise (bold label + kept in view as the log scrolls). */
   focusedEntryId: string | null;
+  /** The current (cursor) exercise — always carries the accent ring so the rail
+   * shows where you are in the workout regardless of scroll position. */
+  activeEntryId: string | null;
   /** Superset membership: grouped thumbs get a flat bottom bar in the group color. */
   supersetBorders: Map<string, SupersetBorder>;
   getImageSource: GetImageSource;
@@ -40,6 +43,7 @@ function ActiveWorkoutRail({
   exercises,
   completedSetIds,
   focusedEntryId,
+  activeEntryId,
   supersetBorders,
   getImageSource,
   onPressExercise,
@@ -85,6 +89,7 @@ function ActiveWorkoutRail({
           exercise.sets.length > 0 &&
           exercise.sets.every((s) => completedSetIds[String(s.id)]);
         const isFocused = exercise.id === focusedEntryId;
+        const isCurrent = exercise.id === activeEntryId;
         const supersetBorder = supersetBorders.get(exercise.id) ?? null;
 
         return (
@@ -98,11 +103,13 @@ function ActiveWorkoutRail({
             style={{ width: THUMB_SIZE + 16 }}
           >
             <View
+              testID={`rail-ring-${exercise.id}`}
               className="rounded-xl"
               style={{
                 padding: 2,
                 borderWidth: 2,
                 borderRadius: 14,
+                // Ring tracks scroll focus (which chip is centered in the log).
                 borderColor: isFocused ? accentPrimary : 'transparent',
               }}
             >
@@ -134,6 +141,25 @@ function ActiveWorkoutRail({
                   <Icon name="checkmark" size={11} color="#ffffff" weight="bold" />
                 </View>
               )}
+              {/* Current-exercise marker (has the active set): an accent "play"
+                  badge, mirroring the green-check done badge. Distinct from the
+                  scroll-focus ring so both can show at once. Never collides with
+                  the done badge — the current exercise is never fully done. */}
+              {isCurrent && !isDone && (
+                <View
+                  testID={`rail-current-${exercise.id}`}
+                  className="absolute items-center justify-center rounded-full"
+                  style={{
+                    left: -2,
+                    top: -2,
+                    width: 18,
+                    height: 18,
+                    backgroundColor: accentPrimary,
+                  }}
+                >
+                  <Icon name="play" size={10} color="#ffffff" weight="bold" />
+                </View>
+              )}
             </View>
             {supersetBorder && (
               <View
@@ -156,8 +182,13 @@ function ActiveWorkoutRail({
             <Text
               numberOfLines={2}
               className={`mt-1 text-center text-[11px] leading-[13px] ${
-                isFocused ? 'font-semibold text-text-primary' : 'text-text-secondary'
+                isCurrent
+                  ? 'font-semibold'
+                  : isFocused
+                    ? 'font-semibold text-text-primary'
+                    : 'text-text-secondary'
               }`}
+              style={isCurrent ? { color: accentPrimary } : undefined}
             >
               {name}
             </Text>
@@ -174,13 +205,16 @@ function ActiveWorkoutRail({
       >
         <View style={{ padding: 4 }}>
           <View
-            className="items-center justify-center rounded-xl border border-dashed border-border-subtle bg-raised"
+            className="items-center justify-center rounded-xl bg-raised"
             style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
           >
-            <Icon name="add" size={22} color={textMuted} />
+            <Icon name="add" size={22} color={accentPrimary} />
           </View>
         </View>
-        <Text className="mt-1 text-center text-[11px] leading-[13px] text-text-secondary">
+        <Text
+          className="mt-1 text-center text-[11px] leading-[13px] font-medium"
+          style={{ color: accentPrimary }}
+        >
           Add
         </Text>
       </Pressable>

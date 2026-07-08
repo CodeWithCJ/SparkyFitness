@@ -178,6 +178,26 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // the expansion lands in the same commit as the cursor move.
   const [prevActiveExerciseId, setPrevActiveExerciseId] = useState(activeExerciseId);
   if (activeExerciseId !== prevActiveExerciseId) {
+    // Keep a just-finished exercise expanded instead of auto-collapsing it as
+    // the cursor moves on: promote it into the user-expanded set (still
+    // collapsible by hand). Only when it's fully logged — a jump that leaves
+    // holes shouldn't pin it open.
+    const leaving = prevActiveExerciseId;
+    if (leaving != null) {
+      const leavingExercise = session?.exercises.find((e) => e.id === leaving);
+      const leavingDone =
+        leavingExercise != null &&
+        leavingExercise.sets.length > 0 &&
+        leavingExercise.sets.every((s) => completedSetIds[String(s.id)]);
+      if (leavingDone) {
+        setUserExpandedIds((prev) => {
+          if (prev.has(leaving)) return prev;
+          const next = new Set(prev);
+          next.add(leaving);
+          return next;
+        });
+      }
+    }
     setPrevActiveExerciseId(activeExerciseId);
     if (activeExerciseId != null) {
       setAutoExpandedId(activeExerciseId);
@@ -460,9 +480,15 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // from activeSetId (the cursor / log ring), so tapping an earlier set to fix a
   // value doesn't move the cursor.
   const [focusedSetId, setFocusedSetId] = useState<string | null>(null);
-  const [focusedField, setFocusedField] = useState<'weight' | 'reps'>('weight');
+  const [focusedField, setFocusedField] = useState<'weight' | 'reps' | 'rpe'>('weight');
   const handleActivateSet = useCallback((setId: string, field: 'weight' | 'reps') => {
     setFocusedField(field);
+    setFocusedSetId(setId);
+  }, []);
+  // Tapping the RPE column focuses that row's RPE input directly (the row's
+  // focus effect reads `focusedField`).
+  const handleActivateRpe = useCallback((setId: string) => {
+    setFocusedField('rpe');
     setFocusedSetId(setId);
   }, []);
   const handleDeactivateSet = useCallback(() => {
@@ -637,7 +663,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const remaining = totalSets - doneSets;
     const message =
       remaining > 0
-        ? `${doneSets} of ${totalSets} sets logged — ${remaining} still unlogged.`
+        ? `${doneSets} of ${totalSets} sets logged. ${remaining} still to go.`
         : `All ${totalSets} sets logged. Nice work!`;
     Alert.alert('End workout?', message, [
       { text: 'Keep going', style: 'cancel' },
@@ -718,6 +744,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         exercises={session.exercises}
         completedSetIds={completedSetIds}
         focusedEntryId={focusedExerciseId}
+        activeEntryId={activeExerciseId}
         supersetBorders={supersetBorders}
         getImageSource={getImageSource}
         onPressExercise={handleRailPress}
@@ -766,6 +793,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onLongPressSet={handleLongPressSet}
               onAddSet={handleAddSet}
               onActivateSet={handleActivateSet}
+              onActivateRpe={handleActivateRpe}
               onDeactivateSet={handleDeactivateSet}
             />
           );
