@@ -11,11 +11,26 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
+// Counts mounts (not renders) so a test can assert the thumbnail <Image> is
+// reconciled in place across expand/collapse instead of being remounted (a
+// remount triggers a fresh network fetch and the visible flash we fixed).
 jest.mock('../../src/components/SafeImage', () => {
+  const React = require('react');
   const { View } = require('react-native');
+  let mounts = 0;
+  const SafeImage = () => {
+    React.useEffect(() => {
+      mounts += 1;
+    }, []);
+    return <View testID="safe-image" />;
+  };
   return {
     __esModule: true,
-    default: () => <View testID="safe-image" />,
+    default: SafeImage,
+    __getMountCount: () => mounts,
+    __resetMountCount: () => {
+      mounts = 0;
+    },
   };
 });
 
@@ -51,6 +66,10 @@ jest.mock('../../src/stores/activeWorkoutStore', () => {
   };
 });
 
+const mockSafeImage = jest.requireMock('../../src/components/SafeImage') as {
+  __getMountCount: () => number;
+  __resetMountCount: () => void;
+};
 const mockUseExerciseStats = jest.requireMock('../../src/hooks/useExerciseStats')
   .useExerciseStats as jest.Mock;
 const mockCapturePrBaseline = jest.requireMock('../../src/stores/activeWorkoutStore')
@@ -166,6 +185,35 @@ describe('ActiveWorkoutExerciseCard', () => {
   it('offers no overflow trigger while collapsed (expand first)', () => {
     const { queryByLabelText } = renderCard(false);
     expect(queryByLabelText('More options for Bench Press')).toBeNull();
+  });
+
+  it('keeps the thumbnail image mounted across expand/collapse (no reload flash)', () => {
+    mockSafeImage.__resetMountCount();
+    const callbacks = {
+      onToggleExpanded: jest.fn(),
+      onPressMetricHeader: jest.fn(),
+    };
+    const element = (expanded: boolean) => (
+      <ActiveWorkoutExerciseCard
+        exercise={makeExercise()}
+        expanded={expanded}
+        completedSetIds={{}}
+        activeSetId="101"
+        metricColumn="rpe"
+        weightUnit="kg"
+        getImageSource={() => null}
+        onPressThumb={jest.fn()}
+        {...callbacks}
+      />
+    );
+    const { rerender } = render(element(false));
+    expect(mockSafeImage.__getMountCount()).toBe(1);
+
+    // Collapsed and expanded share an identical root → header → thumb prefix,
+    // so React reconciles the image in place rather than remounting it.
+    rerender(element(true));
+    rerender(element(false));
+    expect(mockSafeImage.__getMountCount()).toBe(1);
   });
 
   describe('long-press menu (live)', () => {

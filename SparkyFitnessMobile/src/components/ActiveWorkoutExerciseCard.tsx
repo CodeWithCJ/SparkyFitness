@@ -339,27 +339,42 @@ function ActiveWorkoutExerciseCard({
         ? `${exercise.sets.length} sets${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
         : `${exercise.sets.length} sets`;
 
+    // The root → header row → thumb <Pressable> wrappers mirror the expanded
+    // card exactly so the thumbnail <Image> keeps its position in the tree
+    // across expand/collapse. A divergent structure would remount the image
+    // (a fresh network fetch) and flash it on every toggle. The thumb press
+    // target expands here; the labeled "Expand" affordance is the row body.
     return (
-      <Pressable
-        ref={collapsedRowRef}
-        onPress={() => onToggleExpanded(exercise.id)}
-        onLongPress={longPressMenu}
-        accessibilityRole="button"
-        accessibilityLabel={`Expand ${name}`}
-        className="flex-row items-center gap-3 px-4 py-3 border-b border-border-subtle"
-      >
-        {thumb}
-        <Text
-          numberOfLines={2}
-          className={`flex-1 text-base ${isDone ? 'text-text-secondary' : 'text-text-primary'}`}
-        >
-          {name}
-        </Text>
-        <Text className="text-sm text-text-muted" style={{ fontVariant: ['tabular-nums'] }}>
-          {subtitle}
-        </Text>
-        <Icon name="chevron-forward" size={16} color={textMuted} />
-      </Pressable>
+      <View className="border-b border-border-subtle">
+        <View className="flex-row items-center gap-3 px-4 py-3">
+          <Pressable
+            onPress={() => onToggleExpanded(exercise.id)}
+            onLongPress={longPressMenu}
+            accessible={false}
+          >
+            {thumb}
+          </Pressable>
+          <Pressable
+            ref={collapsedRowRef}
+            onPress={() => onToggleExpanded(exercise.id)}
+            onLongPress={longPressMenu}
+            accessibilityRole="button"
+            accessibilityLabel={`Expand ${name}`}
+            className="flex-1 flex-row items-center gap-3"
+          >
+            <Text
+              numberOfLines={2}
+              className={`flex-1 text-base ${isDone ? 'text-text-secondary' : 'text-text-primary'}`}
+            >
+              {name}
+            </Text>
+            <Text className="text-sm text-text-muted" style={{ fontVariant: ['tabular-nums'] }}>
+              {subtitle}
+            </Text>
+            <Icon name="chevron-forward" size={16} color={textMuted} />
+          </Pressable>
+        </View>
+      </View>
     );
   }
 
@@ -368,17 +383,17 @@ function ActiveWorkoutExerciseCard({
   return (
     <View className="bg-surface rounded-2xl px-3 pt-3 pb-2 mb-2">
       <View className="flex-row items-center gap-3">
-        {onPressThumb ? (
-          <Pressable
-            onPress={() => onPressThumb(exercise.id)}
-            accessibilityRole="button"
-            accessibilityLabel={`View ${name} details`}
-          >
-            {thumb}
-          </Pressable>
-        ) : (
-          thumb
-        )}
+        {/* Always a <Pressable> so the thumb subtree matches the collapsed
+            render and the <Image> is preserved rather than remounted. Inert
+            (no press, hidden from a11y) when no detail handler is wired. */}
+        <Pressable
+          onPress={onPressThumb ? () => onPressThumb(exercise.id) : undefined}
+          accessible={onPressThumb != null}
+          accessibilityRole={onPressThumb != null ? 'button' : undefined}
+          accessibilityLabel={onPressThumb != null ? `View ${name} details` : undefined}
+        >
+          {thumb}
+        </Pressable>
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
           onLongPress={longPressExpandedMenu}

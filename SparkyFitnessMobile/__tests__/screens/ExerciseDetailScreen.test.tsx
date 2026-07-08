@@ -69,6 +69,9 @@ const mockFetchExerciseById = fetchExerciseById as jest.MockedFunction<
 >;
 const mockConfirmAndDelete = jest.fn();
 
+const insets = { top: 0, bottom: 0, left: 0, right: 0 };
+const frame = { x: 0, y: 0, width: 390, height: 844 };
+
 let queryClient: QueryClient;
 
 const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -76,9 +79,6 @@ const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <SafeAreaProvider initialMetrics={{ insets, frame }}>{children}</SafeAreaProvider>
   </QueryClientProvider>
 );
-
-const insets = { top: 0, bottom: 0, left: 0, right: 0 };
-const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 const baseExercise: Exercise = {
   id: 'ex-1',
@@ -111,13 +111,16 @@ describe('ExerciseDetailScreen', () => {
 
   const renderScreen = (overrides: Partial<Exercise> = {}) =>
     render(
-      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+      <Providers>
         <ExerciseDetailScreen navigation={navigation} route={buildRoute(overrides) as any} />
-      </SafeAreaProvider>,
+      </Providers>,
     );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     mockUseProfile.mockReturnValue({
       profile: { id: 'user-1' } as any,
       isLoading: false,
@@ -239,14 +242,14 @@ describe('ExerciseDetailScreen', () => {
       params: { item: ownedCustomExercise },
     };
     const screen = render(
-      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+      <Providers>
         <ExerciseDetailScreen navigation={navigation} route={route as any} />
-      </SafeAreaProvider>,
+      </Providers>,
     );
     expect(screen.getByText('Bench Press')).toBeTruthy();
 
     screen.rerender(
-      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+      <Providers>
         <ExerciseDetailScreen
           navigation={navigation}
           route={
@@ -259,9 +262,53 @@ describe('ExerciseDetailScreen', () => {
             } as any
           }
         />
-      </SafeAreaProvider>,
+      </Providers>,
     );
 
     expect(screen.getByText('Bench Press 2')).toBeTruthy();
+  });
+
+  describe('hydration by id', () => {
+    const uuidId = '11111111-1111-4111-8111-111111111111';
+
+    it('hydrates a sparse item with the full catalog record fetched by id', async () => {
+      mockFetchExerciseById.mockResolvedValue({
+        ...baseExercise,
+        id: uuidId,
+        name: 'Hydrated Bench Press',
+        primary_muscles: ['pectorals'],
+      });
+
+      // Sparse item: only id/name known, no muscles.
+      const screen = renderScreen({
+        id: uuidId,
+        name: 'Sparse Bench',
+        equipment: [],
+        primary_muscles: [],
+        secondary_muscles: [],
+      });
+
+      expect(screen.getByText('Sparse Bench')).toBeTruthy();
+
+      await waitFor(() => expect(screen.getByText('Hydrated Bench Press')).toBeTruthy());
+      expect(mockFetchExerciseById).toHaveBeenCalledWith(uuidId);
+      expect(screen.getByText('Pectorals')).toBeTruthy();
+    });
+
+    it('does not fetch for a non-UUID id', () => {
+      renderScreen({ id: 'not-a-uuid' });
+      expect(mockFetchExerciseById).not.toHaveBeenCalled();
+    });
+
+    it('does not fetch while offline', () => {
+      mockUseServerConnection.mockReturnValue({
+        isConnected: false,
+        isLoading: false,
+        isError: false,
+        error: null,
+      } as any);
+      renderScreen({ id: uuidId });
+      expect(mockFetchExerciseById).not.toHaveBeenCalled();
+    });
   });
 });

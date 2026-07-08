@@ -44,7 +44,6 @@ import type {
   ExerciseSessionResponse,
   ExerciseSnapshotResponse,
 } from '@workspace/shared';
-import type { WorkoutDraftExercise } from '../../src/types/drafts';
 import { presetSessionExerciseRequestSchema } from '@workspace/shared';
 import { weightFromKg } from '../../src/utils/unitConversions';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
