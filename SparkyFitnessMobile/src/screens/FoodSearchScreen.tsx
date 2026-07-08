@@ -107,6 +107,11 @@ const ALL_PROVIDERS_VALUE = '__all__';
 // online results are also on screen.
 const LOCAL_RESULT_CAP = 6;
 
+// Fixed height for the local-loading/empty-local status row so switching
+// between the spinner and the empty-state text never shifts the sections
+// below it (e.g. Online Results).
+const LOCAL_STATUS_ROW_MIN_HEIGHT = 72;
+
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
@@ -287,7 +292,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // All Providers fan-out: parallel per-provider searches that stream in.
   const {
     providerResults,
-    anyLoading: anyProviderLoading,
     isSearchActive: isAllProvidersSearchActive,
   } = useAllProvidersSearch(searchText, providers, {
     enabled: isConnected && isAllProviders,
@@ -853,13 +857,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         return renderProviderSkeleton();
       case 'local-loading':
         return (
-          <View className="py-8 items-center">
-            <ActivityIndicator size="large" color={accentColor} />
+          <View
+            className="px-4 py-6 items-center justify-center"
+            style={{ minHeight: LOCAL_STATUS_ROW_MIN_HEIGHT }}
+          >
+            <ActivityIndicator size="small" color={accentColor} />
           </View>
         );
       case 'empty-local':
         return (
-          <View className="px-4 py-6">
+          <View
+            className="px-4 py-6 items-center justify-center"
+            style={{ minHeight: LOCAL_STATUS_ROW_MIN_HEIGHT }}
+          >
             <Text className="text-text-secondary text-base text-center">
               {isMealBuilderMode
                 ? 'No saved foods found'
@@ -875,14 +885,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     // The External Results / Top Matches header doubles as the source switcher:
     // a single provider, or "All Providers" for the aggregated view. The current
-    // value is shown in the accent colour with a double-arrow selector icon so it
-    // reads as a switchable control; the icon becomes a spinner while loading.
+    // value is shown in the accent colour with a chevron icon so it reads as a
+    // switchable control.
     if (section.kind === 'online' || section.kind === 'online-top') {
       const canSwitch = providerOptions.length > 1;
       const label =
         section.kind === 'online-top' ? 'Top Matches' : 'Online Results';
       const value = isAllProviders ? 'All Sources' : selectedProviderName;
-      const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
       const header = (
         <View
           ref={onlineHeaderRef}
@@ -899,9 +908,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             >
               {value}
             </Text>
-            {loading ? (
-              <ActivityIndicator size="small" color={accentColor} />
-            ) : canSwitch ? (
+            {canSwitch ? (
               <Icon name="chevron-down" size={16} color={accentColor} />
             ) : null}
           </View>
@@ -1004,9 +1011,24 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   const renderResultSectionFooter = ({ section }: { section: ResultSection }) => {
+    if (section.kind === 'food' && isSearching) {
+      return (
+        <View className="py-3 items-center">
+          <ActivityIndicator size="small" color={accentColor} />
+        </View>
+      );
+    }
+    if (section.kind === 'meal' && isMealSearching) {
+      return (
+        <View className="py-3 items-center">
+          <ActivityIndicator size="small" color={accentColor} />
+        </View>
+      );
+    }
+
     if (section.kind !== 'online') return null;
 
-    if (isOnlineSearching && visibleOnlineResults.length === 0) {
+    if (isOnlineSearching) {
       return (
         <View className="py-4 items-center">
           <ActivityIndicator size="small" color={accentColor} />
@@ -1105,12 +1127,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           borderColor: isSearchFocused ? accentColor : 'transparent',
         }}
       >
-        {!!searchText.trim() &&
-        (isSearching || isMealSearching || isOnlineSearching) ? (
-          <ActivityIndicator size="small" color={textMuted} />
-        ) : (
-          <Icon name="search" size={18} color={textMuted} />
-        )}
+        <Icon name="search" size={18} color={textMuted} />
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
