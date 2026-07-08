@@ -415,9 +415,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <Animated.View key={exercise.id} layout={LinearTransition.duration(300)}>
             {supersetBorder ? (
               // Grouped members carry a flat 3px left rail. Interior rails
-              // run to the wrapper's bottom — which includes the expanded
-              // card's 8px mb-2 — so consecutive members read as one
-              // continuous line; the run's last member stops at the card.
+              // run the full wrapper height, meeting the next member's rail at
+              // the divider so consecutive members read as one continuous line;
+              // the run's last member stops ~8px short to end at the card
+              // content rather than the divider.
               <View style={{ paddingLeft: 10 }}>
                 <View
                   testID={`superset-rail-${exercise.id}`}

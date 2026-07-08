@@ -453,9 +453,9 @@ const WorkoutFormExerciseList = forwardRef<
           >
             {supersetBorder ? (
               // Grouped members carry a flat 3px left rail. Interior rails run
-              // to the wrapper's bottom — which includes the expanded card's
-              // 8px mb-2 — so consecutive members read as one continuous line;
-              // the run's last member stops at the card.
+              // the full wrapper height, meeting the next member's rail at the
+              // divider so consecutive members read as one continuous line; the
+              // run's last member stops ~8px short to end at the card content.
               <View style={{ paddingLeft: 10 }}>
                 <View
                   testID={`superset-rail-${clientId}`}

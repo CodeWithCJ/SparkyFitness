@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Keyboard } from 'react-native';
+import { Keyboard } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
@@ -79,8 +79,10 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
             onPress={() => props.onPressMetricHeader?.({ x: 0, y: 0, width: 0, height: 0 })}
           />
           <Pressable
-            testID={`card-${id}-longpress`}
-            onPress={() => props.onLongPressSet?.(firstSetId)}
+            testID={`card-${id}-set-type`}
+            onPress={() =>
+              props.onPressSetType?.(firstSetId, { x: 0, y: 0, width: 0, height: 0 })
+            }
           />
           <Pressable
             testID={`card-${id}-commit-prefill`}
@@ -388,33 +390,31 @@ describe('WorkoutFormExerciseList', () => {
     });
   });
 
-  it('opens the set-type alert on long-press and dispatches updateSetMeta', () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  it('opens the set-type menu and dispatches updateSetMeta / removeSet', () => {
     const utils = renderList([
       makeExercise('a', {
         sets: [{ clientId: 'a-s1', weight: '100', reps: '5', setType: 'normal' }],
       }),
     ]);
-    fireEvent.press(utils.getByTestId('card-a-longpress'));
+    fireEvent.press(utils.getByTestId('card-a-set-type'));
 
-    expect(alertSpy).toHaveBeenCalledWith('A · Set 1', 'Set type', expect.any(Array));
-    const buttons = alertSpy.mock.calls[0][2]!;
-    expect(buttons.map(b => b.text)).toEqual([
-      'Warmup',
-      '✓ Normal',
-      'Drop',
-      'Failure',
-      'Delete set',
-      'Cancel',
-    ]);
-    buttons[0].onPress?.();
+    // Every set type (current one check-marked) plus a Delete item.
+    expect(utils.getByTestId('menu-item-warmup')).toBeTruthy();
+    expect(utils.getByText('✓ Normal')).toBeTruthy();
+    expect(utils.getByTestId('menu-item-drop')).toBeTruthy();
+    expect(utils.getByTestId('menu-item-failure')).toBeTruthy();
+    expect(utils.getByTestId('menu-item-delete')).toBeTruthy();
+
+    fireEvent.press(utils.getByTestId('menu-item-warmup'));
     expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', {
       setType: 'warmup',
     });
-    // The long-press menu also offers delete (active rows have no swipe).
-    buttons.find(b => b.text === 'Delete set')?.onPress?.();
+
+    // The menu closes on select, so re-open it to exercise the delete item
+    // (active rows have no swipe-to-delete).
+    fireEvent.press(utils.getByTestId('card-a-set-type'));
+    fireEvent.press(utils.getByTestId('menu-item-delete'));
     expect(utils.callbacks.removeSet).toHaveBeenCalledWith('a', 'a-s1');
-    alertSpy.mockRestore();
   });
 
   describe('completion toggle', () => {

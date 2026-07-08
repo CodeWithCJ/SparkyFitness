@@ -114,31 +114,29 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
         </View>
       </View>
 
-      <View className="bg-surface rounded-xl p-4 shadow-sm">
-        <WorkoutFormExerciseList
-          ref={listRef}
-          exercises={state.exercises}
-          weightUnit={weightUnit}
-          getImageSource={getImageSource}
-          activeSetKey={exerciseSetEditing.activeSetKey}
-          activeSetField={exerciseSetEditing.activeSetField}
-          onActivateSet={exerciseSetEditing.activateSet}
-          onDeactivateSet={exerciseSetEditing.deactivateSet}
-          updateSetField={updateSetField}
-          updateSetMeta={updateSetMeta}
-          removeSet={removeSet}
-          onAddSet={exerciseSetEditing.handleAddSet}
-          onRemoveExercise={exerciseSetEditing.handleRemoveExercise}
-          setExerciseRest={setExerciseRest}
-          supersetWith={supersetWith}
-          ungroupExercise={ungroupExercise}
-          onReorderExercises={reorderExercises}
-          onAddExercisePress={onAddExercisePress}
-          onViewExercise={onViewExercise}
-          isEligibleForPrefill={isEligibleForPrefill}
-          rpeEditable={false}
-        />
-      </View>
+      <WorkoutFormExerciseList
+        ref={listRef}
+        exercises={state.exercises}
+        weightUnit={weightUnit}
+        getImageSource={getImageSource}
+        activeSetKey={exerciseSetEditing.activeSetKey}
+        activeSetField={exerciseSetEditing.activeSetField}
+        onActivateSet={exerciseSetEditing.activateSet}
+        onDeactivateSet={exerciseSetEditing.deactivateSet}
+        updateSetField={updateSetField}
+        updateSetMeta={updateSetMeta}
+        removeSet={removeSet}
+        onAddSet={exerciseSetEditing.handleAddSet}
+        onRemoveExercise={exerciseSetEditing.handleRemoveExercise}
+        setExerciseRest={setExerciseRest}
+        supersetWith={supersetWith}
+        ungroupExercise={ungroupExercise}
+        onReorderExercises={reorderExercises}
+        onAddExercisePress={onAddExercisePress}
+        onViewExercise={onViewExercise}
+        isEligibleForPrefill={isEligibleForPrefill}
+        rpeEditable={false}
+      />
     </View>
   );
 };

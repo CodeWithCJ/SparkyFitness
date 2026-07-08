@@ -384,7 +384,7 @@ function ActiveWorkoutExerciseCard({
   const workingSetNumbers = buildWorkingSetNumbers(exercise.sets);
 
   return (
-    <View className="bg-surface rounded-2xl px-3 pt-3 pb-2 mb-2">
+    <View className="border-b border-border-subtle px-4 pt-3 pb-2">
       <View className="flex-row items-center gap-3">
         {/* Always a <Pressable> so the thumb subtree matches the collapsed
             render and the <Image> is preserved rather than remounted. Inert
