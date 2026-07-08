@@ -166,8 +166,6 @@ export interface ActiveWorkoutState {
     opts?: { createdByLiveStart?: boolean },
   ) => void;
   startWorkoutAtSet: (session: PresetSessionResponse, setId: string) => void;
-  /** Forward-only jump. Marks priors complete; no-op if target is before activeSetId. */
-  jumpToSet: (setId: string) => void;
   /**
    * Capture the historical PR baseline for an exercise, once. No-op unless a
    * live workout is active and the key is absent — so view/edit renders of the
@@ -177,12 +175,20 @@ export interface ActiveWorkoutState {
    */
   capturePrBaseline: (exerciseId: string, baseline: PrBaselineEntry | null) => void;
   clearWorkout: () => void;
-  /** Complete the active set and advance the cursor. Starts rest before the next set. */
+  /**
+   * Complete any set — not just the cursor — and move the next-up highlight to
+   * the set right after it, starting the rest before that set. Sets log in any
+   * order, so this can leave earlier sets unchecked (holes); each hole stays
+   * re-loggable from its own row control.
+   */
+  completeSet: (setId: string) => void;
+  /** Complete the current cursor set. Thin wrapper over {@link completeSet}. */
   completeActiveSet: () => void;
   /**
-   * Un-complete a set (undo). Retracts its PR stamp and rewinds the cursor to
-   * the earliest uncompleted step, so the set stays re-loggable via its log
-   * ring instead of being stranded behind a forward-only cursor.
+   * Un-complete a set (undo): drop its completion timestamp and PR stamp. The
+   * cursor stays put — every set is independently loggable, so the reopened set
+   * is re-logged from its own row control — except when the workout had already
+   * finished (no active set), where reopening re-anchors the next-up onto it.
    */
   uncompleteSet: (setId: string) => void;
   /**
@@ -754,39 +760,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         });
       },
 
-      jumpToSet: (setId) => {
-        const state = get();
-        if (state.sessionId == null) return;
-
-        const targetIndex = state.steps.findIndex((s) => s.setId === setId);
-        if (targetIndex < 0) return;
-
-        const activeIndex =
-          state.activeSetId == null
-            ? -1
-            : state.steps.findIndex((s) => s.setId === state.activeSetId);
-        // Forward-only: reject backward jumps. Jumping to the active set is a
-        // no-op (cursor stays, rest stays).
-        if (activeIndex >= 0 && targetIndex < activeIndex) return;
-        if (targetIndex === activeIndex) return;
-
-        cancelCurrentRestNotification(state.rest);
-
-        const completedSetIds: CompletedSetMap = { ...state.completedSetIds };
-        for (let i = 0; i < targetIndex; i++) {
-          const id = state.steps[i].setId;
-          if (completedSetIds[id] == null) completedSetIds[id] = Date.now();
-        }
-
-        set({
-          completedSetIds,
-          activeSetId: setId,
-          rest: READY_REST,
-          sessionRevision: state.sessionRevision + 1,
-          hasUnsavedChanges: true,
-        });
-      },
-
       capturePrBaseline: (exerciseId, baseline) => {
         const state = get();
         // Only capture during a live workout, and only once per exercise —
@@ -803,19 +776,18 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set({ ...initialData });
       },
 
-      completeActiveSet: () => {
+      completeSet: (setId) => {
         const state = get();
-        if (state.activeSetId == null) return;
-
-        const activeIndex = state.steps.findIndex((s) => s.setId === state.activeSetId);
-        if (activeIndex < 0) return;
+        const targetIndex = state.steps.findIndex((s) => s.setId === setId);
+        if (targetIndex < 0) return;
+        // Already logged — the done row owns its own un-complete control.
+        if (state.completedSetIds[setId] != null) return;
 
         cancelCurrentRestNotification(state.rest);
 
-        const candidateSetId = state.activeSetId;
         const completedSetIds: CompletedSetMap = {
           ...state.completedSetIds,
-          [candidateSetId]: Date.now(),
+          [setId]: Date.now(),
         };
 
         // PR detection runs against the pre-completion map (the candidate is
@@ -827,14 +799,14 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         let lastPrEvent = state.lastPrEvent;
         if (
           state.session != null &&
-          isPrSet(state.session, candidateSetId, state.completedSetIds, state.prBaseline)
+          isPrSet(state.session, setId, state.completedSetIds, state.prBaseline)
         ) {
-          prSetIds = { ...state.prSetIds, [candidateSetId]: true };
+          prSetIds = { ...state.prSetIds, [setId]: true };
           fireSuccessHaptic();
-          const set0 = findSessionSet(state.session, candidateSetId);
+          const set0 = findSessionSet(state.session, setId);
           lastPrEvent = {
-            setId: candidateSetId,
-            exerciseName: state.steps[activeIndex].exerciseName,
+            setId,
+            exerciseName: state.steps[targetIndex].exerciseName,
             weightKg: set0?.weight ?? 0,
             reps: set0?.reps ?? null,
             seq: ++prEventCounter,
@@ -843,13 +815,15 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           fireSelectionHaptic();
         }
 
-        // Advance to the next *uncompleted* step — completion maps can have
-        // holes (server completions preserved across a mid-workout restart, or
-        // the cursor rewound by an uncheck), and landing on a done row would
-        // strand the cursor.
-        const nextStep = state.steps
-          .slice(activeIndex + 1)
-          .find((s) => completedSetIds[s.setId] == null);
+        // Next-up follows the just-logged set: the first uncompleted step after
+        // it (its "next set"), else the earliest uncompleted hole anywhere (so
+        // logging the last set with earlier holes circles back to them), else
+        // null when every set is done.
+        const nextStep =
+          state.steps.slice(targetIndex + 1).find((s) => completedSetIds[s.setId] == null) ??
+          state.steps.find((s) => completedSetIds[s.setId] == null) ??
+          null;
+
         if (!nextStep) {
           // No uncompleted step remains: workout is done. No final rest timer.
           set({
@@ -880,6 +854,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         });
       },
 
+      completeActiveSet: () => {
+        const { activeSetId } = get();
+        if (activeSetId != null) get().completeSet(activeSetId);
+      },
+
       uncompleteSet: (setId) => {
         const state = get();
         if (state.completedSetIds[setId] == null) return;
@@ -890,25 +869,19 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const nextPr = { ...state.prSetIds };
         delete nextPr[setId];
 
-        // Un-checking is an undo, so restore the cursor invariant (activeSetId =
-        // earliest uncompleted step). The cursor only moves forward on its own,
-        // so without this the unchecked set — now a hole behind the cursor —
-        // could never be re-logged (the out-of-order recomplete control is gone
-        // under sequential logging). Un-checking a set that's still ahead of an
-        // earlier hole leaves the cursor put; un-checking the new earliest hole
-        // rewinds to it and clears the now-stale rest.
-        const nextActiveSetId = state.steps.find((s) => next[s.setId] == null)?.setId ?? null;
-        let nextRest = state.rest;
-        if (nextActiveSetId !== state.activeSetId) {
-          cancelCurrentRestNotification(state.rest);
-          nextRest = READY_REST;
-        }
+        // The cursor stays where the user is working: every set is
+        // independently loggable, so the reopened set is re-logged from its own
+        // row control rather than needing the cursor to rewind onto it. The one
+        // exception is a finished workout (no active set) — reopening a set
+        // there re-anchors the next-up onto it so there's somewhere to resume.
+        // A running rest belongs to the cursor, which isn't moving here, so it
+        // is left untouched.
+        const nextActiveSetId = state.activeSetId ?? setId;
 
         set({
           completedSetIds: next,
           prSetIds: nextPr,
           activeSetId: nextActiveSetId,
-          rest: nextRest,
           sessionRevision: state.sessionRevision + 1,
           hasUnsavedChanges: true,
         });

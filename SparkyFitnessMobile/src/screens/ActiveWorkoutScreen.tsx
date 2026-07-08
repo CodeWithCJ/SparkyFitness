@@ -2,9 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   Text,
   View,
@@ -13,7 +11,9 @@ import {
   type TextInput,
 } from 'react-native';
 import {
+  KeyboardAvoidingView,
   KeyboardAwareScrollView,
+  KeyboardProvider,
   type KeyboardAwareScrollViewRef,
 } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -98,40 +98,42 @@ function RenameWorkoutDialog({
       onRequestClose={onCancel}
       onShow={() => inputRef.current?.focus()}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
-      >
-        <Pressable
-          className="flex-1 justify-center px-6"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-          onPress={onCancel}
-          accessibilityLabel="Dismiss rename"
-        >
-          {/* Absorb taps on the card so only the backdrop dismisses. */}
-          <Pressable className="bg-surface rounded-2xl p-5" onPress={() => {}} accessible={false}>
-            <Text className="text-lg font-semibold text-text-primary mb-3">Rename workout</Text>
-            <FormInput
-              ref={inputRef}
-              value={value}
-              onChangeText={setValue}
-              placeholder="Workout name"
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={submit}
-            />
-            <View className="flex-row justify-end gap-2 mt-4">
-              <Button variant="ghost" onPress={onCancel}>
-                Cancel
-              </Button>
-              <Button variant="primary" onPress={submit} disabled={trimmed.length === 0}>
-                Save
-              </Button>
-            </View>
+      {/* A native Modal renders in its own window, so the root KeyboardProvider
+          doesn't reach it — mount a local one so KeyboardAvoidingView tracks the
+          keyboard on both platforms (RN's own KAV is a no-op on Android). */}
+      <KeyboardProvider>
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+          <Pressable
+            className="flex-1 justify-center px-6"
+            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+            onPress={onCancel}
+            accessibilityLabel="Dismiss rename"
+          >
+            {/* Absorb taps on the card so only the backdrop dismisses. */}
+            <Pressable className="bg-surface rounded-2xl p-5" onPress={() => {}} accessible={false}>
+              <Text className="text-lg font-semibold text-text-primary mb-3">Rename workout</Text>
+              <FormInput
+                ref={inputRef}
+                value={value}
+                onChangeText={setValue}
+                placeholder="Workout name"
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={submit}
+              />
+              <View className="flex-row justify-end gap-2 mt-4">
+                <Button variant="ghost" onPress={onCancel}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onPress={submit} disabled={trimmed.length === 0}>
+                  Save
+                </Button>
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </KeyboardProvider>
     </Modal>
   );
 }
@@ -509,6 +511,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       entry?.sets.some((s) => completedSetIds[String(s.id)] != null) ?? false;
 
     const items: { key: string; label: string; onPress: () => void }[] = [];
+    items.push({
+      key: 'view',
+      label: 'View exercise',
+      onPress: () => handlePressThumb(entryId),
+    });
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
@@ -565,6 +572,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     reorderItemCount,
     handleOpenReorder,
     completedSetIds,
+    handlePressThumb,
     handleReplaceExercise,
     handleClearExerciseSets,
     handleRemoveExercise,
@@ -589,8 +597,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setFocusedSetId(null);
   }, []);
 
-  const handleCompleteActive = useCallback(() => {
-    useActiveWorkoutStore.getState().completeActiveSet();
+  const handleCompleteSet = useCallback((setId: string) => {
+    useActiveWorkoutStore.getState().completeSet(setId);
     // Logging advances the cursor and (usually) starts a rest — drop the
     // keyboard so the rest bar is unobstructed and the logged inputs collapse.
     setFocusedSetId(null);
@@ -644,18 +652,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         text: `${type === currentType ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
         onPress: () => useActiveWorkoutStore.getState().updateSetField(setId, { set_type: type }),
       }));
-
-    const targetIndex = store.steps.findIndex((s) => s.setId === setId);
-    const activeIndex =
-      store.activeSetId == null
-        ? -1
-        : store.steps.findIndex((s) => s.setId === store.activeSetId);
-    if (activeIndex >= 0 && targetIndex > activeIndex) {
-      buttons.push({
-        text: 'Jump here',
-        onPress: () => useActiveWorkoutStore.getState().jumpToSet(setId),
-      });
-    }
     buttons.push({ text: 'Cancel', style: 'cancel' });
 
     const name = exercise.exercise_snapshot?.name ?? 'Exercise';
@@ -881,7 +877,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onPressRestChip={handlePressRestChip}
               onPressMetricHeader={handlePressMetricHeader}
               onPressOverflow={handlePressOverflow}
-              onCompleteActive={handleCompleteActive}
+              onComplete={handleCompleteSet}
               onUncomplete={handleUncomplete}
               onCommitField={handleCommitField}
               onDeleteSet={handleDeleteSet}

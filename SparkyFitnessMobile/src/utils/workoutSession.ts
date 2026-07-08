@@ -1047,6 +1047,57 @@ export function exerciseFromSnapshot(
   };
 }
 
+/**
+ * Build a full `Exercise` from the sparse fields a card, draft, or preset row
+ * carries (id, name, category, images). The remaining catalog fields are left
+ * empty; the Exercise Detail screen hydrates them by id. Used wherever no full
+ * `exercise_snapshot` is available.
+ */
+export function makeSparseExercise(params: {
+  id: string;
+  name?: string | null;
+  category?: string | null;
+  images?: string[] | null;
+}): Exercise {
+  return {
+    id: params.id,
+    name: params.name ?? 'Exercise',
+    category: params.category ?? null,
+    equipment: [],
+    primary_muscles: [],
+    secondary_muscles: [],
+    calories_per_hour: 0,
+    source: '',
+    images: params.images ?? [],
+    tags: [],
+    force: null,
+    level: null,
+    mechanic: null,
+    instructions: undefined,
+    description: undefined,
+    userId: null,
+    isCustom: undefined,
+  };
+}
+
+/**
+ * Build an `Exercise` from a form-draft exercise so its card can open the
+ * library Exercise Detail. Drafts that originated from an existing session
+ * carry the full snapshot; freshly-added ones only know name/category/images,
+ * so the detail screen hydrates the rest by id.
+ */
+export function exerciseFromDraft(exercise: WorkoutDraftExercise): Exercise {
+  if (exercise.snapshot) {
+    return exerciseFromSnapshot(exercise.snapshot, exercise.exerciseId);
+  }
+  return makeSparseExercise({
+    id: exercise.exerciseId,
+    name: exercise.exerciseName,
+    category: exercise.exerciseCategory,
+    images: exercise.images,
+  });
+}
+
 /** Single-exercise payload for an empty live start (first-exercise-first flow). */
 export function buildSingleExerciseStartPayload(
   exercise: Pick<Exercise, 'id'>,

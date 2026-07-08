@@ -116,7 +116,7 @@ function renderCard(expanded: boolean, props?: Partial<CardProps>) {
     onPressRestChip: jest.fn(),
     onPressMetricHeader: jest.fn(),
     onPressOverflow: jest.fn(),
-    onCompleteActive: jest.fn(),
+    onComplete: jest.fn(),
     onUncomplete: jest.fn(),
     onCommitField: jest.fn(),
     onDeleteSet: jest.fn(),

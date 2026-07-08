@@ -70,7 +70,7 @@ interface RenderOverrides {
 
 function renderRow(overrides?: RenderOverrides) {
   const callbacks = {
-    onCompleteActive: jest.fn(),
+    onComplete: jest.fn(),
     onUncomplete: jest.fn(),
     onCommitField: jest.fn(),
     onDelete: jest.fn(),
@@ -139,9 +139,14 @@ describe('ActiveWorkoutSetRow', () => {
   });
 
   describe('done state', () => {
-    it('dims the row to 0.62 opacity', () => {
-      const { getByTestId } = renderRow({ state: 'done' });
-      expect(StyleSheet.flatten(getByTestId('set-row').props.style).opacity).toBe(0.62);
+    it('dims the row content to 0.62 opacity but keeps the check vivid', () => {
+      const { getByTestId, getByLabelText } = renderRow({ state: 'done' });
+      expect(StyleSheet.flatten(getByTestId('set-row-content').props.style).opacity).toBe(0.62);
+      // The completion check sits outside the dimmed content so its green
+      // matches the card/rail badges instead of fading with the row.
+      expect(
+        StyleSheet.flatten(getByLabelText('Un-complete set 1').props.style)?.opacity,
+      ).toBeUndefined();
     });
 
     it('un-completes on check press', () => {
@@ -160,16 +165,17 @@ describe('ActiveWorkoutSetRow', () => {
   // The cursor (next-unlogged) row when the keyboard is elsewhere: it shows
   // planned values as tap-to-edit display cells plus the pulsing log ring.
   describe('current state — cursor, not focused', () => {
-    it('logs from the pulsing ring, committing current values first', () => {
-      const { getByLabelText, callbacks } = renderRow({ state: 'current' });
-      fireEvent.press(getByLabelText('Log set'));
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 60 });
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 10 });
-      expect(callbacks.onCompleteActive).toHaveBeenCalledTimes(1);
-      const completeOrder = callbacks.onCompleteActive.mock.invocationCallOrder[0];
-      for (const order of callbacks.onCommitField.mock.invocationCallOrder) {
-        expect(order).toBeLessThan(completeOrder);
-      }
+    it('logs an unedited row without re-committing its values (no drift)', () => {
+      // lbs so a re-commit would be visible: the seeded weight display round-
+      // trips lbs↔kg and drifts the stored value (60 kg → ~60.01 kg). Nothing
+      // was edited, so no field commits — only completion fires.
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        weightUnit: 'lbs',
+      });
+      fireEvent.press(getByLabelText('Log set 1'));
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+      expect(callbacks.onComplete).toHaveBeenCalledWith('101');
     });
 
     it('activates the tapped cell instead of showing inputs inline', () => {
@@ -232,6 +238,23 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: null });
     });
 
+    it('does not re-commit an untouched weight on blur (no lbs↔kg drift)', () => {
+      // Tap a set to peek, then leave without editing. The seeded display value
+      // must not round-trip back through the unit conversion and drift the kg.
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+        weightUnit: 'lbs',
+      });
+      const input = getByLabelText('Weight');
+      expect(input.props.value).toBe('132.3'); // 60 kg shown in lbs
+      fireEvent(input, 'blur');
+      const weightCommits = callbacks.onCommitField.mock.calls.filter(
+        ([, patch]) => 'weight' in patch,
+      );
+      expect(weightCommits).toHaveLength(0);
+    });
+
     it('commits reps on blur', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true });
       const input = getByLabelText('Reps');
@@ -251,15 +274,15 @@ describe('ActiveWorkoutSetRow', () => {
       fireEvent.changeText(getByLabelText('Reps'), '8');
       fireEvent.changeText(getByLabelText('RPE'), '8.2');
 
-      fireEvent.press(getByLabelText('Log set'));
+      fireEvent.press(getByLabelText('Log set 1'));
 
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 80 });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 8 });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
-      expect(callbacks.onCompleteActive).toHaveBeenCalledTimes(1);
+      expect(callbacks.onComplete).toHaveBeenCalledWith('101');
       // Draft commits must land before completion so the completed set holds
       // exactly what the user saw.
-      const completeOrder = callbacks.onCompleteActive.mock.invocationCallOrder[0];
+      const completeOrder = callbacks.onComplete.mock.invocationCallOrder[0];
       for (const order of callbacks.onCommitField.mock.invocationCallOrder) {
         expect(order).toBeLessThan(completeOrder);
       }
@@ -299,10 +322,14 @@ describe('ActiveWorkoutSetRow', () => {
   });
 
   describe('upcoming state', () => {
-    it('carries no completion control (sequential logging only)', () => {
-      const { queryByLabelText } = renderRow({ state: 'upcoming' });
-      expect(queryByLabelText('Mark set 1 complete')).toBeNull();
-      expect(queryByLabelText('Log set')).toBeNull();
+    it('logs out of order from its own ring', () => {
+      // Skip-ahead logging: an upcoming set carries a tappable ring so the user
+      // can complete it without finishing the sets before it. An unedited row
+      // logs its stored values as-is (no lossy re-commit).
+      const { getByLabelText, callbacks } = renderRow({ state: 'upcoming' });
+      fireEvent.press(getByLabelText('Log set 1'));
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+      expect(callbacks.onComplete).toHaveBeenCalledWith('101');
     });
 
     it('still lets an upcoming cell be tapped to edit (pre-fill)', () => {
@@ -336,6 +363,8 @@ describe('ActiveWorkoutSetRow', () => {
 
       const upcoming = renderRow({ state: 'upcoming', readOnly: true });
       expect(upcoming.queryByLabelText('Mark set 1 complete')).toBeNull();
+      // View mode has no logging, so upcoming rows keep a blank last column.
+      expect(upcoming.queryByLabelText('Log set 1')).toBeNull();
     });
 
     it('coerces a current state to a plain row with no editing chrome', () => {
@@ -345,7 +374,7 @@ describe('ActiveWorkoutSetRow', () => {
       });
       expect(queryByLabelText('Weight')).toBeNull();
       expect(queryByLabelText('Reps')).toBeNull();
-      expect(queryByLabelText('Log set')).toBeNull();
+      expect(queryByLabelText('Log set 1')).toBeNull();
       expect(queryByLabelText('RPE')).toBeNull();
       // Read-only cells are flat text, not tap-to-activate.
       expect(queryByLabelText('Edit weight for set 1')).toBeNull();
@@ -439,7 +468,7 @@ describe('ActiveWorkoutSetRow', () => {
           state: 'current',
           set: editSet(),
         });
-        expect(queryByLabelText('Log set')).toBeNull();
+        expect(queryByLabelText('Log set 1')).toBeNull();
         // The last column no longer hosts a delete button on the active row.
         expect(queryByLabelText('Delete set 1')).toBeNull();
       });

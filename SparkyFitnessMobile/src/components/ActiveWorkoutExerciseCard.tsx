@@ -8,6 +8,7 @@ import Animated, {
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
+import CompletionCheck from './CompletionCheck';
 import RestPeriodChip from './RestPeriodChip';
 import ActiveWorkoutSetRow from './ActiveWorkoutSetRow';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
@@ -89,7 +90,7 @@ interface ActiveWorkoutExerciseCardProps {
   onPressRestChip?: (entryId: string, currentSec: number | null) => void;
   onPressMetricHeader: (anchor: AnchorRect) => void;
   onPressOverflow?: (entryId: string, anchor: AnchorRect) => void;
-  onCompleteActive?: () => void;
+  onComplete?: (setId: string) => void;
   onUncomplete?: (setId: string) => void;
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
   onDeleteSet?: (setId: string) => void;
@@ -172,7 +173,7 @@ function ActiveWorkoutExerciseCard({
   onPressRestChip,
   onPressMetricHeader,
   onPressOverflow,
-  onCompleteActive,
+  onComplete,
   onUncomplete,
   onCommitField,
   onDeleteSet,
@@ -191,13 +192,12 @@ function ActiveWorkoutExerciseCard({
   const readOnly = mode === 'view';
   const isEdit = mode === 'edit';
   const isLive = mode === 'live';
-  const [textMuted, successColor, accentPrimary, textSecondary, prColor] = useCSSVariable([
+  const [textMuted, accentPrimary, textSecondary, prColor] = useCSSVariable([
     '--color-text-muted',
-    '--color-icon-success',
     '--color-accent-primary',
     '--color-text-secondary',
     '--color-pr',
-  ]) as [string, string, string, string, string];
+  ]) as [string, string, string, string];
 
   const name = exercise.exercise_snapshot?.name ?? 'Exercise';
   // "Last time" / "Best" only make sense while performing or planning — skip
@@ -315,6 +315,20 @@ function ActiveWorkoutExerciseCard({
   const longPressMenu = isLive && onPressOverflow ? openMenuFromCollapsedRow : undefined;
   const longPressExpandedMenu = isLive && onPressOverflow ? openOverflowMenu : undefined;
 
+  // Exercise thumbnail with a completion badge, shared by the collapsed and
+  // expanded rows so the image stays visible when the card is collapsed. The
+  // done-badge is suppressed in edit mode, where per-set badges convey state.
+  const thumb = (
+    <View>
+      <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
+      {isDone && !isEdit && (
+        <View className="absolute" style={{ right: -3, top: -3 }}>
+          <CompletionCheck size={15} iconSize={9} />
+        </View>
+      )}
+    </View>
+  );
+
   if (!expanded) {
     const volumeKg = getExerciseVolumeKg(exercise);
     // "planned" describes a live workout that hasn't reached the exercise yet;
@@ -332,15 +346,11 @@ function ActiveWorkoutExerciseCard({
         onLongPress={longPressMenu}
         accessibilityRole="button"
         accessibilityLabel={`Expand ${name}`}
-        className="flex-row items-center gap-3 px-4 py-3.5 border-b border-border-subtle"
+        className="flex-row items-center gap-3 px-4 py-3 border-b border-border-subtle"
       >
-        <View className="w-4 items-center">
-          {isDone && (
-            <Icon name="checkmark" size={16} color={successColor} weight="bold" />
-          )}
-        </View>
+        {thumb}
         <Text
-          numberOfLines={1}
+          numberOfLines={2}
           className={`flex-1 text-base ${isDone ? 'text-text-secondary' : 'text-text-primary'}`}
         >
           {name}
@@ -354,22 +364,6 @@ function ActiveWorkoutExerciseCard({
   }
 
   const workingSetNumbers = buildWorkingSetNumbers(exercise.sets);
-
-  // A finished exercise's card now stays expanded (no auto-collapse), so the
-  // completion check moves onto the thumbnail instead of the collapsed summary.
-  const thumb = (
-    <View>
-      <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
-      {isDone && !isEdit && (
-        <View
-          className="absolute items-center justify-center rounded-full"
-          style={{ right: -3, top: -3, width: 15, height: 15, backgroundColor: successColor }}
-        >
-          <Icon name="checkmark" size={9} color="#ffffff" weight="bold" />
-        </View>
-      )}
-    </View>
-  );
 
   return (
     <View className="bg-surface rounded-2xl px-3 pt-3 pb-2 mb-2">
@@ -439,7 +433,7 @@ function ActiveWorkoutExerciseCard({
           )}
           {lastSet && lastSet.weight != null && lastSet.reps != null && (
             <View className="flex-row items-baseline gap-1.5">
-              <Text className="text-xs uppercase tracking-wide text-text-muted">Last time</Text>
+              <Text className="text-sm uppercase tracking-wide text-text-muted">Last</Text>
               <Text
                 className="text-sm text-text-secondary"
                 style={{ fontVariant: ['tabular-nums'] }}
@@ -450,7 +444,7 @@ function ActiveWorkoutExerciseCard({
           )}
           {bestDisplay != null && (
             <View className="flex-row items-baseline gap-1.5">
-              <Text className="text-xs uppercase tracking-wide text-text-muted">Best</Text>
+              <Text className="text-sm uppercase tracking-wide text-text-muted">Best</Text>
               <Text
                 className="text-sm"
                 style={{
@@ -521,7 +515,7 @@ function ActiveWorkoutExerciseCard({
             metricColumn={metricColumn}
             weightUnit={weightUnit}
             mode={mode}
-            onCompleteActive={onCompleteActive}
+            onComplete={onComplete}
             onUncomplete={onUncomplete}
             onCommitField={onCommitField}
             onDelete={onDeleteSet}

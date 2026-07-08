@@ -65,6 +65,9 @@ export const exerciseStatsQueryKey = (
 ) =>
   [...exerciseStatsQueryKeyRoot, exerciseId, excludePresetEntryId ?? null] as const;
 
+export const exerciseDetailQueryKey = (exerciseId: string) =>
+  ['exerciseDetail', exerciseId] as const;
+
 export const suggestedExercisesQueryKey = ['suggestedExercises'] as const;
 
 export const exerciseSearchQueryKey = (searchTerm: string) => ['exerciseSearch', searchTerm] as const;

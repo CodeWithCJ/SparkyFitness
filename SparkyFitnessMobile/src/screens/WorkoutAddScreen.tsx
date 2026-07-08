@@ -348,6 +348,9 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   ungroupExercise={ungroupExercise}
                   onReorderExercises={reorderExercises}
                   onAddExercisePress={openExerciseSearch}
+                  onViewExercise={(exercise) =>
+                    navigation.navigate('ExerciseDetail', { item: exercise })
+                  }
                   isEligibleForPrefill={isEligibleForPrefill}
                 />
 

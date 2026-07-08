@@ -21,6 +21,7 @@ import { weightFromKg } from '../utils/unitConversions';
 import {
   buildSupersetColorMap,
   draftExerciseToCardExercise,
+  exerciseFromDraft,
   getDraftSupersetRuns,
   SET_TYPE_OPTIONS,
   SUPERSET_PALETTE_VARS,
@@ -29,6 +30,7 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { ActiveSetPatch, CompletedSetMap } from '../stores/activeWorkoutStore';
 import type { SupersetBorder } from './ActiveWorkoutRail';
 import type { WorkoutDraftExercise, WorkoutSetMetaPatch } from '../types/drafts';
+import type { Exercise } from '../types/exercise';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 
 interface WorkoutFormExerciseListProps {
@@ -60,6 +62,11 @@ interface WorkoutFormExerciseListProps {
   /** Move a draggable item (solo or whole run) from one item index to another. */
   onReorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
   onAddExercisePress: () => void;
+  /**
+   * Open the library Exercise Detail for a row (its thumbnail and a "View
+   * exercise" ⋮-menu item). Omit to leave both off.
+   */
+  onViewExercise?: (exercise: Exercise) => void;
   isEligibleForPrefill?: (clientId: string) => boolean;
   /** False for the preset form — preset sets store no RPE. */
   rpeEditable?: boolean;
@@ -104,6 +111,7 @@ const WorkoutFormExerciseList = forwardRef<
     ungroupExercise,
     onReorderExercises,
     onAddExercisePress,
+    onViewExercise,
     isEligibleForPrefill,
     rpeEditable = true,
     showCompletion = false,
@@ -272,6 +280,18 @@ const WorkoutFormExerciseList = forwardRef<
     [exercises, updateSetMeta, removeSet],
   );
 
+  // Open the library Exercise Detail for a draft row (thumbnail tap + ⋮ menu).
+  // Existing-session drafts carry a full snapshot; freshly-added ones are
+  // sparse and the detail screen hydrates the rest by id.
+  const handleViewExercise = useCallback(
+    (clientId: string) => {
+      if (!onViewExercise) return;
+      const draft = exercises.find(e => e.clientId === clientId);
+      if (draft) onViewExercise(exerciseFromDraft(draft));
+    },
+    [exercises, onViewExercise],
+  );
+
   // Rest sheet (per-exercise rest duration).
   const restSheetRef = useRef<RestPeriodSheetRef>(null);
   const restSheetTargetRef = useRef<string | null>(null);
@@ -332,6 +352,13 @@ const WorkoutFormExerciseList = forwardRef<
     }
 
     const items: { key: string; label: string; onPress: () => void }[] = [];
+    if (onViewExercise) {
+      items.push({
+        key: 'view',
+        label: 'View exercise',
+        onPress: () => handleViewExercise(clientId),
+      });
+    }
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
@@ -366,6 +393,8 @@ const WorkoutFormExerciseList = forwardRef<
     supersetWith,
     ungroupExercise,
     onRemoveExercise,
+    onViewExercise,
+    handleViewExercise,
   ]);
 
   return (
@@ -392,6 +421,7 @@ const WorkoutFormExerciseList = forwardRef<
             getImageSource={getImageSource}
             rpeEditable={rpeEditable}
             eligibleForPrefill={isEligibleForPrefill?.(clientId) ?? false}
+            onPressThumb={onViewExercise ? handleViewExercise : undefined}
             onToggleExpanded={toggleExpanded}
             onPressRestChip={handlePressRestChip}
             onPressMetricHeader={handlePressMetricHeader}

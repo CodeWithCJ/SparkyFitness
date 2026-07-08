@@ -20,6 +20,7 @@ import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
 import { buildPresetExercisesPayload, canReorderDraftExercises } from '../utils/workoutSession';
 import type { WorkoutSetMetaPatch } from '../types/drafts';
+import type { Exercise } from '../types/exercise';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type {
   RootStackParamList,
@@ -60,6 +61,7 @@ interface PresetFormBodyProps {
   reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
   isEligibleForPrefill: (clientId: string) => boolean;
   onAddExercisePress: () => void;
+  onViewExercise: (exercise: Exercise) => void;
   listRef: React.Ref<WorkoutFormExerciseListHandle>;
 }
 
@@ -78,6 +80,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   reorderExercises,
   isEligibleForPrefill,
   onAddExercisePress,
+  onViewExercise,
   listRef,
 }) => {
   const { getImageSource } = useExerciseImageSource();
@@ -131,6 +134,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           ungroupExercise={ungroupExercise}
           onReorderExercises={reorderExercises}
           onAddExercisePress={onAddExercisePress}
+          onViewExercise={onViewExercise}
           isEligibleForPrefill={isEligibleForPrefill}
           rpeEditable={false}
         />
@@ -289,6 +293,9 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         reorderExercises={reorderExercises}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
+        onViewExercise={(exercise) =>
+          navigation.navigate('ExerciseDetail', { item: exercise })
+        }
         listRef={exerciseListRef}
       />
     </FormScreenChrome>
@@ -473,6 +480,9 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         reorderExercises={reorderExercises}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
+        onViewExercise={(exercise) =>
+          navigation.navigate('ExerciseDetail', { item: exercise })
+        }
         listRef={exerciseListRef}
       />
     </FormScreenChrome>

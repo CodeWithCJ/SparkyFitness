@@ -3,10 +3,13 @@ import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
+import { useQuery } from '@tanstack/react-query';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { fetchExerciseById } from '../services/api/exerciseApi';
+import { exerciseDetailQueryKey } from '../hooks/queryKeys';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import {
   useDeleteExerciseLibrary,
@@ -24,6 +27,11 @@ type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
 const DESCRIPTION_PREVIEW_LINES = 3;
 const DESCRIPTION_PREVIEW_THRESHOLD = 180;
 const INSTRUCTIONS_PREVIEW_COUNT = 1;
+
+// Matches the server's `/exercises/:id` UUID guard; a non-UUID id (e.g. an
+// external-provider exercise) would 400, so we skip hydration for those.
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 const capitalize = (value: string) =>
   value.charAt(0).toUpperCase() + value.slice(1);
@@ -49,7 +57,18 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const { profile } = useProfile();
   const { isConnected } = useServerConnection();
 
-  const exercise = updatedItem ?? item;
+  // Opened from a workout/preset row, `item` may be sparse (only
+  // name/category/images). Hydrate the full catalog record by id so muscles,
+  // equipment, instructions, and ownership fill in. A just-returned edit
+  // (`updatedItem`) always wins; otherwise prefer the hydrated record, falling
+  // back to whatever `item` we were handed while it loads or offline.
+  const { data: hydratedItem } = useQuery({
+    queryKey: exerciseDetailQueryKey(item.id),
+    queryFn: () => fetchExerciseById(item.id),
+    enabled: isConnected && UUID_REGEX.test(item.id),
+  });
+
+  const exercise = updatedItem ?? hydratedItem ?? item;
 
   const canManageExercise = !!(
     isConnected &&

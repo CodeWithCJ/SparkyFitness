@@ -36,8 +36,15 @@ import {
   isWarmupSetType,
   seedPrFromSession,
   compareSetRecords,
+  makeSparseExercise,
+  exerciseFromDraft,
 } from '../../src/utils/workoutSession';
-import type { ExerciseEntryResponse, ExerciseSessionResponse } from '@workspace/shared';
+import type {
+  ExerciseEntryResponse,
+  ExerciseSessionResponse,
+  ExerciseSnapshotResponse,
+} from '@workspace/shared';
+import type { WorkoutDraftExercise } from '../../src/types/drafts';
 import { presetSessionExerciseRequestSchema } from '@workspace/shared';
 import { weightFromKg } from '../../src/utils/unitConversions';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
@@ -2363,6 +2370,82 @@ describe('workoutSession', () => {
       it('returns identity on a no-op move', () => {
         const draft = [dEntry('a', null), dEntry('b', null)];
         expect(moveDraftExerciseItem(draft, 0, 0)).toBe(draft);
+      });
+    });
+  });
+
+  describe('makeSparseExercise', () => {
+    it('fills the known fields and leaves the rest empty for hydration', () => {
+      const exercise = makeSparseExercise({
+        id: 'ex-1',
+        name: 'Bench Press',
+        category: 'Strength',
+        images: ['bench.png'],
+      });
+      expect(exercise).toMatchObject({
+        id: 'ex-1',
+        name: 'Bench Press',
+        category: 'Strength',
+        images: ['bench.png'],
+        equipment: [],
+        primary_muscles: [],
+        secondary_muscles: [],
+        calories_per_hour: 0,
+        source: '',
+        tags: [],
+        userId: null,
+      });
+    });
+
+    it('defaults name and nullable/array fields when omitted', () => {
+      const exercise = makeSparseExercise({ id: 'ex-2' });
+      expect(exercise.name).toBe('Exercise');
+      expect(exercise.category).toBeNull();
+      expect(exercise.images).toEqual([]);
+    });
+  });
+
+  describe('exerciseFromDraft', () => {
+    const baseDraft: WorkoutDraftExercise = {
+      clientId: 'c1',
+      exerciseId: 'ex-9',
+      exerciseName: 'Squat',
+      exerciseCategory: 'Strength',
+      images: ['squat.png'],
+      sets: [],
+    };
+
+    it('maps a snapshotless draft to a sparse Exercise keyed by exerciseId', () => {
+      const exercise = exerciseFromDraft(baseDraft);
+      expect(exercise).toMatchObject({
+        id: 'ex-9',
+        name: 'Squat',
+        category: 'Strength',
+        images: ['squat.png'],
+        primary_muscles: [],
+      });
+    });
+
+    it('prefers the full snapshot when the draft carries one', () => {
+      const snapshot: ExerciseSnapshotResponse = {
+        id: 'snap-9',
+        name: 'Barbell Squat',
+        category: 'Strength',
+        images: ['snap.png'],
+        primary_muscles: ['quadriceps'],
+        secondary_muscles: ['glutes'],
+        equipment: ['barbell'],
+        instructions: ['Brace and descend.'],
+        force: null,
+        level: null,
+        mechanic: null,
+      };
+      const exercise = exerciseFromDraft({ ...baseDraft, snapshot });
+      expect(exercise).toMatchObject({
+        id: 'snap-9',
+        name: 'Barbell Squat',
+        primary_muscles: ['quadriceps'],
+        equipment: ['barbell'],
       });
     });
   });

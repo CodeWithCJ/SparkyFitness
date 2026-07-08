@@ -227,6 +227,20 @@ export const transformExerciseRow = (row: Record<string, unknown>): Exercise => 
 });
 
 /**
+ * Fetch a single exercise's full catalog record by id. Used to hydrate the
+ * Exercise Detail screen when it was opened from a workout/preset row that only
+ * carried a sparse snapshot (name/category/images).
+ */
+export const fetchExerciseById = async (id: string): Promise<Exercise> => {
+  const response = await apiFetch<Record<string, unknown>>({
+    endpoint: `/api/exercises/${encodeURIComponent(id)}`,
+    serviceName: 'Exercise API',
+    operation: 'fetch exercise by id',
+  });
+  return transformExerciseRow(response);
+};
+
+/**
  * Creates a custom exercise. The server endpoint is multipart-only, so this
  * bypasses {@link apiFetch} (which always JSON-stringifies) and uses raw
  * fetch with FormData, mirroring the auth/proxy header injection pattern in

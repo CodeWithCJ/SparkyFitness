@@ -26,6 +26,7 @@ import {
   buildPresetStartExercisesPayload,
   buildSupersetColorMap,
   getSupersetRuns,
+  makeSparseExercise,
   presetExerciseToCardExercise,
   SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
@@ -63,6 +64,24 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   const toggleExpanded = useCallback((entryId: string) => {
     setCollapsedIds(prev => ({ ...prev, [entryId]: !prev[entryId] }));
   }, []);
+
+  // Tap an exercise thumbnail → its library detail. Preset rows carry only a
+  // sparse snapshot, so the detail screen hydrates the full record by id.
+  const handleViewExercise = useCallback(
+    (entryId: string) => {
+      const card = cardExercises.find(c => c.id === entryId);
+      if (!card) return;
+      navigation.navigate('ExerciseDetail', {
+        item: makeSparseExercise({
+          id: card.exercise_id,
+          name: card.exercise_snapshot?.name,
+          category: card.exercise_snapshot?.category,
+          images: card.exercise_snapshot?.images,
+        }),
+      });
+    },
+    [cardExercises, navigation],
+  );
 
   // Metric column is shared with the workout screens (intended).
   const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
@@ -225,6 +244,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
                 weightUnit={weightUnit}
                 getImageSource={getImageSource}
                 showRestChip={cardExercise.sets.length > 0}
+                onPressThumb={handleViewExercise}
                 onToggleExpanded={toggleExpanded}
                 onPressMetricHeader={handlePressMetricHeader}
               />

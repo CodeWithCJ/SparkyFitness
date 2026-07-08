@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -25,12 +26,14 @@ import {
   buildSupersetColorMap,
   getSupersetRuns,
   canReorderDraftExercises,
+  exerciseFromSnapshot,
   SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
 import {
   useDeleteWorkout,
   useUpdateWorkout,
 } from '../hooks/useExerciseMutations';
+import { flushActiveWorkoutBeforeClear } from '../hooks/useActiveWorkoutAutosave';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
@@ -60,6 +63,7 @@ type Props = RootStackScreenProps<'WorkoutDetail'>;
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [session, setSession] = useState(route.params.session);
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const { preferences } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
 
@@ -253,15 +257,54 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }, [session]),
   );
 
-  const handleStartWorkout = () => {
-    if (useActiveWorkoutStore.getState().sessionId !== null) {
-      Alert.alert('Another workout is in progress', 'Finish or clear it first.');
-      return;
-    }
-    void ensureNotificationPermission();
-    useActiveWorkoutStore.getState().startWorkout(session);
-    navigation.replace('ActiveWorkout');
-  };
+  // Seed the store from this saved session and enter the live screen. `atSetId`
+  // starts the cursor on a specific set (the "Start workout here" long-press).
+  const enterLiveWorkout = useCallback(
+    (atSetId?: string) => {
+      void ensureNotificationPermission();
+      const store = useActiveWorkoutStore.getState();
+      if (atSetId != null) store.startWorkoutAtSet(session, atSetId);
+      else store.startWorkout(session);
+      navigation.replace('ActiveWorkout');
+    },
+    [session, navigation],
+  );
+
+  // Start this workout, first offering to clear any other in-progress session
+  // (mirrors useStartLiveWorkout's "Replace current workout?" prompt). The
+  // Start button and "Start workout here" long-press are both gated on
+  // !isWorkoutActive, so a non-null sessionId here means a *different* workout.
+  const beginWorkout = useCallback(
+    (atSetId?: string) => {
+      if (useActiveWorkoutStore.getState().sessionId !== null) {
+        Alert.alert(
+          'Replace current workout?',
+          'You already have a workout in progress. Starting this one clears it here — any sets already saved stay in your diary.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Clear & Start',
+              style: 'destructive',
+              onPress: () => {
+                void (async () => {
+                  // Best-effort save of the in-progress session before dropping
+                  // it locally, mirroring the HUD's Clear action.
+                  await flushActiveWorkoutBeforeClear(queryClient);
+                  useActiveWorkoutStore.getState().clearWorkout();
+                  enterLiveWorkout(atSetId);
+                })();
+              },
+            },
+          ],
+        );
+        return;
+      }
+      enterLiveWorkout(atSetId);
+    },
+    [queryClient, enterLiveWorkout],
+  );
+
+  const handleStartWorkout = () => beginWorkout();
 
   const handleLongPressSet = useCallback(
     (setId: string) => {
@@ -278,15 +321,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       if (!isWorkoutActive) {
         buttons.push({
           text: 'Start workout here',
-          onPress: () => {
-            if (useActiveWorkoutStore.getState().sessionId !== null) {
-              Alert.alert('Another workout is in progress', 'Finish or clear it first.');
-              return;
-            }
-            void ensureNotificationPermission();
-            useActiveWorkoutStore.getState().startWorkoutAtSet(session, setId);
-            navigation.replace('ActiveWorkout');
-          },
+          onPress: () => beginWorkout(setId),
         });
       }
 
@@ -295,12 +330,26 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       buttons.push({ text: 'Cancel', style: 'cancel' });
       Alert.alert(name, undefined, buttons);
     },
-    [isSparky, isWorkoutActive, session, name, startEditing, navigation],
+    [isSparky, isWorkoutActive, name, startEditing, beginWorkout],
   );
 
   const openExerciseSearch = () => {
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
   };
+
+  // Tap an exercise thumbnail → its library detail. Session entries carry a
+  // full snapshot, so the detail screen opens with muscles/equipment already
+  // populated (and still hydrates by id).
+  const handleViewExercise = useCallback(
+    (entryId: string) => {
+      const entry = session.exercises.find((e) => e.id === entryId);
+      if (!entry) return;
+      navigation.navigate('ExerciseDetail', {
+        item: exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id),
+      });
+    },
+    [session, navigation],
+  );
 
   // --- Save ---
 
@@ -356,6 +405,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             weightUnit={weightUnit as 'kg' | 'lbs'}
             getImageSource={getImageSource}
             showRestChip={isSparky}
+            onPressThumb={handleViewExercise}
             onToggleExpanded={toggleSection}
             onPressMetricHeader={handlePressMetricHeader}
             onLongPressSet={handleLongPressSet}
@@ -610,6 +660,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             ungroupExercise={ungroupExercise}
             onReorderExercises={reorderExercises}
             onAddExercisePress={openExerciseSearch}
+            onViewExercise={(exercise) =>
+              navigation.navigate('ExerciseDetail', { item: exercise })
+            }
             isEligibleForPrefill={isEligibleForPrefill}
             showCompletion
           />

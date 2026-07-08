@@ -566,7 +566,7 @@ describe('activeWorkoutStore', () => {
       await flushPromises();
     });
 
-    it('rewinds the cursor to the un-checked set and clears its stale rest', () => {
+    it('keeps the cursor and its rest when un-checking a set behind it', () => {
       const before = useActiveWorkoutStore.getState();
       expect(before.completedSetIds['101']).toBe(FIXED_NOW);
       expect(before.activeSetId).toBe('102');
@@ -575,10 +575,11 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().uncompleteSet('101');
       const state = useActiveWorkoutStore.getState();
       expect(state.completedSetIds['101']).toBeUndefined();
-      // Cursor rewinds to the hole so it stays re-loggable; the rest that
-      // belonged to the old cursor (102) is now stale, so it clears.
-      expect(state.activeSetId).toBe('101');
-      expect(state.rest.state).toBe('ready');
+      // The cursor stays on 102 — 101 is now a re-loggable hole reachable from
+      // its own row control, so there's no need to rewind. The rest belongs to
+      // 102, which didn't move, so it keeps running.
+      expect(state.activeSetId).toBe('102');
+      expect(state.rest.state).toBe('resting');
     });
 
     it('leaves the cursor when the un-checked set is ahead of an earlier hole', () => {
@@ -610,7 +611,7 @@ describe('activeWorkoutStore', () => {
   });
 
   describe('uncompleteSet after a finished workout', () => {
-    it('rewinds the cursor to the un-checked last set so it can be re-logged', async () => {
+    it('re-anchors the cursor onto the un-checked last set so it can be re-logged', async () => {
       useActiveWorkoutStore.getState().startWorkout(makeSession());
       // Complete everything through to the end (cursor → null).
       useActiveWorkoutStore.getState().completeActiveSet();
@@ -622,7 +623,7 @@ describe('activeWorkoutStore', () => {
       expect(useActiveWorkoutStore.getState().activeSetId).toBeNull();
 
       // Un-checking the last set un-finishes the workout and lands the cursor
-      // on it — otherwise it would be stranded with no way to re-log.
+      // on it — otherwise there would be no next-up to resume from.
       useActiveWorkoutStore.getState().uncompleteSet('201');
       const state = useActiveWorkoutStore.getState();
       expect(state.completedSetIds['201']).toBeUndefined();
@@ -630,68 +631,63 @@ describe('activeWorkoutStore', () => {
     });
   });
 
-  describe('jumpToSet', () => {
+  describe('completeSet (out of order)', () => {
     beforeEach(() => {
       useActiveWorkoutStore.getState().startWorkout(makeSession());
     });
 
-    it('moves activeSetId forward and seeds priors as completed', () => {
-      useActiveWorkoutStore.getState().jumpToSet('201');
+    it('logs a later set without completing the ones before it', async () => {
+      // Cursor starts on 101; log 102 directly, skipping 101.
+      useActiveWorkoutStore.getState().completeSet('102');
       const state = useActiveWorkoutStore.getState();
+      expect(state.completedSetIds['102']).toBe(FIXED_NOW);
+      expect(state.completedSetIds['101']).toBeUndefined(); // left as a hole
+      // Next-up follows the logged set: the step after 102 is Squat's 201.
       expect(state.activeSetId).toBe('201');
-      expect(state.completedSetIds).toEqual({ '101': FIXED_NOW, '102': FIXED_NOW });
+      expect(state.rest.state).toBe('resting');
+      expect(state.rest.durationSec).toBe(120);
+      await flushPromises();
+    });
+
+    it('advances to the next set in the same exercise', async () => {
+      useActiveWorkoutStore.getState().completeSet('101');
+      expect(useActiveWorkoutStore.getState().activeSetId).toBe('102');
+      await flushPromises();
+    });
+
+    it('falls back to the earliest hole when the logged set was last', async () => {
+      // Skip straight to the final set, leaving 101 and 102 unchecked.
+      useActiveWorkoutStore.getState().completeSet('201');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.completedSetIds['201']).toBe(FIXED_NOW);
+      // Nothing after 201, so next-up circles back to the earliest hole.
+      expect(state.activeSetId).toBe('101');
+      await flushPromises();
+    });
+
+    it('finishes (activeSetId null) only once every set is logged', async () => {
+      useActiveWorkoutStore.getState().completeSet('201');
+      await flushPromises();
+      useActiveWorkoutStore.getState().completeSet('102');
+      await flushPromises();
+      expect(useActiveWorkoutStore.getState().activeSetId).toBe('101'); // last hole
+      useActiveWorkoutStore.getState().completeSet('101');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBeNull();
       expect(state.rest.state).toBe('ready');
     });
 
-    it('keeps existing stamps, stamps new priors with now, and bumps the revision', async () => {
-      useActiveWorkoutStore.getState().completeActiveSet(); // 101 stamped at FIXED_NOW
-      await flushPromises();
-      jest.setSystemTime(new Date(FIXED_NOW + 5_000));
-      const revBefore = useActiveWorkoutStore.getState().sessionRevision;
-
-      useActiveWorkoutStore.getState().jumpToSet('201');
-      const state = useActiveWorkoutStore.getState();
-      expect(state.completedSetIds).toEqual({
-        '101': FIXED_NOW, // original stamp kept
-        '102': FIXED_NOW + 5_000, // newly seeded prior
-      });
-      expect(state.sessionRevision).toBe(revBefore + 1);
-      expect(state.hasUnsavedChanges).toBe(true);
+    it('is a no-op on an already-completed set', () => {
+      useActiveWorkoutStore.getState().completeSet('101'); // 101 done, cursor → 102
+      const { completedSetIds, activeSetId } = useActiveWorkoutStore.getState();
+      useActiveWorkoutStore.getState().completeSet('101');
+      expect(useActiveWorkoutStore.getState().completedSetIds).toEqual(completedSetIds);
+      expect(useActiveWorkoutStore.getState().activeSetId).toBe(activeSetId);
     });
 
-    it('cancels a running rest notification on jump', async () => {
-      mockSchedule.mockResolvedValueOnce('notif-pre-jump');
-      useActiveWorkoutStore.getState().completeActiveSet(); // cursor → 102, rest running
-      await flushPromises();
-
-      useActiveWorkoutStore.getState().jumpToSet('201');
-      expect(mockCancel).toHaveBeenCalledWith('notif-pre-jump');
-      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
-    });
-
-    it('is a no-op on backward targets', async () => {
-      // Advance to 102.
-      useActiveWorkoutStore.getState().completeActiveSet();
-      await flushPromises();
+    it('is a no-op when the set id does not exist', () => {
       const before = useActiveWorkoutStore.getState();
-
-      useActiveWorkoutStore.getState().jumpToSet('101');
-      const after = useActiveWorkoutStore.getState();
-      // Nothing changed.
-      expect(after.activeSetId).toBe(before.activeSetId);
-      expect(after.completedSetIds).toEqual(before.completedSetIds);
-      expect(after.rest).toBe(before.rest);
-    });
-
-    it('is a no-op when jumping to the active set itself', async () => {
-      const before = useActiveWorkoutStore.getState();
-      useActiveWorkoutStore.getState().jumpToSet('101');
-      expect(useActiveWorkoutStore.getState()).toEqual(before);
-    });
-
-    it('is a no-op when setId does not exist', () => {
-      const before = useActiveWorkoutStore.getState();
-      useActiveWorkoutStore.getState().jumpToSet('nope');
+      useActiveWorkoutStore.getState().completeSet('nope');
       expect(useActiveWorkoutStore.getState()).toEqual(before);
     });
   });
@@ -1866,14 +1862,6 @@ describe('activeWorkoutStore', () => {
         expect(steps.map((s) => s.setId)).toEqual(['101', '102', '201']);
         expect(steps.map((s) => s.restSec)).toEqual([60, 60, 120]);
       });
-
-      it('jumpToSet over interleaved order marks interleaved priors complete', () => {
-        useActiveWorkoutStore.getState().startWorkout(makeGroupedSession());
-        useActiveWorkoutStore.getState().jumpToSet('202');
-        const state = useActiveWorkoutStore.getState();
-        expect(state.completedSetIds).toEqual({ '101': FIXED_NOW, '201': FIXED_NOW, '102': FIXED_NOW });
-        expect(state.activeSetId).toBe('202');
-      });
     });
 
     describe('round advancement', () => {
@@ -2403,12 +2391,14 @@ describe('activeWorkoutStore', () => {
       expect(store().prSetIds).toEqual({});
     });
 
-    it('does not stamp sets backfilled by jumpToSet', () => {
+    it('does not stamp skipped-over sets — only the logged set is PR-checked', () => {
       store().startWorkout(makeSession());
-      // A low baseline the skipped sets would "beat" if detection ran on jump.
+      // A low baseline the skipped bench sets would "beat" if they were stamped.
       store().capturePrBaseline('ex-1', { weight: 50, reps: 5 });
-      store().jumpToSet('201');
-      expect(store().prSetIds).toEqual({});
+      // Skip straight to Squat's set, leaving the bench sets unchecked.
+      store().completeSet('201');
+      expect(store().prSetIds['101']).toBeUndefined();
+      expect(store().prSetIds['102']).toBeUndefined();
     });
 
     it('does not resurrect a stale stamp when a temp set id is re-minted', () => {

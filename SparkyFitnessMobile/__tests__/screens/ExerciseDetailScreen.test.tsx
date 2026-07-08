@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ExerciseDetailScreen from '../../src/screens/ExerciseDetailScreen';
@@ -8,12 +9,17 @@ import {
   useProfile,
   useServerConnection,
 } from '../../src/hooks';
+import { fetchExerciseById } from '../../src/services/api/exerciseApi';
 import type { Exercise } from '../../src/types/exercise';
 
 jest.mock('../../src/hooks', () => ({
   useDeleteExerciseLibrary: jest.fn(),
   useProfile: jest.fn(),
   useServerConnection: jest.fn(),
+}));
+
+jest.mock('../../src/services/api/exerciseApi', () => ({
+  fetchExerciseById: jest.fn(),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -58,7 +64,18 @@ const mockUseServerConnection = useServerConnection as jest.MockedFunction<
 >;
 const mockUseDeleteExerciseLibrary =
   useDeleteExerciseLibrary as jest.MockedFunction<typeof useDeleteExerciseLibrary>;
+const mockFetchExerciseById = fetchExerciseById as jest.MockedFunction<
+  typeof fetchExerciseById
+>;
 const mockConfirmAndDelete = jest.fn();
+
+let queryClient: QueryClient;
+
+const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <QueryClientProvider client={queryClient}>
+    <SafeAreaProvider initialMetrics={{ insets, frame }}>{children}</SafeAreaProvider>
+  </QueryClientProvider>
+);
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };

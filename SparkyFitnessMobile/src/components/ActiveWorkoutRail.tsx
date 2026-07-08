@@ -4,6 +4,7 @@ import { useCSSVariable } from 'uniwind';
 import type { ExerciseEntryResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
+import CompletionCheck from './CompletionCheck';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
@@ -49,11 +50,10 @@ function ActiveWorkoutRail({
   onPressExercise,
   onPressAdd,
 }: ActiveWorkoutRailProps) {
-  const [textMuted, accentPrimary, successColor] = useCSSVariable([
+  const [textMuted, accentPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-accent-primary',
-    '--color-icon-success',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const scrollRef = useRef<ScrollView>(null);
   const itemOffsetsRef = useRef<Record<string, number>>({});
@@ -128,17 +128,8 @@ function ActiveWorkoutRail({
                 />
               </View>
               {isDone && (
-                <View
-                  className="absolute items-center justify-center rounded-full"
-                  style={{
-                    right: -2,
-                    top: -2,
-                    width: 18,
-                    height: 18,
-                    backgroundColor: successColor,
-                  }}
-                >
-                  <Icon name="checkmark" size={11} color="#ffffff" weight="bold" />
+                <View className="absolute" style={{ right: -2, top: -2 }}>
+                  <CompletionCheck size={18} iconSize={11} />
                 </View>
               )}
               {/* Current-exercise marker (has the active set): an accent "play"

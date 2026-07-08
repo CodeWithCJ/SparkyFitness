@@ -67,6 +67,10 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
             onPress={() => props.onPressOverflow?.(id, { x: 0, y: 0, width: 0, height: 0 })}
           />
           <Pressable
+            testID={`card-${id}-thumb`}
+            onPress={() => props.onPressThumb?.(id)}
+          />
+          <Pressable
             testID={`card-${id}-rest`}
             onPress={() => props.onPressRestChip?.(id, props.exercise.sets[0]?.rest_time ?? null)}
           />
@@ -331,6 +335,34 @@ describe('WorkoutFormExerciseList', () => {
       const utils = renderList([makeExercise('a'), makeExercise('b')]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       expect(utils.queryByText('Reorder exercises')).toBeNull();
+    });
+  });
+
+  describe('view exercise', () => {
+    it('omits the View exercise menu item when onViewExercise is absent', () => {
+      const utils = renderList([makeExercise('a')]);
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      expect(utils.queryByText('View exercise')).toBeNull();
+      expect(utils.queryByTestId('menu-item-view')).toBeNull();
+    });
+
+    it('routes the View exercise menu item through onViewExercise with the draft mapped to an Exercise', () => {
+      const onViewExercise = jest.fn();
+      const utils = renderList([makeExercise('a'), makeExercise('b')], { onViewExercise });
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      fireEvent.press(utils.getByTestId('menu-item-view'));
+      expect(onViewExercise).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'x-a', name: 'A', category: 'Strength' }),
+      );
+    });
+
+    it('routes a thumbnail tap through onViewExercise', () => {
+      const onViewExercise = jest.fn();
+      const utils = renderList([makeExercise('a')], { onViewExercise });
+      fireEvent.press(utils.getByTestId('card-a-thumb'));
+      expect(onViewExercise).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'x-a', name: 'A' }),
+      );
     });
   });
 

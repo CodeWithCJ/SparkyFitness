@@ -17,7 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import FormInput from './FormInput';
-import Icon from './Icon';
+import CompletionCheck from './CompletionCheck';
 import { formatRest } from './RestPeriodChip';
 import { parseDecimalInput } from '../utils/numericInput';
 import { weightFromKg, weightToKg } from '../utils/unitConversions';
@@ -82,7 +82,8 @@ interface ActiveWorkoutSetRowProps {
    * (next-unlogged) row carries the pulsing log ring, and logging is sequential.
    */
   mode?: SetRowMode;
-  onCompleteActive?: () => void;
+  /** Log a set (live). Receives the set id so any row can complete out of order. */
+  onComplete?: (setId: string) => void;
   onUncomplete?: (setId: string) => void;
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
   onDelete?: (setId: string) => void;
@@ -200,7 +201,7 @@ function ActiveWorkoutSetRow({
   metricColumn,
   weightUnit,
   mode = 'live',
-  onCompleteActive,
+  onComplete,
   onUncomplete,
   onCommitField,
   onDelete,
@@ -232,7 +233,6 @@ function ActiveWorkoutSetRow({
 
   const [
     accentPrimary,
-    successColor,
     textMuted,
     chromeBg,
     chromeBorder,
@@ -242,7 +242,6 @@ function ActiveWorkoutSetRow({
     rpeMax,
   ] = useCSSVariable([
     '--color-accent-primary',
-    '--color-icon-success',
     '--color-text-muted',
     '--color-chrome',
     '--color-chrome-border',
@@ -251,7 +250,6 @@ function ActiveWorkoutSetRow({
     RPE_TONE_VARS.hard,
     RPE_TONE_VARS.max,
   ]) as [
-    string,
     string,
     string,
     string,
@@ -352,29 +350,40 @@ function ActiveWorkoutSetRow({
 
   const commitWeight = useCallback(
     (text: string) => {
+      // Skip an unchanged value: the draft is seeded from the stored weight's
+      // display form, so re-committing it would round-trip through the unit
+      // conversion and drift the stored kg (e.g. 60 kg → 60.01 kg for a lbs
+      // user). Only a real edit — a draft that no longer matches — reaches the
+      // store. This also spares an unedited log a spurious revision bump.
+      if (text === formatDisplayWeight(set.weight, weightUnit)) return;
       const value = parseDecimalInput(text);
       onCommitField?.(setId, {
         weight: Number.isNaN(value) ? null : weightToKg(value, weightUnit),
       });
     },
-    [onCommitField, setId, weightUnit],
+    [onCommitField, setId, weightUnit, set.weight],
   );
 
   const commitReps = useCallback(
     (text: string) => {
+      // Unchanged reps need no re-commit — skip the spurious store write.
+      if (text === (set.reps != null ? String(set.reps) : '')) return;
       const value = parseInt(text, 10);
       onCommitField?.(setId, { reps: Number.isNaN(value) ? null : value });
     },
-    [onCommitField, setId],
+    [onCommitField, setId, set.reps],
   );
 
   const commitRpe = useCallback(
     (text: string) => {
+      // Unchanged RPE needs no re-commit; the draft already holds its snapped
+      // display form, so there is nothing to normalize either.
+      if (text === (set.rpe != null ? formatRpe(set.rpe) : '')) return;
       const value = parseRpeInput(text);
       setRpeDraft(value != null ? formatRpe(value) : '');
       onCommitField?.(setId, { rpe: value });
     },
-    [onCommitField, setId],
+    [onCommitField, setId, set.rpe],
   );
 
   // Log the set: flush any in-progress edits first so the values the user
@@ -385,13 +394,14 @@ function ActiveWorkoutSetRow({
     commitWeight(weightDraft);
     commitReps(repsDraft);
     if (metricColumn === 'rpe') commitRpe(rpeDraft);
-    onCompleteActive?.();
+    onComplete?.(setId);
   }, [
     commitWeight,
     commitReps,
     commitRpe,
     metricColumn,
-    onCompleteActive,
+    onComplete,
+    setId,
     weightDraft,
     repsDraft,
     rpeDraft,
@@ -450,14 +460,7 @@ function ActiveWorkoutSetRow({
   const checkControl = (() => {
     if (state === 'done') {
       if (readOnly) {
-        return (
-          <View
-            className="h-7 w-7 rounded-full items-center justify-center"
-            style={{ backgroundColor: successColor }}
-          >
-            <Icon name="checkmark" size={16} color="#ffffff" weight="bold" />
-          </View>
-        );
+        return <CompletionCheck size={28} />;
       }
       return (
         <Pressable
@@ -465,10 +468,8 @@ function ActiveWorkoutSetRow({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel={`Un-complete set ${set.set_number}`}
-          className="h-7 w-7 rounded-full items-center justify-center"
-          style={{ backgroundColor: successColor }}
         >
-          <Icon name="checkmark" size={16} color="#ffffff" weight="bold" />
+          <CompletionCheck size={28} />
         </Pressable>
       );
     }
@@ -478,31 +479,37 @@ function ActiveWorkoutSetRow({
           onPress={handleLog}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel="Log set"
+          accessibilityLabel={`Log set ${set.set_number}`}
         >
           <LogCircle color={accentPrimary} />
         </Pressable>
       );
     }
-    // Upcoming rows carry no completion control: logging is sequential, so only
-    // the cursor row's log ring can complete a set (no out-of-order recomplete).
-    // The w-10 wrapper stays for column alignment.
-    return null;
+    // Every upcoming set is independently loggable (tap its ring) so the user
+    // can skip ahead — complete a later set without finishing the earlier ones,
+    // which stay as re-loggable holes. Read-only surfaces have no logging, so
+    // their upcoming rows keep a blank column (the w-10 wrapper aligns it).
+    if (!isLive) return null;
+    return (
+      <Pressable
+        onPress={handleLog}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel={`Log set ${set.set_number}`}
+      >
+        <View
+          className="h-7 w-7 rounded-full border-2 items-center justify-center"
+          style={{ borderColor: textMuted }}
+        />
+      </Pressable>
+    );
   })();
 
   // Edit mode's last-column control. With a toggle handler it's a tappable
   // completion checkbox (green check when done, empty ring otherwise); without
   // one it's a static check (e.g. preset forms, which have no completion). Set
   // deletion in edit mode lives on swipe + the long-press menu, not here.
-  const completedCheck = (
-    <View
-      testID="completed-badge"
-      className="h-7 w-7 rounded-full items-center justify-center"
-      style={{ backgroundColor: successColor }}
-    >
-      <Icon name="checkmark" size={16} color="#ffffff" weight="bold" />
-    </View>
-  );
+  const completedCheck = <CompletionCheck size={28} testID="completed-badge" />;
   const editLastCell = onToggleComplete ? (
     <Pressable
       onPress={() => onToggleComplete(setId)}
@@ -717,53 +724,69 @@ function ActiveWorkoutSetRow({
   // rows, and dimming everything would read as disabled. The cursor row is a
   // rounded accent pill (matching its focused input variant); done rows dim.
   const isCursor = state === 'current';
+  const doneDim = !readOnly && state === 'done';
   const row = (
     <Pressable
       testID="set-row"
       onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
       className={`flex-row items-center py-2.5 px-3 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
-      style={[
-        isCursor ? { backgroundColor: `${accentPrimary}1f` } : null,
-        !readOnly && state === 'done' ? { opacity: 0.62 } : null,
-      ]}
+      style={isCursor ? { backgroundColor: `${accentPrimary}1f` } : undefined}
     >
-      <View className="w-9 items-center">{setIndicator}</View>
-      {editable ? (
-        <Pressable
-          className="flex-1 py-1"
-          onPress={() => onActivateSet?.(setId, 'weight')}
-          onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
-          accessibilityRole="button"
-          accessibilityLabel={`Edit weight for set ${set.set_number}`}
-        >
-          {weightCellText}
-        </Pressable>
-      ) : (
-        weightCellText
-      )}
-      {editable ? (
-        <Pressable
-          className="flex-1 py-1"
-          onPress={() => onActivateSet?.(setId, 'reps')}
-          onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
-          accessibilityRole="button"
-          accessibilityLabel={`Edit reps for set ${set.set_number}`}
-        >
-          {repsCellText}
-        </Pressable>
-      ) : (
-        repsCellText
-      )}
-      {(isLive || isEdit) && showRpeInput ? (
-        <Pressable
-          className="w-14 items-center py-1"
-          onPress={() => onActivateRpe?.(setId)}
-          onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
-          accessibilityRole="button"
-          accessibilityLabel={`Edit RPE for set ${set.set_number}`}
-        >
+      {/* Done rows recede (opacity 0.62), but the completion check lives outside
+          this wrapper so its green stays vivid and matches the card/rail badges. */}
+      <View
+        testID="set-row-content"
+        className="flex-1 flex-row items-center"
+        style={doneDim ? { opacity: 0.62 } : undefined}
+      >
+        <View className="w-9 items-center">{setIndicator}</View>
+        {editable ? (
+          <Pressable
+            className="flex-1 py-1"
+            onPress={() => onActivateSet?.(setId, 'weight')}
+            onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit weight for set ${set.set_number}`}
+          >
+            {weightCellText}
+          </Pressable>
+        ) : (
+          weightCellText
+        )}
+        {editable ? (
+          <Pressable
+            className="flex-1 py-1"
+            onPress={() => onActivateSet?.(setId, 'reps')}
+            onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit reps for set ${set.set_number}`}
+          >
+            {repsCellText}
+          </Pressable>
+        ) : (
+          repsCellText
+        )}
+        {(isLive || isEdit) && showRpeInput ? (
+          <Pressable
+            className="w-14 items-center py-1"
+            onPress={() => onActivateRpe?.(setId)}
+            onLongPress={onLongPress ? () => onLongPress(setId) : undefined}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit RPE for set ${set.set_number}`}
+          >
+            <Text
+              className="text-center text-sm"
+              style={[
+                { fontVariant: ['tabular-nums'] },
+                { color: metricValue.color ?? textMuted },
+              ]}
+            >
+              {metricValue.text}
+            </Text>
+          </Pressable>
+        ) : (
           <Text
-            className="text-center text-sm"
+            className="w-14 text-center text-sm"
             style={[
               { fontVariant: ['tabular-nums'] },
               { color: metricValue.color ?? textMuted },
@@ -771,18 +794,8 @@ function ActiveWorkoutSetRow({
           >
             {metricValue.text}
           </Text>
-        </Pressable>
-      ) : (
-        <Text
-          className="w-14 text-center text-sm"
-          style={[
-            { fontVariant: ['tabular-nums'] },
-            { color: metricValue.color ?? textMuted },
-          ]}
-        >
-          {metricValue.text}
-        </Text>
-      )}
+        )}
+      </View>
       <View className="w-10 items-center">{isEdit ? editLastCell : checkControl}</View>
     </Pressable>
   );
