@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-06-11_
+_Last updated: 2026-07-08_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -21,7 +21,7 @@ If a task also touches `shared/`, the frontend, or the mobile app, read the rele
 - Stack: Express 5, PostgreSQL via `pg`, Better Auth, Zod, TypeScript 5, Vitest 4, ESLint 10
 - Module system: ESM with `type: "module"` and `moduleResolution: "NodeNext"`
 - The package is now effectively TypeScript-first; almost all source files are `.ts`
-- Main domains: food and meal tracking, exercise logging, health and sleep data, reporting, AI chat, onboarding, identity, admin tooling, and external provider integrations
+- Main domains: food and meal tracking, exercise logging, health and sleep data, sleep science, fasting, medications, mood, menstrual cycle and pregnancy, reporting, AI chat, onboarding, identity, admin tooling, and external provider integrations
 
 ## Verified Commands
 
@@ -140,12 +140,14 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - `getClient(...)` sets `public.set_app_context(...)`; that is what makes row-level security work correctly
 - Use `getSystemClient()` only for admin, migration, startup, or policy-management work that intentionally bypasses RLS
 - Always release database clients in a `finally` block
+- To learn a table's current shape, read `../shared/src/schemas/database/<Table>.zod.ts` (one small Zod file per table) instead of reading `../db_schema_backup.sql` or reconstructing it from the 185 migration files
 - New migrations belong in `db/migrations/` and must use `YYYYMMDDHHMMSS_description.sql`
 - If you add or change a migration, also update `../db_schema_backup.sql` in the same change
-- If you add a new table or change user-visible access behavior, you MUST:
+- If you add a new table or change user-visible access behavior, follow `../agent-docs/new-migration-checklist.md`. In short, you MUST:
   1. Add/modify the RLS policies in `db/rls_policies.sql`.
   2. Update the user-facing documentation in `../docs/content/2.features/9.family-friends-sharing.md`.
   3. Update the developer-facing documentation in `../docs/content/8.developer/11.database-security-tiers.md` to define its security tier (Tier 1, Tier 2, or Tier 3).
+  4. Add or update the matching Zod schema in `../shared/src/schemas/database/`.
 - Startup automatically applies migrations and then reapplies RLS policies; do not create alternate migration mechanisms
 
 ### Auth and Request Context
@@ -219,10 +221,17 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect `integrations/healthData/healthDataRoutes.ts`, `services/measurementService.ts`, and `utils/timezoneLoader.ts`
 - AI chat or chatbot tool issue:
   inspect `services/chatService.ts`, `ai/tools/`, and the matching domain service and repository
+- Fasting or mood issue:
+  inspect `routes/fastingRoutes.ts` / `routes/moodRoutes.ts` and `models/fastingRepository.ts` / `models/moodRepository.ts`
+- Medications, cycle, or pregnancy issue:
+  inspect the matching v2 route (`routes/v2/medicationRoutes.ts`, `routes/v2/cycleRoutes.ts`, `routes/v2/pregnancyRoutes.ts`), its Zod schema in `schemas/`, then `services/cycleService.ts` / `services/pregnancyService.ts` and the `models/medication*Repository.ts` / `models/cycleRepository.ts` / `models/pregnancyRepository.ts` files
+- Sleep or sleep-science issue:
+  inspect `routes/sleepRoutes.ts`, `routes/sleepScienceRoutes.ts`, `services/sleepAnalyticsService.ts`, `services/sleepScienceService.ts`, and the sleep repositories
 
 ## Working Rules
 
 - Match the existing service/repository/middleware layering instead of introducing parallel abstractions
+- If your change adds a new domain, route family, or table, update this file's Snapshot, Source Map, and Quick Routing sections (and the `Last updated` date) in the same change
 - If you add persisted or user-visible data, think through migration, RLS, permissions, tests, API docs, and downstream client contracts together
 - Validate shared-contract changes from the affected consumers, not just from this package
 - Keep package-specific guidance here; use `../AGENTS.md` only for cross-package context
@@ -236,7 +245,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 
 ## Planning
 
-- Before exiting plan mode or presenting a plan, run the plan-reviewer agent first and address its feedback before showing the plan.
+- Before presenting a plan for server work, self-review it against `../agent-docs/plan-review-checklist.md` and fix any gaps first.
 
 ## Priority Rule
 
