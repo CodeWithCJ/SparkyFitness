@@ -90,7 +90,6 @@ type ResultSection = {
     | 'online-top'
     | 'online-provider'
     | 'label'
-    | 'empty-local'
     | 'status';
   data: ResultRow[];
   provider?: ExternalProvider;
@@ -292,6 +291,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // All Providers fan-out: parallel per-provider searches that stream in.
   const {
     providerResults,
+    anyLoading: anyProviderLoading,
     isSearchActive: isAllProvidersSearchActive,
   } = useAllProvidersSearch(searchText, providers, {
     enabled: isConnected && isAllProviders,
@@ -582,19 +582,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         }
         sections.push({ key: 'meals', kind: 'meal', title: 'Your Meals', data });
       }
-    } else if (localPending) {
+    } else {
       sections.push({
         key: 'local-status',
         kind: 'status',
         title: null,
-        data: [{ type: 'local-loading' }],
-      });
-    } else {
-      sections.push({
-        key: 'empty-local',
-        kind: 'empty-local',
-        title: null,
-        data: [{ type: 'empty-local' }],
+        data: [localPending ? { type: 'local-loading' } : { type: 'empty-local' }],
       });
     }
 
@@ -885,13 +878,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     // The External Results / Top Matches header doubles as the source switcher:
     // a single provider, or "All Providers" for the aggregated view. The current
-    // value is shown in the accent colour with a chevron icon so it reads as a
-    // switchable control.
+    // value is shown in the accent colour with a double-arrow selector icon so it
+    // reads as a switchable control; the icon becomes a spinner while loading.
     if (section.kind === 'online' || section.kind === 'online-top') {
       const canSwitch = providerOptions.length > 1;
       const label =
         section.kind === 'online-top' ? 'Top Matches' : 'Online Results';
       const value = isAllProviders ? 'All Sources' : selectedProviderName;
+      const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
       const header = (
         <View
           ref={onlineHeaderRef}
@@ -908,7 +902,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             >
               {value}
             </Text>
-            {canSwitch ? (
+            {loading ? (
+              <ActivityIndicator size="small" color={accentColor} />
+            ) : canSwitch ? (
               <Icon name="chevron-down" size={16} color={accentColor} />
             ) : null}
           </View>
@@ -1011,24 +1007,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   const renderResultSectionFooter = ({ section }: { section: ResultSection }) => {
-    if (section.kind === 'food' && isSearching) {
-      return (
-        <View className="py-3 items-center">
-          <ActivityIndicator size="small" color={accentColor} />
-        </View>
-      );
-    }
-    if (section.kind === 'meal' && isMealSearching) {
-      return (
-        <View className="py-3 items-center">
-          <ActivityIndicator size="small" color={accentColor} />
-        </View>
-      );
-    }
-
     if (section.kind !== 'online') return null;
 
-    if (isOnlineSearching) {
+    if (isOnlineSearching && visibleOnlineResults.length === 0) {
       return (
         <View className="py-4 items-center">
           <ActivityIndicator size="small" color={accentColor} />
@@ -1127,7 +1108,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           borderColor: isSearchFocused ? accentColor : 'transparent',
         }}
       >
-        <Icon name="search" size={18} color={textMuted} />
+        <View className="w-[18px] h-[18px] items-center justify-center">
+          {!!searchText.trim() &&
+          (isSearching || isMealSearching || isOnlineSearching) ? (
+            <ActivityIndicator size="small" color={textMuted} />
+          ) : (
+            <Icon name="search" size={18} color={textMuted} />
+          )}
+        </View>
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
