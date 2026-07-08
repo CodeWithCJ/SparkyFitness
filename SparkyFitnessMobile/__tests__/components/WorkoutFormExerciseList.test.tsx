@@ -1,7 +1,9 @@
 import React from 'react';
 import { Alert, Keyboard } from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
-import WorkoutFormExerciseList from '../../src/components/WorkoutFormExerciseList';
+import { render, fireEvent, act } from '@testing-library/react-native';
+import WorkoutFormExerciseList, {
+  type WorkoutFormExerciseListHandle,
+} from '../../src/components/WorkoutFormExerciseList';
 import { __resetAppPreferencesStoreForTests } from '../../src/stores/appPreferencesStore';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
 
@@ -163,6 +165,7 @@ function makeExercise(
 function renderList(
   exercises: WorkoutDraftExercise[],
   props?: Partial<React.ComponentProps<typeof WorkoutFormExerciseList>>,
+  ref?: React.Ref<WorkoutFormExerciseListHandle>,
 ) {
   const callbacks = {
     onActivateSet: jest.fn(),
@@ -180,6 +183,7 @@ function renderList(
   };
   const utils = render(
     <WorkoutFormExerciseList
+      ref={ref}
       exercises={exercises}
       weightUnit="kg"
       getImageSource={() => null}
@@ -314,37 +318,21 @@ describe('WorkoutFormExerciseList', () => {
       expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(exercises[1]);
     });
 
-    it('offers Reorder exercises when there are 2+ draggable items', () => {
+    it('no longer offers Reorder exercises in the card menu (moved to the screen header)', () => {
       const utils = renderList([makeExercise('a'), makeExercise('b')]);
-      fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.getByText('Reorder exercises')).toBeTruthy();
-    });
-
-    it('hides Reorder exercises with a single exercise', () => {
-      const utils = renderList([makeExercise('a')]);
-      fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.queryByText('Reorder exercises')).toBeNull();
-    });
-
-    it('hides Reorder exercises when two exercises are fused into one run', () => {
-      // One run = one draggable item → nothing to reorder.
-      const utils = renderList([
-        makeExercise('a', { supersetGroup: 1 }),
-        makeExercise('b', { supersetGroup: 1 }),
-      ]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       expect(utils.queryByText('Reorder exercises')).toBeNull();
     });
   });
 
   describe('reorder overlay', () => {
-    it('opens the overlay (dismissing the active set + keyboard) and commits a move', () => {
+    it('opens via the imperative handle (dismissing the active set + keyboard) and commits a move', () => {
       const dismissSpy = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => {});
-      const utils = renderList([makeExercise('a'), makeExercise('b')]);
+      const ref = React.createRef<WorkoutFormExerciseListHandle>();
+      const utils = renderList([makeExercise('a'), makeExercise('b')], undefined, ref);
       expect(utils.queryByTestId('reorder-list')).toBeNull();
 
-      fireEvent.press(utils.getByTestId('card-a-overflow'));
-      fireEvent.press(utils.getByTestId('menu-item-reorder'));
+      act(() => ref.current?.openReorder());
 
       expect(utils.callbacks.onDeactivateSet).toHaveBeenCalled();
       expect(dismissSpy).toHaveBeenCalled();

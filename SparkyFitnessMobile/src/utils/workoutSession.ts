@@ -830,6 +830,19 @@ export function buildExerciseReorderItems(
 }
 
 /**
+ * True when a draft exercise list has 2+ draggable items — the gate the form
+ * screens use to show their header reorder trigger. Two exercises fused into
+ * one superset run collapse to a single item, so they don't count.
+ */
+export function canReorderDraftExercises(exercises: WorkoutDraftExercise[]): boolean {
+  return (
+    buildExerciseReorderItems(
+      exercises.map((e) => ({ id: e.clientId, superset_group: e.supersetGroup ?? null })),
+    ).length >= 2
+  );
+}
+
+/**
  * Shared reorder core for both session entries and form drafts, keyed by the
  * two field names that differ between them (`id`/`superset_group` vs
  * `clientId`/`supersetGroup`).

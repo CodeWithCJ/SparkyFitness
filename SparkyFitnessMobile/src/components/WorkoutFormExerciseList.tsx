@@ -1,4 +1,11 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Alert, Keyboard, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
@@ -12,7 +19,6 @@ import RestPeriodSheet, { type RestPeriodSheetRef } from './RestPeriodSheet';
 import WorkoutReorderList from './WorkoutReorderList';
 import { weightFromKg } from '../utils/unitConversions';
 import {
-  buildExerciseReorderItems,
   buildSupersetColorMap,
   draftExerciseToCardExercise,
   getDraftSupersetRuns,
@@ -59,33 +65,45 @@ interface WorkoutFormExerciseListProps {
   rpeEditable?: boolean;
 }
 
+/** Imperative handle so the owning screen's header can open the reorder overlay. */
+export interface WorkoutFormExerciseListHandle {
+  openReorder: () => void;
+}
+
 /**
  * Card-based exercise list for the workout/preset form screens: renders the
  * shared ActiveWorkoutExerciseCard stack in edit mode over form-draft state,
  * owning the draft→card mapping, expansion, superset rails and grouping menu,
- * the shared metric column, set-type long-press, and the rest sheet.
+ * the shared metric column, set-type long-press, the rest sheet, and the
+ * reorder overlay (opened from the screen header via the imperative handle).
  */
-function WorkoutFormExerciseList({
-  exercises,
-  weightUnit,
-  getImageSource,
-  activeSetKey,
-  activeSetField,
-  onActivateSet,
-  onDeactivateSet,
-  updateSetField,
-  updateSetMeta,
-  removeSet,
-  onAddSet,
-  onRemoveExercise,
-  setExerciseRest,
-  supersetWith,
-  ungroupExercise,
-  onReorderExercises,
-  onAddExercisePress,
-  isEligibleForPrefill,
-  rpeEditable = true,
-}: WorkoutFormExerciseListProps) {
+const WorkoutFormExerciseList = forwardRef<
+  WorkoutFormExerciseListHandle,
+  WorkoutFormExerciseListProps
+>(function WorkoutFormExerciseList(
+  {
+    exercises,
+    weightUnit,
+    getImageSource,
+    activeSetKey,
+    activeSetField,
+    onActivateSet,
+    onDeactivateSet,
+    updateSetField,
+    updateSetMeta,
+    removeSet,
+    onAddSet,
+    onRemoveExercise,
+    setExerciseRest,
+    supersetWith,
+    ungroupExercise,
+    onReorderExercises,
+    onAddExercisePress,
+    isEligibleForPrefill,
+    rpeEditable = true,
+  },
+  ref,
+) {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const cardExercises = useMemo(
@@ -93,21 +111,22 @@ function WorkoutFormExerciseList({
     [exercises, weightUnit],
   );
 
-  // Reorder overlay. Gated on ≥2 draggable items (two exercises fused into one
-  // run collapse to a single item → nothing to reorder). Derived from
-  // cardExercises so item indices agree with moveDraftExerciseItem's derivation
-  // against the drafts (same order and superset values).
+  // Reorder overlay. The open trigger lives in the owning screen's header
+  // (gated there on ≥2 draggable items via canReorderDraftExercises); this
+  // component only owns the overlay, exposed through the imperative handle.
   const [reorderVisible, setReorderVisible] = useState(false);
-  const canReorder = useMemo(
-    () => buildExerciseReorderItems(cardExercises).length >= 2,
-    [cardExercises],
+  useImperativeHandle(
+    ref,
+    () => ({
+      openReorder: () => {
+        // Commit a focused set input's edit before the overlay covers it.
+        onDeactivateSet();
+        Keyboard.dismiss();
+        setReorderVisible(true);
+      },
+    }),
+    [onDeactivateSet],
   );
-  const handleOpenReorder = useCallback(() => {
-    // Commit a focused set input's edit before the overlay covers it.
-    onDeactivateSet();
-    Keyboard.dismiss();
-    setReorderVisible(true);
-  }, [onDeactivateSet]);
 
   // Form cards default expanded; the map tracks explicit collapses.
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
@@ -289,13 +308,6 @@ function WorkoutFormExerciseList({
         onPress: () => ungroupExercise(clientId),
       });
     }
-    if (canReorder) {
-      items.push({
-        key: 'reorder',
-        label: 'Reorder exercises',
-        onPress: handleOpenReorder,
-      });
-    }
     items.push({
       key: 'remove',
       label: 'Remove exercise',
@@ -312,8 +324,6 @@ function WorkoutFormExerciseList({
     supersetWith,
     ungroupExercise,
     onRemoveExercise,
-    canReorder,
-    handleOpenReorder,
   ]);
 
   return (
@@ -435,6 +445,6 @@ function WorkoutFormExerciseList({
       />
     </Animated.View>
   );
-}
+});
 
 export default React.memo(WorkoutFormExerciseList);

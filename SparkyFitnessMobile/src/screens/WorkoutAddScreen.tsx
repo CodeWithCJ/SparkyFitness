@@ -16,7 +16,9 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
-import WorkoutFormExerciseList from '../components/WorkoutFormExerciseList';
+import WorkoutFormExerciseList, {
+  type WorkoutFormExerciseListHandle,
+} from '../components/WorkoutFormExerciseList';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useWorkoutForm, getWorkoutDraftSubmission } from '../hooks/useWorkoutForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
@@ -26,6 +28,7 @@ import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutation
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
+import { canReorderDraftExercises } from '../utils/workoutSession';
 import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -49,6 +52,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
+  const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
 
   const [accentPrimary, textMuted, textPrimary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -180,8 +184,11 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.goBack();
   }, [discardDraft, isEditMode, hasDraftData, navigation]);
 
+  const canReorder = canReorderDraftExercises(state.exercises);
+
   // Footer-save form: Save lives in the always-on sticky footer, so the header
-  // carries only the dismiss — a header Save would double the footer's.
+  // carries only the dismiss (a header Save would double the footer's) plus the
+  // secondary reorder icon when there are 2+ draggable items.
   const header = useScreenHeader({
     left: {
       kind: 'dismiss',
@@ -189,6 +196,17 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
       disabled: isPending,
       identifier: 'workout-add-cancel',
     },
+    right: canReorder
+      ? {
+          kind: 'icon',
+          sfSymbol: 'arrow.up.arrow.down',
+          ionicon: 'swap-vertical',
+          role: 'secondary',
+          onPress: () => exerciseListRef.current?.openReorder(),
+          accessibilityLabel: 'Reorder exercises',
+          identifier: 'workout-add-reorder',
+        }
+      : null,
   });
 
   const handleFinish = useCallback(() => {
@@ -312,6 +330,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 </TouchableOpacity>
 
                 <WorkoutFormExerciseList
+                  ref={exerciseListRef}
                   exercises={state.exercises}
                   weightUnit={weightUnit as 'kg' | 'lbs'}
                   getImageSource={getImageSource}

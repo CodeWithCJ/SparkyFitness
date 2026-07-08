@@ -1301,6 +1301,150 @@ describe('activeWorkoutStore', () => {
         expect(exercises[3].sets[0].id).toBe(-2);
       });
     });
+
+    describe('removeExercise', () => {
+      it('removes the entry and rebuilds steps and cursor', () => {
+        useActiveWorkoutStore.getState().removeExercise('ex-uuid-1');
+        const state = useActiveWorkoutStore.getState();
+        expect(state.session!.exercises).toHaveLength(1);
+        expect(state.session!.exercises[0].id).toBe('ex-uuid-2');
+        expect(state.steps.map((s) => s.setId)).toEqual(['201']);
+        expect(state.activeSetId).toBe('201');
+        expect(state.hasUnsavedChanges).toBe(true);
+      });
+
+      it('prunes completion for the removed exercise sets', async () => {
+        useActiveWorkoutStore.getState().completeActiveSet(); // 101 done
+        await flushPromises();
+        useActiveWorkoutStore.getState().removeExercise('ex-uuid-1');
+        const state = useActiveWorkoutStore.getState();
+        expect(state.completedSetIds['101']).toBeUndefined();
+        expect(state.completedSetIds['102']).toBeUndefined();
+      });
+
+      it('clears a running rest when the cursor moves off the removed exercise', async () => {
+        mockSchedule.mockResolvedValueOnce('notif-doomed');
+        useActiveWorkoutStore.getState().completeActiveSet(); // cursor → 102, resting
+        await flushPromises();
+        useActiveWorkoutStore.getState().removeExercise('ex-uuid-1');
+        const state = useActiveWorkoutStore.getState();
+        expect(state.activeSetId).toBe('201');
+        expect(state.rest.state).toBe('ready');
+        expect(mockCancel).toHaveBeenCalledWith('notif-doomed');
+      });
+
+      it('is a no-op for an unknown entry id', () => {
+        useActiveWorkoutStore.getState().removeExercise('nope');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      });
+    });
+
+    describe('replaceExercise', () => {
+      const replacement = {
+        id: 'ex-9',
+        name: 'Overhead Press',
+        category: 'Strength',
+        equipment: ['barbell'],
+        primary_muscles: ['shoulders'],
+        secondary_muscles: [],
+        calories_per_hour: 300,
+        source: 'system',
+        images: ['ohp.jpg'],
+        tags: [],
+      };
+
+      it('swaps the exercise in place and resets to one default set', () => {
+        useActiveWorkoutStore.getState().replaceExercise('ex-uuid-1', replacement);
+        const state = useActiveWorkoutStore.getState();
+        const entry = state.session!.exercises[0];
+        expect(entry.id).toBe('ex-uuid-1'); // entry id (position) preserved
+        expect(entry.exercise_id).toBe('ex-9');
+        expect(entry.exercise_snapshot?.name).toBe('Overhead Press');
+        expect(entry.sets).toHaveLength(1);
+        expect(entry.sets[0].id).toBe(-1);
+        expect(entry.sets[0].set_type).toBe('normal');
+        expect(state.session!.exercises[1].id).toBe('ex-uuid-2'); // sibling untouched
+        expect(state.hasUnsavedChanges).toBe(true);
+      });
+
+      it('prunes completions for the replaced sets and repoints the cursor', async () => {
+        useActiveWorkoutStore.getState().completeActiveSet(); // 101 done, cursor 102
+        await flushPromises();
+        useActiveWorkoutStore.getState().replaceExercise('ex-uuid-1', replacement);
+        const state = useActiveWorkoutStore.getState();
+        expect(state.completedSetIds['101']).toBeUndefined();
+        expect(state.activeSetId).toBe('-1');
+        expect(state.steps.map((s) => s.setId)).toEqual(['-1', '201']);
+      });
+
+      it('is a no-op for an unknown entry id', () => {
+        useActiveWorkoutStore.getState().replaceExercise('nope', replacement);
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      });
+    });
+
+    describe('clearExerciseCompletions', () => {
+      it("un-checks only the target exercise's sets and rewinds the cursor", async () => {
+        useActiveWorkoutStore.getState().completeActiveSet(); // 101
+        await flushPromises();
+        useActiveWorkoutStore.getState().completeActiveSet(); // 102
+        await flushPromises();
+        useActiveWorkoutStore.getState().completeActiveSet(); // 201
+        await flushPromises();
+        expect(
+          Object.keys(useActiveWorkoutStore.getState().completedSetIds).sort(),
+        ).toEqual(['101', '102', '201']);
+
+        useActiveWorkoutStore.getState().clearExerciseCompletions('ex-uuid-1');
+        const state = useActiveWorkoutStore.getState();
+        expect(state.completedSetIds['101']).toBeUndefined();
+        expect(state.completedSetIds['102']).toBeUndefined();
+        expect(state.completedSetIds['201']).toBe(FIXED_NOW); // sibling kept
+        expect(state.activeSetId).toBe('101'); // earliest uncompleted
+        expect(state.hasUnsavedChanges).toBe(true);
+      });
+
+      it('is a no-op when the exercise has no completed sets', () => {
+        useActiveWorkoutStore.getState().clearExerciseCompletions('ex-uuid-1');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      });
+
+      it('is a no-op for an unknown entry id', () => {
+        useActiveWorkoutStore.getState().clearExerciseCompletions('nope');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      });
+    });
+
+    describe('clearAllCompletions', () => {
+      it('un-checks every set and rewinds the cursor to the first step', async () => {
+        useActiveWorkoutStore.getState().completeActiveSet(); // 101
+        await flushPromises();
+        useActiveWorkoutStore.getState().completeActiveSet(); // 102
+        await flushPromises();
+
+        useActiveWorkoutStore.getState().clearAllCompletions();
+        const state = useActiveWorkoutStore.getState();
+        expect(state.completedSetIds).toEqual({});
+        expect(state.prSetIds).toEqual({});
+        expect(state.activeSetId).toBe('101');
+        expect(state.rest.state).toBe('ready');
+        expect(state.hasUnsavedChanges).toBe(true);
+      });
+
+      it('cancels a running rest notification', async () => {
+        mockSchedule.mockResolvedValueOnce('notif-live');
+        useActiveWorkoutStore.getState().completeActiveSet(); // cursor 102, resting
+        await flushPromises();
+        useActiveWorkoutStore.getState().clearAllCompletions();
+        expect(mockCancel).toHaveBeenCalledWith('notif-live');
+        expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      });
+
+      it('is a no-op when nothing is completed', () => {
+        useActiveWorkoutStore.getState().clearAllCompletions();
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      });
+    });
   });
 
   describe('applyServerSession', () => {

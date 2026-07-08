@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 
 interface FormScreenChromeProps {
   title: string;
@@ -11,6 +11,8 @@ interface FormScreenChromeProps {
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
+  /** Optional secondary header action rendered left of Save (e.g. a reorder icon). */
+  headerAction?: HeaderItem | null;
   children: React.ReactNode;
 }
 
@@ -21,22 +23,24 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   isSaving,
   onSave,
   onCancel,
+  headerAction,
   children,
 }) => {
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
+  const saveItem: HeaderItem = {
+    kind: 'primary',
+    label: saveLabel,
+    busyLabel: savingLabel,
+    busy: isSaving,
+    disabled: isSaving,
+    onPress: onSave,
+  };
   const header = useScreenHeader({
     title,
     left: { kind: 'dismiss', onPress: onCancel, disabled: isSaving },
-    right: {
-      kind: 'primary',
-      label: saveLabel,
-      busyLabel: savingLabel,
-      busy: isSaving,
-      disabled: isSaving,
-      onPress: onSave,
-    },
+    right: headerAction ? [headerAction, saveItem] : saveItem,
   });
 
   return (

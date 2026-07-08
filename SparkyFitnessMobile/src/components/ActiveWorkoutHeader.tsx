@@ -45,8 +45,12 @@ interface ActiveWorkoutHeaderProps {
   progress: ExerciseProgress[];
   onBack: () => void;
   onDiscard: () => void;
+  /** Adds an "Add exercise" action at the top of the menu. */
+  onAddExercise?: () => void;
   /** When provided, adds a "Reorder exercises" action above Discard. */
   onReorder?: () => void;
+  /** When provided (any set logged), adds a "Clear logged sets" action. */
+  onClearAllSets?: () => void;
 }
 
 /**
@@ -61,7 +65,9 @@ function ActiveWorkoutHeader({
   progress,
   onBack,
   onDiscard,
+  onAddExercise,
   onReorder,
+  onClearAllSets,
 }: ActiveWorkoutHeaderProps) {
   const [textPrimary, textMuted, accentPrimary, successColor, trackColor] = useCSSVariable([
     '--color-text-primary',
@@ -87,12 +93,28 @@ function ActiveWorkoutHeader({
   ).length;
 
   const menuItems: AnchoredMenuItem[] = [];
+  if (onAddExercise) {
+    menuItems.push({
+      key: 'add-exercise',
+      label: 'Add exercise',
+      icon: 'add',
+      onPress: onAddExercise,
+    });
+  }
   if (onReorder) {
     menuItems.push({
       key: 'reorder',
       label: 'Reorder exercises',
       icon: 'swap-vertical',
       onPress: onReorder,
+    });
+  }
+  if (onClearAllSets) {
+    menuItems.push({
+      key: 'clear-sets',
+      label: 'Clear logged sets',
+      icon: 'arrow-undo',
+      onPress: onClearAllSets,
     });
   }
   menuItems.push({

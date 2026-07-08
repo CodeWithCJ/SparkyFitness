@@ -239,10 +239,22 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     if (candidate != null) setFocusedExerciseId(candidate);
   }, []);
 
-  // Add-exercise return from ExerciseSearch. addExercise appends to the end
-  // without moving the cursor, so expand the new card and scroll it into view
-  // (deferred so the card has a measured offset before scrolling).
+  // Distinguishes an ExerciseSearch return bound for Replace (an entry id) from
+  // one bound for Add (null). Cleared on consume and whenever Add is opened, so
+  // a cancelled replace can't misroute a later add.
+  const replaceTargetEntryIdRef = useRef<string | null>(null);
+
+  // ExerciseSearch return. Replace swaps the exercise in place; Add appends to
+  // the end without moving the cursor, so expand the new card and scroll it
+  // into view (deferred so the card has a measured offset before scrolling).
   useSelectedExercise(route.params, (exercise) => {
+    const replaceTarget = replaceTargetEntryIdRef.current;
+    if (replaceTarget != null) {
+      replaceTargetEntryIdRef.current = null;
+      useActiveWorkoutStore.getState().replaceExercise(replaceTarget, exercise);
+      setFocusedExerciseId(replaceTarget);
+      return;
+    }
     useActiveWorkoutStore.getState().addExercise(exercise);
     const exercises = useActiveWorkoutStore.getState().session?.exercises ?? [];
     const added = exercises[exercises.length - 1];
@@ -259,10 +271,55 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   });
 
   const handleAddExercise = useCallback(() => {
+    replaceTargetEntryIdRef.current = null;
     runNavigationAction(() => {
       navigation.navigate('ExerciseSearch', { returnKey: route.key });
     });
   }, [navigation, route.key, runNavigationAction]);
+
+  const handleReplaceExercise = useCallback(
+    (entryId: string) => {
+      replaceTargetEntryIdRef.current = entryId;
+      runNavigationAction(() => {
+        navigation.navigate('ExerciseSearch', { returnKey: route.key });
+      });
+    },
+    [navigation, route.key, runNavigationAction],
+  );
+
+  const handleRemoveExercise = useCallback((entryId: string) => {
+    const exercise = useActiveWorkoutStore
+      .getState()
+      .session?.exercises.find((e) => e.id === entryId);
+    const name = exercise?.exercise_snapshot?.name ?? 'this exercise';
+    Alert.alert('Remove exercise?', `${name} will be removed from this workout.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => useActiveWorkoutStore.getState().removeExercise(entryId),
+      },
+    ]);
+  }, []);
+
+  const handleClearExerciseSets = useCallback((entryId: string) => {
+    useActiveWorkoutStore.getState().clearExerciseCompletions(entryId);
+  }, []);
+
+  const handleClearAllSets = useCallback(() => {
+    Alert.alert(
+      'Clear logged sets?',
+      'Un-checks every logged set in this workout. Your set weights and reps are kept.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => useActiveWorkoutStore.getState().clearAllCompletions(),
+        },
+      ],
+    );
+  }, []);
 
   // Tap an exercise thumbnail → its library detail. Maps the session's full
   // snapshot to an Exercise so the detail screen gets muscles/equipment/etc.
@@ -333,6 +390,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       }));
     }
 
+    const entry = session.exercises.find((e) => e.id === entryId);
+    const entryHasCompleted =
+      entry?.sets.some((s) => completedSetIds[String(s.id)] != null) ?? false;
+
     const items: { key: string; label: string; onPress: () => void }[] = [];
     if (candidates.length > 0) {
       items.push({
@@ -354,6 +415,22 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         },
       });
     }
+    // handleReplaceExercise writes replaceTargetEntryIdRef only inside this
+    // deferred onPress (on menu tap), never during render — the linter can't
+    // see that through the memo. Same pattern as BottomSheetPicker's trigger.
+    // eslint-disable-next-line react-hooks/refs
+    items.push({
+      key: 'replace',
+      label: 'Replace exercise',
+      onPress: () => handleReplaceExercise(entryId),
+    });
+    if (entryHasCompleted) {
+      items.push({
+        key: 'clear',
+        label: 'Clear logged sets',
+        onPress: () => handleClearExerciseSets(entryId),
+      });
+    }
     if (reorderItemCount >= 2) {
       items.push({
         key: 'reorder',
@@ -361,8 +438,23 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onPress: handleOpenReorder,
       });
     }
+    items.push({
+      key: 'remove',
+      label: 'Remove exercise',
+      onPress: () => handleRemoveExercise(entryId),
+    });
     return items;
-  }, [overflowMenu, session, supersetRuns, reorderItemCount, handleOpenReorder]);
+  }, [
+    overflowMenu,
+    session,
+    supersetRuns,
+    reorderItemCount,
+    handleOpenReorder,
+    completedSetIds,
+    handleReplaceExercise,
+    handleClearExerciseSets,
+    handleRemoveExercise,
+  ]);
 
   // Live editing: which set cell is tap-focused (the keyboard target). Distinct
   // from activeSetId (the cursor / log ring), so tapping an earlier set to fix a
@@ -565,6 +657,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   }
 
   const progress = buildExerciseProgress(session, completedSetIds);
+  const hasAnyCompletedSets = Object.keys(completedSetIds).length > 0;
 
   const restVisible = restState !== 'ready';
   const restRemainingMs = (() => {
@@ -616,7 +709,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         progress={progress}
         onBack={() => navigation.goBack()}
         onDiscard={handleDiscard}
+        onAddExercise={handleAddExercise}
         onReorder={reorderItemCount >= 2 ? handleOpenReorder : undefined}
+        onClearAllSets={hasAnyCompletedSets ? handleClearAllSets : undefined}
       />
 
       <ActiveWorkoutRail

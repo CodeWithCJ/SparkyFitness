@@ -185,6 +185,13 @@ export interface ActiveWorkoutState {
    * ring instead of being stranded behind a forward-only cursor.
    */
   uncompleteSet: (setId: string) => void;
+  /**
+   * Un-complete every set of one exercise (checkmarks only; the sets and their
+   * values are kept). Restores the cursor invariant like {@link uncompleteSet}.
+   */
+  clearExerciseCompletions: (entryId: string) => void;
+  /** Un-complete every set in the workout and rewind the cursor to the first step. */
+  clearAllCompletions: () => void;
   pauseRest: () => void;
   resumeRest: () => void;
   /**
@@ -216,6 +223,17 @@ export interface ActiveWorkoutState {
   setExerciseRest: (entryId: string, seconds: number) => void;
   /** Append a client-built exercise entry (temp string id) with one default set. */
   addExercise: (exercise: Exercise) => void;
+  /**
+   * Delete an exercise entry entirely, reconciling steps, completion/PR maps,
+   * cursor, rest, and superset grouping (a leftover 1-member group dissolves).
+   */
+  removeExercise: (entryId: string) => void;
+  /**
+   * Swap an entry's exercise for another, resetting it to a single default set
+   * (the old sets no longer describe the new movement). The entry keeps its
+   * position and superset grouping.
+   */
+  replaceExercise: (entryId: string, exercise: Exercise) => void;
   /**
    * Superset `picked` with `current`: create a group of the two, or add
    * `picked` as a member of current's existing group. `picked` moves to sit
@@ -891,6 +909,60 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         });
       },
 
+      clearExerciseCompletions: (entryId) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const exercise = session.exercises.find((e) => e.id === entryId);
+        if (!exercise) return;
+
+        const next = { ...state.completedSetIds };
+        const nextPr = { ...state.prSetIds };
+        let changed = false;
+        for (const s of exercise.sets) {
+          const id = String(s.id);
+          if (next[id] != null) {
+            delete next[id];
+            delete nextPr[id];
+            changed = true;
+          }
+        }
+        if (!changed) return;
+
+        // Same cursor invariant as uncompleteSet: land on the earliest
+        // uncompleted step, clearing a now-stale rest if the cursor moved.
+        const nextActiveSetId = state.steps.find((s) => next[s.setId] == null)?.setId ?? null;
+        let nextRest = state.rest;
+        if (nextActiveSetId !== state.activeSetId) {
+          cancelCurrentRestNotification(state.rest);
+          nextRest = READY_REST;
+        }
+
+        set({
+          completedSetIds: next,
+          prSetIds: nextPr,
+          activeSetId: nextActiveSetId,
+          rest: nextRest,
+          sessionRevision: state.sessionRevision + 1,
+          hasUnsavedChanges: true,
+        });
+      },
+
+      clearAllCompletions: () => {
+        const state = get();
+        if (Object.keys(state.completedSetIds).length === 0) return;
+        cancelCurrentRestNotification(state.rest);
+        set({
+          completedSetIds: {},
+          prSetIds: {},
+          // Rewind the cursor to the first step and drop any running rest.
+          activeSetId: state.steps[0]?.setId ?? null,
+          rest: READY_REST,
+          sessionRevision: state.sessionRevision + 1,
+          hasUnsavedChanges: true,
+        });
+      },
+
       pauseRest: () => {
         const { rest } = get();
         if (rest.state !== 'resting' || rest.endsAt == null) return;
@@ -1208,6 +1280,57 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const next: PresetSessionResponse = {
           ...session,
           exercises: [...session.exercises, entry],
+        };
+        set(buildSessionEditState(state, next));
+      },
+
+      removeExercise: (entryId) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        if (!session.exercises.some((e) => e.id === entryId)) return;
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.filter((e) => e.id !== entryId),
+        };
+        set(buildSessionEditState(state, next));
+      },
+
+      replaceExercise: (entryId, exercise) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        if (!session.exercises.some((e) => e.id === entryId)) return;
+
+        const snapshot: ExerciseSnapshotResponse = {
+          id: exercise.id,
+          name: exercise.name,
+          category: exercise.category ?? null,
+          images: exercise.images ?? null,
+          primary_muscles: exercise.primary_muscles ?? null,
+          secondary_muscles: exercise.secondary_muscles ?? null,
+          equipment: exercise.equipment ?? null,
+          instructions: exercise.instructions ?? null,
+          force: exercise.force ?? null,
+          level: exercise.level ?? null,
+          mechanic: exercise.mechanic ?? null,
+          calories_per_hour: exercise.calories_per_hour ?? null,
+        };
+
+        // Reset to a single default set — the old sets no longer describe the
+        // new movement. `?? null` on distance/heart_rate keeps the entry valid.
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.map((e) =>
+            e.id === entryId
+              ? {
+                  ...e,
+                  exercise_id: exercise.id,
+                  exercise_snapshot: snapshot,
+                  sets: [makeDefaultSet(nextTempSetId(session), 1)],
+                }
+              : e,
+          ),
         };
         set(buildSessionEditState(state, next));
       },

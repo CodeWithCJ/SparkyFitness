@@ -71,7 +71,13 @@ describe('ActiveWorkoutHeader', () => {
 
   function renderHeaderComponent(
     completedSetIds: Record<string, true>,
-    overrides?: { onBack?: () => void; onDiscard?: () => void; onReorder?: () => void },
+    overrides?: {
+      onBack?: () => void;
+      onDiscard?: () => void;
+      onReorder?: () => void;
+      onAddExercise?: () => void;
+      onClearAllSets?: () => void;
+    },
   ) {
     const progress = buildExerciseProgress(makeSession(), completedSetIds);
     return render(
@@ -83,6 +89,8 @@ describe('ActiveWorkoutHeader', () => {
         onBack={overrides?.onBack ?? jest.fn()}
         onDiscard={overrides?.onDiscard ?? jest.fn()}
         onReorder={overrides?.onReorder}
+        onAddExercise={overrides?.onAddExercise}
+        onClearAllSets={overrides?.onClearAllSets}
       />,
     );
   }
@@ -146,5 +154,28 @@ describe('ActiveWorkoutHeader', () => {
     fireEvent.press(getByLabelText('Workout menu'));
     fireEvent.press(getByText('Reorder exercises'));
     expect(onReorder).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Add exercise and fires onAddExercise when provided', () => {
+    const onAddExercise = jest.fn();
+    const { getByLabelText, getByText } = renderHeaderComponent({}, { onAddExercise });
+    fireEvent.press(getByLabelText('Workout menu'));
+    fireEvent.press(getByText('Add exercise'));
+    expect(onAddExercise).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits Add exercise and Clear logged sets when their handlers are absent', () => {
+    const { getByLabelText, queryByText } = renderHeaderComponent({});
+    fireEvent.press(getByLabelText('Workout menu'));
+    expect(queryByText('Add exercise')).toBeNull();
+    expect(queryByText('Clear logged sets')).toBeNull();
+  });
+
+  it('shows Clear logged sets and fires onClearAllSets when provided', () => {
+    const onClearAllSets = jest.fn();
+    const { getByLabelText, getByText } = renderHeaderComponent({}, { onClearAllSets });
+    fireEvent.press(getByLabelText('Workout menu'));
+    fireEvent.press(getByText('Clear logged sets'));
+    expect(onClearAllSets).toHaveBeenCalledTimes(1);
   });
 });

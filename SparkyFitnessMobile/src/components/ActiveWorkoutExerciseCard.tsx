@@ -297,6 +297,17 @@ function ActiveWorkoutExerciseCard({
     );
   };
 
+  // Live-only long-press opens the same overflow menu. The collapsed row has no
+  // ⋮ anchor, so it measures its own ref; the expanded card reuses the ⋮ anchor.
+  const collapsedRowRef = useRef<View>(null);
+  const openMenuFromCollapsedRow = () => {
+    measureAnchoredMenuTrigger(collapsedRowRef.current, (anchor) =>
+      onPressOverflow?.(exercise.id, anchor),
+    );
+  };
+  const longPressMenu = isLive && onPressOverflow ? openMenuFromCollapsedRow : undefined;
+  const longPressExpandedMenu = isLive && onPressOverflow ? openOverflowMenu : undefined;
+
   if (!expanded) {
     const volumeKg = getExerciseVolumeKg(exercise);
     // "planned" describes a live workout that hasn't reached the exercise yet;
@@ -309,7 +320,9 @@ function ActiveWorkoutExerciseCard({
 
     return (
       <Pressable
+        ref={collapsedRowRef}
         onPress={() => onToggleExpanded(exercise.id)}
+        onLongPress={longPressMenu}
         accessibilityRole="button"
         accessibilityLabel={`Expand ${name}`}
         className="flex-row items-center gap-3 px-4 py-3.5 border-b border-border-subtle"
@@ -351,6 +364,7 @@ function ActiveWorkoutExerciseCard({
         )}
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
+          onLongPress={longPressExpandedMenu}
           className="flex-1"
           accessibilityRole="button"
           accessibilityLabel={`Collapse ${name}`}

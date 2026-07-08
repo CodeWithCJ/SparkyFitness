@@ -4,7 +4,9 @@ import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import FormInput from '../components/FormInput';
 import FormScreenChrome from '../components/FormScreenChrome';
-import WorkoutFormExerciseList from '../components/WorkoutFormExerciseList';
+import WorkoutFormExerciseList, {
+  type WorkoutFormExerciseListHandle,
+} from '../components/WorkoutFormExerciseList';
 import {
   useCreateWorkoutPreset,
   useUpdateWorkoutPreset,
@@ -15,8 +17,8 @@ import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useWorkoutPresetForm, type PresetDraft } from '../hooks/useWorkoutPresetForm';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
-import { buildPresetExercisesPayload } from '../utils/workoutSession';
+import { SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
+import { buildPresetExercisesPayload, canReorderDraftExercises } from '../utils/workoutSession';
 import type { WorkoutSetMetaPatch } from '../types/drafts';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type {
@@ -58,6 +60,7 @@ interface PresetFormBodyProps {
   reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
   isEligibleForPrefill: (clientId: string) => boolean;
   onAddExercisePress: () => void;
+  listRef: React.Ref<WorkoutFormExerciseListHandle>;
 }
 
 const PresetFormBody: React.FC<PresetFormBodyProps> = ({
@@ -75,6 +78,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   reorderExercises,
   isEligibleForPrefill,
   onAddExercisePress,
+  listRef,
 }) => {
   const { getImageSource } = useExerciseImageSource();
 
@@ -109,6 +113,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
 
       <View className="bg-surface rounded-xl p-4 shadow-sm">
         <WorkoutFormExerciseList
+          ref={listRef}
           exercises={state.exercises}
           weightUnit={weightUnit}
           getImageSource={getImageSource}
@@ -193,6 +198,19 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
 
   const { createPresetAsync, isPending } = useCreateWorkoutPreset();
 
+  const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
+  const reorderAction: HeaderItem | null = canReorderDraftExercises(state.exercises)
+    ? {
+        kind: 'icon',
+        sfSymbol: 'arrow.up.arrow.down',
+        ionicon: 'swap-vertical',
+        role: 'secondary',
+        onPress: () => exerciseListRef.current?.openReorder(),
+        accessibilityLabel: 'Reorder exercises',
+        identifier: 'preset-create-reorder',
+      }
+    : null;
+
   const openExerciseSearch = () => {
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
   };
@@ -250,6 +268,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
       saveLabel={SAVE_LABEL}
       savingLabel={SAVING_LABEL}
       isSaving={isPending}
+      headerAction={reorderAction}
       onSave={() => {
         void handleSave();
       }}
@@ -270,6 +289,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         reorderExercises={reorderExercises}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
+        listRef={exerciseListRef}
       />
     </FormScreenChrome>
   );
@@ -369,6 +389,19 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
 
   const { updatePresetAsync, isPending } = useUpdateWorkoutPreset();
 
+  const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
+  const reorderAction: HeaderItem | null = canReorderDraftExercises(state.exercises)
+    ? {
+        kind: 'icon',
+        sfSymbol: 'arrow.up.arrow.down',
+        ionicon: 'swap-vertical',
+        role: 'secondary',
+        onPress: () => exerciseListRef.current?.openReorder(),
+        accessibilityLabel: 'Reorder exercises',
+        identifier: 'preset-edit-reorder',
+      }
+    : null;
+
   const openExerciseSearch = () => {
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
   };
@@ -419,6 +452,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
       saveLabel={SAVE_LABEL}
       savingLabel={SAVING_LABEL}
       isSaving={isPending}
+      headerAction={reorderAction}
       onSave={() => {
         void handleSave();
       }}
@@ -439,6 +473,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         reorderExercises={reorderExercises}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
+        listRef={exerciseListRef}
       />
     </FormScreenChrome>
   );

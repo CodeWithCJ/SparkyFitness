@@ -168,6 +168,31 @@ describe('ActiveWorkoutExerciseCard', () => {
     expect(queryByLabelText('More options for Bench Press')).toBeNull();
   });
 
+  describe('long-press menu (live)', () => {
+    it('opens the overflow menu from a collapsed row long-press', () => {
+      const { getByLabelText, callbacks } = renderCard(false);
+      fireEvent(getByLabelText('Expand Bench Press'), 'longPress');
+      expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
+        'ex-uuid-1',
+        expect.objectContaining({ x: expect.any(Number) }),
+      );
+    });
+
+    it('opens the overflow menu from an expanded name long-press', () => {
+      const { getAllByLabelText, callbacks } = renderCard(true);
+      fireEvent(getAllByLabelText('Collapse Bench Press')[0], 'longPress');
+      expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
+        'ex-uuid-1',
+        expect.objectContaining({ x: expect.any(Number) }),
+      );
+    });
+
+    it('does not wire long-press in edit mode (screen-scoped to live)', () => {
+      const { getByLabelText } = renderCard(false, { mode: 'edit' });
+      expect(getByLabelText('Expand Bench Press').props.onLongPress).toBeUndefined();
+    });
+  });
+
   describe('view mode', () => {
     it('hides the overflow trigger and the Add set button', () => {
       const { queryByLabelText } = renderCard(true, { mode: 'view' });

@@ -9,7 +9,9 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
-import WorkoutFormExerciseList from '../components/WorkoutFormExerciseList';
+import WorkoutFormExerciseList, {
+  type WorkoutFormExerciseListHandle,
+} from '../components/WorkoutFormExerciseList';
 import ActiveWorkoutExerciseCard, {
   METRIC_MENU_LABELS,
   METRIC_OPTIONS,
@@ -22,6 +24,7 @@ import {
   formatVolume,
   buildSupersetColorMap,
   getSupersetRuns,
+  canReorderDraftExercises,
   SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
 import {
@@ -47,7 +50,7 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { ensureNotificationPermission } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader, SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
 import type { SupersetBorder } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { UpdatePresetSessionRequest } from '@workspace/shared';
@@ -61,6 +64,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
+  const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
 
   const [accentPrimary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -460,11 +464,35 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
+  // Edit mode: Save is the one accent action; a secondary reorder icon joins it
+  // (left of Save) when the draft has 2+ draggable items.
+  const canReorderEdit = canReorderDraftExercises(formState.exercises);
+  const saveHeaderItem: HeaderItem = {
+    kind: 'primary',
+    label: SAVE_LABEL,
+    busyLabel: SAVING_LABEL,
+    busy: isSaving,
+    disabled: isSaving || !hasEditedExercisesWithSets,
+    onPress: handleSave,
+    accessibilityLabel: 'Save',
+    identifier: 'workout-detail-save',
+  };
+  const reorderHeaderItem: HeaderItem = {
+    kind: 'icon',
+    sfSymbol: 'arrow.up.arrow.down',
+    ionicon: 'swap-vertical',
+    role: 'secondary',
+    onPress: () => exerciseListRef.current?.openReorder(),
+    accessibilityLabel: 'Reorder exercises',
+    identifier: 'workout-detail-reorder',
+  };
+
   // Small inline native title (set in App.tsx as a small title so re-applying it
   // for the edit-mode swap updates in place rather than flying in a large one).
   // View mode: name + owner-only Edit (the in-body name is suppressed since it
   // lives in the bar). Edit mode: "Edit Workout" title, X-dismiss owning the
-  // left slot with swipe-back disabled, Save on the right; name edited in-body.
+  // left slot with swipe-back disabled, Save (+ reorder) on the right; name
+  // edited in-body.
   const header = useScreenHeader({
     nativeTitle: isEditing ? 'Edit Workout' : name,
     animateKey: isEditing ? 'edit' : 'view',
@@ -480,16 +508,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         }
       : { kind: 'back' },
     right: isEditing
-      ? {
-          kind: 'primary',
-          label: SAVE_LABEL,
-          busyLabel: SAVING_LABEL,
-          busy: isSaving,
-          disabled: isSaving || !hasEditedExercisesWithSets,
-          onPress: handleSave,
-          accessibilityLabel: 'Save',
-          identifier: 'workout-detail-save',
-        }
+      ? canReorderEdit
+        ? [reorderHeaderItem, saveHeaderItem]
+        : saveHeaderItem
       : isSparky
         ? {
             kind: 'text',
@@ -574,6 +595,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Exercises */}
         {isEditing ? (
           <WorkoutFormExerciseList
+            ref={exerciseListRef}
             exercises={formState.exercises}
             weightUnit={weightUnit as 'kg' | 'lbs'}
             getImageSource={getImageSource}
