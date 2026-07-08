@@ -489,7 +489,8 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
         Equivalent sizes
       </Text>
       {items.map((item, index) => {
-        const sizeText = item.serving_size > 0 ? String(item.serving_size) : '';
+        const sizeText =
+          item._sizeText ?? (item.serving_size > 0 ? String(item.serving_size) : '');
         return (
           <View
             key={item.id ?? item._clientKey ?? `idx-${index}`}
@@ -501,7 +502,10 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
                 value={sizeText}
                 onChangeText={(text) => {
                   if (!DECIMAL_INPUT_REGEX.test(text)) return;
-                  updateRow(index, { serving_size: parseDecimalInput(text) || 0 });
+                  updateRow(index, {
+                    _sizeText: text,
+                    serving_size: parseDecimalInput(text) || 0,
+                  });
                 }}
                 keyboardType="decimal-pad"
                 returnKeyType="done"

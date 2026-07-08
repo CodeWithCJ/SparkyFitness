@@ -1412,4 +1412,47 @@ describe('FoodForm', () => {
       expect(screen.getByText('Convert with AI')).toBeTruthy();
     });
   });
+
+  it('keeps the trailing decimal while typing an equivalent size', () => {
+    const handleChange = jest.fn();
+    function Harness() {
+      const [items, setItems] = React.useState([
+        { serving_size: 3, serving_unit: 'g', _clientKey: 'eq-test' },
+      ]);
+      return (
+        <FoodForm
+          initialValues={{
+            name: 'Greek Yogurt',
+            servingSize: '100',
+            servingUnit: 'g',
+            calories: '120',
+            protein: '10',
+            carbs: '8',
+            fat: '4',
+          }}
+          equivalents={{
+            items,
+            onChange: (next) => {
+              handleChange(next);
+              setItems(next);
+            },
+          }}
+          onSubmit={jest.fn()}
+        />
+      );
+    }
+
+    const screen = render(<Harness />);
+
+    // Typing the decimal point must not snap the field back to the parsed
+    // integer — that regression made decimals impossible to enter on Android.
+    fireEvent.changeText(screen.getByDisplayValue('3'), '3.');
+    expect(screen.getByDisplayValue('3.')).toBeTruthy();
+
+    fireEvent.changeText(screen.getByDisplayValue('3.'), '3.5');
+    expect(screen.getByDisplayValue('3.5')).toBeTruthy();
+    expect(handleChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ serving_size: 3.5, _sizeText: '3.5' }),
+    ]);
+  });
 });
