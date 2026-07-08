@@ -147,7 +147,7 @@ function ReorderItemRow({
     if (active < index && index <= t) shift = -stride;
     else if (t <= index && index < active) shift = stride;
     return {
-      transform: [{ translateY: withSpring(shift, { damping: 22, stiffness: 240 }) }, { scale: 1 }],
+      transform: [{ translateY: withSpring(shift, { damping: 44, stiffness: 960 }) }, { scale: 1 }],
       zIndex: 0,
     };
   });
