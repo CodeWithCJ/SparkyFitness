@@ -4,6 +4,12 @@ _Last updated: 2026-07-08_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
+**Quick Links for AI Tools:** See `../agent-docs/README.md` for:
+- `file-and-domain-reference.md` — Where to find server code by feature
+- `testing-patterns.md` — How to test routes, services, repositories, and RLS
+- `architecture-permissions.md` — Permission types and RLS patterns
+- `new-migration-checklist.md` — 8-step database change checklist
+
 If a task also touches `shared/`, the frontend, or the mobile app, read the relevant package guide before editing outside this directory. Use `../AGENTS.md` for monorepo-level context.
 
 ## Scope
@@ -142,7 +148,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - Always release database clients in a `finally` block
 - To learn a table's current shape, read `../shared/src/schemas/database/<Table>.zod.ts` (one small Zod file per table) instead of reading `../db_schema_backup.sql` or reconstructing it from the 185 migration files
 - New migrations belong in `db/migrations/` and must use `YYYYMMDDHHMMSS_description.sql`
-- If you add or change a migration, also update `../db_schema_backup.sql` in the same change
+- **Never manually edit `../db_schema_backup.sql`** — use the backup script instead: `./db_backup.sh` (Mac/Linux) or `DB Backup.cmd` (Windows) from repo root. Boot the server first to apply the migration, then run the script to sync the backup.
 - If you add a new table or change user-visible access behavior, follow `../agent-docs/new-migration-checklist.md`. In short, you MUST:
   1. Add/modify the RLS policies in `db/rls_policies.sql`.
   2. Update the user-facing documentation in `../docs/content/2.features/9.family-friends-sharing.md`.
@@ -227,6 +233,17 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect the matching v2 route (`routes/v2/medicationRoutes.ts`, `routes/v2/cycleRoutes.ts`, `routes/v2/pregnancyRoutes.ts`), its Zod schema in `schemas/`, then `services/cycleService.ts` / `services/pregnancyService.ts` and the `models/medication*Repository.ts` / `models/cycleRepository.ts` / `models/pregnancyRepository.ts` files
 - Sleep or sleep-science issue:
   inspect `routes/sleepRoutes.ts`, `routes/sleepScienceRoutes.ts`, `services/sleepAnalyticsService.ts`, `services/sleepScienceService.ts`, and the sleep repositories
+
+## Architecture Resources
+
+Before adding a feature or changing auth/permission behavior, read:
+
+- `../docs/content/8.developer/4.database.md` — Quick table index (all ~120 tables with purpose) + migration best practices
+- `../docs/content/8.developer/11.database-security-tiers.md` — Security tier, permission type, and RLS rules for every table (authoritative)
+- `../agent-docs/architecture-permissions.md` — Permission types, links to tier classification doc
+- `../agent-docs/data-flow-patterns.md` — Data flow from frontend through server to database, safe RLS patterns
+- `../agent-docs/new-domain-template.md` — Checklist for adding a major feature domain
+- `../agent-docs/anti-patterns.md` — Common mistakes (using getSystemClient(), forgetting RLS, cache invalidation, timezone bugs, cross-package contract mismatches)
 
 ## Working Rules
 
