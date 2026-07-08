@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 3BJqNCfG9JISJ9Sq7CLbUXpMJNtDSE0hGZTqHxGqAgyum3vzcYPKBhmOddcYqUG
+\restrict eqDVJlMjiQ0IikLedcCSjOKXfCdfuh8lhykDkalaxQ1gRRwoVJ6UZmK9HfaT5lS
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -7159,6 +7159,13 @@ CREATE POLICY delete_policy ON public.food_entries FOR DELETE USING (public.has_
 
 
 --
+-- Name: passkey_registration_tickets deny_all_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY deny_all_policy ON public.passkey_registration_tickets USING (false) WITH CHECK (false);
+
+
+--
 -- Name: exercise_entries; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -10067,5 +10074,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 3BJqNCfG9JISJ9Sq7CLbUXpMJNtDSE0hGZTqHxGqAgyum3vzcYPKBhmOddcYqUG
+\unrestrict eqDVJlMjiQ0IikLedcCSjOKXfCdfuh8lhykDkalaxQ1gRRwoVJ6UZmK9HfaT5lS
 

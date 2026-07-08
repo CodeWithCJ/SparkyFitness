@@ -245,6 +245,9 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     workout_plan_template_assignments: 'custom',
     workout_preset_exercise_sets: 'custom',
     workout_preset_exercises: 'custom',
+    // system/internal: RLS-enabled with an explicit deny-all policy; only
+    // getSystemClient (which bypasses RLS) touches it.
+    passkey_registration_tickets: 'custom',
   };
 
   // Expected helper substrings for the generic-policy domains.
