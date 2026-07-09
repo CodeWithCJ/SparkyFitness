@@ -747,7 +747,7 @@ interface GroupedImportFood {
 interface DuplicateFoodRow {
   id: string;
   name: string;
-  brand: string;
+  brand: string | null;
 }
 
 async function createFoodsInBulk(
@@ -764,13 +764,16 @@ async function createFoodsInBulk(
     }
   }
   // 1. --- Grouping incoming Variants by Food (name + brand)
+  // brand is nullable; normalize null/undefined/'' to '' so blank-brand foods
+  // group together and match the COALESCE(brand, '') lookup below.
+  const brandKey = (brand: string | null | undefined) => brand || '';
   const groupedFoods = foodDataArray.reduce(
     (acc: Record<string, GroupedImportFood>, variant: BulkImportFoodData) => {
-      const key = `${variant.name}|${variant.brand}`;
+      const key = `${variant.name}|${brandKey(variant.brand)}`;
       if (!acc[key]) {
         acc[key] = {
           name: variant.name,
-          brand: variant.brand,
+          brand: variant.brand || null,
           is_custom: true,
           user_id: userId,
           shared_with_public: variant.shared_with_public || false,
@@ -796,7 +799,7 @@ async function createFoodsInBulk(
   const potentialDuplicates = foodsToCreate.map((food) => [
     userId,
     food.name,
-    food.brand,
+    brandKey(food.brand),
   ]);
   const flatValues = potentialDuplicates.flat();
   let placeholderIndex = 1;
@@ -808,7 +811,7 @@ async function createFoodsInBulk(
     .join(', ');
   const duplicateCheckQuery = `
     SELECT id, name, brand FROM foods
-    WHERE (user_id, name, brand) IN (VALUES ${placeholderString})
+    WHERE (user_id, name, COALESCE(brand, '')) IN (VALUES ${placeholderString})
   `;
   const clientForDuplicateCheck = await getClient(userId);
   let existingFoods: DuplicateFoodRow[];
@@ -824,7 +827,7 @@ async function createFoodsInBulk(
   }
   // Map existing (name|brand) -> food id so we can overwrite in place when requested.
   const existingFoodIdByKey = new Map<string, string>(
-    existingFoods.map((f) => [`${f.name}|${f.brand}`, f.id])
+    existingFoods.map((f) => [`${f.name}|${brandKey(f.brand)}`, f.id])
   );
   if (!overwrite && existingFoods.length > 0) {
     // Duplicates found and the user did not opt into overwriting: abort.
@@ -842,7 +845,7 @@ async function createFoodsInBulk(
     let totalVariantsCreated = 0;
     for (const food of foodsToCreate) {
       const existingFoodId = existingFoodIdByKey.get(
-        `${food.name}|${food.brand}`
+        `${food.name}|${brandKey(food.brand)}`
       );
       let foodId: string;
       if (existingFoodId) {

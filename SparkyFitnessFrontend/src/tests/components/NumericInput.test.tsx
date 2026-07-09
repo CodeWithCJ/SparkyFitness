@@ -47,4 +47,18 @@ describe('NumericInput', () => {
     fireEvent.click(setTwentyButton);
     expect(input).toHaveValue(20);
   });
+
+  it('renders an empty string value without crashing', () => {
+    // Callers (e.g. useFoodForm) store a cleared nutrient as '' rather than
+    // undefined; the component must not call toFixed on a non-number.
+    render(
+      <NumericInput
+        aria-label="numeric input"
+        value={'' as unknown as number}
+        onValueChange={() => {}}
+      />
+    );
+
+    expect(screen.getByLabelText('numeric input')).toHaveValue(null);
+  });
 });
