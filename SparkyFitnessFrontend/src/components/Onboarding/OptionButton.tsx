@@ -14,27 +14,29 @@ export const OptionButton = ({
   onClick,
 }: OptionButtonProps) => (
   <button
+    type="button"
     onClick={onClick}
+    aria-pressed={isSelected}
     className={`
-        w-full text-start p-5 my-3 rounded-xl border-2 transition-all duration-200
-      flex flex-col justify-center bg-card
+      my-3 flex w-full flex-col justify-center rounded-xl border-2 bg-card p-5 text-start
+      transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
       ${
         isSelected
-          ? 'border-green-500'
-          : 'border-border hover:border-green-500/50 hover:shadow-sm'
+          ? 'border-primary shadow-sm'
+          : 'border-border hover:border-primary/50 hover:shadow-sm'
       }
     `}
   >
-    <div className="flex justify-between items-center w-full">
-      <span className="font-semibold text-lg text-foreground">{label}</span>
+    <div className="flex w-full items-center justify-between">
+      <span className="text-lg font-semibold text-foreground">{label}</span>
       {isSelected && (
-        <div className="bg-green-500 rounded-full p-1">
-          <Check className="h-4 w-4 text-white" />
+        <div className="rounded-full bg-primary p-1" aria-hidden="true">
+          <Check className="h-4 w-4 text-primary-foreground" />
         </div>
       )}
     </div>
     {subLabel && (
-      <span className="text-muted-foreground text-sm mt-1">{subLabel}</span>
+      <span className="mt-1 text-sm text-muted-foreground">{subLabel}</span>
     )}
   </button>
 );

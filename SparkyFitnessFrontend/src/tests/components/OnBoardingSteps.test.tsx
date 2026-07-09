@@ -17,7 +17,7 @@ describe('OnboardingSteps', () => {
     render(
       <OnboardingSteps
         step={1}
-        formData={{ sex: '' } as OnboardingData}
+        formData={{ sex: 'male' } as OnboardingData}
         setFormData={jest.fn()}
         nextStep={jest.fn()}
         weightUnit="kg"
@@ -33,8 +33,10 @@ describe('OnboardingSteps', () => {
       screen.getByRole('heading', { name: '[onboarding.sexTitle]' })
     ).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: '[onboarding.sexMale]' })
-    ).toBeTruthy();
+      screen
+        .getByRole('button', { name: '[onboarding.sexMale]' })
+        .getAttribute('aria-pressed')
+    ).toBe('true');
     expect(
       screen.getByRole('button', { name: '[onboarding.sexFemale]' })
     ).toBeTruthy();
