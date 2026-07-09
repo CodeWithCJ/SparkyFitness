@@ -1396,7 +1396,18 @@
       "custom": "Custom",
       "distributeRemaining": "Distribute Remaining Evenly",
       "total": "Total",
-      "mustBe100": "Must be 100% to save"
+      "mustBe100": "The total must be 100% before saving.",
+      "totalWithPercentage": "Total: {{total}}%",
+      "mealEnergy": "{{meal}} ({{calories}} {{unit}})",
+      "mealPercentage": "{{meal}} percentage",
+      "lockMeal": "Lock {{meal}}",
+      "unlockMeal": "Unlock {{meal}}",
+      "templates": {
+        "even": "Even distribution",
+        "intermittentFasting": "Intermittent fasting",
+        "proteinMorning": "Protein-focused morning",
+        "noSnacks": "No snacks"
+      }
     }
   },
   "common": {

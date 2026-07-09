@@ -345,6 +345,26 @@
     "keepEditing": "مواصلة التعديل",
     "discardChanges": "تجاهل التغييرات"
   },
+  "goals": {
+    "mealDistribution": {
+      "selectTemplate": "اختر طريقة توزيع الوجبات",
+      "custom": "توزيع مخصص",
+      "distributeRemaining": "توزيع المتبقي بالتساوي",
+      "total": "المجموع",
+      "mustBe100": "لازم يكون المجموع 100٪ قبل الحفظ.",
+      "totalWithPercentage": "المجموع: {{total}}٪",
+      "mealEnergy": "{{meal}} ({{calories}} {{unit}})",
+      "mealPercentage": "نسبة {{meal}}",
+      "lockMeal": "تثبيت {{meal}}",
+      "unlockMeal": "إلغاء تثبيت {{meal}}",
+      "templates": {
+        "even": "توزيع متساوٍ",
+        "intermittentFasting": "الصيام المتقطع",
+        "proteinMorning": "بروتين أكثر في الصباح",
+        "noSnacks": "بدون وجبات خفيفة"
+      }
+    }
+  },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",
     "applicationVersion": "نسخة التطبيق: ",
