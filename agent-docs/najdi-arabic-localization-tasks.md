@@ -5,7 +5,7 @@ _Branch: `feature/najdi-arabic`_
 
 ## Phase 1: Foundation and Guardrails
 
-- [ ] Task 1: Add tested web locale policy.
+- [x] Task 1: Add tested web locale policy.
   - Acceptance: Arabic is the absent-preference default; explicit preferences are preserved; direction and Intl locale are centralized.
   - Verify: targeted Jest tests, typecheck, lint.
   - Likely files: locale policy module/test, `i18n.ts`.
@@ -15,25 +15,25 @@ _Branch: `feature/najdi-arabic`_
   - Verify: component test plus browser DOM/computed-style check.
   - Likely files: `LanguageHandler.tsx`, its test, `index.css`.
 
-- [ ] Task 3: Apply Saudi defaults only to new web preferences.
+- [x] Task 3: Apply Saudi defaults only to new web preferences.
   - Acceptance: new profile defaults use Arabic, `dd/MM/yyyy`, metric units, kcal, and Sunday-first; saved values win.
   - Verify: preference-context/service tests.
   - Likely files: preferences source and focused tests.
 
-- [ ] Task 4: Add translation-catalog audit tooling.
+- [x] Task 4: Add translation-catalog audit tooling.
   - Acceptance: CI-capable command reports missing/extra keys and interpolation mismatches without reading generated locales into application bundles.
   - Verify: command fails on a fixture mismatch and passes on aligned fixtures.
   - Likely files: script, script tests, package scripts, developer translation doc.
 
 ### Checkpoint A
 
-- [ ] Web targeted tests and `pnpm run validate` pass.
+- [x] Web targeted tests and `pnpm run validate` pass.
 - [ ] Arabic/English shell direction verified in a real browser.
-- [ ] Foundation commits contain no pre-existing deployment files.
+- [x] Foundation commits contain no pre-existing deployment files.
 
 ## Phase 2: Web Source Copy and Arabic Catalog
 
-- [ ] Task 5: Define terminology and voice glossary for core health concepts.
+- [x] Task 5: Define terminology and voice glossary for core health concepts.
   - Acceptance: one approved term per navigation, nutrition, exercise, measurement, fasting, sleep, medication, cycle, pregnancy, settings, and auth concept.
   - Verify: linguistic review against the voice rules.
   - Likely files: terminology document only.
