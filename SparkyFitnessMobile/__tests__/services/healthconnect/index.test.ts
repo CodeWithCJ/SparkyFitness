@@ -24,6 +24,7 @@ import {
   requestPermission,
   readRecords,
   aggregateRecord,
+  aggregateGroupByDuration,
   aggregateGroupByPeriod,
 } from 'react-native-health-connect';
 
@@ -48,6 +49,7 @@ const mockInitialize = initialize as jest.Mock;
 const mockRequestPermission = requestPermission as jest.Mock;
 const mockReadRecords = readRecords as jest.Mock;
 const mockAggregateRecord = aggregateRecord as jest.Mock;
+const mockAggregateGroupByDuration = aggregateGroupByDuration as jest.Mock;
 const mockAggregateGroupByPeriod = aggregateGroupByPeriod as jest.Mock;
 
 // Helper to construct an aggregateGroupByPeriod bucket. startTime is the local
@@ -58,6 +60,71 @@ const periodBucket = (y: number, m1to12: number, d: number, result: unknown) => 
   result,
   startTime: new Date(y, m1to12 - 1, d, 0, 0, 0, 0).toISOString(),
   endTime: new Date(y, m1to12 - 1, d + 1, 0, 0, 0, 0).toISOString(),
+});
+
+// The runtime timezone's UTC offset at a given instant, in minutes. Offset
+// fixtures are derived relative to this so the fast/slow path split is the
+// same on every CI machine's zone.
+const deviceOffsetMinutesAt = (instant: Date): number => -instant.getTimezoneOffset();
+
+// A probe record carrying a start-paired zone offset, as the aggregation
+// offset probes read them.
+const probeRecord = (start: Date, offsetMinutes?: number) => ({
+  startTime: start.toISOString(),
+  endTime: start.toISOString(),
+  ...(offsetMinutes != null
+    ? { startZoneOffset: { totalSeconds: offsetMinutes * 60 } }
+    : {}),
+});
+
+// A probe record that carries no zone offset — keeps aggregation tests on
+// the device-zone (aggregateGroupByPeriod) path without attaching an offset,
+// mirroring sources that omit zone metadata.
+const offsetlessProbeResult = () => ({
+  records: [probeRecord(new Date(2024, 0, 15, 12, 0, 0, 0))],
+});
+
+// Serves the offset probes (first/last/binary-search reads) from a fixed
+// record timeline, honoring the requested window, ordering, and pageSize:1.
+const mockProbeTimeline = (records: { start: Date; offsetMinutes: number }[]) => {
+  mockReadRecords.mockImplementation(
+    (
+      _recordType: string,
+      options: {
+        timeRangeFilter: { startTime: string; endTime: string };
+        ascendingOrder?: boolean;
+      },
+    ) => {
+      const startMs = new Date(options.timeRangeFilter.startTime).getTime();
+      const endMs = new Date(options.timeRangeFilter.endTime).getTime();
+      const inRange = records
+        .filter((r) => r.start.getTime() >= startMs && r.start.getTime() <= endMs)
+        .sort((a, b) => a.start.getTime() - b.start.getTime());
+      const ordered = options.ascendingOrder === false ? inRange.reverse() : inRange;
+      return Promise.resolve({
+        records: ordered.slice(0, 1).map((r) => probeRecord(r.start, r.offsetMinutes)),
+      });
+    },
+  );
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Instant (epoch ms) of the given local calendar date's midnight interpreted
+// at a fixed UTC offset — mirrors the production instantAtOffset arithmetic.
+const midnightAtOffset = (
+  y: number,
+  m1to12: number,
+  d: number,
+  offsetMinutes: number,
+): number => Date.UTC(y, m1to12 - 1, d) - offsetMinutes * 60_000;
+
+// An aggregateGroupByDuration bucket whose startTime is an Instant ISO
+// string, as the bridge serializes them.
+const durationBucket = (startMs: number, result: unknown) => ({
+  result,
+  startTime: new Date(startMs).toISOString(),
+  endTime: new Date(startMs + DAY_MS).toISOString(),
 });
 
 describe('initHealthConnect', () => {
@@ -454,8 +521,9 @@ describe('readHealthRecords', () => {
 describe('getAggregatedStepsByDate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Default: tz-offset lookup finds no records (no offset captured).
-    mockReadRecords.mockResolvedValue({ records: [] });
+    // Default: the offset probe finds a record without zone metadata, so
+    // aggregation stays on the device-zone path with no offset attached.
+    mockReadRecords.mockResolvedValue(offsetlessProbeResult());
     mockAggregateGroupByPeriod.mockResolvedValue([]);
   });
 
@@ -534,15 +602,15 @@ describe('getAggregatedStepsByDate', () => {
     expect(result).toEqual([{ date: '2024-01-16', value: 4200, type: 'step' }]);
   });
 
-  test('captures one range-wide UTC offset and attaches it to every day', async () => {
+  test('attaches the probed offset to every day when it matches the device zone', async () => {
     mockAggregateGroupByPeriod.mockResolvedValue([
       periodBucket(2024, 1, 15, { COUNT_TOTAL: 3000 }),
       periodBucket(2024, 1, 16, { COUNT_TOTAL: 3500 }),
     ]);
+    const probeInstant = new Date(2024, 0, 15, 12, 0, 0, 0);
+    const deviceOffset = deviceOffsetMinutesAt(probeInstant);
     mockReadRecords.mockResolvedValue({
-      records: [
-        { startZoneOffset: { totalSeconds: -28800 } }, // -480 min (UTC-8)
-      ],
+      records: [probeRecord(probeInstant, deviceOffset)],
     });
 
     const result = await getAggregatedStepsByDate(
@@ -550,18 +618,17 @@ describe('getAggregatedStepsByDate', () => {
       localEndOfDay(2024, 1, 16),
     );
 
-    expect(result.every((r) => r.record_utc_offset_minutes === -480)).toBe(true);
-    // Offset lookup must be a single pageSize:1 read for the whole range —
-    // not per-day, which is what blew the quota in the first place.
+    expect(result.every((r) => r.record_utc_offset_minutes === deviceOffset)).toBe(true);
+    // Stationary syncs must stay at a single pageSize:1 probe read for the
+    // whole range — per-day reads are what blew the quota in the first place.
     expect(mockReadRecords).toHaveBeenCalledTimes(1);
     expect(mockReadRecords.mock.calls[0][1]).toMatchObject({ pageSize: 1 });
   });
 
-  test('omits offset when the tz-lookup read returns nothing', async () => {
+  test('omits offset when the probe record carries no zone offset', async () => {
     mockAggregateGroupByPeriod.mockResolvedValue([
       periodBucket(2024, 1, 15, { COUNT_TOTAL: 3000 }),
     ]);
-    mockReadRecords.mockResolvedValue({ records: [] });
 
     const result = await getAggregatedStepsByDate(
       localMidnight(2024, 1, 15),
@@ -569,6 +636,19 @@ describe('getAggregatedStepsByDate', () => {
     );
 
     expect(result[0]).not.toHaveProperty('record_utc_offset_minutes');
+  });
+
+  test('returns empty without calling the native aggregate when the range has no records', async () => {
+    mockReadRecords.mockResolvedValue({ records: [] });
+
+    const result = await getAggregatedStepsByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
+    );
+
+    expect(result).toEqual([]);
+    expect(mockAggregateGroupByPeriod).not.toHaveBeenCalled();
+    expect(mockAggregateGroupByDuration).not.toHaveBeenCalled();
   });
 
   test('returns the error and empty records when aggregateGroupByPeriod rejects', async () => {
@@ -647,6 +727,203 @@ describe('getAggregatedStepsByDate', () => {
   });
 });
 
+describe('cumulative aggregation timezone-change attribution (#1712)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAggregateGroupByPeriod.mockResolvedValue([]);
+    mockAggregateGroupByDuration.mockResolvedValue([]);
+  });
+
+  test('buckets a post-travel window at the records\' own midnights (regression for #1712)', async () => {
+    // Every record still carries the pre-move zone's offset (device already
+    // moved): day windows must anchor at the old zone's midnights, not the
+    // device zone's — otherwise up to a week of records re-bin across the
+    // new midnights and day totals drift.
+    const off0 = deviceOffsetMinutesAt(new Date(2024, 0, 15, 6, 0, 0, 0)) + 420;
+    mockProbeTimeline([
+      { start: new Date(2024, 0, 15, 6, 0, 0, 0), offsetMinutes: off0 },
+      { start: new Date(2024, 0, 16, 20, 0, 0, 0), offsetMinutes: off0 },
+    ]);
+    const anchor = midnightAtOffset(2024, 1, 15, off0);
+    mockAggregateGroupByDuration.mockResolvedValue([
+      durationBucket(anchor, { COUNT_TOTAL: 5000 }),
+      durationBucket(anchor + DAY_MS, { COUNT_TOTAL: 6000 }),
+      // Partial tail past the window's last label: records the source
+      // stamped into the old zone's next day — dropped, the next sync's
+      // window owns that day.
+      durationBucket(anchor + 2 * DAY_MS, { COUNT_TOTAL: 300 }),
+    ]);
+
+    const endDate = localEndOfDay(2024, 1, 16);
+    const result = await getAggregatedStepsByDate(localMidnight(2024, 1, 15), endDate);
+
+    expect(result).toEqual([
+      { date: '2024-01-15', value: 5000, type: 'step', record_utc_offset_minutes: off0 },
+      { date: '2024-01-16', value: 6000, type: 'step', record_utc_offset_minutes: off0 },
+    ]);
+    expect(mockAggregateGroupByPeriod).not.toHaveBeenCalled();
+    expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(1);
+    const call = mockAggregateGroupByDuration.mock.calls[0][0];
+    expect(call.timeRangeFilter.startTime).toBe(new Date(anchor).toISOString());
+    expect(call.timeRangeFilter.endTime).toBe(endDate.toISOString());
+    expect(call.timeRangeSlicer).toEqual({ duration: 'DAYS', length: 1 });
+    // No dataOriginFilter — that would defeat HC's native cross-origin dedup.
+    expect(call).not.toHaveProperty('dataOriginFilter');
+    // Two pageSize:1 probes (first + last record), no per-day reads.
+    expect(mockReadRecords).toHaveBeenCalledTimes(2);
+  });
+
+  test('splits a mid-window transition into two contiguous offset segments and folds the westward sliver', async () => {
+    const off1 = deviceOffsetMinutesAt(new Date(2024, 0, 18, 20, 0, 0, 0));
+    const off0 = off1 + 420;
+    mockProbeTimeline([
+      { start: new Date(2024, 0, 15, 6, 0, 0, 0), offsetMinutes: off0 },
+      { start: new Date(2024, 0, 16, 4, 0, 0, 0), offsetMinutes: off0 },
+      { start: new Date(2024, 0, 16, 14, 0, 0, 0), offsetMinutes: off1 },
+      { start: new Date(2024, 0, 17, 10, 0, 0, 0), offsetMinutes: off1 },
+      { start: new Date(2024, 0, 18, 20, 0, 0, 0), offsetMinutes: off1 },
+    ]);
+    const anchor = midnightAtOffset(2024, 1, 15, off0);
+    const boundary = midnightAtOffset(2024, 1, 17, off1);
+    mockAggregateGroupByDuration
+      .mockResolvedValueOnce([
+        durationBucket(anchor, { COUNT_TOTAL: 5000 }),
+        durationBucket(anchor + DAY_MS, { COUNT_TOTAL: 6000 }),
+        // 7h sliver between the old grid's end and the new boundary: the
+        // extended evening of the day before the switch — folds into it.
+        durationBucket(anchor + 2 * DAY_MS, { COUNT_TOTAL: 700 }),
+      ])
+      .mockResolvedValueOnce([
+        durationBucket(boundary, { COUNT_TOTAL: 8000 }),
+        durationBucket(boundary + DAY_MS, { COUNT_TOTAL: 900 }),
+      ]);
+
+    const endDate = localEndOfDay(2024, 1, 18);
+    const result = await getAggregatedStepsByDate(localMidnight(2024, 1, 15), endDate);
+
+    expect(result).toEqual([
+      { date: '2024-01-15', value: 5000, type: 'step', record_utc_offset_minutes: off0 },
+      { date: '2024-01-16', value: 6700, type: 'step', record_utc_offset_minutes: off0 },
+      { date: '2024-01-17', value: 8000, type: 'step', record_utc_offset_minutes: off1 },
+      { date: '2024-01-18', value: 900, type: 'step', record_utc_offset_minutes: off1 },
+    ]);
+    expect(mockAggregateGroupByPeriod).not.toHaveBeenCalled();
+    expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(2);
+    const [first, second] = mockAggregateGroupByDuration.mock.calls.map((c) => c[0]);
+    // Segments must be contiguous at the switch day's new-zone midnight —
+    // a gap loses records, an overlap double-counts them.
+    expect(first.timeRangeFilter.startTime).toBe(new Date(anchor).toISOString());
+    expect(first.timeRangeFilter.endTime).toBe(new Date(boundary).toISOString());
+    expect(second.timeRangeFilter.startTime).toBe(new Date(boundary).toISOString());
+    expect(second.timeRangeFilter.endTime).toBe(endDate.toISOString());
+    // 2 edge probes + 2 binary-search probes for a 4-day window.
+    expect(mockReadRecords).toHaveBeenCalledTimes(4);
+  });
+
+  test('keeps the whole window on the old anchor when the transition falls after the last midnight', async () => {
+    const off1 = deviceOffsetMinutesAt(new Date(2024, 0, 16, 19, 30, 0, 0));
+    const off0 = off1 + 420;
+    mockProbeTimeline([
+      { start: new Date(2024, 0, 15, 6, 0, 0, 0), offsetMinutes: off0 },
+      { start: new Date(2024, 0, 16, 12, 0, 0, 0), offsetMinutes: off0 },
+      { start: new Date(2024, 0, 16, 19, 30, 0, 0), offsetMinutes: off1 },
+    ]);
+    const anchor = midnightAtOffset(2024, 1, 15, off0);
+    mockAggregateGroupByDuration.mockResolvedValue([
+      durationBucket(anchor, { COUNT_TOTAL: 5000 }),
+      durationBucket(anchor + DAY_MS, { COUNT_TOTAL: 6000 }),
+      durationBucket(anchor + 2 * DAY_MS, { COUNT_TOTAL: 300 }),
+    ]);
+
+    const endDate = new Date(2024, 0, 16, 20, 0, 0, 0);
+    const result = await getAggregatedStepsByDate(localMidnight(2024, 1, 15), endDate);
+
+    expect(result).toEqual([
+      { date: '2024-01-15', value: 5000, type: 'step', record_utc_offset_minutes: off0 },
+      { date: '2024-01-16', value: 6000, type: 'step', record_utc_offset_minutes: off0 },
+    ]);
+    expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(1);
+    const call = mockAggregateGroupByDuration.mock.calls[0][0];
+    expect(call.timeRangeFilter.startTime).toBe(new Date(anchor).toISOString());
+    expect(call.timeRangeFilter.endTime).toBe(endDate.toISOString());
+  });
+
+  test('falls back to device-zone buckets when offsets diverge without ending in the device zone', async () => {
+    // A UTC-stamping exporter alongside correctly-stamped records looks like
+    // a transition but isn't travel; re-bucketing would scramble a
+    // stationary user's days.
+    const deviceOffset = deviceOffsetMinutesAt(new Date(2024, 0, 16, 12, 0, 0, 0));
+    mockProbeTimeline([
+      { start: new Date(2024, 0, 15, 6, 0, 0, 0), offsetMinutes: deviceOffset + 420 },
+      { start: new Date(2024, 0, 16, 12, 0, 0, 0), offsetMinutes: deviceOffset + 120 },
+    ]);
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { COUNT_TOTAL: 4000 }),
+    ]);
+
+    const result = await getAggregatedStepsByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 16),
+    );
+
+    expect(result).toEqual([
+      {
+        date: '2024-01-15',
+        value: 4000,
+        type: 'step',
+        record_utc_offset_minutes: deviceOffset + 420,
+      },
+    ]);
+    expect(mockAggregateGroupByDuration).not.toHaveBeenCalled();
+    expect(mockAggregateGroupByPeriod).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    ['eastward', -1560],
+    ['westward', +1560],
+  ])(
+    'falls back to device-zone buckets when the offset jump exceeds a day (%s)',
+    async (_direction, offsetDelta) => {
+      // A ≥24h offset jump (dateline hop) degenerates the day-window math in
+      // both directions — eastward the segments invert, westward whole
+      // misattributed buckets would fold into the pre-switch day. Bail out.
+      const off1 = deviceOffsetMinutesAt(new Date(2024, 0, 16, 10, 0, 0, 0));
+      const off0 = off1 + offsetDelta;
+      mockProbeTimeline([
+        { start: new Date(2024, 0, 15, 3, 0, 0, 0), offsetMinutes: off0 },
+        { start: new Date(2024, 0, 16, 10, 0, 0, 0), offsetMinutes: off1 },
+      ]);
+      mockAggregateGroupByPeriod.mockResolvedValue([
+        periodBucket(2024, 1, 15, { COUNT_TOTAL: 4000 }),
+      ]);
+
+      const result = await getAggregatedStepsByDate(
+        localMidnight(2024, 1, 15),
+        localEndOfDay(2024, 1, 16),
+      );
+
+      expect(result).toHaveLength(1);
+      expect(mockAggregateGroupByDuration).not.toHaveBeenCalled();
+      expect(mockAggregateGroupByPeriod).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  test('keeps device-zone buckets without an offset when the probe read fails', async () => {
+    mockReadRecords.mockRejectedValue(new Error('probe failed'));
+    mockAggregateGroupByPeriod.mockResolvedValue([
+      periodBucket(2024, 1, 15, { COUNT_TOTAL: 4200 }),
+    ]);
+
+    const result = await getAggregatedStepsByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
+    );
+
+    expect(result).toEqual([{ date: '2024-01-15', value: 4200, type: 'step' }]);
+    expect(mockAggregateGroupByPeriod).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('alignToLocalDayStart', () => {
   test('returns a new Date rounded down to local midnight', () => {
     const input = new Date(2024, 0, 15, 14, 30, 45, 123);
@@ -668,7 +945,7 @@ describe('alignToLocalDayStart', () => {
 describe('getAggregatedActiveCaloriesByDate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockReadRecords.mockResolvedValue({ records: [] });
+    mockReadRecords.mockResolvedValue(offsetlessProbeResult());
     mockAggregateGroupByPeriod.mockResolvedValue([]);
   });
 

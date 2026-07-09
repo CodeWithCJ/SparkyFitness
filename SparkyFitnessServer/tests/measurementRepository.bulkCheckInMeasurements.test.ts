@@ -140,6 +140,39 @@ describe('measurementRepository.bulkUpsertCheckInMeasurements', () => {
     expect(result).toEqual([updatedRow, insertedRow]);
   });
 
+  // Regression: the mobile /api/health-data sync path (bulkUpsert) must not let
+  // a smaller step read clobber a complete day's total. steps is max-wins while
+  // other columns stay COALESCE.
+  it('uses a max-wins GREATEST for steps but COALESCE for other columns on update', async () => {
+    const existingRow = {
+      id: 'ci-existing',
+      entry_date: '2026-07-07',
+      steps: 13441,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockClient.query.mockImplementation(async (text: string) => {
+      if (text.includes('SELECT * FROM check_in_measurements')) {
+        return { rows: [existingRow] };
+      }
+      if (text.includes('UPDATE check_in_measurements')) {
+        return { rows: [{ ...existingRow, steps: 13441, weight: 70.5 }] };
+      }
+      return { rows: [] };
+    });
+
+    await measurementRepository.bulkUpsertCheckInMeasurements(
+      'user-1',
+      'acting-1',
+      [{ entryDate: '2026-07-07', measurements: { steps: 4252, weight: 70.5 } }]
+    );
+
+    const update = findCall('UPDATE check_in_measurements');
+    expect(update).toBeDefined();
+    expect(update!.text).toContain('steps = GREATEST(u.steps, cm.steps)');
+    expect(update!.text).toContain('weight = COALESCE(u.weight, cm.weight)');
+    expect(update!.text).not.toContain('steps = COALESCE');
+  });
+
   it('filters unauthorized measurement keys and skips entries left empty', async () => {
     const result = await measurementRepository.bulkUpsertCheckInMeasurements(
       'user-1',

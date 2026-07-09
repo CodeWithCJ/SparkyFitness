@@ -14,7 +14,7 @@ packageExtensionsChecksum: sha256-EH/usIOwRpd73KCOjtc0doLNt62F5NOYV32iKiEfIZA=
 
 patchedDependencies:
   react-native-health-connect@3.5.3:
-    hash: be09914bb5fc51030d7373da0d836a76d47518f56f1f7a0e76ce05e7c3b487d0
+    hash: a1aac90a398a3b280f7e5fcfee73f048412da60542d4a9f8120531f370a527c9
     path: patches/react-native-health-connect@3.5.3.patch
 
 importers:
@@ -487,7 +487,7 @@ importers:
         version: 2.31.2(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       react-native-health-connect:
         specifier: ^3.5.3
-        version: 3.5.3(patch_hash=be09914bb5fc51030d7373da0d836a76d47518f56f1f7a0e76ce05e7c3b487d0)(@expo/config-plugins@56.0.10(typescript@6.0.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
+        version: 3.5.3(patch_hash=a1aac90a398a3b280f7e5fcfee73f048412da60542d4a9f8120531f370a527c9)(@expo/config-plugins@56.0.10(typescript@6.0.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       react-native-keyboard-controller:
         specifier: 1.21.6
         version: 1.21.6(react-native-reanimated@4.3.1(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
@@ -32196,7 +32196,7 @@ snapshots:
       react: 19.2.3
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)
 
-  react-native-health-connect@3.5.3(patch_hash=be09914bb5fc51030d7373da0d836a76d47518f56f1f7a0e76ce05e7c3b487d0)(@expo/config-plugins@56.0.10(typescript@6.0.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3):
+  react-native-health-connect@3.5.3(patch_hash=a1aac90a398a3b280f7e5fcfee73f048412da60542d4a9f8120531f370a527c9)(@expo/config-plugins@56.0.10(typescript@6.0.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3):
     dependencies:
       '@expo/config-plugins': 56.0.10(typescript@6.0.3)
       react: 19.2.3
