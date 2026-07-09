@@ -11,6 +11,8 @@
     "emailPlaceholder": "name@example.com",
     "password": "كلمة المرور",
     "passwordPlaceholder": "أدخل كلمة المرور",
+    "showPassword": "إظهار كلمة المرور",
+    "hidePassword": "إخفاء كلمة المرور",
     "forgotPassword": "نسيت كلمة المرور؟",
     "signingIn": "جارٍ تسجيل الدخول…",
     "orSignInWith": "أو تابع باستخدام",

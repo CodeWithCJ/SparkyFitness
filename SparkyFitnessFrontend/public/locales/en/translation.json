@@ -11,6 +11,8 @@
     "emailPlaceholder": "name@example.com",
     "password": "Password",
     "passwordPlaceholder": "Enter your password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "forgotPassword": "Forgot your password?",
     "signingIn": "Signing in…",
     "orSignInWith": "Or continue with",
