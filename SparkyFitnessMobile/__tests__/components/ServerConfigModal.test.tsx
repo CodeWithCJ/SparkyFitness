@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import ServerConfigModal from '../../src/components/ServerConfigModal';
 import {
   login,
@@ -79,10 +79,26 @@ function renderModal(props: Partial<React.ComponentProps<typeof ServerConfigModa
   return render(<ServerConfigModal {...defaultProps} {...props} />);
 }
 
+/**
+ * Fast-forwards the fake clock past the modal's 500ms auth-settings debounce and
+ * flushes the resulting fetch promise. `advanceTimersByTimeAsync` awaits the
+ * microtasks each timer schedules, so the mocked `fetchAuthSettings` resolves
+ * before we assert. We advance timers directly rather than via `waitFor`, which
+ * deadlocks under fake timers in this React Native renderer.
+ */
+async function flushDebounce(ms = 600) {
+  await act(async () => {
+    await jest.advanceTimersByTimeAsync(ms);
+  });
+}
+
+/**
+ * The URL field renders synchronously on mount; no debounce to wait out. Kept
+ * `async` so the 30+ `await waitForForm(...)` call sites read consistently with
+ * the other async helpers.
+ */
 async function waitForForm(result: ReturnType<typeof renderModal>) {
-  await waitFor(() =>
-    expect(result.getByPlaceholderText(URL_PLACEHOLDER)).toBeTruthy(),
-  );
+  expect(result.getByPlaceholderText(URL_PLACEHOLDER)).toBeTruthy();
 }
 
 /**
@@ -91,9 +107,8 @@ async function waitForForm(result: ReturnType<typeof renderModal>) {
  * which renders exactly once whenever email auth is enabled.
  */
 async function waitForAuthReady(result: ReturnType<typeof renderModal>) {
-  await waitFor(() => expect(result.getByText('Sign In')).toBeTruthy(), {
-    timeout: 3000,
-  });
+  await flushDebounce();
+  expect(result.getByText('Sign In')).toBeTruthy();
 }
 
 /** Types a URL and waits for the dynamically-fetched auth options to render. */
@@ -111,10 +126,18 @@ function pressConnectButton(result: ReturnType<typeof renderModal>) {
 
 describe('ServerConfigModal', () => {
   beforeEach(() => {
+    // The modal debounces its auth-settings fetch by 500ms. With real timers
+    // every test that enters a URL waits that out in wall-clock time; fake
+    // timers let the helpers fast-forward the debounce instead of sleeping.
+    jest.useFakeTimers();
     jest.clearAllMocks();
     mockClearAuthCookies.mockResolvedValue(undefined);
     mockSaveServerConfig.mockResolvedValue(undefined);
     mockFetchAuthSettings.mockResolvedValue(emailAuthSettings);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe('form rendering', () => {
@@ -678,9 +701,10 @@ describe('ServerConfigModal', () => {
         fireEvent.press(result.getByText('Verify'));
       });
 
-      await waitFor(() => {
-        expect(result.getByPlaceholderText(EMAIL_PLACEHOLDER)).toBeTruthy();
-      });
+      // Returning to the sign-in form re-fetches auth settings through the
+      // debounce; advance past it before asserting the email field is back.
+      await flushDebounce();
+      expect(result.getByPlaceholderText(EMAIL_PLACEHOLDER)).toBeTruthy();
     });
 
     it('shows generic error for non-LoginError MFA failures', async () => {
@@ -763,9 +787,9 @@ describe('ServerConfigModal', () => {
       result.rerender(<ServerConfigModal {...defaultProps} visible={true} />);
 
       // URL is cleared on reset, so the auth options (email field) collapse away.
-      await waitFor(() => {
-        expect(result.getByPlaceholderText(URL_PLACEHOLDER).props.value).toBe('');
-      });
+      // Clearing the URL schedules no debounce; `rerender` already flushed the
+      // reset via act, so we can assert directly.
+      expect(result.getByPlaceholderText(URL_PLACEHOLDER).props.value).toBe('');
       expect(result.queryByPlaceholderText(EMAIL_PLACEHOLDER)).toBeNull();
     });
   });
