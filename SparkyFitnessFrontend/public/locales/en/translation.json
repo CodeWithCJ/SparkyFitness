@@ -73,6 +73,36 @@
       "submit": "Send sign-in link"
     }
   },
+  "mfaChallenge": {
+    "challengeTitle": "Verify it's you",
+    "setupRequired": "Finish setting up two-step verification to continue.",
+    "verifyLogin": "Use one of your verification methods to continue.",
+    "loggedInAs": "Signing in as",
+    "totpTab": "Authenticator",
+    "emailTab": "Email",
+    "recoveryTab": "Recovery code",
+    "totpCodeLabel": "Authenticator code",
+    "enterAppCode": "Enter the 6-digit code",
+    "verify": "Verify",
+    "emailCodeLabel": "Email verification code",
+    "enterEmailCode": "Enter the 6-digit code",
+    "sendCode": "Send code",
+    "recoveryCodeLabel": "Recovery code",
+    "enterRecoveryCode": "Enter recovery code",
+    "verifyRecovery": "Verify recovery code",
+    "emailCodeSentTitle": "Code sent",
+    "emailCodeSentDescription": "Check your email for the verification code.",
+    "error": {
+      "missingInfo": "Unable to continue",
+      "missingAuthInfo": "Sign-in information is incomplete.",
+      "verificationFailed": "Verification failed",
+      "totpInvalid": "That authenticator code is not valid. Try again.",
+      "sendFailedTitle": "Code not sent",
+      "sendFailedDescription": "We could not send a code. Check your connection and try again.",
+      "emailCodeInvalid": "That email code is not valid. Try again.",
+      "recoveryCodeInvalid": "That recovery code is not valid. Try again."
+    }
+  },
   "medications": {
     "tabs": {
       "log": "Log",

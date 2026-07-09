@@ -76,6 +76,36 @@
   "common": {
     "cancel": "إلغاء"
   },
+  "mfaChallenge": {
+    "challengeTitle": "تحقق من هويتك",
+    "setupRequired": "أكمل إعداد التحقق بخطوتين للمتابعة.",
+    "verifyLogin": "استخدم إحدى طرق التحقق للمتابعة.",
+    "loggedInAs": "تسجيل الدخول باسم",
+    "totpTab": "تطبيق المصادقة",
+    "emailTab": "البريد",
+    "recoveryTab": "رمز الاسترداد",
+    "totpCodeLabel": "رمز تطبيق المصادقة",
+    "enterAppCode": "أدخل الرمز المكوّن من 6 أرقام",
+    "verify": "تحقق",
+    "emailCodeLabel": "رمز التحقق من البريد",
+    "enterEmailCode": "أدخل الرمز المكوّن من 6 أرقام",
+    "sendCode": "إرسال الرمز",
+    "recoveryCodeLabel": "رمز الاسترداد",
+    "enterRecoveryCode": "أدخل رمز الاسترداد",
+    "verifyRecovery": "التحقق من رمز الاسترداد",
+    "emailCodeSentTitle": "تم إرسال الرمز",
+    "emailCodeSentDescription": "راجع بريدك للحصول على رمز التحقق.",
+    "error": {
+      "missingInfo": "تعذر المتابعة",
+      "missingAuthInfo": "بيانات تسجيل الدخول غير مكتملة.",
+      "verificationFailed": "تعذر التحقق",
+      "totpInvalid": "رمز تطبيق المصادقة غير صحيح. حاول مرة ثانية.",
+      "sendFailedTitle": "تعذر إرسال الرمز",
+      "sendFailedDescription": "تعذر إرسال الرمز. تأكد من اتصالك وحاول مرة ثانية.",
+      "emailCodeInvalid": "رمز البريد غير صحيح. حاول مرة ثانية.",
+      "recoveryCodeInvalid": "رمز الاسترداد غير صحيح. حاول مرة ثانية."
+    }
+  },
   "nav": {
     "diary": "يومياتي",
     "reports": "التقارير",
