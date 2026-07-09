@@ -20,6 +20,7 @@ import {
   getDueDosesForDate,
   dayToUtcRange,
   localDateTimeToUtc,
+  utcToLocalDateTimeInput,
   INJECTION_SITES,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
@@ -438,30 +439,9 @@ export default function TodayMedications({
     }
   };
 
-  // Format a UTC instant as a datetime-local value in the user's timezone.
-  const utcToLocalInput = (iso: string) => {
-    try {
-      const parts = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).formatToParts(new Date(iso));
-      const get = (type: string) =>
-        parts.find((p) => p.type === type)?.value ?? '';
-      const hour = get('hour') === '24' ? '00' : get('hour');
-      return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}`;
-    } catch {
-      return '';
-    }
-  };
-
   const openEditEntry = (entry: MedicationEntry) => {
     setEditingEntry(entry);
-    setEditTime(utcToLocalInput(entry.taken_at));
+    setEditTime(utcToLocalDateTimeInput(entry.taken_at, timezone));
     setEditNotes(entry.notes ?? '');
     setEditSite(entry.site ?? 'none');
   };

@@ -34,7 +34,15 @@ export function dayOfWeek(day: string): number {
   const d = Number(m[3]);
   const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
   if (month < 3) y -= 1;
-  return (y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + t[month - 1]! + d) % 7;
+  return (
+    (y +
+      Math.floor(y / 4) -
+      Math.floor(y / 100) +
+      Math.floor(y / 400) +
+      t[month - 1]! +
+      d) %
+    7
+  );
 }
 
 /** Add (or subtract) `n` days to a YYYY-MM-DD string. Returns a new YYYY-MM-DD string. */
@@ -65,7 +73,7 @@ export function localDateToDay(date: Date): string {
   const y = date.getFullYear();
   const m = date.getMonth() + 1;
   const d = date.getDate();
-  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
 /** Whole-day count from `a` to `b` (b - a). Negative if b precedes a. */
@@ -110,19 +118,19 @@ export function todayInZone(tz: string): string {
  */
 export function instantToDay(ts: Date | string | number, tz: string): string {
   const date = ts instanceof Date ? ts : new Date(ts);
-  const parts = Intl.DateTimeFormat('en-US', {
+  const parts = Intl.DateTimeFormat("en-US", {
     timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).formatToParts(date);
-  let year = '';
-  let month = '';
-  let day = '';
+  let year = "";
+  let month = "";
+  let day = "";
   for (const p of parts) {
-    if (p.type === 'year') year = p.value;
-    if (p.type === 'month') month = p.value;
-    if (p.type === 'day') day = p.value;
+    if (p.type === "year") year = p.value;
+    if (p.type === "month") month = p.value;
+    if (p.type === "day") day = p.value;
   }
   return `${year}-${month}-${day}`;
 }
@@ -138,17 +146,17 @@ export function instantHourMinute(
   tz: string,
 ): { hour: number; minute: number } {
   const date = ts instanceof Date ? ts : new Date(ts);
-  const parts = Intl.DateTimeFormat('en-US', {
+  const parts = Intl.DateTimeFormat("en-US", {
     timeZone: tz,
-    hour: 'numeric',
-    minute: 'numeric',
+    hour: "numeric",
+    minute: "numeric",
     hour12: false,
   }).formatToParts(date);
   let hour = 0;
   let minute = 0;
   for (const p of parts) {
-    if (p.type === 'hour') hour = Number(p.value);
-    if (p.type === 'minute') minute = Number(p.value);
+    if (p.type === "hour") hour = Number(p.value);
+    if (p.type === "minute") minute = Number(p.value);
   }
   // hour12:false can return 24 for midnight in some engines
   if (hour === 24) hour = 0;
@@ -191,7 +199,10 @@ export function dayRangeToUtcRange(
 // ---------------------------------------------------------------------------
 
 /** Converts an instant to a YYYY-MM-DD string using a fixed UTC offset in minutes. */
-export function instantToDayWithOffset(ts: Date | string | number, offsetMinutes: number): string {
+export function instantToDayWithOffset(
+  ts: Date | string | number,
+  offsetMinutes: number,
+): string {
   const date = ts instanceof Date ? ts : new Date(ts);
   const localMs = date.getTime() + offsetMinutes * 60_000;
   return formatUtcDate(new Date(localMs));
@@ -216,7 +227,7 @@ function formatUtcDate(d: Date): string {
   const y = d.getUTCFullYear();
   const m = d.getUTCMonth() + 1;
   const day = d.getUTCDate();
-  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 /**
@@ -238,13 +249,13 @@ function midnightUtcInstant(day: string, tz: string): Date {
   const month = Number(m[2]);
   const dayNum = Number(m[3]);
 
-  const fmt = Intl.DateTimeFormat('en-US', {
+  const fmt = Intl.DateTimeFormat("en-US", {
     timeZone: tz,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
     hour12: false,
   });
 
@@ -257,9 +268,15 @@ function midnightUtcInstant(day: string, tz: string): Date {
       const p = parts.find((p) => p.type === type);
       return p ? Number(p.value) : 0;
     };
-    let h = pv('hour');
+    let h = pv("hour");
     if (h === 24) h = 0;
-    const localAsUtcMs = Date.UTC(pv('year'), pv('month') - 1, pv('day'), h, pv('minute'));
+    const localAsUtcMs = Date.UTC(
+      pv("year"),
+      pv("month") - 1,
+      pv("day"),
+      h,
+      pv("minute"),
+    );
     return localAsUtcMs - utcMs;
   }
 
@@ -277,14 +294,14 @@ function midnightUtcInstant(day: string, tz: string): Date {
   // Verify: the result should map to the target day in the target tz.
   // If DST spring-forward skips midnight, adjust forward to the first valid instant.
   const checkParts = fmt.formatToParts(new Date(resultMs));
-  const checkDay = Number(checkParts.find((p) => p.type === 'day')!.value);
-  const checkMonth = Number(checkParts.find((p) => p.type === 'month')!.value);
+  const checkDay = Number(checkParts.find((p) => p.type === "day")!.value);
+  const checkMonth = Number(checkParts.find((p) => p.type === "month")!.value);
 
   if (checkDay !== dayNum || checkMonth !== month) {
     for (let bump = 15 * 60_000; bump <= 120 * 60_000; bump += 15 * 60_000) {
       const tryParts = fmt.formatToParts(new Date(resultMs + bump));
-      const tryDay = Number(tryParts.find((p) => p.type === 'day')!.value);
-      const tryMonth = Number(tryParts.find((p) => p.type === 'month')!.value);
+      const tryDay = Number(tryParts.find((p) => p.type === "day")!.value);
+      const tryMonth = Number(tryParts.find((p) => p.type === "month")!.value);
       if (tryDay === dayNum && tryMonth === month) {
         resultMs = resultMs + bump;
         break;
@@ -301,21 +318,24 @@ function midnightUtcInstant(day: string, tz: string): Date {
  */
 export function calculateAge(dob: string, tz?: string): number {
   if (!dob) return 0;
-  
-  const targetTz = tz && isValidTimeZone(tz) 
-    ? tz 
-    : (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC');
+
+  const targetTz =
+    tz && isValidTimeZone(tz)
+      ? tz
+      : typeof Intl !== "undefined"
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : "UTC";
 
   const todayStr = todayInZone(targetTz);
-  const todayParts = todayStr.split('-');
-  const todayYear = parseInt(todayParts[0] || '0', 10);
-  const todayMonth = parseInt(todayParts[1] || '0', 10);
-  const todayDay = parseInt(todayParts[2] || '0', 10);
+  const todayParts = todayStr.split("-");
+  const todayYear = parseInt(todayParts[0] || "0", 10);
+  const todayMonth = parseInt(todayParts[1] || "0", 10);
+  const todayDay = parseInt(todayParts[2] || "0", 10);
 
-  const dobParts = dob.split('-');
-  const dobYear = parseInt(dobParts[0] || '0', 10);
-  const dobMonth = parseInt(dobParts[1] || '0', 10);
-  const dobDay = parseInt(dobParts[2] || '0', 10);
+  const dobParts = dob.split("-");
+  const dobYear = parseInt(dobParts[0] || "0", 10);
+  const dobMonth = parseInt(dobParts[1] || "0", 10);
+  const dobDay = parseInt(dobParts[2] || "0", 10);
 
   let age = todayYear - dobYear;
   if (todayMonth < dobMonth || (todayMonth === dobMonth && todayDay < dobDay)) {
@@ -328,22 +348,28 @@ export function calculateAge(dob: string, tz?: string): number {
  * Parses a local datetime string (e.g. "YYYY-MM-DDTHH:mm") in a given timezone and returns a UTC Date.
  */
 export function localDateTimeToUtc(localDateTimeStr: string, tz: string): Date {
-  const [datePart, timePart] = localDateTimeStr.split('T');
+  const [datePart, timePart] = localDateTimeStr.split("T");
   if (!datePart || !timePart) return new Date(localDateTimeStr);
 
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hour, minute] = timePart.split(':').map(Number);
-  if (year == null || month == null || day == null || hour == null || minute == null) {
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  if (
+    year == null ||
+    month == null ||
+    day == null ||
+    hour == null ||
+    minute == null
+  ) {
     return new Date(localDateTimeStr);
   }
 
-  const fmt = Intl.DateTimeFormat('en-US', {
+  const fmt = Intl.DateTimeFormat("en-US", {
     timeZone: tz,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
     hour12: false,
   });
 
@@ -355,9 +381,15 @@ export function localDateTimeToUtc(localDateTimeStr: string, tz: string): Date {
       const p = parts.find((p) => p.type === type);
       return p ? Number(p.value) : 0;
     };
-    let h = pv('hour');
+    let h = pv("hour");
     if (h === 24) h = 0;
-    const localAsUtcMs = Date.UTC(pv('year'), pv('month') - 1, pv('day'), h, pv('minute'));
+    const localAsUtcMs = Date.UTC(
+      pv("year"),
+      pv("month") - 1,
+      pv("day"),
+      h,
+      pv("minute"),
+    );
     return localAsUtcMs - utcMs;
   }
 
@@ -372,3 +404,30 @@ export function localDateTimeToUtc(localDateTimeStr: string, tz: string): Date {
   return new Date(resultMs);
 }
 
+/**
+ * Formats a UTC instant as a `YYYY-MM-DDTHH:mm` string in the given timezone, suitable
+ * for a `datetime-local` input value. Inverse of {@link localDateTimeToUtc}. Uses
+ * hourCycle 'h23' so midnight renders as `00`, not `24`. Returns '' on invalid input.
+ */
+export function utcToLocalDateTimeInput(iso: string, tz: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(iso));
+    const get = (type: string) =>
+      parts.find((p) => p.type === type)?.value ?? "";
+    const date = `${get("year")}-${get("month")}-${get("day")}`;
+    const time = `${get("hour")}:${get("minute")}`;
+    return date.includes("NaN") || time.includes("NaN")
+      ? ""
+      : `${date}T${time}`;
+  } catch {
+    return "";
+  }
+}

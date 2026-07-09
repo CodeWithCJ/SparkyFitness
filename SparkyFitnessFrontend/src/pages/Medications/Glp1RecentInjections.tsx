@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pencil, Trash2 } from 'lucide-react';
-import { INJECTION_SITES, localDateTimeToUtc } from '@workspace/shared';
+import {
+  INJECTION_SITES,
+  localDateTimeToUtc,
+  utcToLocalDateTimeInput,
+} from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -32,26 +36,6 @@ interface Glp1RecentInjectionsProps {
   med: Medication;
 }
 
-// Format a UTC instant as a datetime-local input value in the user's timezone.
-const utcToLocalInputValue = (iso: string, tz: string) => {
-  try {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).formatToParts(new Date(iso));
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-    const hour = get('hour') === '24' ? '00' : get('hour');
-    return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}`;
-  } catch {
-    return '';
-  }
-};
-
 export default function Glp1RecentInjections({
   med,
 }: Glp1RecentInjectionsProps) {
@@ -73,7 +57,7 @@ export default function Glp1RecentInjections({
     setEditingInj(inj);
     setEditSite(inj.site ?? 'none');
     setEditDoseMg(inj.dose_mg != null ? String(inj.dose_mg) : '');
-    setEditInjectedAt(utcToLocalInputValue(inj.injected_at, timezone));
+    setEditInjectedAt(utcToLocalDateTimeInput(inj.injected_at, timezone));
     setEditNotes(inj.notes ?? '');
   };
 
