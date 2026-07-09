@@ -324,9 +324,26 @@
       "LOW_CARB_KETO": "قليل الكربوهيدرات / كيتو (حد أقصى 5٪)",
       "BALANCED": "متوازن (حد أقصى 15٪)"
     },
+    "personalPlanSaveDialogTitle": "حفظ نسخة من خطتك",
+    "personalPlanSaveDialogDescription": "سمّ الخطة باسم واضح عشان ترجع له لاحقًا، وبنطبّقها من اليوم.",
+    "personalPlanSaveDialogName": "اسم الخطة",
+    "personalPlanSaveDialogPlaceholder": "مثال: خطتي اليومية",
+    "personalPlanSaveDialogConfirm": "حفظ والبدء",
+    "personalPlanSaveDialogNameRequired": "اكتب اسمًا للخطة قبل الحفظ.",
+    "personalPlanSaveDialogSuccessTitle": "تم حفظ الخطة",
+    "personalPlanSaveDialogSuccessDescription": "حفظنا النسخة، وبتبدأ الخطة من اليوم.",
+    "personalPlanSaveDialogErrorTitle": "تعذر حفظ الخطة",
+    "personalPlanSaveDialogErrorDescription": "حاول مرة ثانية. إعداداتك الحالية ما زالت محفوظة هنا.",
     "back": "رجوع",
     "skip": "تخطي",
     "progress": "تقدم الإعداد"
+  },
+  "dialog": {
+    "close": "إغلاق",
+    "confirmCloseTitle": "تبي تقفل النافذة؟",
+    "confirmCloseDescription": "عندك تغييرات ما انحفظت. إذا قفلت النافذة بتفقدها.",
+    "keepEditing": "مواصلة التعديل",
+    "discardChanges": "تجاهل التغييرات"
   },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",

@@ -2885,9 +2885,26 @@
       "LOW_CARB_KETO": "Low carbohydrate / keto (5% maximum)",
       "BALANCED": "Balanced (15% maximum)"
     },
+    "personalPlanSaveDialogTitle": "Save a copy of your plan",
+    "personalPlanSaveDialogDescription": "Choose a clear name so you can reuse these targets later. We will also apply the plan starting today.",
+    "personalPlanSaveDialogName": "Plan name",
+    "personalPlanSaveDialogPlaceholder": "For example: My everyday plan",
+    "personalPlanSaveDialogConfirm": "Save and start",
+    "personalPlanSaveDialogNameRequired": "Enter a name for the plan before saving.",
+    "personalPlanSaveDialogSuccessTitle": "Plan saved",
+    "personalPlanSaveDialogSuccessDescription": "The copy is saved and the plan will start today.",
+    "personalPlanSaveDialogErrorTitle": "Could not save the plan",
+    "personalPlanSaveDialogErrorDescription": "Try again. Your current settings are still here.",
     "back": "Back",
     "skip": "Skip",
     "progress": "Setup progress"
+  },
+  "dialog": {
+    "close": "Close",
+    "confirmCloseTitle": "Close this window?",
+    "confirmCloseDescription": "You have unsaved changes. Closing this window will discard them.",
+    "keepEditing": "Keep editing",
+    "discardChanges": "Discard changes"
   },
   "cycle": {
     "hub": "Cycle & Pregnancy Hub",
