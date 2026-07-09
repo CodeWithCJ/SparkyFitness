@@ -60,7 +60,6 @@ const PersonalPlan = ({
 }: PersonalPlanProps) => {
   const {
     convertEnergy,
-    getEnergyUnitString,
     saveAllPreferences,
     fatBreakdownAlgorithm,
     mineralCalculationAlgorithm,
@@ -396,7 +395,6 @@ const PersonalPlan = ({
         formData={formData}
         convertEnergy={convertEnergy}
         editedPlan={editedPlan}
-        getEnergyUnitString={getEnergyUnitString}
         localEnergyUnit={localEnergyUnit}
         plan={plan}
         setEditedPlan={setEditedPlan}
