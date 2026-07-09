@@ -13,10 +13,12 @@ import { Plus, Download, Upload, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { FoodDataForBackend } from '@/types/food';
 
 interface ImportFromCSVProps {
-  onSave: (foodData: FoodDataForBackend[]) => Promise<void>;
+  onSave: (foodData: FoodDataForBackend[], overwrite: boolean) => Promise<void>;
 }
 
 export interface CSVData {
@@ -25,7 +27,6 @@ export interface CSVData {
   brand: string;
   is_custom: boolean;
   shared_with_public: boolean;
-  is_quick_food: boolean;
   serving_size: number;
   serving_unit: string;
   calories: number;
@@ -86,12 +87,12 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const [csvData, setCsvData] = useState<CSVData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [csvText, setCsvText] = useState<string>('');
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const textFields = new Set(['name', 'brand']);
   const booleanFields = new Set([
     'shared_with_public',
-    'is_quick_food',
     'is_default',
     'is_custom',
   ]);
@@ -101,7 +102,6 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     'brand',
     'is_custom',
     'shared_with_public',
-    'is_quick_food',
     'serving_size',
     'serving_unit',
     'calories', // Assumed to be in kcal
@@ -252,7 +252,6 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         brand: 'Sparky Sample Brand',
         is_custom: 'TRUE',
         shared_with_public: '',
-        is_quick_food: 'FALSE',
         serving_size: 231,
         serving_unit: 'slice',
         calories: 431, // kcal
@@ -318,7 +317,6 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       brand: '',
       is_custom: true,
       shared_with_public: false,
-      is_quick_food: false,
       serving_size: 100,
       serving_unit: 'g',
       calories: 0, // kcal
@@ -366,10 +364,14 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       return;
     }
     setLoading(true);
-    const dataForBackend = csvData.map(({ id, ...rest }) => rest);
+    // CSV import never creates quick foods; that is a separate workflow.
+    const dataForBackend = csvData.map(({ id, ...rest }) => ({
+      ...rest,
+      is_quick_food: false,
+    }));
     // console.log(dataForBackend);
     try {
-      await onSave(dataForBackend);
+      await onSave(dataForBackend, overwriteExisting);
     } catch (error) {
       console.error(
         'An error occurred while the parent was handling the save operation:',
@@ -594,6 +596,27 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
               </div>
             </div>
           )}
+
+          <div className="flex items-start gap-2 rounded-md border p-3">
+            <Checkbox
+              id="overwrite-existing"
+              checked={overwriteExisting}
+              onCheckedChange={(checked) =>
+                setOverwriteExisting(checked === true)
+              }
+              className="mt-0.5"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="overwrite-existing" className="cursor-pointer">
+                Override existing food details
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                If a food with the same name and brand already exists, update
+                its nutrition instead of failing the import. Leave unchecked to
+                skip and error on duplicates.
+              </p>
+            </div>
+          </div>
 
           <Button
             type="submit"

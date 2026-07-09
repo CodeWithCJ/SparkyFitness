@@ -265,7 +265,13 @@ export const useImportCsvMutation = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: (foods: FoodDataForBackend[]) => importFoodsFromCsv(foods),
+    mutationFn: ({
+      foods,
+      overwrite,
+    }: {
+      foods: FoodDataForBackend[];
+      overwrite: boolean;
+    }) => importFoodsFromCsv(foods, overwrite),
     onSuccess: () => {
       return queryClient.invalidateQueries({
         queryKey: foodKeys.all,
