@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import { todayInZone, addDays } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +26,8 @@ import {
 import {
   useMedicationPens,
   useCreatePenMutation,
+  useUpdatePenMutation,
+  useDeletePenMutation,
 } from '@/hooks/useMedications';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { Medication, MedicationPen } from '@/types/medications';
@@ -42,9 +44,12 @@ export default function Glp1InventoryManager({
 
   const pensQ = useMedicationPens(medId);
   const addPenMutation = useCreatePenMutation(medId);
+  const updatePenMutation = useUpdatePenMutation(medId);
+  const deletePenMutation = useDeletePenMutation(medId);
 
-  // Add Inventory Form States
+  // Add/Edit Inventory Form States
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [editingPen, setEditingPen] = useState<MedicationPen | null>(null);
   const [kind, setKind] = useState<'pen' | 'vial'>('pen');
   const [label, setLabel] = useState('');
   const [inventoryDoseMg, setInventoryDoseMg] = useState(
@@ -92,46 +97,83 @@ export default function Glp1InventoryManager({
     }
   };
 
-  const handleCreateInventory = () => {
-    addPenMutation.mutate(
-      {
-        kind,
-        label: label.trim() || null,
-        dose_mg: inventoryDoseMg ? Number(inventoryDoseMg) : null,
-        concentration_mg_ml:
-          kind === 'vial' && concentration ? Number(concentration) : null,
-        volume_ml: kind === 'vial' && volume ? Number(volume) : null,
-        doses_total: dosesTotal ? Number(dosesTotal) : null,
-        opened_at: openedAt || null,
-        expiry_date: expiryDate || null,
-        bud_date: calculatedBudDate || null,
-        reorder_flag: reorderFlag,
-        reorder_threshold:
-          reorderFlag && reorderThreshold ? Number(reorderThreshold) : null,
-        notes: notes.trim() || null,
-        status: openedAt ? 'in_use' : 'sealed',
-      } as Partial<MedicationPen>,
-      {
-        onSuccess: () => {
-          setInventoryOpen(false);
-          // Reset fields
-          setKind('pen');
-          setLabel('');
-          setInventoryDoseMg(
-            med.dose_amount != null ? String(med.dose_amount) : ''
-          );
-          setConcentration('');
-          setVolume('');
-          setDosesTotal('4');
-          setOpenedAt('');
-          setExpiryDate('');
-          setReorderFlag(false);
-          setReorderThreshold('1');
-          setNotes('');
-        },
-      }
-    );
+  const resetForm = () => {
+    setEditingPen(null);
+    setKind('pen');
+    setLabel('');
+    setInventoryDoseMg(med.dose_amount != null ? String(med.dose_amount) : '');
+    setConcentration('');
+    setVolume('');
+    setDosesTotal('4');
+    setOpenedAt('');
+    setExpiryDate('');
+    setReorderFlag(false);
+    setReorderThreshold('1');
+    setNotes('');
   };
+
+  const openAddDialog = () => {
+    resetForm();
+    setInventoryOpen(true);
+  };
+
+  const openEditDialog = (pen: MedicationPen) => {
+    setEditingPen(pen);
+    setKind(pen.kind);
+    setLabel(pen.label ?? '');
+    setInventoryDoseMg(pen.dose_mg != null ? String(pen.dose_mg) : '');
+    setConcentration(
+      pen.concentration_mg_ml != null ? String(pen.concentration_mg_ml) : ''
+    );
+    setVolume(pen.volume_ml != null ? String(pen.volume_ml) : '');
+    setDosesTotal(pen.doses_total != null ? String(pen.doses_total) : '');
+    setOpenedAt(pen.opened_at ?? '');
+    setExpiryDate(pen.expiry_date ?? '');
+    setReorderFlag(pen.reorder_flag);
+    setReorderThreshold(
+      pen.reorder_threshold != null ? String(pen.reorder_threshold) : '1'
+    );
+    setNotes(pen.notes ?? '');
+    setInventoryOpen(true);
+  };
+
+  const handleSaveInventory = () => {
+    const body = {
+      kind,
+      label: label.trim() || null,
+      dose_mg: inventoryDoseMg ? Number(inventoryDoseMg) : null,
+      concentration_mg_ml:
+        kind === 'vial' && concentration ? Number(concentration) : null,
+      volume_ml: kind === 'vial' && volume ? Number(volume) : null,
+      doses_total: dosesTotal ? Number(dosesTotal) : null,
+      opened_at: openedAt || null,
+      expiry_date: expiryDate || null,
+      bud_date: calculatedBudDate || null,
+      reorder_flag: reorderFlag,
+      reorder_threshold:
+        reorderFlag && reorderThreshold ? Number(reorderThreshold) : null,
+      notes: notes.trim() || null,
+    } as Partial<MedicationPen>;
+
+    const onSuccess = () => {
+      setInventoryOpen(false);
+      resetForm();
+    };
+
+    if (editingPen) {
+      // Preserve the pen's lifecycle status on edit, except sealed -> in_use
+      // when an opened date is first set.
+      if (editingPen.status === 'sealed' && openedAt) {
+        body.status = 'in_use';
+      }
+      updatePenMutation.mutate({ id: editingPen.id, body }, { onSuccess });
+    } else {
+      body.status = openedAt ? 'in_use' : 'sealed';
+      addPenMutation.mutate(body, { onSuccess });
+    }
+  };
+
+  const savePending = addPenMutation.isPending || updatePenMutation.isPending;
 
   return (
     <>
@@ -141,11 +183,7 @@ export default function Glp1InventoryManager({
             <span>
               {t('medications.glp1.penInventory', 'Pen / vial inventory')}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInventoryOpen(true)}
-            >
+            <Button variant="outline" size="sm" onClick={openAddDialog}>
               {t('medications.glp1.addInventory', 'Add Inventory')}
             </Button>
           </CardTitle>
@@ -205,6 +243,25 @@ export default function Glp1InventoryManager({
                         doses
                       </span>
                     </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground"
+                      onClick={() => openEditDialog(p)}
+                      aria-label="Edit pen/vial"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => deletePenMutation.mutate(p.id)}
+                      disabled={deletePenMutation.isPending}
+                      aria-label="Remove pen/vial"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
                 <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -264,11 +321,15 @@ export default function Glp1InventoryManager({
         </CardContent>
       </Card>
 
-      {/* Add Inventory Dialog */}
+      {/* Add/Edit Inventory Dialog */}
       <Dialog open={inventoryOpen} onOpenChange={setInventoryOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Pen / Vial Inventory</DialogTitle>
+            <DialogTitle>
+              {editingPen
+                ? 'Edit Pen / Vial Inventory'
+                : 'Add Pen / Vial Inventory'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
@@ -443,11 +504,12 @@ export default function Glp1InventoryManager({
             <Button variant="ghost" onClick={() => setInventoryOpen(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleCreateInventory}
-              disabled={addPenMutation.isPending}
-            >
-              {addPenMutation.isPending ? 'Saving...' : 'Add Inventory'}
+            <Button onClick={handleSaveInventory} disabled={savePending}>
+              {savePending
+                ? 'Saving...'
+                : editingPen
+                  ? 'Save Changes'
+                  : 'Add Inventory'}
             </Button>
           </DialogFooter>
         </DialogContent>

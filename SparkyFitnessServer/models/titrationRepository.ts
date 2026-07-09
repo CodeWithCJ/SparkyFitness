@@ -1,5 +1,8 @@
 import { getClient } from '../db/poolManager.js';
-import type { CreateTitrationStepBody } from '../schemas/medicationSchemas.js';
+import type {
+  CreateTitrationStepBody,
+  UpdateTitrationStepBody,
+} from '../schemas/medicationSchemas.js';
 
 const STEP_COLS = `id, medication_id, user_id, dose_mg, dose_unit, start_date, planned_weeks,
   step_order, status, is_taper, note, source, custom_fields, created_at, updated_at`;
@@ -55,6 +58,65 @@ async function listSteps(userId: string, medicationId: string) {
   }
 }
 
+async function updateStep(
+  userId: string,
+  id: string,
+  data: UpdateTitrationStepBody
+) {
+  const client = await getClient(userId);
+  try {
+    const updates: string[] = [];
+    const values: unknown[] = [id, userId];
+    let index = 3;
+
+    const fields: (keyof UpdateTitrationStepBody)[] = [
+      'dose_mg',
+      'dose_unit',
+      'start_date',
+      'planned_weeks',
+      'step_order',
+      'status',
+      'is_taper',
+      'note',
+      'custom_fields',
+    ];
+
+    for (const key of fields) {
+      if (data[key] !== undefined) {
+        updates.push(`${key} = $${index}`);
+        if (key === 'custom_fields') {
+          values.push(
+            data.custom_fields ? JSON.stringify(data.custom_fields) : '{}'
+          );
+        } else {
+          values.push(data[key]);
+        }
+        index++;
+      }
+    }
+
+    if (updates.length === 0) {
+      const current = await client.query(
+        `SELECT ${STEP_COLS} FROM medication_titration_steps WHERE id = $1 AND user_id = $2`,
+        [id, userId]
+      );
+      return current.rows[0] ?? null;
+    }
+
+    const result = await client.query(
+      `UPDATE medication_titration_steps SET
+         ${updates.join(',\n')},
+         updated_at = NOW()
+       WHERE id = $1 AND user_id = $2
+       RETURNING ${STEP_COLS}`,
+      values
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+
 async function deleteStep(userId: string, id: string) {
   const client = await getClient(userId);
   try {
@@ -83,5 +145,11 @@ async function listStepsForUser(userId: string) {
   }
 }
 
-export { createStep, listSteps, listStepsForUser, deleteStep };
-export default { createStep, listSteps, listStepsForUser, deleteStep };
+export { createStep, listSteps, listStepsForUser, updateStep, deleteStep };
+export default {
+  createStep,
+  listSteps,
+  listStepsForUser,
+  updateStep,
+  deleteStep,
+};

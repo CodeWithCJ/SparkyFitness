@@ -8,15 +8,24 @@ import {
   X,
   RotateCcw,
   Calendar,
+  Pencil,
   Trash2,
   Activity,
   Trophy,
   Flame,
   AlertTriangle,
 } from 'lucide-react';
-import { addDays, getDueDosesForDate, dayToUtcRange } from '@workspace/shared';
+import {
+  addDays,
+  getDueDosesForDate,
+  dayToUtcRange,
+  localDateTimeToUtc,
+  utcToLocalDateTimeInput,
+  INJECTION_SITES,
+} from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Card,
   CardContent,
@@ -24,25 +33,59 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import {
   useCreateMedicationEntryMutation,
+  useUpdateMedicationEntryMutation,
   useDeleteMedicationEntryMutation,
+  useLogGlpInjectionEntryMutation,
+  useUpdateInjectionEntryMutation,
+  useDeleteInjectionEntryMutation,
 } from '@/hooks/useMedications';
 import type {
+  Medication,
   MedicationDetail,
   MedicationEntry,
   MedicationSchedule,
 } from '@/types/medications';
 import { MedTypeIcon } from './AddMedicationDialog';
 import GlpDailyCheckIn from './GlpDailyCheckIn';
+import Glp1QuickLogDialog from './Glp1QuickLogDialog';
 
 export interface DueDose {
   medication: MedicationDetail;
   schedule: MedicationSchedule & { id: string };
 }
+
+// GLP-1 injectable doses are logged as injection entries (single source of truth with
+// the Cabinet), same rule as Glp1Coach. Oral GLP-1 meds stay on the adherence path.
+const isGlp1Injectable = (med: Medication) =>
+  med.is_glp1 && med.type_id === 'injection';
+
+// Injection rows merged into the entries feed carry no schedule_id, so GLP-1
+// injectable doses fall back to matching by medication.
+const entryMatchesDue = (
+  e: MedicationEntry,
+  due: { medication: { id: string }; schedule: { id: string } }
+) =>
+  e.schedule_id === due.schedule.id ||
+  (e.entry_type === 'injection' && e.medication_id === due.medication.id);
 
 export interface TodayMedicationsProps {
   selectedDate: string;
@@ -76,12 +119,37 @@ export default function TodayMedications({
   // Notes state for logging
   const [logNotes, setLogNotes] = useState<Record<string, string>>({});
 
+  // Edit-time dialog state (correct the "when" of an already-logged dose)
+  const [editingEntry, setEditingEntry] = useState<MedicationEntry | null>(
+    null
+  );
+  const [editTime, setEditTime] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editSite, setEditSite] = useState('none');
+
+  // GLP-1 injectable dose awaiting the compact site prompt before logging
+  const [pendingInjection, setPendingInjection] = useState<{
+    medication: MedicationDetail;
+    takenAt: string;
+    noteKey: string;
+    notes: string | null;
+  } | null>(null);
+
   // Mutations
   const createEntryMutation = useCreateMedicationEntryMutation();
+  const updateEntryMutation = useUpdateMedicationEntryMutation();
   const deleteEntryMutation = useDeleteMedicationEntryMutation();
+  const logInjectionMutation = useLogGlpInjectionEntryMutation();
+  const updateInjectionMutation = useUpdateInjectionEntryMutation();
+  const deleteInjectionMutation = useDeleteInjectionEntryMutation();
 
   const isPending =
-    createEntryMutation.isPending || deleteEntryMutation.isPending;
+    createEntryMutation.isPending ||
+    updateEntryMutation.isPending ||
+    deleteEntryMutation.isPending ||
+    logInjectionMutation.isPending ||
+    updateInjectionMutation.isPending ||
+    deleteInjectionMutation.isPending;
 
   // Schedules evaluation
   const dueDoses = useMemo(() => {
@@ -105,7 +173,7 @@ export default function TodayMedications({
     return dueDoses.filter((due) =>
       entries.some(
         (e) =>
-          e.schedule_id === due.schedule.id &&
+          entryMatchesDue(e, due) &&
           (e.status === 'taken' || e.status === 'skipped')
       )
     ).length;
@@ -136,7 +204,7 @@ export default function TodayMedications({
       for (const dd of dayDue) {
         const hit = recentEntries.some(
           (e) =>
-            e.schedule_id === dd.schedule.id &&
+            entryMatchesDue(e, dd) &&
             e.entry_date === d &&
             (e.status === 'taken' || e.status === 'prn_taken')
         );
@@ -232,7 +300,7 @@ export default function TodayMedications({
         // Check if already logged on the selected date to hide the due banner once taken/skipped
         const isLogged = entries.some(
           (e) =>
-            e.schedule_id === d.schedule.id &&
+            entryMatchesDue(e, d) &&
             (e.status === 'taken' || e.status === 'skipped')
         );
         return !isLogged;
@@ -260,28 +328,41 @@ export default function TodayMedications({
     }
 
     const notesVal = logNotes[due.schedule.id]?.trim() || null;
+    const takenAt =
+      selectedDate === today
+        ? new Date().toISOString()
+        : `${selectedDate}T12:00:00.000Z`;
+    const clearNote = () =>
+      setLogNotes((prev) => {
+        const copy = { ...prev };
+        delete copy[due.schedule.id];
+        return copy;
+      });
+
+    // Taking a GLP-1 injectable logs a real injection (deducting the auto-picked pen)
+    // so the Cabinet and this tab stay in sync. A compact prompt captures the
+    // injection site first. Skip/snooze stay adherence entries.
+    if (status === 'taken' && isGlp1Injectable(due.medication)) {
+      setPendingInjection({
+        medication: due.medication,
+        takenAt,
+        noteKey: due.schedule.id,
+        notes: notesVal,
+      });
+      return;
+    }
+
     createEntryMutation.mutate(
       {
         medication_id: due.medication.id,
         schedule_id: due.schedule.id,
         status,
-        taken_at:
-          selectedDate === today
-            ? new Date().toISOString()
-            : `${selectedDate}T12:00:00.000Z`,
+        taken_at: takenAt,
         scheduled_for: scheduledFor,
         entry_date: selectedDate,
         notes: notesVal,
       },
-      {
-        onSuccess: () => {
-          setLogNotes((prev) => {
-            const copy = { ...prev };
-            delete copy[due.schedule.id];
-            return copy;
-          });
-        },
-      }
+      { onSuccess: clearNote }
     );
   };
 
@@ -289,33 +370,118 @@ export default function TodayMedications({
     const prnSched = med.schedules?.find((s) => s.schedule_type_id === 'prn');
     const schedId = prnSched?.id || med.id;
     const notesVal = logNotes[schedId]?.trim() || null;
+    const takenAt =
+      selectedDate === today
+        ? new Date().toISOString()
+        : `${selectedDate}T12:00:00.000Z`;
+    const clearNote = () =>
+      setLogNotes((prev) => {
+        const copy = { ...prev };
+        delete copy[schedId];
+        return copy;
+      });
+
+    if (isGlp1Injectable(med)) {
+      setPendingInjection({
+        medication: med,
+        takenAt,
+        noteKey: schedId,
+        notes: notesVal,
+      });
+      return;
+    }
 
     createEntryMutation.mutate(
       {
         medication_id: med.id,
         schedule_id: prnSched?.id || null,
         status: 'prn_taken',
-        taken_at:
-          selectedDate === today
-            ? new Date().toISOString()
-            : `${selectedDate}T12:00:00.000Z`,
+        taken_at: takenAt,
         entry_date: selectedDate,
         notes: notesVal,
+      },
+      { onSuccess: clearNote }
+    );
+  };
+
+  const handleConfirmQuickLog = (site: string | null) => {
+    if (!pendingInjection) return;
+    const { medication, takenAt, noteKey, notes } = pendingInjection;
+    logInjectionMutation.mutate(
+      {
+        medication_id: medication.id,
+        injected_at: takenAt,
+        entry_date: selectedDate,
+        deduct_pen: true,
+        site,
+        notes,
       },
       {
         onSuccess: () => {
           setLogNotes((prev) => {
             const copy = { ...prev };
-            delete copy[schedId];
+            delete copy[noteKey];
             return copy;
           });
+          setPendingInjection(null);
         },
       }
     );
   };
 
-  const handleUndoEntry = (entryId: string) => {
-    deleteEntryMutation.mutate(entryId);
+  const handleUndoEntry = (entry: MedicationEntry) => {
+    // Merged injection rows carry injection ids; deleting through the injection
+    // endpoint also credits the dose back to the pen it was deducted from.
+    if (entry.entry_type === 'injection') {
+      deleteInjectionMutation.mutate(entry.id);
+    } else {
+      deleteEntryMutation.mutate(entry.id);
+    }
+  };
+
+  const openEditEntry = (entry: MedicationEntry) => {
+    setEditingEntry(entry);
+    setEditTime(utcToLocalDateTimeInput(entry.taken_at, timezone));
+    setEditNotes(entry.notes ?? '');
+    setEditSite(entry.site ?? 'none');
+  };
+
+  const handleSaveEditEntry = () => {
+    if (!editingEntry) return;
+    const notes = editNotes.trim() || null;
+    const takenAtUtc = editTime
+      ? localDateTimeToUtc(editTime, timezone).toISOString()
+      : undefined;
+    // Keep the calendar day aligned with the edited local time.
+    const entryDate = editTime ? editTime.substring(0, 10) : undefined;
+    const onSuccess = () => setEditingEntry(null);
+
+    if (editingEntry.entry_type === 'injection') {
+      updateInjectionMutation.mutate(
+        {
+          id: editingEntry.id,
+          body: {
+            ...(takenAtUtc ? { injected_at: takenAtUtc } : {}),
+            ...(entryDate ? { entry_date: entryDate } : {}),
+            site: editSite === 'none' ? null : editSite,
+            notes,
+          },
+        },
+        { onSuccess }
+      );
+    } else {
+      updateEntryMutation.mutate(
+        {
+          id: editingEntry.id,
+          body: {
+            ...(takenAtUtc ? { taken_at: takenAtUtc } : {}),
+            ...(entryDate ? { entry_date: entryDate } : {}),
+            notes,
+          },
+        },
+        { onSuccess }
+      );
+    }
   };
 
   const formatEntryTime = (timestamp: string) => {
@@ -653,9 +819,7 @@ export default function TodayMedications({
                 )}
                 {!loadingMeds &&
                   dueDoses.map((due, idx) => {
-                    const entry = entries.find(
-                      (e) => e.schedule_id === due.schedule.id
-                    );
+                    const entry = entries.find((e) => entryMatchesDue(e, due));
                     const isLogged =
                       entry &&
                       (entry.status === 'taken' || entry.status === 'skipped');
@@ -747,7 +911,7 @@ export default function TodayMedications({
                               variant="ghost"
                               size="sm"
                               className="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive flex items-center gap-1"
-                              onClick={() => handleUndoEntry(entry.id)}
+                              onClick={() => handleUndoEntry(entry)}
                               disabled={isPending}
                             >
                               <RotateCcw className="h-3.5 w-3.5" />{' '}
@@ -961,22 +1125,114 @@ export default function TodayMedications({
                     </div>
                   </div>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => handleUndoEntry(entry.id)}
-                    disabled={isPending}
-                    aria-label="Remove entry"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground"
+                      onClick={() => openEditEntry(entry)}
+                      disabled={isPending}
+                      aria-label="Edit entry time"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleUndoEntry(entry)}
+                      disabled={isPending}
+                      aria-label="Remove entry"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Compact site prompt for GLP-1 injectables logged from this tab */}
+      {pendingInjection && (
+        <Glp1QuickLogDialog
+          med={pendingInjection.medication}
+          onConfirm={handleConfirmQuickLog}
+          onClose={() => setPendingInjection(null)}
+          isPending={logInjectionMutation.isPending}
+        />
+      )}
+
+      {/* Edit logged dose time/notes */}
+      <Dialog
+        open={!!editingEntry}
+        onOpenChange={(open) => !open && setEditingEntry(null)}
+      >
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {t('medications.today.editLogged', 'Edit logged dose')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {editingEntry?.med_name_snapshot && (
+              <p className="text-sm font-medium">
+                {editingEntry.med_name_snapshot}
+              </p>
+            )}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">
+                {t('medications.today.takenAt', 'Taken at')}
+              </Label>
+              <Input
+                type="datetime-local"
+                value={editTime}
+                onChange={(e) => setEditTime(e.target.value)}
+              />
+            </div>
+            {editingEntry?.entry_type === 'injection' && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">
+                  {t('medications.glp1.injectionSite', 'Injection site')}
+                </Label>
+                <Select value={editSite} onValueChange={setEditSite}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">—</SelectItem>
+                    {INJECTION_SITES.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {t('medications.sites.label.' + s.id, s.label)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">
+                {t('medications.glp1.notes', 'Notes')}
+              </Label>
+              <Input
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditingEntry(null)}>
+              {t('common.cancel', 'Cancel')}
+            </Button>
+            <Button onClick={handleSaveEditEntry} disabled={isPending}>
+              {isPending
+                ? t('common.saving', 'Saving...')
+                : t('common.save', 'Save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

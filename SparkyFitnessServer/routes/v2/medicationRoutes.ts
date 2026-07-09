@@ -6,11 +6,14 @@ import {
   CreatePenBodySchema,
   UpdatePenBodySchema,
   CreateInjectionBodySchema,
+  UpdateInjectionBodySchema,
   CreateTitrationStepBodySchema,
+  UpdateTitrationStepBodySchema,
   MedicationIdParamSchema,
   ListMedicationsQuerySchema,
   SerumCurveQuerySchema,
   CreateMedicationEntryBodySchema,
+  UpdateMedicationEntryBodySchema,
   ListMedicationEntriesQuerySchema,
   UpdateMedicationDisplayPreferencesBodySchema,
   DisplayPreferenceParamsSchema,
@@ -145,7 +148,7 @@ router.use(checkPermissionMiddleware('medications'));
  *     responses: { 200: { description: Injection history. } }
  * /v2/medications/injections:
  *   post:
- *     summary: Log an injection (optionally auto-deduct from a pen/vial)
+ *     summary: Log an injection (optionally deduct from a pen/vial; auto-picks the pen when deduct_pen is set without pen_id)
  *     tags: [Medications & GLP-1]
  *     security: [{ cookieAuth: [] }]
  *     requestBody:
@@ -155,8 +158,14 @@ router.use(checkPermissionMiddleware('medications'));
  *           schema: { type: object, required: [medication_id], properties: { medication_id: { type: string, format: uuid }, pen_id: { type: string, format: uuid }, site: { type: string }, dose_mg: { type: number }, deduct_pen: { type: boolean } } }
  *     responses: { 201: { description: Created (returns injection + updated pen). }, 400: { description: Invalid request. } }
  * /v2/medications/injections/{id}:
+ *   put:
+ *     summary: Update an injection (timing, site, dose, notes — not pen deduction)
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Updated. }, 404: { description: Not found. } }
  *   delete:
- *     summary: Delete an injection
+ *     summary: Delete an injection (credits the dose back to its pen when one was deducted)
  *     tags: [Medications & GLP-1]
  *     security: [{ cookieAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
@@ -176,6 +185,12 @@ router.use(checkPermissionMiddleware('medications'));
  *     parameters: [{ in: path, name: medicationId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 201: { description: Created. }, 400: { description: Invalid request. } }
  * /v2/medications/titration/{id}:
+ *   put:
+ *     summary: Update a titration step
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Updated. }, 404: { description: Not found. } }
  *   delete:
  *     summary: Delete a titration step
  *     tags: [Medications & GLP-1]
@@ -203,6 +218,74 @@ router.use(checkPermissionMiddleware('medications'));
  *     security: [{ cookieAuth: [] }]
  *     parameters: [{ in: path, name: medicationId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Suggested site + resting sites + zone map. } }
+ *
+ * /v2/medications/entries:
+ *   get:
+ *     summary: List logged adherence doses, merged with GLP-1 injection logs
+ *     description: Injection rows are folded into the same feed and flagged with entry_type='injection'; their id is an injection id, so update/delete them via the /injections endpoints.
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: fromDate, schema: { type: string, format: date } }
+ *       - { in: query, name: toDate, schema: { type: string, format: date } }
+ *       - { in: query, name: medicationId, schema: { type: string, format: uuid } }
+ *     responses: { 200: { description: Logged doses (adherence entries + injections). } }
+ *   post:
+ *     summary: Log an adherence dose (taken/skipped/snoozed/prn_taken)
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [medication_id], properties: { medication_id: { type: string, format: uuid }, schedule_id: { type: string, format: uuid }, status: { type: string, enum: [taken, skipped, snoozed, prn_taken] }, taken_at: { type: string, format: date-time }, entry_date: { type: string, format: date }, notes: { type: string } } }
+ *     responses: { 201: { description: Created. }, 400: { description: Invalid request. } }
+ * /v2/medications/entries/{id}:
+ *   put:
+ *     summary: Update a logged dose (e.g. correct the taken-at time or notes)
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object, properties: { status: { type: string, enum: [taken, skipped, snoozed, prn_taken] }, taken_at: { type: string, format: date-time }, scheduled_for: { type: string, format: date-time }, entry_date: { type: string, format: date }, notes: { type: string } } }
+ *     responses: { 200: { description: Updated. }, 404: { description: Not found. } }
+ *   delete:
+ *     summary: Delete a logged dose
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 204: { description: Deleted. }, 404: { description: Not found. } }
+ *
+ * /v2/medications/display-preferences:
+ *   get:
+ *     summary: List the user's medication display preferences
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     responses: { 200: { description: Display preferences per view group and platform. } }
+ * /v2/medications/display-preferences/{viewGroup}/{platform}:
+ *   put:
+ *     summary: Upsert the visible items for a view group and platform
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: viewGroup, required: true, schema: { type: string } }
+ *       - { in: path, name: platform, required: true, schema: { type: string } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [visible_items], properties: { visible_items: { type: array, items: { type: string } } } }
+ *     responses: { 200: { description: Upserted preference. }, 400: { description: Invalid request. } }
+ *   delete:
+ *     summary: Delete a display preference for a view group and platform
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: viewGroup, required: true, schema: { type: string } }
+ *       - { in: path, name: platform, required: true, schema: { type: string } }
+ *     responses: { 204: { description: Deleted. }, 404: { description: Not found. } }
  */
 
 // Small helper to send a uniform 400 for Zod failures.
@@ -310,11 +393,14 @@ const listEntries: RequestHandler = async (req, res, next) => {
   try {
     const query = ListMedicationEntriesQuerySchema.safeParse(req.query);
     if (!query.success) return badRequest(res, query.error);
-    const entries = await medicationEntryRepository.listEntries(req.userId, {
-      fromDate: query.data.fromDate ?? undefined,
-      toDate: query.data.toDate ?? undefined,
-      medicationId: query.data.medicationId ?? undefined,
-    });
+    const entries = await medicationEntryRepository.listEntriesWithInjections(
+      req.userId,
+      {
+        fromDate: query.data.fromDate ?? undefined,
+        toDate: query.data.toDate ?? undefined,
+        medicationId: query.data.medicationId ?? undefined,
+      }
+    );
     res.json(entries);
   } catch (error) {
     next(error);
@@ -343,6 +429,27 @@ const createEntry: RequestHandler = async (req, res, next) => {
   }
 };
 
+const updateEntry: RequestHandler = async (req, res, next) => {
+  try {
+    const params = UuidParamSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
+    const body = UpdateMedicationEntryBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    const entry = await medicationEntryRepository.updateEntry(
+      req.userId,
+      params.data.id,
+      body.data
+    );
+    if (!entry) {
+      res.status(404).json({ error: 'Medication entry not found' });
+      return;
+    }
+    res.json(entry);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteEntry: RequestHandler = async (req, res, next) => {
   try {
     const params = UuidParamSchema.safeParse(req.params);
@@ -365,6 +472,7 @@ router.get('/', listMedications);
 router.post('/', createMedication);
 router.get('/entries', listEntries);
 router.post('/entries', createEntry);
+router.put('/entries/:id', updateEntry);
 router.delete('/entries/:id', deleteEntry);
 // --- Display Preferences --------------------------------------------------
 
@@ -589,6 +697,27 @@ const createInjection: RequestHandler = async (req, res, next) => {
   }
 };
 
+const updateInjection: RequestHandler = async (req, res, next) => {
+  try {
+    const params = UuidParamSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
+    const body = UpdateInjectionBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    const injection = await injectionRepository.updateInjection(
+      req.userId,
+      params.data.id,
+      body.data
+    );
+    if (!injection) {
+      res.status(404).json({ error: 'Injection not found' });
+      return;
+    }
+    res.json(injection);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteInjection: RequestHandler = async (req, res, next) => {
   try {
     const params = UuidParamSchema.safeParse(req.params);
@@ -609,6 +738,7 @@ const deleteInjection: RequestHandler = async (req, res, next) => {
 
 router.get('/:medicationId/injections', listInjections);
 router.post('/injections', createInjection);
+router.put('/injections/:id', updateInjection);
 router.delete('/injections/:id', deleteInjection);
 
 // --- Titration / taper steps ---------------------------------------------
@@ -644,6 +774,27 @@ const createStep: RequestHandler = async (req, res, next) => {
   }
 };
 
+const updateStep: RequestHandler = async (req, res, next) => {
+  try {
+    const params = UuidParamSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
+    const body = UpdateTitrationStepBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    const step = await titrationRepository.updateStep(
+      req.userId,
+      params.data.id,
+      body.data
+    );
+    if (!step) {
+      res.status(404).json({ error: 'Titration step not found' });
+      return;
+    }
+    res.json(step);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteStep: RequestHandler = async (req, res, next) => {
   try {
     const params = UuidParamSchema.safeParse(req.params);
@@ -661,6 +812,7 @@ const deleteStep: RequestHandler = async (req, res, next) => {
 
 router.get('/:medicationId/titration', listSteps);
 router.post('/:medicationId/titration', createStep);
+router.put('/titration/:id', updateStep);
 router.delete('/titration/:id', deleteStep);
 
 // --- GLP-1 derived data (PK curve, site rotation) -------------------------

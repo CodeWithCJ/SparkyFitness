@@ -189,6 +189,41 @@ describe('Medication Routes V2', () => {
     });
   });
 
+  describe('PUT /api/v2/medications/injections/:id', () => {
+    it('updates an injection', async () => {
+      const updated = { id: UID, site: 'right_thigh', dose_mg: 0.5 };
+      vi.mocked(injectionRepository.updateInjection).mockResolvedValue(updated);
+      const res = await request(app)
+        .put(`/api/v2/medications/injections/${UID}`)
+        .set('Cookie', cookie)
+        .send({ site: 'right_thigh', dose_mg: 0.5 });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(updated);
+      expect(injectionRepository.updateInjection).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ site: 'right_thigh', dose_mg: 0.5 })
+      );
+    });
+
+    it('returns 404 when the injection is missing', async () => {
+      vi.mocked(injectionRepository.updateInjection).mockResolvedValue(null);
+      const res = await request(app)
+        .put(`/api/v2/medications/injections/${UID}`)
+        .set('Cookie', cookie)
+        .send({ site: 'right_thigh' });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('returns 400 for an invalid uuid', async () => {
+      const res = await request(app)
+        .put('/api/v2/medications/injections/not-a-uuid')
+        .set('Cookie', cookie)
+        .send({ site: 'right_thigh' });
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
   describe('Pens', () => {
     it('creates a pen/vial', async () => {
       const pen = { id: 'pen-1', kind: 'vial', concentration_mg_ml: 2.5 };
@@ -229,6 +264,39 @@ describe('Medication Routes V2', () => {
         .post(`/api/v2/medications/${UID}/titration`)
         .set('Cookie', cookie)
         .send({ planned_weeks: 4 });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('updates a titration step', async () => {
+      const updated = { id: UID, dose_mg: 1, status: 'active' };
+      vi.mocked(titrationRepository.updateStep).mockResolvedValue(updated);
+      const res = await request(app)
+        .put(`/api/v2/medications/titration/${UID}`)
+        .set('Cookie', cookie)
+        .send({ dose_mg: 1, status: 'active' });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(updated);
+      expect(titrationRepository.updateStep).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ dose_mg: 1, status: 'active' })
+      );
+    });
+
+    it('returns 404 when the titration step is missing', async () => {
+      vi.mocked(titrationRepository.updateStep).mockResolvedValue(null);
+      const res = await request(app)
+        .put(`/api/v2/medications/titration/${UID}`)
+        .set('Cookie', cookie)
+        .send({ dose_mg: 1 });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('returns 400 when updating with an invalid status', async () => {
+      const res = await request(app)
+        .put(`/api/v2/medications/titration/${UID}`)
+        .set('Cookie', cookie)
+        .send({ status: 'bogus' });
       expect(res.statusCode).toBe(400);
     });
   });
@@ -278,11 +346,24 @@ describe('Medication Routes V2', () => {
   });
 
   describe('Entries', () => {
-    it('lists medication entries', async () => {
-      const entries = [{ id: 'entry-1', medication_id: UID, status: 'taken' }];
-      vi.mocked(medicationEntryRepository.listEntries).mockResolvedValue(
-        entries
-      );
+    it('lists medication entries merged with injections', async () => {
+      const entries = [
+        {
+          id: 'inj-1',
+          medication_id: UID,
+          status: 'taken',
+          entry_type: 'injection',
+        },
+        {
+          id: 'entry-1',
+          medication_id: UID,
+          status: 'taken',
+          entry_type: 'entry',
+        },
+      ];
+      vi.mocked(
+        medicationEntryRepository.listEntriesWithInjections
+      ).mockResolvedValue(entries);
       const res = await request(app)
         .get(
           '/api/v2/medications/entries?fromDate=2026-06-01&toDate=2026-06-30'
@@ -290,7 +371,9 @@ describe('Medication Routes V2', () => {
         .set('Cookie', cookie);
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual(entries);
-      expect(medicationEntryRepository.listEntries).toHaveBeenCalledWith(
+      expect(
+        medicationEntryRepository.listEntriesWithInjections
+      ).toHaveBeenCalledWith(
         'testUser',
         expect.objectContaining({
           fromDate: '2026-06-01',
@@ -322,6 +405,49 @@ describe('Medication Routes V2', () => {
           medication_id: UID,
           status: 'invalid_status',
         });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('updates an entry (edit the taken-at time)', async () => {
+      const updated = {
+        id: UID,
+        medication_id: UID,
+        status: 'prn_taken',
+        taken_at: '2026-06-25T08:30:00.000Z',
+      };
+      vi.mocked(medicationEntryRepository.updateEntry).mockResolvedValue(
+        updated
+      );
+      const res = await request(app)
+        .put(`/api/v2/medications/entries/${UID}`)
+        .set('Cookie', cookie)
+        .send({
+          taken_at: '2026-06-25T08:30:00.000Z',
+          entry_date: '2026-06-25',
+        });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(updated);
+      expect(medicationEntryRepository.updateEntry).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ taken_at: '2026-06-25T08:30:00.000Z' })
+      );
+    });
+
+    it('returns 404 when the entry to update is missing', async () => {
+      vi.mocked(medicationEntryRepository.updateEntry).mockResolvedValue(null);
+      const res = await request(app)
+        .put(`/api/v2/medications/entries/${UID}`)
+        .set('Cookie', cookie)
+        .send({ notes: 'later' });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('returns 400 when updating with an invalid status', async () => {
+      const res = await request(app)
+        .put(`/api/v2/medications/entries/${UID}`)
+        .set('Cookie', cookie)
+        .send({ status: 'bogus' });
       expect(res.statusCode).toBe(400);
     });
 
