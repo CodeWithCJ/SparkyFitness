@@ -159,8 +159,26 @@ describe('workoutPresetRoutes request validation', () => {
     const [userId, data] = vi.mocked(workoutPresetService.createWorkoutPreset)
       .mock.calls[0];
     expect(userId).toBe(USER_ID);
-    expect(data.user_id).toBe(USER_ID);
+    // Ownership comes from the authenticated request; a body user_id (even
+    // the caller's own) is stripped by the schema and never reaches the
+    // service, which injects req.userId itself.
+    expect(data.user_id).toBeUndefined();
     expect(data.exercises[0].superset_group).toBe(1);
+  });
+
+  it('strips a spoofed body user_id so ownership cannot be forged', async () => {
+    const body = {
+      ...validCreateBody(),
+      user_id: '00000000-0000-4000-8000-000000000000',
+    };
+
+    const { statusCode } = await invokeRoute('post', '/', { body });
+
+    expect(statusCode).toBe(201);
+    const [userId, data] = vi.mocked(workoutPresetService.createWorkoutPreset)
+      .mock.calls[0];
+    expect(userId).toBe(USER_ID);
+    expect(data.user_id).toBeUndefined();
   });
 
   it('accepts an absent superset_group (repository defaults it to null)', async () => {

@@ -1,5 +1,4 @@
 import type {
-  ExerciseEntryResponse,
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
   ExerciseSessionResponse,
@@ -16,6 +15,11 @@ import type { WorkoutPreset, WorkoutPresetExercise } from '../types/workoutPrese
 import type { WorkoutPresetExercisePayload } from '../services/api/workoutPresetsApi';
 import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
 import { parseDecimalInput } from './numericInput';
+import { DEFAULT_REST_SEC } from './workoutSupersets';
+
+// The superset/reorder algebra lives in its own module; re-exported here so
+// the many existing import sites keep working.
+export * from './workoutSupersets';
 
 export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   Strength: 'exercise-weights',
@@ -482,21 +486,35 @@ export function isTempSetId(id: number): boolean {
  * server takes its delete-and-recreate path. Otherwise exercise ids are kept
  * and only real (non-negative) set ids are sent — temp ids must never reach
  * the server, where an unknown id is a 400.
+ *
+ * `startedAtMs` (the store's `startedAt`) turns on duration stamping: when a
+ * set has been completed after it, each exercise's `duration_minutes` becomes
+ * its share of the wall-clock span from workout start to the LAST completed
+ * set, split proportionally by completed-set count. The server derives
+ * calories from duration, so this is also what makes live workouts earn
+ * calories. Anchoring on the last completion (not "now") keeps a
+ * flushed-hours-later abandoned session from claiming hours of exercise.
+ * Without `startedAtMs`, or before anything is completed, existing durations
+ * round-trip unchanged.
  */
 export function buildSessionExercisesPayload(
   session: PresetSessionResponse,
   completedSetIds: CompletedSetMap,
   prSetIds: PrSetMap,
+  startedAtMs?: number | null,
 ): PresetSessionExerciseRequest[] {
   const allExercisesHaveServerId =
     session.exercises.length > 0 &&
     session.exercises.every((e) => !isTempExerciseEntryId(e.id));
 
+  const durationByEntryId = buildSessionDurationMinutes(session, completedSetIds, startedAtMs);
+
   return session.exercises.map((exercise, index) => ({
     ...(allExercisesHaveServerId ? { id: exercise.id } : {}),
     exercise_id: exercise.exercise_id,
     sort_order: index,
-    duration_minutes: exercise.duration_minutes ?? 0,
+    duration_minutes:
+      durationByEntryId?.get(exercise.id) ?? exercise.duration_minutes ?? 0,
     notes: exercise.notes ?? null,
     // `?? null` also normalizes `undefined` from sessions persisted before
     // the superset upgrade.
@@ -518,6 +536,47 @@ export function buildSessionExercisesPayload(
       };
     }),
   }));
+}
+
+/**
+ * Wall-clock live-workout durations: the span from `startedAtMs` to the last
+ * completed set, split across exercises proportionally by completed-set count
+ * (an exercise with nothing completed gets 0). Returns null — "leave existing
+ * durations alone" — when `startedAtMs` is absent or nothing has been
+ * completed after it (e.g. a resumed session whose seeded completions predate
+ * this start).
+ */
+export function buildSessionDurationMinutes(
+  session: PresetSessionResponse,
+  completedSetIds: CompletedSetMap,
+  startedAtMs?: number | null,
+): Map<string, number> | null {
+  if (startedAtMs == null) return null;
+
+  let lastCompletedMs = 0;
+  let totalCompleted = 0;
+  const completedCountByEntryId = new Map<string, number>();
+  for (const exercise of session.exercises) {
+    let count = 0;
+    for (const s of exercise.sets) {
+      const ms = completedSetIds[String(s.id)];
+      if (ms == null) continue;
+      count++;
+      totalCompleted++;
+      if (ms > lastCompletedMs) lastCompletedMs = ms;
+    }
+    completedCountByEntryId.set(exercise.id, count);
+  }
+  if (totalCompleted === 0 || lastCompletedMs <= startedAtMs) return null;
+
+  const totalMinutes = (lastCompletedMs - startedAtMs) / 60_000;
+  const byEntryId = new Map<string, number>();
+  for (const exercise of session.exercises) {
+    const count = completedCountByEntryId.get(exercise.id) ?? 0;
+    const share = (totalMinutes * count) / totalCompleted;
+    byEntryId.set(exercise.id, Math.round(share * 10) / 10);
+  }
+  return byEntryId;
 }
 
 /** Set types offered by the long-press set-type pickers. */
@@ -640,325 +699,8 @@ export function seedPrFromSession(session: PresetSessionResponse): PrSetMap {
   return seeded;
 }
 
-// --- Supersets ---
-
-export interface SupersetRun {
-  groupId: number;
-  entryIds: string[];
-}
-
-/**
- * Derive superset groups as adjacent runs of 2+ exercises sharing a non-null
- * `superset_group`. Singletons and non-adjacent repeats of the same value
- * (possible after external edits) are not valid groups: they are ignored here
- * — and therefore by all display/step logic — but their stored values are
- * still round-tripped by the payload builders.
- */
-export function getSupersetRuns(
-  exercises: { id: string; superset_group?: number | null }[],
-): SupersetRun[] {
-  const runs: SupersetRun[] = [];
-  const flush = (run: SupersetRun | null) => {
-    if (run !== null && run.entryIds.length >= 2) runs.push(run);
-  };
-
-  let current: SupersetRun | null = null;
-  for (const exercise of exercises) {
-    // `!= null` also covers `undefined` from sessions persisted before the
-    // superset upgrade, which the response type can't express.
-    const groupId = exercise.superset_group ?? null;
-    if (groupId != null && current !== null && current.groupId === groupId) {
-      current.entryIds.push(exercise.id);
-      continue;
-    }
-    flush(current);
-    current = groupId != null ? { groupId, entryIds: [exercise.id] } : null;
-  }
-  flush(current);
-  return runs;
-}
-
-/** Runs over form drafts, keyed by `clientId` instead of entry id. */
-export function getDraftSupersetRuns(exercises: WorkoutDraftExercise[]): SupersetRun[] {
-  return getSupersetRuns(
-    exercises.map(e => ({ id: e.clientId, superset_group: e.supersetGroup ?? null })),
-  );
-}
-
-/**
- * Clear `supersetGroup` on any draft exercise not part of an adjacent 2+ run —
- * the draft sibling of the store's `normalizeSupersetGroups`. Dissolves
- * 1-member remainders after ungroup/member removal. Returns the input array
- * unchanged when nothing needs clearing.
- */
-export function normalizeDraftSupersetGroups(
-  exercises: WorkoutDraftExercise[],
-): WorkoutDraftExercise[] {
-  const grouped = new Set(getDraftSupersetRuns(exercises).flatMap(run => run.entryIds));
-  const isStale = (e: WorkoutDraftExercise) => e.supersetGroup != null && !grouped.has(e.clientId);
-  if (!exercises.some(isStale)) return exercises;
-  return exercises.map(e => (isStale(e) ? { ...e, supersetGroup: null } : e));
-}
-
-/**
- * Group `picked` with `current`, mirroring the store's `supersetWith`:
- * grouped exercises can't be picked, new group ids are max(existing)+1, the
- * picked member moves to sit immediately after the current run so the group
- * is one adjacent block, and every member's per-set rest is harmonized to the
- * anchor's (deliberately lossy, like the live screen). Returns the input
- * array unchanged when the pick is invalid.
- */
-export function supersetDraftExercises(
-  exercises: WorkoutDraftExercise[],
-  currentClientId: string,
-  pickedClientId: string,
-): WorkoutDraftExercise[] {
-  if (currentClientId === pickedClientId) return exercises;
-  const picked = exercises.find(e => e.clientId === pickedClientId);
-  if (!picked || !exercises.some(e => e.clientId === currentClientId)) return exercises;
-
-  const runs = getDraftSupersetRuns(exercises);
-  if (runs.some(r => r.entryIds.includes(pickedClientId))) return exercises;
-
-  const currentRun = runs.find(r => r.entryIds.includes(currentClientId));
-  let groupId: number;
-  if (currentRun) {
-    groupId = currentRun.groupId;
-  } else {
-    let maxGroupId = 0;
-    for (const e of exercises) {
-      if (e.supersetGroup != null && e.supersetGroup > maxGroupId) {
-        maxGroupId = e.supersetGroup;
-      }
-    }
-    groupId = maxGroupId + 1;
-  }
-
-  const memberIds = currentRun
-    ? [...currentRun.entryIds, pickedClientId]
-    : [currentClientId, pickedClientId];
-  const memberIdSet = new Set(memberIds);
-
-  const anchor = exercises.find(e => e.clientId === memberIds[0])!;
-  const groupRest = anchor.sets[0]?.restTime ?? DEFAULT_REST_SEC;
-
-  const lastMemberId = currentRun
-    ? currentRun.entryIds[currentRun.entryIds.length - 1]
-    : currentClientId;
-  const without = exercises.filter(e => e.clientId !== pickedClientId);
-  const insertAt = without.findIndex(e => e.clientId === lastMemberId) + 1;
-  const reordered = [...without.slice(0, insertAt), picked, ...without.slice(insertAt)];
-
-  return normalizeDraftSupersetGroups(
-    reordered.map(e =>
-      memberIdSet.has(e.clientId)
-        ? {
-            ...e,
-            supersetGroup: groupId,
-            sets: e.sets.map(s => ({ ...s, restTime: groupRest })),
-          }
-        : e,
-    ),
-  );
-}
-
-/**
- * Remove one draft exercise from its superset run (store's `ungroupExercise`):
- * a middle member is moved to just after the run so the remaining members
- * stay adjacent, then <2-member remainders are dissolved.
- */
-export function ungroupDraftExercise(
-  exercises: WorkoutDraftExercise[],
-  clientId: string,
-): WorkoutDraftExercise[] {
-  const run = getDraftSupersetRuns(exercises).find(r => r.entryIds.includes(clientId));
-  if (!run) return exercises;
-
-  let next = exercises.map(e => (e.clientId === clientId ? { ...e, supersetGroup: null } : e));
-
-  const position = run.entryIds.indexOf(clientId);
-  if (position > 0 && position < run.entryIds.length - 1) {
-    const moved = next.find(e => e.clientId === clientId)!;
-    const without = next.filter(e => e.clientId !== clientId);
-    const lastMemberId = run.entryIds[run.entryIds.length - 1];
-    const insertAt = without.findIndex(e => e.clientId === lastMemberId) + 1;
-    next = [...without.slice(0, insertAt), moved, ...without.slice(insertAt)];
-  }
-
-  return normalizeDraftSupersetGroups(next);
-}
-
-// --- Exercise reordering (drag-and-drop) ---
-
-/**
- * One draggable unit in the reorder UI: a solo exercise or a whole adjacent
- * superset run (its members drag as one indivisible block). `key` is the first
- * member's id (stable within a render); `entryIds` are the member ids in order;
- * `groupId` is the run's superset group, or `null` for a solo item.
- */
-export interface ExerciseReorderItem {
-  key: string;
-  entryIds: string[];
-  groupId: number | null;
-}
-
-/**
- * Collapse an exercise list into draggable items — solos plus one item per
- * adjacent 2+ superset run (same walk as `buildStepsFromSession`). Stale
- * same-value singletons (non-adjacent repeats) aren't runs, so they surface as
- * solo items. Shape matches both session entries and `WorkoutCardExercise`.
- */
-export function buildExerciseReorderItems(
-  exercises: { id: string; superset_group?: number | null }[],
-): ExerciseReorderItem[] {
-  const runByFirstId = new Map(
-    getSupersetRuns(exercises).map((run) => [run.entryIds[0], run]),
-  );
-  const consumed = new Set<string>();
-  const items: ExerciseReorderItem[] = [];
-  for (const exercise of exercises) {
-    if (consumed.has(exercise.id)) continue;
-    const run = runByFirstId.get(exercise.id);
-    if (run) {
-      for (const id of run.entryIds) consumed.add(id);
-      items.push({ key: run.entryIds[0], entryIds: [...run.entryIds], groupId: run.groupId });
-    } else {
-      items.push({ key: exercise.id, entryIds: [exercise.id], groupId: null });
-    }
-  }
-  return items;
-}
-
-/**
- * True when a draft exercise list has 2+ draggable items — the gate the form
- * screens use to show their header reorder trigger. Two exercises fused into
- * one superset run collapse to a single item, so they don't count.
- */
-export function canReorderDraftExercises(exercises: WorkoutDraftExercise[]): boolean {
-  return (
-    buildExerciseReorderItems(
-      exercises.map((e) => ({ id: e.clientId, superset_group: e.supersetGroup ?? null })),
-    ).length >= 2
-  );
-}
-
-/**
- * Shared reorder core for both session entries and form drafts, keyed by the
- * two field names that differ between them (`id`/`superset_group` vs
- * `clientId`/`supersetGroup`).
- *
- * `from`/`to` are *item* indices (see {@link buildExerciseReorderItems}) with
- * remove-then-insert semantics: `to` is the target index in the array after the
- * moved item is removed — matching `computeReorderTargetIndex`'s output
- * convention. A no-op or out-of-range move returns the input array by identity.
- *
- * Before moving, any group value not part of an adjacent 2+ run is cleared:
- * `startWorkout`/form POPULATE paths don't normalize, so stale same-value
- * singletons can exist, and a move that landed two of them adjacent would
- * otherwise fuse them into a spurious group in `normalize*SupersetGroups`.
- *
- * Consciously accepted edge: two *separate* runs sharing the same group id
- * (only reachable via pathological external data) merge into one run when a
- * move makes them adjacent — adjacency is already app-wide truth for grouping.
- */
-function moveExerciseItemByFields<T extends object>(
-  exercises: T[],
-  from: number,
-  to: number,
-  idField: keyof T & string,
-  groupField: keyof T & string,
-): T[] {
-  const items = buildExerciseReorderItems(
-    exercises.map((e) => ({
-      id: e[idField] as unknown as string,
-      superset_group: (e[groupField] as unknown as number | null | undefined) ?? null,
-    })),
-  );
-  if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) {
-    return exercises;
-  }
-
-  // Ids that belong to a real run keep their group; every other non-null group
-  // value is a stale singleton and is cleared so it can't fuse after the move.
-  const grouped = new Set(
-    items.filter((item) => item.groupId != null).flatMap((item) => item.entryIds),
-  );
-  const clearedById = new Map<string, T>();
-  for (const exercise of exercises) {
-    const id = exercise[idField] as unknown as string;
-    const group = exercise[groupField] as unknown as number | null | undefined;
-    clearedById.set(
-      id,
-      group != null && !grouped.has(id) ? ({ ...exercise, [groupField]: null } as T) : exercise,
-    );
-  }
-
-  const nextItems = [...items];
-  const [moved] = nextItems.splice(from, 1);
-  nextItems.splice(to, 0, moved);
-
-  return nextItems.flatMap((item) => item.entryIds.map((id) => clearedById.get(id)!));
-}
-
-/** Reorder live-session entries by draggable item (see {@link moveExerciseItemByFields}). */
-export function moveSessionExerciseItem(
-  exercises: ExerciseEntryResponse[],
-  from: number,
-  to: number,
-): ExerciseEntryResponse[] {
-  return moveExerciseItemByFields(exercises, from, to, 'id', 'superset_group');
-}
-
-/** Reorder form-draft exercises by draggable item (see {@link moveExerciseItemByFields}). */
-export function moveDraftExerciseItem(
-  exercises: WorkoutDraftExercise[],
-  from: number,
-  to: number,
-): WorkoutDraftExercise[] {
-  return moveExerciseItemByFields(exercises, from, to, 'clientId', 'supersetGroup');
-}
-
-/**
- * Superset rail colours come from the theme's category palette (the
- * providerColor.ts pattern): fixed var-name order here, resolved through
- * useCSSVariable by consumers so they track the active theme.
- */
-export const SUPERSET_PALETTE_VARS = [
-  '--color-cat-blue',
-  '--color-cat-orange',
-  '--color-cat-violet',
-  '--color-cat-green',
-  '--color-cat-pink',
-  '--color-cat-teal',
-  '--color-cat-amber',
-  '--color-cat-slate',
-];
-
-/**
- * Maps each grouped entry id to a palette colour by run position
- * (palette[i % length]) — index assignment, not group-id hashing, so colours
- * stay collision-free while the visible groups fit the palette.
- */
-export function buildSupersetColorMap(
-  runs: SupersetRun[],
-  palette: string[],
-): Map<string, string> {
-  const byEntryId = new Map<string, string>();
-  if (palette.length > 0) {
-    runs.forEach((run, index) => {
-      const color = palette[index % palette.length];
-      for (const entryId of run.entryIds) {
-        byEntryId.set(entryId, color);
-      }
-    });
-  }
-  return byEntryId;
-}
-
 // --- Live-start payload builders ---
 
-/** Default rest period between sets, in seconds. */
-export const DEFAULT_REST_SEC = 90;
 
 /**
  * Request-shaped sibling of activeWorkoutStore's `makeDefaultSet` (which

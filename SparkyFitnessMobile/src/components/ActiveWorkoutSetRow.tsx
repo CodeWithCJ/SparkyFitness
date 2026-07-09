@@ -5,7 +5,6 @@ import {
   Pressable,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -19,6 +18,11 @@ import { useCSSVariable } from 'uniwind';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import FormInput from './FormInput';
 import CompletionCheck from './CompletionCheck';
+import {
+  SetInputAccessoryBar,
+  SetSwipeDeleteAction,
+  type SetAccessoryAction,
+} from './SetRowChrome';
 import { formatRest } from './RestPeriodChip';
 import { parseDecimalInput } from '../utils/numericInput';
 import { weightFromKg, weightToKg } from '../utils/unitConversions';
@@ -243,8 +247,6 @@ function ActiveWorkoutSetRow({
   const [
     accentPrimary,
     textMuted,
-    chromeBg,
-    chromeBorder,
     rpeEasy,
     rpeModerate,
     rpeHard,
@@ -252,15 +254,11 @@ function ActiveWorkoutSetRow({
   ] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
-    '--color-chrome',
-    '--color-chrome-border',
     RPE_TONE_VARS.easy,
     RPE_TONE_VARS.moderate,
     RPE_TONE_VARS.hard,
     RPE_TONE_VARS.max,
   ]) as [
-    string,
-    string,
     string,
     string,
     string,
@@ -295,7 +293,13 @@ function ActiveWorkoutSetRow({
     setPrevSignature(signature);
     setWeightDraft(formatDisplayWeight(set.weight, weightUnit));
     setRepsDraft(set.reps != null ? String(set.reps) : '');
-    setRpeDraft(set.rpe != null ? formatRpe(set.rpe) : '');
+    // RPE alone commits per keystroke in edit mode, so a re-seed can arrive
+    // mid-typing: leave the draft alone while its parse already matches the
+    // committed value (e.g. "0" clamps to 1 — rewriting would jump the text
+    // under the user's cursor). Blur still snaps the text via commitRpe.
+    if (parseRpeInput(rpeDraft) !== (set.rpe ?? null)) {
+      setRpeDraft(set.rpe != null ? formatRpe(set.rpe) : '');
+    }
   }
 
   const weightInputRef = useRef<TextInput>(null);
@@ -383,17 +387,50 @@ function ActiveWorkoutSetRow({
     [onCommitField, setId, set.reps],
   );
 
-  const commitRpe = useCallback(
+  // Store-commit only, no draft echo — the deactivation effect below may call
+  // this, and setting state from an effect is forbidden. Unchanged RPE needs
+  // no re-commit; the draft already holds its snapped display form.
+  const commitRpeValue = useCallback(
     (text: string) => {
-      // Unchanged RPE needs no re-commit; the draft already holds its snapped
-      // display form, so there is nothing to normalize either.
       if (text === (set.rpe != null ? formatRpe(set.rpe) : '')) return;
-      const value = parseRpeInput(text);
-      setRpeDraft(value != null ? formatRpe(value) : '');
-      onCommitField?.(setId, { rpe: value });
+      onCommitField?.(setId, { rpe: parseRpeInput(text) });
     },
     [onCommitField, setId, set.rpe],
   );
+
+  // Blur handler: commit, then snap the visible text to the committed form
+  // (e.g. "8.3" → "8.5"). Event-handler only.
+  const commitRpe = useCallback(
+    (text: string) => {
+      commitRpeValue(text);
+      const value = parseRpeInput(text);
+      setRpeDraft(value != null ? formatRpe(value) : '');
+    },
+    [commitRpeValue],
+  );
+
+  // Commit any in-progress drafts when this row stops being the active edit
+  // cell. Blur alone can't be trusted to land the commit: the accessory Done
+  // button and a tap on another row's cell both deactivate this row first, and
+  // the input can unmount before its native blur event reaches JS — dropping
+  // the onBlur commit entirely (RPE was the visible casualty; weight/reps are
+  // usually rescued by Log). The unchanged-value guards inside each commit
+  // helper make this idempotent with any blur that did fire.
+  useEffect(() => {
+    if (isActiveEditRow) return;
+    commitWeight(weightDraft);
+    commitReps(repsDraft);
+    if (metricColumn === 'rpe') commitRpeValue(rpeDraft);
+  }, [
+    isActiveEditRow,
+    commitWeight,
+    commitReps,
+    commitRpeValue,
+    metricColumn,
+    weightDraft,
+    repsDraft,
+    rpeDraft,
+  ]);
 
   // Log the set: flush any in-progress edits first so the values the user
   // sees are exactly what gets completed (and autosaved). The completion
@@ -590,59 +627,33 @@ function ActiveWorkoutSetRow({
     // One bar description, rendered into each input's accessory (only the
     // focused input's is on screen). Fresh elements per call so the three
     // InputAccessoryViews don't share a subtree.
+    const accessoryActions: SetAccessoryAction[] = [
+      ...(isEdit
+        ? [
+            {
+              key: 'advance',
+              label: activeField === 'weight' ? 'Next' : 'Next Set',
+              onPress: handleAdvance,
+            },
+          ]
+        : []),
+      ...(isLive && liveHasNextField
+        ? [{ key: 'next', label: 'Next', onPress: handleLiveNext }]
+        : []),
+      ...(isLive && state === 'current'
+        ? [{ key: 'log', label: 'Log', onPress: handleLog, bold: true }]
+        : []),
+    ];
     const renderAccessoryBar = () => (
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          backgroundColor: chromeBg,
-          borderTopWidth: 1,
-          borderTopColor: chromeBorder,
+      <SetInputAccessoryBar
+        onDone={() => {
+          onDeactivate?.();
+          weightInputRef.current?.blur();
+          repsInputRef.current?.blur();
+          rpeInputRef.current?.blur();
         }}
-      >
-        <TouchableOpacity
-          onPress={() => {
-            onDeactivate?.();
-            weightInputRef.current?.blur();
-            repsInputRef.current?.blur();
-            rpeInputRef.current?.blur();
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>Done</Text>
-        </TouchableOpacity>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
-          {isEdit && (
-            <TouchableOpacity
-              onPress={handleAdvance}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
-                {activeField === 'weight' ? 'Next' : 'Next Set'}
-              </Text>
-            </TouchableOpacity>
-          )}
-          {isLive && liveHasNextField && (
-            <TouchableOpacity
-              onPress={handleLiveNext}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>Next</Text>
-            </TouchableOpacity>
-          )}
-          {isLive && state === 'current' && (
-            <TouchableOpacity
-              onPress={handleLog}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={{ color: accentPrimary, fontWeight: '700', fontSize: 16 }}>Log</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+        actions={accessoryActions}
+      />
     );
     return (
       <>
@@ -849,15 +860,10 @@ function ActiveWorkoutSetRow({
   return (
     <ReanimatedSwipeable
       renderRightActions={() => (
-        <TouchableOpacity
-          className="bg-bg-danger justify-center items-center"
-          style={{ width: 72 }}
+        <SetSwipeDeleteAction
           onPress={() => onDelete?.(setId)}
-          activeOpacity={0.7}
           accessibilityLabel={`Delete set ${set.set_number}`}
-        >
-          <Text className="text-text-danger font-semibold text-sm">Delete</Text>
-        </TouchableOpacity>
+        />
       )}
       overshootRight={false}
       rightThreshold={40}

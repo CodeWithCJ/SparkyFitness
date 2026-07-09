@@ -688,9 +688,10 @@ async function updateExerciseEntry(
         steps = $10,
         sort_order = $11,
         exercise_name = $12,
-        updated_by_user_id = $13,
+        superset_group = $13,
+        updated_by_user_id = $14,
         updated_at = now()
-      WHERE id = $14 AND user_id = $15
+      WHERE id = $15 AND user_id = $16
       RETURNING id`,
       [
         updateData.exercise_id ?? null,
@@ -705,6 +706,7 @@ async function updateExerciseEntry(
         updateData.steps ?? null,
         updateData.sort_order ?? null,
         updateData.exercise_name ?? null,
+        updateData.superset_group ?? null,
         actingUserId,
         id,
         userId,

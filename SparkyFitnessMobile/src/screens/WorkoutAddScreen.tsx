@@ -355,6 +355,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     })
                   }
                   isEligibleForPrefill={isEligibleForPrefill}
+                  removeExerciseOnLastSetDelete
                 />
 
                 {/* Bottom spacer so content isn't hidden behind footer */}

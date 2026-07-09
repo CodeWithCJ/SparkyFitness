@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseEntryResponse } from '@workspace/shared';
@@ -7,7 +7,13 @@ import SafeImage from './SafeImage';
 import CompletionCheck from './CompletionCheck';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
-import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
+import {
+  CATEGORY_ICON_MAP,
+  SUPERSET_PALETTE_VARS,
+  buildSupersetColorMap,
+  getSupersetRuns,
+  type SupersetRun,
+} from '../utils/workoutSession';
 
 const THUMB_SIZE = 52;
 /** contentContainer gap-3 — non-last superset bars extend across it. */
@@ -19,6 +25,33 @@ export interface SupersetBorder {
   color: string;
   /** Last member of its run — the shared bar stops at this thumb. */
   isLast: boolean;
+}
+
+/**
+ * Superset presentation shared by every workout surface: adjacent 2+ runs and
+ * the per-member rail/bar descriptor in a per-group theme palette color. Pass
+ * session entries directly; the form list passes its drafts mapped to
+ * `{ id: clientId, superset_group: supersetGroup }`.
+ */
+export function useSupersetBorders(
+  exercises: { id: string; superset_group?: number | null }[],
+): { runs: SupersetRun[]; borders: Map<string, SupersetBorder> } {
+  const palette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
+  const runs = useMemo(() => getSupersetRuns(exercises), [exercises]);
+  const borders = useMemo(() => {
+    const colorByEntryId = buildSupersetColorMap(runs, palette);
+    const map = new Map<string, SupersetBorder>();
+    for (const run of runs) {
+      run.entryIds.forEach((entryId, index) => {
+        const color = colorByEntryId.get(entryId);
+        if (color != null) {
+          map.set(entryId, { color, isLast: index === run.entryIds.length - 1 });
+        }
+      });
+    }
+    return map;
+  }, [runs, palette]);
+  return { runs, borders };
 }
 
 interface ActiveWorkoutRailProps {
@@ -57,18 +90,33 @@ function ActiveWorkoutRail({
 
   const scrollRef = useRef<ScrollView>(null);
   const itemOffsetsRef = useRef<Record<string, number>>({});
+  // Focus target whose offset wasn't measured yet when the effect ran (first
+  // render, e.g. resuming mid-workout) — its own onLayout completes the scroll.
+  const pendingFocusRef = useRef<string | null>(null);
 
-  const handleItemLayout = useCallback((entryId: string, x: number) => {
-    itemOffsetsRef.current[entryId] = x;
+  const scrollToEntry = useCallback((entryId: string): boolean => {
+    const x = itemOffsetsRef.current[entryId];
+    if (x == null) return false;
+    scrollRef.current?.scrollTo({ x: Math.max(0, x - 24), animated: true });
+    return true;
   }, []);
+
+  const handleItemLayout = useCallback(
+    (entryId: string, x: number) => {
+      itemOffsetsRef.current[entryId] = x;
+      if (pendingFocusRef.current === entryId) {
+        pendingFocusRef.current = null;
+        scrollToEntry(entryId);
+      }
+    },
+    [scrollToEntry],
+  );
 
   // Keep the focused chip in view as the cursor advances or the log scrolls.
   useEffect(() => {
     if (focusedEntryId == null) return;
-    const x = itemOffsetsRef.current[focusedEntryId];
-    if (x == null) return;
-    scrollRef.current?.scrollTo({ x: Math.max(0, x - 24), animated: true });
-  }, [focusedEntryId]);
+    pendingFocusRef.current = scrollToEntry(focusedEntryId) ? null : focusedEntryId;
+  }, [focusedEntryId, scrollToEntry]);
 
   return (
     <ScrollView
@@ -95,6 +143,7 @@ function ActiveWorkoutRail({
         return (
           <Pressable
             key={exercise.id}
+            testID={`rail-chip-${exercise.id}`}
             onPress={() => onPressExercise(exercise.id)}
             onLayout={(e) => handleItemLayout(exercise.id, e.nativeEvent.layout.x)}
             accessibilityRole="button"

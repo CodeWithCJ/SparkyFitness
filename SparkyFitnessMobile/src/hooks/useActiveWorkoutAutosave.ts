@@ -47,6 +47,7 @@ export async function saveActiveWorkoutSession(
         state.session,
         state.completedSetIds,
         state.prSetIds,
+        state.startedAt,
       ),
     });
     useActiveWorkoutStore.getState().applyServerSession(result, sentRevision, sentEntryIds);

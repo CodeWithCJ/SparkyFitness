@@ -89,26 +89,29 @@ function renderRow(overrides?: RenderOverrides) {
   // enableSetType) so most tests exercise the static-check + onLongPress
   // fallbacks.
   const { onToggleComplete, onPressSetType, ...spreadCallbacks } = callbacks;
-  const utils = render(
+  const buildElement = (current?: RenderOverrides) => (
     <ActiveWorkoutSetRow
-      set={makeSet(overrides?.set as Partial<ExerciseEntrySetResponse>)}
-      displayNumber={overrides?.displayNumber ?? 1}
-      state={overrides?.state ?? 'current'}
-      metricColumn={overrides?.metricColumn ?? 'rpe'}
-      weightUnit={overrides?.weightUnit ?? 'kg'}
-      mode={overrides?.mode ?? (overrides?.readOnly ? 'view' : undefined)}
-      activeField={overrides?.activeField}
-      isFocused={overrides?.isFocused}
-      nextSetId={overrides?.nextSetId}
-      entryId={overrides?.entryId}
-      rpeEditable={overrides?.rpeEditable}
-      completedBadge={overrides?.completedBadge}
+      set={makeSet(current?.set as Partial<ExerciseEntrySetResponse>)}
+      displayNumber={current?.displayNumber ?? 1}
+      state={current?.state ?? 'current'}
+      metricColumn={current?.metricColumn ?? 'rpe'}
+      weightUnit={current?.weightUnit ?? 'kg'}
+      mode={current?.mode ?? (current?.readOnly ? 'view' : undefined)}
+      activeField={current?.activeField}
+      isFocused={current?.isFocused}
+      nextSetId={current?.nextSetId}
+      entryId={current?.entryId}
+      rpeEditable={current?.rpeEditable}
+      completedBadge={current?.completedBadge}
       {...spreadCallbacks}
-      onToggleComplete={overrides?.enableToggle ? onToggleComplete : undefined}
-      onPressSetType={overrides?.enableSetType ? onPressSetType : undefined}
-    />,
+      onToggleComplete={current?.enableToggle ? onToggleComplete : undefined}
+      onPressSetType={current?.enableSetType ? onPressSetType : undefined}
+    />
   );
-  return { ...utils, callbacks };
+  const utils = render(buildElement(overrides));
+  /** Re-render the same row (same callbacks) with updated overrides — e.g. the committed set flowing back. */
+  const rerenderRow = (next: RenderOverrides) => utils.rerender(buildElement(next));
+  return { ...utils, callbacks, rerenderRow };
 }
 
 function textColor(element: { props: { style: unknown } }) {
@@ -291,6 +294,33 @@ describe('ActiveWorkoutSetRow', () => {
       for (const order of callbacks.onCommitField.mock.invocationCallOrder) {
         expect(order).toBeLessThan(completeOrder);
       }
+    });
+
+    it('commits in-progress drafts when the row deactivates without a blur', () => {
+      // The accessory Done button and a tap on another row both deactivate the
+      // row before the input's native blur event can reach JS — the commit
+      // must not depend on blur firing.
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+      });
+      fireEvent.changeText(getByLabelText('Weight'), '80');
+      fireEvent.changeText(getByLabelText('Reps'), '8');
+      fireEvent.changeText(getByLabelText('RPE'), '8');
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+
+      rerenderRow({ ...base, isFocused: false });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 80 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 8 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
+    });
+
+    it('commits nothing when an untouched row deactivates', () => {
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { callbacks, rerenderRow } = renderRow({ ...base, isFocused: true });
+      rerenderRow({ ...base, isFocused: false });
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
     });
 
     it('hides the RPE input for non-RPE metric columns', () => {
@@ -569,6 +599,24 @@ describe('ActiveWorkoutSetRow', () => {
         });
         fireEvent.changeText(getByLabelText('RPE'), '11');
         expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 10 });
+      });
+
+      it('does not rewrite the RPE text mid-typing when the clamp changes the committed value', () => {
+        const base = { mode: 'edit' as const, state: 'current' as const, metricColumn: 'rpe' as const };
+        const { getByLabelText, callbacks, rerenderRow } = renderRow({
+          ...base,
+          set: editSet(),
+        });
+        const rpe = getByLabelText('RPE');
+        fireEvent.changeText(rpe, '0');
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 1 });
+        // The committed (clamped) value flows back into the row; the visible
+        // text must stay what the user typed, not jump "0" → "1".
+        rerenderRow({ ...base, set: editSet({ rpe: 1 }) });
+        expect(getByLabelText('RPE').props.value).toBe('0');
+        // Blur still snaps the display to the committed form.
+        fireEvent(getByLabelText('RPE'), 'blur');
+        expect(getByLabelText('RPE').props.value).toBe('1');
       });
 
       it('hides the RPE input when rpeEditable is false', () => {

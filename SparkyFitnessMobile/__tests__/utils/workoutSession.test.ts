@@ -1698,6 +1698,73 @@ describe('workoutSession', () => {
       expect(payload[0].duration_minutes).toBe(25);
     });
 
+    describe('wall-clock duration stamping', () => {
+      const startedAt = Date.UTC(2026, 2, 20, 10, 0, 0);
+      const min = (n: number) => startedAt + n * 60_000;
+
+      it('splits start→last-completion across exercises by completed-set count', () => {
+        const session = makePreset({
+          exercises: [
+            makeExercise({
+              sets: [makeSet({ id: 101 }), makeSet({ id: 102, set_number: 2 })],
+            }),
+            makeExercise({
+              id: ENTRY_B,
+              exercise_id: EX_2,
+              sets: [makeSet({ id: 201 }), makeSet({ id: 202, set_number: 2 })],
+            }),
+          ],
+        });
+
+        // Three of four sets completed; the last one 30 min in.
+        const completed = { '101': min(5), '102': min(12), '201': min(30) };
+        const payload = buildSessionExercisesPayload(session, completed, {}, startedAt);
+        expect(payload[0].duration_minutes).toBe(20); // 30 × 2/3
+        expect(payload[1].duration_minutes).toBe(10); // 30 × 1/3
+      });
+
+      it('gives an exercise with no completed sets zero duration', () => {
+        const session = makePreset({
+          exercises: [
+            makeExercise({ sets: [makeSet({ id: 101 })] }),
+            makeExercise({ id: ENTRY_B, exercise_id: EX_2, sets: [makeSet({ id: 201 })] }),
+          ],
+        });
+        const payload = buildSessionExercisesPayload(session, { '101': min(10) }, {}, startedAt);
+        expect(payload[0].duration_minutes).toBe(10);
+        expect(payload[1].duration_minutes).toBe(0);
+      });
+
+      it('round-trips existing durations when nothing is completed', () => {
+        const session = makePreset({
+          exercises: [makeExercise({ duration_minutes: 25 })],
+        });
+        const payload = buildSessionExercisesPayload(session, {}, {}, startedAt);
+        expect(payload[0].duration_minutes).toBe(25);
+      });
+
+      it('round-trips existing durations when the only completions predate the start (resumed session)', () => {
+        const session = makePreset({
+          exercises: [makeExercise({ duration_minutes: 25, sets: [makeSet({ id: 101 })] })],
+        });
+        const payload = buildSessionExercisesPayload(
+          session,
+          { '101': startedAt - 60_000 },
+          {},
+          startedAt,
+        );
+        expect(payload[0].duration_minutes).toBe(25);
+      });
+
+      it('round-trips existing durations when startedAt is not provided', () => {
+        const session = makePreset({
+          exercises: [makeExercise({ duration_minutes: 25, sets: [makeSet({ id: 101 })] })],
+        });
+        const payload = buildSessionExercisesPayload(session, { '101': min(10) }, {});
+        expect(payload[0].duration_minutes).toBe(25);
+      });
+    });
+
     it('emits explicit nulls for absent exercise notes', () => {
       const session = makePreset({ exercises: [makeExercise({ notes: null })] });
       expect(buildSessionExercisesPayload(session, {}, {})[0].notes).toBeNull();

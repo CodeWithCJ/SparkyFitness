@@ -20,16 +20,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCSSVariable } from 'uniwind';
 
 import ActiveWorkoutHeader, {
   buildExerciseProgress,
 } from '../components/ActiveWorkoutHeader';
-import ActiveWorkoutRail from '../components/ActiveWorkoutRail';
-import ActiveWorkoutExerciseCard, {
-  METRIC_MENU_LABELS,
-  METRIC_OPTIONS,
-} from '../components/ActiveWorkoutExerciseCard';
+import ActiveWorkoutRail, { useSupersetBorders } from '../components/ActiveWorkoutRail';
+import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
+import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
 import ActiveWorkoutRestBar from '../components/ActiveWorkoutRestBar';
 import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
@@ -49,14 +46,9 @@ import { normalizeDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
 import {
   buildExerciseReorderItems,
-  buildSupersetColorMap,
   exerciseFromSnapshot,
-  getSupersetRuns,
-  SET_TYPE_OPTIONS,
-  SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import type { SupersetBorder } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ActiveWorkout'>;
@@ -154,7 +146,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const queryClient = useQueryClient();
 
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
-  const setMetricColumn = useAppPreferencesStore((s) => s.setActiveWorkoutMetricColumn);
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
@@ -225,21 +216,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   // Superset display: adjacent 2+ runs get a flat left rail (log cards) and a
   // bottom bar (rail thumbs) in a per-group palette color.
-  const supersetPalette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
-  const supersetRuns = useMemo(() => getSupersetRuns(session?.exercises ?? []), [session]);
-  const supersetBorders = useMemo(() => {
-    const colorByEntryId = buildSupersetColorMap(supersetRuns, supersetPalette);
-    const map = new Map<string, SupersetBorder>();
-    for (const run of supersetRuns) {
-      run.entryIds.forEach((entryId, index) => {
-        const color = colorByEntryId.get(entryId);
-        if (color != null) {
-          map.set(entryId, { color, isLast: index === run.entryIds.length - 1 });
-        }
-      });
-    }
-    return map;
-  }, [supersetRuns, supersetPalette]);
+  const exercisesForBorders = useMemo(() => session?.exercises ?? [], [session]);
+  const { runs: supersetRuns, borders: supersetBorders } =
+    useSupersetBorders(exercisesForBorders);
 
   // Expanded state: the cursor's exercise auto-expands as the workout
   // advances, auto-collapsing only the previously auto-expanded card — cards
@@ -653,8 +632,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     store.deleteSet(setId);
   }, []);
 
-  // Set-type menu: tapping a set number (or long-pressing the row) anchors a
-  // menu of the set types here. Replaces an Alert, which capped at 3 buttons on
+  // Set-type menu: tapping a set number (or long-pressing the row) anchors
+  // the shared SetTypeMenu. Replaces an Alert, which capped at 3 buttons on
   // Android and hid half the options.
   const [setTypeMenu, setSetTypeMenu] = useState<{ setId: string; anchor: AnchorRect } | null>(
     null,
@@ -662,22 +641,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const handlePressSetType = useCallback((setId: string, anchor: AnchorRect) => {
     setSetTypeMenu({ setId, anchor });
   }, []);
-  const setTypeMenuItems = useMemo(() => {
-    if (setTypeMenu == null || session == null) return [];
-    const { setId } = setTypeMenu;
-    let currentType = 'normal';
+  const setTypeCurrent = useMemo(() => {
+    if (setTypeMenu == null || session == null) return null;
     for (const exercise of session.exercises) {
-      const set = exercise.sets.find((s) => String(s.id) === setId);
-      if (set) {
-        currentType = set.set_type ?? 'normal';
-        break;
-      }
+      const set = exercise.sets.find((s) => String(s.id) === setTypeMenu.setId);
+      if (set) return set.set_type ?? 'normal';
     }
-    return SET_TYPE_OPTIONS.map((type) => ({
-      key: type,
-      label: `${type === currentType ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
-      onPress: () => useActiveWorkoutStore.getState().updateSetField(setId, { set_type: type }),
-    }));
+    return null;
   }, [setTypeMenu, session]);
 
   const handleDiscard = useCallback(() => {
@@ -988,19 +958,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onSubmit={handleRenameSubmit}
       />
 
-      <AnchoredMenu
-        visible={metricMenuAnchor != null}
+      <MetricColumnMenu
         anchor={metricMenuAnchor}
         onClose={() => setMetricMenuAnchor(null)}
-        minWidth={160}
-        items={METRIC_OPTIONS.map((option) => ({
-          key: option,
-          label:
-            option === metricColumn
-              ? `✓ ${METRIC_MENU_LABELS[option]}`
-              : METRIC_MENU_LABELS[option],
-          onPress: () => setMetricColumn(option),
-        }))}
       />
 
       <AnchoredMenu
@@ -1011,12 +971,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         items={overflowMenuItems}
       />
 
-      <AnchoredMenu
-        visible={setTypeMenu != null && setTypeMenuItems.length > 0}
-        anchor={setTypeMenu?.anchor ?? null}
+      <SetTypeMenu
+        anchor={setTypeCurrent != null ? (setTypeMenu?.anchor ?? null) : null}
+        currentType={setTypeCurrent}
         onClose={() => setSetTypeMenu(null)}
-        minWidth={180}
-        items={setTypeMenuItems}
+        onSelect={(type) => {
+          const setId = setTypeMenu?.setId;
+          if (setId != null) {
+            useActiveWorkoutStore.getState().updateSetField(setId, { set_type: type });
+          }
+        }}
       />
 
       <WorkoutReorderList

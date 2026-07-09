@@ -1,33 +1,22 @@
-import { useReducer, useRef, useCallback } from 'react';
+import { useReducer, useCallback } from 'react';
 import { clearDraft } from '../services/workoutDraftService';
 import { useDraftPersistence } from './useDraftPersistence';
+import {
+  draftExercisesReducer,
+  generateClientId,
+  useDraftExerciseActions,
+  type DraftExercisesAction,
+} from './draftExercisesSlice';
 import { getTodayDate, normalizeDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
-import {
-  DEFAULT_REST_SEC,
-  buildExercisesPayload,
-  moveDraftExerciseItem,
-  normalizeDraftSupersetGroups,
-  supersetDraftExercises,
-  ungroupDraftExercise,
-} from '../utils/workoutSession';
-import type { Exercise } from '../types/exercise';
-import type {
-  WorkoutDraft,
-  WorkoutDraftExercise,
-  WorkoutDraftSet,
-  WorkoutSetMetaPatch,
-} from '../types/drafts';
+import { buildExercisesPayload } from '../utils/workoutSession';
+import type { WorkoutDraft, WorkoutDraftExercise } from '../types/drafts';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { WorkoutPreset } from '../types/workoutPresets';
 
 export type { WorkoutDraft, WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 
 // --- Helpers ---
-
-function generateClientId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
-}
 
 function formatWorkoutDate(dateString: string): string {
   const [year, month, day] = dateString.split('-').map(Number);
@@ -80,19 +69,10 @@ export function getWorkoutDraftSubmission(
 export type PresetClientIds = { exerciseClientId: string; setClientIds: string[] }[];
 
 type WorkoutFormAction =
+  | DraftExercisesAction
   | { type: 'RESTORE_DRAFT'; draft: WorkoutDraft }
   | { type: 'SET_DATE'; date: string }
   | { type: 'SET_NAME'; name: string }
-  | { type: 'ADD_EXERCISE'; exercise: Exercise; exerciseClientId: string; setClientId: string }
-  | { type: 'REMOVE_EXERCISE'; clientId: string }
-  | { type: 'ADD_SET'; exerciseClientId: string; setClientId: string }
-  | { type: 'REMOVE_SET'; exerciseClientId: string; setClientId: string }
-  | { type: 'UPDATE_SET_FIELD'; exerciseClientId: string; setClientId: string; field: 'weight' | 'reps'; value: string }
-  | { type: 'UPDATE_SET_META'; exerciseClientId: string; setClientId: string; patch: WorkoutSetMetaPatch }
-  | { type: 'SET_EXERCISE_REST'; exerciseClientId: string; seconds: number }
-  | { type: 'SUPERSET_WITH'; currentClientId: string; pickedClientId: string }
-  | { type: 'UNGROUP_EXERCISE'; clientId: string }
-  | { type: 'REORDER_EXERCISES'; fromItemIndex: number; toItemIndex: number }
   | { type: 'RESET' }
   | { type: 'POPULATE'; session: PresetSessionResponse; weightUnit: 'kg' | 'lbs' }
   | {
@@ -122,133 +102,6 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
 
     case 'SET_NAME':
       return { ...state, name: action.name, nameManuallySet: true };
-
-    case 'ADD_EXERCISE':
-      return {
-        ...state,
-        exercises: [
-          ...state.exercises,
-          {
-            clientId: action.exerciseClientId,
-            exerciseId: action.exercise.id,
-            exerciseName: action.exercise.name,
-            exerciseCategory: action.exercise.category,
-            images: action.exercise.images ?? [],
-            sets: [{ clientId: action.setClientId, weight: '', reps: '', restTime: DEFAULT_REST_SEC }],
-          },
-        ],
-      };
-
-    case 'REMOVE_EXERCISE':
-      return {
-        ...state,
-        exercises: normalizeDraftSupersetGroups(
-          state.exercises.filter(e => e.clientId !== action.clientId),
-        ),
-      };
-
-    case 'ADD_SET': {
-      return {
-        ...state,
-        exercises: state.exercises.map(exercise => {
-          if (exercise.clientId !== action.exerciseClientId) return exercise;
-          const lastSet = exercise.sets[exercise.sets.length - 1];
-          const firstSet = exercise.sets[0];
-          const newSet: WorkoutDraftSet = {
-            clientId: action.setClientId,
-            weight: lastSet?.weight ?? '',
-            reps: lastSet?.reps ?? '',
-            restTime: firstSet?.restTime ?? DEFAULT_REST_SEC,
-          };
-          return { ...exercise, sets: [...exercise.sets, newSet] };
-        }),
-      };
-    }
-
-    case 'REMOVE_SET': {
-      return {
-        ...state,
-        exercises: state.exercises.map(exercise => {
-          if (exercise.clientId !== action.exerciseClientId) return exercise;
-          return {
-            ...exercise,
-            sets: exercise.sets.filter(s => s.clientId !== action.setClientId),
-          };
-        }),
-      };
-    }
-
-    case 'UPDATE_SET_FIELD': {
-      return {
-        ...state,
-        exercises: state.exercises.map(exercise => {
-          if (exercise.clientId !== action.exerciseClientId) return exercise;
-          return {
-            ...exercise,
-            sets: exercise.sets.map(set => {
-              if (set.clientId !== action.setClientId) return set;
-              return { ...set, [action.field]: action.value };
-            }),
-          };
-        }),
-      };
-    }
-
-    case 'SET_EXERCISE_REST': {
-      return {
-        ...state,
-        exercises: state.exercises.map(exercise => {
-          if (exercise.clientId !== action.exerciseClientId) return exercise;
-          return {
-            ...exercise,
-            sets: exercise.sets.map(set => ({ ...set, restTime: action.seconds })),
-          };
-        }),
-      };
-    }
-
-    case 'UPDATE_SET_META': {
-      return {
-        ...state,
-        exercises: state.exercises.map(exercise => {
-          if (exercise.clientId !== action.exerciseClientId) return exercise;
-          return {
-            ...exercise,
-            sets: exercise.sets.map(set =>
-              set.clientId === action.setClientId ? { ...set, ...action.patch } : set,
-            ),
-          };
-        }),
-      };
-    }
-
-    case 'SUPERSET_WITH':
-      return {
-        ...state,
-        exercises: supersetDraftExercises(
-          state.exercises,
-          action.currentClientId,
-          action.pickedClientId,
-        ),
-      };
-
-    case 'UNGROUP_EXERCISE':
-      return {
-        ...state,
-        exercises: ungroupDraftExercise(state.exercises, action.clientId),
-      };
-
-    // Runs move atomically and the mover pre-clears stale group values, so no
-    // remainders can form — normalizeDraftSupersetGroups is unnecessary here.
-    case 'REORDER_EXERCISES':
-      return {
-        ...state,
-        exercises: moveDraftExerciseItem(
-          state.exercises,
-          action.fromItemIndex,
-          action.toItemIndex,
-        ),
-      };
 
     case 'RESET':
       return createEmptyDraft();
@@ -316,8 +169,12 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
         })),
       };
 
-    default:
-      return state;
+    // Everything else is a shared exercise-array edit. Identity return from
+    // the slice (unknown action, no-op edit) keeps the state object identical.
+    default: {
+      const exercises = draftExercisesReducer(state.exercises, action);
+      return exercises === state.exercises ? state : { ...state, exercises };
+    }
   }
 }
 
@@ -334,7 +191,20 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
   const skipDraftLoad = options?.skipDraftLoad ?? false;
   const initialDate = options?.initialDate;
   const [state, dispatch] = useReducer(workoutFormReducer, undefined, createEmptyDraft);
-  const exercisesModifiedRef = useRef(false);
+
+  const {
+    exercisesModifiedRef,
+    addExercise,
+    removeExercise,
+    addSet,
+    removeSet,
+    updateSetField,
+    updateSetMeta,
+    setExerciseRest,
+    supersetWith,
+    ungroupExercise,
+    reorderExercises,
+  } = useDraftExerciseActions(dispatch);
 
   const { clearPersistedDraft } = useDraftPersistence({
     state,
@@ -344,67 +214,6 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     onDraftLoaded: (draft) => dispatch({ type: 'RESTORE_DRAFT', draft }),
     onInitialDate: initialDate ? () => dispatch({ type: 'SET_DATE', date: initialDate }) : undefined,
   });
-
-  const addExercise = useCallback((exercise: Exercise): { exerciseClientId: string; setClientId: string } => {
-    exercisesModifiedRef.current = true;
-    const exerciseClientId = generateClientId();
-    const setClientId = generateClientId();
-    dispatch({ type: 'ADD_EXERCISE', exercise, exerciseClientId, setClientId });
-    return { exerciseClientId, setClientId };
-  }, []);
-
-  const removeExercise = useCallback((clientId: string) => {
-    exercisesModifiedRef.current = true;
-    dispatch({ type: 'REMOVE_EXERCISE', clientId });
-  }, []);
-
-  const addSet = useCallback((exerciseClientId: string): string => {
-    exercisesModifiedRef.current = true;
-    const setClientId = generateClientId();
-    dispatch({ type: 'ADD_SET', exerciseClientId, setClientId });
-    return setClientId;
-  }, []);
-
-  const removeSet = useCallback((exerciseClientId: string, setClientId: string) => {
-    exercisesModifiedRef.current = true;
-    dispatch({ type: 'REMOVE_SET', exerciseClientId, setClientId });
-  }, []);
-
-  const updateSetField = useCallback(
-    (exerciseClientId: string, setClientId: string, field: 'weight' | 'reps', value: string) => {
-      exercisesModifiedRef.current = true;
-      dispatch({ type: 'UPDATE_SET_FIELD', exerciseClientId, setClientId, field, value });
-    },
-    [],
-  );
-
-  const updateSetMeta = useCallback(
-    (exerciseClientId: string, setClientId: string, patch: WorkoutSetMetaPatch) => {
-      exercisesModifiedRef.current = true;
-      dispatch({ type: 'UPDATE_SET_META', exerciseClientId, setClientId, patch });
-    },
-    [],
-  );
-
-  const setExerciseRest = useCallback((exerciseClientId: string, seconds: number) => {
-    exercisesModifiedRef.current = true;
-    dispatch({ type: 'SET_EXERCISE_REST', exerciseClientId, seconds });
-  }, []);
-
-  const supersetWith = useCallback((currentClientId: string, pickedClientId: string) => {
-    exercisesModifiedRef.current = true;
-    dispatch({ type: 'SUPERSET_WITH', currentClientId, pickedClientId });
-  }, []);
-
-  const ungroupExercise = useCallback((clientId: string) => {
-    exercisesModifiedRef.current = true;
-    dispatch({ type: 'UNGROUP_EXERCISE', clientId });
-  }, []);
-
-  const reorderExercises = useCallback((fromItemIndex: number, toItemIndex: number) => {
-    exercisesModifiedRef.current = true;
-    dispatch({ type: 'REORDER_EXERCISES', fromItemIndex, toItemIndex });
-  }, []);
 
   const setName = useCallback((name: string) => {
     dispatch({ type: 'SET_NAME', name });
@@ -430,7 +239,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
   const populate = useCallback((session: PresetSessionResponse, weightUnit: 'kg' | 'lbs') => {
     exercisesModifiedRef.current = false;
     dispatch({ type: 'POPULATE', session, weightUnit });
-  }, []);
+  }, [exercisesModifiedRef]);
 
   const populateFromPreset = useCallback(
     (preset: WorkoutPreset, weightUnit: 'kg' | 'lbs', date?: string): string[] => {
@@ -442,7 +251,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
       dispatch({ type: 'POPULATE_FROM_PRESET', preset, weightUnit, date, clientIds });
       return clientIds.map(c => c.exerciseClientId);
     },
-    [],
+    [exercisesModifiedRef],
   );
 
   return {

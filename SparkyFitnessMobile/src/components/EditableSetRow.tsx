@@ -7,6 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
+import { SetInputAccessoryBar, SetSwipeDeleteAction } from './SetRowChrome';
 import { parseDecimalInput } from '../utils/numericInput';
 
 interface EditableSetRowProps {
@@ -46,12 +47,7 @@ function EditableSetRow({
   onRemoveSet,
   onAddSet,
 }: EditableSetRowProps) {
-  const [dangerColor, accentPrimary, chromeBg, chromeBorder] = useCSSVariable([
-    '--color-bg-danger',
-    '--color-accent-primary',
-    '--color-chrome',
-    '--color-chrome-border',
-  ]) as [string, string, string, string];
+  const dangerColor = useCSSVariable('--color-bg-danger') as string;
 
   const setKey = `${exerciseClientId}:${setClientId}`;
   const weightInputRef = useRef<TextInput>(null);
@@ -178,29 +174,10 @@ function EditableSetRow({
         </View>
         {Platform.OS === 'ios' && (
           <InputAccessoryView nativeID={accessoryId}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                backgroundColor: chromeBg,
-                borderTopWidth: 1,
-                borderTopColor: chromeBorder,
-              }}
-            >
-              <TouchableOpacity onPress={onDeactivate} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
-                  Done
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleAdvance} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
-                  {advanceLabel}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <SetInputAccessoryBar
+              onDone={onDeactivate}
+              actions={[{ key: 'advance', label: advanceLabel, onPress: handleAdvance }]}
+            />
           </InputAccessoryView>
         )}
       </>
@@ -212,16 +189,7 @@ function EditableSetRow({
 
   return (
     <ReanimatedSwipeable
-      renderRightActions={() => (
-        <TouchableOpacity
-          className="bg-bg-danger justify-center items-center"
-          style={{ width: 72 }}
-          onPress={handleRemove}
-          activeOpacity={0.7}
-        >
-          <Text className="text-text-danger font-semibold text-sm">Delete</Text>
-        </TouchableOpacity>
-      )}
+      renderRightActions={() => <SetSwipeDeleteAction onPress={handleRemove} />}
       overshootRight={false}
       rightThreshold={40}
     >

@@ -34,15 +34,6 @@ export const METRIC_COLUMN_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
   tenrm: '10RM',
 };
 
-/** Options and labels for the metric-column picker menu the header opens. */
-export const METRIC_OPTIONS: ActiveWorkoutMetricColumn[] = ['rpe', 'volume', 'e1rm', 'tenrm'];
-
-export const METRIC_MENU_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
-  rpe: 'RPE',
-  volume: 'Volume',
-  e1rm: 'Est. 1RM',
-  tenrm: 'Est. 10RM',
-};
 
 /** Working-set numbers per set index; warmups repeat the previous number (they render the `W` pill instead). */
 function buildWorkingSetNumbers(sets: WorkoutCardSet[]): number[] {

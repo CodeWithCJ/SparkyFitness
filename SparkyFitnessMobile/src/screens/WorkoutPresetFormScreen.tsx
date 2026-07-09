@@ -11,7 +11,6 @@ import {
   useCreateWorkoutPreset,
   useUpdateWorkoutPreset,
   usePreferences,
-  useProfile,
 } from '../hooks';
 import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
@@ -153,7 +152,6 @@ interface CreatePresetModeProps {
 }
 
 const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }) => {
-  const { profile } = useProfile();
   const { preferences } = usePreferences();
   const weightUnit = getWeightUnit(preferences?.default_weight_unit);
 
@@ -238,18 +236,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
       return;
     }
 
-    if (!profile?.id) {
-      Toast.show({
-        type: 'error',
-        text1: 'Profile not loaded',
-        text2: 'Please try again in a moment.',
-      });
-      return;
-    }
-
     const trimmedDescription = state.description.trim();
     const payload: WorkoutPresetCreatePayload = {
-      user_id: profile.id,
       name: trimmedName,
       description: trimmedDescription.length > 0 ? trimmedDescription : null,
       is_public: false,

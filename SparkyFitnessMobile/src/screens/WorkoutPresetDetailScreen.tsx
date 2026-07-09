@@ -2,13 +2,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, View, Text, ScrollView } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
-import ActiveWorkoutExerciseCard, {
-  METRIC_MENU_LABELS,
-  METRIC_OPTIONS,
-} from '../components/ActiveWorkoutExerciseCard';
-import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
+import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
+import { MetricColumnMenu } from '../components/WorkoutMenus';
+import { type AnchorRect } from '../components/AnchoredMenu';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { clearDraft, loadActiveDraft } from '../services/workoutDraftService';
 import {
@@ -24,13 +21,10 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
   buildPresetStartExercisesPayload,
-  buildSupersetColorMap,
-  getSupersetRuns,
   makeSparseExercise,
   presetExerciseToCardExercise,
-  SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
-import type { SupersetBorder } from '../components/ActiveWorkoutRail';
+import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type WorkoutPresetDetailScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
@@ -78,6 +72,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           category: card.exercise_snapshot?.category,
           images: card.exercise_snapshot?.images,
         }),
+        hideWorkoutActions: true,
       });
     },
     [cardExercises, navigation],
@@ -85,28 +80,13 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
 
   // Metric column is shared with the workout screens (intended).
   const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
-  const setMetricColumn = useAppPreferencesStore(s => s.setActiveWorkoutMetricColumn);
   const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
   const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
     setMetricMenuAnchor(anchor);
   }, []);
 
   // Superset rails, matching the workout detail presentation.
-  const supersetPalette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
-  const supersetBorders = useMemo(() => {
-    const runs = getSupersetRuns(cardExercises);
-    const colorByEntryId = buildSupersetColorMap(runs, supersetPalette);
-    const map = new Map<string, SupersetBorder>();
-    for (const run of runs) {
-      run.entryIds.forEach((entryId, index) => {
-        const color = colorByEntryId.get(entryId);
-        if (color != null) {
-          map.set(entryId, { color, isLast: index === run.entryIds.length - 1 });
-        }
-      });
-    }
-    return map;
-  }, [cardExercises, supersetPalette]);
+  const { borders: supersetBorders } = useSupersetBorders(cardExercises);
 
   // WorkoutPreset uses snake_case `user_id` (it's a thin wrapper over server
   // JSON), unlike Exercise/FoodInfoItem which use camelCase `userId`.
@@ -291,19 +271,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         )}
       </ScrollView>
 
-      <AnchoredMenu
-        visible={metricMenuAnchor != null}
+      <MetricColumnMenu
         anchor={metricMenuAnchor}
         onClose={() => setMetricMenuAnchor(null)}
-        minWidth={160}
-        items={METRIC_OPTIONS.map(option => ({
-          key: option,
-          label:
-            option === metricColumn
-              ? `✓ ${METRIC_MENU_LABELS[option]}`
-              : METRIC_MENU_LABELS[option],
-          onPress: () => setMetricColumn(option),
-        }))}
       />
     </View>
   );

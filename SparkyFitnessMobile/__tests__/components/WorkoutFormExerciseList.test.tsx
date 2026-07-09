@@ -486,6 +486,42 @@ describe('WorkoutFormExerciseList', () => {
     expect(utils.callbacks.removeSet).toHaveBeenCalledWith('a', 'a-s1');
   });
 
+  describe('removeExerciseOnLastSetDelete (workout forms)', () => {
+    it('routes deleting the only set through onRemoveExercise instead of removeSet', () => {
+      const exercises = [makeExercise('a')];
+      const utils = renderList(exercises, { removeExerciseOnLastSetDelete: true });
+      fireEvent.press(utils.getByTestId('card-a-delete-set'));
+      expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(exercises[0]);
+      expect(utils.callbacks.removeSet).not.toHaveBeenCalled();
+    });
+
+    it('still removes a set normally when the exercise has more sets', () => {
+      const utils = renderList(
+        [
+          makeExercise('a', {
+            sets: [
+              { clientId: 'a-s1', weight: '100', reps: '5', restTime: 90 },
+              { clientId: 'a-s2', weight: '100', reps: '5', restTime: 90 },
+            ],
+          }),
+        ],
+        { removeExerciseOnLastSetDelete: true },
+      );
+      fireEvent.press(utils.getByTestId('card-a-delete-set'));
+      expect(utils.callbacks.removeSet).toHaveBeenCalledWith('a', 'a-s1');
+      expect(utils.callbacks.onRemoveExercise).not.toHaveBeenCalled();
+    });
+
+    it('applies the guard to the set-type menu Delete item too', () => {
+      const exercises = [makeExercise('a')];
+      const utils = renderList(exercises, { removeExerciseOnLastSetDelete: true });
+      fireEvent.press(utils.getByTestId('card-a-set-type'));
+      fireEvent.press(utils.getByTestId('menu-item-delete'));
+      expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(exercises[0]);
+      expect(utils.callbacks.removeSet).not.toHaveBeenCalled();
+    });
+  });
+
   it('renders the Add Exercise footer', () => {
     const utils = renderList([makeExercise('a')]);
     fireEvent.press(utils.getByText('Add Exercise'));

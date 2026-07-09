@@ -13,21 +13,16 @@ import Button from '../components/ui/Button';
 import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
 } from '../components/WorkoutFormExerciseList';
-import ActiveWorkoutExerciseCard, {
-  METRIC_MENU_LABELS,
-  METRIC_OPTIONS,
-} from '../components/ActiveWorkoutExerciseCard';
-import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
+import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
+import { MetricColumnMenu } from '../components/WorkoutMenus';
+import { type AnchorRect } from '../components/AnchoredMenu';
 import {
   getSourceLabel,
   getWorkoutSummary,
   getExerciseVolumeKg,
   formatVolume,
-  buildSupersetColorMap,
-  getSupersetRuns,
   canReorderDraftExercises,
   exerciseFromSnapshot,
-  SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
 import {
   useDeleteWorkout,
@@ -54,7 +49,7 @@ import { ensureNotificationPermission } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
-import type { SupersetBorder } from '../components/ActiveWorkoutRail';
+import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { UpdatePresetSessionRequest } from '@workspace/shared';
 
@@ -78,21 +73,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Superset display (view mode only): grouped members get a flat left rail
   // in a per-group palette color, matching the active-workout screen.
-  const supersetPalette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
-  const supersetRuns = useMemo(() => getSupersetRuns(session.exercises), [session]);
-  const supersetBorders = useMemo(() => {
-    const colorByEntryId = buildSupersetColorMap(supersetRuns, supersetPalette);
-    const map = new Map<string, SupersetBorder>();
-    for (const run of supersetRuns) {
-      run.entryIds.forEach((entryId, index) => {
-        const color = colorByEntryId.get(entryId);
-        if (color != null) {
-          map.set(entryId, { color, isLast: index === run.entryIds.length - 1 });
-        }
-      });
-    }
-    return map;
-  }, [supersetRuns, supersetPalette]);
+  const { borders: supersetBorders } = useSupersetBorders(session.exercises);
 
   const { getImageSource } = useExerciseImageSource();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -105,7 +86,6 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Metric column is shared with the active-workout screen — changing it on
   // either screen changes both (intended).
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
-  const setMetricColumn = useAppPreferencesStore((s) => s.setActiveWorkoutMetricColumn);
   const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
   const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
     setMetricMenuAnchor(anchor);
@@ -318,7 +298,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         buttons.push({ text: 'Edit', onPress: startEditing });
       }
 
-      if (!isWorkoutActive) {
+      // Gated on isSparky like the Start button: a live workout autosaves via
+      // the nested-exercise update, which the server rejects (409) for
+      // synced (non-manual/sparky) sessions.
+      if (!isWorkoutActive && isSparky) {
         buttons.push({
           text: 'Start workout here',
           onPress: () => beginWorkout(setId),
@@ -662,6 +645,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             }
             isEligibleForPrefill={isEligibleForPrefill}
             showCompletion
+            removeExerciseOnLastSetDelete
           />
         ) : renderViewExercises()}
 
@@ -716,19 +700,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         onSelectDate={setFormDate}
       />
 
-      <AnchoredMenu
-        visible={metricMenuAnchor != null}
+      <MetricColumnMenu
         anchor={metricMenuAnchor}
         onClose={() => setMetricMenuAnchor(null)}
-        minWidth={160}
-        items={METRIC_OPTIONS.map((option) => ({
-          key: option,
-          label:
-            option === metricColumn
-              ? `✓ ${METRIC_MENU_LABELS[option]}`
-              : METRIC_MENU_LABELS[option],
-          onPress: () => setMetricColumn(option),
-        }))}
       />
     </>
   );

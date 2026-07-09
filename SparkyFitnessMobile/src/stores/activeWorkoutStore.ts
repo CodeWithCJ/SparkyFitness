@@ -15,7 +15,10 @@ import {
   isPrSet,
   isTempExerciseEntryId,
   moveSessionExerciseItem,
+  normalizeSessionSupersetGroups,
   seedPrFromSession,
+  supersetSessionExercises,
+  ungroupSessionExercise,
 } from '../utils/workoutSession';
 import type { PrBaselineEntry } from '../utils/workoutSession';
 import {
@@ -565,10 +568,10 @@ export function seedCompletionFromSession(session: PresetSessionResponse): Compl
 }
 
 /**
- * Clear `superset_group` on any entry not part of an adjacent 2+ run — the
- * one choke point that dissolves 1-member remainders after ungroup/member
- * deletion and scrubs stale values from external edits. Returns the input
- * object unchanged when nothing needs clearing.
+ * Session-level wrapper over `normalizeSessionSupersetGroups` — the one choke
+ * point that dissolves 1-member remainders after ungroup/member deletion and
+ * scrubs stale values from external edits. Returns the input object unchanged
+ * when nothing needs clearing.
  *
  * Note this also *preserves* any adjacent 2+ run: making stale same-value
  * singletons adjacent would fuse them into a group here. The reorder helpers
@@ -577,18 +580,9 @@ export function seedCompletionFromSession(session: PresetSessionResponse): Compl
  * insert-in-middle feature would need the same guard.
  */
 function normalizeSupersetGroups(session: PresetSessionResponse): PresetSessionResponse {
-  const grouped = new Set(
-    getSupersetRuns(session.exercises).flatMap((run) => run.entryIds),
-  );
-  const isStale = (e: ExerciseEntryResponse) =>
-    e.superset_group != null && !grouped.has(e.id);
-  if (!session.exercises.some(isStale)) return session;
-  return {
-    ...session,
-    exercises: session.exercises.map((e) =>
-      isStale(e) ? { ...e, superset_group: null } : e,
-    ),
-  };
+  const exercises = normalizeSessionSupersetGroups(session.exercises);
+  if (exercises === session.exercises) return session;
+  return { ...session, exercises };
 }
 
 /**
@@ -1388,100 +1382,25 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
       supersetWith: (currentEntryId, pickedEntryId) => {
         const state = get();
         const session = state.session;
-        if (!session || currentEntryId === pickedEntryId) return;
-        const picked = session.exercises.find((e) => e.id === pickedEntryId);
-        if (!picked || !session.exercises.some((e) => e.id === currentEntryId)) {
-          return;
-        }
-
-        const runs = getSupersetRuns(session.exercises);
-        // Grouped exercises can't be picked — they must be ungrouped first.
-        if (runs.some((r) => r.entryIds.includes(pickedEntryId))) return;
-
-        const currentRun = runs.find((r) => r.entryIds.includes(currentEntryId));
-        // New group ids are max(existing non-null)+1 — including stale
-        // values, so a fresh id can never collide into an accidental run.
-        let groupId: number;
-        if (currentRun) {
-          groupId = currentRun.groupId;
-        } else {
-          let maxGroupId = 0;
-          for (const e of session.exercises) {
-            if (e.superset_group != null && e.superset_group > maxGroupId) {
-              maxGroupId = e.superset_group;
-            }
-          }
-          groupId = maxGroupId + 1;
-        }
-
-        const memberIds = currentRun
-          ? [...currentRun.entryIds, pickedEntryId]
-          : [currentEntryId, pickedEntryId];
-        const memberIdSet = new Set(memberIds);
-
-        // Rest is per-round: harmonize every member's sets to the anchor's
-        // rest. Deliberately lossy — the picked member's original per-set
-        // rest_time is overwritten and ungrouping does not restore it.
-        const anchor = session.exercises.find((e) => e.id === memberIds[0])!;
-        const groupRest = anchor.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
-
-        // Move picked to sit immediately after the last member of current's
-        // run so the group is one adjacent block.
-        const lastMemberId = currentRun
-          ? currentRun.entryIds[currentRun.entryIds.length - 1]
-          : currentEntryId;
-        const without = session.exercises.filter((e) => e.id !== pickedEntryId);
-        const insertAt = without.findIndex((e) => e.id === lastMemberId) + 1;
-        const reordered = [
-          ...without.slice(0, insertAt),
-          picked,
-          ...without.slice(insertAt),
-        ];
-
-        const next: PresetSessionResponse = {
-          ...session,
-          exercises: reordered.map((e) =>
-            memberIdSet.has(e.id)
-              ? {
-                  ...e,
-                  superset_group: groupId,
-                  sets: e.sets.map((s) => ({ ...s, rest_time: groupRest })),
-                }
-              : e,
-          ),
-        };
-        set(buildSessionEditState(state, next));
+        if (!session) return;
+        const exercises = supersetSessionExercises(
+          session.exercises,
+          currentEntryId,
+          pickedEntryId,
+        );
+        // Identity return = invalid pick (unknown ids, already grouped):
+        // leave state untouched so no spurious revision bump is triggered.
+        if (exercises === session.exercises) return;
+        set(buildSessionEditState(state, { ...session, exercises }));
       },
 
       ungroupExercise: (entryId) => {
         const state = get();
         const session = state.session;
         if (!session) return;
-        const run = getSupersetRuns(session.exercises).find((r) =>
-          r.entryIds.includes(entryId),
-        );
-        if (!run) return;
-
-        let exercises = session.exercises.map((e) =>
-          e.id === entryId ? { ...e, superset_group: null } : e,
-        );
-
-        // Nulling a middle member would leave the remaining members
-        // non-adjacent and normalization would dissolve the whole group —
-        // move it to just after the run instead. End members need no move.
-        const position = run.entryIds.indexOf(entryId);
-        if (position > 0 && position < run.entryIds.length - 1) {
-          const moved = exercises.find((e) => e.id === entryId)!;
-          const without = exercises.filter((e) => e.id !== entryId);
-          const lastMemberId = run.entryIds[run.entryIds.length - 1];
-          const insertAt = without.findIndex((e) => e.id === lastMemberId) + 1;
-          exercises = [
-            ...without.slice(0, insertAt),
-            moved,
-            ...without.slice(insertAt),
-          ];
-        }
-
+        const exercises = ungroupSessionExercise(session.exercises, entryId);
+        if (exercises === session.exercises) return;
+        // buildSessionEditState's normalize pass dissolves a 1-member remainder.
         set(buildSessionEditState(state, { ...session, exercises }));
       },
 

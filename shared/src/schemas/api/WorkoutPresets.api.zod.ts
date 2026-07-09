@@ -76,8 +76,8 @@ export const workoutPresetExerciseRequestSchema = z.object({
 });
 
 export const workoutPresetCreateRequestSchema = z.object({
-  /** Clients send their own user id; the repository reads it for the INSERT. */
-  user_id: z.string().optional(),
+  // Ownership comes from the authenticated request (req.userId), never the
+  // body; strip mode drops the user_id older clients still send.
   name: z.string().min(1),
   description: z.string().nullable().optional(),
   is_public: z.boolean().optional(),

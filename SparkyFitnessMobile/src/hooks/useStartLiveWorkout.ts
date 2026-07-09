@@ -74,9 +74,14 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         useActiveWorkoutStore.getState().startWorkout(session, { createdByLiveStart: true });
         if (navigation.isFocused()) {
           navigation.replace('ActiveWorkout');
+          // The lock stays engaged: the replace unmounts the calling screen.
+        } else {
+          // The caller may still be mounted under a pushed screen — release
+          // the lock so it isn't stuck on "Starting…" forever. (A popped
+          // caller is unmounted and the resets are harmless no-ops.)
+          inFlightRef.current = false;
+          setIsStarting(false);
         }
-        // The lock stays engaged on success: the replace unmounts the calling
-        // screen, and an unfocused caller was already popped by the user.
       } catch {
         // useCrudMutation already showed the failure toast; re-enable the UI.
         inFlightRef.current = false;

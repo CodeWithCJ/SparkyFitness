@@ -1,6 +1,6 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
-import { render } from '@testing-library/react-native';
+import { ScrollView, StyleSheet } from 'react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import type { ExerciseEntryResponse } from '@workspace/shared';
 import ActiveWorkoutRail, { type SupersetBorder } from '../../src/components/ActiveWorkoutRail';
 
@@ -147,5 +147,53 @@ describe('ActiveWorkoutRail focus ring vs current marker', () => {
     const { queryByTestId } = renderRail(null);
     expect(queryByTestId('rail-current-ex-a')).toBeNull();
     expect(queryByTestId('rail-current-ex-b')).toBeNull();
+  });
+});
+
+describe('ActiveWorkoutRail initial focus scroll', () => {
+  const exercises = [makeExercise('ex-a', 'Bench Press'), makeExercise('ex-b', 'Squat')];
+
+  function renderRail(focusedEntryId: string | null) {
+    return render(
+      <ActiveWorkoutRail
+        exercises={exercises}
+        completedSetIds={{}}
+        focusedEntryId={focusedEntryId}
+        activeEntryId={null}
+        supersetBorders={new Map()}
+        getImageSource={() => null}
+        onPressExercise={jest.fn()}
+        onPressAdd={jest.fn()}
+      />,
+    );
+  }
+
+  it('scrolls to a chip focused from the first render once its layout lands', () => {
+    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo').mockImplementation(() => {});
+    try {
+      const { getByTestId } = renderRail('ex-b');
+      // The focus effect ran before any onLayout — nothing to scroll to yet.
+      expect(scrollTo).not.toHaveBeenCalled();
+
+      fireEvent(getByTestId('rail-chip-ex-b'), 'layout', {
+        nativeEvent: { layout: { x: 120, y: 0, width: 72, height: 72 } },
+      });
+      expect(scrollTo).toHaveBeenCalledWith({ x: 96, animated: true });
+    } finally {
+      scrollTo.mockRestore();
+    }
+  });
+
+  it('does not scroll when a non-focused chip lays out', () => {
+    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo').mockImplementation(() => {});
+    try {
+      const { getByTestId } = renderRail('ex-b');
+      fireEvent(getByTestId('rail-chip-ex-a'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 72, height: 72 } },
+      });
+      expect(scrollTo).not.toHaveBeenCalled();
+    } finally {
+      scrollTo.mockRestore();
+    }
   });
 });

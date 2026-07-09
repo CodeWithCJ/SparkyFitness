@@ -10,25 +10,19 @@ import { Keyboard, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
-import ActiveWorkoutExerciseCard, {
-  METRIC_MENU_LABELS,
-  METRIC_OPTIONS,
-} from './ActiveWorkoutExerciseCard';
-import AnchoredMenu, { type AnchorRect, type AnchoredMenuItem } from './AnchoredMenu';
+import ActiveWorkoutExerciseCard from './ActiveWorkoutExerciseCard';
+import { MetricColumnMenu, SetTypeMenu } from './WorkoutMenus';
+import AnchoredMenu, { type AnchorRect } from './AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from './RestPeriodSheet';
 import WorkoutReorderList from './WorkoutReorderList';
 import { weightFromKg } from '../utils/unitConversions';
 import {
-  buildSupersetColorMap,
   draftExerciseToCardExercise,
   exerciseFromDraft,
-  getDraftSupersetRuns,
-  SET_TYPE_OPTIONS,
-  SUPERSET_PALETTE_VARS,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { ActiveSetPatch, CompletedSetMap } from '../stores/activeWorkoutStore';
-import type { SupersetBorder } from './ActiveWorkoutRail';
+import { useSupersetBorders } from './ActiveWorkoutRail';
 import type { WorkoutDraftExercise, WorkoutSetMetaPatch } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
@@ -75,6 +69,14 @@ interface WorkoutFormExerciseListProps {
    * preset form, which has no completion concept.
    */
   showCompletion?: boolean;
+  /**
+   * Deleting an exercise's last remaining set removes the exercise instead
+   * (routed through `onRemoveExercise`, which confirms when data would be
+   * lost) — matching the live workout screen. On for workout forms, whose
+   * save path drops zero-set exercises; off for the preset form, where
+   * zero-set exercises are valid and kept.
+   */
+  removeExerciseOnLastSetDelete?: boolean;
 }
 
 /** Imperative handle so the owning screen's header can open the reorder overlay. */
@@ -115,6 +117,7 @@ const WorkoutFormExerciseList = forwardRef<
     isEligibleForPrefill,
     rpeEditable = true,
     showCompletion = false,
+    removeExerciseOnLastSetDelete = false,
   },
   ref,
 ) {
@@ -170,21 +173,12 @@ const WorkoutFormExerciseList = forwardRef<
 
   // Superset rails, same presentation as the live/detail screens but keyed by
   // draft clientIds.
-  const supersetPalette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
-  const supersetRuns = useMemo(() => getDraftSupersetRuns(exercises), [exercises]);
-  const supersetBorders = useMemo(() => {
-    const colorByClientId = buildSupersetColorMap(supersetRuns, supersetPalette);
-    const map = new Map<string, SupersetBorder>();
-    for (const run of supersetRuns) {
-      run.entryIds.forEach((clientId, index) => {
-        const color = colorByClientId.get(clientId);
-        if (color != null) {
-          map.set(clientId, { color, isLast: index === run.entryIds.length - 1 });
-        }
-      });
-    }
-    return map;
-  }, [supersetRuns, supersetPalette]);
+  const exercisesForBorders = useMemo(
+    () => exercises.map(e => ({ id: e.clientId, superset_group: e.supersetGroup ?? null })),
+    [exercises],
+  );
+  const { runs: supersetRuns, borders: supersetBorders } =
+    useSupersetBorders(exercisesForBorders);
 
   const handleActivateSet = useCallback(
     (setId: string, field: 'weight' | 'reps') => {
@@ -237,9 +231,17 @@ const WorkoutFormExerciseList = forwardRef<
   const handleDeleteSet = useCallback(
     (setId: string) => {
       const owner = setOwnerByClientId.get(setId);
-      if (owner) removeSet(owner, setId);
+      if (!owner) return;
+      if (removeExerciseOnLastSetDelete) {
+        const exercise = exercises.find(e => e.clientId === owner);
+        if (exercise != null && exercise.sets.length <= 1) {
+          onRemoveExercise(exercise);
+          return;
+        }
+      }
+      removeSet(owner, setId);
     },
-    [setOwnerByClientId, removeSet],
+    [setOwnerByClientId, removeSet, removeExerciseOnLastSetDelete, exercises, onRemoveExercise],
   );
 
   // Toggle a set's completion (stamp/clear completedAt), which round-trips to
@@ -256,35 +258,22 @@ const WorkoutFormExerciseList = forwardRef<
     [exercises, updateSetMeta],
   );
 
-  // Set-type menu: tapping a set number (or long-pressing the row) anchors a
-  // menu of set types + Delete here. Replaces an Alert, which capped at 3
-  // buttons on Android and hid most of the six options.
+  // Set-type menu: tapping a set number (or long-pressing the row) anchors
+  // the shared SetTypeMenu (with its Delete-set item). Replaces an Alert,
+  // which capped at 3 buttons on Android and hid most of the options.
   const [setTypeMenu, setSetTypeMenu] = useState<{ setId: string; anchor: AnchorRect } | null>(
     null,
   );
   const handlePressSetType = useCallback((setId: string, anchor: AnchorRect) => {
     setSetTypeMenu({ setId, anchor });
   }, []);
-  const setTypeMenuItems = useMemo<AnchoredMenuItem[]>(() => {
-    if (setTypeMenu == null) return [];
-    const { setId } = setTypeMenu;
-    const owner = exercises.find(e => e.sets.some(s => s.clientId === setId));
-    const set = owner?.sets.find(s => s.clientId === setId);
-    if (!owner || !set) return [];
-    const currentType = set.setType ?? 'normal';
-    const items: AnchoredMenuItem[] = SET_TYPE_OPTIONS.map(type => ({
-      key: type,
-      label: `${type === currentType ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
-      onPress: () => updateSetMeta(owner.clientId, setId, { setType: type }),
-    }));
-    items.push({
-      key: 'delete',
-      label: 'Delete set',
-      icon: 'trash',
-      onPress: () => removeSet(owner.clientId, setId),
-    });
-    return items;
-  }, [setTypeMenu, exercises, updateSetMeta, removeSet]);
+  const setTypeTarget = useMemo(() => {
+    if (setTypeMenu == null) return null;
+    const owner = exercises.find(e => e.sets.some(s => s.clientId === setTypeMenu.setId));
+    const set = owner?.sets.find(s => s.clientId === setTypeMenu.setId);
+    if (!owner || !set) return null;
+    return { ownerClientId: owner.clientId, setId: setTypeMenu.setId, currentType: set.setType ?? 'normal' };
+  }, [setTypeMenu, exercises]);
 
   // Open the library Exercise Detail for a draft row (thumbnail tap + ⋮ menu).
   // Existing-session drafts carry a full snapshot; freshly-added ones are
@@ -314,14 +303,9 @@ const WorkoutFormExerciseList = forwardRef<
   );
 
   // Metric column is shared with the active-workout screen (intended).
-  const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
-  const setMetricColumn = useAppPreferencesStore(s => s.setActiveWorkoutMetricColumn);
   // Preset sets store no RPE, so the preset form hides RPE from the column
   // picker and falls the shared 'rpe' selection back to volume for display.
-  const metricOptions = useMemo(
-    () => (rpeEditable ? METRIC_OPTIONS : METRIC_OPTIONS.filter(option => option !== 'rpe')),
-    [rpeEditable],
-  );
+  const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
   const effectiveMetricColumn =
     !rpeEditable && metricColumn === 'rpe' ? 'volume' : metricColumn;
   const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
@@ -493,19 +477,10 @@ const WorkoutFormExerciseList = forwardRef<
 
       <RestPeriodSheet ref={restSheetRef} onChange={handleRestChange} />
 
-      <AnchoredMenu
-        visible={metricMenuAnchor != null}
+      <MetricColumnMenu
         anchor={metricMenuAnchor}
         onClose={() => setMetricMenuAnchor(null)}
-        minWidth={160}
-        items={metricOptions.map(option => ({
-          key: option,
-          label:
-            option === effectiveMetricColumn
-              ? `✓ ${METRIC_MENU_LABELS[option]}`
-              : METRIC_MENU_LABELS[option],
-          onPress: () => setMetricColumn(option),
-        }))}
+        includeRpe={rpeEditable}
       />
 
       <AnchoredMenu
@@ -516,12 +491,19 @@ const WorkoutFormExerciseList = forwardRef<
         items={overflowMenuItems}
       />
 
-      <AnchoredMenu
-        visible={setTypeMenu != null && setTypeMenuItems.length > 0}
-        anchor={setTypeMenu?.anchor ?? null}
+      <SetTypeMenu
+        anchor={setTypeTarget != null ? (setTypeMenu?.anchor ?? null) : null}
+        currentType={setTypeTarget?.currentType}
         onClose={() => setSetTypeMenu(null)}
-        minWidth={180}
-        items={setTypeMenuItems}
+        onSelect={type => {
+          if (setTypeTarget != null) {
+            updateSetMeta(setTypeTarget.ownerClientId, setTypeTarget.setId, { setType: type });
+          }
+        }}
+        // Through handleDeleteSet so the last-set → remove-exercise guard applies.
+        onDelete={() => {
+          if (setTypeTarget != null) handleDeleteSet(setTypeTarget.setId);
+        }}
       />
 
       <WorkoutReorderList

@@ -498,6 +498,11 @@ async function updateExerciseEntry(
         steps: updateData.steps ?? existingEntry.steps,
         sort_order: updateData.sort_order ?? existingEntry.sort_order,
         exercise_name: updateData.exercise_name ?? existingEntry.exercise_name,
+        // Preserve when omitted; explicit null clears (leaving a superset).
+        superset_group:
+          updateData.superset_group === undefined
+            ? (existingEntry.superset_group ?? null)
+            : updateData.superset_group,
       }
     );
     if (!updatedEntry) {
@@ -1107,8 +1112,11 @@ async function addExternalExerciseToUserExercises(
       is_custom: true,
       shared_with_public: false,
       // createExercise persists source_id (not source_external_id); the unique
-      // index and the dedup lookup above both key on it.
-      source_id: wgerExerciseDetails.id.toString(),
+      // index and the dedup lookup above both key on it. Store the id the
+      // lookup queries by (the caller's id), not the fetched detail's id —
+      // if the two ever diverge, dedup would miss and the insert would hit
+      // the unique index.
+      source_id: String(wgerExerciseId),
       source: 'wger',
       level: 'intermediate',
       force: mappedForce,
@@ -1246,8 +1254,9 @@ async function addFreeExerciseDBExerciseToUserExercises(
     const exerciseData = {
       id: uuidv4(), // Generate a new UUID for the local exercise
       source: 'free-exercise-db',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      source_id: exerciseDetails.id,
+      // Store the id the dedup lookup above queries by (the caller's id) so
+      // the two can never diverge and miss dedup on re-import.
+      source_id: String(freeExerciseDBId),
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       name: exerciseDetails.name,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.

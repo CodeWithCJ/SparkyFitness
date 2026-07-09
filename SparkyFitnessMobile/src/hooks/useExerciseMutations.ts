@@ -28,6 +28,9 @@ function invalidateExerciseLibraryCaches(qc: QueryClient) {
   void qc.invalidateQueries({ queryKey: ['exercises', 'count'] });
   void qc.resetQueries({ queryKey: ['exercisesLibrary'] });
   void qc.invalidateQueries({ queryKey: ['exerciseSearch'] });
+  // ExerciseDetail's hydration cache would otherwise outrank the fresh item
+  // passed by upstream screens after an edit (staleTime is Infinity).
+  void qc.invalidateQueries({ queryKey: ['exerciseDetail'] });
 }
 
 const isAuthzError = (error: unknown): boolean => {
