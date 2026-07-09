@@ -1,4 +1,10 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   View,
   Text,
@@ -28,6 +34,7 @@ import {
   useExternalFoodSearch,
   useAllProvidersSearch,
   usePreferences,
+  useDebounce,
 } from '../hooks';
 import { ExternalProvider } from '../types/externalProviders';
 import Toast from 'react-native-toast-message';
@@ -77,8 +84,7 @@ type ResultRow =
   | { type: 'show-all'; provider: ExternalProvider; count: number }
   | { type: 'show-all-local'; section: 'foods' | 'meals'; count: number }
   | { type: 'provider-skeleton' }
-  | { type: 'empty-local' }
-  | { type: 'local-loading' };
+  | { type: 'local-status'; pending: boolean };
 
 type ResultSection = {
   key: string;
@@ -90,7 +96,6 @@ type ResultSection = {
     | 'online-top'
     | 'online-provider'
     | 'label'
-    | 'empty-local'
     | 'status';
   data: ResultRow[];
   provider?: ExternalProvider;
@@ -436,6 +441,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // Local results are still settling while the debounced query has not caught up
   // to the typed term, or while a fetch is in flight.
   const localPending = isSearching || isMealSearching || !isSearchActive;
+  // The foods and meals queries settle independently, so localPending can blip
+  // false->true->false within a keystroke or two. Debounce just the
+  // false-going transition so the status row's spinner/text swap doesn't
+  // flicker mid-typing; becoming pending is still immediate via the ||.
+  const debouncedNotPending = useDebounce(!localPending, 150);
+  const stableLocalPending = localPending || !debouncedNotPending;
   const hasLocalResults =
     searchResults.length > 0 || (!isMealBuilderMode && mealResults.length > 0);
   // Only show online results from the currently selected provider. On a swap,
@@ -578,19 +589,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         }
         sections.push({ key: 'meals', kind: 'meal', title: 'Your Meals', data });
       }
-    } else if (localPending) {
+    } else {
       sections.push({
         key: 'local-status',
         kind: 'status',
         title: null,
-        data: [{ type: 'local-loading' }],
-      });
-    } else {
-      sections.push({
-        key: 'empty-local',
-        kind: 'empty-local',
-        title: null,
-        data: [{ type: 'empty-local' }],
+        data: [{ type: 'local-status', pending: stableLocalPending }],
       });
     }
 
@@ -663,7 +667,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     return sections;
   }, [
     hasLocalResults,
-    localPending,
+    stableLocalPending,
     searchResults,
     mealResults,
     isMealBuilderMode,
@@ -851,20 +855,33 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         return renderLocalShowAllRow(item.section, item.count);
       case 'provider-skeleton':
         return renderProviderSkeleton();
-      case 'local-loading':
+      case 'local-status':
         return (
-          <View className="py-8 items-center">
-            <ActivityIndicator size="large" color={accentColor} />
-          </View>
-        );
-      case 'empty-local':
-        return (
-          <View className="px-4 py-6">
-            <Text className="text-text-secondary text-base text-center">
+          <View className="px-4 py-6 items-center justify-center">
+            <Text
+              className="text-text-secondary text-base text-center"
+              style={{ opacity: item.pending ? 0 : 1 }}
+              importantForAccessibility={item.pending ? 'no' : 'yes'}
+              accessibilityElementsHidden={item.pending}
+            >
               {isMealBuilderMode
                 ? 'No saved foods found'
                 : 'No saved foods or meals found'}
             </Text>
+            {item.pending ? (
+              <View
+                className="absolute inset-0 items-center justify-center"
+                accessible
+                accessibilityRole="progressbar"
+                accessibilityLabel={
+                  isMealBuilderMode
+                    ? 'Searching saved foods'
+                    : 'Searching saved foods and meals'
+                }
+              >
+                <ActivityIndicator size="small" color={accentColor} />
+              </View>
+            ) : null}
           </View>
         );
     }
@@ -1105,12 +1122,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           borderColor: isSearchFocused ? accentColor : 'transparent',
         }}
       >
-        {!!searchText.trim() &&
-        (isSearching || isMealSearching || isOnlineSearching) ? (
-          <ActivityIndicator size="small" color={textMuted} />
-        ) : (
-          <Icon name="search" size={18} color={textMuted} />
-        )}
+        <View className="w-[20px] h-[20px] items-center justify-center">
+          {!!searchText.trim() &&
+          (isSearching || isMealSearching || isOnlineSearching) ? (
+            <ActivityIndicator size="small" color={textMuted} />
+          ) : (
+            <Icon name="search" size={18} color={textMuted} />
+          )}
+        </View>
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"

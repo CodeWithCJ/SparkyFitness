@@ -29,6 +29,7 @@ jest.mock('../../src/hooks', () => ({
   useMeals: jest.fn(),
   usePreferences: jest.fn(),
   useServerConnection: jest.fn(),
+  useDebounce: (value: unknown) => value,
 }));
 
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
