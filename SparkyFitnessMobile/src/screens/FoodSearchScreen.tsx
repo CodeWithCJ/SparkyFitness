@@ -861,13 +861,24 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             <Text
               className="text-text-secondary text-base text-center"
               style={{ opacity: item.pending ? 0 : 1 }}
+              importantForAccessibility={item.pending ? 'no' : 'yes'}
+              accessibilityElementsHidden={item.pending}
             >
               {isMealBuilderMode
                 ? 'No saved foods found'
                 : 'No saved foods or meals found'}
             </Text>
             {item.pending ? (
-              <View className="absolute inset-0 items-center justify-center">
+              <View
+                className="absolute inset-0 items-center justify-center"
+                accessible
+                accessibilityRole="progressbar"
+                accessibilityLabel={
+                  isMealBuilderMode
+                    ? 'Searching saved foods'
+                    : 'Searching saved foods and meals'
+                }
+              >
                 <ActivityIndicator size="small" color={accentColor} />
               </View>
             ) : null}
