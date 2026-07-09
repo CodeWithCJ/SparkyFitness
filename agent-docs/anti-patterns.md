@@ -39,28 +39,24 @@ CREATE TABLE user_symptom_logs (id UUID, user_id UUID, symptom TEXT);
 
 **Result:** Any authenticated user can query any other user's symptoms. Family-access delegates bypass their permission checks.
 
-### ✅ RIGHT: Create the table AND the policy
+### ✅ RIGHT: Enable RLS and reuse a policy generator
+
+The table is created by a migration; `rls_policies.sql` enables RLS and applies a policy via a generator (not hand-written `USING` clauses):
 
 ```sql
-CREATE TABLE user_symptom_logs (id UUID, user_id UUID, symptom TEXT);
+-- In the migration: CREATE TABLE user_symptom_logs (...);
 
+-- In rls_policies.sql:
 ALTER TABLE user_symptom_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY symptom_logs_user_access ON user_symptom_logs
-  USING (
-    user_id = ANY(ARRAY[
-      public.get_user_id(),
-      public.get_authenticated_user_id()
-    ])
-    AND public.get_permission(
-      public.get_user_id(),
-      public.get_authenticated_user_id(),
-      'checkin'  -- or the relevant permission type
-    )
-  );
+-- Symptom data is delegated under the `medications` permission, so reuse that generator.
+-- It builds read/write policies backed by has_medication_read_access() / has_medication_access().
+SELECT create_medication_policy('user_symptom_logs');
 ```
 
-**Reference:** `SparkyFitnessServer/db/rls_policies.sql` — every table there has both the CREATE and the ALTER/ENABLE/CREATE POLICY.
+Generators by domain: `create_owner_policy` (owner-only), `create_shared_owner_policy` (owner-write/delegate-read), `create_diary_policy`, `create_checkin_policy`, `create_medication_policy`, `create_library_policy`. They resolve delegation via `can_access_user_data(...)` / `has_*_access(user_id)` reading `current_user_id()`/`authenticated_user_id()` — there is no `get_user_id`/`get_authenticated_user_id`/`get_permission`.
+
+**Reference:** `db/rls_policies.sql` — `CREATE TABLE` lives in migrations; this file holds `ENABLE ROW LEVEL SECURITY` + `create_*_policy(...)` calls.
 
 ---
 
@@ -84,10 +80,10 @@ async function deleteMeal(mealId: string) {
   await apiCall(`/api/meals/${mealId}`, { method: 'DELETE' });
   
   queryClient.invalidateQueries({
-    queryKey: mealsQueryKey(),
+    queryKey: mealsQueryKey, // a const array, not a function
   });
   queryClient.invalidateQueries({
-    queryKey: mealDetailQueryKey(mealId),
+    queryKey: mealDetailQueryKey(mealId), // parameterized keys are functions
   });
   queryClient.invalidateQueries({
     queryKey: dailySummaryQueryKey(date),
@@ -95,7 +91,7 @@ async function deleteMeal(mealId: string) {
 }
 ```
 
-**Pattern:** See `useInvalidateKeys.ts` in mobile and frontend for the standard key patterns.
+**Pattern:** Query keys live in `SparkyFitnessMobile/src/hooks/queryKeys.ts` (mobile) and `SparkyFitnessFrontend/src/api/keys/*.ts` (frontend) — note some are plain const arrays and some are functions. The frontend also exposes invalidation hooks in `src/hooks/useInvalidateKeys.ts` (`useMealInvalidation`, `useDiaryInvalidation`, …).
 
 ---
 
@@ -168,14 +164,16 @@ const response = await fetch('http://localhost:3010/api/meals');
 ### ✅ RIGHT: Use the API helper with auth injection
 
 ```typescript
-import { apiCall } from '@/api/api'; // Frontend
-// or
-import { apiClient } from '@/services/api/apiClient'; // Mobile
-
+// Frontend
+import { apiCall } from '@/api/api';
 const meals = await apiCall('/api/meals'); // Uses proxy, injects auth
+
+// Mobile — the export is `apiFetch` (there is no `apiClient` export), and mobile uses relative imports
+import { apiFetch } from '../services/api/apiClient';
+const meals = await apiFetch<Meal[]>({ url: '/api/meals' });
 ```
 
-**Pattern:** `apiCall()` handles base URL, auth headers, error toasts. See `SparkyFitnessFrontend/src/api/api.ts` and `SparkyFitnessMobile/src/services/api/apiClient.ts`.
+**Pattern:** the helper handles base URL, auth headers, and errors. See `SparkyFitnessFrontend/src/api/api.ts` (`apiCall`) and `SparkyFitnessMobile/src/services/api/apiClient.ts` (`apiFetch`).
 
 ---
 
@@ -184,14 +182,13 @@ const meals = await apiCall('/api/meals'); // Uses proxy, injects auth
 ### ❌ WRONG: Changing a shared schema and only updating the server
 
 ```typescript
-// shared/src/schemas/api/Meal.api.zod.ts
-export const MealSchema = z.object({
-  name: z.string(),
-  calories: z.number(),
+// shared/src/schemas/api/FoodEntries.api.zod.ts
+export const foodEntryResponseSchema = z.object({
+  // ...existing fields...
   newField: z.string(), // ADDED
 });
 
-// SparkyFitnessServer/routes/mealRoutes.ts updated ✓
+// SparkyFitnessServer/routes/foodEntryRoutes.ts updated ✓
 // SparkyFitnessFrontend — NOT UPDATED ✗
 // SparkyFitnessMobile — NOT UPDATED ✗
 ```
@@ -201,11 +198,11 @@ export const MealSchema = z.object({
 ### ✅ RIGHT: Update all consumers in one commit
 
 ```
-Commit: "Add meal.newField: shared schema + server route + frontend form + mobile UI"
-- shared/src/schemas/api/Meal.api.zod.ts
-- SparkyFitnessServer/routes/mealRoutes.ts + tests
-- SparkyFitnessFrontend/src/pages/Meals/MealForm.tsx + hook
-- SparkyFitnessMobile/src/screens/MealEditScreen.tsx + API
+Commit: "Add foodEntry.newField: shared schema + server route + frontend + mobile"
+- shared/src/schemas/api/FoodEntries.api.zod.ts
+- SparkyFitnessServer/routes/foodEntryRoutes.ts + tests
+- SparkyFitnessFrontend/src/api/Diary/ + the consuming page/hook
+- SparkyFitnessMobile/src/services/api/foodEntriesApi.ts + the consuming screen
 - Run `pnpm run validate` in all three packages before pushing
 ```
 

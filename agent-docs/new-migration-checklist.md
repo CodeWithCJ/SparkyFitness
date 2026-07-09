@@ -10,7 +10,7 @@ Follow this checklist whenever you add or change a server database migration —
 ## 2. Update Row-Level Security (required for every new table)
 
 - [ ] Add or update policies in `SparkyFitnessServer/db/rls_policies.sql`.
-- [ ] Decide who can read/write rows: owner only, family-shared (which permission type: `diary`, `checkin`, `medications`, `cycle`, `reports`?), or system/admin.
+- [ ] Decide who can read/write rows: owner only (like cycle/pregnancy), family-shared (which delegatable permission: `diary`, `checkin`, `medications`, or `reports`?), or system/admin. Prefer an existing `create_*_policy(...)` generator in `rls_policies.sql`.
 - [ ] Remember `getClient(userId, authenticatedUserId?)` sets the RLS context; `getSystemClient()` bypasses RLS and is only for admin/startup/migration work.
 
 ## 3. Boot server and let migration apply

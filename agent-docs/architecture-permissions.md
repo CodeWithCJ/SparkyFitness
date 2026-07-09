@@ -4,17 +4,14 @@ This doc maps how access control works across the system. Understanding this pre
 
 ## Permission Types
 
-Three permission types control delegation in the family-sharing model:
+Grants live in `family_access.access_permissions` (JSONB booleans: `can_manage_diary`, `can_manage_checkin`, `can_manage_medications`, `can_view_reports`, `can_view_food_library`, `calorie`). Route/RLS code uses *logical* permission strings mapped onto those keys in `permissionUtils.ts` (`canAccessUserData`) / SQL `can_access_user_data`.
 
-- **`diary`** — read/write food, meal, exercise, health entries and measurements. Unlocks personal diary.
-- **`checkin`** — read/write check-in measurements (weight, mood, custom measurements). Unlocks health tracking.
-- **`medications`** — read/write medication logging, schedules, and symptom tracking.
-- **`cycle`** — read/write menstrual cycle and pregnancy tracking.
-- **`reports`** — read-only access to all analytics, trends, and reports. No write permission.
+- **Write:** `diary` (`goals`/`exercise`/`water` alias onto `can_manage_diary`), `checkin`, `medications`.
+- **Read:** `reports` (via `can_view_reports`/`can_manage_diary`/`can_manage_checkin`) and `*_read` variants (`diary_read`, `checkin_read`, `medications_read`).
+- **Inheritance:** a `reports`/`can_view_reports` (or `calorie`) grant adds *read* on `mood`, `goals`, `exercise`, `fasting`, `sleep`, `water`, `symptoms`; write types are not inherited.
+- **Owner-only:** cycle/pregnancy are **not** delegatable (no `checkPermissionMiddleware`; RLS restricts to owner — `routes/v2/cycleRoutes.ts`). There is no `cycle` permission.
 
-Permission inheritance: read-only access to reports requires at least one of `diary`, `checkin`, `medications`, or `cycle` (so delegated users see relevant trends). Write access to any specific permission does NOT inherit from reports-only access.
-
-Test reference: `SparkyFitnessServer/tests/permissionUtils.test.ts` proves the inheritance matrix.
+Test: `tests/permissionUtils.test.ts`.
 
 ## Domain → Permission Mapping
 
@@ -43,15 +40,15 @@ try {
 
 **Never use** `getSystemClient()` for normal user queries — it bypasses RLS entirely and is only for admin/startup/migration work.
 
-The magic: `getClient()` calls `public.set_app_context(userId, authenticatedUserId)`, which PostgreSQL RLS policies check on every query. The policies are in `SparkyFitnessServer/db/rls_policies.sql`.
+`getClient()` runs `public.set_app_context(userId, authenticatedUserId)`, setting `app.user_id`/`app.authenticated_user_id`. RLS reads them via `current_user_id()`/`authenticated_user_id()` and gates rows with `can_access_user_data(target, permission_type, authenticated_user_id())` or a domain helper (`has_diary_read_access`, `has_checkin_read_access`, `has_medication_access`, `has_family_access`). Policies are usually emitted by generators (`create_shared_owner_policy(table, id_col)`, etc.), not hand-written. See `db/rls_policies.sql`.
 
 ## Adding a New Domain
 
 When you add a new domain (e.g., a new feature category):
 
-1. **Decide the permission type** it falls under, or request a new one from the team. See permission matrix above.
-2. **Create RLS policy** in `db/rls_policies.sql` that checks the permission type via `public.get_permission(user_id, authenticated_user_id, permission_type)`.
-3. **Create the route** with `checkPermissionMiddleware(permissionType)` guarding it.
+1. **Decide the permission type** it falls under, or request a new one from the team. See permission matrix above. (If it's owner-only, model it like cycle/pregnancy — no delegation, RLS restricts to the owner.)
+2. **Create the RLS policy** in `db/rls_policies.sql`, reusing an existing generator (e.g. `create_shared_owner_policy(...)`) or a domain helper that resolves the permission through `can_access_user_data(...)`.
+3. **Create the route** with `checkPermissionMiddleware(permissionType)` guarding delegated write endpoints.
 4. **Test delegation** with `permissionUtils.test.ts` patterns — write a test proving that read/write is inherited or blocked correctly.
 
-Example: if you add "symptom tracking" under `checkin` permission, an RLS policy checks `public.get_permission(..., 'checkin')` before allowing rows through.
+Example: symptom tracking is guarded by the `medications` permission (`routes/v2/symptomRoutes.ts`), and its RLS resolves through `has_medication_access(user_id)`.

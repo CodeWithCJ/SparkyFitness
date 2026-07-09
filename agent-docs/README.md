@@ -14,7 +14,7 @@ This folder contains runbooks and architectural docs designed to answer complex 
 - getSystemClient() vs getClient(), cache invalidation, timezone bugs, cross-package contract mistakes
 
 **Understanding permissions and RLS?** → [`architecture-permissions.md`](architecture-permissions.md) (5 min)
-- Permission types (diary, checkin, medications, cycle), RLS patterns, domain → permission mapping
+- Delegatable permissions (diary, checkin, medications, reports), owner-only domains (cycle/pregnancy), RLS patterns, domain → permission mapping
 
 **How does data flow through the stack?** → [`data-flow-patterns.md`](data-flow-patterns.md) (5 min)
 - React/React Native → API → Server → Database, safe RLS patterns, auth context
@@ -35,10 +35,10 @@ This folder contains runbooks and architectural docs designed to answer complex 
 
 | Doc | Duration | When to Read | Key Takeaway |
 |-----|----------|--------------|--------------|
-| `file-and-domain-reference.md` | 5 min | Finding code by feature or domain | Every feature mirrors the same structure: Backend routes/services/repos, Frontend pages/api/hooks, Mobile screens/api/hooks, Shared schemas. Grep the feature name and you know where to look. |
-| `architecture-permissions.md` | 5 min | Starting new feature or fixing auth bug | Permission types (diary, checkin, medications, cycle, reports) control family access; RLS enforces it |
+| `file-and-domain-reference.md` | 5 min | Finding code by feature or domain | Most features touch Backend routes/services/repos, Frontend pages/api/hooks, Mobile screens/api/hooks, and Shared schemas — but naming is **not** uniform and some layers are absent per domain. Grep the feature name to find the real files. |
+| `architecture-permissions.md` | 5 min | Starting new feature or fixing auth bug | Logical permissions (diary, checkin, medications, reports) map onto `family_access` JSONB keys; cycle/pregnancy are owner-only; RLS enforces it |
 | `data-flow-patterns.md` | 5 min | Understanding how packages talk | Frontend → Server → RLS-gated database; shared schemas are the contract |
-| `testing-patterns.md` | 15 min | Writing tests for any layer | Route tests (supertest), service tests (mock repo), repository tests (real DB + RLS), component tests (@testing-library), hook tests (renderHook). Concrete examples for each. |
+| `testing-patterns.md` | 15 min | Writing tests for any layer | Server = Vitest (route tests mount a local app + mock repos); frontend/mobile = Jest; most repository tests mock `poolManager`, one real-DB RLS integration test. Illustrative examples per layer. |
 | `new-domain-template.md` | 10 min | Adding a feature domain (Fasting, Medications, etc.) | 5 phases: plan schemas, server routes/RLS, frontend, mobile, docs |
 | `new-migration-checklist.md` | 2 min | Creating a table or altering migrations | 8 steps: migration, RLS, boot server, run backup script, Zod schema, docs, API contracts, validation |
 | `anti-patterns.md` | 10 min | Before committing server/frontend/mobile code | Common mistakes: getSystemClient(), missing cache invalidation, timezone bugs, incomplete cross-package updates |
@@ -52,9 +52,9 @@ This folder contains runbooks and architectural docs designed to answer complex 
 - **On code review:** Use plan-review-checklist and anti-patterns as verification before saying "looks good."
 - **When stuck:** Check the specific doc's "Common Gotchas" or "Exception" sections — usually you're asking one of the frequently-answered questions.
 
-## Known Issues / TBD
+## Notes on Conventions
 
-- **Medications domain** — Routes and models exist, but shared schemas (`medication*.zod.ts`) are **missing**. This breaks the contract pattern. See [`architecture-permissions.md`](architecture-permissions.md) for the permission-type matrix with TBD notes.
-- **Permission type for cycle/pregnancy/mood/sleep** — Not yet finalized. Check AGENTS.md Quick Routing notes for the current mapping.
+- **Schema location isn't uniform** — most tables map to `shared/src/schemas/database/<Table>.zod.ts`, but some don't (medications live in `shared/src/medications/`). Follow the closest domain.
+- **Permissions** — delegatable: `diary`, `checkin`, `medications`, `reports` (+ `*_read`); `goals`/`exercise`/`water`/`mood`/`fasting`/`sleep`/`symptoms` map onto diary/reports; cycle/pregnancy are owner-only. See [`architecture-permissions.md`](architecture-permissions.md).
 
 If you spot a discrepancy between a doc and the code, fix the doc as part of your change.
