@@ -6,12 +6,14 @@ import { ExternalLink } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreateExternalProviderMutation } from '@/hooks/Settings/useExternalProviderSettings';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
 
 interface FoodSourcesStepProps {
   onContinue: () => void;
 }
 
 export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const { mutateAsync: createExternalProvider, isPending } =
@@ -20,6 +22,9 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
   const [usdaKey, setUsdaKey] = useState('');
   const [fatsecretAppId, setFatsecretAppId] = useState('');
   const [fatsecretAppKey, setFatsecretAppKey] = useState('');
+  const hasProviderCredentials = Boolean(
+    usdaKey.trim() || fatsecretAppId.trim() || fatsecretAppKey.trim()
+  );
   // Track providers already persisted this session so a partial failure
   // (e.g. USDA saved, FatSecret rejected) doesn't re-POST the saved one on retry.
   const savedProviderTypesRef = useRef(new Set<string>());
@@ -31,9 +36,14 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
 
     if ((trimmedFsId && !trimmedFsKey) || (!trimmedFsId && trimmedFsKey)) {
       toast({
-        title: 'Missing FatSecret field',
-        description:
-          'Enter both the FatSecret App ID and App Key, or leave both blank to skip.',
+        title: t(
+          'onboarding.foodSourcesFatSecretMissingTitle',
+          'FatSecret details are incomplete'
+        ),
+        description: t(
+          'onboarding.foodSourcesFatSecretMissingDescription',
+          'Enter both the App ID and App Key, or leave both empty to skip.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -46,8 +56,11 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
 
     if (!user) {
       toast({
-        title: 'Not signed in',
-        description: 'Please sign in again to save food sources.',
+        title: t('onboarding.foodSourcesSignedOutTitle', 'Sign in required'),
+        description: t(
+          'onboarding.foodSourcesSignedOutDescription',
+          'Sign in again before saving a food provider.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -91,17 +104,18 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
   return (
     <>
       <h1 className="text-3xl font-bold text-foreground mb-2">
-        Connect food databases
+        {t('onboarding.foodSourcesTitle', 'Improve food search (optional)')}
       </h1>
       <p className="text-muted-foreground mb-8">
-        Optional, but adding USDA and FatSecret to your searches gives
-        dramatically better results than the default Open Food Facts. You can
-        always add or change these later in Settings.
+        {t(
+          'onboarding.foodSourcesDescription',
+          'SparkyFitness works without these providers. If you have API credentials, you can add them now or later in Settings.'
+        )}
       </p>
 
       <div className="space-y-4">
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Label
               htmlFor="onboarding-usda-key"
               className="text-base font-semibold"
@@ -114,7 +128,7 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
               rel="noopener noreferrer"
               className="text-sm text-green-600 hover:text-green-700 inline-flex items-center gap-1"
             >
-              Get a free API key
+              {t('onboarding.foodSourcesGetUsdaKey', 'Get a free API key')}
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
@@ -123,43 +137,63 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
             type="password"
             value={usdaKey}
             onChange={(e) => setUsdaKey(e.target.value)}
-            placeholder="USDA API Key"
+            placeholder={t(
+              'onboarding.foodSourcesUsdaKeyPlaceholder',
+              'USDA API key'
+            )}
             autoComplete="off"
           />
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold">FatSecret</Label>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-base font-semibold">FatSecret</span>
             <a
               href="https://platform.fatsecret.com/my-account/dashboard"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-green-600 hover:text-green-700 inline-flex items-center gap-1"
             >
-              Get API credentials
+              {t(
+                'onboarding.foodSourcesGetFatSecretCredentials',
+                'Open provider dashboard'
+              )}
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
+          <Label htmlFor="onboarding-fatsecret-app-id">
+            {t('onboarding.foodSourcesFatSecretAppId', 'FatSecret App ID')}
+          </Label>
           <Input
             id="onboarding-fatsecret-app-id"
             type="text"
             value={fatsecretAppId}
             onChange={(e) => setFatsecretAppId(e.target.value)}
-            placeholder="FatSecret App ID"
+            placeholder={t(
+              'onboarding.foodSourcesFatSecretAppIdPlaceholder',
+              'Enter the App ID'
+            )}
             autoComplete="off"
           />
+          <Label htmlFor="onboarding-fatsecret-app-key">
+            {t('onboarding.foodSourcesFatSecretAppKey', 'FatSecret App Key')}
+          </Label>
           <Input
             id="onboarding-fatsecret-app-key"
             type="password"
             value={fatsecretAppKey}
             onChange={(e) => setFatsecretAppKey(e.target.value)}
-            placeholder="FatSecret App Key"
+            placeholder={t(
+              'onboarding.foodSourcesFatSecretAppKeyPlaceholder',
+              'Enter the App Key'
+            )}
             autoComplete="off"
           />
           <p className="text-xs text-muted-foreground">
-            FatSecret also requires you to whitelist your public IP in its
-            developer dashboard. This can take up to 24 hours to take effect.
+            {t(
+              'onboarding.foodSourcesFatSecretIpNote',
+              'FatSecret requires your public IP in its developer dashboard. Changes may take up to 24 hours.'
+            )}
           </p>
         </div>
       </div>
@@ -169,7 +203,11 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
         disabled={isPending}
         className="w-full mt-12 h-14 text-lg rounded-full"
       >
-        {isPending ? 'Saving...' : 'Continue'}
+        {isPending
+          ? t('common.saving', 'Saving…')
+          : hasProviderCredentials
+            ? t('onboarding.foodSourcesSaveContinue', 'Save and continue')
+            : t('onboarding.foodSourcesSkip', 'Skip for now')}
       </Button>
     </>
   );
