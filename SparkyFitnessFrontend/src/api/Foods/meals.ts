@@ -35,6 +35,22 @@ export const getMealById = async (mealId: string): Promise<Meal> => {
   return await apiCall(`/meals/${mealId}`, { method: 'GET' });
 };
 
+// Recently logged meal templates, for the food-search landing quick-pick list.
+export const getRecentMeals = async (limit = 3): Promise<Meal[]> => {
+  return await apiCall(`/meals/recent`, {
+    method: 'GET',
+    params: { limit: String(limit) },
+  });
+};
+
+// Most frequently logged meal templates, ranked by usage count.
+export const getTopMeals = async (limit = 3): Promise<Meal[]> => {
+  return await apiCall(`/meals/top`, {
+    method: 'GET',
+    params: { limit: String(limit) },
+  });
+};
+
 export const updateMeal = async (
   mealId: string,
   mealData: Partial<MealPayload>
