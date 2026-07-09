@@ -30,6 +30,7 @@ const backupSettingsBodySchema = z.object({
 import multer from 'multer';
 import path from 'path';
 import { promises } from 'fs';
+import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -171,13 +172,17 @@ router.post(
     const uploadedFilePath = req.file.path;
     // @ts-expect-error TS(2339): Property 'file' does not exist on type 'Request<{}... Remove this comment to see the full error message
     const originalFileName = req.file.originalname;
+    // Never derive the on-disk path from the uploaded filename. A server-generated
+    // name keeps shell metacharacters and `..` traversal sequences out of the path
+    // entirely; tar reads the archive by content, so the name does not matter.
+    const safeFileName = `restore_${randomUUID()}.tar.gz`;
     log(
       'info',
-      `Uploaded backup file: ${originalFileName} to ${uploadedFilePath}`
+      `Uploaded backup file: ${originalFileName} -> ${safeFileName} at ${uploadedFilePath}`
     );
     try {
       // Move the uploaded file to the designated backup directory for processing
-      const finalBackupPath = path.join(BACKUP_DIR, originalFileName);
+      const finalBackupPath = path.join(BACKUP_DIR, safeFileName);
       await fs.copyFile(uploadedFilePath, finalBackupPath);
       await fs.unlink(uploadedFilePath);
       log('info', `Moved uploaded file to: ${finalBackupPath}`);

@@ -1,4 +1,5 @@
-import { exec, spawn } from 'child_process';
+import { execFile, spawn } from 'child_process';
+import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs';
 import { promises } from 'fs';
@@ -30,28 +31,33 @@ async function ensureBackupDirectory() {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function executeCommand(command: any, options = {}) {
-  return new Promise((resolve, reject) => {
-    exec(
-      command,
-      // @ts-expect-error TS(2339): Property 'env' does not exist on type '{}'.
-      { ...options, env: { ...process.env, ...options.env } },
-      (error, stdout, stderr) => {
-        if (error) {
-          log('error', `Command failed: ${command}`, error);
-          log('error', `Stderr: ${stderr}`);
-          return reject(new Error(`Command failed: ${command}\n${stderr}`));
-        }
-        if (stderr) {
-          log('warn', `Command stderr: ${stderr}`);
-        }
-        log('info', `Command successful: ${command}`);
-        log('debug', `Stdout: ${stdout}`);
-        resolve(stdout);
-      }
+const execFileAsync = promisify(execFile);
+async function executeCommand(
+  file: string,
+  args: string[] = [],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  options: any = {}
+) {
+  try {
+    const { stdout, stderr } = await execFileAsync(file, args, {
+      ...options,
+      env: { ...process.env, ...(options.env || {}) },
+    });
+    if (stderr) {
+      log('warn', `Command stderr: ${stderr}`);
+    }
+    log('info', `Command successful: ${file} ${args.join(' ')}`);
+    log('debug', `Stdout: ${stdout}`);
+    return stdout;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    log('error', `Command failed: ${file} ${args.join(' ')}`, error);
+    // `||` not `??`: stderr can be an empty string; `??` would emit a blank detail.
+    throw new Error(
+      `Command failed: ${file} ${args.join(' ')}\n${error.stderr || error.message}`,
+      { cause: error }
     );
-  });
+  }
 }
 async function performBackup(isManual = false) {
   await ensureBackupDirectory();
@@ -109,12 +115,23 @@ async function performBackup(isManual = false) {
     ]);
     log('info', `Database backup created: ${dbBackupPath}`);
     log('info', 'Starting uploads folder backup...');
-    const tarCommand = `tar -czf ${uploadsBackupPath} -C ${UPLOADS_BASE_DIR} .`;
-    await executeCommand(tarCommand);
+    await executeCommand('tar', [
+      '-czf',
+      uploadsBackupPath,
+      '-C',
+      UPLOADS_BASE_DIR,
+      '.',
+    ]);
     log('info', `Uploads folder backup created: ${uploadsBackupPath}`);
     log('info', 'Combining backups into a single archive...');
-    const combineCommand = `tar -czf ${fullBackupPath} -C ${BACKUP_DIR} ${dbBackupFileName} ${uploadsBackupFileName}`;
-    await executeCommand(combineCommand);
+    await executeCommand('tar', [
+      '-czf',
+      fullBackupPath,
+      '-C',
+      BACKUP_DIR,
+      dbBackupFileName,
+      uploadsBackupFileName,
+    ]);
     log('info', `Combined backup created: ${fullBackupPath}`);
     log('info', 'Cleaning up individual backup files...');
     await fsp.unlink(dbBackupPath);
@@ -187,7 +204,7 @@ async function performRestore(backupFilePath: any) {
     log('info', `Created temporary restore directory: ${tempRestoreDir}`);
     // 3. Extract the combined archive
     log('info', `Extracting combined backup archive: ${backupFilePath}`);
-    await executeCommand(`tar -xzf ${backupFilePath} -C ${tempRestoreDir}`);
+    await executeCommand('tar', ['-xzf', backupFilePath, '-C', tempRestoreDir]);
     log('info', 'Combined backup archive extracted.');
     const extractedFiles = await fsp.readdir(tempRestoreDir);
     const dbDumpFile = extractedFiles.find(
@@ -212,7 +229,19 @@ async function performRestore(backupFilePath: any) {
     // Terminate all other connections to the database
     const terminateConnectionsCommand = `SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '${process.env.SPARKY_FITNESS_DB_NAME}' AND pid <> pg_backend_pid();`;
     await executeCommand(
-      `psql -h ${process.env.SPARKY_FITNESS_DB_HOST} -p ${process.env.SPARKY_FITNESS_DB_PORT} -U ${process.env.SPARKY_FITNESS_DB_USER} -d postgres -c "${terminateConnectionsCommand}"`,
+      'psql',
+      [
+        '-h',
+        process.env.SPARKY_FITNESS_DB_HOST!,
+        '-p',
+        process.env.SPARKY_FITNESS_DB_PORT!,
+        '-U',
+        process.env.SPARKY_FITNESS_DB_USER!,
+        '-d',
+        'postgres',
+        '-c',
+        terminateConnectionsCommand,
+      ],
       {
         env: {
           PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
@@ -226,10 +255,19 @@ async function performRestore(backupFilePath: any) {
       PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
       ...process.env,
     };
-    const dropDbCommand = `dropdb -h ${process.env.SPARKY_FITNESS_DB_HOST} -p ${process.env.SPARKY_FITNESS_DB_PORT} -U ${process.env.SPARKY_FITNESS_DB_USER} ${process.env.SPARKY_FITNESS_DB_NAME}`;
-    const createDbCommand = `createdb -h ${process.env.SPARKY_FITNESS_DB_HOST} -p ${process.env.SPARKY_FITNESS_DB_PORT} -U ${process.env.SPARKY_FITNESS_DB_USER} ${process.env.SPARKY_FITNESS_DB_NAME}`;
-    await executeCommand(dropDbCommand, { env: dbEnv });
-    await executeCommand(createDbCommand, { env: dbEnv });
+    const dbConnectionArgs = [
+      '-h',
+      process.env.SPARKY_FITNESS_DB_HOST!,
+      '-p',
+      process.env.SPARKY_FITNESS_DB_PORT!,
+      '-U',
+      process.env.SPARKY_FITNESS_DB_USER!,
+      process.env.SPARKY_FITNESS_DB_NAME!,
+    ];
+    await executeCommand('dropdb', ['--if-exists', ...dbConnectionArgs], {
+      env: dbEnv,
+    });
+    await executeCommand('createdb', dbConnectionArgs, { env: dbEnv });
     log('info', 'Database wiped and recreated.');
     // Reinitialize the pool after database recreation
     await resetPool();
@@ -278,9 +316,12 @@ async function performRestore(backupFilePath: any) {
     log('info', 'Database restored successfully.');
     // 6. Restore uploads
     log('info', 'Restoring uploads folder...');
-    await executeCommand(
-      `tar -xzf ${extractedUploadsTarPath} -C ${UPLOADS_BASE_DIR}`
-    );
+    await executeCommand('tar', [
+      '-xzf',
+      extractedUploadsTarPath,
+      '-C',
+      UPLOADS_BASE_DIR,
+    ]);
     log('info', 'Uploads folder restored successfully.');
     // 7. Clean up temporary directory
     log('info', `Cleaning up temporary restore directory: ${tempRestoreDir}`);
@@ -317,6 +358,7 @@ export { performBackup };
 export { applyRetentionPolicy };
 export { performRestore };
 export { ensureBackupDirectory };
+export { executeCommand };
 export { BACKUP_DIR };
 export { UPLOADS_BASE_DIR };
 export default {
@@ -324,6 +366,7 @@ export default {
   applyRetentionPolicy,
   performRestore,
   ensureBackupDirectory,
+  executeCommand,
   BACKUP_DIR,
   UPLOADS_BASE_DIR,
 };
