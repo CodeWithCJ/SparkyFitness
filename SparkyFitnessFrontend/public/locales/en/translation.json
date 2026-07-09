@@ -14,6 +14,7 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "forgotPassword": "Forgot your password?",
+    "backToSignIn": "Back to sign in",
     "signingIn": "Signing in…",
     "orSignInWith": "Or continue with",
     "signInWithPasskey": "Sign in with a passkey",
@@ -43,6 +44,20 @@
       "missingLowercase": "Add at least one lowercase letter.",
       "missingNumber": "Add at least one number.",
       "missingSpecialCharacter": "Add at least one special character."
+    },
+    "passwordReset": {
+      "invalidToken": "This password reset link is invalid or has expired.",
+      "errorTitle": "Reset link unavailable",
+      "passwordMismatch": "Passwords do not match.",
+      "success": "Your password is updated. You can now sign in.",
+      "error": "We could not update your password. Request a new link and try again.",
+      "description": "Choose a new password for your account.",
+      "newPassword": "New password",
+      "newPasswordPlaceholder": "Enter a new password",
+      "confirmPassword": "Confirm new password",
+      "confirmPasswordPlaceholder": "Enter the new password again",
+      "resetting": "Updating password…",
+      "submit": "Update password"
     }
   },
   "medications": {

@@ -35,17 +35,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AuthResponse } from '@/types/auth';
 import { useTranslation } from 'react-i18next';
 import {
-  PasswordValidationIssue,
+  PASSWORD_REQUIREMENT_DEFAULTS,
   getPasswordValidationIssue,
 } from '@/utils/passwordValidation';
-
-const PASSWORD_REQUIREMENT_DEFAULTS: Record<PasswordValidationIssue, string> = {
-  tooShort: 'Use at least 6 characters.',
-  missingUppercase: 'Add at least one uppercase letter.',
-  missingLowercase: 'Add at least one lowercase letter.',
-  missingNumber: 'Add at least one number.',
-  missingSpecialCharacter: 'Add at least one special character.',
-};
 
 const Auth = () => {
   const { t } = useTranslation();

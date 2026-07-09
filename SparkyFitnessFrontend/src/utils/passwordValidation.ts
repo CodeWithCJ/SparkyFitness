@@ -5,6 +5,17 @@ export type PasswordValidationIssue =
   | 'missingNumber'
   | 'missingSpecialCharacter';
 
+export const PASSWORD_REQUIREMENT_DEFAULTS: Record<
+  PasswordValidationIssue,
+  string
+> = {
+  tooShort: 'Use at least 6 characters.',
+  missingUppercase: 'Add at least one uppercase letter.',
+  missingLowercase: 'Add at least one lowercase letter.',
+  missingNumber: 'Add at least one number.',
+  missingSpecialCharacter: 'Add at least one special character.',
+};
+
 export const getPasswordValidationIssue = (
   password: string
 ): PasswordValidationIssue | null => {
