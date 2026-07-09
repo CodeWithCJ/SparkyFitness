@@ -4,7 +4,11 @@ import {
   readMinMaxAvgByDay,
   postProcessRaw,
 } from '../../../src/services/healthconnect/provider';
-import { aggregateGroupByPeriod, aggregateRecord } from 'react-native-health-connect';
+import {
+  aggregateGroupByPeriod,
+  aggregateRecord,
+  readRecords,
+} from 'react-native-health-connect';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -12,6 +16,7 @@ jest.mock('../../../src/services/LogService', () => ({
 
 const mockAggregateGroupByPeriod = aggregateGroupByPeriod as jest.Mock;
 const mockAggregateRecord = aggregateRecord as jest.Mock;
+const mockReadRecords = readRecords as jest.Mock;
 
 const start = new Date(2026, 6, 1, 0, 0, 0, 0);
 const end = new Date(2026, 6, 3, 15, 30, 0);
@@ -21,6 +26,16 @@ describe('healthconnect provider', () => {
     jest.clearAllMocks();
     mockAggregateGroupByPeriod.mockResolvedValue([]);
     mockAggregateRecord.mockReset().mockResolvedValue({});
+    // Answer the cumulative path's offset probes with a record that carries
+    // no zone offset, keeping aggregation on the device-zone path.
+    mockReadRecords.mockResolvedValue({
+      records: [
+        {
+          startTime: new Date(2026, 6, 1, 12, 0, 0, 0).toISOString(),
+          endTime: new Date(2026, 6, 1, 12, 0, 0, 0).toISOString(),
+        },
+      ],
+    });
   });
 
   describe('readCumulativeByDay', () => {

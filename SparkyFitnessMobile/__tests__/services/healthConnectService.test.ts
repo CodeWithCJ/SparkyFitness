@@ -24,6 +24,24 @@ const periodBucket = (y: number, m1to12: number, d: number, result: unknown) => 
   endTime: new Date(y, m1to12 - 1, d + 1, 0, 0, 0, 0).toISOString(),
 });
 
+// The cumulative aggregation path probes the range with pageSize:1 reads and
+// derives day attribution from the probed records' zone offsets. This answers
+// those probes with a record that carries no zone offset — keeping tests on
+// the device-zone aggregateGroupByPeriod path with no offset attached — while
+// full reads (raw record types) resolve empty.
+const probeInstant = new Date(2024, 0, 15, 12, 0, 0, 0);
+const offsetlessProbeRecord = {
+  startTime: probeInstant.toISOString(),
+  endTime: probeInstant.toISOString(),
+};
+const mockEmptyReadsWithProbe = () => {
+  mockReadRecords.mockImplementation((_recordType: string, options?: { pageSize?: number }) =>
+    Promise.resolve(
+      options?.pageSize === 1 ? { records: [offsetlessProbeRecord] } : { records: [] },
+    ),
+  );
+};
+
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
@@ -68,7 +86,7 @@ describe('healthConnectService.ts (Android)', () => {
 
   describe('getAggregatedTotalCaloriesByDate', () => {
     beforeEach(() => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([]);
     });
 
@@ -127,7 +145,7 @@ describe('healthConnectService.ts (Android)', () => {
 
   describe('getAggregatedDistanceByDate', () => {
     beforeEach(() => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([]);
     });
 
@@ -164,7 +182,7 @@ describe('healthConnectService.ts (Android)', () => {
 
   describe('getAggregatedFloorsClimbedByDate', () => {
     beforeEach(() => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([]);
     });
 
@@ -207,7 +225,7 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('sends correctly shaped HealthDataPayload to API', async () => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { COUNT_TOTAL: 5000 }),
       ]);
@@ -230,7 +248,7 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('Steps are aggregated via native aggregateGroupByPeriod (cross-origin dedup)', async () => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       // Native aggregate already handles cross-origin dedup — helper just passes
       // through the value HC returned.
       mockAggregateGroupByPeriod.mockResolvedValue([
@@ -249,7 +267,7 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('ActiveCalories are aggregated via native aggregateGroupByPeriod', async () => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 350 } }),
       ]);
@@ -318,7 +336,7 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('TotalCalories are aggregated via native aggregateGroupByPeriod', async () => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { ENERGY_TOTAL: { inKilocalories: 1100 } }),
       ]);
@@ -373,7 +391,7 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('returns error when API call fails', async () => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { COUNT_TOTAL: 5000 }),
       ]);
@@ -388,7 +406,7 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('returns apiResponse from successful sync', async () => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { COUNT_TOTAL: 5000 }),
       ]);
@@ -405,7 +423,7 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('passes server record rejections through as uploadErrors without touching syncErrors', async () => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { COUNT_TOTAL: 5000 }),
       ]);
@@ -448,7 +466,7 @@ describe('healthConnectService.ts (Android)', () => {
         // background both do), so meals logged in Health Connect with yesterday's event
         // time were silently missed by a 'today' sync.
         jest.useFakeTimers({ now: new Date(2026, 6, 3, 15, 30, 0) });
-        mockReadRecords.mockResolvedValue({ records: [] });
+        mockEmptyReadsWithProbe();
 
         await androidService.syncHealthData('today', {
           isNutritionSyncEnabled: true,
@@ -470,7 +488,7 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('Distance is aggregated via native aggregateGroupByPeriod', async () => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { DISTANCE: { inMeters: 3000 } }),
       ]);
@@ -487,7 +505,7 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('FloorsClimbed is aggregated via native aggregateGroupByPeriod', async () => {
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockEmptyReadsWithProbe();
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { FLOORS_CLIMBED_TOTAL: 8 }),
       ]);
@@ -505,18 +523,25 @@ describe('healthConnectService.ts (Android)', () => {
   });
 
   describe('per-day UTC offset metadata', () => {
-    // The native aggregate path attributes records to the device-local day
-    // (matching HC UI behavior). One range-wide probe read captures a UTC
-    // offset that is attached to every emitted day — see the basisIsDayOnly
-    // short-circuit in measurementService.resolveHealthEntryDate, which means
-    // per-day offset precision is not load-bearing for server day attribution.
+    // Day attribution follows the zone offsets stored on the records
+    // (matching HC UI behavior, issue #1712); when they match the device
+    // zone, a single probe read captures the offset that is attached to
+    // every emitted day. See the basisIsDayOnly short-circuit in
+    // measurementService.resolveHealthEntryDate — the server trusts the
+    // client's date, and this field records the offset behind it.
+    const deviceOffsetMinutes = -probeInstant.getTimezoneOffset();
 
-    test('TotalCalories: range offset captured from probe read', async () => {
+    test('TotalCalories: offset captured from an end-stamped probe record', async () => {
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { ENERGY_TOTAL: { inKilocalories: 50 } }),
       ]);
       mockReadRecords.mockResolvedValue({
-        records: [{ endZoneOffset: { totalSeconds: 32400 } }], // UTC+9
+        records: [
+          {
+            endTime: probeInstant.toISOString(),
+            endZoneOffset: { totalSeconds: deviceOffsetMinutes * 60 },
+          },
+        ],
       });
 
       const result = await androidService.getAggregatedTotalCaloriesByDate(
@@ -526,15 +551,20 @@ describe('healthConnectService.ts (Android)', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe('2024-01-15');
-      expect(result[0].record_utc_offset_minutes).toBe(540);
+      expect(result[0].record_utc_offset_minutes).toBe(deviceOffsetMinutes);
     });
 
-    test('Distance: range offset captured from probe read', async () => {
+    test('Distance: offset captured from a start-stamped probe record', async () => {
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { DISTANCE: { inMeters: 2000 } }),
       ]);
       mockReadRecords.mockResolvedValue({
-        records: [{ endZoneOffset: { totalSeconds: 32400 } }],
+        records: [
+          {
+            startTime: probeInstant.toISOString(),
+            startZoneOffset: { totalSeconds: deviceOffsetMinutes * 60 },
+          },
+        ],
       });
 
       const result = await androidService.getAggregatedDistanceByDate(
@@ -543,15 +573,20 @@ describe('healthConnectService.ts (Android)', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].record_utc_offset_minutes).toBe(540);
+      expect(result[0].record_utc_offset_minutes).toBe(deviceOffsetMinutes);
     });
 
-    test('FloorsClimbed: range offset captured from probe read', async () => {
+    test('FloorsClimbed: offset captured from probe read', async () => {
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { FLOORS_CLIMBED_TOTAL: 3 }),
       ]);
       mockReadRecords.mockResolvedValue({
-        records: [{ endZoneOffset: { totalSeconds: 32400 } }],
+        records: [
+          {
+            startTime: probeInstant.toISOString(),
+            startZoneOffset: { totalSeconds: deviceOffsetMinutes * 60 },
+          },
+        ],
       });
 
       const result = await androidService.getAggregatedFloorsClimbedByDate(
@@ -560,14 +595,14 @@ describe('healthConnectService.ts (Android)', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].record_utc_offset_minutes).toBe(540);
+      expect(result[0].record_utc_offset_minutes).toBe(deviceOffsetMinutes);
     });
 
-    test('omits offset metadata when probe read returns no records', async () => {
+    test('omits offset metadata when the probe record carries no zone offset', async () => {
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { ENERGY_TOTAL: { inKilocalories: 200 } }),
       ]);
-      mockReadRecords.mockResolvedValue({ records: [] });
+      mockReadRecords.mockResolvedValue({ records: [offsetlessProbeRecord] });
 
       const result = await androidService.getAggregatedTotalCaloriesByDate(
         localMidnight(2024, 1, 15),
@@ -582,9 +617,20 @@ describe('healthConnectService.ts (Android)', () => {
       mockAggregateGroupByPeriod.mockResolvedValue([
         periodBucket(2024, 1, 15, { ENERGY_TOTAL: { inKilocalories: 100 } }),
       ]);
-      mockReadRecords.mockResolvedValue({
-        records: [{ endZoneOffset: { totalSeconds: 32400 } }],
-      });
+      mockReadRecords.mockImplementation((_recordType: string, options?: { pageSize?: number }) =>
+        Promise.resolve(
+          options?.pageSize === 1
+            ? {
+                records: [
+                  {
+                    startTime: probeInstant.toISOString(),
+                    startZoneOffset: { totalSeconds: deviceOffsetMinutes * 60 },
+                  },
+                ],
+              }
+            : { records: [] },
+        ),
+      );
 
       const healthMetricStates: HealthMetricStates = { isTotalCaloriesSyncEnabled: true };
 
@@ -594,7 +640,7 @@ describe('healthConnectService.ts (Android)', () => {
       const calRecords = payload.filter((r: { type: string }) => r.type === 'total_calories');
 
       expect(calRecords.length).toBeGreaterThanOrEqual(1);
-      expect(calRecords[0].record_utc_offset_minutes).toBe(540);
+      expect(calRecords[0].record_utc_offset_minutes).toBe(deviceOffsetMinutes);
     });
   });
 

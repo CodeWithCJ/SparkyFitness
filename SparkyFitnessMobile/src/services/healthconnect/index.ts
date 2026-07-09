@@ -3,6 +3,7 @@ import {
   requestPermission,
   readRecords,
   aggregateRecord,
+  aggregateGroupByDuration,
   aggregateGroupByPeriod,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
@@ -68,7 +69,8 @@ export const requestHealthPermissions = async (
 
 const PAGE_SIZE = 5000;
 const MAX_PAGES = 100;
-const FALLBACK_DAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const FALLBACK_DAY_WINDOW_MS = DAY_MS;
 const FALLBACK_HOUR_WINDOW_MS = 60 * 60 * 1000;
 
 // Health Connect enforces a foreground API call quota; once exceeded, every
@@ -90,6 +92,7 @@ interface ReadRecordsOptions {
   };
   pageSize: number;
   pageToken?: string;
+  ascendingOrder?: boolean;
 }
 
 // Aliases of the platform-neutral ReadResult shared with iOS.
@@ -297,18 +300,30 @@ export const readHealthRecords = async (
 };
 
 /**
- * Aggregates a cumulative metric by local day for [startDate, endDate] using
- * Health Connect's native aggregateGroupByPeriod (one call per range, not
- * per day). HC's native aggregation handles cross-origin dedup using the
- * user's source priority list — matching what HC's own UI displays — so
- * callers do not need to deduplicate records themselves (issue #1279).
+ * Aggregates a cumulative metric by local day for [startDate, endDate].
+ * HC's native aggregation handles cross-origin dedup using the user's source
+ * priority list — matching what HC's own UI displays — so callers do not
+ * need to deduplicate records themselves (issue #1279). Native call counts
+ * stay bounded regardless of window length (per-day native calls previously
+ * blew HC's API quota).
  *
- * Captures one UTC offset for the whole range via a single pageSize:1 read
- * and attaches it to every day's record. The server treats `date`-only
- * payloads as authoritative for day attribution (see
- * resolveHealthEntryDate's basisIsDayOnly short-circuit in
- * measurementService.ts), so per-day offset precision is not load-bearing —
- * the field exists for observability of timezone-metadata coverage.
+ * Day attribution follows the zone offsets stored on the records, matching
+ * how HC's own UI assigns records to days (issue #1712):
+ *
+ * - When the records' offsets match the device zone (the stationary case,
+ *   including across DST — device zone rules cover it), a single
+ *   aggregateGroupByPeriod call buckets by device-local days.
+ * - When they diverge (the user changed timezone), day windows are rebuilt
+ *   as fixed 24h instant ranges anchored at the *records'* midnights and
+ *   aggregated with aggregateGroupByDuration — one call per offset segment,
+ *   at most two segments. Without this, HC re-bins up to a week of pre-move
+ *   records across the new zone's midnights and day totals drift by
+ *   whatever crossed midnight.
+ *
+ * The server treats `date`-only payloads as authoritative for day
+ * attribution (see resolveHealthEntryDate's basisIsDayOnly short-circuit in
+ * measurementService.ts); `record_utc_offset_minutes` carries the offset
+ * used for each day's attribution.
  */
 export type CumulativeMetricRecordType =
   | 'Steps'
@@ -339,19 +354,26 @@ const formatLocalDay = (date: Date): string => {
 // start, so callers of this module align cumulative query starts with it.
 export { alignToLocalDayStart } from '../../utils/syncUtils';
 
+type EdgeProbeResult =
+  | { outcome: 'record'; instantMs: number; offsetMinutes?: number }
+  | { outcome: 'empty' }
+  | { outcome: 'error' };
+
 /**
- * Reads a single record in the range for the sole purpose of capturing one
- * UTC offset to attach to every aggregated day. Returns undefined if no
- * record / no offset / on any error (offset is observability-only metadata).
+ * Reads the first (ascending) or last (descending) record in the range and
+ * returns its start instant plus the zone offset stored on it, pairing the
+ * offset with the matching timestamp (start with start, end with end) so a
+ * record spanning a DST shift can't mix an end offset with a start instant.
  */
-const readZoneOffsetForRange = async (
+const readEdgeRecord = async (
   recordType: CumulativeMetricRecordType,
   startDate: Date,
   endDate: Date,
-): Promise<number | undefined> => {
+  ascending: boolean,
+): Promise<EdgeProbeResult> => {
   try {
-    if (getWindowError(`offset read for ${recordType}`, startDate, endDate)) {
-      return undefined;
+    if (getWindowError(`offset probe for ${recordType}`, startDate, endDate)) {
+      return { outcome: 'error' };
     }
     const result = await readRecords(
       recordType as Parameters<typeof readRecords>[0],
@@ -362,18 +384,374 @@ const readZoneOffsetForRange = async (
           endTime: endDate.toISOString(),
         },
         pageSize: 1,
+        ascendingOrder: ascending,
       } as unknown as Parameters<typeof readRecords>[1],
     );
-    type OffsetRecord = { startZoneOffset?: HCZoneOffset; endZoneOffset?: HCZoneOffset };
-    const record = (result.records as OffsetRecord[])[0];
-    const offset = record?.endZoneOffset ?? record?.startZoneOffset;
-    if (offset?.totalSeconds != null) {
-      return Math.round(offset.totalSeconds / 60);
+    type EdgeRecord = {
+      startTime?: string;
+      endTime?: string;
+      startZoneOffset?: HCZoneOffset;
+      endZoneOffset?: HCZoneOffset;
+    };
+    const record = (result.records as EdgeRecord[])[0];
+    if (!record) {
+      return { outcome: 'empty' };
     }
-    return undefined;
+    const startMs = record.startTime ? new Date(record.startTime).getTime() : NaN;
+    const endMs = record.endTime ? new Date(record.endTime).getTime() : NaN;
+    if (record.startZoneOffset?.totalSeconds != null && Number.isFinite(startMs)) {
+      return {
+        outcome: 'record',
+        instantMs: startMs,
+        offsetMinutes: Math.round(record.startZoneOffset.totalSeconds / 60),
+      };
+    }
+    if (record.endZoneOffset?.totalSeconds != null && Number.isFinite(endMs)) {
+      return {
+        outcome: 'record',
+        instantMs: endMs,
+        offsetMinutes: Math.round(record.endZoneOffset.totalSeconds / 60),
+      };
+    }
+    const instantMs = Number.isFinite(startMs) ? startMs : endMs;
+    if (!Number.isFinite(instantMs)) {
+      return { outcome: 'error' };
+    }
+    return { outcome: 'record', instantMs };
   } catch {
+    return { outcome: 'error' };
+  }
+};
+
+/** UTC offset minutes the device zone applies at the given instant. */
+const deviceOffsetMinutesAt = (instantMs: number): number =>
+  -new Date(instantMs).getTimezoneOffset();
+
+/** Device-local wall-clock fields, used for fixed-offset instant arithmetic. */
+interface WallClockParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  ms: number;
+}
+
+const wallClockParts = (date: Date): WallClockParts => ({
+  year: date.getFullYear(),
+  month: date.getMonth(),
+  day: date.getDate(),
+  hour: date.getHours(),
+  minute: date.getMinutes(),
+  second: date.getSeconds(),
+  ms: date.getMilliseconds(),
+});
+
+/**
+ * Epoch ms of the wall clock shifted by dayShift days and interpreted at a
+ * fixed UTC offset — "midnight of day k in the records' zone" when the parts
+ * are a midnight.
+ */
+const instantAtOffset = (
+  parts: WallClockParts,
+  dayShift: number,
+  offsetMinutes: number,
+): number =>
+  Date.UTC(
+    parts.year,
+    parts.month,
+    parts.day + dayShift,
+    parts.hour,
+    parts.minute,
+    parts.second,
+    parts.ms,
+  ) -
+  offsetMinutes * 60_000;
+
+/** YYYY-MM-DD label of the wall clock shifted by dayShift days. */
+const dayLabelAt = (parts: WallClockParts, dayShift: number): string => {
+  const shifted = new Date(Date.UTC(parts.year, parts.month, parts.day + dayShift));
+  const y = shifted.getUTCFullYear();
+  const m = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(shifted.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+/** Index of endDate's calendar day relative to the parts' day (day 0). */
+const dayIndexSpan = (parts: WallClockParts, endDate: Date): number => {
+  const end = wallClockParts(endDate);
+  return Math.round(
+    (Date.UTC(end.year, end.month, end.day) - Date.UTC(parts.year, parts.month, parts.day)) /
+      DAY_MS,
+  );
+};
+
+/**
+ * One fixed-offset stretch of the window. Buckets are fixed 24h instant
+ * ranges from startMs; a bucket landing past lastDayIndex is either folded
+ * into it (the extended evening of the day before a westward switch) or
+ * dropped (records the source stamped into a local day beyond the window —
+ * the next sync's window covers that day).
+ */
+interface AggregationSegment {
+  startMs: number;
+  endMs: number;
+  firstDayIndex: number;
+  lastDayIndex: number;
+  offsetMinutes: number;
+  overflow: 'fold' | 'drop';
+}
+
+/**
+ * Binary-searches the first day index (1..lastDayIndex + 1) whose midnight
+ * boundary belongs to the post-transition offset. Assumes offsets form a
+ * single step from off0 to off1 over the window; returns undefined as soon
+ * as a probe contradicts that (third offset, probe failure) so the caller
+ * can fall back to device-zone bucketing instead of guessing.
+ */
+const findSwitchDayIndex = async (
+  recordType: CumulativeMetricRecordType,
+  parts: WallClockParts,
+  lastDayIndex: number,
+  off0: number,
+  off1: number,
+  endDate: Date,
+): Promise<number | undefined> => {
+  let lo = 1;
+  let hi = lastDayIndex + 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    const probeStart = Math.min(
+      instantAtOffset(parts, mid, off0),
+      instantAtOffset(parts, mid, off1),
+    );
+    const probe = await readEdgeRecord(recordType, new Date(probeStart), endDate, true);
+    if (probe.outcome === 'empty') {
+      // No records at or after this midnight; its boundary offset is moot.
+      hi = mid;
+      continue;
+    }
+    if (probe.outcome === 'error' || probe.offsetMinutes == null) {
+      return undefined;
+    }
+    if (probe.offsetMinutes === off0) {
+      lo = mid + 1;
+    } else if (probe.offsetMinutes === off1) {
+      hi = mid;
+    } else {
+      return undefined;
+    }
+  }
+  return lo;
+};
+
+/**
+ * Plans the offset-anchored segments for a window whose records were stamped
+ * in a zone other than the device's. Returns undefined whenever the data
+ * doesn't look like a clean timezone change — callers then keep device-zone
+ * bucketing, which is the pre-#1712 behavior.
+ */
+const buildOffsetSegments = async (
+  recordType: CumulativeMetricRecordType,
+  startDate: Date,
+  endDate: Date,
+  firstOffsetMinutes: number,
+): Promise<AggregationSegment[] | undefined> => {
+  const lastProbe = await readEdgeRecord(recordType, startDate, endDate, false);
+  if (lastProbe.outcome !== 'record' || lastProbe.offsetMinutes == null) {
     return undefined;
   }
+  const off0 = firstOffsetMinutes;
+  const off1 = lastProbe.offsetMinutes;
+  const parts = wallClockParts(startDate);
+  const lastDayIndex = dayIndexSpan(parts, endDate);
+  const endMs = endDate.getTime();
+  const anchor = instantAtOffset(parts, 0, off0);
+  const wholeWindow: AggregationSegment = {
+    startMs: anchor,
+    endMs,
+    firstDayIndex: 0,
+    lastDayIndex,
+    offsetMinutes: off0,
+    overflow: 'drop',
+  };
+
+  if (off0 === off1) {
+    return [wholeWindow];
+  }
+  // A mid-window offset change is only trustworthy as travel when the window
+  // ends in the device's current zone; otherwise it's likely one source
+  // stamping bogus offsets (e.g. a UTC-stamping exporter) and re-bucketing
+  // would scramble a stationary user's days.
+  if (off1 !== deviceOffsetMinutesAt(lastProbe.instantMs)) {
+    return undefined;
+  }
+  // An offset jump of a day or more (dateline hop) degenerates the day-window
+  // math in both directions — eastward the segments invert, westward whole
+  // misattributed buckets would fold into the pre-switch day.
+  if (Math.abs(off1 - off0) * 60_000 >= DAY_MS) {
+    return undefined;
+  }
+  const switchDay = await findSwitchDayIndex(
+    recordType,
+    parts,
+    lastDayIndex,
+    off0,
+    off1,
+    endDate,
+  );
+  if (switchDay == null) {
+    return undefined;
+  }
+  const boundary = instantAtOffset(parts, switchDay, off1);
+  if (boundary >= endMs) {
+    // Transition after the window's last midnight: every boundary is still
+    // the old zone's.
+    return [wholeWindow];
+  }
+  return [
+    {
+      startMs: anchor,
+      endMs: boundary,
+      firstDayIndex: 0,
+      lastDayIndex: switchDay - 1,
+      offsetMinutes: off0,
+      overflow: 'fold',
+    },
+    {
+      startMs: boundary,
+      endMs,
+      firstDayIndex: switchDay,
+      lastDayIndex,
+      offsetMinutes: off1,
+      overflow: 'drop',
+    },
+  ];
+};
+
+/**
+ * Today's stationary path: one aggregateGroupByPeriod call bucketing by
+ * device-local calendar days.
+ */
+const aggregateByDeviceZone = async (
+  spec: CumulativeMetricSpec,
+  startDate: Date,
+  endDate: Date,
+  rangeOffsetMinutes: number | undefined,
+): Promise<HealthConnectAggregateResult> => {
+  type PeriodBucket = { result: unknown; startTime: string; endTime: string };
+  let buckets: PeriodBucket[];
+  try {
+    buckets = (await aggregateGroupByPeriod({
+      recordType: spec.recordType as Parameters<typeof aggregateGroupByPeriod>[0]['recordType'],
+      timeRangeFilter: {
+        operator: 'between',
+        startTime: startDate.toISOString(),
+        endTime: endDate.toISOString(),
+      },
+      timeRangeSlicer: { period: 'DAYS', length: 1 },
+    })) as unknown as PeriodBucket[];
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(
+      `[HealthConnectService] aggregateGroupByPeriod(${spec.recordType}) failed: ${message}`,
+      'ERROR',
+    );
+    return { records: [], error: message };
+  }
+
+  const results: AggregatedHealthRecord[] = [];
+  for (const bucket of buckets) {
+    const value = spec.extractValue(bucket.result);
+    if (!Number.isFinite(value) || value <= 0) continue;
+
+    const rec: AggregatedHealthRecord = {
+      date: formatLocalDay(new Date(bucket.startTime)),
+      value: spec.round ? Math.round(value) : value,
+      type: spec.outputType,
+    };
+    if (rangeOffsetMinutes != null) {
+      rec.record_utc_offset_minutes = rangeOffsetMinutes;
+    }
+    results.push(rec);
+  }
+
+  addLog(`[HealthConnectService] ${spec.recordType} aggregation: ${results.length} days`, 'DEBUG');
+  return { records: results };
+};
+
+/**
+ * Offset-anchored path: fixed 24h buckets per segment via
+ * aggregateGroupByDuration, so day boundaries sit at the records' own
+ * midnights instead of the device zone's. Native dedup applies within each
+ * call exactly as in the device-zone path.
+ */
+const aggregateByRecordOffsets = async (
+  spec: CumulativeMetricSpec,
+  startDate: Date,
+  segments: AggregationSegment[],
+): Promise<HealthConnectAggregateResult> => {
+  const parts = wallClockParts(startDate);
+  const days = new Map<number, { value: number; offsetMinutes: number }>();
+
+  for (const segment of segments) {
+    type DurationBucket = { result: unknown; startTime: string; endTime: string };
+    let buckets: DurationBucket[];
+    try {
+      buckets = (await aggregateGroupByDuration({
+        recordType: spec.recordType as Parameters<
+          typeof aggregateGroupByDuration
+        >[0]['recordType'],
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: new Date(segment.startMs).toISOString(),
+          endTime: new Date(segment.endMs).toISOString(),
+        },
+        timeRangeSlicer: { duration: 'DAYS', length: 1 },
+      })) as unknown as DurationBucket[];
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(
+        `[HealthConnectService] aggregateGroupByDuration(${spec.recordType}) failed: ${message}`,
+        'ERROR',
+      );
+      return { records: [], error: message };
+    }
+
+    for (const bucket of buckets) {
+      const value = spec.extractValue(bucket.result);
+      if (!Number.isFinite(value) || value <= 0) continue;
+
+      const bucketIndex = Math.round(
+        (new Date(bucket.startTime).getTime() - segment.startMs) / DAY_MS,
+      );
+      const dayIndex = segment.firstDayIndex + bucketIndex;
+      if (dayIndex > segment.lastDayIndex && segment.overflow === 'drop') continue;
+
+      const boundedIndex = Math.min(dayIndex, segment.lastDayIndex);
+      const existing = days.get(boundedIndex);
+      days.set(boundedIndex, {
+        value: (existing?.value ?? 0) + value,
+        offsetMinutes: existing?.offsetMinutes ?? segment.offsetMinutes,
+      });
+    }
+  }
+
+  const results: AggregatedHealthRecord[] = [...days.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([dayIndex, day]) => ({
+      date: dayLabelAt(parts, dayIndex),
+      value: spec.round ? Math.round(day.value) : day.value,
+      type: spec.outputType,
+      record_utc_offset_minutes: day.offsetMinutes,
+    }));
+
+  addLog(
+    `[HealthConnectService] ${spec.recordType} aggregation: ${results.length} days across ${segments.length} offset segment(s)`,
+    'DEBUG',
+  );
+  return { records: results };
 };
 
 // HC anchors DAYS buckets at the supplied startTime, so callers emitting
@@ -390,48 +768,38 @@ export const aggregateCumulativeMetricByDayDetailed = async (
       return { records: [], error: rangeError };
     }
 
-    type PeriodBucket = { result: unknown; startTime: string; endTime: string };
-    let buckets: PeriodBucket[];
-    try {
-      buckets = (await aggregateGroupByPeriod({
-        recordType: spec.recordType as Parameters<typeof aggregateGroupByPeriod>[0]['recordType'],
-        timeRangeFilter: {
-          operator: 'between',
-          startTime: startDate.toISOString(),
-          endTime: endDate.toISOString(),
-        },
-        timeRangeSlicer: { period: 'DAYS', length: 1 },
-      })) as unknown as PeriodBucket[];
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+    const firstProbe = await readEdgeRecord(spec.recordType, startDate, endDate, true);
+    if (firstProbe.outcome === 'empty') {
       addLog(
-        `[HealthConnectService] aggregateGroupByPeriod(${spec.recordType}) failed: ${message}`,
-        'ERROR',
+        `[HealthConnectService] ${spec.recordType} aggregation: no records in range`,
+        'DEBUG',
       );
-      return { records: [], error: message };
+      return { records: [] };
     }
 
-    const rangeOffset = await readZoneOffsetForRange(spec.recordType, startDate, endDate);
-    const results: AggregatedHealthRecord[] = [];
-
-    for (const bucket of buckets) {
-      const value = spec.extractValue(bucket.result);
-      if (!Number.isFinite(value) || value <= 0) continue;
-
-      const dayString = formatLocalDay(new Date(bucket.startTime));
-      const rec: AggregatedHealthRecord = {
-        date: dayString,
-        value: spec.round ? Math.round(value) : value,
-        type: spec.outputType,
-      };
-      if (rangeOffset != null) {
-        rec.record_utc_offset_minutes = rangeOffset;
+    if (
+      firstProbe.outcome === 'record' &&
+      firstProbe.offsetMinutes != null &&
+      firstProbe.offsetMinutes !== deviceOffsetMinutesAt(firstProbe.instantMs)
+    ) {
+      const segments = await buildOffsetSegments(
+        spec.recordType,
+        startDate,
+        endDate,
+        firstProbe.offsetMinutes,
+      );
+      if (segments) {
+        return await aggregateByRecordOffsets(spec, startDate, segments);
       }
-      results.push(rec);
+      addLog(
+        `[HealthConnectService] ${spec.recordType}: record offsets diverge from the device zone but don't form a clean transition; using device-zone buckets`,
+        'WARNING',
+      );
     }
 
-    addLog(`[HealthConnectService] ${spec.recordType} aggregation: ${results.length} days`, 'DEBUG');
-    return { records: results };
+    const rangeOffsetMinutes =
+      firstProbe.outcome === 'record' ? firstProbe.offsetMinutes : undefined;
+    return await aggregateByDeviceZone(spec, startDate, endDate, rangeOffsetMinutes);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthConnectService] Error aggregating ${spec.recordType}: ${message}`, 'ERROR');
