@@ -44,8 +44,14 @@ async function upsertStepData(
     );
     let result;
     if (existingRecord.rows.length > 0) {
+      // Max-wins per day: an automated sync (device or provider) reports a
+      // day's running step total, and reads can arrive out of order (a partial
+      // early-day read, late-propagating records, cross-source dedup). GREATEST
+      // keeps the largest total seen so a smaller/partial read never clobbers a
+      // complete day. Manual user edits go through upsertCheckInMeasurements,
+      // which overwrites, so a deliberate correction is still possible.
       const updateResult = await client.query(
-        'UPDATE check_in_measurements SET steps = $1, updated_at = now(), updated_by_user_id = $2 WHERE entry_date = $3 AND user_id = $4 RETURNING *',
+        'UPDATE check_in_measurements SET steps = GREATEST($1::integer, steps), updated_at = now(), updated_by_user_id = $2 WHERE entry_date = $3 AND user_id = $4 RETURNING *',
         [value, actingUserId, date, userId]
       );
       result = updateResult.rows[0];
@@ -387,13 +393,21 @@ async function bulkUpsertCheckInMeasurements(
         // Batch UPDATE via unnest: only columns present in the batch are
         // touched; COALESCE keeps a row's other columns intact (measurement
         // values are validated numbers, never null, so COALESCE is exact).
+        // steps is the exception — it is max-wins per day so a smaller/partial
+        // sync read can't clobber a complete day's total (see upsertStepData).
+        // GREATEST ignores a null u.steps (date not carrying steps this batch),
+        // leaving cm.steps intact, exactly as COALESCE would.
         const updateColumns = [
           ...new Set(
             updateDates.flatMap((date) => Object.keys(mergedByDate.get(date)!))
           ),
         ];
         const setClauses = updateColumns
-          .map((column) => `${column} = COALESCE(u.${column}, cm.${column})`)
+          .map((column) =>
+            column === 'steps'
+              ? 'steps = GREATEST(u.steps, cm.steps)'
+              : `${column} = COALESCE(u.${column}, cm.${column})`
+          )
           .join(', ');
         const unnestParams = updateColumns
           .map(
