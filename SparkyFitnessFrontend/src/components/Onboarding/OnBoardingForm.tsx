@@ -10,6 +10,7 @@ import { OnboardingData, Sex } from '@/types/onboarding';
 import { RecentCheckInMeasurementsResponse } from '@workspace/shared';
 import { useExternalProvidersQuery } from '@/hooks/Settings/useExternalProviderSettings';
 import { useSkipOnboarding } from '@/hooks/Onboarding/useOnboarding';
+import { useTranslation } from 'react-i18next';
 
 interface OnBoardingProps {
   onOnboardingComplete: () => void;
@@ -41,6 +42,7 @@ export const OnBoardingForm = ({
   weightData,
   heightData,
 }: OnBoardingFormProps) => {
+  const { t } = useTranslation();
   // Get preferences including algorithm settings
   const {
     weightUnit: preferredWeightUnit,
@@ -176,16 +178,25 @@ export const OnBoardingForm = ({
             variant="ghost"
             size="icon"
             onClick={prevStep}
-            className="mr-2 -ml-2"
+            className="me-2 -ms-2"
+            aria-label={t('onboarding.back', 'Back')}
+            title={t('onboarding.back', 'Back')}
           >
-            <ChevronLeft className="h-8 w-8" />
+            <ChevronLeft className="h-8 w-8 rtl:rotate-180" />
           </Button>
         ) : (
-          <div className="w-10"></div>
+          <div className="w-10" aria-hidden="true" />
         )}
 
         {step <= lastInputStep && (
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-2 flex-1 overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-label={t('onboarding.progress', 'Setup progress')}
+            aria-valuemin={1}
+            aria-valuemax={lastInputStep}
+            aria-valuenow={step}
+          >
             <div
               className="h-full bg-green-500 transition-all duration-500 ease-out rounded-full"
               style={{ width: `${(step / lastInputStep) * 100}%` }}
@@ -201,14 +212,14 @@ export const OnBoardingForm = ({
               });
             }}
             variant="ghost"
-            className="text-muted-foreground hover:text-foreground font-semibold ml-2 w-16"
+            className="ms-2 w-16 font-semibold text-muted-foreground hover:text-foreground"
             disabled={skipOnboardingMutation.isPending}
           >
-            Skip
+            {t('onboarding.skip', 'Skip')}
           </Button>
         )}
 
-        <div className="ml-auto -mr-2">
+        <div className="ms-auto -me-2">
           <ThemeToggle />
         </div>
       </div>

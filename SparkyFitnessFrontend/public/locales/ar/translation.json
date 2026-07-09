@@ -207,7 +207,10 @@
     "foodSourcesFatSecretAppKeyPlaceholder": "أدخل مفتاح التطبيق",
     "foodSourcesFatSecretIpNote": "يتطلب FatSecret إضافة عنوان IP العام في لوحة المطور. قد تستغرق التغييرات حتى 24 ساعة.",
     "foodSourcesSaveContinue": "حفظ ومتابعة",
-    "foodSourcesSkip": "التخطي حاليًا"
+    "foodSourcesSkip": "التخطي حاليًا",
+    "back": "رجوع",
+    "skip": "تخطي",
+    "progress": "تقدم الإعداد"
   },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",

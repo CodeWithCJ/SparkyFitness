@@ -2768,7 +2768,10 @@
     "foodSourcesFatSecretAppKeyPlaceholder": "Enter the App Key",
     "foodSourcesFatSecretIpNote": "FatSecret requires your public IP in its developer dashboard. Changes may take up to 24 hours.",
     "foodSourcesSaveContinue": "Save and continue",
-    "foodSourcesSkip": "Skip for now"
+    "foodSourcesSkip": "Skip for now",
+    "back": "Back",
+    "skip": "Skip",
+    "progress": "Setup progress"
   },
   "cycle": {
     "hub": "Cycle & Pregnancy Hub",
