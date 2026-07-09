@@ -272,6 +272,18 @@ jest.mock('react-native-reanimated', () => {
     useSharedValue: (init) => React.useRef({ value: init }).current,
     useAnimatedStyle: (fn) => fn(),
     useDerivedValue: (fn) => ({ value: fn() }),
+    // Linear map between the first and last stops, clamped — enough for the
+    // synchronous worklet the useAnimatedStyle mock runs.
+    interpolate: (value, input, output) => {
+      const inMin = input[0];
+      const inMax = input[input.length - 1];
+      const outMin = output[0];
+      const outMax = output[output.length - 1];
+      if (inMax === inMin) return outMin;
+      const t = Math.max(0, Math.min(1, (value - inMin) / (inMax - inMin)));
+      return outMin + t * (outMax - outMin);
+    },
+    Extrapolation: { CLAMP: 'clamp', EXTEND: 'extend', IDENTITY: 'identity' },
     withTiming: (toValue) => toValue,
     withSpring: (toValue) => toValue,
     withSequence: (...args) => args[args.length - 1],
@@ -319,6 +331,8 @@ jest.mock('react-native-keyboard-controller', () => {
     KeyboardStickyView: React.forwardRef(({ children, offset: _offset, enabled: _enabled, ...props }, ref) =>
       React.createElement(View, { ...props, ref }, children),
     ),
+    // Keyboard-closed shared values; tests render with the rail expanded.
+    useReanimatedKeyboardAnimation: () => ({ height: { value: 0 }, progress: { value: 0 } }),
   };
 });
 

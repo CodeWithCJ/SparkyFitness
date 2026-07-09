@@ -27,6 +27,7 @@ import ActiveWorkoutHeader, {
 } from '../components/ActiveWorkoutHeader';
 import ActiveWorkoutRail, { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
+import KeyboardCollapsible from '../components/KeyboardCollapsible';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
 import ActiveWorkoutRestBar from '../components/ActiveWorkoutRestBar';
 import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
@@ -878,16 +879,19 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onClearAllSets={hasAnyCompletedSets ? handleClearAllSets : undefined}
       />
 
-      <ActiveWorkoutRail
-        exercises={session.exercises}
-        completedSetIds={completedSetIds}
-        focusedEntryId={focusedExerciseId}
-        activeEntryId={activeExerciseId}
-        supersetBorders={supersetBorders}
-        getImageSource={getImageSource}
-        onPressExercise={handleRailPress}
-        onPressAdd={handleAddExercise}
-      />
+      {/* Collapses while the keyboard is up to hand its ~105px back to the log. */}
+      <KeyboardCollapsible>
+        <ActiveWorkoutRail
+          exercises={session.exercises}
+          completedSetIds={completedSetIds}
+          focusedEntryId={focusedExerciseId}
+          activeEntryId={activeExerciseId}
+          supersetBorders={supersetBorders}
+          getImageSource={getImageSource}
+          onPressExercise={handleRailPress}
+          onPressAdd={handleAddExercise}
+        />
+      </KeyboardCollapsible>
 
       <KeyboardAwareScrollView
         ref={scrollRef}

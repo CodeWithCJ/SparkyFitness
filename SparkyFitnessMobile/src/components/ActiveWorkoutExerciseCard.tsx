@@ -404,13 +404,17 @@ function ActiveWorkoutExerciseCard({
           >
             {thumb}
           </Pressable>
+          {/* self-stretch fills the row's content height and hitSlop reaches
+              into the row's py-3 padding, so the expand target spans the whole
+              row height instead of just the text box. */}
           <Pressable
             ref={collapsedRowRef}
             onPress={() => onToggleExpanded(exercise.id)}
             onLongPress={longPressMenu}
+            hitSlop={{ top: 10, bottom: 10 }}
             accessibilityRole="button"
             accessibilityLabel={`Expand ${name}`}
-            className="flex-1 flex-row items-center gap-3"
+            className="flex-1 self-stretch flex-row items-center gap-3"
           >
             <Text
               numberOfLines={2}
@@ -444,10 +448,14 @@ function ActiveWorkoutExerciseCard({
         >
           {thumb}
         </Pressable>
+        {/* self-stretch + justify-center make the whole header-row height
+            tappable (not just the text box), so the collapse target around the
+            name matches the chevron's generous hit area. */}
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
           onLongPress={longPressExpandedMenu}
-          className="flex-1"
+          hitSlop={{ top: 10, bottom: 4 }}
+          className="flex-1 self-stretch justify-center"
           accessibilityRole="button"
           accessibilityLabel={`Collapse ${name}`}
         >
