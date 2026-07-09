@@ -63,9 +63,9 @@ Database returns rows
 
 ## Auth Context
 
-- `req.userId` — the actively-logged-in user (might be viewing another user's data via delegation)
-- `req.authenticatedUserId` — the account owner (never changes during a session)
-- `req.activeUserId` — alias for `req.userId`; used when acting as a delegate
+- `req.userId` — the **active/target** user whose data is being accessed (the RLS target). Equals the logged-in user unless acting as a delegate.
+- `req.authenticatedUserId` — the **actual logged-in actor** (never changes during a session; this is the delegate when acting on someone else's behalf)
+- `req.activeUserId` — alias for `req.userId`; the delegated target when acting as a delegate
 - If family-access is active, `req.userId ≠ req.authenticatedUserId` and RLS checks both
 
 ## Testing Data Flows

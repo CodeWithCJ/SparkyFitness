@@ -63,15 +63,15 @@ Use this checklist when adding a major feature area (e.g., symptom tracking, wor
 
 ## Common Gotchas
 
-1. **Medications** (recent example) — Routes and models exist, but **shared schemas do not yet**. This breaks the contract pattern. Fix: add `shared/src/schemas/database/Medication*.zod.ts`.
-2. **Permission type TBD** — If you're unsure whether new data should fall under `diary` or `checkin`, ask in the PR. Picking wrong breaks delegation tests.
-3. **RLS policy forgot the permission check** — Policy must call `public.get_permission(...)` with the right permission type, or delegation breaks silently.
+1. **Schema location isn't uniform** — Not every domain has a `shared/src/schemas/database/<Table>.zod.ts` file. Medications, for example, keep their shared schemas as hand-written modules under `shared/src/medications/` (`schedules.ts`, `correlations.ts`, `symptoms.ts`, `glp1.ts`), exported from `shared/src/index.ts`. Follow the closest existing domain rather than assuming a single convention.
+2. **Permission type TBD** — If you're unsure whether new data should fall under `diary` or `checkin`, ask in the PR. Picking wrong breaks delegation tests. Owner-only domains (cycle, pregnancy) skip delegation entirely.
+3. **RLS policy forgot the permission check** — The policy must resolve the permission through `can_access_user_data(...)` (or a domain helper like `has_medication_access`), or delegation breaks silently. There is no generic `get_permission` function.
 4. **Frontend-only domain** — If a domain has no server persistence (just UI state), it doesn't need migrations/RLS. But it still needs to be in `AGENTS.md` Quick Routing.
 5. **Mobile-only sync** — If background sync uploads the data, include `POST /api/<domain>` chunking logic and `healthDataApi.ts` patterns; don't invent a new upload flow.
 
 ## Reference Examples
 
 - **Foods domain** — full-stack feature with nutrition, barcode search, multiple providers
-- **Fasting domain** — simpler: just entry logging and timer; uses `diary` permission
-- **Medications** — complex: entry + symptom tracking + reporting; permission type not yet finalized
-- **Cycle/Pregnancy** — new; check their guides in mobile/frontend for patterns specific to cyclical/timeline data
+- **Fasting domain** — simpler: just entry logging and timer; guarded by the `checkin` permission (`routes/fastingRoutes.ts`)
+- **Medications** — complex: entry + symptom tracking + reporting; guarded by the `medications` permission (with `medications_read` for read-only delegation)
+- **Cycle/Pregnancy** — owner-only (no delegation); check their guides in mobile/frontend for patterns specific to cyclical/timeline data
