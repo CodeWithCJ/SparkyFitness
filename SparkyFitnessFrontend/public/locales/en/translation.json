@@ -2739,7 +2739,20 @@
     "targetWeightTitle": "What is your target weight?",
     "targetWeightDescription": "You can change this at any time.",
     "mealsPerDayTitle": "How many meals do you usually eat each day?",
-    "mealsPerDay": "{{count}} meals per day"
+    "mealsPerDay": "{{count}} meals per day",
+    "activityLevelTitle": "How active are you in a typical week?",
+    "activityNotMuch": "Little or no planned exercise",
+    "activityNotMuchDesc": "Mostly sitting, with little structured activity.",
+    "activityLight": "Light (1–2 days a week)",
+    "activityLightDesc": "Light exercise or sport.",
+    "activityModerate": "Moderate (3–5 days a week)",
+    "activityModerateDesc": "Moderate exercise or sport.",
+    "activityHeavy": "Very active (6–7 days a week)",
+    "activityHeavyDesc": "Hard exercise, sport, or physical work.",
+    "addBurnedCaloriesTitle": "Should exercise calories increase your daily calorie target?",
+    "addBurnedCaloriesDesc": "If enabled, calories recorded from exercise are added to your daily target.",
+    "preparingPlanTitle": "We are building your starting plan…",
+    "preparingPlanDescription": "Calculating targets from your profile."
   },
   "cycle": {
     "hub": "Cycle & Pregnancy Hub",

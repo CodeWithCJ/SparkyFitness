@@ -39,4 +39,30 @@ describe('OnboardingSteps', () => {
       screen.getByRole('button', { name: '[onboarding.sexFemale]' })
     ).toBeTruthy();
   });
+
+  it('renders plan preparation status from the translation catalog', () => {
+    render(
+      <OnboardingSteps
+        step={12}
+        formData={{} as OnboardingData}
+        setFormData={jest.fn()}
+        nextStep={jest.fn()}
+        weightUnit="kg"
+        setLocalWeightUnit={jest.fn()}
+        heightUnit="cm"
+        setLocalHeightUnit={jest.fn()}
+        localDateFormat="dd/MM/yyyy"
+        setLocalDateFormat={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole('heading', {
+        name: '[onboarding.preparingPlanTitle]',
+      })
+    ).toBeTruthy();
+    expect(
+      screen.getByText('[onboarding.preparingPlanDescription]')
+    ).toBeTruthy();
+  });
 });

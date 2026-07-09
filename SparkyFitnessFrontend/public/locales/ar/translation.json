@@ -178,7 +178,20 @@
     "targetWeightTitle": "وش الوزن اللي تبي توصله؟",
     "targetWeightDescription": "تقدر تغيره بأي وقت.",
     "mealsPerDayTitle": "كم وجبة تاكل عادةً في اليوم؟",
-    "mealsPerDay": "{{count}} وجبات في اليوم"
+    "mealsPerDay": "{{count}} وجبات في اليوم",
+    "activityLevelTitle": "كم مرة تتمرن عادةً في الأسبوع؟",
+    "activityNotMuch": "قليل أو بدون تمرين",
+    "activityNotMuchDesc": "أغلب يومك جلوس ونشاطك المنظم قليل.",
+    "activityLight": "خفيف (يوم إلى يومين بالأسبوع)",
+    "activityLightDesc": "تمرين أو رياضة خفيفة.",
+    "activityModerate": "متوسط (3–5 أيام بالأسبوع)",
+    "activityModerateDesc": "تمرين أو رياضة متوسطة الشدة.",
+    "activityHeavy": "نشاط عالٍ (6–7 أيام بالأسبوع)",
+    "activityHeavyDesc": "تمرين قوي أو رياضة أو عمل بدني.",
+    "addBurnedCaloriesTitle": "هل تبي سعرات التمرين تزيد هدفك اليومي؟",
+    "addBurnedCaloriesDesc": "إذا فعلت الخيار، نضيف السعرات المسجلة من التمرين إلى هدفك اليومي.",
+    "preparingPlanTitle": "نجهز خطتك المبدئية…",
+    "preparingPlanDescription": "نحسب أهدافك بناءً على بياناتك."
   },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",

@@ -525,10 +525,16 @@ export const OnboardingSteps = ({
             </span>
           </div>
           <h2 className="text-2xl font-bold text-foreground text-center">
-            Preparing your personalized plan...
+            {t(
+              'onboarding.preparingPlanTitle',
+              'We are building your starting plan…'
+            )}
           </h2>
           <p className="text-muted-foreground mt-4">
-            Crunching the numbers based on your unique profile.
+            {t(
+              'onboarding.preparingPlanDescription',
+              'Calculating targets from your profile.'
+            )}
           </p>
         </div>
       );
