@@ -74,7 +74,41 @@
     }
   },
   "common": {
-    "cancel": "إلغاء"
+    "active": "فعّال",
+    "add": "إضافة",
+    "breakfast": "الفطور",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "day_short": {
+      "sunday": "أحد",
+      "monday": "اثن",
+      "tuesday": "ثلا",
+      "wednesday": "أرب",
+      "thursday": "خمي",
+      "friday": "جمع",
+      "saturday": "سبت"
+    },
+    "dinner": "العشاء",
+    "errorOccurred": "صار خطأ. حاول مرة ثانية.",
+    "friday": "الجمعة",
+    "indefinite": "غير محدد",
+    "kJ": "kJ",
+    "kcal": "kcal",
+    "lunch": "الغداء",
+    "monday": "الاثنين",
+    "no": "لا",
+    "notApplicable": "غير منطبق",
+    "pickADate": "اختر تاريخًا",
+    "saturday": "السبت",
+    "saveChanges": "حفظ التغييرات",
+    "saving": "جارٍ الحفظ…",
+    "snacks": "الوجبات الخفيفة",
+    "sunday": "الأحد",
+    "thursday": "الخميس",
+    "totalSets": "إجمالي المجموعات",
+    "tuesday": "الثلاثاء",
+    "wednesday": "الأربعاء",
+    "yes": "نعم"
   },
   "mfaChallenge": {
     "challengeTitle": "تحقق من هويتك",
@@ -113,7 +147,13 @@
     "goals": "أهدافي",
     "settings": "الإعدادات",
     "admin": "الإدارة",
-    "checkin": "تسجيل القياسات"
+    "checkin": "تسجيل القياسات",
+    "cycle": "الدورة",
+    "medications": "الأدوية",
+    "pregnancy": "الحمل"
+  },
+  "onboarding": {
+    "completeSetup": "إكمال الإعداد"
   },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",
