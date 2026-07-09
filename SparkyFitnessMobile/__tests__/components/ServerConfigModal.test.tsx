@@ -92,8 +92,12 @@ async function flushDebounce(ms = 600) {
   });
 }
 
-/** The URL field renders synchronously on mount; no debounce to wait out. */
-function waitForForm(result: ReturnType<typeof renderModal>) {
+/**
+ * The URL field renders synchronously on mount; no debounce to wait out. Kept
+ * `async` so the 30+ `await waitForForm(...)` call sites read consistently with
+ * the other async helpers.
+ */
+async function waitForForm(result: ReturnType<typeof renderModal>) {
   expect(result.getByPlaceholderText(URL_PLACEHOLDER)).toBeTruthy();
 }
 
@@ -783,7 +787,8 @@ describe('ServerConfigModal', () => {
       result.rerender(<ServerConfigModal {...defaultProps} visible={true} />);
 
       // URL is cleared on reset, so the auth options (email field) collapse away.
-      await flushDebounce();
+      // Clearing the URL schedules no debounce; `rerender` already flushed the
+      // reset via act, so we can assert directly.
       expect(result.getByPlaceholderText(URL_PLACEHOLDER).props.value).toBe('');
       expect(result.queryByPlaceholderText(EMAIL_PLACEHOLDER)).toBeNull();
     });
