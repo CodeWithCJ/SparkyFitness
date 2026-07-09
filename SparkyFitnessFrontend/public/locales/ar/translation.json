@@ -1,12 +1,56 @@
 {
+  "auth": {
+    "logoAlt": "شعار سباركي فتنس",
+    "tagline": "تابع أكلك ونشاطك ومويتك وصحتك، كلها بمكان واحد.",
+    "warningTitle": "تنبيه مهم",
+    "authenticationFailed": "تعذر تسجيل الدخول",
+    "signIn": "تسجيل الدخول",
+    "createAccount": "إنشاء حساب",
+    "registrationDisabled": "إنشاء الحسابات الجديدة غير متاح حاليًا.",
+    "email": "البريد الإلكتروني",
+    "emailPlaceholder": "name@example.com",
+    "password": "كلمة المرور",
+    "passwordPlaceholder": "أدخل كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "signingIn": "جارٍ تسجيل الدخول…",
+    "orSignInWith": "أو تابع باستخدام",
+    "signInWithPasskey": "الدخول بمفتاح المرور",
+    "requestMagicLink": "أرسل لي رابط تسجيل الدخول",
+    "providerLogoAlt": "شعار {{provider}}",
+    "signInWithProvider": "الدخول الموحد",
+    "fullName": "الاسم الكامل",
+    "fullNamePlaceholder": "أدخل اسمك الكامل",
+    "createPasswordPlaceholder": "أنشئ كلمة مرور",
+    "creatingAccount": "جارٍ إنشاء الحساب…",
+    "loading": {
+      "title": "جارٍ تسجيل دخولك بأمان",
+      "description": "لحظات ونكمل."
+    },
+    "errors": {
+      "signInFailed": "تعذر تسجيل دخولك. تأكد من بياناتك وحاول مرة ثانية."
+    },
+    "passkey": {
+      "successTitle": "تم تسجيل الدخول",
+      "successDescription": "سجلت دخولك بمفتاح المرور.",
+      "errorTitle": "تعذر الدخول بمفتاح المرور",
+      "errorDescription": "حاول مرة ثانية أو استخدم طريقة دخول أخرى."
+    },
+    "passwordRequirements": {
+      "tooShort": "استخدم 6 رموز على الأقل.",
+      "missingUppercase": "أضف حرفًا إنجليزيًا كبيرًا واحدًا على الأقل.",
+      "missingLowercase": "أضف حرفًا إنجليزيًا صغيرًا واحدًا على الأقل.",
+      "missingNumber": "أضف رقمًا واحدًا على الأقل.",
+      "missingSpecialCharacter": "أضف رمزًا خاصًا واحدًا على الأقل."
+    }
+  },
   "nav": {
-    "diary": "المذكرة",
+    "diary": "يومياتي",
     "reports": "التقارير",
     "foods": "الأطعمة",
-    "goals": "الأهداف",
+    "goals": "أهدافي",
     "settings": "الإعدادات",
     "admin": "الإدارة",
-    "checkin": "تسجيل الدخول"
+    "checkin": "تسجيل القياسات"
   },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",

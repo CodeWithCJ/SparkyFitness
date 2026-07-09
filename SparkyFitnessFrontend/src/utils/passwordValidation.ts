@@ -1,0 +1,19 @@
+export type PasswordValidationIssue =
+  | 'tooShort'
+  | 'missingUppercase'
+  | 'missingLowercase'
+  | 'missingNumber'
+  | 'missingSpecialCharacter';
+
+export const getPasswordValidationIssue = (
+  password: string
+): PasswordValidationIssue | null => {
+  if (password.length < 6) return 'tooShort';
+  if (!/[A-Z]/.test(password)) return 'missingUppercase';
+  if (!/[a-z]/.test(password)) return 'missingLowercase';
+  if (!/[0-9]/.test(password)) return 'missingNumber';
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    return 'missingSpecialCharacter';
+  }
+  return null;
+};

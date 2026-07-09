@@ -1,4 +1,48 @@
 {
+  "auth": {
+    "logoAlt": "SparkyFitness logo",
+    "tagline": "Track your nutrition, activity, hydration, and health in one place.",
+    "warningTitle": "Important notice",
+    "authenticationFailed": "Sign-in failed",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "registrationDisabled": "New account registration is currently unavailable.",
+    "email": "Email",
+    "emailPlaceholder": "name@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "forgotPassword": "Forgot your password?",
+    "signingIn": "Signing in…",
+    "orSignInWith": "Or continue with",
+    "signInWithPasskey": "Sign in with a passkey",
+    "requestMagicLink": "Email me a sign-in link",
+    "providerLogoAlt": "{{provider}} logo",
+    "signInWithProvider": "Sign in with SSO",
+    "fullName": "Full name",
+    "fullNamePlaceholder": "Enter your full name",
+    "createPasswordPlaceholder": "Create a password",
+    "creatingAccount": "Creating account…",
+    "loading": {
+      "title": "Signing you in securely",
+      "description": "This should only take a moment."
+    },
+    "errors": {
+      "signInFailed": "We could not sign you in. Check your details and try again."
+    },
+    "passkey": {
+      "successTitle": "Signed in",
+      "successDescription": "You signed in with your passkey.",
+      "errorTitle": "Passkey sign-in failed",
+      "errorDescription": "Try again or use another sign-in method."
+    },
+    "passwordRequirements": {
+      "tooShort": "Use at least 6 characters.",
+      "missingUppercase": "Add at least one uppercase letter.",
+      "missingLowercase": "Add at least one lowercase letter.",
+      "missingNumber": "Add at least one number.",
+      "missingSpecialCharacter": "Add at least one special character."
+    }
+  },
   "medications": {
     "tabs": {
       "log": "Log",
