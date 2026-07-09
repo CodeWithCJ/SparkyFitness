@@ -16,7 +16,7 @@ export const OptionButton = ({
   <button
     onClick={onClick}
     className={`
-      w-full text-left p-5 my-3 rounded-xl border-2 transition-all duration-200
+        w-full text-start p-5 my-3 rounded-xl border-2 transition-all duration-200
       flex flex-col justify-center bg-card
       ${
         isSelected

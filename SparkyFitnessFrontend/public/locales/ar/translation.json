@@ -153,7 +153,32 @@
     "pregnancy": "الحمل"
   },
   "onboarding": {
-    "completeSetup": "إكمال الإعداد"
+    "completeSetup": "إكمال الإعداد",
+    "sexTitle": "أي جنس نستخدم لحسابات الأيض؟",
+    "sexDescription": "نستخدمه فقط لتقدير معدل الأيض الأساسي.",
+    "sexMale": "ذكر",
+    "sexFemale": "أنثى",
+    "primaryGoalTitle": "وش هدفك الأساسي؟",
+    "goalLoseWeight": "إنقاص الوزن",
+    "goalMaintainWeight": "المحافظة على الوزن",
+    "goalGainWeight": "زيادة الوزن",
+    "currentWeightTitle": "كم وزنك الحالي؟",
+    "enterInUnit": "أدخل القياس بوحدة {{unit}}.",
+    "continue": "متابعة",
+    "heightTitle": "كم طولك؟",
+    "birthDateTitle": "ما تاريخ ميلادك؟",
+    "birthDateDescription": "العمر يساعدنا في تقدير احتياجات الأيض.",
+    "dateFormatPlaceholder": "اختر تنسيق التاريخ",
+    "bodyFatTitle": "قدّر نسبة الدهون في جسمك",
+    "bodyFatDescription": "يكفي تقدير تقريبي، وتقدر تعدله لاحقًا.",
+    "bodyFatLow": "منخفضة (أقل من 15٪)",
+    "bodyFatMedium": "متوسطة (15–25٪)",
+    "bodyFatHigh": "مرتفعة (25–35٪)",
+    "bodyFatVeryHigh": "مرتفعة جدًا (أكثر من 35٪)",
+    "targetWeightTitle": "وش الوزن اللي تبي توصله؟",
+    "targetWeightDescription": "تقدر تغيره بأي وقت.",
+    "mealsPerDayTitle": "كم وجبة تاكل عادةً في اليوم؟",
+    "mealsPerDay": "{{count}} وجبات في اليوم"
   },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",

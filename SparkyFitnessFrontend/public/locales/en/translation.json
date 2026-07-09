@@ -2714,7 +2714,32 @@
     "baselineError": "Failed to calculate sleep need baseline"
   },
   "onboarding": {
-    "completeSetup": "Complete Setup"
+    "completeSetup": "Complete Setup",
+    "sexTitle": "Which sex should we use for metabolic calculations?",
+    "sexDescription": "This is used only to estimate your basal metabolic rate.",
+    "sexMale": "Male",
+    "sexFemale": "Female",
+    "primaryGoalTitle": "What is your main goal?",
+    "goalLoseWeight": "Lose weight",
+    "goalMaintainWeight": "Maintain weight",
+    "goalGainWeight": "Gain weight",
+    "currentWeightTitle": "What is your current weight?",
+    "enterInUnit": "Enter in {{unit}}.",
+    "continue": "Continue",
+    "heightTitle": "What is your height?",
+    "birthDateTitle": "When were you born?",
+    "birthDateDescription": "Age helps estimate your metabolic needs.",
+    "dateFormatPlaceholder": "Choose a date format",
+    "bodyFatTitle": "Estimate your body fat percentage",
+    "bodyFatDescription": "A rough estimate is enough. You can update it later.",
+    "bodyFatLow": "Low (<15%)",
+    "bodyFatMedium": "Medium (15–25%)",
+    "bodyFatHigh": "High (25–35%)",
+    "bodyFatVeryHigh": "Very high (>35%)",
+    "targetWeightTitle": "What is your target weight?",
+    "targetWeightDescription": "You can change this at any time.",
+    "mealsPerDayTitle": "How many meals do you usually eat each day?",
+    "mealsPerDay": "{{count}} meals per day"
   },
   "cycle": {
     "hub": "Cycle & Pregnancy Hub",
