@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
+  LayoutAnimation,
   Modal,
   Pressable,
   Text,
@@ -452,6 +453,42 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setRenameVisible(false);
   }, []);
 
+  // Per-set note inline expand, toggled by long-pressing the set row. A stale
+  // id after a delete/reconcile is harmless — no matching row renders.
+  const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
+  const handleToggleSetDetail = useCallback((setId: string) => {
+    // Animate the panel (and the rows it pushes) in/out. easeInEaseOut matches
+    // the card wrapper's 300ms LinearTransition, so the internal reflow and the
+    // card's frame grow/shrink together. Same idiom as CollapsibleSection.
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedSetId((prev) => (prev === setId ? null : setId));
+  }, []);
+
+  // Per-exercise note editor: which exercise's note field the card ⋮ "Notes"
+  // item revealed. Selecting "Notes" again toggles the empty editor back off; a
+  // saved (non-empty) note stays visible regardless — the card also shows the
+  // field whenever `exercise.notes` is set.
+  const [noteEditorEntryId, setNoteEditorEntryId] = useState<string | null>(null);
+  const handleToggleExerciseNote = useCallback(
+    (entryId: string) => {
+      const opening = noteEditorEntryId !== entryId;
+      setNoteEditorEntryId(opening ? entryId : null);
+      // Opening reveals the field — make sure the card is expanded to show it.
+      if (opening) {
+        setUserExpandedIds((prev) => {
+          if (prev.has(entryId)) return prev;
+          const next = new Set(prev);
+          next.add(entryId);
+          return next;
+        });
+      }
+    },
+    [noteEditorEntryId],
+  );
+  const handleCommitExerciseNote = useCallback((entryId: string, text: string) => {
+    useActiveWorkoutStore.getState().setExerciseNotes(entryId, text);
+  }, []);
+
   // Card ⋮ menu. 'main' offers the superset actions; 'pick' swaps in the
   // candidate list (ungrouped exercises other than the current one) at the
   // same anchor.
@@ -494,6 +531,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       key: 'view',
       label: 'View exercise',
       onPress: () => handlePressThumb(entryId),
+    });
+    items.push({
+      key: 'notes',
+      label: 'Notes',
+      onPress: () => handleToggleExerciseNote(entryId),
     });
     if (candidates.length > 0) {
       items.push({
@@ -552,6 +594,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     handleOpenReorder,
     completedSetIds,
     handlePressThumb,
+    handleToggleExerciseNote,
     handleReplaceExercise,
     handleClearExerciseSets,
     handleRemoveExercise,
@@ -581,6 +624,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     // Logging advances the cursor and (usually) starts a rest — drop the
     // keyboard so the rest bar is unobstructed and the logged inputs collapse.
     setFocusedSetId(null);
+    setExpandedSetId(null);
     Keyboard.dismiss();
     // When that was the last unlogged set, the cursor has nowhere to advance,
     // so the follow-cursor scroll won't fire. Surface the End Workout button
@@ -735,6 +779,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   }, [flush, navigation]);
 
   const handleConfirmEnd = useCallback(() => {
+    // Commit any focused-but-unblurred input (a set value or a note) into the
+    // store before the finish flush reads it. keyboardShouldPersistTaps keeps
+    // the field focused when End Workout is tapped, so blur it explicitly — the
+    // commit lands well before the user confirms the dialog. On iOS the alert
+    // would blur it anyway; this closes the same gap on Android.
+    Keyboard.dismiss();
     const totalSets =
       session?.exercises.reduce((sum, e) => sum + e.sets.length, 0) ?? 0;
     const doneSets =
@@ -875,7 +925,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onCommitField={handleCommitField}
               onDeleteSet={handleDeleteSet}
               onPressSetType={handlePressSetType}
+              onLongPressSet={handleToggleSetDetail}
               onAddSet={handleAddSet}
+              expandedSetId={expandedSetId}
+              noteEditorOpen={noteEditorEntryId === exercise.id}
+              onCommitExerciseNote={handleCommitExerciseNote}
               onActivateSet={handleActivateSet}
               onActivateRpe={handleActivateRpe}
               onDeactivateSet={handleDeactivateSet}

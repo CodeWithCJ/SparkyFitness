@@ -514,12 +514,14 @@ function ActiveWorkoutSetRow({
     );
   }, [onPressSetType, setId]);
 
-  // A set-type handler takes over the long-press; otherwise fall back to the
-  // consumer's plain long-press (view mode's "Start workout here").
-  const longPress = onPressSetType
-    ? openSetTypeMenu
-    : onLongPress
-      ? () => onLongPress(setId)
+  // A wired long-press wins (live: expand the row's notes/rest detail; view:
+  // "Start workout here"); the set-type menu is otherwise the long-press
+  // fallback for surfaces that only offer the type picker (the edit form). The
+  // set-number tap always opens the type menu independently of this.
+  const longPress = onLongPress
+    ? () => onLongPress(setId)
+    : onPressSetType
+      ? openSetTypeMenu
       : undefined;
 
   const setNumberControl = (

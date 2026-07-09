@@ -1510,6 +1510,7 @@ describe('workoutSession', () => {
           reps: 5,
           rpe: null,
           rest_time: 120,
+          notes: null,
           duration: 60,
         });
       });

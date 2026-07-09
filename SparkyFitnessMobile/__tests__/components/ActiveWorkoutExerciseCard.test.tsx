@@ -50,6 +50,15 @@ jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
   };
 });
 
+// Surface which set the note expand rendered for.
+jest.mock('../../src/components/ActiveWorkoutSetDetail', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ set }: any) => <View testID={`set-detail-${set.id}`} />,
+  };
+});
+
 jest.mock('../../src/hooks/useExerciseStats', () => ({
   useExerciseStats: jest.fn(() => ({ data: null })),
 }));
@@ -527,6 +536,43 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
       expect(mockCapturePrBaseline).not.toHaveBeenCalled();
       expect(queryByText('Best')).toBeNull();
+    });
+  });
+
+  describe('per-set note expand (live)', () => {
+    it('renders the detail panel under the matching expandedSetId', () => {
+      const { getByTestId } = renderCard(true, { mode: 'live', expandedSetId: '101' });
+      expect(getByTestId('set-detail-101')).toBeTruthy();
+    });
+
+    it('renders no detail panel when expandedSetId matches no row', () => {
+      const { queryByTestId } = renderCard(true, { mode: 'live', expandedSetId: null });
+      expect(queryByTestId('set-detail-101')).toBeNull();
+    });
+
+    it('does not render the expand in view mode', () => {
+      const { queryByTestId } = renderCard(true, { mode: 'view', expandedSetId: '101' });
+      expect(queryByTestId('set-detail-101')).toBeNull();
+    });
+  });
+
+  describe('per-exercise note (live)', () => {
+    it('shows the note field when the exercise already has a note', () => {
+      const { getByLabelText } = renderCard(true, {
+        mode: 'live',
+        exercise: makeExercise({ notes: 'go slow' }),
+      });
+      expect(getByLabelText('Notes for Bench Press').props.value).toBe('go slow');
+    });
+
+    it('shows the note field when the editor is opened even with no note', () => {
+      const { getByLabelText } = renderCard(true, { mode: 'live', noteEditorOpen: true });
+      expect(getByLabelText('Notes for Bench Press')).toBeTruthy();
+    });
+
+    it('hides the note field when empty and the editor is closed', () => {
+      const { queryByLabelText } = renderCard(true, { mode: 'live' });
+      expect(queryByLabelText('Notes for Bench Press')).toBeNull();
     });
   });
 });

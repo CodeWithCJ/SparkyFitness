@@ -235,6 +235,12 @@ export interface ActiveWorkoutState {
    * marks the session dirty so autosave persists the new name to the server.
    */
   renameSession: (name: string) => void;
+  /**
+   * Set the per-exercise note. A no-op if the entry is missing or the trimmed
+   * value is unchanged; an empty (or whitespace-only) string clears it to
+   * `null`. Marks the session dirty so autosave persists the note.
+   */
+  setExerciseNotes: (entryId: string, notes: string | null) => void;
   /** Append a client-built exercise entry (temp string id) with one default set. */
   addExercise: (exercise: Exercise) => void;
   /**
@@ -290,7 +296,7 @@ export interface ActiveWorkoutState {
 
 /** Fields the active-workout screen can edit on a set. */
 export type ActiveSetPatch = Partial<
-  Pick<ExerciseEntrySetResponse, 'weight' | 'reps' | 'rpe' | 'set_type'>
+  Pick<ExerciseEntrySetResponse, 'weight' | 'reps' | 'rpe' | 'set_type' | 'notes'>
 >;
 
 const initialData: Pick<
@@ -526,7 +532,7 @@ function locateSet(
  * the planned interleaving — out-of-order logging makes the cursor land on an
  * interior partner (baked 0) when a real between-rounds rest is actually owed,
  * so derive the rest from the true relationship between the two sets instead.
- * Solo exercises always rest their configured duration.
+ * Rest is per-exercise: the upcoming exercise's `sets[0]` speaks for it.
  */
 function restSecBeforeNextSet(
   session: PresetSessionResponse,
@@ -1283,6 +1289,27 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const trimmed = name.trim();
         if (trimmed.length === 0 || trimmed === session.name) return;
         set(buildSessionEditState(state, { ...session, name: trimmed }));
+      },
+
+      setExerciseNotes: (entryId, notes) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const exercise = session.exercises.find((e) => e.id === entryId);
+        if (!exercise) return;
+        // Empty/whitespace clears to null; a no-op guard skips a spurious
+        // revision bump when the note is unchanged.
+        const trimmed = notes?.trim() ?? '';
+        const nextNotes = trimmed.length === 0 ? null : trimmed;
+        if ((exercise.notes ?? null) === nextNotes) return;
+        set(
+          buildSessionEditState(state, {
+            ...session,
+            exercises: session.exercises.map((e) =>
+              e.id === entryId ? { ...e, notes: nextNotes } : e,
+            ),
+          }),
+        );
       },
 
       addExercise: (exercise) => {

@@ -356,6 +356,7 @@ export interface WorkoutCardSet {
   reps: number | null;
   rpe?: number | null;
   rest_time?: number | null;
+  notes?: string | null;
   duration?: number | null;
   /** Raw draft strings backing the edit-mode controlled inputs (draft mapper only). */
   editWeightText?: string;
@@ -367,6 +368,8 @@ export interface WorkoutCardExercise {
   id: string;
   exercise_id: string;
   superset_group?: number | null;
+  /** Per-exercise note. Present on live entries; absent on draft/preset sources. */
+  notes?: string | null;
   exercise_snapshot: {
     name?: string | null;
     category?: string | null;
@@ -404,6 +407,7 @@ export function draftExerciseToCardExercise(
         reps: isNaN(reps) ? null : reps,
         rpe: set.rpe ?? null,
         rest_time: set.restTime ?? null,
+        notes: set.notes ?? null,
         duration: set.duration ?? null,
         editWeightText: set.weight,
         editRepsText: set.reps,
@@ -433,6 +437,7 @@ export function presetExerciseToCardExercise(
       reps: set.reps ?? null,
       rpe: null,
       rest_time: set.rest_time ?? null,
+      notes: set.notes ?? null,
       duration: set.duration ?? null,
     })),
   };

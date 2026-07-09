@@ -1241,6 +1241,13 @@ describe('activeWorkoutStore', () => {
         expect(state.sessionRevision).toBe(0);
         expect(state.hasUnsavedChanges).toBe(false);
       });
+
+      it('patches per-set notes (the row-expand field)', () => {
+        useActiveWorkoutStore.getState().updateSetField('101', { notes: 'felt heavy' });
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.notes).toBe('felt heavy');
+        expect(useActiveWorkoutStore.getState().hasUnsavedChanges).toBe(true);
+      });
     });
 
     describe('addSetToExercise', () => {
@@ -1358,6 +1365,35 @@ describe('activeWorkoutStore', () => {
         useActiveWorkoutStore.getState().renameSession('   ');
         expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
         useActiveWorkoutStore.getState().renameSession('Push Day');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+        expect(useActiveWorkoutStore.getState().hasUnsavedChanges).toBe(false);
+      });
+    });
+
+    describe('setExerciseNotes', () => {
+      it('sets the note, trims it, and marks unsaved', () => {
+        useActiveWorkoutStore.getState().setExerciseNotes('ex-uuid-1', '  go slow  ');
+        const state = useActiveWorkoutStore.getState();
+        expect(state.session!.exercises[0].notes).toBe('go slow');
+        expect(state.sessionRevision).toBe(1);
+        expect(state.hasUnsavedChanges).toBe(true);
+      });
+
+      it('clears the note to null on an empty (or whitespace) value', () => {
+        useActiveWorkoutStore.getState().setExerciseNotes('ex-uuid-1', 'temp');
+        useActiveWorkoutStore.getState().setExerciseNotes('ex-uuid-1', '   ');
+        expect(useActiveWorkoutStore.getState().session!.exercises[0].notes).toBeNull();
+      });
+
+      it('is a no-op when the trimmed note is unchanged', () => {
+        useActiveWorkoutStore.getState().setExerciseNotes('ex-uuid-1', 'keep');
+        const rev = useActiveWorkoutStore.getState().sessionRevision;
+        useActiveWorkoutStore.getState().setExerciseNotes('ex-uuid-1', '  keep  ');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(rev);
+      });
+
+      it('is a no-op for an unknown entry id', () => {
+        useActiveWorkoutStore.getState().setExerciseNotes('nope', 'x');
         expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
         expect(useActiveWorkoutStore.getState().hasUnsavedChanges).toBe(false);
       });

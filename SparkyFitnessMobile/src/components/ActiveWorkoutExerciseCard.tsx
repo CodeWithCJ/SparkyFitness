@@ -11,6 +11,8 @@ import SafeImage from './SafeImage';
 import CompletionCheck from './CompletionCheck';
 import RestPeriodChip from './RestPeriodChip';
 import ActiveWorkoutSetRow from './ActiveWorkoutSetRow';
+import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
+import WorkoutNotesField from './WorkoutNotesField';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
@@ -89,6 +91,20 @@ interface ActiveWorkoutExerciseCardProps {
   /** Live/edit only: tap a set number (or long-press the row) to change its type. */
   onPressSetType?: (setId: string, anchor: AnchorRect) => void;
   onAddSet?: (entryId: string) => void;
+  // --- live-only per-set expand + notes (Parts B/C) ---
+  /**
+   * Live only: the set id whose inline note panel is expanded (toggled by
+   * long-pressing the set row). A stale id that matches no row renders nothing,
+   * so it's harmless after a delete/reconcile.
+   */
+  expandedSetId?: string | null;
+  /**
+   * Live only: the per-exercise note editor is open (card ⋮ → Notes). The note
+   * field also shows whenever `exercise.notes` is already non-empty.
+   */
+  noteEditorOpen?: boolean;
+  /** Live only: commit the per-exercise note (raw text; the store trims/clears). */
+  onCommitExerciseNote?: (entryId: string, text: string) => void;
   // --- edit + live editing props ---
   /**
    * Focused row's field. Edit: form-owned. Live: the screen-owned focused-cell
@@ -173,6 +189,9 @@ function ActiveWorkoutExerciseCard({
   onLongPressSet,
   onPressSetType,
   onAddSet,
+  expandedSetId,
+  noteEditorOpen = false,
+  onCommitExerciseNote,
   activeField,
   focusedSetId,
   rpeEditable,
@@ -425,6 +444,20 @@ function ActiveWorkoutExerciseCard({
         </Pressable>
       </View>
 
+      {/* Per-exercise note (live only): a subtle line under the name, shown when
+          a note already exists or the card ⋮ "Notes" editor was opened. */}
+      {isLive && (!!exercise.notes || noteEditorOpen) && (
+        <View className="mt-2 px-1">
+          <WorkoutNotesField
+            value={exercise.notes}
+            onCommit={(text) => onCommitExerciseNote?.(exercise.id, text)}
+            label=""
+            placeholder="Add a note for this exercise…"
+            accessibilityLabel={`Notes for ${name}`}
+          />
+        </View>
+      )}
+
       {(showRestChip || lastSet != null || bestDisplay != null) && (
         // flex-wrap + gap-y so the rest chip, "Last time", and "Best" stack
         // gracefully on narrow screens instead of shifting off the edge.
@@ -516,33 +549,39 @@ function ActiveWorkoutExerciseCard({
               : 'upcoming';
         const nextSet = exercise.sets[index + 1];
         return (
-          <ActiveWorkoutSetRow
-            key={setId}
-            set={set}
-            displayNumber={workingSetNumbers[index]}
-            state={state}
-            metricColumn={metricColumn}
-            weightUnit={weightUnit}
-            mode={mode}
-            onComplete={onComplete}
-            onUncomplete={onUncomplete}
-            onCommitField={onCommitField}
-            onDelete={onDeleteSet}
-            onLongPress={onLongPressSet}
-            onPressSetType={onPressSetType}
-            activeField={activeField}
-            isFocused={isLive && focusedSetId === setId}
-            nextSetId={nextSet != null ? String(nextSet.id) : null}
-            entryId={exercise.id}
-            rpeEditable={rpeEditable}
-            completedBadge={isEdit && !!completedSetIds[setId]}
-            onToggleComplete={onToggleComplete}
-            onActivateSet={onActivateSet}
-            onActivateRpe={onActivateRpe}
-            onDeactivate={onDeactivateSet}
-            onEditFieldChange={onEditFieldChange}
-            onAddSet={onAddSet}
-          />
+          <React.Fragment key={setId}>
+            <ActiveWorkoutSetRow
+              set={set}
+              displayNumber={workingSetNumbers[index]}
+              state={state}
+              metricColumn={metricColumn}
+              weightUnit={weightUnit}
+              mode={mode}
+              onComplete={onComplete}
+              onUncomplete={onUncomplete}
+              onCommitField={onCommitField}
+              onDelete={onDeleteSet}
+              onLongPress={onLongPressSet}
+              onPressSetType={onPressSetType}
+              activeField={activeField}
+              isFocused={isLive && focusedSetId === setId}
+              nextSetId={nextSet != null ? String(nextSet.id) : null}
+              entryId={exercise.id}
+              rpeEditable={rpeEditable}
+              completedBadge={isEdit && !!completedSetIds[setId]}
+              onToggleComplete={onToggleComplete}
+              onActivateSet={onActivateSet}
+              onActivateRpe={onActivateRpe}
+              onDeactivate={onDeactivateSet}
+              onEditFieldChange={onEditFieldChange}
+              onAddSet={onAddSet}
+            />
+            {/* Per-set note expand — live only, toggled by long-pressing the
+                set row. */}
+            {isLive && expandedSetId === setId && onCommitField != null && (
+              <ActiveWorkoutSetDetail set={set} onCommitField={onCommitField} />
+            )}
+          </React.Fragment>
         );
       })}
 

@@ -748,14 +748,33 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
     });
 
-    it('routes the row long-press to the set-type menu, not onLongPress', () => {
+    it('routes the row long-press to onLongPress (not the set-type menu) when both are wired', () => {
+      // Live wires both: long-press expands the row detail, the set-number tap
+      // still opens the type menu.
       const { getByTestId, callbacks } = renderRow({
         state: 'upcoming',
         enableSetType: true,
       });
       fireEvent(getByTestId('set-row'), 'longPress');
-      expect(callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
-      expect(callbacks.onLongPress).not.toHaveBeenCalled();
+      expect(callbacks.onLongPress).toHaveBeenCalledWith('101');
+      expect(callbacks.onPressSetType).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the set-type menu on long-press when no onLongPress is wired (edit form)', () => {
+      const onPressSetType = jest.fn();
+      const { getByTestId } = render(
+        <ActiveWorkoutSetRow
+          set={makeSet()}
+          displayNumber={1}
+          state="upcoming"
+          metricColumn="rpe"
+          weightUnit="kg"
+          mode="edit"
+          onPressSetType={onPressSetType}
+        />,
+      );
+      fireEvent(getByTestId('set-row'), 'longPress');
+      expect(onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
     });
 
     it('leaves the set number inert without a set-type handler', () => {
