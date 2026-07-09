@@ -1,7 +1,18 @@
 import express from 'express';
+import {
+  workoutPresetCreateRequestSchema,
+  workoutPresetUpdateRequestSchema,
+} from '@workspace/shared';
 import { authenticate } from '../middleware/authMiddleware.js';
 import workoutPresetService from '../services/workoutPresetService.js';
 const router = express.Router();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sendValidationError(res: any, message: any, error: any) {
+  return res.status(400).json({
+    error: message,
+    details: error.flatten(),
+  });
+}
 /**
  * @swagger
  * /workout-presets:
@@ -31,9 +42,17 @@ const router = express.Router();
  */
 router.post('/', authenticate, async (req, res, next) => {
   try {
+    const parsedBody = workoutPresetCreateRequestSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return sendValidationError(
+        res,
+        'Invalid workout preset payload.',
+        parsedBody.error
+      );
+    }
     const newPreset = await workoutPresetService.createWorkoutPreset(
       req.userId,
-      req.body
+      parsedBody.data
     );
     res.status(201).json(newPreset);
   } catch (error) {
@@ -247,10 +266,18 @@ router.get('/:id', authenticate, async (req, res, next) => {
  */
 router.put('/:id', authenticate, async (req, res, next) => {
   try {
+    const parsedBody = workoutPresetUpdateRequestSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return sendValidationError(
+        res,
+        'Invalid workout preset payload.',
+        parsedBody.error
+      );
+    }
     const updatedPreset = await workoutPresetService.updateWorkoutPreset(
       req.userId,
       req.params.id,
-      req.body
+      parsedBody.data
     );
     res.status(200).json(updatedPreset);
   } catch (error) {

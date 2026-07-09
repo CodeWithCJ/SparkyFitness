@@ -56,7 +56,14 @@ export type RootStackParamList = {
     pendingScannedBarcode?: string;
     scannedBarcodeNonce?: number;
   };
-  ExerciseDetail: { item: Exercise; updatedItem?: Exercise };
+  ExerciseDetail: {
+    item: Exercise;
+    updatedItem?: Exercise;
+    // Suppress the Start Workout / Log Exercise buttons when opened from within
+    // a workout context (active workout, workout builder/edit, preset form),
+    // where starting or logging this single exercise would be redundant.
+    hideWorkoutActions?: boolean;
+  };
   FoodSearch:
     | {
         date?: string;
@@ -140,7 +147,7 @@ export type RootStackParamList = {
       }
     | undefined;
   ExerciseSearch: { returnKey: string };
-  PresetSearch: { date?: string } | undefined;
+  PresetSearch: { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
   WorkoutAdd: {
     session?: PresetSessionResponse;
     preset?: WorkoutPreset;
@@ -152,6 +159,7 @@ export type RootStackParamList = {
   } | undefined;
   ActivityAdd: { entry?: IndividualSessionResponse; date?: string; popCount?: number; selectedExercise?: Exercise; selectionNonce?: number; skipDraftLoad?: boolean } | undefined;
   WorkoutDetail: { session: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number };
+  ActiveWorkout: { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
   ActivityDetail: { session: IndividualSessionResponse };
   FastingDetail: undefined;
   Chat: undefined;

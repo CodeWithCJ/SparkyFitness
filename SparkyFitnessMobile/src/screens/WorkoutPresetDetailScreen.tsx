@@ -1,9 +1,11 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, View, Text, ScrollView } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/ui/Button';
-import RestPeriodChip, { formatRest } from '../components/RestPeriodChip';
+import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
+import { MetricColumnMenu } from '../components/WorkoutMenus';
+import { type AnchorRect } from '../components/AnchoredMenu';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { clearDraft, loadActiveDraft } from '../services/workoutDraftService';
 import {
@@ -12,63 +14,20 @@ import {
   useProfile,
   useServerConnection,
 } from '../hooks';
+import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { weightFromKg } from '../utils/unitConversions';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  buildPresetStartExercisesPayload,
+  makeSparseExercise,
+  presetExerciseToCardExercise,
+} from '../utils/workoutSession';
+import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
-import type { WorkoutPresetExercise, WorkoutPresetSet } from '../types/workoutPresets';
 
 type WorkoutPresetDetailScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
-
-const EM_DASH = '—';
-
-function formatSetSummary(set: WorkoutPresetSet, weightUnit: 'kg' | 'lbs'): string {
-  // Time-based set: render duration only — these are stored without reps/weight,
-  // so falling back to "— × —" would look like missing data.
-  if (set.duration != null) {
-    return formatRest(set.duration);
-  }
-  const repsText = set.reps != null ? String(set.reps) : EM_DASH;
-  const weightText = set.weight != null
-    ? `${parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1))} ${weightUnit}`
-    : EM_DASH;
-  return `${repsText} × ${weightText}`;
-}
-
-interface PresetExerciseRowProps {
-  exercise: WorkoutPresetExercise;
-  weightUnit: 'kg' | 'lbs';
-}
-
-const PresetExerciseRow: React.FC<PresetExerciseRowProps> = ({ exercise, weightUnit }) => {
-  return (
-    <View className="bg-surface rounded-xl px-4 py-4 mb-3">
-      <Text className="text-base font-semibold text-text-primary mb-2">
-        {exercise.exercise_name}
-      </Text>
-      {exercise.sets.length === 0 ? (
-        <Text className="text-sm text-text-secondary">No sets</Text>
-      ) : (
-        exercise.sets.map((set, index) => (
-          <View
-            key={set.id}
-            className={`flex-row items-center justify-between py-2 ${
-              index < exercise.sets.length - 1 ? 'border-b border-border-subtle' : ''
-            }`}
-          >
-            <View className="flex-row items-center flex-1">
-              <Text className="text-sm text-text-muted w-10">{set.set_number}</Text>
-              <Text className="text-sm text-text-primary ml-2">
-                {formatSetSummary(set, weightUnit)}
-              </Text>
-            </View>
-            <RestPeriodChip readOnly value={set.rest_time} />
-          </View>
-        ))
-      )}
-    </View>
-  );
-};
 
 const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   navigation,
@@ -87,6 +46,48 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     preferences?.default_weight_unit === 'kg' ? 'kg' : 'lbs';
   const exerciseCount = preset.exercises?.length ?? 0;
 
+  const { getImageSource } = useExerciseImageSource();
+  const cardExercises = useMemo(
+    () => (preset.exercises ?? []).map(presetExerciseToCardExercise),
+    [preset.exercises],
+  );
+
+  // Preset templates read best fully laid out (the old static table showed
+  // every set): cards default expanded, collapsing allowed.
+  const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
+  const toggleExpanded = useCallback((entryId: string) => {
+    setCollapsedIds(prev => ({ ...prev, [entryId]: !prev[entryId] }));
+  }, []);
+
+  // Tap an exercise thumbnail → its library detail. Preset rows carry only a
+  // sparse snapshot, so the detail screen hydrates the full record by id.
+  const handleViewExercise = useCallback(
+    (entryId: string) => {
+      const card = cardExercises.find(c => c.id === entryId);
+      if (!card) return;
+      navigation.navigate('ExerciseDetail', {
+        item: makeSparseExercise({
+          id: card.exercise_id,
+          name: card.exercise_snapshot?.name,
+          category: card.exercise_snapshot?.category,
+          images: card.exercise_snapshot?.images,
+        }),
+        hideWorkoutActions: true,
+      });
+    },
+    [cardExercises, navigation],
+  );
+
+  // Metric column is shared with the workout screens (intended).
+  const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
+  const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
+  const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
+    setMetricMenuAnchor(anchor);
+  }, []);
+
+  // Superset rails, matching the workout detail presentation.
+  const { borders: supersetBorders } = useSupersetBorders(cardExercises);
+
   // WorkoutPreset uses snake_case `user_id` (it's a thin wrapper over server
   // JSON), unlike Exercise/FoodInfoItem which use camelCase `userId`.
   const canManagePreset = !!(
@@ -101,11 +102,22 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     },
   });
 
+  const { startLiveWorkout, isStarting } = useStartLiveWorkout(navigation);
+
+  const handleStartWorkout = useCallback(() => {
+    void startLiveWorkout({
+      name: preset.name,
+      exercises: buildPresetStartExercisesPayload(preset),
+    });
+  }, [startLiveWorkout, preset]);
+
   const navigateToPresetWorkout = useCallback(() => {
     navigation.navigate('WorkoutAdd', { preset, popCount: 2 });
   }, [navigation, preset]);
 
-  const handleStartWorkout = useCallback(async () => {
+  // The form path (retroactive logging) is the one that owns workout drafts,
+  // so the draft-in-progress prompt lives here rather than on the live start.
+  const handleLogPastWorkout = useCallback(async () => {
     const draft = await loadActiveDraft();
     if (!draft) {
       navigateToPresetWorkout();
@@ -144,6 +156,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   }, [navigation, preset, route.key]);
 
   const header = useScreenHeader({
+    // Name lives in the header; the in-body heading stays only for the fallback
+    // (non-native) header, which renders no center title.
+    nativeTitle: preset.name,
     borderless: true,
     left: { kind: 'back' },
     right: canManagePreset
@@ -170,7 +185,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           paddingBottom: insets.bottom + activeWorkoutBarPadding + 16,
         }}
       >
-        <Text className="text-2xl font-bold text-text-primary">{preset.name}</Text>
+        {!usesNativeHeader && (
+          <Text className="text-2xl font-bold text-text-primary">{preset.name}</Text>
+        )}
         {preset.description ? (
           <Text className="text-base text-text-secondary mt-2">{preset.description}</Text>
         ) : null}
@@ -178,16 +195,67 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
         </Text>
 
-        {preset.exercises?.map((exercise) => (
-          <PresetExerciseRow
-            key={exercise.id}
-            exercise={exercise}
-            weightUnit={weightUnit}
-          />
-        ))}
+        {cardExercises.map(cardExercise => {
+          const isExpanded = !collapsedIds[cardExercise.id];
+          const supersetBorder = supersetBorders.get(cardExercise.id) ?? null;
+          return (
+            // Grouped members carry a flat 3px left rail; interior rails run
+            // to the wrapper's bottom so consecutive members read as one line.
+            <View
+              key={cardExercise.id}
+              style={supersetBorder ? { paddingLeft: 10 } : undefined}
+            >
+              {supersetBorder && (
+                <View
+                  testID={`superset-rail-${cardExercise.id}`}
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: supersetBorder.isLast && isExpanded ? 8 : 0,
+                    width: 3,
+                    backgroundColor: supersetBorder.color,
+                  }}
+                />
+              )}
+              <ActiveWorkoutExerciseCard
+                exercise={cardExercise}
+                mode="view"
+                expanded={isExpanded}
+                completedSetIds={{}}
+                activeSetId={null}
+                metricColumn={metricColumn}
+                weightUnit={weightUnit}
+                getImageSource={getImageSource}
+                showRestChip={cardExercise.sets.length > 0}
+                onPressThumb={handleViewExercise}
+                onToggleExpanded={toggleExpanded}
+                onPressMetricHeader={handlePressMetricHeader}
+              />
+            </View>
+          );
+        })}
 
-        <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
-          <Text className="text-white text-base font-semibold">Start workout</Text>
+        <Button
+          variant="primary"
+          onPress={handleStartWorkout}
+          disabled={isStarting || isDeletePending}
+          className="mt-4"
+        >
+          <Text className="text-white text-base font-semibold">
+            {isStarting ? 'Starting...' : 'Start workout'}
+          </Text>
+        </Button>
+
+        <Button
+          variant="ghost"
+          onPress={() => void handleLogPastWorkout()}
+          disabled={isStarting}
+          className="mt-3"
+          textClassName="text-text-secondary font-medium"
+        >
+          Log past workout
         </Button>
 
         {canManagePreset && (
@@ -202,6 +270,11 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           </Button>
         )}
       </ScrollView>
+
+      <MetricColumnMenu
+        anchor={metricMenuAnchor}
+        onClose={() => setMetricMenuAnchor(null)}
+      />
     </View>
   );
 };

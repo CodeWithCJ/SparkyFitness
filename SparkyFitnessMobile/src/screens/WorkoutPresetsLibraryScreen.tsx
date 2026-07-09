@@ -118,7 +118,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     return (
       <FlatList
         data={presets}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         renderItem={renderRow}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={

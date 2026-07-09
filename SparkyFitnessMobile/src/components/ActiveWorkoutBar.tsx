@@ -5,6 +5,7 @@ import React, {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { View, Text, Pressable, Alert } from 'react-native';
 import {
   createNavigationContainerRef,
@@ -22,6 +23,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { TAB_BAR_HEIGHT } from './CustomTabBar';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { flushActiveWorkoutBeforeClear } from '../hooks/useActiveWorkoutAutosave';
 import { usePreferences } from '../hooks/usePreferences';
 import { weightFromKg } from '../utils/unitConversions';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
@@ -40,7 +42,7 @@ import { withAlpha } from '../utils/colors';
  */
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-const BAR_CONTENT_HEIGHT = 52;
+const BAR_CONTENT_HEIGHT = 60;
 const PROGRESS_BAR_BOTTOM_OFFSET = 1;
 const SLIDE_ANIMATION_DURATION_MS = 220;
 
@@ -132,8 +134,9 @@ export function useActiveWorkoutBarPadding(
 /**
  * Routes where the HUD should be hidden — either modal entry flows (food /
  * exercise search), full-screen editors with their own sticky bottom footers
- * (WorkoutAdd, ActivityAdd), or the chat screen whose composer is pinned to
- * the bottom — all of which would collide with the bar.
+ * (WorkoutAdd, ActivityAdd), the chat screen whose composer is pinned to the
+ * bottom — all of which would collide with the bar — or the active-workout
+ * screen itself, which is the surface the HUD opens.
  */
 const HIDDEN_ROUTES = new Set<string>([
   'FoodSearch',
@@ -148,6 +151,7 @@ const HIDDEN_ROUTES = new Set<string>([
   'ActivityAdd',
   'MeasurementsAdd',
   'Chat',
+  'ActiveWorkout',
 ]);
 
 function formatCountdown(totalSeconds: number): string {
@@ -285,6 +289,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     s => s.rest.pausedRemainingMs,
   );
   const durationSec = useActiveWorkoutStore(s => s.rest.durationSec);
+  const queryClient = useQueryClient();
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
 
@@ -542,9 +547,32 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     useActiveWorkoutStore.getState().completeActiveSet();
   };
 
+  // Clear only via flush: a cold start can leave unsaved session edits with
+  // the active-workout screen (and its autosave hook) unmounted, so dirty
+  // state is saved before the workout is dismissed.
+  const flushAndClear = async () => {
+    const ok = await flushActiveWorkoutBeforeClear(queryClient);
+    if (!ok) {
+      Alert.alert(
+        'Could not save your workout',
+        'Some changes have not reached the server.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Discard anyway',
+            style: 'destructive',
+            onPress: () => useActiveWorkoutStore.getState().clearWorkout(),
+          },
+        ],
+      );
+      return;
+    }
+    useActiveWorkoutStore.getState().clearWorkout();
+  };
+
   const handleClear = () => {
     if (isWorkoutComplete) {
-      useActiveWorkoutStore.getState().clearWorkout();
+      void flushAndClear();
       return;
     }
     Alert.alert(
@@ -556,7 +584,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
           text: 'Clear',
           style: 'destructive',
           onPress: () => {
-            useActiveWorkoutStore.getState().clearWorkout();
+            void flushAndClear();
           },
         },
       ],
@@ -564,13 +592,8 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   };
 
   const handleCenterTap = () => {
-    // Read the session from the store rather than the history query cache —
-    // the cache may not contain this session on a cold start or when the HUD
-    // was started from a screen that hasn't warmed the history pages.
-    const session = useActiveWorkoutStore.getState().session;
-    if (!session) return;
     if (!navigationRef.isReady()) return;
-    navigationRef.navigate('WorkoutDetail', { session });
+    navigationRef.navigate('ActiveWorkout');
   };
 
   // Resting / paused use a three-row layout: a top status label ("Resting"
@@ -686,7 +709,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
         onPress={handleDoneSet}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel="Done — start next set"
+        accessibilityLabel="Done, start next set"
         className="p-2"
       >
         <Icon name="play" size={20} color={accentPrimary} weight="bold" />

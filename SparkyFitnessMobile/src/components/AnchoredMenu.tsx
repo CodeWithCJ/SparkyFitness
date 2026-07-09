@@ -25,6 +25,28 @@ export type AnchoredMenuItem = {
   onPress: () => void;
 };
 
+/**
+ * Measure a menu trigger for use as an AnchoredMenu anchor. Under Fabric,
+ * `measureInWindow` invokes its callback synchronously; under Jest it never
+ * fires, so fall back to a zero rect — the menu still opens and behaves, only
+ * its position is meaningless (which tests don't assert).
+ */
+export function measureAnchoredMenuTrigger(
+  node: {
+    measureInWindow: (
+      callback: (x: number, y: number, width: number, height: number) => void,
+    ) => void;
+  } | null,
+  onAnchor: (anchor: AnchorRect) => void,
+): void {
+  let fired = false;
+  node?.measureInWindow((x, y, width, height) => {
+    fired = true;
+    onAnchor({ x, y, width, height });
+  });
+  if (!fired) onAnchor({ x: 0, y: 0, width: 0, height: 0 });
+}
+
 type Props = {
   visible: boolean;
   anchor: AnchorRect | null;
@@ -69,7 +91,11 @@ const AnchoredMenu: React.FC<Props> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      // No transition: a fade-out leaves the Modal mid-dismiss for ~300ms, and
+      // iOS swallows a present that lands in that window — the cause of the
+      // "tap opens, tap closes, next tap does nothing" every-other-tap bug (and
+      // it also breaks handing off from this menu straight into another modal).
+      animationType="none"
       onRequestClose={onClose}
     >
       <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Dismiss menu">

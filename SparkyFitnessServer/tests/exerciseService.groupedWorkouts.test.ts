@@ -136,6 +136,111 @@ describe('exerciseService grouped workouts', () => {
     expect(client.query).not.toHaveBeenCalledWith('COMMIT');
     expect(client.release).toHaveBeenCalled();
   });
+  it('persists superset_group on freeform grouped workout creation', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exercisePresetEntryRepository.createExercisePresetEntryWithClient.mockResolvedValue(
+      { id: 'preset-entry-1' }
+    );
+    // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist on ty... Remove this comment to see the full error message
+    resolveExerciseIdToUuid.mockImplementation(async (id: string) => id);
+    // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist on ty... Remove this comment to see the full error message
+    exerciseDb.getExerciseById.mockImplementation(async (id: string) => ({
+      id,
+      name: 'Test Exercise',
+      calories_per_hour: 300,
+    }));
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValue(
+      300
+    );
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
+      id: 'new-entry',
+    });
+
+    await exerciseService.createGroupedWorkoutSession('user-1', 'actor-1', {
+      name: 'Superset Day',
+      entry_date: '2026-03-12',
+      source: 'manual',
+      exercises: [
+        {
+          exercise_id: '11111111-1111-4111-8111-111111111111',
+          sort_order: 0,
+          duration_minutes: 0,
+          superset_group: 1,
+          sets: [],
+        },
+        {
+          exercise_id: '22222222-2222-4222-8222-222222222222',
+          sort_order: 1,
+          duration_minutes: 0,
+          sets: [],
+        },
+      ],
+    });
+
+    const createCalls = vi.mocked(
+      exerciseEntryDb._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(createCalls[0][2]).toMatchObject({ superset_group: 1 });
+    expect(createCalls[1][2]).toMatchObject({ superset_group: null });
+    expect(client.query).toHaveBeenCalledWith('COMMIT');
+  });
+  it('copies superset_group from preset exercises when starting from a preset', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    workoutPresetRepository.getWorkoutPresetById.mockResolvedValue({
+      id: 42,
+      name: 'Push Day',
+      description: 'Preset',
+      exercises: [
+        {
+          exercise_id: '11111111-1111-4111-8111-111111111111',
+          sort_order: 0,
+          superset_group: 1,
+          sets: [],
+        },
+        {
+          exercise_id: '22222222-2222-4222-8222-222222222222',
+          sort_order: 1,
+          superset_group: null,
+          sets: [],
+        },
+      ],
+    });
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exercisePresetEntryRepository.createExercisePresetEntryWithClient.mockResolvedValue(
+      { id: 'preset-entry-1' }
+    );
+    // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist on ty... Remove this comment to see the full error message
+    resolveExerciseIdToUuid.mockImplementation(async (id: string) => id);
+    // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist on ty... Remove this comment to see the full error message
+    exerciseDb.getExerciseById.mockImplementation(async (id: string) => ({
+      id,
+      name: 'Test Exercise',
+      calories_per_hour: 300,
+    }));
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValue(
+      300
+    );
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
+      id: 'new-entry',
+    });
+
+    await exerciseService.createGroupedWorkoutSession('user-1', 'actor-1', {
+      workout_preset_id: 42,
+      entry_date: '2026-03-12',
+      source: 'manual',
+    });
+
+    const createCalls = vi.mocked(
+      exerciseEntryDb._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(createCalls[0][2]).toMatchObject({ superset_group: 1 });
+    expect(createCalls[1][2]).toMatchObject({ superset_group: null });
+    expect(client.query).toHaveBeenCalledWith('COMMIT');
+  });
   it('propagates entry_date changes to existing child entries on header-only updates', async () => {
     getGroupedExerciseSessionByIdWithClient
       // @ts-expect-error TS(2339): Property 'mockResolvedValueOnce' does not exist on... Remove this comment to see the full error message
@@ -531,6 +636,206 @@ describe('exerciseService grouped workouts', () => {
       expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
 
+    it('round-trips superset_group through the reconcile path', async () => {
+      setupExistingSession();
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 0,
+              superset_group: 1,
+              sets: [],
+            },
+            {
+              id: 'entry-b',
+              exercise_id: exerciseBId,
+              sort_order: 1,
+              duration_minutes: 0,
+              superset_group: 1,
+              sets: [],
+            },
+          ],
+        }
+      );
+
+      const updateCalls = vi.mocked(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).mock.calls;
+      expect(updateCalls[0][3]).toMatchObject({ superset_group: 1 });
+      expect(updateCalls[1][3]).toMatchObject({ superset_group: 1 });
+    });
+
+    it('clears superset_group when the reconcile payload omits it', async () => {
+      setupExistingSession();
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 0,
+              sets: [],
+            },
+            {
+              id: 'entry-b',
+              exercise_id: exerciseBId,
+              sort_order: 1,
+              duration_minutes: 0,
+              superset_group: null,
+              sets: [],
+            },
+          ],
+        }
+      );
+
+      const updateCalls = vi.mocked(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).mock.calls;
+      expect(updateCalls[0][3]).toMatchObject({ superset_group: null });
+      expect(updateCalls[1][3]).toMatchObject({ superset_group: null });
+    });
+
+    it('carries superset_group through the delete-and-recreate path', async () => {
+      setupExistingSession();
+      // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+      exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
+        id: 'new-entry',
+      });
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 0,
+              superset_group: 3,
+              sets: [],
+            },
+            {
+              exercise_id: exerciseBId,
+              sort_order: 1,
+              duration_minutes: 0,
+              sets: [],
+            },
+          ],
+        }
+      );
+
+      const createCalls = vi.mocked(
+        exerciseEntryDb._createExerciseEntryWithClient
+      ).mock.calls;
+      expect(createCalls[0][2]).toMatchObject({ superset_group: 3 });
+      expect(createCalls[1][2]).toMatchObject({ superset_group: null });
+    });
+
+    it('forwards set completed_at through the reconcile path', async () => {
+      setupExistingSession();
+
+      const completedAt = '2026-07-06T15:04:05.123Z';
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 0,
+              sets: [
+                {
+                  id: 1,
+                  set_number: 1,
+                  reps: 10,
+                  weight: 110,
+                  completed_at: completedAt,
+                },
+              ],
+            },
+            {
+              id: 'entry-b',
+              exercise_id: exerciseBId,
+              sort_order: 1,
+              duration_minutes: 0,
+              sets: [
+                {
+                  id: 2,
+                  set_number: 1,
+                  reps: 5,
+                  weight: 200,
+                  completed_at: null,
+                },
+              ],
+            },
+          ],
+        }
+      );
+
+      expect(
+        exerciseEntryDb._reconcileExerciseEntrySetsWithClient
+      ).toHaveBeenCalledWith(client, 'entry-a', [
+        expect.objectContaining({ id: 1, completed_at: completedAt }),
+      ]);
+      expect(
+        exerciseEntryDb._reconcileExerciseEntrySetsWithClient
+      ).toHaveBeenCalledWith(client, 'entry-b', [
+        expect.objectContaining({ id: 2, completed_at: null }),
+      ]);
+    });
+
+    it('carries set completed_at through the delete-and-recreate path', async () => {
+      setupExistingSession();
+      // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+      exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
+        id: 'new-entry',
+      });
+
+      const completedAt = '2026-07-06T15:04:05.123Z';
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 0,
+              sets: [
+                { set_number: 1, reps: 10, completed_at: completedAt },
+                { set_number: 2, reps: 8, completed_at: null },
+              ],
+            },
+          ],
+        }
+      );
+
+      const createCalls = vi.mocked(
+        exerciseEntryDb._createExerciseEntryWithClient
+      ).mock.calls;
+      expect(createCalls[0][2].sets).toEqual([
+        expect.objectContaining({ completed_at: completedAt }),
+        expect.objectContaining({ completed_at: null }),
+      ]);
+    });
+
     it('falls through to the legacy delete-and-recreate path when no ids are provided', async () => {
       setupExistingSession();
       // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
@@ -656,5 +961,151 @@ describe('_reconcileExerciseEntrySetsWithClient', () => {
     );
     expect(deleteCall).toBeDefined();
     expect(deleteCall!.params[0]).toEqual([2]);
+  });
+
+  it('writes completed_at on updates and inserts, clearing it when omitted', async () => {
+    const client = makeClient([1, 2]);
+    const completedAt = '2026-07-06T15:04:05.123Z';
+    await reconcile(client, 'entry-a', [
+      { id: 1, set_number: 1, reps: 10, completed_at: completedAt },
+      { id: 2, set_number: 2, reps: 8 },
+      { set_number: 3, reps: 6, completed_at: completedAt },
+    ]);
+
+    const updates = client.calls.filter(({ sql }) =>
+      /UPDATE exercise_entry_sets/.test(sql)
+    );
+    expect(updates).toHaveLength(2);
+    expect(updates[0].sql).toMatch(/completed_at = \$9/);
+    expect(updates[0].params[8]).toBe(completedAt);
+    // Omitted completed_at means "not completed" and must clear the column.
+    expect(updates[1].params[8]).toBeNull();
+
+    const insert = client.calls.find(({ sql }) =>
+      /INSERT INTO exercise_entry_sets/.test(sql)
+    );
+    expect(insert).toBeDefined();
+    expect(insert!.sql).toContain('completed_at');
+    expect(insert!.sql).toContain(completedAt);
+  });
+
+  it('writes is_pr on updates and inserts, clearing it when omitted', async () => {
+    const client = makeClient([1, 2]);
+    await reconcile(client, 'entry-a', [
+      { id: 1, set_number: 1, reps: 10, is_pr: true },
+      { id: 2, set_number: 2, reps: 8 },
+      { set_number: 3, reps: 6, is_pr: true },
+    ]);
+
+    const updates = client.calls.filter(({ sql }) =>
+      /UPDATE exercise_entry_sets/.test(sql)
+    );
+    expect(updates).toHaveLength(2);
+    expect(updates[0].sql).toMatch(/is_pr = \$10/);
+    expect(updates[0].params[9]).toBe(true);
+    // Omitted is_pr means "not a PR" and must clear the column.
+    expect(updates[1].params[9]).toBe(false);
+
+    const insert = client.calls.find(({ sql }) =>
+      /INSERT INTO exercise_entry_sets/.test(sql)
+    );
+    expect(insert).toBeDefined();
+    expect(insert!.sql).toContain('is_pr');
+  });
+});
+
+describe('_updateExerciseEntryWithClient snapshot round-trip', () => {
+  let updateEntry: (
+    client: unknown,
+    id: string,
+    userId: string,
+    updateData: Record<string, unknown>,
+    updatedByUserId: string,
+    entrySource: string
+  ) => Promise<unknown>;
+
+  beforeAll(async () => {
+    const mod = (await vi.importActual('../models/exerciseEntry.js')) as {
+      default?: Record<string, unknown>;
+    } & Record<string, unknown>;
+    const exports = (mod.default ?? mod) as Record<string, unknown>;
+    updateEntry = exports._updateExerciseEntryWithClient as typeof updateEntry;
+  });
+
+  // Snapshot list columns come back from `SELECT *` as raw JSON text.
+  const currentEntry = {
+    id: 'entry-a',
+    exercise_id: 'ex-1',
+    duration_minutes: 10,
+    calories_burned: 100,
+    entry_date: '2026-07-06',
+    equipment: '["barbell"]',
+    primary_muscles: '["quadriceps"]',
+    secondary_muscles: null,
+    instructions: '["Keep your back straight."]',
+    images: '["Leg_Press/0.jpg"]',
+  };
+
+  function makeClient() {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    return {
+      calls,
+      query: vi.fn((sql: string, params: unknown[]) => {
+        calls.push({ sql, params });
+        if (/^SELECT \* FROM exercise_entries/.test(sql)) {
+          return Promise.resolve({ rows: [{ ...currentEntry }] });
+        }
+        if (/^UPDATE exercise_entries/.test(sql)) {
+          return Promise.resolve({ rows: [{ id: 'entry-a' }], rowCount: 1 });
+        }
+        // Trailing refetch via _getExerciseEntryByIdWithClient.
+        return Promise.resolve({ rows: [{ id: 'entry-a' }], rowCount: 1 });
+      }),
+    };
+  }
+
+  // Regression for the snapshot-doubling bug: value-only updates (the live
+  // autosave shape) carry no snapshot fields, so the merge falls back to the
+  // raw text — re-encoding it added an escaping layer per save, roughly
+  // doubling the stored columns every autosave.
+  it('writes merged raw-text snapshot columns back byte-identical', async () => {
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { duration_minutes: 12 },
+      'actor-1',
+      'manual'
+    );
+
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(update).toBeDefined();
+    // $19–$23: equipment, primary_muscles, secondary_muscles, instructions, images
+    expect(update!.params[18]).toBe('["barbell"]');
+    expect(update!.params[19]).toBe('["quadriceps"]');
+    expect(update!.params[20]).toBeNull();
+    expect(update!.params[21]).toBe('["Keep your back straight."]');
+    expect(update!.params[22]).toBe('["Leg_Press/0.jpg"]');
+  });
+
+  it('encodes array snapshot values from updateData exactly once', async () => {
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { images: ['new.jpg'], equipment: ['dumbbell'] },
+      'actor-1',
+      'manual'
+    );
+
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(update!.params[18]).toBe('["dumbbell"]');
+    expect(update!.params[22]).toBe('["new.jpg"]');
   });
 });

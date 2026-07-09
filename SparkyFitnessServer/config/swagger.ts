@@ -783,6 +783,7 @@ const options = {
                   exercise_id: { type: 'string', format: 'uuid' },
                   exercise_name: { type: 'string' },
                   image_url: { type: 'string', nullable: true },
+                  superset_group: { type: 'integer', nullable: true },
                   sets: {
                     type: 'array',
                     items: { $ref: '#/components/schemas/WorkoutSet' },

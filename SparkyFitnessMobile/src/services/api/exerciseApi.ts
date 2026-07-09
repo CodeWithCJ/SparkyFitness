@@ -36,9 +36,15 @@ export const fetchExerciseHistory = async (
 
 export const fetchExerciseStats = async (
   exerciseId: string,
+  excludePresetEntryId?: string,
 ): Promise<ExerciseStatsResponse> => {
+  // The live active-workout card passes its session id so today's in-progress
+  // (or pre-persisted planned) sets are excluded from the historical baseline.
+  const query = excludePresetEntryId
+    ? `?excludePresetEntryId=${encodeURIComponent(excludePresetEntryId)}`
+    : '';
   return apiFetch<ExerciseStatsResponse>({
-    endpoint: `/api/v2/exercises/${encodeURIComponent(exerciseId)}/stats`,
+    endpoint: `/api/v2/exercises/${encodeURIComponent(exerciseId)}/stats${query}`,
     serviceName: 'Exercise API',
     operation: 'fetch exercise stats',
   });
@@ -221,6 +227,20 @@ export const transformExerciseRow = (row: Record<string, unknown>): Exercise => 
 });
 
 /**
+ * Fetch a single exercise's full catalog record by id. Used to hydrate the
+ * Exercise Detail screen when it was opened from a workout/preset row that only
+ * carried a sparse snapshot (name/category/images).
+ */
+export const fetchExerciseById = async (id: string): Promise<Exercise> => {
+  const response = await apiFetch<Record<string, unknown>>({
+    endpoint: `/api/exercises/${encodeURIComponent(id)}`,
+    serviceName: 'Exercise API',
+    operation: 'fetch exercise by id',
+  });
+  return transformExerciseRow(response);
+};
+
+/**
  * Creates a custom exercise. The server endpoint is multipart-only, so this
  * bypasses {@link apiFetch} (which always JSON-stringifies) and uses raw
  * fetch with FormData, mirroring the auth/proxy header injection pattern in
@@ -299,6 +319,7 @@ export interface CreateExerciseEntryPayload {
     rest_time?: number | null;
     notes?: string | null;
     rpe?: number | null;
+    completed_at?: string | null;
   }[];
 }
 

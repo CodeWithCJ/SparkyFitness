@@ -210,6 +210,212 @@ describe('Exercise entry API schemas', () => {
     expect(result.success).toBe(false);
   });
 
+  describe('superset_group', () => {
+    const baseExercise = {
+      exercise_id: exerciseId,
+      sort_order: 0,
+      duration_minutes: 0,
+      sets: [],
+    };
+
+    const baseEntryResponse = {
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      exercise_id: exerciseId,
+      duration_minutes: 0,
+      calories_burned: 0,
+      entry_date: '2026-03-12',
+      notes: null,
+      distance: null,
+      avg_heart_rate: null,
+      source: 'manual',
+      sets: [],
+      exercise_snapshot: null,
+      activity_details: [],
+    };
+
+    it('accepts an integer superset_group on session exercises', () => {
+      const result = runSchema('createPresetSessionRequestSchema', {
+        name: 'Morning Workout',
+        entry_date: '2026-03-12',
+        exercises: [{ ...baseExercise, superset_group: 1 }],
+      });
+      expect(result.success).toBe(true);
+      expect(result.data.exercises[0].superset_group).toBe(1);
+    });
+
+    it('accepts null and omitted superset_group on session exercises', () => {
+      const withNull = runSchema('createPresetSessionRequestSchema', {
+        name: 'Morning Workout',
+        entry_date: '2026-03-12',
+        exercises: [{ ...baseExercise, superset_group: null }],
+      });
+      expect(withNull.success).toBe(true);
+      expect(withNull.data.exercises[0].superset_group).toBeNull();
+
+      const omitted = runSchema('createPresetSessionRequestSchema', {
+        name: 'Morning Workout',
+        entry_date: '2026-03-12',
+        exercises: [baseExercise],
+      });
+      expect(omitted.success).toBe(true);
+      expect(omitted.data.exercises[0]).not.toHaveProperty('superset_group');
+    });
+
+    it('rejects non-integer superset_group values', () => {
+      const result = runSchema('createPresetSessionRequestSchema', {
+        name: 'Morning Workout',
+        entry_date: '2026-03-12',
+        exercises: [{ ...baseExercise, superset_group: 1.5 }],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('requires superset_group on entry responses', () => {
+      const missing = runSchema(
+        'exerciseEntryResponseSchema',
+        baseEntryResponse
+      );
+      expect(missing.success).toBe(false);
+
+      const withValue = runSchema('exerciseEntryResponseSchema', {
+        ...baseEntryResponse,
+        superset_group: 2,
+      });
+      expect(withValue.success).toBe(true);
+
+      const withNull = runSchema('exerciseEntryResponseSchema', {
+        ...baseEntryResponse,
+        superset_group: null,
+      });
+      expect(withNull.success).toBe(true);
+    });
+  });
+
+  describe('completed_at', () => {
+    const baseSetRequest = {
+      set_number: 1,
+      set_type: 'working',
+      reps: 10,
+      weight: 60,
+    };
+
+    const baseSetResponse = {
+      id: 7,
+      set_number: 1,
+      set_type: 'working',
+      reps: 10,
+      weight: 60,
+      duration: null,
+      rest_time: null,
+      notes: null,
+      rpe: null,
+      is_pr: false,
+    };
+
+    it('accepts ISO, null, and omitted completed_at on set requests', () => {
+      const withIso = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        completed_at: '2026-07-06T15:04:05.123Z',
+      });
+      expect(withIso.success).toBe(true);
+      expect(withIso.data.completed_at).toBe('2026-07-06T15:04:05.123Z');
+
+      const withNull = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        completed_at: null,
+      });
+      expect(withNull.success).toBe(true);
+      expect(withNull.data.completed_at).toBeNull();
+
+      const omitted = runSchema(
+        'exerciseEntrySetRequestSchema',
+        baseSetRequest
+      );
+      expect(omitted.success).toBe(true);
+      expect(omitted.data).not.toHaveProperty('completed_at');
+    });
+
+    it('rejects non-ISO completed_at on set requests', () => {
+      const result = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        completed_at: 'yesterday at noon',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('requires completed_at on set responses', () => {
+      const missing = runSchema(
+        'exerciseEntrySetResponseSchema',
+        baseSetResponse
+      );
+      expect(missing.success).toBe(false);
+
+      const withValue = runSchema('exerciseEntrySetResponseSchema', {
+        ...baseSetResponse,
+        completed_at: '2026-07-06T15:04:05.123Z',
+      });
+      expect(withValue.success).toBe(true);
+
+      const withNull = runSchema('exerciseEntrySetResponseSchema', {
+        ...baseSetResponse,
+        completed_at: null,
+      });
+      expect(withNull.success).toBe(true);
+    });
+  });
+
+  describe('is_pr', () => {
+    const baseSetRequest = {
+      set_number: 1,
+      set_type: 'working',
+      reps: 10,
+      weight: 60,
+    };
+
+    const baseSetResponse = {
+      id: 7,
+      set_number: 1,
+      set_type: 'working',
+      reps: 10,
+      weight: 60,
+      duration: null,
+      rest_time: null,
+      notes: null,
+      rpe: null,
+      completed_at: null,
+    };
+
+    it('accepts boolean and omitted is_pr on set requests', () => {
+      const withTrue = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        is_pr: true,
+      });
+      expect(withTrue.success).toBe(true);
+      expect(withTrue.data.is_pr).toBe(true);
+
+      const omitted = runSchema(
+        'exerciseEntrySetRequestSchema',
+        baseSetRequest
+      );
+      expect(omitted.success).toBe(true);
+      expect(omitted.data).not.toHaveProperty('is_pr');
+    });
+
+    it('requires is_pr on set responses', () => {
+      const missing = runSchema(
+        'exerciseEntrySetResponseSchema',
+        baseSetResponse
+      );
+      expect(missing.success).toBe(false);
+
+      const withValue = runSchema('exerciseEntrySetResponseSchema', {
+        ...baseSetResponse,
+        is_pr: true,
+      });
+      expect(withValue.success).toBe(true);
+    });
+  });
+
   // #1353: RN's whatwg-fetch appends `_=<timestamp>` to GET URLs when callers
   // pass `cache: 'no-store'`. The strict history query schema must tolerate it.
   it('accepts the whatwg-fetch `_` cache-buster param', () => {

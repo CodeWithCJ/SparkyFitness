@@ -18,6 +18,8 @@ export interface WorkoutPlaybackRestTimer {
 
 export interface WorkoutPlaybackSetDraft extends WorkoutPresetSet {
   completed: boolean;
+  /** ISO timestamp of when the set was checked off; null while incomplete. */
+  completed_at: string | null;
 }
 
 export interface WorkoutPlaybackExerciseDraft {
@@ -311,6 +313,7 @@ export function createWorkoutPlaybackDraftFromPreset(
         notes: set.notes ?? null,
         rpe: set.rpe ?? null,
         completed: false,
+        completed_at: null,
       })),
     })
   );
@@ -476,6 +479,7 @@ export function toggleWorkoutSetCompletion(
   return updateSetAtPointer(draft, pointer, (set) => ({
     ...set,
     completed: !set.completed,
+    completed_at: set.completed ? null : new Date().toISOString(),
   }));
 }
 
@@ -510,6 +514,7 @@ export function addWorkoutSetToExercise(
     notes: lastSet?.notes ?? null,
     rpe: lastSet?.rpe ?? null,
     completed: false,
+    completed_at: null,
   };
 
   const exercises = draft.exercises.map((currentExercise, index) => {
@@ -655,6 +660,7 @@ export function completeCurrentWorkoutSet(
   let nextDraft = updateSetAtPointer(draft, currentPointer, (set) => ({
     ...set,
     completed: true,
+    completed_at: new Date().toISOString(),
   }));
 
   const nextPointer = getNextIncompletePointer(nextDraft, currentPointer);
@@ -724,6 +730,11 @@ export function buildPresetSessionCreateRequestFromDraft(
           rest_time: toNullableNumber(set.rest_time),
           notes: set.notes ?? null,
           rpe: toNullableNumber(set.rpe),
+          // `?? null` also covers persisted drafts that predate the field.
+          completed_at: set.completed_at ?? null,
+          // Web playback makes no PR claims — drafts never carry PRs, and the
+          // server owns PR detection. Always false on create.
+          is_pr: false,
         })),
       };
     })

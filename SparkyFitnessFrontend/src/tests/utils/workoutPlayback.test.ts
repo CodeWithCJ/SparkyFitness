@@ -150,6 +150,77 @@ describe('workoutPlayback utils', () => {
     expect(payload.exercises?.[0]?.sets).toHaveLength(1);
     expect(payload.exercises?.[0]?.sets?.[0]?.set_number).toBe(1);
     expect(payload.exercises?.[1]?.sets).toHaveLength(1);
+    // Web playback never claims a PR — the server owns detection.
+    expect(payload.exercises?.[0]?.sets?.[0]?.is_pr).toBe(false);
+    expect(payload.exercises?.[1]?.sets?.[0]?.is_pr).toBe(false);
+  });
+
+  it('stamps completed_at on toggle-on and clears it on toggle-off', () => {
+    const initialDraft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+    const pointer = { exerciseIndex: 0, setIndex: 0 };
+
+    const before = Date.now();
+    const checked = toggleWorkoutSetCompletion(initialDraft, pointer);
+    const stamped = checked.exercises[0]?.sets[0]?.completed_at;
+    expect(stamped).toBeTruthy();
+    expect(Date.parse(stamped!)).toBeGreaterThanOrEqual(before);
+    expect(Date.parse(stamped!)).toBeLessThanOrEqual(Date.now());
+
+    const unchecked = toggleWorkoutSetCompletion(checked, pointer);
+    expect(unchecked.exercises[0]?.sets[0]?.completed).toBe(false);
+    expect(unchecked.exercises[0]?.sets[0]?.completed_at).toBeNull();
+  });
+
+  it('stamps completed_at when auto-completing the current set', () => {
+    const initialDraft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+
+    const nextDraft = completeCurrentWorkoutSet(initialDraft);
+    const set = nextDraft.exercises[0]?.sets[0];
+    expect(set?.completed).toBe(true);
+    expect(set?.completed_at).toBeTruthy();
+  });
+
+  it('emits completed_at in the grouped-session payload', () => {
+    const initialDraft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+
+    const nextDraft = toggleWorkoutSetCompletion(initialDraft, {
+      exerciseIndex: 0,
+      setIndex: 0,
+    });
+    const stamped = nextDraft.exercises[0]?.sets[0]?.completed_at;
+
+    const payload = buildPresetSessionCreateRequestFromDraft(nextDraft);
+    expect(payload.exercises?.[0]?.sets?.[0]?.completed_at).toBe(stamped);
+  });
+
+  it('emits null completed_at for persisted drafts that predate the field', () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+    // A legacy localStorage draft: sets marked completed but no completed_at.
+    const legacyDraft = {
+      ...draft,
+      exercises: draft.exercises.map((exercise) => ({
+        ...exercise,
+        sets: exercise.sets.map((set) => {
+          const { completed_at: _completedAt, ...rest } = set;
+          return { ...rest, completed: true } as typeof set;
+        }),
+      })),
+    };
+
+    const payload = buildPresetSessionCreateRequestFromDraft(legacyDraft);
+    expect(payload.exercises?.[0]?.sets?.[0]?.completed_at).toBeNull();
   });
 
   it('tracks exercise timing when the active exercise changes', () => {

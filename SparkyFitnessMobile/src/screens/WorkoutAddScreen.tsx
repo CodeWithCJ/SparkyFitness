@@ -16,7 +16,9 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
-import WorkoutEditableExerciseList from '../components/WorkoutEditableExerciseList';
+import WorkoutFormExerciseList, {
+  type WorkoutFormExerciseListHandle,
+} from '../components/WorkoutFormExerciseList';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useWorkoutForm, getWorkoutDraftSubmission } from '../hooks/useWorkoutForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
@@ -26,6 +28,7 @@ import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutation
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
+import { canReorderDraftExercises } from '../utils/workoutSession';
 import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -49,6 +52,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
+  const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
 
   const [accentPrimary, textMuted, textPrimary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -67,7 +71,11 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     addSet,
     removeSet,
     updateSetField,
+    updateSetMeta,
     setExerciseRest,
+    supersetWith,
+    ungroupExercise,
+    reorderExercises,
     setName,
     setDate,
     populate,
@@ -176,8 +184,11 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.goBack();
   }, [discardDraft, isEditMode, hasDraftData, navigation]);
 
+  const canReorder = canReorderDraftExercises(state.exercises);
+
   // Footer-save form: Save lives in the always-on sticky footer, so the header
-  // carries only the dismiss — a header Save would double the footer's.
+  // carries only the dismiss (a header Save would double the footer's) plus the
+  // secondary reorder icon when there are 2+ draggable items.
   const header = useScreenHeader({
     left: {
       kind: 'dismiss',
@@ -185,6 +196,17 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
       disabled: isPending,
       identifier: 'workout-add-cancel',
     },
+    right: canReorder
+      ? {
+          kind: 'icon',
+          sfSymbol: 'arrow.up.arrow.down',
+          ionicon: 'swap-vertical',
+          role: 'secondary',
+          onPress: () => exerciseListRef.current?.openReorder(),
+          accessibilityLabel: 'Reorder exercises',
+          identifier: 'workout-add-reorder',
+        }
+      : null,
   });
 
   const handleFinish = useCallback(() => {
@@ -307,21 +329,33 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
                 </TouchableOpacity>
 
-                <WorkoutEditableExerciseList
+                <WorkoutFormExerciseList
+                  ref={exerciseListRef}
                   exercises={state.exercises}
-                  getImageSource={getImageSource}
                   weightUnit={weightUnit as 'kg' | 'lbs'}
+                  getImageSource={getImageSource}
                   activeSetKey={activeSetKey}
                   activeSetField={activeSetField}
                   onActivateSet={activateSet}
                   onDeactivateSet={deactivateSet}
-                  onUpdateSetField={updateSetField}
-                  onRemoveSet={removeSet}
+                  updateSetField={updateSetField}
+                  updateSetMeta={updateSetMeta}
+                  removeSet={removeSet}
                   onAddSet={handleAddSet}
                   onRemoveExercise={handleRemoveExercise}
+                  setExerciseRest={setExerciseRest}
+                  supersetWith={supersetWith}
+                  ungroupExercise={ungroupExercise}
+                  onReorderExercises={reorderExercises}
                   onAddExercisePress={openExerciseSearch}
-                  onChangeRest={setExerciseRest}
+                  onViewExercise={(exercise) =>
+                    navigation.navigate('ExerciseDetail', {
+                      item: exercise,
+                      hideWorkoutActions: true,
+                    })
+                  }
                   isEligibleForPrefill={isEligibleForPrefill}
+                  removeExerciseOnLastSetDelete
                 />
 
                 {/* Bottom spacer so content isn't hidden behind footer */}

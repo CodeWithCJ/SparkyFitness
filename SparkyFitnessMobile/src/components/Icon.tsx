@@ -30,6 +30,7 @@ const ICON_MAP = {
   'remove': { sf: 'minus', ion: 'remove' },
   'arrow-up': { sf: 'arrow.up', ion: 'arrow-up' },
   'close': { sf: 'xmark', ion: 'close' },
+  'ellipsis-horizontal': { sf: 'ellipsis', ion: 'ellipsis-horizontal' },
   'search': { sf: 'magnifyingglass', ion: 'search-outline' },
   'save': { sf: 'square.and.arrow.down', ion: 'save-outline' },
   'share': { sf: 'square.and.arrow.up', ion: 'share-outline' },
@@ -47,8 +48,13 @@ const ICON_MAP = {
   'play': { sf: 'play.fill', ion: 'play' },
   'stop': { sf: 'stop.fill', ion: 'stop' },
   'forward': { sf: 'forward.fill', ion: 'play-skip-forward' },
+  'skip-forward': { sf: 'forward.end.fill', ion: 'play-skip-forward' },
   'measurements': { sf: 'ruler', ion: 'analytics-outline' },
   'scale': { sf: 'scalemass', ion: 'scale-outline' },
+  // Android uses -outline variants for stroke-weight consistency with the set.
+  'reorder-handle': { sf: 'line.3.horizontal', ion: 'reorder-three-outline' },
+  'swap-vertical': { sf: 'arrow.up.arrow.down', ion: 'swap-vertical-outline' },
+  'arrow-undo': { sf: 'arrow.uturn.backward', ion: 'arrow-undo-outline' },
 
   // Status
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },
@@ -73,6 +79,7 @@ const ICON_MAP = {
 
   // Exercise
   'timer': { sf: 'timer', ion: 'timer-outline' },
+  'trophy': { sf: 'trophy.fill', ion: 'trophy' },
   'exercise': { sf: 'flame.fill', ion: 'flame' },
   'exercise-running': { sf: 'figure.run', ion: 'walk-outline' },
   'exercise-running-filled': { sf: 'figure.run', ion: 'walk' },

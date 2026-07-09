@@ -20,6 +20,7 @@ import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData } from './src/hooks';
+import { useActiveWorkoutStore } from './src/stores/activeWorkoutStore';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
@@ -48,6 +49,7 @@ import MealAddScreen from './src/screens/MealAddScreen';
 import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
 import ActivityAddScreen from './src/screens/ActivityAddScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
+import ActiveWorkoutScreen from './src/screens/ActiveWorkoutScreen';
 import ActivityDetailScreen from './src/screens/ActivityDetailScreen';
 import FastingDetailScreen from './src/screens/FastingDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
@@ -95,9 +97,11 @@ import { initNotifications } from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { FullWindowOverlay } from 'react-native-screens';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { addSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
+import PrCelebrationToast from './src/components/PrCelebrationToast';
 import { NON_ADD_TABS, TabsLayout, type NonAddTabName } from './src/components/TabsLayout';
 import { createIOSSmallNativeHeaderOptions } from './src/utils/nativeHeaderItems';
 import { useHeaderActionColors } from './src/hooks/useHeaderActionColors';
@@ -198,6 +202,7 @@ const SafePresetSearch = withErrorBoundary(PresetSearchScreen, 'PresetSearch', {
 const SafeWorkoutAdd = withErrorBoundary(WorkoutAddScreen, 'WorkoutAdd', { canGoBack: true });
 const SafeActivityAdd = withErrorBoundary(ActivityAddScreen, 'ActivityAdd', { canGoBack: true });
 const SafeWorkoutDetail = withErrorBoundary(WorkoutDetailScreen, 'WorkoutDetail', { canGoBack: true });
+const SafeActiveWorkout = withErrorBoundary(ActiveWorkoutScreen, 'ActiveWorkout', { canGoBack: true });
 const SafeActivityDetail = withErrorBoundary(ActivityDetailScreen, 'ActivityDetail', { canGoBack: true });
 const SafeFastingDetail = withErrorBoundary(FastingDetailScreen, 'FastingDetail', { canGoBack: true });
 const SafeLogs = withErrorBoundary(LogScreen, 'Logs', { canGoBack: true });
@@ -384,21 +389,24 @@ function AppContent() {
     navigateFromSheet('FoodScan', { date });
   }, [getActiveDiaryDate, navigateFromSheet]);
 
+  const checkServerConnected = useCallback((message: string): boolean => {
+    const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
+    if (!isConnected) {
+      Alert.alert('No Server Connected', message, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Go to Settings',
+          onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
+        },
+      ]);
+      return false;
+    }
+    return true;
+  }, [navigateFromSheet]);
+
   const handleStartExerciseForm = useCallback(
-    async (screen: 'WorkoutAdd' | 'ActivityAdd' | 'PresetSearch') => {
-      const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
-      if (!isConnected) {
-        Alert.alert(
-          'No Server Connected',
-          'Configure your server connection in Settings to add an exercise.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Go to Settings',
-              onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
-            },
-          ],
-        );
+    async (screen: 'WorkoutAdd' | 'ActivityAdd') => {
+      if (!checkServerConnected('Configure your server connection in Settings to add an exercise.')) {
         return;
       }
 
@@ -425,11 +433,7 @@ function AppContent() {
               style: 'destructive',
               onPress: async () => {
                 await clearDraft();
-                if (screen === 'PresetSearch') {
-                  navigateFromSheet('PresetSearch', { date });
-                } else {
-                  navigateFromSheet(screen, { date, skipDraftLoad: true });
-                }
+                navigateFromSheet(screen, { date, skipDraftLoad: true });
               },
             },
           ],
@@ -437,18 +441,27 @@ function AppContent() {
         return;
       }
 
-      if (screen === 'PresetSearch') {
-        navigateFromSheet('PresetSearch', { date });
-      } else {
-        navigateFromSheet(screen, { date, skipDraftLoad: true });
-      }
+      navigateFromSheet(screen, { date, skipDraftLoad: true });
     },
-    [navigateFromSheet, getActiveDiaryDate],
+    [checkServerConnected, navigateFromSheet, getActiveDiaryDate],
   );
 
-  const handleAddWorkout = useCallback(() => handleStartExerciseForm('WorkoutAdd'), [handleStartExerciseForm]);
+  // Live start: no draft guard (form drafts belong to the Log Workout path) and
+  // no diary date (a live workout is logged to today). Tapping while a workout
+  // is already running resumes it instead of opening the start surface.
+  const handleStartWorkout = useCallback(() => {
+    if (!checkServerConnected('Configure your server connection in Settings to start a workout.')) {
+      return;
+    }
+    if (useActiveWorkoutStore.getState().sessionId !== null) {
+      navigateFromSheet('ActiveWorkout');
+      return;
+    }
+    navigateFromSheet('PresetSearch');
+  }, [checkServerConnected, navigateFromSheet]);
+
+  const handleLogWorkout = useCallback(() => handleStartExerciseForm('WorkoutAdd'), [handleStartExerciseForm]);
   const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityAdd'), [handleStartExerciseForm]);
-  const handleAddFromPreset = useCallback(() => handleStartExerciseForm('PresetSearch'), [handleStartExerciseForm]);
 
   const syncMutation = useSyncHealthData();
 
@@ -992,7 +1005,7 @@ function AppContent() {
           <Stack.Screen
             name="PresetSearch"
             component={SafePresetSearch}
-            options={createStackScreenOptions('Workout Presets')}
+            options={createStackScreenOptions('Start Workout')}
           />
           <Stack.Screen
             name="WorkoutAdd"
@@ -1012,6 +1025,14 @@ function AppContent() {
                 headerBackTitle: 'Diary',
               })
             }
+          />
+          <Stack.Screen
+            name="ActiveWorkout"
+            component={SafeActiveWorkout}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+            }}
           />
           <Stack.Screen
             name="ActivityDetail"
@@ -1085,7 +1106,7 @@ function AppContent() {
             options={createStackScreenOptions("What's New", { headerBackTitle: 'Settings' })}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onAskSparky={handleAskSparky} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onStartWorkout={handleStartWorkout} onAddActivity={handleAddActivity} onLogWorkout={handleLogWorkout} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onAskSparky={handleAskSparky} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}
@@ -1119,6 +1140,7 @@ function AppContent() {
         />
         <ActiveWorkoutBar />
         <SafeAreaToast />
+        <PrCelebrationToast />
       </SafeAreaProvider>
     </NavigationContainer>
   );
@@ -1126,7 +1148,13 @@ function AppContent() {
 
 function SafeAreaToast() {
   const insets = useSafeAreaInsets();
-  return <Toast config={toastConfig} topOffset={insets.top + 8} />;
+  const toast = <Toast config={toastConfig} topOffset={insets.top + 8} />;
+  // On iOS a plain Toast renders in the normal view tree, so it appears *under*
+  // native modals (rename dialogs, form sheets, anchored menus). A
+  // FullWindowOverlay hoists it above every window — matching how the app's
+  // bottom sheets escape modal contexts. Android modal layering doesn't have
+  // this problem, and FullWindowOverlay is a no-op there.
+  return Platform.OS === 'ios' ? <FullWindowOverlay>{toast}</FullWindowOverlay> : toast;
 }
 
 function UniwindInsetsBridge() {

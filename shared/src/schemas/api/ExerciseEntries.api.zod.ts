@@ -64,6 +64,8 @@ export const exerciseEntrySetResponseSchema = z
     rest_time: z.number().nullable(),
     notes: z.string().nullable(),
     rpe: z.number().nullable(),
+    completed_at: z.string().nullable(),
+    is_pr: z.boolean(),
   })
   .strict();
 
@@ -90,6 +92,8 @@ export const exerciseEntrySetRequestSchema = z
     rest_time: z.number().nullable().optional(),
     notes: z.string().nullable().optional(),
     rpe: z.number().nullable().optional(),
+    completed_at: z.iso.datetime().nullable().optional(),
+    is_pr: z.boolean().optional(),
   })
   .strict();
 
@@ -100,6 +104,7 @@ export const presetSessionExerciseRequestSchema = z
     sort_order: z.number().int().min(0).default(0),
     duration_minutes: z.number().min(0).default(0),
     notes: z.string().nullable().optional(),
+    superset_group: z.number().int().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).default([]),
   })
   .strict();
@@ -206,6 +211,7 @@ export const exerciseEntryResponseSchema = z
     activity_details: z.array(activityDetailResponseSchema),
     steps: z.number().nullable().optional(),
     category: z.string().nullable().optional(),
+    superset_group: z.number().int().nullable(),
   })
   .strict();
 

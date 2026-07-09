@@ -2,8 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
-
-export const DEFAULT_REST_SEC = 90;
+import { DEFAULT_REST_SEC } from '../utils/workoutSession';
 
 /** Format a rest duration as `m:ss` when ≥ 60s, otherwise `Ns`. */
 export function formatRest(seconds: number | null | undefined): string {

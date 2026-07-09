@@ -137,7 +137,7 @@ async function _getExerciseEntryByIdWithClient(client: any, id: any) {
              COALESCE(
                (SELECT json_agg(set_data ORDER BY set_data.set_number)
                 FROM (
-                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
+                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr
                   FROM exercise_entry_sets ees
                   WHERE ees.exercise_entry_id = ee.id
                 ) AS set_data
@@ -214,6 +214,16 @@ async function _getExerciseEntryByIdWithClient(client: any, id: any) {
   }
   return exerciseEntry;
 }
+// Snapshot list columns (equipment/muscles/instructions/images) are TEXT
+// holding JSON. Merged values may be raw text read straight from the row
+// (`SELECT *`) or arrays from the client/exercise refetch — only encode what
+// isn't already encoded. Stringifying the raw text again would add an
+// escaping layer on every save, doubling the stored value each time.
+function toJsonColumnText(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
 async function _updateExerciseEntryWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -282,6 +292,10 @@ async function _updateExerciseEntryWithClient(
       updateData.sort_order !== undefined
         ? updateData.sort_order
         : currentEntry.sort_order,
+    superset_group:
+      updateData.superset_group !== undefined
+        ? updateData.superset_group
+        : currentEntry.superset_group,
     // Snapshot fields - these should ideally come from the exercise itself if exercise_id is updated
     exercise_name: updateData.exercise_name || currentEntry.exercise_name,
     calories_per_hour:
@@ -356,8 +370,9 @@ async function _updateExerciseEntryWithClient(
       sort_order = $24,
       steps = $25,
       water_estimated = $26,
+      superset_group = $27,
       updated_at = now()
-    WHERE id = $27 AND user_id = $28
+    WHERE id = $28 AND user_id = $29
     RETURNING id`,
     [
       mergedData.exercise_id,
@@ -378,18 +393,15 @@ async function _updateExerciseEntryWithClient(
       mergedData.force,
       mergedData.level,
       mergedData.mechanic,
-      mergedData.equipment ? JSON.stringify(mergedData.equipment) : null,
-      mergedData.primary_muscles
-        ? JSON.stringify(mergedData.primary_muscles)
-        : null,
-      mergedData.secondary_muscles
-        ? JSON.stringify(mergedData.secondary_muscles)
-        : null,
-      mergedData.instructions ? JSON.stringify(mergedData.instructions) : null,
-      mergedData.images ? JSON.stringify(mergedData.images) : null,
+      toJsonColumnText(mergedData.equipment),
+      toJsonColumnText(mergedData.primary_muscles),
+      toJsonColumnText(mergedData.secondary_muscles),
+      toJsonColumnText(mergedData.instructions),
+      toJsonColumnText(mergedData.images),
       mergedData.sort_order || 0,
       mergedData.steps || null,
       mergedData.water_estimated || null,
+      mergedData.superset_group ?? null,
       id,
       userId,
     ]
@@ -413,9 +425,11 @@ async function _updateExerciseEntryWithClient(
         set.rest_time,
         set.notes,
         set.rpe,
+        set.completed_at ?? null,
+        set.is_pr ?? false,
       ]);
       const setsQuery = format(
-        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L',
+        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr) VALUES %L',
         setsValues
       );
       await client.query(setsQuery);
@@ -519,8 +533,9 @@ async function _createExerciseEntryWithClient(
            workout_plan_assignment_id, image_url, created_by_user_id,
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
-           distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28) RETURNING id`,
+           distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated,
+           superset_group
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29) RETURNING id`,
         [
           userId,
           entryData.exercise_id,
@@ -550,6 +565,7 @@ async function _createExerciseEntryWithClient(
           entryData.sort_order || 0,
           entryData.steps || null,
           entryData.water_estimated || null,
+          entryData.superset_group ?? null,
         ]
       );
       newEntryId = entryResult.rows[0].id;
@@ -565,9 +581,11 @@ async function _createExerciseEntryWithClient(
           set.rest_time,
           set.notes,
           set.rpe,
+          set.completed_at ?? null,
+          set.is_pr ?? false,
         ]);
         const setsQuery = format(
-          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L',
+          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr) VALUES %L',
           setsValues
         );
         await client.query(setsQuery);
@@ -670,9 +688,10 @@ async function updateExerciseEntry(
         steps = $10,
         sort_order = $11,
         exercise_name = $12,
-        updated_by_user_id = $13,
+        superset_group = $13,
+        updated_by_user_id = $14,
         updated_at = now()
-      WHERE id = $14 AND user_id = $15
+      WHERE id = $15 AND user_id = $16
       RETURNING id`,
       [
         updateData.exercise_id ?? null,
@@ -687,6 +706,7 @@ async function updateExerciseEntry(
         updateData.steps ?? null,
         updateData.sort_order ?? null,
         updateData.exercise_name ?? null,
+        updateData.superset_group ?? null,
         actingUserId,
         id,
         userId,
@@ -712,9 +732,11 @@ async function updateExerciseEntry(
           set.rest_time,
           set.notes,
           set.rpe,
+          set.completed_at ?? null,
+          set.is_pr ?? false,
         ]);
         const setsQuery = format(
-          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L',
+          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr) VALUES %L',
           setsValues
         );
         await client.query(setsQuery);
@@ -844,8 +866,10 @@ async function _reconcileExerciseEntrySetsWithClient(
            duration = $5,
            rest_time = $6,
            notes = $7,
-           rpe = $8
-       WHERE id = $9 AND exercise_entry_id = $10`,
+           rpe = $8,
+           completed_at = $9,
+           is_pr = $10
+       WHERE id = $11 AND exercise_entry_id = $12`,
       [
         set.set_number,
         set.set_type ?? null,
@@ -855,6 +879,8 @@ async function _reconcileExerciseEntrySetsWithClient(
         set.rest_time ?? null,
         set.notes ?? null,
         set.rpe ?? null,
+        set.completed_at ?? null,
+        set.is_pr ?? false,
         set.id,
         exerciseEntryId,
       ]
@@ -873,9 +899,11 @@ async function _reconcileExerciseEntrySetsWithClient(
       set.rest_time ?? null,
       set.notes ?? null,
       set.rpe ?? null,
+      set.completed_at ?? null,
+      set.is_pr ?? false,
     ]);
     const setsQuery = format(
-      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L',
+      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr) VALUES %L',
       setsValues
     );
     await client.query(setsQuery);
@@ -915,7 +943,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1087,7 +1115,7 @@ async function getExerciseProgressData(
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1121,7 +1149,7 @@ async function getExerciseHistory(userId: any, exerciseId: any, limit = 5) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1139,8 +1167,13 @@ async function getExerciseHistory(userId: any, exerciseId: any, limit = 5) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getBestSetForExercise(userId: any, exerciseId: any) {
+async function getBestSetForExercise(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exerciseId: any,
+  excludePresetEntryId: string | null = null
+) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -1150,6 +1183,8 @@ async function getBestSetForExercise(userId: any, exerciseId: any) {
         WHERE ee.user_id = $1
           AND ee.exercise_id = $2
           AND ees.weight IS NOT NULL
+          AND (ees.set_type IS NULL OR regexp_replace(LOWER(ees.set_type), '[^a-z0-9]', '', 'g') NOT LIKE 'warmup%')
+          AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3)
         ORDER BY ees.weight DESC,
                  ees.reps DESC NULLS LAST,
                  ee.entry_date DESC,
@@ -1157,15 +1192,20 @@ async function getBestSetForExercise(userId: any, exerciseId: any) {
                  ees.set_number DESC,
                  ees.id DESC
         LIMIT 1`,
-      [userId, exerciseId]
+      [userId, exerciseId, excludePresetEntryId]
     );
     return result.rows[0] ?? null;
   } finally {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getLastSetForExercise(userId: any, exerciseId: any) {
+async function getLastSetForExercise(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exerciseId: any,
+  excludePresetEntryId: string | null = null
+) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -1175,12 +1215,13 @@ async function getLastSetForExercise(userId: any, exerciseId: any) {
         WHERE ee.user_id = $1
           AND ee.exercise_id = $2
           AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL)
+          AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3)
         ORDER BY ee.entry_date DESC,
                  ee.created_at DESC,
                  ees.set_number DESC,
                  ees.id DESC
         LIMIT 1`,
-      [userId, exerciseId]
+      [userId, exerciseId, excludePresetEntryId]
     );
     return result.rows[0] ?? null;
   } finally {

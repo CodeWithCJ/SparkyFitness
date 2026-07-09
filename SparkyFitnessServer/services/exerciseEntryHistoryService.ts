@@ -63,7 +63,9 @@ const SETS_SUBQUERY = `COALESCE(
   (SELECT json_agg(set_data ORDER BY set_data.set_number)
    FROM (
      SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight,
-            ees.duration, ees.rest_time, ees.notes, ees.rpe
+            ees.duration, ees.rest_time, ees.notes, ees.rpe,
+            to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at,
+            ees.is_pr
      FROM exercise_entry_sets ees
      WHERE ees.exercise_entry_id = ee.id
    ) AS set_data
@@ -109,6 +111,7 @@ function _buildExerciseEntryWithSnapshot(
     distance: (entryData.distance as number) ?? null,
     avg_heart_rate: (entryData.avg_heart_rate as number) ?? null,
     steps: (entryData.steps as number) ?? null,
+    superset_group: (entryData.superset_group as number) ?? null,
     source: (source as string) ?? null,
     image_url: (entryData.image_url as string) ?? null,
     sets: ((entryData.sets as unknown[]) ?? []) as ExerciseEntrySetResponse[],

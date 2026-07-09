@@ -24,7 +24,12 @@ async function createWorkoutPreset(userId: any, presetData: any) {
       throw new Error(`Notes for exercise ${ex.exercise_id} must be a string.`);
     }
   }
-  return workoutPresetRepository.createWorkoutPreset(presetData);
+  // Ownership always comes from the authenticated request — the body's
+  // user_id (if any) is stripped by the schema and must not be trusted.
+  return workoutPresetRepository.createWorkoutPreset({
+    ...presetData,
+    user_id: userId,
+  });
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWorkoutPresets(userId: any, page: any, limit: any) {

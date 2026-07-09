@@ -1504,7 +1504,8 @@ CREATE TABLE public.exercise_entries (
     exercise_preset_entry_id uuid,
     sort_order integer DEFAULT 0,
     steps integer,
-    water_estimated integer
+    water_estimated integer,
+    superset_group integer
 );
 
 
@@ -1513,6 +1514,13 @@ CREATE TABLE public.exercise_entries (
 --
 
 COMMENT ON COLUMN public.exercise_entries.steps IS 'Number of steps recorded during this activity, sourced from Garmin or other providers.';
+
+
+--
+-- Name: COLUMN exercise_entries.superset_group; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entries.superset_group IS 'Client-assigned superset group key, scoped to the parent exercise_preset_entry. NULL = not in a superset. Members share the value and are kept adjacent via sort_order.';
 
 
 --
@@ -1550,7 +1558,9 @@ CREATE TABLE public.exercise_entry_sets (
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    rpe numeric(3,1)
+    rpe numeric(3,1),
+    completed_at timestamp with time zone,
+    is_pr boolean DEFAULT false NOT NULL
 );
 
 
@@ -1559,6 +1569,20 @@ CREATE TABLE public.exercise_entry_sets (
 --
 
 COMMENT ON COLUMN public.exercise_entry_sets.rpe IS 'Rate of Perceived Exertion (usually 1-10 scale)';
+
+
+--
+-- Name: COLUMN exercise_entry_sets.completed_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entry_sets.completed_at IS 'Client-recorded moment the set was checked off during a live workout. NULL = not completed.';
+
+
+--
+-- Name: COLUMN exercise_entry_sets.is_pr; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entry_sets.is_pr IS 'Whether this set was a personal record (heavier than the prior best weight, or more reps at the top weight) when checked off during a live workout. Warmup sets never earn PRs.';
 
 
 --
@@ -3605,7 +3629,8 @@ CREATE TABLE public.workout_preset_exercises (
     image_url text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    sort_order integer DEFAULT 0
+    sort_order integer DEFAULT 0,
+    superset_group integer
 );
 
 

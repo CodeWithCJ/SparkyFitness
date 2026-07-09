@@ -79,6 +79,10 @@
       --color-text-danger:       hsl(358, 98%, 97%);
       --color-text-danger-subtle: hsl(358, 72%, 38%);
       --color-icon-danger:       hsl(358, 80%, 50%);
+
+      --color-pr:                hsl(40, 88%, 43%);
+      --color-bg-pr:             hsl(48, 96%, 89%);
+      --color-text-pr:           hsl(28, 80%, 28%);
     }
       
     @variant dark {
@@ -129,20 +133,25 @@
       --color-progress-track:    hsl(218, 41%, 23%);
       --color-progress-overfill: hsl(357, 66%, 65%);
 
-      --color-bg-success:        hsl(159, 40%, 14%);
+      --color-bg-success:        hsl(159, 35%, 19%);
       --color-bg-info:           hsl(220, 42%, 18%);
       --color-bg-warning:        hsl(36, 42%, 24%);
       --color-bg-danger:         hsl(358, 46%, 39%);
       --color-bg-danger-subtle:  hsl(358, 48%, 18%);
 
       --color-text-success:      hsl(160, 81%, 88%);
-      --color-icon-success:      hsl(145, 79%, 57%);
+      --color-icon-success:      hsl(146, 58%, 52%);
+      
       --color-text-info:         hsl(214, 100%, 91%);
       --color-text-warning:      hsl(43, 86%, 86%);
       --color-icon-warning:      hsl(38, 90%, 60%);
       --color-text-danger:       hsl(357, 68%, 94%);
       --color-text-danger-subtle: hsl(357, 88%, 88%);
       --color-icon-danger:       hsl(358, 80%, 65%);
+
+      --color-pr:                hsl(40, 60%, 58%);
+      --color-bg-pr:             hsl(36, 42%, 24%);
+      --color-text-pr:           hsl(43, 86%, 86%);
     }
 
     @variant amoled {
@@ -200,13 +209,17 @@
       --color-bg-danger-subtle:  hsl(358, 48%, 18%);
 
       --color-text-success:      hsl(160, 81%, 88%);
-      --color-icon-success:      hsl(145, 79%, 57%);
+      --color-icon-success:      hsl(146, 58%, 52%);
       --color-text-info:         hsl(214, 100%, 91%);
       --color-text-warning:      hsl(43, 86%, 86%);
       --color-icon-warning:      hsl(38, 90%, 60%);
       --color-text-danger:       hsl(357, 68%, 94%);
       --color-text-danger-subtle: hsl(357, 88%, 88%);
       --color-icon-danger:       hsl(358, 80%, 65%);
+
+      --color-pr:                hsl(40, 60%, 58%);
+      --color-bg-pr:             hsl(36, 42%, 24%);
+      --color-text-pr:           hsl(43, 86%, 86%);
     }
   }
 }

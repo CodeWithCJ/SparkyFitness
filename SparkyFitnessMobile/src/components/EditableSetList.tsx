@@ -1,3 +1,5 @@
+// Sole consumer: ActivityDetailScreen. The workout/preset forms use the
+// card-based WorkoutFormExerciseList (ActiveWorkoutExerciseCard in edit mode).
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -10,7 +12,8 @@ interface EditableSetListProps {
   exerciseClientId: string;
   sets: WorkoutDraftSet[];
   activeSetKey: string | null;
-  activeSetField: 'weight' | 'reps';
+  // 'rpe' comes from the shared editing hook but never occurs for activities.
+  activeSetField: 'weight' | 'reps' | 'rpe';
   weightUnit: string;
   onActivateSet: (setKey: string, field: 'weight' | 'reps') => void;
   onDeactivateSet: () => void;

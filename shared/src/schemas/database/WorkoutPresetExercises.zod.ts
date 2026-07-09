@@ -19,6 +19,7 @@ export const workoutPresetExercisesSchema = z.object({
   created_at: z.date().nullable(),
   updated_at: z.date().nullable(),
   sort_order: z.number().nullable(),
+  superset_group: z.number().nullable(),
 });
 
 export const workoutPresetExercisesInitializerSchema = z.object({
@@ -29,6 +30,7 @@ export const workoutPresetExercisesInitializerSchema = z.object({
   created_at: z.date().optional().nullable(),
   updated_at: z.date().optional().nullable(),
   sort_order: z.number().optional().nullable(),
+  superset_group: z.number().optional().nullable(),
 });
 
 export const workoutPresetExercisesMutatorSchema = z.object({
@@ -39,6 +41,7 @@ export const workoutPresetExercisesMutatorSchema = z.object({
   created_at: z.date().optional().nullable(),
   updated_at: z.date().optional().nullable(),
   sort_order: z.number().optional().nullable(),
+  superset_group: z.number().optional().nullable(),
 });
 
 export type WorkoutPresetExercises = z.infer<typeof workoutPresetExercisesSchema>;

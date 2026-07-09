@@ -1,3 +1,5 @@
+// Sole consumer: ActivityDetailScreen (via EditableSetList). The workout and
+// preset forms use the card-based ActiveWorkoutSetRow in edit mode.
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Alert, View, Text, TextInput, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -5,6 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
+import { SetInputAccessoryBar, SetSwipeDeleteAction } from './SetRowChrome';
 import { parseDecimalInput } from '../utils/numericInput';
 
 interface EditableSetRowProps {
@@ -15,8 +18,10 @@ interface EditableSetRowProps {
   setNumber: number;
   isActive: boolean;
   /** The currently-active field for this row. Controls which input is focused
-   *  and what the keyboard accessory's "Next" button does. */
-  activeField?: 'weight' | 'reps';
+   *  and what the keyboard accessory's "Next" button does. ('rpe' comes from the
+   *  shared editing hook but never occurs for activities — it falls through to
+   *  the weight input, which is unreachable here.) */
+  activeField?: 'weight' | 'reps' | 'rpe';
   weightUnit: string;
   nextSetKey?: string | null;
   onActivateSet: (setKey: string, field: 'weight' | 'reps') => void;
@@ -42,12 +47,7 @@ function EditableSetRow({
   onRemoveSet,
   onAddSet,
 }: EditableSetRowProps) {
-  const [dangerColor, accentPrimary, chromeBg, chromeBorder] = useCSSVariable([
-    '--color-bg-danger',
-    '--color-accent-primary',
-    '--color-chrome',
-    '--color-chrome-border',
-  ]) as [string, string, string, string];
+  const dangerColor = useCSSVariable('--color-bg-danger') as string;
 
   const setKey = `${exerciseClientId}:${setClientId}`;
   const weightInputRef = useRef<TextInput>(null);
@@ -174,50 +174,22 @@ function EditableSetRow({
         </View>
         {Platform.OS === 'ios' && (
           <InputAccessoryView nativeID={accessoryId}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                backgroundColor: chromeBg,
-                borderTopWidth: 1,
-                borderTopColor: chromeBorder,
-              }}
-            >
-              <TouchableOpacity onPress={onDeactivate} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
-                  Done
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleAdvance} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
-                  {advanceLabel}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <SetInputAccessoryBar
+              onDone={onDeactivate}
+              actions={[{ key: 'advance', label: advanceLabel, onPress: handleAdvance }]}
+            />
           </InputAccessoryView>
         )}
       </>
     );
   }
 
-  const displayWeight = weight ? `${weight} ${weightUnit}` : '\u2014';
-  const displayReps = reps || '\u2014';
+  const displayWeight = weight ? `${weight} ${weightUnit}` : '\u2013';
+  const displayReps = reps || '\u2013';
 
   return (
     <ReanimatedSwipeable
-      renderRightActions={() => (
-        <TouchableOpacity
-          className="bg-bg-danger justify-center items-center"
-          style={{ width: 72 }}
-          onPress={handleRemove}
-          activeOpacity={0.7}
-        >
-          <Text className="text-text-danger font-semibold text-sm">Delete</Text>
-        </TouchableOpacity>
-      )}
+      renderRightActions={() => <SetSwipeDeleteAction onPress={handleRemove} />}
       overshootRight={false}
       rightThreshold={40}
     >

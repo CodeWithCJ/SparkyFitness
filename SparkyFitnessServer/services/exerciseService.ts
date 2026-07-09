@@ -211,11 +211,24 @@ function mapSetStatsRow(row: any) {
     setNumber: row.set_number,
   };
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getExerciseStats(userId: any, exerciseId: any) {
+async function getExerciseStats(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exerciseId: any,
+  excludePresetEntryId: string | null = null
+) {
   const [bestRow, lastRow] = await Promise.all([
-    exerciseEntryDb.getBestSetForExercise(userId, exerciseId),
-    exerciseEntryDb.getLastSetForExercise(userId, exerciseId),
+    exerciseEntryDb.getBestSetForExercise(
+      userId,
+      exerciseId,
+      excludePresetEntryId
+    ),
+    exerciseEntryDb.getLastSetForExercise(
+      userId,
+      exerciseId,
+      excludePresetEntryId
+    ),
   ]);
   return {
     bestSet: bestRow ? mapSetStatsRow(bestRow) : null,
@@ -485,6 +498,11 @@ async function updateExerciseEntry(
         steps: updateData.steps ?? existingEntry.steps,
         sort_order: updateData.sort_order ?? existingEntry.sort_order,
         exercise_name: updateData.exercise_name ?? existingEntry.exercise_name,
+        // Preserve when omitted; explicit null clears (leaving a superset).
+        superset_group:
+          updateData.superset_group === undefined
+            ? (existingEntry.superset_group ?? null)
+            : updateData.superset_group,
       }
     );
     if (!updatedEntry) {
@@ -1028,6 +1046,17 @@ async function addExternalExerciseToUserExercises(
   language: string = 'en'
 ) {
   try {
+    // Import is idempotent: re-adding an already-imported exercise returns the
+    // user's existing copy instead of violating the (user_id, source, source_id)
+    // unique index.
+    const existingExercise = await exerciseDb.getExerciseBySourceAndSourceId(
+      'wger',
+      String(wgerExerciseId),
+      authenticatedUserId
+    );
+    if (existingExercise) {
+      return existingExercise;
+    }
     const wgerExerciseDetails =
       await wgerService.getWgerExerciseDetails(wgerExerciseId);
     if (!wgerExerciseDetails) {
@@ -1082,7 +1111,12 @@ async function addExternalExerciseToUserExercises(
       user_id: authenticatedUserId,
       is_custom: true,
       shared_with_public: false,
-      source_external_id: wgerExerciseDetails.id.toString(),
+      // createExercise persists source_id (not source_external_id); the unique
+      // index and the dedup lookup above both key on it. Store the id the
+      // lookup queries by (the caller's id), not the fetched detail's id —
+      // if the two ever diverge, dedup would miss and the insert would hit
+      // the unique index.
+      source_id: String(wgerExerciseId),
       source: 'wger',
       level: 'intermediate',
       force: mappedForce,
@@ -1190,6 +1224,17 @@ async function addFreeExerciseDBExerciseToUserExercises(
   const { default: freeExerciseDBService } =
     await import('../integrations/freeexercisedb/FreeExerciseDBService.js');
   try {
+    // Import is idempotent: re-adding an already-imported exercise returns the
+    // user's existing copy instead of violating the (user_id, source, source_id)
+    // unique index.
+    const existingExercise = await exerciseDb.getExerciseBySourceAndSourceId(
+      'free-exercise-db',
+      freeExerciseDBId,
+      authenticatedUserId
+    );
+    if (existingExercise) {
+      return existingExercise;
+    }
     const exerciseDetails =
       await freeExerciseDBService.getExerciseById(freeExerciseDBId);
     if (!exerciseDetails) {
@@ -1209,8 +1254,9 @@ async function addFreeExerciseDBExerciseToUserExercises(
     const exerciseData = {
       id: uuidv4(), // Generate a new UUID for the local exercise
       source: 'free-exercise-db',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      source_id: exerciseDetails.id,
+      // Store the id the dedup lookup above queries by (the caller's id) so
+      // the two can never diverge and miss dedup on re-import.
+      source_id: String(freeExerciseDBId),
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       name: exerciseDetails.name,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -1652,6 +1698,7 @@ async function createGroupedExerciseEntriesWithClient(
       sets: exercise.sets || [],
       duration_minutes: durationMinutes,
       sort_order: exercise.sort_order ?? 0,
+      superset_group: exercise.superset_group ?? null,
       workout_plan_assignment_id: workoutPlanAssignmentId,
       distance: exercise.distance,
       avg_heart_rate: exercise.avg_heart_rate,
@@ -1894,6 +1941,7 @@ async function updateGroupedWorkoutSession(
             sets: ex.sets || [],
             duration_minutes: deriveDurationMinutes(ex),
             sort_order: ex.sort_order ?? 0,
+            superset_group: ex.superset_group ?? null,
             distance: ex.distance,
             avg_heart_rate: ex.avg_heart_rate,
           });
@@ -1906,6 +1954,7 @@ async function updateGroupedWorkoutSession(
               exercise_id: preparedEntry.exercise_id,
               notes: preparedEntry.notes,
               sort_order: preparedEntry.sort_order ?? 0,
+              superset_group: preparedEntry.superset_group ?? null,
               distance: preparedEntry.distance,
               avg_heart_rate: preparedEntry.avg_heart_rate,
               duration_minutes: preparedEntry.duration_minutes,

@@ -21,6 +21,7 @@ describe('appPreferencesStore', () => {
       expect(state.fastingCardVisible).toBe(true);
       expect(state.askSparkyVisible).toBe(true);
       expect(state.liquidGlassTabBarEnabled).toBe(false);
+      expect(state.activeWorkoutMetricColumn).toBe('rpe');
     });
   });
 
@@ -37,6 +38,26 @@ describe('appPreferencesStore', () => {
 
       store.setLiquidGlassTabBarEnabled(true);
       expect(useAppPreferencesStore.getState().liquidGlassTabBarEnabled).toBe(true);
+
+      store.setActiveWorkoutMetricColumn('e1rm');
+      expect(useAppPreferencesStore.getState().activeWorkoutMetricColumn).toBe('e1rm');
+    });
+  });
+
+  describe('activeWorkoutMetricColumn backfill', () => {
+    it('falls back to the default when an older persisted blob lacks the key', async () => {
+      const withoutMetricColumn = { ...PREFERENCE_DEFAULTS } as Record<string, unknown>;
+      delete withoutMetricColumn.activeWorkoutMetricColumn;
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({ state: { ...withoutMetricColumn, soundsEnabled: false }, version: 1 }),
+      );
+
+      await useAppPreferencesStore.persist.rehydrate();
+
+      const state = useAppPreferencesStore.getState();
+      expect(state.soundsEnabled).toBe(false); // persisted values honoured
+      expect(state.activeWorkoutMetricColumn).toBe('rpe'); // shallow-merge backfill
     });
   });
 

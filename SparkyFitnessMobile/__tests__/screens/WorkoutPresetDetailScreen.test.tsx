@@ -5,7 +5,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import WorkoutPresetDetailScreen from '../../src/screens/WorkoutPresetDetailScreen';
 import { usePreferences } from '../../src/hooks';
+import { useStartLiveWorkout } from '../../src/hooks/useStartLiveWorkout';
 import { loadActiveDraft } from '../../src/services/workoutDraftService';
+import { buildPresetStartExercisesPayload } from '../../src/utils/workoutSession';
 import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
 
 jest.mock('../../src/hooks', () => ({
@@ -13,6 +15,10 @@ jest.mock('../../src/hooks', () => ({
   useProfile: jest.fn(() => ({ profile: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
   useDeleteWorkoutPreset: jest.fn(() => ({ confirmAndDelete: jest.fn(), isPending: false })),
+}));
+
+jest.mock('../../src/hooks/useStartLiveWorkout', () => ({
+  useStartLiveWorkout: jest.fn(),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -32,10 +38,16 @@ const mockNavigation = {
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
+  // useExerciseImageSource refreshes its cache on focus; a no-op keeps
+  // rendering synchronous outside a NavigationContainer.
+  useFocusEffect: jest.fn(),
 }));
 
 const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
 const mockLoadActiveDraft = loadActiveDraft as jest.MockedFunction<typeof loadActiveDraft>;
+const mockUseStartLiveWorkout = useStartLiveWorkout as jest.MockedFunction<
+  typeof useStartLiveWorkout
+>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -70,6 +82,7 @@ function buildPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
 
 describe('WorkoutPresetDetailScreen', () => {
   const navigation = mockNavigation;
+  const startLiveWorkout = jest.fn();
 
   const renderScreen = (preset: WorkoutPreset) => {
     const route = {
@@ -98,22 +111,47 @@ describe('WorkoutPresetDetailScreen', () => {
       refetch: jest.fn(),
     } as any);
     mockLoadActiveDraft.mockResolvedValue(null);
+    mockUseStartLiveWorkout.mockReturnValue({ startLiveWorkout, isStarting: false });
   });
 
-  it('navigates to WorkoutAdd with the preset and popCount=2 on Start workout', async () => {
-    const preset = buildPreset();
+  it('starts a live workout with the preset-built payload on Start workout', () => {
+    const preset = buildPreset({
+      exercises: [
+        {
+          id: 'pe-1',
+          exercise_id: 'ex-1',
+          exercise_name: 'Bench Press',
+          image_url: null,
+          sets: [buildSet()],
+        },
+      ],
+    });
     const screen = renderScreen(preset);
 
     fireEvent.press(screen.getByText('Start workout'));
+
+    expect(startLiveWorkout).toHaveBeenCalledWith({
+      name: 'Push Day',
+      exercises: buildPresetStartExercisesPayload(preset),
+    });
+    expect(navigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it('navigates to WorkoutAdd with the preset and popCount=2 on Log past workout', async () => {
+    const preset = buildPreset();
+    const screen = renderScreen(preset);
+
+    fireEvent.press(screen.getByText('Log past workout'));
     await waitFor(() => {
       expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd', {
         preset,
         popCount: 2,
       });
     });
+    expect(startLiveWorkout).not.toHaveBeenCalled();
   });
 
-  it('prompts to resume an active draft before starting a preset workout', async () => {
+  it('prompts to resume an active draft before logging a past preset workout', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert');
     mockLoadActiveDraft.mockResolvedValue({
       type: 'workout',
@@ -140,7 +178,7 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(buildPreset());
 
-    fireEvent.press(screen.getByText('Start workout'));
+    fireEvent.press(screen.getByText('Log past workout'));
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(
@@ -169,13 +207,17 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('Push Day')).toBeTruthy();
+    // The name lives in the (native) header title now; the body keeps the
+    // description, exercise count, and the exercise card.
+    expect(navigation.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Push Day' }),
+    );
     expect(screen.getByText('Chest, shoulders, triceps')).toBeTruthy();
     expect(screen.getByText('1 exercise')).toBeTruthy();
     expect(screen.getByText('Bench Press')).toBeTruthy();
   });
 
-  it('formats reps × weight sets in the user’s weight unit (kg)', () => {
+  it('renders set weight/reps in the card table, expanded by default (kg)', () => {
     const preset = buildPreset({
       exercises: [
         {
@@ -189,7 +231,10 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('5 × 100 kg')).toBeTruthy();
+    // No expand tap needed — preset cards default expanded.
+    expect(screen.getByText('KG')).toBeTruthy();
+    expect(screen.getByText('100')).toBeTruthy();
+    expect(screen.getByText('5')).toBeTruthy();
   });
 
   it('converts kg to lbs when the user prefers lbs', () => {
@@ -213,7 +258,8 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     // 100kg → ~220.5 lbs
-    expect(screen.getByText('5 × 220.5 lbs')).toBeTruthy();
+    expect(screen.getByText('LBS')).toBeTruthy();
+    expect(screen.getByText('220.5')).toBeTruthy();
   });
 
   it('coerces st_lbs to lbs for display rather than passing it to weightFromKg', () => {
@@ -236,10 +282,10 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('5 × 220.5 lbs')).toBeTruthy();
+    expect(screen.getByText('220.5')).toBeTruthy();
   });
 
-  it('renders per-set rest_time so mixed-rest presets keep their accuracy', () => {
+  it('shows one exercise-level rest chip from the first set (mixed rest degrades to it)', () => {
     const preset = buildPreset({
       exercises: [
         {
@@ -258,8 +304,44 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     expect(screen.getByText('Rest · 45s')).toBeTruthy();
-    expect(screen.getByText('Rest · 1:30')).toBeTruthy();
-    expect(screen.getByText('Rest · 2:00')).toBeTruthy();
+    expect(screen.queryByText('Rest · 1:30')).toBeNull();
+    expect(screen.queryByText('Rest · 2:00')).toBeNull();
+  });
+
+  it('renders a superset rail on each grouped exercise', () => {
+    const preset = buildPreset({
+      exercises: [
+        {
+          id: 801,
+          exercise_id: 'ex-1',
+          exercise_name: 'Bench Press',
+          image_url: null,
+          superset_group: 1,
+          sets: [buildSet({ id: 's-1' })],
+        },
+        {
+          id: 802,
+          exercise_id: 'ex-2',
+          exercise_name: 'Bent-over Row',
+          image_url: null,
+          superset_group: 1,
+          sets: [buildSet({ id: 's-2' })],
+        },
+        {
+          id: 803,
+          exercise_id: 'ex-3',
+          exercise_name: 'Plank',
+          image_url: null,
+          superset_group: null,
+          sets: [buildSet({ id: 's-3' })],
+        },
+      ],
+    } as never);
+    const screen = renderScreen(preset);
+
+    expect(screen.getByTestId('superset-rail-801')).toBeTruthy();
+    expect(screen.getByTestId('superset-rail-802')).toBeTruthy();
+    expect(screen.queryByTestId('superset-rail-803')).toBeNull();
   });
 
   it('renders time-based (duration-only) sets as a duration string', () => {

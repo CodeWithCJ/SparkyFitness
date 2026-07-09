@@ -11,18 +11,23 @@ import {
   Platform,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
+import SafeImage from '../components/SafeImage';
 import SegmentedControl from '../components/SegmentedControl';
+import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
+import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useServerConnection, useExternalProviders, useSuggestedExercises, useExerciseSearch } from '../hooks';
 import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
+import { getApiErrorMessage } from '../services/api/errors';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -53,6 +58,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     '--color-border-subtle',
   ]) as [string, string, string, string];
   const { isConnected } = useServerConnection();
+  const { getImageSource } = useExerciseImageSource();
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
   const [searchText, setSearchText] = useState('');
@@ -124,28 +130,52 @@ useEffect(() => {
       const exercise = await importExercise(item.source, item.id);
       queryClient.invalidateQueries({ queryKey: suggestedExercisesQueryKey });
       handleSelectExercise(exercise);
-    } catch {
-      // Silently fail — user can retry
+    } catch (error) {
+      // apiFetch already logs the failure; surface it so the tap isn't silent.
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to add exercise',
+        text2: getApiErrorMessage(error) ?? undefined,
+      });
     }
     setImportingExerciseId(null);
   }, [queryClient, handleSelectExercise]);
 
   // --- Shared renderers ---
 
-  const renderExerciseRow = useCallback(({ item }: { item: Exercise }) => (
-    <TouchableOpacity
-      className="px-4 py-3 border-b border-border-subtle"
-      activeOpacity={0.7}
-      onPress={() => handleSelectExercise(item)}
-    >
-      <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-      {item.category && (
-        <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {item.category}
-        </Text>
-      )}
-    </TouchableOpacity>
-  ), [handleSelectExercise, textSecondary]);
+  const renderExerciseRow = useCallback(({ item }: { item: Exercise }) => {
+    const image = item.images?.[0] ?? null;
+    const fallbackIcon =
+      (item.category && CATEGORY_ICON_MAP[item.category]) || 'exercise-weights';
+    return (
+      <TouchableOpacity
+        className="flex-row items-center gap-3 px-4 py-3 border-b border-border-subtle"
+        activeOpacity={0.7}
+        onPress={() => handleSelectExercise(item)}
+      >
+        <SafeImage
+          source={image ? getImageSource(image) : null}
+          style={{ width: 44, height: 44, borderRadius: 8 }}
+          fallback={
+            <View
+              className="bg-raised items-center justify-center"
+              style={{ width: 44, height: 44, borderRadius: 8 }}
+            >
+              <Icon name={fallbackIcon} size={22} color={textMuted} />
+            </View>
+          }
+        />
+        <View className="flex-1">
+          <Text className="text-text-primary text-base font-medium">{item.name}</Text>
+          {item.category && (
+            <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
+              {item.category}
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  }, [handleSelectExercise, textSecondary, textMuted, getImageSource]);
 
   const sections = useMemo(() => {
     const allSections: ExerciseSection[] = [

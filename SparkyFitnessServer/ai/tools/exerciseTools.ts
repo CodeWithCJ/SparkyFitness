@@ -128,9 +128,14 @@ const EXERCISE_ENTRY_DROP: readonly string[] = [
   'exercise_preset_entry_id',
   'sort_order',
 ];
-// exercise_entry_sets dumps (`SELECT *`): only audit timestamps are noise.
+// exercise_entry_sets dumps (`SELECT *`): audit timestamps and per-set
+// completion timestamps are token noise for the chatbot.
 // `exercise_entry_id` is kept so the model can map sets back to their entry.
-const EXERCISE_SET_DROP: readonly string[] = ['created_at', 'updated_at'];
+const EXERCISE_SET_DROP: readonly string[] = [
+  'created_at',
+  'updated_at',
+  'completed_at',
+];
 // exercises catalog rows (sparky_list_exercises) — drop the redundant caller id
 // and audit columns; keep descriptive catalog fields.
 const EXERCISE_CATALOG_DROP: readonly string[] = [

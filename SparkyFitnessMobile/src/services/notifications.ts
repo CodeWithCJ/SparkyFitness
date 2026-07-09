@@ -85,6 +85,7 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 export async function scheduleRestNotification(
   exerciseName: string,
   seconds: number,
+  content?: { title?: string; body?: string },
 ): Promise<string | null> {
   if (!useAppPreferencesStore.getState().notificationsEnabled) return null;
 
@@ -94,8 +95,8 @@ export async function scheduleRestNotification(
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Rest complete',
-        body: exerciseName,
+        title: content?.title ?? 'Rest complete',
+        body: content?.body ?? exerciseName,
         sound: true,
       },
       trigger: {
