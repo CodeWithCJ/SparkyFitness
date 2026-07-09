@@ -20,7 +20,6 @@ import {
   draftExerciseToCardExercise,
   presetExerciseToCardExercise,
   DEFAULT_REST_SEC,
-  isTempExerciseEntryId,
   isTempSetId,
   epley1RmKg,
   estimateRepMaxKg,
@@ -1569,7 +1568,7 @@ describe('workoutSession', () => {
     function expectNoTempIds(payload: ReturnType<typeof buildSessionExercisesPayload>) {
       for (const exercise of payload) {
         if ('id' in exercise && exercise.id != null) {
-          expect(isTempExerciseEntryId(String(exercise.id))).toBe(false);
+          expect(String(exercise.id).startsWith('temp-')).toBe(false);
         }
         for (const set of exercise.sets) {
           if ('id' in set && typeof set.id === 'number') {
@@ -1642,12 +1641,16 @@ describe('workoutSession', () => {
       expectNoTempIds(payload);
     });
 
-    it('recreate path: a temp exercise id strips ALL exercise and set ids', () => {
+    it('added exercise: sends its client uuid and omits only the negative temp set id', () => {
+      // A mid-workout add carries a real client uuid + a negative temp set id.
+      // The entry id is always sent (server adopts it via reconcile-create);
+      // only the temp set id is omitted so the server INSERTs it.
+      const ADDED = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
       const session = makePreset({
         exercises: [
           makeExercise({ id: ENTRY_A, sets: [makeSet({ id: 101 })] }),
           makeExercise({
-            id: 'temp-abc123',
+            id: ADDED,
             exercise_id: EX_2,
             sets: [makeSet({ id: -1 })],
           }),
@@ -1655,9 +1658,9 @@ describe('workoutSession', () => {
       });
 
       const payload = buildSessionExercisesPayload(session, {}, {});
-      expect(payload[0]).not.toHaveProperty('id');
-      expect(payload[0].sets[0]).not.toHaveProperty('id');
-      expect(payload[1]).not.toHaveProperty('id');
+      expect(payload[0].id).toBe(ENTRY_A);
+      expect((payload[0].sets[0] as { id?: number }).id).toBe(101);
+      expect(payload[1].id).toBe(ADDED);
       expect(payload[1].sets[0]).not.toHaveProperty('id');
       expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
       expect(() => presetSessionExerciseRequestSchema.parse(payload[1])).not.toThrow();
@@ -1807,13 +1810,14 @@ describe('workoutSession', () => {
       expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
     });
 
-    it('keeps completed_at on id-less sets in the recreate path', () => {
+    it('carries completed_at on a temp set whose id is omitted', () => {
       const completedMs = Date.UTC(2026, 2, 20, 10, 30, 0);
+      const ADDED = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
       const session = makePreset({
         exercises: [
           makeExercise({ id: ENTRY_A, sets: [makeSet({ id: 101 })] }),
           makeExercise({
-            id: 'temp-abc123',
+            id: ADDED,
             exercise_id: EX_2,
             sets: [makeSet({ id: -1 })],
           }),
@@ -1828,8 +1832,9 @@ describe('workoutSession', () => {
         },
         {},
       );
-      // Ids are stripped (delete-and-recreate), but completion travels in the rows.
-      expect(payload[0].sets[0]).not.toHaveProperty('id');
+      // The existing set keeps its id; the temp set's id is omitted — but its
+      // completion still travels in the row so the server-INSERTed set is done.
+      expect((payload[0].sets[0] as { id?: number }).id).toBe(101);
       expect(payload[0].sets[0].completed_at).toBe(new Date(completedMs).toISOString());
       expect(payload[1].sets[0]).not.toHaveProperty('id');
       expect(payload[1].sets[0].completed_at).toBe(new Date(completedMs).toISOString());
@@ -1851,12 +1856,13 @@ describe('workoutSession', () => {
       expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
     });
 
-    it('carries is_pr on id-less sets in the recreate path', () => {
+    it('carries is_pr on a temp set whose id is omitted', () => {
+      const ADDED = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
       const session = makePreset({
         exercises: [
           makeExercise({ id: ENTRY_A, sets: [makeSet({ id: 101 })] }),
           makeExercise({
-            id: 'temp-abc123',
+            id: ADDED,
             exercise_id: EX_2,
             sets: [makeSet({ id: -1 })],
           }),
@@ -1864,7 +1870,7 @@ describe('workoutSession', () => {
       });
 
       const payload = buildSessionExercisesPayload(session, {}, { '101': true, '-1': true });
-      expect(payload[0].sets[0]).not.toHaveProperty('id');
+      expect((payload[0].sets[0] as { id?: number }).id).toBe(101);
       expect(payload[0].sets[0].is_pr).toBe(true);
       expect(payload[1].sets[0]).not.toHaveProperty('id');
       expect(payload[1].sets[0].is_pr).toBe(true);

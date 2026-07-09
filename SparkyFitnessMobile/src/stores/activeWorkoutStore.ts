@@ -10,10 +10,8 @@ import type {
 import type { Exercise } from '../types/exercise';
 import {
   DEFAULT_REST_SEC,
-  TEMP_EXERCISE_ENTRY_ID_PREFIX,
   getSupersetRuns,
   isPrSet,
-  isTempExerciseEntryId,
   moveSessionExerciseItem,
   normalizeSessionSupersetGroups,
   seedPrFromSession,
@@ -21,6 +19,7 @@ import {
   ungroupSessionExercise,
 } from '../utils/workoutSession';
 import type { PrBaselineEntry } from '../utils/workoutSession';
+import { newUuid } from '../utils/ids';
 import {
   cancelScheduledNotification,
   fireRestCompleteHaptic,
@@ -163,6 +162,23 @@ export interface ActiveWorkoutState {
    * see {@link PrEvent}.
    */
   lastPrEvent: PrEvent | null;
+  /**
+   * Current set id → stable React render key. A set's birth id is its render
+   * key, so a missing entry means "the id is its own key"; an entry appears
+   * only once a set's id has churned (a negative temp id replaced by the
+   * server-assigned id on the first autosave). Holding the key stable across
+   * that churn keeps the focused row's `TextInput` instance alive, so the
+   * keyboard and any uncommitted draft text survive the save.
+   *
+   * Transient — never persisted. Keys only need stability while the screen is
+   * mounted; keyboard focus doesn't survive a cold start anyway, and after a
+   * restart the map is empty so keys fall back to ids (correct).
+   *
+   * DISCIPLINE: any future set-keyed *UI* state (focus, expansion, animation,
+   * refs) must key on this render key, not the raw set id — the id is not
+   * stable across an autosave.
+   */
+  setRenderKeys: Record<string, string>;
 
   startWorkout: (
     session: PresetSessionResponse,
@@ -241,7 +257,7 @@ export interface ActiveWorkoutState {
    * `null`. Marks the session dirty so autosave persists the note.
    */
   setExerciseNotes: (entryId: string, notes: string | null) => void;
-  /** Append a client-built exercise entry (temp string id) with one default set. */
+  /** Append a client-built exercise entry (client uuid) with one default set. */
   addExercise: (exercise: Exercise) => void;
   /**
    * Delete an exercise entry entirely, reconciling steps, completion/PR maps,
@@ -314,6 +330,7 @@ const initialData: Pick<
   | 'prBaseline'
   | 'prSetIds'
   | 'lastPrEvent'
+  | 'setRenderKeys'
 > = {
   sessionId: null,
   session: null,
@@ -328,6 +345,7 @@ const initialData: Pick<
   prBaseline: {},
   prSetIds: {},
   lastPrEvent: null,
+  setRenderKeys: {},
 };
 
 /**
@@ -451,27 +469,27 @@ export function graftServerSessionIds(
  * Next negative placeholder id for a client-added set. Derived from the
  * session (not a module counter) so ids stay unique across cold restarts
  * while unsaved temp sets are still present.
+ *
+ * Also avoids any numeric value still held in `setRenderKeys`: after a churn
+ * frees a negative id from the session (e.g. `-1` → a server id), the freed
+ * `-1` lives on as a rendered row's birth key. Minting `-1` again would give
+ * two rows the same React key, so the next id sits below every render key too.
  */
-function nextTempSetId(session: PresetSessionResponse): number {
+function nextTempSetId(
+  session: PresetSessionResponse,
+  setRenderKeys: Record<string, string>,
+): number {
   let min = 0;
   for (const exercise of session.exercises) {
     for (const set of exercise.sets) {
       if (set.id < min) min = set.id;
     }
   }
-  return min - 1;
-}
-
-/** Next `temp-N` placeholder id for a client-added exercise entry. */
-function nextTempExerciseEntryId(session: PresetSessionResponse): string {
-  let max = 0;
-  for (const exercise of session.exercises) {
-    if (isTempExerciseEntryId(exercise.id)) {
-      const n = parseInt(exercise.id.slice(TEMP_EXERCISE_ENTRY_ID_PREFIX.length), 10);
-      if (!Number.isNaN(n) && n > max) max = n;
-    }
+  for (const key of Object.values(setRenderKeys)) {
+    const n = Number(key);
+    if (Number.isInteger(n) && n < min) min = n;
   }
-  return `${TEMP_EXERCISE_ENTRY_ID_PREFIX}${max + 1}`;
+  return min - 1;
 }
 
 function makeDefaultSet(id: number, setNumber: number): ExerciseEntrySetResponse {
@@ -772,6 +790,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           prBaseline: {},
           prSetIds: seedPrFromSession(session),
           lastPrEvent: null,
+          // A fresh start has no id churn yet — every set keys by its own id.
+          setRenderKeys: {},
         });
       },
 
@@ -811,6 +831,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           prBaseline: {},
           prSetIds: seedPrFromSession(session),
           lastPrEvent: null,
+          // A fresh start has no id churn yet — every set keys by its own id.
+          setRenderKeys: {},
         });
       },
 
@@ -1138,6 +1160,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           if (newSetIds.has(id)) nextPr[id] = true;
         }
 
+        // Prune render keys the same way — reconcile keeps ids stable (no
+        // remap), so surviving entries carry over and dropped sets fall away.
+        const nextRenderKeys: Record<string, string> = {};
+        for (const id of Object.keys(state.setRenderKeys)) {
+          if (newSetIds.has(id)) nextRenderKeys[id] = state.setRenderKeys[id];
+        }
+
         // If the cursor points at a set that no longer exists, fall back to
         // the first uncompleted step. If every remaining step is already
         // complete (or there are no steps), the workout is done → null.
@@ -1160,6 +1189,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           steps: newSteps,
           completedSetIds: nextCompleted,
           prSetIds: nextPr,
+          setRenderKeys: nextRenderKeys,
           activeSetId: nextActiveSetId,
           rest: nextRest,
           // Reconcile is the second session writer (WorkoutDetail edit-save).
@@ -1200,7 +1230,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const exercise = session.exercises.find((e) => e.id === entryId);
         if (!exercise) return;
 
-        const tempId = nextTempSetId(session);
+        const tempId = nextTempSetId(session, state.setRenderKeys);
         const lastSet = exercise.sets[exercise.sets.length - 1];
         // Clone the last set's plan (weight/reps/rest/type/duration) but not
         // its outcomes (notes/rpe/completed_at/is_pr) — those describe a
@@ -1333,7 +1363,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         };
 
         const entry: ExerciseEntryResponse = {
-          id: nextTempExerciseEntryId(session),
+          // A client-minted uuid gives the entry a stable identity from birth:
+          // the server adopts it via reconcile-create instead of reassigning
+          // ids, so the card never collapses on the first autosave after an add.
+          id: newUuid(),
           exercise_id: exercise.id,
           duration_minutes: 0,
           calories_burned: 0,
@@ -1345,7 +1378,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           superset_group: null,
           exercise_snapshot: snapshot,
           activity_details: [],
-          sets: [makeDefaultSet(nextTempSetId(session), 1)],
+          sets: [makeDefaultSet(nextTempSetId(session, state.setRenderKeys), 1)],
         };
 
         const next: PresetSessionResponse = {
@@ -1398,7 +1431,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
                   ...e,
                   exercise_id: exercise.id,
                   exercise_snapshot: snapshot,
-                  sets: [makeDefaultSet(nextTempSetId(session), 1)],
+                  sets: [makeDefaultSet(nextTempSetId(session, state.setRenderKeys), 1)],
                 }
               : e,
           ),
@@ -1484,6 +1517,24 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           for (const id of Object.keys(state.prSetIds)) {
             nextPr[setIdMap.get(id) ?? id] = true;
           }
+
+          // Carry render keys across the graft: re-key each entry to its
+          // server id, and give a churned set with no prior entry its birth
+          // (pre-churn local) id as its stable key — that keeps the just-added
+          // set's focused row keyed identically before and after the save, so
+          // its TextInput instance (keyboard + draft) survives. Building fresh
+          // from the original map keeps this order-independent, like
+          // nextCompleted; the graft keeps the local session, so no prune.
+          const nextRenderKeys: Record<string, string> = {};
+          for (const id of Object.keys(state.setRenderKeys)) {
+            nextRenderKeys[setIdMap.get(id) ?? id] = state.setRenderKeys[id];
+          }
+          for (const [oldId, newId] of setIdMap) {
+            if (oldId !== newId && !(newId in nextRenderKeys)) {
+              nextRenderKeys[newId] = oldId;
+            }
+          }
+
           const nextActiveSetId =
             state.activeSetId == null
               ? null
@@ -1494,6 +1545,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             steps: newSteps,
             completedSetIds: nextCompleted,
             prSetIds: nextPr,
+            setRenderKeys: nextRenderKeys,
             activeSetId: nextActiveSetId,
             // hasUnsavedChanges stays true — the newer edits still need a save.
           });
@@ -1514,6 +1566,20 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         for (const id of Object.keys(state.prSetIds)) {
           const mapped = setIdMap.get(id) ?? id;
           if (newSetIds.has(mapped)) nextPr[mapped] = true;
+        }
+
+        // Carry render keys, pruned to the adopted session's set ids so the
+        // map can't grow unboundedly: re-key each surviving entry to its
+        // server id, and give a churned set its birth id as its stable key.
+        const nextRenderKeys: Record<string, string> = {};
+        for (const id of Object.keys(state.setRenderKeys)) {
+          const mapped = setIdMap.get(id) ?? id;
+          if (newSetIds.has(mapped)) nextRenderKeys[mapped] = state.setRenderKeys[id];
+        }
+        for (const [oldId, newId] of setIdMap) {
+          if (oldId !== newId && newSetIds.has(newId) && !(newId in nextRenderKeys)) {
+            nextRenderKeys[newId] = oldId;
+          }
         }
 
         // Remap the cursor in place: an id change that still points at the
@@ -1537,6 +1603,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           steps: newSteps,
           completedSetIds: nextCompleted,
           prSetIds: nextPr,
+          setRenderKeys: nextRenderKeys,
           activeSetId: nextActiveSetId,
           rest: nextRest,
           hasUnsavedChanges: false,
@@ -1545,7 +1612,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         sessionId: state.sessionId,
@@ -1566,12 +1633,14 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
       }),
       migrate: (persistedState, version) => {
         // v4 changed `completedSetIds` values from `true` to epoch-ms tap
-        // timestamps (backing the server-persisted `completed_at` column).
-        // Pre-v4 state predates any release of the active-workout feature
-        // and only holds local progress for an in-flight workout — the
-        // session itself lives on the server — so it is discarded rather
+        // timestamps; v5 switched client-added exercise entries from `temp-N`
+        // string ids to real client uuids. A pre-v5 in-flight workout could
+        // still hold a `temp-N` entry id, which the request schema rejects
+        // (`id: uuid().optional()`) — its next autosave would 400 forever. The
+        // persisted state only holds local progress for an in-flight workout
+        // (the session itself lives on the server), so it is discarded rather
         // than migrated.
-        if (version < 4) {
+        if (version < 5) {
           return { ...initialData } as ActiveWorkoutState;
         }
         return persistedState as ActiveWorkoutState;

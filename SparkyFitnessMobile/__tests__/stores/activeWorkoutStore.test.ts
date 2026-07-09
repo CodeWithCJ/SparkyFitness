@@ -10,6 +10,7 @@ import {
   scheduleRestNotification,
 } from '../../src/services/notifications';
 import { fireSelectionHaptic, fireSuccessHaptic } from '../../src/services/haptics';
+import { newUuid } from '../../src/utils/ids';
 
 jest.mock('../../src/services/notifications', () => ({
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
@@ -21,6 +22,13 @@ jest.mock('../../src/services/haptics', () => ({
   fireSuccessHaptic: jest.fn(),
   fireSelectionHaptic: jest.fn(),
 }));
+
+// Client-added exercise entries mint a uuid; mock it to deterministic
+// `uuid-N` values (reset per test in the top-level beforeEach) so tests can
+// assert stable ids instead of a random uuid.
+jest.mock('../../src/utils/ids', () => ({ newUuid: jest.fn() }));
+const mockNewUuid = newUuid as jest.MockedFunction<typeof newUuid>;
+let uuidSeq = 0;
 
 const mockSchedule = scheduleRestNotification as jest.MockedFunction<
   typeof scheduleRestNotification
@@ -195,6 +203,8 @@ describe('activeWorkoutStore', () => {
     mockSuccessHaptic.mockClear();
     mockSelectionHaptic.mockClear();
     mockSchedule.mockImplementation(async () => 'notif-abc');
+    uuidSeq = 0;
+    mockNewUuid.mockImplementation(() => `uuid-${++uuidSeq}`);
     jest.useFakeTimers();
     jest.setSystemTime(new Date(FIXED_NOW));
     await AsyncStorage.clear();
@@ -1413,11 +1423,12 @@ describe('activeWorkoutStore', () => {
         tags: [],
       };
 
-      it('appends a temp-id entry with a snapshot and one default set', () => {
+      it('appends a client-uuid entry with a snapshot and one default set', () => {
         useActiveWorkoutStore.getState().addExercise(newExercise);
         const state = useActiveWorkoutStore.getState();
         const entry = state.session!.exercises[2];
-        expect(entry.id).toBe('temp-1');
+        // A client-minted uuid gives the entry a stable identity from birth.
+        expect(entry.id).toBe('uuid-1');
         expect(entry.exercise_id).toBe('ex-3');
         expect(entry.exercise_snapshot?.name).toBe('Deadlift');
         expect(entry.exercise_snapshot?.images).toEqual(['deadlift.jpg']);
@@ -1430,12 +1441,12 @@ describe('activeWorkoutStore', () => {
         expect(state.hasUnsavedChanges).toBe(true);
       });
 
-      it('assigns unique temp ids for successive adds', () => {
+      it('assigns a fresh uuid and unique temp set id for successive adds', () => {
         useActiveWorkoutStore.getState().addExercise(newExercise);
         useActiveWorkoutStore.getState().addExercise({ ...newExercise, id: 'ex-4', name: 'Row' });
         const exercises = useActiveWorkoutStore.getState().session!.exercises;
-        expect(exercises[2].id).toBe('temp-1');
-        expect(exercises[3].id).toBe('temp-2');
+        expect(exercises[2].id).toBe('uuid-1');
+        expect(exercises[3].id).toBe('uuid-2');
         expect(exercises[2].sets[0].id).toBe(-1);
         expect(exercises[3].sets[0].id).toBe(-2);
       });
@@ -1804,6 +1815,95 @@ describe('activeWorkoutStore', () => {
       const state = useActiveWorkoutStore.getState();
       expect(state.session).toBe(reordered); // untouched — no positional graft
       expect(state.hasUnsavedChanges).toBe(true);
+    });
+  });
+
+  describe('setRenderKeys (stable render keys across id churn)', () => {
+    const ENTRY_IDS = ['ex-uuid-1', 'ex-uuid-2'];
+
+    /**
+     * A server response that PRESERVES the existing set ids (the Slice A norm —
+     * client ids round-trip) and assigns the just-added temp set a real id.
+     */
+    function responseWithAddedSetId(addedId: number): PresetSessionResponse {
+      const response = makeSession();
+      response.exercises[0].sets.push({
+        ...makeSession().exercises[0].sets[0],
+        id: addedId,
+        set_number: 3,
+      });
+      return response;
+    }
+
+    it('adopt branch: a churned temp set keeps its birth id as the render key; unchanged ids stay keyless', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-1'); // ex1 → [101, 102, -1]
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+
+      // No mid-flight edit → sentRevision === current → adopt branch.
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(responseWithAddedSetId(777), sentRevision, ENTRY_IDS);
+
+      // Only the churned set (-1 → 777) carries a key (its birth id); the
+      // untouched 101/102/201 have none.
+      expect(useActiveWorkoutStore.getState().setRenderKeys).toEqual({ '777': '-1' });
+    });
+
+    it('graft branch: carries the churned set birth key while a mid-flight edit stays dirty', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-1'); // ex1 → [101, 102, -1]
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+      // A mid-flight edit bumps the revision → graft branch.
+      useActiveWorkoutStore.getState().updateSetField('101', { weight: 65 });
+
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(responseWithAddedSetId(777), sentRevision, ENTRY_IDS);
+
+      const state = useActiveWorkoutStore.getState();
+      expect(state.setRenderKeys).toEqual({ '777': '-1' });
+      expect(state.hasUnsavedChanges).toBe(true); // still dirty
+    });
+
+    it('resets the render-key map on startWorkout and clearWorkout', () => {
+      useActiveWorkoutStore.setState({ setRenderKeys: { '777': '-1' } });
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      expect(useActiveWorkoutStore.getState().setRenderKeys).toEqual({});
+
+      useActiveWorkoutStore.setState({ setRenderKeys: { '888': '-2' } });
+      useActiveWorkoutStore.getState().clearWorkout();
+      expect(useActiveWorkoutStore.getState().setRenderKeys).toEqual({});
+    });
+
+    it('prunes the render-key map to surviving set ids on reconcileWithSession', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      // 101 is still live; 999 is a stale entry for a set that no longer exists.
+      useActiveWorkoutStore.setState({ setRenderKeys: { '101': 'x', '999': 'gone' } });
+      useActiveWorkoutStore.getState().reconcileWithSession(makeSession());
+      expect(useActiveWorkoutStore.getState().setRenderKeys).toEqual({ '101': 'x' });
+    });
+
+    it('collision guard: a temp set minted after a churn does not reuse the freed negative id', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-1'); // -1
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+      // Save churns -1 → 777, freeing the negative id but keeping "-1" as a key.
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(responseWithAddedSetId(777), sentRevision, ENTRY_IDS);
+      expect(useActiveWorkoutStore.getState().setRenderKeys).toEqual({ '777': '-1' });
+
+      // The next add must NOT re-mint -1 (whose render key "-1" still names the
+      // churned row) — it sits below every numeric render key.
+      useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-1');
+      const state = useActiveWorkoutStore.getState();
+      const ex1Sets = state.session!.exercises[0].sets;
+      expect(ex1Sets[ex1Sets.length - 1].id).toBe(-2); // NOT -1
+
+      // No two rendered rows share a render key.
+      const keys = ex1Sets.map((s) => state.setRenderKeys[String(s.id)] ?? String(s.id));
+      expect(new Set(keys).size).toBe(keys.length);
     });
   });
 
@@ -2215,7 +2315,7 @@ describe('activeWorkoutStore', () => {
             instanceToken: 1,
           },
         },
-        version: 4,
+        version: 5,
       };
       mockHaptic.mockClear();
       await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
@@ -2245,7 +2345,7 @@ describe('activeWorkoutStore', () => {
             instanceToken: 1,
           },
         },
-        version: 4,
+        version: 5,
       };
       await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
       await useActiveWorkoutStore.persist.rehydrate();
@@ -2254,9 +2354,9 @@ describe('activeWorkoutStore', () => {
       expect(rest.endsAt).toBe(now + 60_000);
     });
 
-    describe('pre-v4 migration discard', () => {
-      /** v3 shape: completedSetIds values were `true`, sets had no completed_at. */
-      function buildPreV4Payload(version: number) {
+    describe('pre-v5 migration discard', () => {
+      /** Legacy shape (pre-v5): a client-added entry could still hold a temp id. */
+      function buildLegacyPayload(version: number) {
         return {
           state: {
             sessionId: 'session-1',
@@ -2288,11 +2388,11 @@ describe('activeWorkoutStore', () => {
         };
       }
 
-      it.each([1, 2, 3])('discards persisted version %i wholesale', async (version) => {
+      it.each([1, 2, 3, 4])('discards persisted version %i wholesale', async (version) => {
         jest.useRealTimers();
         await AsyncStorage.setItem(
           '@SparkyFitness/active-workout',
-          JSON.stringify(buildPreV4Payload(version)),
+          JSON.stringify(buildLegacyPayload(version)),
         );
         await useActiveWorkoutStore.persist.rehydrate();
         const state = useActiveWorkoutStore.getState();
@@ -2304,14 +2404,14 @@ describe('activeWorkoutStore', () => {
         expect(state.hasUnsavedChanges).toBe(false);
       });
 
-      it('keeps version-4 state intact', async () => {
+      it('keeps version-5 state intact', async () => {
         jest.useRealTimers();
         const persisted = {
           state: {
-            ...buildPreV4Payload(4).state,
+            ...buildLegacyPayload(5).state,
             completedSetIds: { '101': 1_699_999_000_000 },
           },
-          version: 4,
+          version: 5,
         };
         await AsyncStorage.setItem(
           '@SparkyFitness/active-workout',
@@ -2342,7 +2442,7 @@ describe('activeWorkoutStore', () => {
             instanceToken: 1,
           },
         },
-        version: 4,
+        version: 5,
       };
       await AsyncStorage.setItem('@SparkyFitness/active-workout', JSON.stringify(persisted));
       await useActiveWorkoutStore.persist.rehydrate();
@@ -2564,7 +2664,7 @@ describe('activeWorkoutStore', () => {
           createdByLiveStart: false,
           // No prBaseline / prSetIds — the pre-PR persisted shape.
         },
-        version: 4,
+        version: 5,
       };
       await AsyncStorage.setItem(
         '@SparkyFitness/active-workout',

@@ -845,4 +845,37 @@ describe('ActiveWorkoutSetRow', () => {
       expect(getByText('–')).toBeTruthy();
     });
   });
+
+  describe('draft re-seed signature (survives an id churn)', () => {
+    it('keeps an in-progress draft when only the set id churns', () => {
+      const { getByLabelText, rerenderRow } = renderRow({
+        state: 'current',
+        isFocused: true,
+        set: { id: -1, weight: 60 },
+      });
+      const input = getByLabelText('Weight');
+      expect(input.props.value).toBe('60'); // seeded from stored weight
+      // Uncommitted edit (no blur) — the local draft holds "105".
+      fireEvent.changeText(input, '105');
+      expect(input.props.value).toBe('105');
+
+      // An autosave churns the id (-1 → 777) while the values are unchanged and
+      // the instance survives (stable render key). The signature dropped set.id,
+      // so the draft must NOT re-seed and wipe the typed text.
+      rerenderRow({ state: 'current', isFocused: true, set: { id: 777, weight: 60 } });
+      expect(getByLabelText('Weight').props.value).toBe('105');
+    });
+
+    it('still re-seeds the draft when the set VALUES change (external edit)', () => {
+      const { getByLabelText, rerenderRow } = renderRow({
+        state: 'current',
+        isFocused: true,
+        set: { id: 101, weight: 60 },
+      });
+      fireEvent.changeText(getByLabelText('Weight'), '105');
+      // A genuine value change still re-seeds — only set.id left the signature.
+      rerenderRow({ state: 'current', isFocused: true, set: { id: 101, weight: 80 } });
+      expect(getByLabelText('Weight').props.value).toBe('80');
+    });
+  });
 });

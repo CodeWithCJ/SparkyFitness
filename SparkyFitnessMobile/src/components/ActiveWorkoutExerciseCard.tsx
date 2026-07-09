@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -93,11 +93,18 @@ interface ActiveWorkoutExerciseCardProps {
   onAddSet?: (entryId: string) => void;
   // --- live-only per-set expand + notes (Parts B/C) ---
   /**
-   * Live only: the set id whose inline note panel is expanded (toggled by
-   * long-pressing the set row). A stale id that matches no row renders nothing,
+   * Live only: the render key whose inline note panel is expanded (toggled by
+   * long-pressing the set row). A stale key that matches no row renders nothing,
    * so it's harmless after a delete/reconcile.
    */
-  expandedSetId?: string | null;
+  expandedSetKey?: string | null;
+  /**
+   * Live only: the store's set id → stable render key map. Absent in view/edit
+   * (those key rows by set id). Drives the row's React key, the focus/expand
+   * compares, and the id→key translation of activate/long-press callbacks so
+   * set-keyed screen state survives an autosave that churns set ids.
+   */
+  setRenderKeys?: Record<string, string>;
   /**
    * Live only: the per-exercise note editor is open (card ⋮ → Notes). The note
    * field also shows whenever `exercise.notes` is already non-empty.
@@ -113,10 +120,10 @@ interface ActiveWorkoutExerciseCardProps {
    */
   activeField?: 'weight' | 'reps' | 'rpe';
   /**
-   * Live only: the tap-focused set id (distinct from `activeSetId`, the
+   * Live only: the tap-focused render key (distinct from `activeSetId`, the
    * cursor). Marks which row renders inputs; the cursor still owns the log ring.
    */
-  focusedSetId?: string | null;
+  focusedSetKey?: string | null;
   /** False hides the RPE input on active rows (preset sets store no RPE). */
   rpeEditable?: boolean;
   /** Prefill the first empty set from "last time" once stats arrive. */
@@ -189,11 +196,12 @@ function ActiveWorkoutExerciseCard({
   onLongPressSet,
   onPressSetType,
   onAddSet,
-  expandedSetId,
+  expandedSetKey,
+  setRenderKeys,
   noteEditorOpen = false,
   onCommitExerciseNote,
   activeField,
-  focusedSetId,
+  focusedSetKey,
   rpeEditable,
   eligibleForPrefill = false,
   onActivateSet,
@@ -327,6 +335,35 @@ function ActiveWorkoutExerciseCard({
   };
   const longPressMenu = isLive && onPressOverflow ? openMenuFromCollapsedRow : undefined;
   const longPressExpandedMenu = isLive && onPressOverflow ? openOverflowMenu : undefined;
+
+  // Row callbacks that feed set-keyed SCREEN state (focus, note expand) must
+  // hand back render keys, not raw set ids — the screen stores and compares
+  // keys. The row passes raw ids (tap, within-row Next, long-press), so
+  // translate here, once, in stable memoized wrappers: per-row memoization
+  // survives because a wrapper only changes identity when the map or its
+  // handler does (not while typing). When `setRenderKeys` is absent (view/edit)
+  // the translation is identity. Commit/complete/delete callbacks are NOT
+  // wrapped — they must keep passing ids to the store.
+  const translateSetKey = useCallback(
+    (id: string) => setRenderKeys?.[id] ?? id,
+    [setRenderKeys],
+  );
+  const onActivateSetKeyed = useMemo(
+    () =>
+      onActivateSet
+        ? (id: string, field: 'weight' | 'reps') =>
+            onActivateSet(translateSetKey(id), field)
+        : undefined,
+    [onActivateSet, translateSetKey],
+  );
+  const onActivateRpeKeyed = useMemo(
+    () => (onActivateRpe ? (id: string) => onActivateRpe(translateSetKey(id)) : undefined),
+    [onActivateRpe, translateSetKey],
+  );
+  const onLongPressSetKeyed = useMemo(
+    () => (onLongPressSet ? (id: string) => onLongPressSet(translateSetKey(id)) : undefined),
+    [onLongPressSet, translateSetKey],
+  );
 
   // Exercise thumbnail with a completion badge, shared by the collapsed and
   // expanded rows so the image stays visible when the card is collapsed. The
@@ -536,6 +573,10 @@ function ActiveWorkoutExerciseCard({
 
       {exercise.sets.map((set, index) => {
         const setId = String(set.id);
+        // Stable across an autosave id churn (view/edit: keyed by id). Used for
+        // the React key + focus/expand compares so the row instance — and its
+        // keyboard/draft — survives the set's id being reassigned.
+        const renderKey = setRenderKeys?.[setId] ?? setId;
         // Edit mode never surfaces 'done' — completed sets stay editable and
         // show the static completedBadge instead.
         const state = isEdit
@@ -549,9 +590,10 @@ function ActiveWorkoutExerciseCard({
               : 'upcoming';
         const nextSet = exercise.sets[index + 1];
         return (
-          <React.Fragment key={setId}>
+          <React.Fragment key={renderKey}>
             <ActiveWorkoutSetRow
               set={set}
+              renderKey={renderKey}
               displayNumber={workingSetNumbers[index]}
               state={state}
               metricColumn={metricColumn}
@@ -561,24 +603,24 @@ function ActiveWorkoutExerciseCard({
               onUncomplete={onUncomplete}
               onCommitField={onCommitField}
               onDelete={onDeleteSet}
-              onLongPress={onLongPressSet}
+              onLongPress={onLongPressSetKeyed}
               onPressSetType={onPressSetType}
               activeField={activeField}
-              isFocused={isLive && focusedSetId === setId}
+              isFocused={isLive && focusedSetKey === renderKey}
               nextSetId={nextSet != null ? String(nextSet.id) : null}
               entryId={exercise.id}
               rpeEditable={rpeEditable}
               completedBadge={isEdit && !!completedSetIds[setId]}
               onToggleComplete={onToggleComplete}
-              onActivateSet={onActivateSet}
-              onActivateRpe={onActivateRpe}
+              onActivateSet={onActivateSetKeyed}
+              onActivateRpe={onActivateRpeKeyed}
               onDeactivate={onDeactivateSet}
               onEditFieldChange={onEditFieldChange}
               onAddSet={onAddSet}
             />
             {/* Per-set note expand — live only, toggled by long-pressing the
                 set row. */}
-            {isLive && expandedSetId === setId && onCommitField != null && (
+            {isLive && expandedSetKey === renderKey && onCommitField != null && (
               <ActiveWorkoutSetDetail set={set} onCommitField={onCommitField} />
             )}
           </React.Fragment>

@@ -74,6 +74,13 @@ export type SetRowMode = 'live' | 'view' | 'edit';
 
 interface ActiveWorkoutSetRowProps {
   set: WorkoutCardSet;
+  /**
+   * Stable React render key for this row (from the store's `setRenderKeys`
+   * map). Defaults to the set id. The iOS input-accessory `nativeID`s derive
+   * from it, so a focused input keeps its accessory attached across an id churn
+   * on autosave (the accessory attachment is fragile — see the `isIOS` block).
+   */
+  renderKey?: string;
   /** Working-set number. Warmup rows show the `W` pill instead. */
   displayNumber: number;
   state: SetRowState;
@@ -209,6 +216,7 @@ function SetCellInput({
 
 function ActiveWorkoutSetRow({
   set,
+  renderKey,
   displayNumber,
   state: stateProp,
   metricColumn,
@@ -284,11 +292,13 @@ function ActiveWorkoutSetRow({
   const [repsDraft, setRepsDraft] = useState(() => (set.reps != null ? String(set.reps) : ''));
   const [rpeDraft, setRpeDraft] = useState(() => (set.rpe != null ? formatRpe(set.rpe) : ''));
 
-  // Re-seed drafts when the underlying set changes (id churn after a recreate
-  // save, unit change, or an external edit). Commits only happen on blur/step,
-  // so a mid-typing clobber can't occur — the store doesn't move under a
-  // focused row.
-  const signature = `${set.id}|${set.weight}|${set.reps}|${set.rpe}|${weightUnit}`;
+  // Re-seed drafts when the underlying set's VALUES change (unit change or an
+  // external edit) — but deliberately NOT on `set.id`. A stable render key keeps
+  // this row's instance alive across an autosave that only reassigns the id, so
+  // keying the re-seed on the id would wipe in-progress text under a still-open
+  // keyboard. Commits only happen on blur/step, so a mid-typing value clobber
+  // can't occur — the store doesn't move under a focused row.
+  const signature = `${set.weight}|${set.reps}|${set.rpe}|${weightUnit}`;
   const [prevSignature, setPrevSignature] = useState(signature);
   if (signature !== prevSignature) {
     setPrevSignature(signature);
@@ -620,11 +630,14 @@ function ActiveWorkoutSetRow({
 
   // Each input gets its OWN InputAccessoryView (unique nativeID). iOS attaches a
   // shared accessory to only the first-registered input, so reps/RPE would come
-  // up with a bare keyboard if all three pointed at one id.
+  // up with a bare keyboard if all three pointed at one id. The ids derive from
+  // the render key, not the set id, so they stay stable across an autosave that
+  // churns the id while the keyboard is up.
   const isIOS = Platform.OS === 'ios';
-  const weightAccessoryId = isIOS ? `active-set-${setId}-weight` : undefined;
-  const repsAccessoryId = isIOS ? `active-set-${setId}-reps` : undefined;
-  const rpeAccessoryId = isIOS ? `active-set-${setId}-rpe` : undefined;
+  const accessoryKey = renderKey ?? setId;
+  const weightAccessoryId = isIOS ? `active-set-${accessoryKey}-weight` : undefined;
+  const repsAccessoryId = isIOS ? `active-set-${accessoryKey}-reps` : undefined;
+  const rpeAccessoryId = isIOS ? `active-set-${accessoryKey}-rpe` : undefined;
 
   if (isActiveEditRow) {
     // One bar description, rendered into each input's accessory (only the

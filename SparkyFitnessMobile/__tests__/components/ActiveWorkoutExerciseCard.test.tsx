@@ -482,17 +482,31 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
     });
 
-    it('marks the tap-focused row from focusedSetId (distinct from the cursor)', () => {
-      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetId: '101' });
+    it('marks the tap-focused row from focusedSetKey (distinct from the cursor)', () => {
+      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetKey: '101' });
       // Cursor (activeSetId) still drives 'current'; focus is an added flag.
       expect(getByTestId('set-row-101').props.accessibilityLabel).toBe(
         'row 101 current focused',
       );
     });
 
-    it('marks no row focused when focusedSetId is null', () => {
-      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetId: null });
+    it('marks no row focused when focusedSetKey is null', () => {
+      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetKey: null });
       expect(getByTestId('set-row-101').props.accessibilityLabel).toBe('row 101 current');
+    });
+
+    it('translates the focus render key back to the churned server set id', () => {
+      // A just-added set churned -1 → 101 on save; its birth key "-1" lives in
+      // setRenderKeys and is what focus is keyed on. The row must still light up
+      // even though its set id is now 101.
+      const { getByTestId } = renderCard(true, {
+        mode: 'live',
+        focusedSetKey: '-1',
+        setRenderKeys: { '101': '-1' },
+      });
+      expect(getByTestId('set-row-101').props.accessibilityLabel).toBe(
+        'row 101 current focused',
+      );
     });
 
     it('captures the PR baseline once from the resolved best set', () => {
@@ -540,18 +554,29 @@ describe('ActiveWorkoutExerciseCard', () => {
   });
 
   describe('per-set note expand (live)', () => {
-    it('renders the detail panel under the matching expandedSetId', () => {
-      const { getByTestId } = renderCard(true, { mode: 'live', expandedSetId: '101' });
+    it('renders the detail panel under the matching expandedSetKey', () => {
+      const { getByTestId } = renderCard(true, { mode: 'live', expandedSetKey: '101' });
       expect(getByTestId('set-detail-101')).toBeTruthy();
     });
 
-    it('renders no detail panel when expandedSetId matches no row', () => {
-      const { queryByTestId } = renderCard(true, { mode: 'live', expandedSetId: null });
+    it('renders no detail panel when expandedSetKey matches no row', () => {
+      const { queryByTestId } = renderCard(true, { mode: 'live', expandedSetKey: null });
       expect(queryByTestId('set-detail-101')).toBeNull();
     });
 
+    it('keeps the note panel open under a churned set via its render key', () => {
+      // expandedSetKey holds the birth key "-1"; after churn the set's id is 101
+      // but its render key is still "-1", so the panel stays attached.
+      const { getByTestId } = renderCard(true, {
+        mode: 'live',
+        expandedSetKey: '-1',
+        setRenderKeys: { '101': '-1' },
+      });
+      expect(getByTestId('set-detail-101')).toBeTruthy();
+    });
+
     it('does not render the expand in view mode', () => {
-      const { queryByTestId } = renderCard(true, { mode: 'view', expandedSetId: '101' });
+      const { queryByTestId } = renderCard(true, { mode: 'view', expandedSetKey: '101' });
       expect(queryByTestId('set-detail-101')).toBeNull();
     });
   });

@@ -533,7 +533,48 @@ async function _createExerciseEntryWithClient(
         throw new Error('Exercise not found for snapshotting.');
       }
       const snapshot = exerciseSnapshotQuery.rows[0];
-      // 2. Insert the exercise entry with the snapshot data
+      // 2. Insert the exercise entry with the snapshot data. A client-provided
+      // entry id (a new app adds an exercise mid-workout with its own uuid via
+      // create-in-reconcile) is inserted explicitly so the entry keeps its
+      // identity across saves; otherwise the column defaults to
+      // gen_random_uuid(). The id is appended as $31 to keep the base column
+      // list unchanged.
+      const entryValues = [
+        userId,
+        entryData.exercise_id,
+        entryData.duration_minutes || 0, // Ensure duration_minutes is not null
+        entryData.calories_burned || 0,
+        entryData.entry_date,
+        entryData.notes,
+        entryData.workout_plan_assignment_id || null,
+        entryData.image_url || null,
+        createdByUserId,
+        entryData.exercise_name || snapshot.name, // exercise_name
+        snapshot.calories_per_hour,
+        snapshot.category,
+        entrySource,
+        entryData.source_id || snapshot.source_id, // Use entryData.source_id if available (instance ID), fallback to snapshot (def ID)
+        snapshot.force,
+        snapshot.level,
+        snapshot.mechanic,
+        snapshot.equipment,
+        snapshot.primary_muscles,
+        snapshot.secondary_muscles,
+        snapshot.instructions,
+        snapshot.images,
+        entryData.distance || null, // Ensure distance is not undefined
+        entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
+        exercisePresetEntryId, // New parameter
+        entryData.sort_order || 0,
+        entryData.steps || null,
+        entryData.water_estimated || null,
+        entryData.superset_group ?? null,
+        entryData.entry_time ?? null,
+      ];
+      const hasClientId = entryData.id !== undefined && entryData.id !== null;
+      const idColumn = hasClientId ? ', id' : '';
+      const idPlaceholder = hasClientId ? ', $31' : '';
+      if (hasClientId) entryValues.push(entryData.id);
       const entryResult = await client.query(
         `INSERT INTO exercise_entries (
            user_id, exercise_id, duration_minutes, calories_burned, entry_date, notes,
@@ -541,40 +582,9 @@ async function _createExerciseEntryWithClient(
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
            distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated,
-           superset_group, entry_time
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30) RETURNING id`,
-        [
-          userId,
-          entryData.exercise_id,
-          entryData.duration_minutes || 0, // Ensure duration_minutes is not null
-          entryData.calories_burned || 0,
-          entryData.entry_date,
-          entryData.notes,
-          entryData.workout_plan_assignment_id || null,
-          entryData.image_url || null,
-          createdByUserId,
-          entryData.exercise_name || snapshot.name, // exercise_name
-          snapshot.calories_per_hour,
-          snapshot.category,
-          entrySource,
-          entryData.source_id || snapshot.source_id, // Use entryData.source_id if available (instance ID), fallback to snapshot (def ID)
-          snapshot.force,
-          snapshot.level,
-          snapshot.mechanic,
-          snapshot.equipment,
-          snapshot.primary_muscles,
-          snapshot.secondary_muscles,
-          snapshot.instructions,
-          snapshot.images,
-          entryData.distance || null, // Ensure distance is not undefined
-          entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
-          exercisePresetEntryId, // New parameter
-          entryData.sort_order || 0,
-          entryData.steps || null,
-          entryData.water_estimated || null,
-          entryData.superset_group ?? null,
-          entryData.entry_time ?? null,
-        ]
+           superset_group, entry_time${idColumn}
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30${idPlaceholder}) RETURNING id`,
+        entryValues
       );
       newEntryId = entryResult.rows[0].id;
       if (entryData.sets && entryData.sets.length > 0) {

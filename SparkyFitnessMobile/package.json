@@ -50,6 +50,7 @@
     "expo-build-properties": "^56.0.20",
     "expo-camera": "~56.0.8",
     "expo-constants": "~56.0.19",
+    "expo-crypto": "~56.0.4",
     "expo-dev-client": "^56.0.21",
     "expo-device": "~56.0.4",
     "expo-file-system": "~56.0.8",

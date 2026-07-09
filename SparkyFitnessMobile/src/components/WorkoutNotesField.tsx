@@ -44,6 +44,7 @@ function WorkoutNotesField({
   // Latest draft / committed value / handler for the unmount flush below, which
   // captures its closure once but must act on the current text.
   const latest = useRef({ draft, seeded, onCommit });
+  // eslint-disable-next-line react-hooks/refs
   latest.current = { draft, seeded, onCommit };
 
   // Flush an uncommitted draft on unmount. Blur alone can't be trusted to land

@@ -1697,6 +1697,12 @@ async function createGroupedExerciseEntriesWithClient(
     });
 
     const preparedEntry = await prepareExerciseEntryForCreate(userId, {
+      // A client-minted entry uuid (create-in-reconcile for a mid-workout add)
+      // is inserted as-is so the entry keeps its identity across saves. Only a
+      // string id is forwarded: preset exercise definitions carry a numeric
+      // `id`, and the delete-and-recreate path sends none — neither must reach
+      // the uuid `exercise_entries.id` column.
+      ...(typeof exercise.id === 'string' ? { id: exercise.id } : {}),
       exercise_id: exercise.exercise_id,
       entry_date: entryDate,
       notes: exercise.notes ?? null,
@@ -1906,19 +1912,6 @@ async function updateGroupedWorkoutSession(
           existingExercises.map((e: any) => [e.id, e])
         );
 
-        for (const ex of incomingExercises) {
-          if (!existingById.has(ex.id)) {
-            log(
-              'warn',
-              `Rejected reconcile: exercise id ${ex.id} not in session ${presetEntryId} for user ${userId}`
-            );
-            throw createServiceError(
-              400,
-              'Exercise entry does not belong to this session.'
-            );
-          }
-        }
-
         const incomingIdSet = new Set(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           incomingExercises.map((e: any) => e.id)
@@ -1936,6 +1929,27 @@ async function updateGroupedWorkoutSession(
         }
 
         for (const ex of incomingExercises) {
+          // An incoming id the session doesn't already have is a client-added
+          // exercise: a new app mints a uuid on add and sends it through the
+          // reconcile path. Create the entry under this preset entry with that
+          // client uuid, then skip the update/reconcile-sets path below — the
+          // create already inserts its sets, so falling through would
+          // double-insert them.
+          if (!existingById.has(ex.id)) {
+            await createGroupedExerciseEntriesWithClient(
+              client,
+              userId,
+              actingUserId,
+              presetEntryId,
+              targetEntryDate,
+              [ex],
+              {
+                entrySource: existingSession.source,
+              }
+            );
+            continue;
+          }
+
           // Reuse prepareExerciseEntryForCreate so calories_burned is
           // recomputed from the new duration/sets the same way the legacy
           // delete-and-recreate path does — otherwise the helper would

@@ -138,6 +138,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const startedAt = useActiveWorkoutStore((s) => s.startedAt);
   const completedSetIds = useActiveWorkoutStore((s) => s.completedSetIds);
   const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
+  const setRenderKeys = useActiveWorkoutStore((s) => s.setRenderKeys);
   const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
   const restState = useActiveWorkoutStore((s) => s.rest.state);
   const restEndsAt = useActiveWorkoutStore((s) => s.rest.endsAt);
@@ -453,15 +454,17 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setRenameVisible(false);
   }, []);
 
-  // Per-set note inline expand, toggled by long-pressing the set row. A stale
-  // id after a delete/reconcile is harmless — no matching row renders.
-  const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
-  const handleToggleSetDetail = useCallback((setId: string) => {
+  // Per-set note inline expand, toggled by long-pressing the set row. Keyed by
+  // render key (the card translates the row's set id) so the panel stays with
+  // the same logical set across an autosave id churn. A stale key after a
+  // delete/reconcile is harmless — no matching row renders.
+  const [expandedSetKey, setExpandedSetKey] = useState<string | null>(null);
+  const handleToggleSetDetail = useCallback((setKey: string) => {
     // Animate the panel (and the rows it pushes) in/out. easeInEaseOut matches
     // the card wrapper's 300ms LinearTransition, so the internal reflow and the
     // card's frame grow/shrink together. Same idiom as CollapsibleSection.
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedSetId((prev) => (prev === setId ? null : setId));
+    setExpandedSetKey((prev) => (prev === setKey ? null : setKey));
   }, []);
 
   // Per-exercise note editor: which exercise's note field the card ⋮ "Notes"
@@ -600,31 +603,32 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     handleRemoveExercise,
   ]);
 
-  // Live editing: which set cell is tap-focused (the keyboard target). Distinct
-  // from activeSetId (the cursor / log ring), so tapping an earlier set to fix a
-  // value doesn't move the cursor.
-  const [focusedSetId, setFocusedSetId] = useState<string | null>(null);
+  // Live editing: which set cell is tap-focused (the keyboard target). Keyed by
+  // render key (the card translates the row's set id) so focus survives an
+  // autosave id churn. Distinct from activeSetId (the cursor / log ring), so
+  // tapping an earlier set to fix a value doesn't move the cursor.
+  const [focusedSetKey, setFocusedSetKey] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<'weight' | 'reps' | 'rpe'>('weight');
-  const handleActivateSet = useCallback((setId: string, field: 'weight' | 'reps') => {
+  const handleActivateSet = useCallback((setKey: string, field: 'weight' | 'reps') => {
     setFocusedField(field);
-    setFocusedSetId(setId);
+    setFocusedSetKey(setKey);
   }, []);
   // Tapping the RPE column focuses that row's RPE input directly (the row's
   // focus effect reads `focusedField`).
-  const handleActivateRpe = useCallback((setId: string) => {
+  const handleActivateRpe = useCallback((setKey: string) => {
     setFocusedField('rpe');
-    setFocusedSetId(setId);
+    setFocusedSetKey(setKey);
   }, []);
   const handleDeactivateSet = useCallback(() => {
-    setFocusedSetId(null);
+    setFocusedSetKey(null);
   }, []);
 
   const handleCompleteSet = useCallback((setId: string) => {
     useActiveWorkoutStore.getState().completeSet(setId);
     // Logging advances the cursor and (usually) starts a rest — drop the
     // keyboard so the rest bar is unobstructed and the logged inputs collapse.
-    setFocusedSetId(null);
-    setExpandedSetId(null);
+    setFocusedSetKey(null);
+    setExpandedSetKey(null);
     Keyboard.dismiss();
     // When that was the last unlogged set, the cursor has nowhere to advance,
     // so the follow-cursor scroll won't fire. Surface the End Workout button
@@ -910,7 +914,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               prSetIds={prSetIds}
               excludePresetEntryId={sessionId ?? undefined}
               activeSetId={activeSetId}
-              focusedSetId={focusedSetId}
+              focusedSetKey={focusedSetKey}
+              setRenderKeys={setRenderKeys}
               activeField={focusedField}
               metricColumn={metricColumn}
               weightUnit={weightUnit}
@@ -927,7 +932,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onPressSetType={handlePressSetType}
               onLongPressSet={handleToggleSetDetail}
               onAddSet={handleAddSet}
-              expandedSetId={expandedSetId}
+              expandedSetKey={expandedSetKey}
               noteEditorOpen={noteEditorEntryId === exercise.id}
               onCommitExerciseNote={handleCommitExerciseNote}
               onActivateSet={handleActivateSet}
