@@ -106,13 +106,32 @@ export const CreateInjectionBodySchema = z
     site: optionalNullableString,
     dose_mg: optionalNullableNumber,
     notes: optionalNullableString,
-    /** when true and a pen_id is given, increment that pen's doses_used in the same txn */
+    /**
+     * when true, increment the pen's doses_used in the same txn; with a pen_id that pen is
+     * used, without one the best candidate pen is auto-picked (in-use first, else oldest
+     * sealed with doses remaining)
+     */
     deduct_pen: z.boolean().optional(),
     source: z.string().optional(),
     custom_fields: customFields,
   })
   .loose();
 export type CreateInjectionBody = z.infer<typeof CreateInjectionBodySchema>;
+
+// Update is a partial patch. pen_id/deduct_pen are deliberately excluded — inventory
+// deduction can't be re-pointed after the fact; delete and re-log instead.
+export const UpdateInjectionBodySchema = z
+  .object({
+    injected_at: z.string().nullable().optional(), // ISO timestamp
+    entry_date: optionalDateString,
+    site: optionalNullableString,
+    dose_mg: optionalNullableNumber,
+    notes: optionalNullableString,
+    source: z.string().optional(),
+    custom_fields: customFields,
+  })
+  .loose();
+export type UpdateInjectionBody = z.infer<typeof UpdateInjectionBodySchema>;
 
 // --------------------------------------------------------------------------
 // Titration / taper steps
@@ -133,6 +152,13 @@ export const CreateTitrationStepBodySchema = z
   .loose();
 export type CreateTitrationStepBody = z.infer<
   typeof CreateTitrationStepBodySchema
+>;
+
+// Update is a partial patch — every field optional, including dose_mg.
+export const UpdateTitrationStepBodySchema =
+  CreateTitrationStepBodySchema.partial();
+export type UpdateTitrationStepBody = z.infer<
+  typeof UpdateTitrationStepBodySchema
 >;
 
 // --------------------------------------------------------------------------
@@ -181,6 +207,23 @@ export const CreateMedicationEntryBodySchema = z
   .loose();
 export type CreateMedicationEntryBody = z.infer<
   typeof CreateMedicationEntryBodySchema
+>;
+
+// Update is a partial patch — chiefly for correcting the "when" (taken_at/entry_date)
+// of a dose logged after the fact. medication_id is not editable.
+export const UpdateMedicationEntryBodySchema = z
+  .object({
+    schedule_id: z.string().uuid().nullable().optional(),
+    status: z.enum(['taken', 'skipped', 'snoozed', 'prn_taken']).optional(),
+    taken_at: z.string().nullable().optional(),
+    scheduled_for: z.string().nullable().optional(),
+    entry_date: optionalDateString,
+    notes: optionalNullableString,
+    custom_fields: customFields,
+  })
+  .loose();
+export type UpdateMedicationEntryBody = z.infer<
+  typeof UpdateMedicationEntryBodySchema
 >;
 
 export const ListMedicationEntriesQuerySchema = z

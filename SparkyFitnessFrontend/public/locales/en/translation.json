@@ -251,7 +251,8 @@
     "settings": "Settings",
     "admin": "Admin",
     "cycle": "Cycle",
-    "pregnancy": "Pregnancy"
+    "pregnancy": "Pregnancy",
+    "medications": "Medications"
   },
   "nutrition": {
     "calories": "Calories",

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,9 +17,10 @@ import {
 import {
   useMedicationTitration,
   useAddTitrationStepMutation,
+  useUpdateTitrationStepMutation,
   useDeleteTitrationStepMutation,
 } from '@/hooks/useMedications';
-import type { Medication } from '@/types/medications';
+import type { Medication, TitrationStep } from '@/types/medications';
 
 interface Glp1TitrationManagerProps {
   med: Medication;
@@ -33,9 +34,11 @@ export default function Glp1TitrationManager({
 
   const titrationQ = useMedicationTitration(medId);
   const addStepMutation = useAddTitrationStepMutation(medId);
+  const updateStepMutation = useUpdateTitrationStepMutation(medId);
   const deleteStepMutation = useDeleteTitrationStepMutation(medId);
 
   const [showAddStep, setShowAddStep] = useState(false);
+  const [editingStep, setEditingStep] = useState<TitrationStep | null>(null);
   const [stepDose, setStepDose] = useState('');
   const [stepUnit, setStepUnit] = useState('mg');
   const [stepStart, setStepStart] = useState('');
@@ -45,27 +48,49 @@ export default function Glp1TitrationManager({
   );
   const [stepIsTaper, setStepIsTaper] = useState(false);
 
-  const handleAddStep = () => {
-    if (!stepDose) return;
-    addStepMutation.mutate(
-      {
-        dose_mg: Number(stepDose),
-        dose_unit: stepUnit || 'mg',
-        start_date: stepStart || null,
-        planned_weeks: stepWeeks ? Number(stepWeeks) : null,
-        status: stepStatus,
-        is_taper: stepIsTaper,
-      },
-      {
-        onSuccess: () => {
-          setShowAddStep(false);
-          setStepDose('');
-          setStepStart('');
-          setStepWeeks('');
-        },
-      }
-    );
+  const resetForm = () => {
+    setShowAddStep(false);
+    setEditingStep(null);
+    setStepDose('');
+    setStepUnit('mg');
+    setStepStart('');
+    setStepWeeks('');
+    setStepStatus('planned');
+    setStepIsTaper(false);
   };
+
+  const openEditStep = (step: TitrationStep) => {
+    setEditingStep(step);
+    setStepDose(String(step.dose_mg));
+    setStepUnit(step.dose_unit || 'mg');
+    setStepStart(step.start_date ?? '');
+    setStepWeeks(step.planned_weeks != null ? String(step.planned_weeks) : '');
+    setStepStatus(step.status);
+    setStepIsTaper(step.is_taper);
+    setShowAddStep(true);
+  };
+
+  const handleSaveStep = () => {
+    if (!stepDose) return;
+    const body = {
+      dose_mg: Number(stepDose),
+      dose_unit: stepUnit || 'mg',
+      start_date: stepStart || null,
+      planned_weeks: stepWeeks ? Number(stepWeeks) : null,
+      status: stepStatus,
+      is_taper: stepIsTaper,
+    };
+    if (editingStep) {
+      updateStepMutation.mutate(
+        { id: editingStep.id, body },
+        { onSuccess: resetForm }
+      );
+    } else {
+      addStepMutation.mutate(body, { onSuccess: resetForm });
+    }
+  };
+
+  const savePending = addStepMutation.isPending || updateStepMutation.isPending;
 
   return (
     <Card>
@@ -77,7 +102,7 @@ export default function Glp1TitrationManager({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowAddStep((s) => !s)}
+            onClick={() => (showAddStep ? resetForm() : setShowAddStep(true))}
           >
             <Plus className="mr-1 h-3.5 w-3.5" />{' '}
             {t('medications.glp1.addStep', 'Add step')}
@@ -164,19 +189,15 @@ export default function Glp1TitrationManager({
                 Taper (dose reduction)
               </label>
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAddStep(false)}
-                >
+                <Button variant="ghost" size="sm" onClick={resetForm}>
                   Cancel
                 </Button>
                 <Button
                   size="sm"
-                  onClick={handleAddStep}
-                  disabled={!stepDose || addStepMutation.isPending}
+                  onClick={handleSaveStep}
+                  disabled={!stepDose || savePending}
                 >
-                  Add
+                  {editingStep ? 'Save' : 'Add'}
                 </Button>
               </div>
             </div>
@@ -235,6 +256,15 @@ export default function Glp1TitrationManager({
                       >
                         {step.status}
                       </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground"
+                        onClick={() => openEditStep(step)}
+                        aria-label="Edit titration step"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

@@ -1,5 +1,8 @@
 import { getClient } from '../db/poolManager.js';
-import type { CreateMedicationEntryBody } from '../schemas/medicationSchemas.js';
+import type {
+  CreateMedicationEntryBody,
+  UpdateMedicationEntryBody,
+} from '../schemas/medicationSchemas.js';
 
 const ENTRY_COLS = `id, medication_id, schedule_id, user_id, status, taken_at, scheduled_for, entry_date,
   med_name_snapshot, dose_amount_snapshot, dose_unit_snapshot, notes, source, custom_fields, created_at, updated_at`;
@@ -92,6 +95,120 @@ async function listEntries(
   }
 }
 
+/**
+ * Adherence entries merged with GLP-1 injection logs, so shots logged through the
+ * injection endpoint show up in the same feed. Injection rows are mapped to the entry
+ * shape and discriminated by entry_type ('entry' | 'injection'); their ids are injection
+ * ids, so deletes for them must go through DELETE /injections/:id. Kept separate from
+ * listEntries because reportService fetches entries and injections independently and
+ * would double-count merged rows.
+ */
+async function listEntriesWithInjections(
+  userId: string,
+  opts: { fromDate?: string; toDate?: string; medicationId?: string } = {}
+) {
+  const client = await getClient(userId);
+  try {
+    const params: Array<string | number> = [userId];
+    const where: string[] = ['user_id = $1'];
+
+    if (opts.fromDate) {
+      params.push(opts.fromDate);
+      where.push(`entry_date >= $${params.length}`);
+    }
+    if (opts.toDate) {
+      params.push(opts.toDate);
+      where.push(`entry_date <= $${params.length}`);
+    }
+    if (opts.medicationId) {
+      params.push(opts.medicationId);
+      where.push(`medication_id = $${params.length}`);
+    }
+
+    const entryWhere = where.join(' AND ');
+    const injectionWhere = where.map((w) => `i.${w}`).join(' AND ');
+
+    const result = await client.query(
+      `SELECT ${ENTRY_COLS}, NULL::varchar AS site, 'entry'::text AS entry_type
+         FROM medication_entries
+        WHERE ${entryWhere}
+       UNION ALL
+       SELECT i.id, i.medication_id, NULL::uuid AS schedule_id, i.user_id,
+              'taken'::text AS status, i.injected_at AS taken_at,
+              NULL::timestamptz AS scheduled_for, i.entry_date,
+              COALESCE(m.display_name, m.name) AS med_name_snapshot,
+              i.dose_mg AS dose_amount_snapshot, 'mg'::text AS dose_unit_snapshot,
+              i.notes, i.source, i.custom_fields, i.created_at, i.updated_at,
+              i.site, 'injection'::text AS entry_type
+         FROM injection_entries i
+         LEFT JOIN medications m ON m.id = i.medication_id
+        WHERE ${injectionWhere}
+       ORDER BY taken_at DESC`,
+      params
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+async function updateEntry(
+  userId: string,
+  id: string,
+  data: UpdateMedicationEntryBody
+) {
+  const client = await getClient(userId);
+  try {
+    const updates: string[] = [];
+    const values: unknown[] = [id, userId];
+    let index = 3;
+
+    const fields: (keyof UpdateMedicationEntryBody)[] = [
+      'schedule_id',
+      'status',
+      'taken_at',
+      'scheduled_for',
+      'entry_date',
+      'notes',
+      'custom_fields',
+    ];
+
+    for (const key of fields) {
+      if (data[key] !== undefined) {
+        updates.push(`${key} = $${index}`);
+        if (key === 'custom_fields') {
+          values.push(
+            data.custom_fields ? JSON.stringify(data.custom_fields) : '{}'
+          );
+        } else {
+          values.push(data[key]);
+        }
+        index++;
+      }
+    }
+
+    if (updates.length === 0) {
+      const current = await client.query(
+        `SELECT ${ENTRY_COLS} FROM medication_entries WHERE id = $1 AND user_id = $2`,
+        [id, userId]
+      );
+      return current.rows[0] ?? null;
+    }
+
+    const result = await client.query(
+      `UPDATE medication_entries SET
+         ${updates.join(',\n')},
+         updated_at = NOW()
+       WHERE id = $1 AND user_id = $2
+       RETURNING ${ENTRY_COLS}`,
+      values
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+
 async function deleteEntry(userId: string, id: string): Promise<boolean> {
   const client = await getClient(userId);
   try {
@@ -105,5 +222,17 @@ async function deleteEntry(userId: string, id: string): Promise<boolean> {
   }
 }
 
-export { createEntry, listEntries, deleteEntry };
-export default { createEntry, listEntries, deleteEntry };
+export {
+  createEntry,
+  listEntries,
+  listEntriesWithInjections,
+  updateEntry,
+  deleteEntry,
+};
+export default {
+  createEntry,
+  listEntries,
+  listEntriesWithInjections,
+  updateEntry,
+  deleteEntry,
+};

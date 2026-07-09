@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Syringe, AlertTriangle } from 'lucide-react';
+import { Syringe } from 'lucide-react';
 import { INJECTION_SITES, localDateTimeToUtc } from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import InjectionSiteBodyMap from './InjectionSiteBodyMap';
+import InjectionSitePicker from './InjectionSitePicker';
+import { useInjectionSiteSelection } from '@/hooks/useInjectionSiteSelection';
 import InjectionSiteSettings from './InjectionSiteSettings';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  useSiteSuggestion,
   useMedicationPens,
   useLogInjectionMutation,
 } from '@/hooks/useMedications';
@@ -32,27 +32,11 @@ export default function Glp1LogInjection({ med }: Glp1LogInjectionProps) {
   const { timezone } = usePreferences();
   const medId = med.id;
 
-  const sitesQ = useSiteSuggestion(medId);
   const pensQ = useMedicationPens(medId);
   const logMutation = useLogInjectionMutation(medId);
 
-  const suggestedSite = sitesQ.data?.suggestedSiteId ?? null;
-  const restingSites = useMemo(
-    () => new Set(sitesQ.data?.restingSiteIds ?? []),
-    [sitesQ.data]
-  );
-
-  const mapSites = useMemo(() => {
-    const active = sitesQ.data?.activeSiteIds;
-    if (!active || active.length === 0) return undefined;
-    const order = new Map(active.map((id, i) => [id, i] as const));
-    return INJECTION_SITES.filter((s) => order.has(s.id)).sort(
-      (a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)
-    );
-  }, [sitesQ.data]);
-
-  const [selectedSite, setSelectedSite] = useState<string | null>(null);
-  const site = selectedSite ?? suggestedSite;
+  const siteSelection = useInjectionSiteSelection(medId);
+  const { sitesQ, site, setSelectedSite } = siteSelection;
 
   const inUsePen = pensQ.data?.find(
     (p) => p.status === 'in_use' || p.status === 'sealed'
@@ -117,37 +101,9 @@ export default function Glp1LogInjection({ med }: Glp1LogInjectionProps) {
             </Label>
             <InjectionSiteSettings />
           </div>
-          <div className="mt-2 flex flex-col items-center gap-2">
-            <InjectionSiteBodyMap
-              sites={mapSites}
-              selectedSiteId={site}
-              suggestedSiteId={suggestedSite}
-              restingSiteIds={sitesQ.data?.restingSiteIds ?? []}
-              onSelect={setSelectedSite}
-            />
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">
-                {t('medications.glp1.selected', 'Selected:')}
-              </span>
-              <span className="font-medium">
-                {site
-                  ? t(
-                      'medications.sites.label.' + site,
-                      INJECTION_SITES.find((s) => s.id === site)?.label ?? site
-                    )
-                  : t('medications.glp1.tapZone', 'Tap a zone')}
-              </span>
-            </div>
+          <div className="mt-2">
+            <InjectionSitePicker selection={siteSelection} />
           </div>
-          {site && restingSites.has(site) && (
-            <p className="mt-2 flex items-center gap-1 text-xs text-amber-600">
-              <AlertTriangle className="h-3 w-3" />{' '}
-              {t(
-                'medications.glp1.lipoWarning',
-                'This site was used recently — rotate to avoid lipohypertrophy.'
-              )}
-            </p>
-          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">

@@ -128,13 +128,30 @@ export interface ListMedicationsOptions {
 
 export interface LogInjectionInput {
   medication_id: string;
+  /** Omit while deduct_pen is true to let the server auto-pick the pen (in-use first, else oldest sealed). */
   pen_id?: string | null;
   injected_at?: string;
+  entry_date?: string | null;
   site?: string | null;
+  /** Omit to let the server resolve it from the active titration step or the medication's default dose. */
   dose_mg?: number | null;
   deduct_pen?: boolean;
   notes?: string | null;
 }
+
+// pen_id/deduct_pen are deliberately not editable — delete and re-log to change the pen.
+export interface UpdateInjectionInput {
+  injected_at?: string;
+  entry_date?: string | null;
+  site?: string | null;
+  dose_mg?: number | null;
+  notes?: string | null;
+  custom_fields?: Record<string, unknown> | null;
+}
+
+export type UpdateTitrationStepInput = Partial<
+  Omit<TitrationStep, 'id' | 'medication_id'>
+>;
 
 export interface MedicationEntry {
   id: string;
@@ -153,6 +170,13 @@ export interface MedicationEntry {
   custom_fields: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  /**
+   * 'injection' rows are GLP-1 injection logs merged into the entries feed by the server;
+   * their id is an injection id, so deletes must go through the injection endpoint.
+   */
+  entry_type?: 'entry' | 'injection';
+  /** Injection site — only populated on entry_type='injection' rows. */
+  site?: string | null;
 }
 
 export interface CreateMedicationEntryInput {
@@ -167,6 +191,16 @@ export interface CreateMedicationEntryInput {
   dose_unit_snapshot?: string | null;
   notes?: string | null;
   source?: string;
+  custom_fields?: Record<string, unknown> | null;
+}
+
+export interface UpdateMedicationEntryInput {
+  schedule_id?: string | null;
+  status?: 'taken' | 'skipped' | 'snoozed' | 'prn_taken';
+  taken_at?: string | null;
+  scheduled_for?: string | null;
+  entry_date?: string | null;
+  notes?: string | null;
   custom_fields?: Record<string, unknown> | null;
 }
 

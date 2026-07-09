@@ -4,10 +4,13 @@ import type {
   Medication,
   ListMedicationsOptions,
   LogInjectionInput,
+  UpdateInjectionInput,
+  UpdateTitrationStepInput,
   MedicationPen,
   MedicationSchedule,
   TitrationStep,
   CreateMedicationEntryInput,
+  UpdateMedicationEntryInput,
   ListMedicationEntriesOptions,
 } from '@/types/medications';
 
@@ -62,6 +65,25 @@ export const useAddTitrationStepMutation = (medId: string) => {
     meta: {
       errorMessage: 'Could not add titration step.',
       successMessage: 'Titration step added.',
+    },
+  });
+};
+
+export const useUpdateTitrationStepMutation = (medId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: UpdateTitrationStepInput;
+    }) => medicationService.updateTitrationStep(id, body),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: medKeys.titration(medId) }),
+    meta: {
+      errorMessage: 'Could not update titration step.',
+      successMessage: 'Titration step updated.',
     },
   });
 };
@@ -145,10 +167,32 @@ export const useLogInjectionMutation = (medId: string) => {
       queryClient.invalidateQueries({
         queryKey: medKeys.siteSuggestion(medId),
       });
+      // Injections are merged into the adherence feed, so the Log tab must refresh too.
+      queryClient.invalidateQueries({ queryKey: ['medication-entries'] });
     },
     meta: {
       errorMessage: 'Could not log injection.',
       successMessage: 'Injection logged.',
+    },
+  });
+};
+
+export const useUpdateInjectionMutation = (medId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateInjectionInput }) =>
+      medicationService.updateInjection(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: medKeys.injections(medId) });
+      queryClient.invalidateQueries({ queryKey: medKeys.serumCurve(medId) });
+      queryClient.invalidateQueries({
+        queryKey: medKeys.siteSuggestion(medId),
+      });
+      queryClient.invalidateQueries({ queryKey: ['medication-entries'] });
+    },
+    meta: {
+      errorMessage: 'Could not update injection entry.',
+      successMessage: 'Injection entry updated.',
     },
   });
 };
@@ -164,6 +208,68 @@ export const useDeleteInjectionMutation = (medId: string) => {
       queryClient.invalidateQueries({
         queryKey: medKeys.siteSuggestion(medId),
       });
+      queryClient.invalidateQueries({ queryKey: ['medication-entries'] });
+    },
+    meta: {
+      errorMessage: 'Could not remove injection entry.',
+      successMessage: 'Injection entry removed.',
+    },
+  });
+};
+
+// Med-agnostic injection mutations for the Log tab, where GLP-1 injectable doses are
+// logged as injections (single source of truth) instead of adherence entries. The server
+// auto-picks the pen and resolves the dose; prefix invalidation covers every medication's
+// Cabinet queries since the Log tab spans medications.
+export const useLogGlpInjectionEntryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: LogInjectionInput) =>
+      medicationService.logInjection(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medication-injections'] });
+      queryClient.invalidateQueries({ queryKey: ['medication-pens'] });
+      queryClient.invalidateQueries({ queryKey: ['glp1-serum-curve'] });
+      queryClient.invalidateQueries({ queryKey: ['glp1-site-suggestion'] });
+      queryClient.invalidateQueries({ queryKey: ['medication-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
+    },
+    meta: {
+      errorMessage: 'Could not log injection.',
+      successMessage: 'Injection logged.',
+    },
+  });
+};
+
+export const useUpdateInjectionEntryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateInjectionInput }) =>
+      medicationService.updateInjection(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medication-injections'] });
+      queryClient.invalidateQueries({ queryKey: ['glp1-serum-curve'] });
+      queryClient.invalidateQueries({ queryKey: ['glp1-site-suggestion'] });
+      queryClient.invalidateQueries({ queryKey: ['medication-entries'] });
+    },
+    meta: {
+      errorMessage: 'Could not update injection entry.',
+      successMessage: 'Injection entry updated.',
+    },
+  });
+};
+
+export const useDeleteInjectionEntryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => medicationService.deleteInjection(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medication-injections'] });
+      queryClient.invalidateQueries({ queryKey: ['medication-pens'] });
+      queryClient.invalidateQueries({ queryKey: ['glp1-serum-curve'] });
+      queryClient.invalidateQueries({ queryKey: ['glp1-site-suggestion'] });
+      queryClient.invalidateQueries({ queryKey: ['medication-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
     },
     meta: {
       errorMessage: 'Could not remove injection entry.',
@@ -182,6 +288,33 @@ export const useCreatePenMutation = (medId: string) => {
     meta: {
       errorMessage: 'Could not add pen/vial.',
       successMessage: 'Pen/vial added.',
+    },
+  });
+};
+
+export const useUpdatePenMutation = (medId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<MedicationPen> }) =>
+      medicationService.updatePen(id, body),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: medKeys.pens(medId) }),
+    meta: {
+      errorMessage: 'Could not update pen/vial.',
+      successMessage: 'Pen/vial updated.',
+    },
+  });
+};
+
+export const useDeletePenMutation = (medId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => medicationService.deletePen(id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: medKeys.pens(medId) }),
+    meta: {
+      errorMessage: 'Could not remove pen/vial.',
+      successMessage: 'Pen/vial removed.',
     },
   });
 };
@@ -208,6 +341,27 @@ export const useCreateMedicationEntryMutation = () => {
     meta: {
       errorMessage: 'Could not log dose.',
       successMessage: 'Dose logged.',
+    },
+  });
+};
+
+export const useUpdateMedicationEntryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: UpdateMedicationEntryInput;
+    }) => medicationService.updateMedicationEntry(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medication-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
+    },
+    meta: {
+      errorMessage: 'Could not update logged dose.',
+      successMessage: 'Logged dose updated.',
     },
   });
 };

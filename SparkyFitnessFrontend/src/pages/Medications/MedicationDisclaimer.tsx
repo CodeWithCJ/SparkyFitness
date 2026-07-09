@@ -93,21 +93,22 @@ export default function MedicationDisclaimer({
           </div>
 
           {/* Acknowledgement checkbox */}
-          <div
-            className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 cursor-pointer select-none"
-            onClick={() => setAccepted((prev) => !prev)}
-          >
+          <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 select-none">
             <Checkbox
+              id="med-disclaimer-accept"
               checked={accepted}
               onCheckedChange={(checked) => setAccepted(!!checked)}
               className="mt-0.5"
             />
-            <p className="text-xs leading-relaxed text-foreground">
+            <label
+              htmlFor="med-disclaimer-accept"
+              className="text-xs leading-relaxed text-foreground cursor-pointer"
+            >
               {t(
                 'medications.disclaimer.acknowledge',
                 'I understand that this tracker is not a medical device and does not provide medical advice. I will consult my healthcare provider for all medication-related decisions.'
               )}
-            </p>
+            </label>
           </div>
         </CardContent>
 
