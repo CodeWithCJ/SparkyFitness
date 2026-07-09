@@ -2769,6 +2769,48 @@
     "foodSourcesFatSecretIpNote": "FatSecret requires your public IP in its developer dashboard. Changes may take up to 24 hours.",
     "foodSourcesSaveContinue": "Save and continue",
     "foodSourcesSkip": "Skip for now",
+    "dietApproachTitle": "Eating style",
+    "dietApproachDescription": "Choose a starting balance for carbohydrates, protein, and fat. You can fine-tune it at any time.",
+    "dietApproachChooseLabel": "Choose an eating style",
+    "dietApproachMacroSummary": "{{carbs}}% carbohydrates · {{protein}}% protein · {{fat}}% fat",
+    "dietApproachCustomSplit": "Custom nutrient balance",
+    "dietApproachTotal": "Total: {{total}}%",
+    "dietApproachCarbohydrates": "Carbohydrates",
+    "dietApproachProtein": "Protein",
+    "dietApproachFat": "Fat",
+    "dietApproachLockMacro": "Lock {{macro}}",
+    "dietApproachUnlockMacro": "Unlock {{macro}}",
+    "dietApproachAdjustmentHint": "Drag a slider or enter a value. Unlocked nutrients adjust automatically to keep the total at 100%.",
+    "dietApproachTemplates": {
+      "balanced": {
+        "name": "Balanced",
+        "description": "An even starting point for everyday nutrition."
+      },
+      "mediterranean": {
+        "name": "Mediterranean",
+        "description": "Emphasizes vegetables, whole grains, and unsaturated fats."
+      },
+      "dash": {
+        "name": "DASH",
+        "description": "A dietary pattern designed to help manage blood pressure."
+      },
+      "atkins": {
+        "name": "Atkins",
+        "description": "Very low in carbohydrates and higher in fat."
+      },
+      "low_fat": {
+        "name": "Low fat",
+        "description": "Higher in carbohydrates with a lower fat target."
+      },
+      "low_carb": {
+        "name": "Low carbohydrate / keto",
+        "description": "Very low in carbohydrates with a higher fat target."
+      },
+      "custom": {
+        "name": "Custom",
+        "description": "Set the percentages that suit your plan."
+      }
+    },
     "back": "Back",
     "skip": "Skip",
     "progress": "Setup progress"

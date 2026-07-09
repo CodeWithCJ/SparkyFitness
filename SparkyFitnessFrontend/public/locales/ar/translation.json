@@ -208,6 +208,48 @@
     "foodSourcesFatSecretIpNote": "يتطلب FatSecret إضافة عنوان IP العام في لوحة المطور. قد تستغرق التغييرات حتى 24 ساعة.",
     "foodSourcesSaveContinue": "حفظ ومتابعة",
     "foodSourcesSkip": "التخطي حاليًا",
+    "dietApproachTitle": "نمط أكلك",
+    "dietApproachDescription": "اختر توزيعًا مبدئيًا للكربوهيدرات والبروتين والدهون، وتقدر تضبطه بأي وقت.",
+    "dietApproachChooseLabel": "اختر نمط الأكل",
+    "dietApproachMacroSummary": "{{carbs}}٪ كربوهيدرات · {{protein}}٪ بروتين · {{fat}}٪ دهون",
+    "dietApproachCustomSplit": "توزيع مخصص للمغذيات",
+    "dietApproachTotal": "المجموع: {{total}}٪",
+    "dietApproachCarbohydrates": "الكربوهيدرات",
+    "dietApproachProtein": "البروتين",
+    "dietApproachFat": "الدهون",
+    "dietApproachLockMacro": "تثبيت {{macro}}",
+    "dietApproachUnlockMacro": "إلغاء تثبيت {{macro}}",
+    "dietApproachAdjustmentHint": "عدّل النسبة بالسحب أو اكتبها مباشرة. النِّسب غير المثبّتة تتوازن تلقائيًا عشان يبقى المجموع 100٪.",
+    "dietApproachTemplates": {
+      "balanced": {
+        "name": "متوازن",
+        "description": "نقطة بداية متوازنة لتغذيتك اليومية."
+      },
+      "mediterranean": {
+        "name": "البحر المتوسط",
+        "description": "يركز على الخضار والحبوب الكاملة والدهون غير المشبعة."
+      },
+      "dash": {
+        "name": "نظام داش",
+        "description": "نمط غذائي مصمم للمساعدة على ضبط ضغط الدم."
+      },
+      "atkins": {
+        "name": "أتكنز",
+        "description": "منخفض جدًا في الكربوهيدرات وأعلى في الدهون."
+      },
+      "low_fat": {
+        "name": "قليل الدهون",
+        "description": "أعلى في الكربوهيدرات مع هدف أقل للدهون."
+      },
+      "low_carb": {
+        "name": "قليل الكربوهيدرات / كيتو",
+        "description": "منخفض جدًا في الكربوهيدرات مع هدف أعلى للدهون."
+      },
+      "custom": {
+        "name": "مخصص",
+        "description": "حدد النِّسب اللي تناسب خطتك."
+      }
+    },
     "back": "رجوع",
     "skip": "تخطي",
     "progress": "تقدم الإعداد"
