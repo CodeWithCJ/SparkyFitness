@@ -150,11 +150,12 @@ export const searchDatabaseFoods = async (
 };
 
 export const importFoodsFromCsv = async (
-  foods: FoodDataForBackend[]
+  foods: FoodDataForBackend[],
+  overwrite = false
 ): Promise<void> => {
   await apiCall('/foods/import-from-csv', {
     method: 'POST',
-    body: JSON.stringify({ foods }),
+    body: JSON.stringify({ foods, overwrite }),
   });
 };
 

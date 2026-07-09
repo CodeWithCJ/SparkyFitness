@@ -12,7 +12,10 @@ import { FoodDataForBackend } from '@/types/food.ts';
 interface CsvImportDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (foodDataArray: FoodDataForBackend[]) => Promise<void>;
+  onSave: (
+    foodDataArray: FoodDataForBackend[],
+    overwrite: boolean
+  ) => Promise<void>;
 }
 
 export const CsvImportDialog = ({
@@ -25,7 +28,7 @@ export const CsvImportDialog = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         requireConfirmation
-        className="max-w-6xl max-h-[90vh] overflow-y-auto"
+        className="w-[95vw] max-w-[1600px] max-h-[90vh] overflow-y-auto"
       >
         <DialogHeader>
           <DialogTitle>

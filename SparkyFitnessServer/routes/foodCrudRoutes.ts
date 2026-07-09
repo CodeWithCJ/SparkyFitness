@@ -1107,12 +1107,12 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *         description: Food data is required.
  */
 router.post('/import-from-csv', authenticate, async (req, res, next) => {
-  const { foods } = req.body;
+  const { foods, overwrite } = req.body;
   if (!foods) {
     return res.status(400).json({ error: 'Food data is required.' });
   }
   try {
-    await foodService.importFoodsInBulk(req.userId, foods);
+    await foodService.importFoodsInBulk(req.userId, foods, overwrite === true);
     res.status(200).json({ message: 'Food data imported successfully.' });
   } catch (error) {
     next(error);
