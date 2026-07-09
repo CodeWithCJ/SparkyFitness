@@ -42,10 +42,12 @@ _Branch: `feature/najdi-arabic`_
   - Acceptance: all visible shell/onboarding copy uses message keys; fallback English copy is professional and concise.
   - Verify: focused component tests and hardcoded-copy audit.
   - Files: maximum five per slice; repeat by sub-journey.
+  - Progress: auth and the complete onboarding journey are catalog-driven; the shell remains open while `MainLayout.tsx` contains unrelated in-progress deployment edits.
 
 - [ ] Task 7: Complete the Najdi Arabic shell/onboarding catalog in the translations source repository.
   - Acceptance: every key used by the slice is translated and reviewed; placeholders are preserved.
   - Verify: catalog audit and browser QA.
+  - Progress: auth and onboarding source keys are synced and reviewed in the translations repository; shell and live browser review remain open.
 
 - [ ] Task 8: Repeat source-copy and Arabic-catalog slices for dashboard/diary, add flows, foods/meals, exercise, check-in, fasting, reports/goals, medications, cycle/pregnancy, settings/auth/admin.
   - Acceptance: each domain reaches complete reviewed coverage before moving to the next.
@@ -54,6 +56,7 @@ _Branch: `feature/najdi-arabic`_
 
 ### Checkpoint B
 
+- [x] Web validation and the 18-test auth/onboarding regression pack pass (40 tests).
 - [ ] Arabic catalog has full key and placeholder parity with English.
 - [ ] No raw keys, unwanted English, or forced slang in critical web journeys.
 - [ ] Browser QA passes at 320, 768, 1024, and 1440 px.
