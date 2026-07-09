@@ -24,6 +24,7 @@ import {
   type SetAccessoryAction,
 } from './SetRowChrome';
 import { formatRest } from './RestPeriodChip';
+import { withAlpha } from '../utils/colors';
 import { parseDecimalInput } from '../utils/numericInput';
 import { weightFromKg, weightToKg } from '../utils/unitConversions';
 import {
@@ -661,7 +662,7 @@ function ActiveWorkoutSetRow({
           testID="set-row"
           onLongPress={longPress}
           className={`flex-row items-center py-2 px-3 rounded-xl ${state === 'current' ? '' : 'bg-background'}`}
-          style={state === 'current' ? { backgroundColor: `${accentPrimary}1f` } : undefined}
+          style={state === 'current' ? { backgroundColor: withAlpha(accentPrimary, 0.12) } : undefined}
         >
           {setNumberControl}
           <View className="flex-1 items-center">
@@ -785,7 +786,7 @@ function ActiveWorkoutSetRow({
       testID="set-row"
       onLongPress={longPress}
       className={`flex-row items-center py-2.5 px-3 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
-      style={isCursor ? { backgroundColor: `${accentPrimary}1f` } : undefined}
+      style={isCursor ? { backgroundColor: withAlpha(accentPrimary, 0.12) } : undefined}
     >
       {/* Done rows recede (opacity 0.62), but the completion check lives outside
           this wrapper so its green stays vivid and matches the card/rail badges. */}
