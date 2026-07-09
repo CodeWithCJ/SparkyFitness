@@ -15,6 +15,8 @@
     "preview": "vite preview",
     "test": "jest",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "audit:i18n": "node scripts/audit-translations.mjs",
+    "test:i18n": "node --test scripts/audit-translations.test.mjs",
     "format": "prettier . --write"
   },
   "jest": {
