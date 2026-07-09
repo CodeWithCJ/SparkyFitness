@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { ExpandedGoals } from '@/types/goals';
 import {
   FatBreakdownAlgorithm,
@@ -35,6 +35,21 @@ interface PersonalPlanProps {
   localDateFormat: string;
   onOnboardingComplete: () => void;
 }
+
+const getPrimaryGoalTranslationKey = (
+  goal: OnboardingData['primaryGoal']
+): string => {
+  switch (goal) {
+    case 'lose_weight':
+      return 'onboarding.goalLoseWeight';
+    case 'maintain_weight':
+      return 'onboarding.goalMaintainWeight';
+    case 'gain_weight':
+      return 'onboarding.goalGainWeight';
+    default:
+      return 'onboarding.personalPlanGoalGeneral';
+  }
+};
 
 const PersonalPlan = ({
   formData,
@@ -351,24 +366,29 @@ const PersonalPlan = ({
 
   if (!plan) return null;
 
+  const primaryGoalLabel = t(
+    getPrimaryGoalTranslationKey(formData.primaryGoal)
+  );
+
   return (
     <div className="animate-in slide-in-from-bottom duration-500 pb-8">
-      <div className="text-center mb-8">
+      <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-foreground">
-          Your Personal Plan
+          {t('onboarding.personalPlanTitle')}
         </h1>
-        <p className="text-muted-foreground mt-2">
-          Ready to reach your goal of {formData.primaryGoal.replace('_', ' ')}.
+        <p className="mt-2 text-muted-foreground">
+          {t('onboarding.personalPlanSubtitle', { goal: primaryGoalLabel })}
         </p>
       </div>
 
-      <Alert className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400 dark:border-yellow-600/50 text-yellow-900 dark:text-yellow-200">
-        <AlertTriangle className="h-4 w-4 stroke-yellow-600 dark:stroke-yellow-500" />
-        <AlertDescription className="text-sm">
-          <strong>Medical Disclaimer:</strong> This plan is for informational
-          purposes only and should not replace professional medical advice.
-          Please consult with your doctor or a certified nutritionist before
-          making significant changes to your diet or exercise routine.
+      <Alert className="mb-6 border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">
+        <AlertTriangle
+          className="h-4 w-4 stroke-amber-600 dark:stroke-amber-400"
+          aria-hidden="true"
+        />
+        <AlertTitle>{t('onboarding.personalPlanDisclaimerTitle')}</AlertTitle>
+        <AlertDescription>
+          {t('onboarding.personalPlanDisclaimerText')}
         </AlertDescription>
       </Alert>
 
@@ -411,8 +431,8 @@ const PersonalPlan = ({
       />
 
       {/* Nutrient Sections Grid */}
-      <h2 className="text-xl font-bold text-foreground mb-4 ml-1 mt-8">
-        Nutrient Goals
+      <h2 className="mb-4 ms-1 mt-8 text-xl font-bold text-foreground">
+        {t('onboarding.personalPlanNutrientGoals')}
       </h2>
       <NutrientGoals
         convertEnergy={convertEnergy}
@@ -425,29 +445,29 @@ const PersonalPlan = ({
         setLocalWaterUnit={setLocalWaterUnit}
       />
 
-      <div className="flex flex-col gap-4 mt-8 mb-12">
+      <div className="mb-12 mt-8 flex flex-col gap-4">
         <Button
+          type="button"
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="w-full h-14 text-lg rounded-full font-bold disabled:opacity-70"
+          className="h-14 w-full rounded-full text-lg font-bold disabled:opacity-70"
+          aria-busy={isSubmitting}
         >
-          <PlayCircle className="mr-2 h-5 w-5" />
+          <PlayCircle className="me-2 h-5 w-5" aria-hidden="true" />
           {isSubmitting
-            ? t('common.saving', 'Saving...')
-            : t('goals.startCascadingPlan', 'Start 6-Month Cascading Plan')}
+            ? t('common.saving')
+            : t('onboarding.personalPlanStart')}
         </Button>
 
         <Button
+          type="button"
           variant="outline"
           onClick={() => setIsSavePresetOpen(true)}
           disabled={isSubmitting}
-          className="w-full h-12 text-base rounded-full"
+          className="h-12 w-full rounded-full text-base"
         >
-          <Save className="mr-2 h-4 w-4" />
-          {t(
-            'goals.saveAsPreset',
-            'Save Preset & Start 6-Month Cascading Goal'
-          )}
+          <Save className="me-2 h-4 w-4" aria-hidden="true" />
+          {t('onboarding.personalPlanSaveAndStart')}
         </Button>
       </div>
 
