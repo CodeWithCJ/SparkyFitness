@@ -1,4 +1,5 @@
-import { ChevronLeft, Settings } from 'lucide-react';
+import { ChevronDown, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Select,
   SelectContent,
@@ -9,13 +10,9 @@ import {
 import { Label } from '@/components/ui/label';
 import {
   FatBreakdownAlgorithm,
-  FatBreakdownAlgorithmLabels,
   MineralCalculationAlgorithm,
-  MineralCalculationAlgorithmLabels,
   VitaminCalculationAlgorithm,
-  VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithm,
-  SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
 
 export interface CalculationSettingsProps {
@@ -50,29 +47,46 @@ export const CalculationSettings = ({
   setShowAdvancedSettings,
   showAdvancedSettings,
 }: CalculationSettingsProps) => {
+  const { t } = useTranslation();
+  const algorithmLabel = (algorithm: string) =>
+    t(`onboarding.calculationSettingsAlgorithms.${algorithm}`);
+
   return (
-    <div className="bg-card rounded-2xl border border-border mb-6">
+    <section className="mb-6 rounded-2xl border border-border bg-card">
       <button
+        type="button"
         onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-        className="w-full p-4 flex items-center justify-between hover:bg-muted transition-colors rounded-2xl"
+        className="flex w-full items-center justify-between rounded-2xl p-4 transition-colors hover:bg-muted"
+        aria-expanded={showAdvancedSettings}
+        aria-controls="advanced-calculation-settings"
       >
-        <div className="flex items-center gap-2">
-          <Settings className="h-5 w-5 text-muted-foreground" />
-          <span className="text-foreground font-semibold">
-            Calculation Settings
+        <span className="flex items-center gap-2">
+          <Settings
+            className="h-5 w-5 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <span className="font-semibold text-foreground">
+            {t('onboarding.calculationSettingsTitle')}
           </span>
-        </div>
-        <ChevronLeft
-          className={`h-5 w-5 text-muted-foreground transition-transform ${showAdvancedSettings ? '-rotate-90' : 'rotate-180'}`}
+        </span>
+        <ChevronDown
+          className={`h-5 w-5 text-muted-foreground transition-transform ${showAdvancedSettings ? 'rotate-180' : ''}`}
+          aria-hidden="true"
         />
       </button>
 
       {showAdvancedSettings && (
-        <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+        <div
+          id="advanced-calculation-settings"
+          className="space-y-4 border-t border-border px-4 pb-4 pt-4"
+        >
           {/* Fat Breakdown Algorithm */}
           <div>
-            <Label className="text-foreground text-sm mb-2 block">
-              Fat Breakdown Method
+            <Label
+              htmlFor="fat-breakdown-algorithm"
+              className="mb-2 block text-sm text-foreground"
+            >
+              {t('onboarding.calculationSettingsFatMethod')}
             </Label>
             <Select
               value={localFatBreakdownAlgorithm}
@@ -80,13 +94,16 @@ export const CalculationSettings = ({
                 setLocalFatBreakdownAlgorithm(value as FatBreakdownAlgorithm)
               }
             >
-              <SelectTrigger>
+              <SelectTrigger
+                id="fat-breakdown-algorithm"
+                aria-label={t('onboarding.calculationSettingsFatMethod')}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(FatBreakdownAlgorithm).map((algo) => (
                   <SelectItem key={algo} value={algo}>
-                    {FatBreakdownAlgorithmLabels[algo]}
+                    {algorithmLabel(algo)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -95,8 +112,11 @@ export const CalculationSettings = ({
 
           {/* Mineral Calculation Algorithm */}
           <div>
-            <Label className="text-foreground text-sm mb-2 block">
-              Mineral Calculation
+            <Label
+              htmlFor="mineral-calculation-algorithm"
+              className="mb-2 block text-sm text-foreground"
+            >
+              {t('onboarding.calculationSettingsMinerals')}
             </Label>
             <Select
               value={localMineralAlgorithm}
@@ -104,13 +124,16 @@ export const CalculationSettings = ({
                 setLocalMineralAlgorithm(value as MineralCalculationAlgorithm)
               }
             >
-              <SelectTrigger>
+              <SelectTrigger
+                id="mineral-calculation-algorithm"
+                aria-label={t('onboarding.calculationSettingsMinerals')}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(MineralCalculationAlgorithm).map((algo) => (
                   <SelectItem key={algo} value={algo}>
-                    {MineralCalculationAlgorithmLabels[algo]}
+                    {algorithmLabel(algo)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -119,8 +142,11 @@ export const CalculationSettings = ({
 
           {/* Vitamin Calculation Algorithm */}
           <div>
-            <Label className="text-foreground text-sm mb-2 block">
-              Vitamin Calculation
+            <Label
+              htmlFor="vitamin-calculation-algorithm"
+              className="mb-2 block text-sm text-foreground"
+            >
+              {t('onboarding.calculationSettingsVitamins')}
             </Label>
             <Select
               value={localVitaminAlgorithm}
@@ -128,13 +154,16 @@ export const CalculationSettings = ({
                 setLocalVitaminAlgorithm(value as VitaminCalculationAlgorithm)
               }
             >
-              <SelectTrigger>
+              <SelectTrigger
+                id="vitamin-calculation-algorithm"
+                aria-label={t('onboarding.calculationSettingsVitamins')}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(VitaminCalculationAlgorithm).map((algo) => (
                   <SelectItem key={algo} value={algo}>
-                    {VitaminCalculationAlgorithmLabels[algo]}
+                    {algorithmLabel(algo)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -143,8 +172,11 @@ export const CalculationSettings = ({
 
           {/* Sugar Calculation Algorithm */}
           <div>
-            <Label className="text-foreground text-sm mb-2 block">
-              Sugar Recommendation
+            <Label
+              htmlFor="sugar-calculation-algorithm"
+              className="mb-2 block text-sm text-foreground"
+            >
+              {t('onboarding.calculationSettingsSugar')}
             </Label>
             <Select
               value={localSugarAlgorithm}
@@ -152,25 +184,27 @@ export const CalculationSettings = ({
                 setLocalSugarAlgorithm(value as SugarCalculationAlgorithm)
               }
             >
-              <SelectTrigger>
+              <SelectTrigger
+                id="sugar-calculation-algorithm"
+                aria-label={t('onboarding.calculationSettingsSugar')}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(SugarCalculationAlgorithm).map((algo) => (
                   <SelectItem key={algo} value={algo}>
-                    {SugarCalculationAlgorithmLabels[algo]}
+                    {algorithmLabel(algo)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <p className="text-xs text-muted-foreground mt-2">
-            These settings control how your nutrient goals are calculated. You
-            can change them later in Settings.
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t('onboarding.calculationSettingsDescription')}
           </p>
         </div>
       )}
-    </div>
+    </section>
   );
 };
