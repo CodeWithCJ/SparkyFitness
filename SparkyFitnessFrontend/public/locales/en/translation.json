@@ -58,6 +58,19 @@
       "confirmPasswordPlaceholder": "Enter the new password again",
       "resetting": "Updating password…",
       "submit": "Update password"
+    },
+    "passwordRecovery": {
+      "description": "Enter your email and we will send you a password reset link.",
+      "requestOutcome": "If an account uses that email, we sent it a password reset link.",
+      "error": "We could not send the link. Check your connection and try again.",
+      "sending": "Sending link…",
+      "submit": "Send reset link"
+    },
+    "magicLink": {
+      "title": "Email me a sign-in link",
+      "description": "We will send a secure sign-in link to your email.",
+      "sending": "Sending link…",
+      "submit": "Send sign-in link"
     }
   },
   "medications": {
