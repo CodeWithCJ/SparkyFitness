@@ -2906,6 +2906,7 @@
     "personalPlanSaveDialogSuccessDescription": "The copy is saved and the plan will start today.",
     "personalPlanSaveDialogErrorTitle": "Could not save the plan",
     "personalPlanSaveDialogErrorDescription": "Try again. Your current settings are still here.",
+    "loadingProfile": "Preparing your setup",
     "back": "Back",
     "skip": "Skip",
     "progress": "Setup progress"

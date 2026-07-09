@@ -334,6 +334,7 @@
     "personalPlanSaveDialogSuccessDescription": "حفظنا النسخة، وبتبدأ الخطة من اليوم.",
     "personalPlanSaveDialogErrorTitle": "تعذر حفظ الخطة",
     "personalPlanSaveDialogErrorDescription": "حاول مرة ثانية. إعداداتك الحالية ما زالت محفوظة هنا.",
+    "loadingProfile": "نجهز بياناتك للإعداد",
     "back": "رجوع",
     "skip": "تخطي",
     "progress": "تقدم الإعداد"
