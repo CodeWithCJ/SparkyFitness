@@ -6,6 +6,7 @@ import {
   type JsonSchemaNode,
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
+import { OutboundUrlBlockedError } from '../utils/outboundUrlPolicy.js';
 
 // Mock the undici Agent so the Ollama path never constructs a real agent.
 // (global.fetch is mocked per-test; the dispatcher option is ignored by it.)
@@ -14,7 +15,8 @@ vi.mock('undici', () => {
   const Agent = vi.fn(function () {
     return { destroy: vi.fn() };
   });
-  return { default: { Agent }, Agent };
+  const buildConnector = vi.fn(() => vi.fn());
+  return { default: { Agent, buildConnector }, Agent, buildConnector };
 });
 
 const SCHEMA: JsonSchemaNode = {
@@ -108,6 +110,10 @@ function captured(m: FetchMock): {
 }
 
 const originalFetch = global.fetch;
+const PRIVATE_NETWORK_POLICY = {
+  allowPrivateNetwork: true,
+  reason: 'admin' as const,
+};
 afterEach(() => {
   global.fetch = originalFetch;
 });
@@ -155,10 +161,80 @@ describe('dispatchAiRequest — preconditions', () => {
           api_key: undefined,
           custom_url: 'http://localhost:11434',
         }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
       })
     );
     expect(result.ok).toBe(true);
     expect(m).toHaveBeenCalled();
+  });
+
+  it('blocks localhost custom URLs by default', async () => {
+    const m = mockFetch(ollamaBody(JSON.stringify(SAMPLE)));
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'ollama',
+          api_key: undefined,
+          custom_url: 'http://localhost:11434',
+        }),
+      })
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.category).toBe('private_network_forbidden');
+    expect(m).not.toHaveBeenCalled();
+  });
+
+  it('maps wrapped connector policy failures to private_network_forbidden', async () => {
+    const blocked = new OutboundUrlBlockedError(
+      'AI service URL resolves to a private address.'
+    );
+    const m = vi
+      .fn()
+      .mockRejectedValue(new TypeError('fetch failed', { cause: blocked }));
+    global.fetch = m as typeof global.fetch;
+
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'custom',
+          custom_url: 'https://llm.example.com/v1',
+        }),
+      })
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      category: 'private_network_forbidden',
+      status: 403,
+      detail: blocked.message,
+    });
+  });
+
+  // Regression: a stored URL fetch could never use (malformed, credentials) is a
+  // provider-config failure, not a policy denial — even under a trusted policy it
+  // must not masquerade as private_network_forbidden (whose client copy tells the
+  // user to ask an admin about private-network access).
+  it('reports a shape-invalid custom_url as upstream_error, not private_network_forbidden', async () => {
+    const m = vi.fn();
+    global.fetch = m as typeof global.fetch;
+
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'custom',
+          custom_url: 'http://user:pass@llm.example.com/v1',
+        }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
+      })
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.category).toBe('upstream_error');
+      expect(result.detail).toContain('credentials');
+    }
+    expect(m).not.toHaveBeenCalled();
   });
 
   // Regression: keyless local servers (LM Studio, llama.cpp) must work on the
@@ -408,6 +484,7 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
           api_key: undefined,
           custom_url: 'http://localhost:11434',
         }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
       })
     );
     const { url, headers, body } = captured(m);
@@ -508,6 +585,7 @@ describe('dispatchAiRequest — vision request shapes', () => {
           api_key: undefined,
           custom_url: 'http://localhost:11434',
         }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
         images: [IMG],
       })
     );
@@ -546,6 +624,7 @@ describe('dispatchAiRequest — extraction & success', () => {
           api_key: undefined,
           custom_url: 'http://localhost:11434',
         }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
       })
     );
     expect(result).toMatchObject({ ok: true, json: SAMPLE });
@@ -768,6 +847,7 @@ describe('dispatchAiRequest — ollama undici timeout handling', () => {
             api_key: undefined,
             custom_url: 'http://localhost:11434',
           }),
+          networkPolicy: PRIVATE_NETWORK_POLICY,
         })
       );
       expect(result.ok).toBe(false);
@@ -788,6 +868,7 @@ describe('dispatchAiRequest — ollama undici timeout handling', () => {
           api_key: undefined,
           custom_url: 'http://localhost:11434',
         }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
       })
     );
     expect(result.ok).toBe(false);
@@ -902,6 +983,7 @@ describe('dispatchAiRequest — model defaulting', () => {
           model_name: undefined,
           custom_url: 'http://localhost:11434',
         }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
         images: [IMG],
       })
     );
@@ -920,6 +1002,7 @@ describe('dispatchAiRequest — model defaulting', () => {
           model_name: undefined,
           custom_url: 'http://localhost:11434',
         }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
       })
     );
     expect(captured(m).body.model).toBe('llama3.2');
@@ -1024,6 +1107,7 @@ describe('dispatchAiRequest — temperature', () => {
           api_key: undefined,
           custom_url: 'http://localhost:11434',
         }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
         temperature: 0,
       })
     );
@@ -1039,6 +1123,7 @@ describe('dispatchAiRequest — temperature', () => {
           api_key: undefined,
           custom_url: 'http://localhost:11434',
         }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
       })
     );
     expect(captured(m).body.options).toBeUndefined();

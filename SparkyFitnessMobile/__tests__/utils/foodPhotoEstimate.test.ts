@@ -63,5 +63,12 @@ describe('foodPhotoEstimate', () => {
       expect(copy.title.toLowerCase()).toContain('timed out');
       expect(copy.message.toLowerCase()).toContain('too long');
     });
+
+    test('PRIVATE_NETWORK_FORBIDDEN invalidates AI settings', () => {
+      const copy = mapEstimateError('PRIVATE_NETWORK_FORBIDDEN');
+      expect(copy.stayOnForm).toBe(false);
+      expect(copy.invalidateAiSettings).toBe(true);
+      expect(copy.title.toLowerCase()).toContain('not allowed');
+    });
   });
 });

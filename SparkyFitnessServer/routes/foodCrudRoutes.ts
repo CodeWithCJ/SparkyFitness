@@ -8,6 +8,7 @@ import labelScanService, {
 import foodPhotoEstimationService from '../services/foodPhotoEstimationService.js';
 import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
 import { backfillOffAllergens } from '../utils/backfillAllergens.js';
+import { resolveIsAdmin } from '../utils/adminCheck.js';
 const router = express.Router();
 router.use(express.json());
 
@@ -647,6 +648,7 @@ const LABEL_SCAN_ERROR_HTTP_STATUS: Record<LabelScanErrorCategory, number> = {
   unsupported_provider: 422,
   api_key_missing: 422,
   custom_url_missing: 422,
+  private_network_forbidden: 403,
   unsupported_media: 400,
   refused: 422,
   truncated: 422,
@@ -662,11 +664,13 @@ router.post('/scan-label', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'image and mime_type are required.' });
   }
   try {
+    const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
     const result = await labelScanService.extractNutritionFromLabel(
       image,
       mime_type,
 
-      req.userId
+      req.userId,
+      isAdmin
     );
     if (!result.success) {
       const status = LABEL_SCAN_ERROR_HTTP_STATUS[result.category] ?? 500;
@@ -711,6 +715,7 @@ const PHOTO_ESTIMATION_ERROR_HTTP_STATUS: Record<
   CONTENT_BLOCKED: 422,
   PARSE_ERROR: 422,
   UPSTREAM_ERROR: 502,
+  PRIVATE_NETWORK_FORBIDDEN: 403,
   TIMEOUT: 504,
 };
 
@@ -835,12 +840,14 @@ router.post(
     }
 
     try {
+      const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
       const result =
         await foodPhotoEstimationService.estimateFoodPhotoNutrition({
           images: photoImages,
           userId: req.userId,
           description: typeof description === 'string' ? description : '',
           weightSlot,
+          actorIsAdmin: isAdmin,
         });
       if (result.success) {
         return res.status(200).json(result.estimate);

@@ -123,7 +123,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   - `SPARKY_FITNESS_FRONTEND_URL`
   - `SPARKY_FITNESS_API_ENCRYPTION_KEY`
 - `BETTER_AUTH_SECRET` is currently soft-required: startup will generate a temporary value if it is missing, but that is only appropriate for throwaway local runs because sessions will not survive restarts
-- Common operational toggles include `SPARKY_FITNESS_SERVER_PORT`, `SPARKY_FITNESS_ADMIN_EMAIL`, `ALLOW_PRIVATE_NETWORK_CORS`, `SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS`, and `BETTER_AUTH_URL`
+- Common operational toggles include `SPARKY_FITNESS_SERVER_PORT`, `SPARKY_FITNESS_ADMIN_EMAIL`, `ALLOW_PRIVATE_NETWORK_CORS`, `ALLOW_PRIVATE_NETWORK_AI`, `SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS`, and `BETTER_AUTH_URL`
+- `ALLOW_PRIVATE_NETWORK_AI=true` lets non-admin users use custom AI service URLs (`custom`/`ollama`/`openai_compatible`) that resolve to private/internal addresses; default off is an SSRF guard enforced by `utils/outboundUrlPolicy.ts` at save/test time and again in the runtime guarded fetch path. Current admins and global admin-created AI settings can use private URLs for self-hosted providers like Ollama
 
 ### TypeScript and Module Conventions
 

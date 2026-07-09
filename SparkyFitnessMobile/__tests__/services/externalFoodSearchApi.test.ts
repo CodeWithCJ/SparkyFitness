@@ -2070,6 +2070,7 @@ describe('externalFoodSearchApi', () => {
       ['CONTENT_BLOCKED', 422],
       ['PARSE_ERROR', 422],
       ['UPSTREAM_ERROR', 502],
+      ['PRIVATE_NETWORK_FORBIDDEN', 403],
       ['TIMEOUT', 504],
       ['INVALID_REQUEST', 400],
     ] as const)('maps server %s to FoodPhotoEstimateError', async (code, status) => {

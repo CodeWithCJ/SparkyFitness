@@ -11,6 +11,13 @@ import {
 } from '../ai/providerDispatch.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
+  assertOutboundUrlShapeAndLiteralAllowed,
+  createGuardedFetch,
+  deriveAiNetworkPolicy,
+  OutboundUrlBlockedError,
+  requiresUserSuppliedAiUrl,
+} from '../utils/outboundUrlPolicy.js';
+import {
   todayInZone,
   DatabaseCustomCategories,
   AiServiceSettings,
@@ -576,7 +583,8 @@ async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
   userId: string,
-  authenticatedUserId: string
+  authenticatedUserId: string,
+  actorIsAdmin = false
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -605,6 +613,7 @@ async function processChatMessage(
 
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
+    const networkPolicy = deriveAiNetworkPolicy(aiService, actorIsAdmin);
 
     // Initialize Vercel AI SDK Model based on service_type
     let modelInstance: Parameters<typeof generateText>[0]['model'];
@@ -641,10 +650,14 @@ async function processChatMessage(
       } else if (aiService.service_type === 'xai') {
         baseURL = 'https://api.x.ai/v1';
       }
-      const provider = createOpenAI({
+      const providerOptions: Parameters<typeof createOpenAI>[0] = {
         baseURL,
         apiKey: apiKey || 'no-key',
-      });
+      };
+      if (requiresUserSuppliedAiUrl(aiService.service_type)) {
+        providerOptions.fetch = createGuardedFetch(networkPolicy);
+      }
+      const provider = createOpenAI(providerOptions);
       modelInstance = provider.chat(modelName);
     } else {
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
@@ -944,7 +957,8 @@ async function processFoodOptionsRequest(
   foodName: string,
   unit: string,
   authenticatedUserId: string,
-  serviceConfigId: string
+  serviceConfigId: string,
+  actorIsAdmin = false
 ): Promise<FoodOptionsResult> {
   if (!serviceConfigId) {
     return {
@@ -985,6 +999,7 @@ async function processFoodOptionsRequest(
 
   const result = await dispatchAiRequest({
     provider,
+    networkPolicy: deriveAiNetworkPolicy(aiService, actorIsAdmin),
     prompt,
     parseJson: true,
     temperature: FOOD_OPTIONS_TEMPERATURE,
@@ -1075,6 +1090,27 @@ async function testAiServiceConnection(
     }
   }
 
+  // Gate #4 (SSRF): a test fires an outbound POST to the effective custom URL, so
+  // a non-admin must not aim it at a private/internal address (localhost, RFC1918,
+  // link-local, cloud metadata). The URL is validated post-fallback so a stored
+  // value is checked too. Admins (trusted operator) and the ALLOW_PRIVATE_NETWORK_AI
+  // opt-in bypass this, keeping self-hosted setups like local Ollama working.
+  if (customUrl) {
+    const networkPolicy = deriveAiNetworkPolicy({ source: 'user' }, isAdmin);
+    try {
+      assertOutboundUrlShapeAndLiteralAllowed(customUrl, networkPolicy);
+    } catch (error) {
+      // Policy denials (private/internal address) are 403; a URL fetch could
+      // never use (malformed, wrong scheme, credentials) is a plain 400.
+      throw statusError(
+        error instanceof Error
+          ? error.message
+          : 'Custom AI service URLs must be public http(s) endpoints. Private or internal addresses are not allowed.',
+        error instanceof OutboundUrlBlockedError ? 403 : 400
+      );
+    }
+  }
+
   // Validate after fallback: a no-preset type with a blank effective model would
   // otherwise dispatch with a meaningless getDefaultModel default.
   if (NO_PRESET_SERVICE_TYPES.has(serviceType) && !modelName) {
@@ -1090,6 +1126,10 @@ async function testAiServiceConnection(
 
   const result = await dispatchAiRequest({
     provider,
+    networkPolicy: deriveAiNetworkPolicy(
+      { is_public: false, source: 'user' },
+      isAdmin
+    ),
     prompt: TEST_CONNECTION_PROMPT,
     temperature: 0,
     timeoutMs: TEST_CONNECTION_TIMEOUT_MS,
@@ -1168,7 +1208,8 @@ async function processChatMessageStream(
   messages: ChatMessage[],
   serviceConfigId: string,
   userId: string,
-  authenticatedUserId: string
+  authenticatedUserId: string,
+  actorIsAdmin = false
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -1188,6 +1229,7 @@ async function processChatMessageStream(
     const apiKey = aiService.api_key;
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
+    const networkPolicy = deriveAiNetworkPolicy(aiService, actorIsAdmin);
 
     log(
       'info',
@@ -1225,10 +1267,14 @@ async function processChatMessageStream(
       } else if (aiService.service_type === 'xai') {
         baseURL = 'https://api.x.ai/v1';
       }
-      const provider = createOpenAI({
+      const providerOptions: Parameters<typeof createOpenAI>[0] = {
         baseURL,
         apiKey: apiKey || 'no-key',
-      });
+      };
+      if (requiresUserSuppliedAiUrl(aiService.service_type)) {
+        providerOptions.fetch = createGuardedFetch(networkPolicy);
+      }
+      const provider = createOpenAI(providerOptions);
       modelInstance = provider.chat(modelName);
     } else {
       throw new Error(`Unsupported service type: ${aiService.service_type}`);

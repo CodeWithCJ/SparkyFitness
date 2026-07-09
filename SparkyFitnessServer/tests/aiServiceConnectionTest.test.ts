@@ -66,6 +66,7 @@ const mockDispatch = vi.mocked(dispatchAiRequest);
 const mockGetDecrypted = vi.mocked(
   chatRepository.getDecryptedAiServiceSettingById
 );
+const mockUpsert = vi.mocked(chatRepository.upsertAiServiceSetting);
 const mockIsUserAiConfigAllowed = vi.mocked(
   globalSettingsRepository.isUserAiConfigAllowed
 );
@@ -123,6 +124,59 @@ describe('POST /chat/ai-service-settings/test — gate #1 (per-user AI config)',
 
     expect(res.statusCode).toBe(400);
     expect(mockDispatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /chat save_ai_service_settings — gate #4 (SSRF)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsUserAiConfigAllowed.mockResolvedValue(true);
+  });
+
+  const save = (service_data: Record<string, unknown>) =>
+    request(app)
+      .post('/chat')
+      .send({ action: 'save_ai_service_settings', service_data });
+
+  it('rejects a non-admin saving a private custom_url with 403 and never persists', async () => {
+    mockResolveIsAdmin.mockResolvedValue(false);
+
+    const res = await save({
+      service_name: 'SSRF-PoC',
+      service_type: 'custom',
+      custom_url: 'http://localhost:5432',
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  it('lets an admin save a private custom_url (self-hosted Ollama) and persists', async () => {
+    mockResolveIsAdmin.mockResolvedValue(true);
+    mockUpsert.mockResolvedValue({ id: 'svc-1' });
+
+    const res = await save({
+      service_name: 'Local Ollama',
+      service_type: 'ollama',
+      custom_url: 'http://localhost:11434',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a non-admin save a public custom_url and persists', async () => {
+    mockResolveIsAdmin.mockResolvedValue(false);
+    mockUpsert.mockResolvedValue({ id: 'svc-2' });
+
+    const res = await save({
+      service_name: 'Groq',
+      service_type: 'custom',
+      custom_url: 'https://api.groq.com/openai/v1/chat/completions',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -345,11 +399,12 @@ describe('chatService.testAiServiceConnection', () => {
   });
 
   it('post-fallback model check: throws 400 and never dispatches for a no-preset type with a blank model', async () => {
+    // Public URL so the SSRF gate (#4) passes and we reach the model check.
     await expect(
       chatService.testAiServiceConnection(
         {
           service_type: 'openai_compatible',
-          custom_url: 'http://localhost:1234/v1',
+          custom_url: 'https://llm.example.com/v1',
           api_key: 'k',
         },
         USER_ID,
@@ -357,5 +412,90 @@ describe('chatService.testAiServiceConnection', () => {
       )
     ).rejects.toMatchObject({ statusCode: 400 });
     expect(mockDispatch).not.toHaveBeenCalled();
+  });
+
+  // Gate #4 (SSRF): the reported vulnerability — a non-admin pointing custom_url
+  // at an internal address to force a server-side request there.
+  it.each([
+    'http://localhost:5432',
+    'http://127.0.0.1:11434',
+    'http://169.254.169.254/latest/meta-data/',
+    'http://192.168.1.10:11434',
+    'http://[::1]:11434',
+  ])(
+    'gate #4: throws 403 and never dispatches when a non-admin tests custom_url %s',
+    async (custom_url) => {
+      await expect(
+        chatService.testAiServiceConnection(
+          {
+            service_type: 'custom',
+            custom_url,
+            model_name: 'local-model',
+            api_key: 'k',
+          },
+          USER_ID,
+          false
+        )
+      ).rejects.toMatchObject({ statusCode: 403 });
+      expect(mockDispatch).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    'file:///etc/passwd',
+    'http://user:pass@example.com/v1',
+    'not a url',
+  ])(
+    'gate #4: a shape-invalid custom_url %s is a 400 (bad input), not a policy 403',
+    async (custom_url) => {
+      await expect(
+        chatService.testAiServiceConnection(
+          {
+            service_type: 'custom',
+            custom_url,
+            model_name: 'local-model',
+            api_key: 'k',
+          },
+          USER_ID,
+          false
+        )
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(mockDispatch).not.toHaveBeenCalled();
+    }
+  );
+
+  it('gate #4: an admin may test a private custom_url (self-hosted local Ollama)', async () => {
+    mockDispatch.mockResolvedValue(okDispatch);
+
+    const result = await chatService.testAiServiceConnection(
+      {
+        service_type: 'ollama',
+        custom_url: 'http://localhost:11434',
+        model_name: 'llama3',
+      },
+      USER_ID,
+      true
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(mockDispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it('gate #4: a non-admin may test a public custom_url', async () => {
+    mockDispatch.mockResolvedValue(okDispatch);
+
+    const result = await chatService.testAiServiceConnection(
+      {
+        service_type: 'custom',
+        custom_url: 'https://api.groq.com/openai/v1/chat/completions',
+        model_name: 'llama3',
+        api_key: 'k',
+      },
+      USER_ID,
+      false
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(mockDispatch).toHaveBeenCalledTimes(1);
   });
 });

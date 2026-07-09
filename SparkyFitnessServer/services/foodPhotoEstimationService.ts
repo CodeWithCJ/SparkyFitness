@@ -6,6 +6,7 @@ import {
   type JsonSchemaNode,
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
+import { deriveAiNetworkPolicy } from '../utils/outboundUrlPolicy.js';
 import {
   foodPhotoEstimateResponseSchema,
   type FoodPhotoEstimateErrorCode,
@@ -209,6 +210,7 @@ const DISPATCH_ERROR_TO_CODE = {
   unsupported_media: 'UNSUPPORTED_MIME_TYPE',
   timeout: 'TIMEOUT',
   upstream_error: 'UPSTREAM_ERROR',
+  private_network_forbidden: 'PRIVATE_NETWORK_FORBIDDEN',
   refused: 'CONTENT_BLOCKED',
   truncated: 'PARSE_ERROR',
   no_content: 'CONTENT_BLOCKED',
@@ -265,6 +267,7 @@ export interface EstimateFoodPhotoNutritionInput {
   userId: string;
   description?: string;
   weightSlot?: string;
+  actorIsAdmin?: boolean;
 }
 
 function resolveImages(input: EstimateFoodPhotoNutritionInput): PhotoImage[] {
@@ -334,6 +337,10 @@ async function estimateFoodPhotoNutrition(
 
   const result = await dispatchAiRequest({
     provider,
+    networkPolicy: deriveAiNetworkPolicy(
+      aiService,
+      Boolean(input.actorIsAdmin)
+    ),
     prompt: buildPrompt(description, weightSlot, images.length),
     images,
     jsonSchema: RESPONSE_SCHEMA,

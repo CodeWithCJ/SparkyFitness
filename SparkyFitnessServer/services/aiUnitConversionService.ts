@@ -8,6 +8,7 @@ import {
   type JsonSchemaNode,
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
+import { deriveAiNetworkPolicy } from '../utils/outboundUrlPolicy.js';
 import {
   aiProviderRawResponseSchema,
   isAiConvertibleUnit,
@@ -42,6 +43,13 @@ export class ProviderResponseError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'ProviderResponseError';
+  }
+}
+
+export class PrivateNetworkAiUrlError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PrivateNetworkAiUrlError';
   }
 }
 
@@ -107,6 +115,7 @@ const DISPATCH_ERROR_TO_THROW = {
   custom_url_missing: () => new NoAiServiceError(),
   unsupported_provider: (d: string) => new ProviderResponseError(d),
   unsupported_media: (d: string) => new ProviderResponseError(d),
+  private_network_forbidden: (d: string) => new PrivateNetworkAiUrlError(d),
   timeout: (d: string) => new ProviderResponseError(d),
   upstream_error: (d: string) => new ProviderResponseError(d),
   refused: (d: string) => new ProviderResponseError(d),
@@ -118,7 +127,8 @@ const DISPATCH_ERROR_TO_THROW = {
 export async function estimateUnitConversion(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
-  params: AiUnitConversionRequest
+  params: AiUnitConversionRequest,
+  actorIsAdmin = false
 ): Promise<AiUnitConversionResponse> {
   // 1. Validate units BEFORE touching AI services. Cheap and avoids
   //    spending a provider call on an obviously-bad request.
@@ -173,6 +183,7 @@ export async function estimateUnitConversion(
   // per-provider structured-output strategy, and JSON parsing.
   const result = await dispatchAiRequest({
     provider,
+    networkPolicy: deriveAiNetworkPolicy(aiService, actorIsAdmin),
     prompt: buildPrompt({
       foodName: params.foodName,
       brand: params.brand,
@@ -223,4 +234,5 @@ export default {
   AiConversionsDisabledError,
   IncompatibleRequestError,
   ProviderResponseError,
+  PrivateNetworkAiUrlError,
 };

@@ -29,6 +29,10 @@ vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
   default: vi.fn(() => (req: any, res: any, next: any) => next()),
 }));
 
+vi.mock('../utils/adminCheck.js', () => ({
+  resolveIsAdmin: vi.fn(async () => false),
+}));
+
 vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
@@ -95,7 +99,8 @@ describe('POST /food-crud/scan-label', () => {
     expect(labelScanService.extractNutritionFromLabel).toHaveBeenCalledWith(
       'base64data',
       'image/png',
-      'user-123'
+      'user-123',
+      false
     );
   });
   it('should return 422 when service returns success: false', async () => {
@@ -133,6 +138,7 @@ describe('POST /food-crud/scan-label', () => {
     ['parse_error', 422],
     ['api_key_missing', 422],
     ['custom_url_missing', 422],
+    ['private_network_forbidden', 403],
   ])('should map category %s to HTTP %i', async (category, status) => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     labelScanService.extractNutritionFromLabel.mockResolvedValue({
@@ -169,7 +175,8 @@ describe('POST /food-crud/scan-label', () => {
     expect(labelScanService.extractNutritionFromLabel).toHaveBeenCalledWith(
       'img',
       'image/png',
-      'user-123'
+      'user-123',
+      false
     );
   });
 });

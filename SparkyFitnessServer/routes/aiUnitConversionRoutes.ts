@@ -7,8 +7,10 @@ import {
   AiConversionsDisabledError,
   IncompatibleRequestError,
   ProviderResponseError,
+  PrivateNetworkAiUrlError,
 } from '../services/aiUnitConversionService.js';
 import { log } from '../config/logging.js';
+import { resolveIsAdmin } from '../utils/adminCheck.js';
 
 const router = express.Router();
 
@@ -43,9 +45,11 @@ router.post('/convert-unit', authenticate, async (req, res, next) => {
   }
 
   try {
+    const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
     const result = await estimateUnitConversion(
       req.authenticatedUserId || req.userId,
-      validation.data
+      validation.data,
+      isAdmin
     );
     return res.status(200).json(result);
   } catch (error) {
@@ -63,6 +67,11 @@ router.post('/convert-unit', authenticate, async (req, res, next) => {
       return res
         .status(400)
         .json({ code: 'incompatible_units', error: error.message });
+    }
+    if (error instanceof PrivateNetworkAiUrlError) {
+      return res
+        .status(403)
+        .json({ code: 'private_network_forbidden', error: error.message });
     }
     if (error instanceof ProviderResponseError) {
       return res
