@@ -19,6 +19,10 @@ vi.mock('../services/foodService.js', () => ({
   default: { lookupBarcode: vi.fn() },
 }));
 
+vi.mock('../utils/adminCheck.js', () => ({
+  resolveIsAdmin: vi.fn(async () => false),
+}));
+
 let authenticateBehavior: 'success' | 'reject' = 'success';
 
 vi.mock('../middleware/authMiddleware.js', () => ({
@@ -190,6 +194,7 @@ describe('POST /food-crud/estimate-food-photo', () => {
     ['CONTENT_BLOCKED', 422],
     ['PARSE_ERROR', 422],
     ['UPSTREAM_ERROR', 502],
+    ['PRIVATE_NETWORK_FORBIDDEN', 403],
     ['TIMEOUT', 504],
   ])('maps service code %s to HTTP %i', async (code, status) => {
     // @ts-expect-error mocked

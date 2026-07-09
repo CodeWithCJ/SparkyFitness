@@ -19,7 +19,8 @@ vi.mock('undici', () => {
   const Agent = vi.fn(function () {
     return { destroy: vi.fn() };
   });
-  return { default: { Agent }, Agent };
+  const buildConnector = vi.fn(() => vi.fn());
+  return { default: { Agent, buildConnector }, Agent, buildConnector };
 });
 
 const mockGetBackendSetting = vi.mocked(
@@ -114,12 +115,13 @@ function mockFetch(
   return m;
 }
 
-function runFoodOptions() {
+function runFoodOptions(actorIsAdmin = false) {
   return processFoodOptionsRequest(
     TEST_FOOD,
     TEST_UNIT,
     TEST_USER_ID,
-    TEST_CONFIG_ID
+    TEST_CONFIG_ID,
+    actorIsAdmin
   );
 }
 
@@ -173,7 +175,7 @@ describe('processFoodOptionsRequest', () => {
         );
         mockFetch(bodyFor(service_type, sampleFoodOptions));
 
-        const result = await runFoodOptions();
+        const result = await runFoodOptions(service_type === 'ollama');
 
         expect(result.success).toBe(true);
         if (result.success) {
@@ -187,7 +189,7 @@ describe('processFoodOptionsRequest', () => {
     it('sends openai a single user message with the combined prompt and temperature 0.7', async () => {
       mockGetBackendSetting.mockResolvedValue(makeAiServiceDetail());
       const m = mockFetch(openAiBody(sampleFoodOptions));
-      await runFoodOptions();
+      await runFoodOptions(true);
       const init = m.mock.calls[0][1] as { body: string };
       const body = JSON.parse(init.body);
       expect(body.messages).toHaveLength(1);
@@ -238,7 +240,7 @@ describe('processFoodOptionsRequest', () => {
         })
       );
       const m = mockFetch(ollamaBody(sampleFoodOptions));
-      await runFoodOptions();
+      await runFoodOptions(true);
       const [url, init] = m.mock.calls[0] as [string, { body: string }];
       expect(url).toBe('http://localhost:11434/api/chat');
       const body = JSON.parse(init.body);
@@ -255,12 +257,14 @@ describe('processFoodOptionsRequest', () => {
         })
       );
       mockFetch(ollamaBody(sampleFoodOptions));
-      const result = await runFoodOptions();
+      const result = await runFoodOptions(true);
       expect(result.success).toBe(true);
-      expect(mockAgent).toHaveBeenCalledWith({
-        headersTimeout: 5000,
-        bodyTimeout: 5000,
-      });
+      expect(mockAgent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headersTimeout: 5000,
+          bodyTimeout: 5000,
+        })
+      );
     });
 
     it('defaults the Ollama agent timeout to 120000ms when unset', async () => {
@@ -273,12 +277,14 @@ describe('processFoodOptionsRequest', () => {
         })
       );
       mockFetch(ollamaBody(sampleFoodOptions));
-      const result = await runFoodOptions();
+      const result = await runFoodOptions(true);
       expect(result.success).toBe(true);
-      expect(mockAgent).toHaveBeenCalledWith({
-        headersTimeout: 120000,
-        bodyTimeout: 120000,
-      });
+      expect(mockAgent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headersTimeout: 120000,
+          bodyTimeout: 120000,
+        })
+      );
     });
   });
 

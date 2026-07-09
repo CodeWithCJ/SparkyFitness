@@ -14,7 +14,8 @@ vi.mock('undici', () => {
   const Agent = vi.fn(function () {
     return { destroy: vi.fn() };
   });
-  return { default: { Agent }, Agent };
+  const buildConnector = vi.fn(() => vi.fn());
+  return { default: { Agent, buildConnector }, Agent, buildConnector };
 });
 
 // The vision features resolve through the vision pointer, which falls back to
@@ -229,6 +230,7 @@ describe('estimateFoodPhotoNutrition', () => {
           base64Image: TEST_BASE64,
           mimeType: TEST_MIME,
           userId: TEST_USER_ID,
+          actorIsAdmin: service_type === 'ollama',
         });
 
         expect(result.success).toBe(true);

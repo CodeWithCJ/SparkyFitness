@@ -64,6 +64,14 @@ export function mapEstimateError(
         stayOnForm: true,
         invalidateAiSettings: false,
       };
+    case 'PRIVATE_NETWORK_FORBIDDEN':
+      return {
+        title: 'AI provider not allowed',
+        message:
+          'This AI provider points to a private network address. Ask an admin to configure it globally.',
+        stayOnForm: false,
+        invalidateAiSettings: true,
+      };
     case 'PARSE_ERROR':
     case 'UPSTREAM_ERROR':
     case 'INVALID_REQUEST':

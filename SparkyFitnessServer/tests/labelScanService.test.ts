@@ -15,7 +15,8 @@ vi.mock('undici', () => {
   const Agent = vi.fn(function () {
     return { destroy: vi.fn() };
   });
-  return { default: { Agent }, Agent };
+  const buildConnector = vi.fn(() => vi.fn());
+  return { default: { Agent, buildConnector }, Agent, buildConnector };
 });
 
 // The vision features resolve through the vision pointer, which falls back to
@@ -181,7 +182,8 @@ describe('extractNutritionFromLabel', () => {
         const result = await extractNutritionFromLabel(
           TEST_BASE64,
           TEST_MIME,
-          TEST_USER_ID
+          TEST_USER_ID,
+          service_type === 'ollama'
         );
 
         expect(result.success).toBe(true);
@@ -309,13 +311,16 @@ describe('extractNutritionFromLabel', () => {
       const result = await extractNutritionFromLabel(
         TEST_BASE64,
         TEST_MIME,
-        TEST_USER_ID
+        TEST_USER_ID,
+        true
       );
       expect(result.success).toBe(true);
-      expect(mockAgent).toHaveBeenCalledWith({
-        headersTimeout: 5000,
-        bodyTimeout: 5000,
-      });
+      expect(mockAgent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headersTimeout: 5000,
+          bodyTimeout: 5000,
+        })
+      );
     });
   });
 

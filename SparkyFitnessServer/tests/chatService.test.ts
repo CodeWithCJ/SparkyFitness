@@ -9,6 +9,7 @@ import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import foodEntryService from '../services/foodEntryService.js';
 import { log } from '../config/logging.js';
+import { createOpenAI } from '@ai-sdk/openai';
 // Mock dependencies
 vi.mock('../models/chatRepository');
 vi.mock('../models/userRepository');
@@ -642,10 +643,14 @@ describe('chatService', () => {
           [{ role: 'user', content: 'hi' }],
           'svc-1',
           activeUserId,
-          actorUserId
+          actorUserId,
+          true
         );
 
         expect(result.content).toBe('Hello from a local server!');
+        expect(createOpenAI).toHaveBeenCalledWith(
+          expect.objectContaining({ fetch: expect.any(Function) })
+        );
       }
     );
 
@@ -758,6 +763,29 @@ describe('chatService', () => {
           messageType: 'user',
           content: 'Show my goal timeline',
         })
+      );
+    });
+
+    it('injects guarded fetch for streamed local custom providers', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'ollama',
+          custom_url: 'http://localhost:11434',
+        }
+      );
+      streamModel([{ type: 'text', text: 'hello' }]);
+
+      await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId,
+        true
+      );
+
+      expect(createOpenAI).toHaveBeenCalledWith(
+        expect.objectContaining({ fetch: expect.any(Function) })
       );
     });
 

@@ -1,5 +1,15 @@
 import undici from 'undici';
 import { getDefaultModel, getDefaultVisionModel } from './config.js';
+import {
+  createGuardedDispatcher,
+  createGuardedFetch,
+  assertOutboundUrlShapeAndLiteralAllowed,
+  getOutboundUrlBlockedError,
+  OutboundUrlShapeError,
+  PUBLIC_ONLY_AI_NETWORK_POLICY,
+  requiresUserSuppliedAiUrl,
+  type AiNetworkPolicy,
+} from '../utils/outboundUrlPolicy.js';
 
 const { Agent } = undici;
 
@@ -39,6 +49,7 @@ export interface JsonSchemaNode {
 
 export interface DispatchRequest {
   provider: ProviderConfig;
+  networkPolicy?: AiNetworkPolicy;
   prompt: string;
   /** Presence => vision; selects `getDefaultVisionModel` when `model_name` unset. */
   images?: DispatchImage[];
@@ -58,6 +69,7 @@ export type DispatchErrorCategory =
   | 'unsupported_provider' // helper has no builder for this service_type (NOT a provider failure)
   | 'api_key_missing' // key required (all but ollama) but absent
   | 'custom_url_missing' // ollama/openai_compatible/custom require custom_url but it's absent/blank
+  | 'private_network_forbidden' // custom URL resolved to a blocked internal/private address
   | 'unsupported_media' // e.g. HEIC sent to a provider that rejects it
   | 'timeout'
   | 'upstream_error' // non-2xx, network failure, non-JSON body
@@ -667,13 +679,15 @@ async function readResponse(response: Response): Promise<HttpOutcome> {
 
 async function performFetch(
   built: BuiltRequest,
-  timeoutMs: number
+  timeoutMs: number,
+  networkPolicy?: AiNetworkPolicy
 ): Promise<HttpOutcome> {
   let response: Response | undefined;
+  const fetchImpl = networkPolicy ? createGuardedFetch(networkPolicy) : fetch;
 
   for (let attempt = 0; attempt <= MAX_FETCH_RETRIES; attempt++) {
     try {
-      response = await fetch(built.url, {
+      response = await fetchImpl(built.url, {
         method: 'POST',
         headers: built.headers,
         body: JSON.stringify(built.body),
@@ -683,6 +697,17 @@ async function performFetch(
       const name = (error as { name?: string } | null)?.name;
       if (name === 'TimeoutError' || name === 'AbortError') {
         return { error: timeoutError() };
+      }
+      const blockedError = getOutboundUrlBlockedError(error);
+      if (blockedError) {
+        return {
+          error: {
+            ok: false,
+            category: 'private_network_forbidden',
+            status: 403,
+            detail: blockedError.message,
+          },
+        };
       }
       return {
         error: {
@@ -714,14 +739,20 @@ async function performFetch(
 
 async function performOllama(
   built: BuiltRequest,
-  timeoutMs: number
+  timeoutMs: number,
+  networkPolicy?: AiNetworkPolicy
 ): Promise<HttpOutcome> {
   // The undici Agent carries the long header/body timeouts Ollama needs; it is
   // passed via the non-standard `dispatcher` fetch option (not in DOM types).
-  const agent = new Agent({
-    headersTimeout: timeoutMs,
-    bodyTimeout: timeoutMs,
-  });
+  const agent = networkPolicy
+    ? createGuardedDispatcher(networkPolicy, {
+        headersTimeout: timeoutMs,
+        bodyTimeout: timeoutMs,
+      })
+    : new Agent({
+        headersTimeout: timeoutMs,
+        bodyTimeout: timeoutMs,
+      });
   try {
     let response: Response;
     try {
@@ -729,6 +760,7 @@ async function performOllama(
         method: 'POST',
         headers: built.headers,
         body: JSON.stringify(built.body),
+        redirect: 'manual',
         // @ts-expect-error undici dispatcher option is not in fetch DOM types
         dispatcher: agent,
       });
@@ -736,6 +768,17 @@ async function performOllama(
       const name = (error as { name?: string } | null)?.name;
       if (name === 'HeadersTimeoutError' || name === 'BodyTimeoutError') {
         return { error: timeoutError() };
+      }
+      const blockedError = getOutboundUrlBlockedError(error);
+      if (blockedError) {
+        return {
+          error: {
+            ok: false,
+            category: 'private_network_forbidden',
+            status: 403,
+            detail: blockedError.message,
+          },
+        };
       }
       return {
         error: {
@@ -772,6 +815,9 @@ export async function dispatchAiRequest(
 ): Promise<DispatchResult> {
   const { provider, prompt, jsonSchema, schemaName, parseJson } = req;
   const serviceType = provider.service_type;
+  const networkPolicy = requiresUserSuppliedAiUrl(serviceType)
+    ? (req.networkPolicy ?? PUBLIC_ONLY_AI_NETWORK_POLICY)
+    : undefined;
 
   const family = providerFamily(serviceType);
   if (!family) {
@@ -796,6 +842,35 @@ export async function dispatchAiRequest(
       category: 'custom_url_missing',
       detail: `A custom URL is required for AI service type '${serviceType}'.`,
     };
+  }
+
+  if (networkPolicy && provider.custom_url) {
+    try {
+      assertOutboundUrlShapeAndLiteralAllowed(
+        provider.custom_url,
+        networkPolicy
+      );
+    } catch (error) {
+      const blockedError = getOutboundUrlBlockedError(error);
+      if (blockedError) {
+        return {
+          ok: false,
+          category: 'private_network_forbidden',
+          status: 403,
+          detail: blockedError.message,
+        };
+      }
+      if (error instanceof OutboundUrlShapeError) {
+        // A stored URL fetch could never use (malformed, wrong scheme, embedded
+        // credentials) is a provider-config failure, not a policy block.
+        return {
+          ok: false,
+          category: 'upstream_error',
+          detail: error.message,
+        };
+      }
+      throw error;
+    }
   }
 
   const images = (req.images ?? []).map((img) => ({
@@ -839,8 +914,8 @@ export async function dispatchAiRequest(
   const timeoutMs = resolveTimeout(req, family);
   const outcome =
     family === 'ollama'
-      ? await performOllama(built, timeoutMs)
-      : await performFetch(built, timeoutMs);
+      ? await performOllama(built, timeoutMs, networkPolicy)
+      : await performFetch(built, timeoutMs, networkPolicy);
 
   if ('error' in outcome) {
     return outcome.error;

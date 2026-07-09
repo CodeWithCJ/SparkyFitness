@@ -27,6 +27,10 @@ vi.mock('../models/globalSettingsRepository.js', () => ({
   },
 }));
 
+vi.mock('../utils/adminCheck.js', () => ({
+  resolveIsAdmin: vi.fn(async () => false),
+}));
+
 vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
@@ -75,7 +79,8 @@ describe('POST /chat/food-options', () => {
       'apple',
       'piece',
       'user-123',
-      'setting-1'
+      'setting-1',
+      false
     );
   });
 
@@ -84,6 +89,7 @@ describe('POST /chat/food-options', () => {
   it.each([
     ['no_ai_configured', 404],
     ['api_key_missing', 404],
+    ['private_network_forbidden', 403],
     ['upstream_error', 502],
     ['timeout', 504],
     ['parse_error', 422],

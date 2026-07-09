@@ -57,6 +57,7 @@ export const foodPhotoEstimateErrorCodeSchema = z.enum([
   "CONTENT_BLOCKED",
   "PARSE_ERROR",
   "UPSTREAM_ERROR",
+  "PRIVATE_NETWORK_FORBIDDEN",
   "TIMEOUT",
 ]);
 

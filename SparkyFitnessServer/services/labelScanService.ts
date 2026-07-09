@@ -5,6 +5,7 @@ import {
   type DispatchErrorCategory,
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
+import { deriveAiNetworkPolicy } from '../utils/outboundUrlPolicy.js';
 
 const LABEL_SCAN_PROMPT =
   'Extract the nutrition facts from this food label image. ' +
@@ -32,7 +33,8 @@ export type ExtractNutritionFromLabelResult =
 async function extractNutritionFromLabel(
   base64Image: string,
   mimeType: string,
-  userId: string
+  userId: string,
+  actorIsAdmin = false
 ): Promise<ExtractNutritionFromLabelResult> {
   const setting = await chatRepository.getActiveVisionAiServiceSetting(userId);
   if (!setting) {
@@ -67,6 +69,7 @@ async function extractNutritionFromLabel(
 
   const result = await dispatchAiRequest({
     provider,
+    networkPolicy: deriveAiNetworkPolicy(aiService, actorIsAdmin),
     prompt: LABEL_SCAN_PROMPT,
     images: [{ base64: base64Image, mimeType }],
     parseJson: true,
