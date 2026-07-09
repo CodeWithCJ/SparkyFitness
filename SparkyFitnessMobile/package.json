@@ -77,7 +77,7 @@
     "react-native-enriched-markdown": "0.6.0",
     "react-native-gesture-handler": "~2.31.2",
     "react-native-health-connect": "^3.5.3",
-    "react-native-keyboard-controller": "1.21.6",
+    "react-native-keyboard-controller": "1.21.14",
     "react-native-nitro-modules": "^0.35.5",
     "react-native-pager-view": "8.0.1",
     "react-native-reanimated": "~4.3.1",

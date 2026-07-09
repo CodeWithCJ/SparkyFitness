@@ -901,6 +901,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         }}
         keyboardShouldPersistTaps="handled"
         bottomOffset={80}
+        // Tapping a cell in another row remounts the focused TextInput
+        // (unmount-blur → keyboard hide → refocus). Without this, the hide leg
+        // scrolls back to a stale pre-keyboard position and the refocus then
+        // measures against it, landing the tapped input off-screen.
+        disableScrollOnKeyboardHide
       >
         {session.exercises.map((exercise) => {
           const isExpanded =

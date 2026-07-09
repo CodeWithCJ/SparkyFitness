@@ -282,6 +282,10 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
             contentContainerClassName="px-4"
             bottomOffset={80}
             keyboardShouldPersistTaps="handled"
+            // Set-row taps remount the focused input; stop the keyboard-hide
+            // restore scroll so the refocus lands on the tapped cell (see
+            // ActiveWorkoutScreen's scroll view).
+            disableScrollOnKeyboardHide
           >
               <Pressable onPress={() => { deactivateSet(); Keyboard.dismiss(); }}>
                 {/* Workout name */}

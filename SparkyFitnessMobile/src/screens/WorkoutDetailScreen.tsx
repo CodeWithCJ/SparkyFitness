@@ -571,6 +571,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         bottomOffset={20}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
+        // Set-row taps remount the focused input; stop the keyboard-hide
+        // restore scroll so the refocus lands on the tapped cell (see
+        // ActiveWorkoutScreen's scroll view).
+        disableScrollOnKeyboardHide
       >
         {/* Title area */}
         <View className="mb-4">
