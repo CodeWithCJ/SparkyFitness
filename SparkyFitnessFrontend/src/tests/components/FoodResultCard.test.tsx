@@ -19,7 +19,29 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (_key: string, fallback: string) => fallback,
+    t: (key: string, fallbackOrOptions?: string | Record<string, unknown>) => {
+      const translations: Record<string, string> = {
+        'foodResultCard.aiEstimate': 'تقدير آلي بثقة {{confidence}}',
+        'foodUnitSelector.confidence.high': 'عالية',
+        'enhancedFoodSearch.private': 'خاص',
+        'enhancedFoodSearch.public': 'عام',
+        'enhancedFoodSearch.family': 'العائلة',
+        'mealManagement.perServing': 'لكل {{servingSize}} {{servingUnit}}',
+        'units.cup': 'كوب',
+      };
+      const fallback =
+        typeof fallbackOrOptions === 'string'
+          ? fallbackOrOptions
+          : typeof fallbackOrOptions?.defaultValue === 'string'
+            ? fallbackOrOptions.defaultValue
+            : key;
+      const options =
+        typeof fallbackOrOptions === 'object' ? fallbackOrOptions : {};
+      return (translations[key] ?? fallback).replace(
+        /{{(\w+)}}/g,
+        (_, token: string) => String(options[token] ?? '')
+      );
+    },
   }),
 }));
 
@@ -60,7 +82,8 @@ describe('FoodResultCard', () => {
       />
     );
 
-    expect(screen.getByText(/AI Good estimate/i)).toBeInTheDocument();
+    expect(screen.getByText('تقدير آلي بثقة عالية')).toBeInTheDocument();
+    expect(screen.getByText('لكل 1 كوب')).toBeInTheDocument();
   });
 
   it('does not render the AI badge for manual default variants', () => {
@@ -84,7 +107,7 @@ describe('FoodResultCard', () => {
       />
     );
 
-    expect(screen.queryByText(/AI /i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/تقدير آلي/)).not.toBeInTheDocument();
   });
 
   it('renders Private badge for meals owned by active user', () => {
@@ -101,7 +124,7 @@ describe('FoodResultCard', () => {
         onCardClick={jest.fn()}
       />
     );
-    expect(screen.getByText(/Private/i)).toBeInTheDocument();
+    expect(screen.getByText('خاص')).toBeInTheDocument();
   });
 
   it('renders Public badge for meals marked is_public', () => {
@@ -118,7 +141,7 @@ describe('FoodResultCard', () => {
         onCardClick={jest.fn()}
       />
     );
-    expect(screen.getByText(/Public/i)).toBeInTheDocument();
+    expect(screen.getByText('عام')).toBeInTheDocument();
   });
 
   it('renders Family badge for meals owned by other user', () => {
@@ -135,6 +158,6 @@ describe('FoodResultCard', () => {
         onCardClick={jest.fn()}
       />
     );
-    expect(screen.getByText(/Family/i)).toBeInTheDocument();
+    expect(screen.getByText('العائلة')).toBeInTheDocument();
   });
 });

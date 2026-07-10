@@ -978,7 +978,8 @@
     "foodReadyForMeal": "{{foodName}} is ready to add to your meal.",
     "editedFoodFailed": "Could not process the edited food.",
     "detailedNutritionFailed": "Could not retrieve detailed nutrition for this item.",
-    "partialNutritionFallback": "Could not retrieve complete nutrition. Using the available data."
+    "partialNutritionFallback": "Could not retrieve complete nutrition. Using the available data.",
+    "verified": "Verified"
   },
   "sync": {
     "syncAll": "Sync all active providers",
@@ -1736,7 +1737,20 @@
     "cup": "cup",
     "tablespoon": "tbsp",
     "teaspoon": "tsp",
-    "piece": "piece"
+    "piece": "piece",
+    "slice": "slice",
+    "portion": "portion",
+    "can": "can",
+    "bottle": "bottle",
+    "packet": "packet",
+    "bag": "bag",
+    "bowl": "bowl",
+    "plate": "plate",
+    "handful": "handful",
+    "scoop": "scoop",
+    "bar": "bar",
+    "stick": "stick",
+    "whole": "whole"
   },
   "unitInput": {
     "valueInUnit": "{{label}}: {{unit}}"
@@ -2504,6 +2518,53 @@
     "lowConfidenceWarning": "This is a rough estimate. Verify it when accuracy matters.",
     "useEstimate": "Use estimate",
     "editEstimate": "Edit manually"
+  },
+  "foodResultCard": {
+    "openItem": "Open {{itemName}}",
+    "aiEstimate": "AI estimate ({{confidence}} confidence)",
+    "traceAllergen": "Trace: {{allergen}}"
+  },
+  "foodVariant": {
+    "servingSize": "Serving size",
+    "unitType": "Unit type",
+    "customUnits": "Custom units",
+    "unitGroups": {
+      "weight": "Weight",
+      "volume": "Volume",
+      "quantity": "Quantity"
+    },
+    "defaultUnit": "Default",
+    "autoScale": "Auto-scale",
+    "addEquivalentUnit": "Add equivalent unit",
+    "duplicateUnit": "Duplicate unit",
+    "removeUnit": "Remove unit",
+    "equivalentSize": "Equivalent size",
+    "removeEquivalent": "Remove equivalent",
+    "nutritionPer": "Nutrition per {{size}} {{unit}}",
+    "aiEstimateAria": "AI estimate ({{confidence}} confidence)",
+    "aiEstimate": "{{confidence}} estimate",
+    "allergensLabel": "Allergens",
+    "toggleAllergen": "Toggle {{allergen}}",
+    "removeAllergen": "Remove {{allergen}}",
+    "customAllergenPlaceholder": "Add another allergen…",
+    "addAllergen": "Add",
+    "allergens": {
+      "gluten": "Gluten",
+      "wheat": "Wheat",
+      "milk": "Milk",
+      "eggs": "Eggs",
+      "peanuts": "Peanuts",
+      "treeNuts": "Tree nuts",
+      "soy": "Soy",
+      "fish": "Fish",
+      "shellfish": "Shellfish",
+      "crustaceans": "Crustaceans",
+      "sesame": "Sesame",
+      "celery": "Celery",
+      "mustard": "Mustard",
+      "lupin": "Lupin",
+      "sulphites": "Sulphites"
+    }
   },
   "mealPlanCalendar": {
     "title": "Meal Plan",

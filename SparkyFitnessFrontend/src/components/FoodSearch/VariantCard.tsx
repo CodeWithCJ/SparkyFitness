@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,9 @@ import { NutrientGrid } from './NutrientFormGrid';
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
 import { NumericInput } from '../NumericInput';
+import { useTranslation } from 'react-i18next';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
+import { getLocalizedAllergenLabel } from '@/utils/allergenLocalization';
 
 // Tone classes for the AI provenance badge ("Good/Fair/Rough estimate").
 // `green` (true grass-green, hue ~142°) replaces `emerald` (~160°,
@@ -146,6 +149,7 @@ export function VariantCard({
   onDuplicate,
   onRemove,
 }: VariantCardProps) {
+  const { t } = useTranslation();
   const equivalents = useMemo(
     () => variant.equivalents ?? [],
     [variant.equivalents]
@@ -191,6 +195,25 @@ export function VariantCard({
       currentAllergens.filter((a) => a !== name)
     );
   };
+
+  const handleAllergenKeyDown = (
+    event: KeyboardEvent<HTMLElement>,
+    name: string
+  ) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (currentAllergens.includes(name)) {
+        removeAllergen(name);
+      } else {
+        addAllergen(name);
+      }
+    }
+  };
+
+  const getConfidenceLabel = (confidence: AiConfidence) =>
+    t(`foodUnitSelector.confidence.${confidence}`, {
+      defaultValue: OVERALL_CONFIDENCE_LABELS[confidence],
+    });
 
   // Per-row AI gate. The anchor is supplied by the parent (defaults to the
   // food's default variant, or the row's previous state when the user just
@@ -250,7 +273,9 @@ export function VariantCard({
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-wrap">
           <div className="flex items-end gap-2">
             <div className="flex flex-col">
-              <Label htmlFor={`serving-size-${index}`}>Serving Size</Label>
+              <Label htmlFor={`serving-size-${index}`}>
+                {t('foodVariant.servingSize', 'Serving size')}
+              </Label>
               <NumericInput
                 id={`serving-size-${index}`}
                 step="any"
@@ -268,7 +293,9 @@ export function VariantCard({
             </div>
 
             <div className="flex flex-col">
-              <Label htmlFor={`serving-unit-${index}`}>Unit Type</Label>
+              <Label htmlFor={`serving-unit-${index}`}>
+                {t('foodVariant.unitType', 'Unit type')}
+              </Label>
               <Select
                 value={variant.serving_unit}
                 onValueChange={(value) =>
@@ -279,12 +306,19 @@ export function VariantCard({
                   {/* Render only the unit text in the trigger — never the
                       AI indicator. AI provenance lives in the dropdown items
                       and the "Nutrition per X Y" header badge. */}
-                  <SelectValue>{variant.serving_unit}</SelectValue>
+                  <SelectValue>
+                    {getLocalizedUnitLabel(variant.serving_unit, t)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {UNIT_GROUPS.map((group) => (
                     <SelectGroup key={group.label}>
-                      <SelectLabel>{group.label}</SelectLabel>
+                      <SelectLabel>
+                        {t(
+                          `foodVariant.unitGroups.${group.label.toLowerCase()}`,
+                          group.label
+                        )}
+                      </SelectLabel>
                       {group.units.map((unit) => {
                         const compatible =
                           showCompatibleUnitIndicators &&
@@ -296,7 +330,7 @@ export function VariantCard({
                         return (
                           <SelectItem key={unit} value={unit}>
                             <span className="flex items-center gap-1.5">
-                              {unit}
+                              {getLocalizedUnitLabel(unit, t)}
                               {showCompatibilityCheck && (
                                 <Check
                                   data-testid={`compatible-unit-option-${index}-${unit}`}
@@ -307,7 +341,13 @@ export function VariantCard({
                                 <Sparkles
                                   data-testid={`ai-unit-option-indicator-${index}-${unit}`}
                                   className={`h-3 w-3 ${AI_SPARKLE_TONE_CLASSES[CONFIDENCE_TONES[matchedAi.confidence]]}`}
-                                  aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[matchedAi.confidence]} confidence)`}
+                                  aria-label={t('foodVariant.aiEstimateAria', {
+                                    confidence: getConfidenceLabel(
+                                      matchedAi.confidence
+                                    ),
+                                    defaultValue:
+                                      'AI estimate ({{confidence}} confidence)',
+                                  })}
                                   fill="currentColor"
                                   strokeWidth={0.75}
                                 />
@@ -320,7 +360,9 @@ export function VariantCard({
                   ))}
                   {customUnitsForDropdown.length > 0 && (
                     <SelectGroup key="custom-units">
-                      <SelectLabel>Custom</SelectLabel>
+                      <SelectLabel>
+                        {t('foodVariant.customUnits', 'Custom units')}
+                      </SelectLabel>
                       {customUnitsForDropdown.map((unit) => {
                         const compatible =
                           showCompatibleUnitIndicators &&
@@ -332,7 +374,7 @@ export function VariantCard({
                         return (
                           <SelectItem key={unit} value={unit}>
                             <span className="flex items-center gap-1.5">
-                              {unit}
+                              {getLocalizedUnitLabel(unit, t)}
                               {showCompatibilityCheck && (
                                 <Check
                                   data-testid={`compatible-unit-option-${index}-${unit}`}
@@ -343,7 +385,13 @@ export function VariantCard({
                                 <Sparkles
                                   data-testid={`ai-unit-option-indicator-${index}-${unit}`}
                                   className={`h-3 w-3 ${AI_SPARKLE_TONE_CLASSES[CONFIDENCE_TONES[matchedAi.confidence]]}`}
-                                  aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[matchedAi.confidence]} confidence)`}
+                                  aria-label={t('foodVariant.aiEstimateAria', {
+                                    confidence: getConfidenceLabel(
+                                      matchedAi.confidence
+                                    ),
+                                    defaultValue:
+                                      'AI estimate ({{confidence}} confidence)',
+                                  })}
                                   fill="currentColor"
                                   strokeWidth={0.75}
                                 />
@@ -364,7 +412,7 @@ export function VariantCard({
           )}
 
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <Input
                 type="checkbox"
                 id={`is-default-${index}`}
@@ -375,11 +423,11 @@ export function VariantCard({
                 className="form-checkbox h-4 w-4 text-blue-600"
               />
               <Label htmlFor={`is-default-${index}`} className="text-sm">
-                Default
+                {t('foodVariant.defaultUnit', 'Default')}
               </Label>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <Input
                 type="checkbox"
                 id={`is-locked-${index}`}
@@ -388,18 +436,22 @@ export function VariantCard({
                 className="form-checkbox h-4 w-4 text-blue-600"
               />
               <Label htmlFor={`is-locked-${index}`} className="text-sm">
-                Auto-Scale
+                {t('foodVariant.autoScale', 'Auto-scale')}
               </Label>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto m:ml-0">
+          <div className="flex items-center gap-2 sm:ms-auto">
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={addEquivalent}
-              title="Add Equivalent Unit"
+              title={t('foodVariant.addEquivalentUnit', 'Add equivalent unit')}
+              aria-label={t(
+                'foodVariant.addEquivalentUnit',
+                'Add equivalent unit'
+              )}
             >
               <Plus className="w-4 h-4" />
             </Button>
@@ -408,7 +460,8 @@ export function VariantCard({
               variant="ghost"
               size="sm"
               onClick={() => onDuplicate(index)}
-              title="Duplicate Unit"
+              title={t('foodVariant.duplicateUnit', 'Duplicate unit')}
+              aria-label={t('foodVariant.duplicateUnit', 'Duplicate unit')}
             >
               <Copy className="w-4 h-4" />
             </Button>
@@ -418,7 +471,8 @@ export function VariantCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => onRemove(index)}
-                title="Remove Unit"
+                title={t('foodVariant.removeUnit', 'Remove unit')}
+                aria-label={t('foodVariant.removeUnit', 'Remove unit')}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -430,7 +484,7 @@ export function VariantCard({
           <div key={eqIndex} className="flex items-end gap-2 ">
             <div className="flex flex-col">
               <Label htmlFor={`eq-size-${index}-${eqIndex}`}>
-                Equivalent Size
+                {t('foodVariant.equivalentSize', 'Equivalent size')}
               </Label>
               <Input
                 id={`eq-size-${index}-${eqIndex}`}
@@ -448,7 +502,9 @@ export function VariantCard({
               />
             </div>
             <div className="flex flex-col">
-              <Label htmlFor={`eq-unit-${index}-${eqIndex}`}>Unit Type</Label>
+              <Label htmlFor={`eq-unit-${index}-${eqIndex}`}>
+                {t('foodVariant.unitType', 'Unit type')}
+              </Label>
               <Select
                 value={eq.serving_unit}
                 onValueChange={(value) =>
@@ -464,20 +520,27 @@ export function VariantCard({
                 <SelectContent>
                   {UNIT_GROUPS.map((group) => (
                     <SelectGroup key={group.label}>
-                      <SelectLabel>{group.label}</SelectLabel>
+                      <SelectLabel>
+                        {t(
+                          `foodVariant.unitGroups.${group.label.toLowerCase()}`,
+                          group.label
+                        )}
+                      </SelectLabel>
                       {group.units.map((unit) => (
                         <SelectItem key={unit} value={unit}>
-                          {unit}
+                          {getLocalizedUnitLabel(unit, t)}
                         </SelectItem>
                       ))}
                     </SelectGroup>
                   ))}
                   {customUnitsForDropdown.length > 0 && (
                     <SelectGroup key="custom-units">
-                      <SelectLabel>Custom</SelectLabel>
+                      <SelectLabel>
+                        {t('foodVariant.customUnits', 'Custom units')}
+                      </SelectLabel>
                       {customUnitsForDropdown.map((unit) => (
                         <SelectItem key={unit} value={unit}>
-                          {unit}
+                          {getLocalizedUnitLabel(unit, t)}
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -490,7 +553,11 @@ export function VariantCard({
               variant="ghost"
               size="sm"
               onClick={() => removeEquivalent(eqIndex)}
-              title="Remove Equivalent"
+              title={t('foodVariant.removeEquivalent', 'Remove equivalent')}
+              aria-label={t(
+                'foodVariant.removeEquivalent',
+                'Remove equivalent'
+              )}
             >
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -514,15 +581,28 @@ export function VariantCard({
 
       <h4 className="text-md font-medium mb-2 flex items-center gap-2">
         <span>
-          Nutrition per {variant.serving_size} {variant.serving_unit}
+          {t('foodVariant.nutritionPer', {
+            size: variant.serving_size,
+            unit: getLocalizedUnitLabel(variant.serving_unit, t),
+            defaultValue: 'Nutrition per {{size}} {{unit}}',
+          })}
         </span>
         {showAiEstimateBadge && (
           <span
             className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${AI_BADGE_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}
-            aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[variant.ai_confidence as AiConfidence]} confidence)`}
+            aria-label={t('foodVariant.aiEstimateAria', {
+              confidence: getConfidenceLabel(
+                variant.ai_confidence as AiConfidence
+              ),
+              defaultValue: 'AI estimate ({{confidence}} confidence)',
+            })}
           >
-            {OVERALL_CONFIDENCE_LABELS[variant.ai_confidence as AiConfidence]}{' '}
-            estimate
+            {t('foodVariant.aiEstimate', {
+              confidence: getConfidenceLabel(
+                variant.ai_confidence as AiConfidence
+              ),
+              defaultValue: '{{confidence}} estimate',
+            })}
           </span>
         )}
       </h4>
@@ -539,21 +619,29 @@ export function VariantCard({
       />
 
       <div className="mt-4 space-y-2">
-        <Label>Allergens</Label>
+        <Label>{t('foodVariant.allergensLabel', 'Allergens')}</Label>
         <div className="flex flex-wrap gap-1 mb-2">
           {COMMON_ALLERGENS.map((a) => (
             <Badge
               key={a}
               variant={currentAllergens.includes(a) ? 'default' : 'outline'}
-              className={`cursor-pointer capitalize select-none text-xs ${currentAllergens.includes(a) ? 'opacity-60' : 'hover:bg-accent'}`}
+              className={`cursor-pointer select-none text-xs ${currentAllergens.includes(a) ? 'opacity-60' : 'hover:bg-accent'}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={currentAllergens.includes(a)}
+              aria-label={t('foodVariant.toggleAllergen', {
+                allergen: getLocalizedAllergenLabel(a, t),
+                defaultValue: 'Toggle {{allergen}}',
+              })}
+              onKeyDown={(event) => handleAllergenKeyDown(event, a)}
               onClick={() =>
                 currentAllergens.includes(a)
                   ? removeAllergen(a)
                   : addAllergen(a)
               }
             >
-              {currentAllergens.includes(a) && <X className="h-3 w-3 mr-1" />}
-              {a}
+              {currentAllergens.includes(a) && <X className="h-3 w-3" />}
+              {getLocalizedAllergenLabel(a, t)}
             </Badge>
           ))}
         </div>
@@ -566,10 +654,17 @@ export function VariantCard({
                 <Badge
                   key={a}
                   variant="secondary"
-                  className="capitalize text-xs cursor-pointer"
+                  className="cursor-pointer text-xs"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t('foodVariant.removeAllergen', {
+                    allergen: a,
+                    defaultValue: 'Remove {{allergen}}',
+                  })}
+                  onKeyDown={(event) => handleAllergenKeyDown(event, a)}
                   onClick={() => removeAllergen(a)}
                 >
-                  <X className="h-3 w-3 mr-1" />
+                  <X className="h-3 w-3" />
                   {a}
                 </Badge>
               ))}
@@ -585,7 +680,10 @@ export function VariantCard({
                 addAllergen(allergenInput);
               }
             }}
-            placeholder="Custom allergen…"
+            placeholder={t(
+              'foodVariant.customAllergenPlaceholder',
+              'Add another allergen…'
+            )}
             className="max-w-xs h-8 text-sm"
           />
           <Button
@@ -595,7 +693,7 @@ export function VariantCard({
             onClick={() => addAllergen(allergenInput)}
             disabled={!allergenInput.trim()}
           >
-            Add
+            {t('foodVariant.addAllergen', 'Add')}
           </Button>
         </div>
       </div>

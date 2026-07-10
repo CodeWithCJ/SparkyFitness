@@ -14,6 +14,8 @@ describe('getLocalizedUnitLabel', () => {
     ['serving', '[units.serving]'],
     ['tbsp', '[units.tablespoon]'],
     ['piece', '[units.piece]'],
+    ['slice', '[units.slice]'],
+    ['scoop', '[units.scoop]'],
   ])('localizes the standard unit %s', (unit, expected) => {
     expect(getLocalizedUnitLabel(unit, t)).toBe(expected);
   });

@@ -212,7 +212,20 @@
     "cup": "كوب",
     "tablespoon": "ملعقة كبيرة",
     "teaspoon": "ملعقة صغيرة",
-    "piece": "حبة"
+    "piece": "حبة",
+    "slice": "شريحة",
+    "portion": "حصة",
+    "can": "علبة",
+    "bottle": "قارورة",
+    "packet": "ظرف",
+    "bag": "كيس",
+    "bowl": "وعاء",
+    "plate": "طبق",
+    "handful": "حفنة",
+    "scoop": "مكيال",
+    "bar": "لوح",
+    "stick": "عود",
+    "whole": "حبة كاملة"
   },
   "unitInput": {
     "valueInUnit": "{{label}}: {{unit}}"
@@ -1260,7 +1273,8 @@
     "foodReadyForMeal": "صار {{foodName}} جاهزًا للإضافة لوجبتك.",
     "editedFoodFailed": "تعذرت معالجة بيانات الصنف بعد التعديل.",
     "detailedNutritionFailed": "تعذر جلب القيم الغذائية التفصيلية لهالصنف.",
-    "partialNutritionFallback": "تعذر جلب كل القيم الغذائية؛ بنعرض البيانات المتوفرة."
+    "partialNutritionFallback": "تعذر جلب كل القيم الغذائية؛ بنعرض البيانات المتوفرة.",
+    "verified": "موثّق"
   },
   "workoutPresetForm": {
     "createTitle": "قالب تمرين جديد",
@@ -2019,6 +2033,53 @@
     "lowConfidenceWarning": "هالتقدير تقريبي؛ تأكد منه إذا كانت الدقة مهمة.",
     "useEstimate": "استخدام التقدير",
     "editEstimate": "تعديل يدوي"
+  },
+  "foodResultCard": {
+    "openItem": "فتح {{itemName}}",
+    "aiEstimate": "تقدير آلي بثقة {{confidence}}",
+    "traceAllergen": "آثار {{allergen}}"
+  },
+  "foodVariant": {
+    "servingSize": "حجم الحصة",
+    "unitType": "نوع الوحدة",
+    "customUnits": "وحدات مخصصة",
+    "unitGroups": {
+      "weight": "الوزن",
+      "volume": "الحجم",
+      "quantity": "العدد"
+    },
+    "defaultUnit": "الوحدة الافتراضية",
+    "autoScale": "تحجيم تلقائي",
+    "addEquivalentUnit": "إضافة وحدة مكافئة",
+    "duplicateUnit": "نسخ الوحدة",
+    "removeUnit": "إزالة الوحدة",
+    "equivalentSize": "الكمية المكافئة",
+    "removeEquivalent": "إزالة الوحدة المكافئة",
+    "nutritionPer": "القيم الغذائية لكل {{size}} {{unit}}",
+    "aiEstimateAria": "تقدير بالذكاء الاصطناعي، مستوى الثقة {{confidence}}",
+    "aiEstimate": "تقدير بثقة {{confidence}}",
+    "allergensLabel": "مسببات الحساسية",
+    "toggleAllergen": "تحديد {{allergen}}",
+    "removeAllergen": "إزالة {{allergen}}",
+    "customAllergenPlaceholder": "أضف مسبب حساسية آخر…",
+    "addAllergen": "إضافة",
+    "allergens": {
+      "gluten": "الغلوتين",
+      "wheat": "القمح",
+      "milk": "الحليب",
+      "eggs": "البيض",
+      "peanuts": "الفول السوداني",
+      "treeNuts": "المكسرات الشجرية",
+      "soy": "الصويا",
+      "fish": "الأسماك",
+      "shellfish": "المحاريات",
+      "crustaceans": "القشريات",
+      "sesame": "السمسم",
+      "celery": "الكرفس",
+      "mustard": "الخردل",
+      "lupin": "الترمس",
+      "sulphites": "الكبريتيت"
+    }
   },
   "nutrition": {
     "calories": "السعرات",
