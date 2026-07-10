@@ -7,16 +7,16 @@ import {
 
 describe('foodPhotoEstimate', () => {
   describe('confidence mapping', () => {
-    test('overall labels: Good / Fair / Rough', () => {
-      expect(overallConfidenceLabels.high).toBe('Good');
-      expect(overallConfidenceLabels.medium).toBe('Fair');
-      expect(overallConfidenceLabels.low).toBe('Rough');
+    test('overall labels are Arabic', () => {
+      expect(overallConfidenceLabels.high).toBe('جيد');
+      expect(overallConfidenceLabels.medium).toBe('متوسط');
+      expect(overallConfidenceLabels.low).toBe('تقريبي');
     });
 
-    test('item labels: Likely / Possible / Uncertain', () => {
-      expect(itemConfidenceLabels.high).toBe('Likely');
-      expect(itemConfidenceLabels.medium).toBe('Possible');
-      expect(itemConfidenceLabels.low).toBe('Uncertain');
+    test('item labels are Arabic', () => {
+      expect(itemConfidenceLabels.high).toBe('مرجّح');
+      expect(itemConfidenceLabels.medium).toBe('محتمل');
+      expect(itemConfidenceLabels.low).toBe('غير مؤكّد');
     });
 
     test('tone maps to success / warning / error', () => {

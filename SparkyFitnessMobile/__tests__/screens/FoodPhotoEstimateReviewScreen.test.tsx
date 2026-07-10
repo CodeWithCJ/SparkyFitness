@@ -137,7 +137,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
   it('navigates to LogEntry with a saveFoodPayload reflecting the prefilled totals', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Next'));
+    fireEvent.press(screen.getByText('التالي'));
 
     expect(navigation.navigate).toHaveBeenCalledTimes(1);
     const [routeName, params] = navigation.navigate.mock.calls[0];
@@ -168,7 +168,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     estimate.totals.sugar_g = 0;
     const screen = renderScreen(estimate);
 
-    fireEvent.press(screen.getByText('Next'));
+    fireEvent.press(screen.getByText('التالي'));
 
     const [, params] = navigation.navigate.mock.calls[0];
     expect(params.saveFoodPayload.dietary_fiber).toBeUndefined();
@@ -179,8 +179,8 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     const screen = renderScreen();
 
     // Default: 250 g — switch to oz.
-    fireEvent.press(screen.getByText('oz'));
-    fireEvent.press(screen.getByText('Next'));
+    fireEvent.press(screen.getByText('أونصة'));
+    fireEvent.press(screen.getByText('التالي'));
 
     const firstCall = navigation.navigate.mock.calls[0][1];
     expect(firstCall.saveFoodPayload.serving_unit).toBe('oz');
@@ -188,8 +188,8 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     expect(firstCall.saveFoodPayload.serving_size).toBeCloseTo(8.8, 1);
 
     // Toggle back to grams — should convert back.
-    fireEvent.press(screen.getByText('g'));
-    fireEvent.press(screen.getByText('Next'));
+    fireEvent.press(screen.getByText('غ'));
+    fireEvent.press(screen.getByText('التالي'));
 
     const secondCall = navigation.navigate.mock.calls[1][1];
     expect(secondCall.saveFoodPayload.serving_unit).toBe('g');
@@ -201,7 +201,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
   it('cancels back to the root via getParent().popToTop()', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByLabelText('Cancel'));
+    fireEvent.press(screen.getByLabelText('إلغاء'));
 
     expect(parentNavigation.popToTop).toHaveBeenCalledTimes(1);
   });

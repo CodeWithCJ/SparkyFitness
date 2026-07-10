@@ -1,7 +1,5 @@
 import {
   CONFIDENCE_TONES,
-  ITEM_CONFIDENCE_LABELS,
-  OVERALL_CONFIDENCE_LABELS,
   type ConfidenceTone,
   type FoodPhotoEstimateErrorCode,
 } from '@workspace/shared';
@@ -9,12 +7,18 @@ import { mobileT } from '../localization';
 
 export type { ConfidenceTone };
 
-// Re-exports of the shared confidence-tier labels and tones. The mobile
-// food-photo flow was the original home of these constants; they now live in
-// @workspace/shared so the unit-conversion AI flow can reuse the same wording
-// and color scheme. Keep the lowercase aliases for callers in this app.
-export const overallConfidenceLabels = OVERALL_CONFIDENCE_LABELS;
-export const itemConfidenceLabels = ITEM_CONFIDENCE_LABELS;
+// Confidence tones stay shared across clients; labels are localized here for
+// the Saudi Arabic mobile experience.
+export const overallConfidenceLabels = {
+  high: mobileT('foodPhoto.overallConfidence.high'),
+  medium: mobileT('foodPhoto.overallConfidence.medium'),
+  low: mobileT('foodPhoto.overallConfidence.low'),
+} as const;
+export const itemConfidenceLabels = {
+  high: mobileT('foodPhoto.itemConfidence.high'),
+  medium: mobileT('foodPhoto.itemConfidence.medium'),
+  low: mobileT('foodPhoto.itemConfidence.low'),
+} as const;
 export const confidenceTones = CONFIDENCE_TONES;
 
 export interface EstimateErrorCopy {

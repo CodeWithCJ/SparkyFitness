@@ -9,6 +9,7 @@ export const ar = {
   'common.error': 'صار خطأ',
   'common.goToSettings': 'الذهاب للإعدادات',
   'common.loading': 'جاري التحميل…',
+  'common.next': 'التالي',
   'common.notAvailable': 'غير متاح',
   'common.retry': 'حاول مرة ثانية',
   'common.save': 'حفظ',
@@ -463,6 +464,27 @@ export const ar = {
     'ما قدرنا نوصل لمزود الذكاء الاصطناعي',
   'foodPhoto.errorProviderUnavailableDescription':
     'حاول مرة ثانية، أو سجّل الصنف يدويًا.',
+  'foodPhoto.photoEstimateFallback': 'تقدير من صورة',
+  'foodPhoto.nameRequired': 'اسم الصنف مطلوب',
+  'foodPhoto.giveFoodName': 'اكتب اسمًا للصنف الغذائي.',
+  'foodPhoto.invalidNutrition': 'القيم الغذائية غير صحيحة',
+  'foodPhoto.requiredNutritionNonNegative':
+    'لازم تكون السعرات والبروتين والكربوهيدرات والدهون أرقامًا موجبة أو صفرًا.',
+  'foodPhoto.allNutritionNonNegative':
+    'لازم تكون كل القيم الغذائية أرقامًا موجبة أو صفرًا.',
+  'foodPhoto.invalidServingSize': 'حجم الحصة غير صحيح',
+  'foodPhoto.servingSizePositive': 'لازم يكون حجم الحصة رقمًا أكبر من صفر.',
+  'foodPhoto.reviewEstimate': 'مراجعة التقدير',
+  'foodPhoto.estimateConfidence': 'تقدير {{confidence}}',
+  'foodPhoto.totalEstimatedWeight': 'الوزن الإجمالي التقديري: {{weight}}',
+  'foodPhoto.showDetectedIngredients': 'عرض المكوّنات المكتشفة',
+  'foodPhoto.hideDetectedIngredients': 'إخفاء المكوّنات المكتشفة',
+  'foodPhoto.overallConfidence.high': 'جيد',
+  'foodPhoto.overallConfidence.medium': 'متوسط',
+  'foodPhoto.overallConfidence.low': 'تقريبي',
+  'foodPhoto.itemConfidence.high': 'مرجّح',
+  'foodPhoto.itemConfidence.medium': 'محتمل',
+  'foodPhoto.itemConfidence.low': 'غير مؤكّد',
 
   'mealTypeDetail.noServerTitle': 'ما فيه خادم مربوط',
   'mealTypeDetail.noServerDescription':
