@@ -12,6 +12,7 @@ export const ar = {
   'common.notAvailable': 'غير متاح',
   'common.retry': 'حاول مرة ثانية',
   'common.save': 'حفظ',
+  'common.saving': 'جاري الحفظ…',
 
   'fasting.title': 'الصيام',
   'fasting.badge': 'صيام',
@@ -310,8 +311,7 @@ export const ar = {
   'foodDetail.serving': 'الحصة',
   'foodDetail.servingOptions': 'خيارات الحصة',
   'foodDetail.loadingServingOptions': 'جاري تحميل خيارات الحصة…',
-  'foodDetail.servingOptionsPartial':
-    'ما قدرنا نحمّل بعض خيارات الحصة الحين.',
+  'foodDetail.servingOptionsPartial': 'ما قدرنا نحمّل بعض خيارات الحصة الحين.',
   'foodDetail.barcode': 'الباركود',
   'foodDetail.notSet': 'غير مضاف',
   'foodDetail.logFood': 'تسجيل الصنف',
@@ -326,8 +326,7 @@ export const ar = {
     'اربط خادمك من الإعدادات عشان تشوف تفاصيل الوجبة.',
   'mealDetail.loading': 'جاري تحميل الوجبة…',
   'mealDetail.loadFailed': 'ما قدرنا نحمّل الوجبة',
-  'mealDetail.loadFailedDescription':
-    'تأكد من اتصالك وحاول مرة ثانية.',
+  'mealDetail.loadFailedDescription': 'تأكد من اتصالك وحاول مرة ثانية.',
   'mealDetail.yieldSummary': 'تكفي {{servings}} · {{ingredients}}',
   'mealDetail.foods': 'مكوّنات الوجبة',
   'mealDetail.linkedMeal': 'وجبة مرتبطة',
@@ -347,11 +346,9 @@ export const ar = {
     'اربط خادمك من الإعدادات عشان تشوف تغذية وجبتك.',
   'mealTypeDetail.loading': 'جاري تحميل الوجبة…',
   'mealTypeDetail.loadFailed': 'ما قدرنا نحمّل الوجبة',
-  'mealTypeDetail.loadFailedDescription':
-    'تأكد من اتصالك وحاول مرة ثانية.',
+  'mealTypeDetail.loadFailedDescription': 'تأكد من اتصالك وحاول مرة ثانية.',
   'mealTypeDetail.emptyTitle': 'ما فيه أصناف في {{meal}}',
-  'mealTypeDetail.emptyDescription':
-    'ما سجلت أصناف في هالوجبة يوم {{date}}.',
+  'mealTypeDetail.emptyDescription': 'ما سجلت أصناف في هالوجبة يوم {{date}}.',
   'mealTypeDetail.foods': 'الأصناف',
   'mealTypeDetail.copyMeal': 'نسخ الوجبة ليوم ثاني',
   'mealTypeDetail.food.one': 'صنف واحد',
@@ -400,8 +397,7 @@ export const ar = {
     'ما نقدر نحوّل بين هالوحدات. حدّث القيم الغذائية يدويًا.',
   'foodForm.saveAnyway': 'حفظ على أي حال',
   'foodForm.couldNotEstimate': 'ما قدرنا نقدّر التحويل',
-  'foodForm.noTrustedDefault':
-    'ما فيه حصة أساسية موثوقة نقدر نبني عليها.',
+  'foodForm.noTrustedDefault': 'ما فيه حصة أساسية موثوقة نقدر نبني عليها.',
   'foodForm.setServingFirst': 'حدد حجم الحصة أول',
   'foodForm.untitledFood': 'صنف بدون اسم',
   'foodForm.estimateFailed': 'تعذر تقدير التحويل. حاول مرة ثانية.',
@@ -412,6 +408,45 @@ export const ar = {
   'foodForm.confidence.medium': 'متوسط الثقة',
   'foodForm.confidence.low': 'تقريبي',
   'foodForm.caloriesKcal': 'السعرات (كيلوسعرة)',
+
+  'foodFormScreen.discardEquivalentsTitle': 'تبي تتجاهل الأحجام غير المحفوظة؟',
+  'foodFormScreen.discardEquivalentsDescription':
+    'عندك أحجام مكافئة ما حفظتها. تجاهلها عشان تكمل؟',
+  'foodFormScreen.discard': 'تجاهل',
+  'foodFormScreen.saveNutrition': 'حفظ القيم الغذائية',
+  'foodFormScreen.variantExists':
+    'الحصة «{{unit}}» محفوظة من قبل. تبي تحدّثها بهالقيم، أو تحفظها كحصة جديدة؟',
+  'foodFormScreen.saveAsNew': 'حفظ كحصة جديدة',
+  'foodFormScreen.updateExisting': 'تحديث الحالية',
+  'foodFormScreen.missingName': 'اسم الصنف ناقص',
+  'foodFormScreen.enterFoodName': 'اكتب اسم الصنف الغذائي.',
+  'foodFormScreen.invalidServingSize': 'حجم الحصة غير صحيح',
+  'foodFormScreen.servingSizePositive': 'لازم يكون حجم الحصة أكبر من صفر.',
+  'foodFormScreen.barcode': 'الباركود',
+  'foodFormScreen.invalidBarcode': 'الباركود غير صحيح',
+  'foodFormScreen.barcodeDigits': 'الباركود لازم يكون من ٨ إلى ١٤ رقمًا.',
+  'foodFormScreen.barcodeHelp':
+    'اختياري. الباركود المعتاد يكون من ٨ إلى ١٤ رقمًا.',
+  'foodFormScreen.scanCamera': 'مسح بالكاميرا',
+  'foodFormScreen.foodSaved': 'تم حفظ الصنف',
+  'foodFormScreen.noMealType': 'ما فيه نوع وجبة',
+  'foodFormScreen.noMealTypeDescription':
+    'ما عندك أنواع وجبات متاحة. راجع إعدادات حسابك.',
+  'foodFormScreen.newFood': 'صنف غذائي جديد',
+  'foodFormScreen.saveToLibrary': 'حفظ الصنف في المكتبة',
+  'foodFormScreen.adjustNutrition': 'تعديل القيم الغذائية',
+  'foodFormScreen.saveNutritionFuture': 'حفظ هالقيم للاستخدام لاحقًا',
+  'foodFormScreen.editFood': 'تعديل الصنف',
+  'foodFormScreen.loadingFoodDetails':
+    'تفاصيل الصنف ما اكتملت؛ انتظر شوي وحاول مرة ثانية.',
+  'foodFormScreen.saveNewUnitFailed': 'ما قدرنا نحفظ الوحدة الجديدة',
+  'foodFormScreen.saveNewVariantFailed': 'ما قدرنا نحفظ الحصة الجديدة',
+  'foodFormScreen.saveFutureFailed': 'ما قدرنا نحفظ القيم للاستخدام لاحقًا',
+  'foodFormScreen.savedAsNewVariant': 'تم الحفظ كحصة جديدة',
+  'foodFormScreen.saved': 'تم الحفظ',
+  'foodFormScreen.savedWithEquivalents':
+    'تم الحفظ وتحديث {{count}} من الأحجام المكافئة',
+  'foodFormScreen.updateFoodFailed': 'ما قدرنا نحدّث الصنف',
 
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',

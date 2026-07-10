@@ -35,7 +35,7 @@ const HAS_INNER_WHITESPACE_REGEX = /[\s\u00a0\u202f]/;
 const ARABIC_INDIC_DIGITS_REGEX = /[\u0660-\u0669]/g;
 const PERSIAN_DIGITS_REGEX = /[\u06f0-\u06f9]/g;
 
-function normalizeLocalizedNumerals(value: string): string {
+export function normalizeLocalizedDigits(value: string): string {
   return value
     .replace(ARABIC_INDIC_DIGITS_REGEX, digit =>
       String(digit.charCodeAt(0) - 0x0660),
@@ -87,7 +87,7 @@ export function parseDecimalInput(value: string | null | undefined): number {
   // Trim outer whitespace only — interior whitespace must be validated
   // before it is stripped, otherwise malformed input like `"1 23,4"` would
   // silently collapse to `"123,4"` and parse as a plausible number.
-  const outerTrimmed = normalizeLocalizedNumerals(value).replace(
+  const outerTrimmed = normalizeLocalizedDigits(value).replace(
     OUTER_WHITESPACE_REGEX,
     '',
   );

@@ -1,8 +1,17 @@
 import {
   DECIMAL_INPUT_REGEX,
   INTEGER_INPUT_REGEX,
+  normalizeLocalizedDigits,
   parseDecimalInput,
 } from '../../src/utils/numericInput';
+
+describe('normalizeLocalizedDigits', () => {
+  it('normalizes Arabic-Indic and Persian digits without changing identifiers', () => {
+    expect(normalizeLocalizedDigits('٠١٢٣٤٥٦٧٨٩')).toBe('0123456789');
+    expect(normalizeLocalizedDigits('۰۱۲۳۴۵۶۷۸۹')).toBe('0123456789');
+    expect(normalizeLocalizedDigits('ABC-١۲٣')).toBe('ABC-123');
+  });
+});
 
 describe('INTEGER_INPUT_REGEX', () => {
   it('accepts Western, Arabic-Indic, and Persian whole-number input', () => {
