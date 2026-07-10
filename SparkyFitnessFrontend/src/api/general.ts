@@ -38,3 +38,19 @@ export const getLatestGithubRelease = async (): Promise<ReleaseInfo> => {
     method: 'GET',
   });
 };
+
+export type StorageMode = 'local' | 'disabled';
+
+export interface DeploymentCapabilities {
+  storageMode: StorageMode;
+  uploadsEnabled: boolean;
+  serverBackupsEnabled: boolean;
+  backgroundJobsEnabled: boolean;
+}
+
+export const getDeploymentCapabilities =
+  async (): Promise<DeploymentCapabilities> => {
+    return apiCall('/deployment-capabilities', {
+      method: 'GET',
+    });
+  };

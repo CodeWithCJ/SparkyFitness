@@ -17,7 +17,7 @@ jest.mock('react-i18next', () => ({
         'foodResultCard.traceAllergen': 'آثار {{allergen}}',
       };
       return (
-        translations[key] ?? String(options?.defaultValue ?? key)
+        translations[key] ?? String(options?.['defaultValue'] ?? key)
       ).replace(/{{(\w+)}}/g, (_, token: string) =>
         String(options?.[token] ?? '')
       );

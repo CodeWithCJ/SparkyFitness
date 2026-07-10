@@ -21,6 +21,12 @@ import { sso } from '@better-auth/sso';
 import { expo } from '@better-auth/expo';
 import { expoSsoCookieRelay } from './utils/expoSsoCookieRelay.js';
 import { passkey } from '@better-auth/passkey';
+import {
+  getDbIdleTimeoutMillis,
+  getDbPoolMax,
+  getDbSslConfig,
+  getSystemDbPort,
+} from './utils/runtimeConfig.js';
 
 const hashAsync = promisify(bcrypt.hash);
 const compareAsync = promisify(bcrypt.compare);
@@ -76,8 +82,10 @@ const authPool = new Pool({
   host: process.env.SPARKY_FITNESS_DB_HOST,
   database: process.env.SPARKY_FITNESS_DB_NAME,
   password: process.env.SPARKY_FITNESS_DB_PASSWORD,
-  // @ts-expect-error
-  port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
+  port: getSystemDbPort(),
+  max: getDbPoolMax(),
+  idleTimeoutMillis: getDbIdleTimeoutMillis(),
+  ...getDbSslConfig(),
 });
 // Persistent array reference for trusted providers
 // Mutation of this array will be visible to Better Auth since it holds the reference
@@ -86,8 +94,8 @@ const dynamicTrustedProviders = [];
 // Function to sync trusted providers from database
 async function syncTrustedProviders() {
   try {
-    const repoPath = './models/oidcProviderRepository.js';
-    const { default: oidcProviderRepository } = await import(repoPath);
+    const { default: oidcProviderRepository } =
+      await import('./models/oidcProviderRepository.js');
     const providers = await oidcProviderRepository.getActiveOidcProviderIds();
     // Update the array without changing the reference
     dynamicTrustedProviders.length = 0;
@@ -448,10 +456,8 @@ const auth = betterAuth({
               `[AUTH] Verifying auto-register for SSO provider: ${providerId} (Original Path: ${ctx.path})`
             );
             try {
-              const repoPath = './models/oidcProviderRepository.js';
-              const { default: oidcProviderRepository } = await import(
-                repoPath
-              );
+              const { default: oidcProviderRepository } =
+                await import('./models/oidcProviderRepository.js');
 
               const provider =
                 await oidcProviderRepository.getOidcProviderById(providerId);
@@ -580,8 +586,8 @@ const auth = betterAuth({
           try {
             // Get all accounts for this user to find the OIDC provider used
             const client = await authPool.connect();
-            const repoPath = './models/oidcProviderRepository.js';
-            const { default: oidcProviderRepository } = await import(repoPath);
+            const { default: oidcProviderRepository } =
+              await import('./models/oidcProviderRepository.js');
 
             try {
               const activeOidcIds =

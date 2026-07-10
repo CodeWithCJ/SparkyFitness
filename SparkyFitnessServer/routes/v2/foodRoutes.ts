@@ -462,4 +462,4 @@ router.get('/barcode/:barcode', barcodeHandler);
 router.get('/search/:providerType', searchHandler);
 router.get('/details/:providerType/:externalId', detailHandler);
 
-module.exports = router;
+export default router;

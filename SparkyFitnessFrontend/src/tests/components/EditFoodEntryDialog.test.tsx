@@ -32,6 +32,10 @@ jest.mock('react-i18next', () => ({
         'foodEntryEditor.confidence.high': 'عالية',
         'foodEntryEditor.confidence.medium': 'متوسطة',
         'foodEntryEditor.confidence.low': 'منخفضة',
+        'units.gram': 'غ',
+        'units.cup': 'كوب',
+        'units.tablespoon': 'ملعقة كبيرة',
+        'units.teaspoon': 'ملعقة صغيرة',
       };
 
       if (key === 'foodEntryEditor.manualConversionHelp') {
@@ -236,7 +240,7 @@ describe('EditFoodEntryDialog', () => {
       expect(screen.getByText('Cornstarch')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /^tsp$/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'ملعقة صغيرة' }));
 
     await waitFor(() => {
       expect(screen.getByText(/ما قدرنا نحول تلقائيًا/)).toBeInTheDocument();
@@ -279,7 +283,7 @@ describe('EditFoodEntryDialog', () => {
       ).toBeGreaterThan(0);
     });
 
-    const tbspButton = screen.getByRole('button', { name: /^tbsp$/i });
+    const tbspButton = screen.getByRole('button', { name: 'ملعقة كبيرة' });
     expect(tbspButton.querySelector('svg.text-green-500')).toBeNull();
   });
 });

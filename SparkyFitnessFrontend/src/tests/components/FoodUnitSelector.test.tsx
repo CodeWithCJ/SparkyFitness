@@ -46,9 +46,9 @@ jest.mock('react-i18next', () => ({
       if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;
       if (
         defaultValueOrOpts &&
-        typeof defaultValueOrOpts.defaultValue === 'string'
+        typeof defaultValueOrOpts['defaultValue'] === 'string'
       ) {
-        return defaultValueOrOpts.defaultValue;
+        return defaultValueOrOpts['defaultValue'];
       }
       return key;
     },

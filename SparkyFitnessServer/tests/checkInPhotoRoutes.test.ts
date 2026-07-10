@@ -53,6 +53,20 @@ vi.mock('../middleware/checkInPhotoUpload', async (importOriginal) => {
   };
 });
 
+const originalStorageMode = process.env.SPARKY_FITNESS_STORAGE_MODE;
+
+beforeAll(() => {
+  process.env.SPARKY_FITNESS_STORAGE_MODE = 'local';
+});
+
+afterAll(() => {
+  if (originalStorageMode === undefined) {
+    delete process.env.SPARKY_FITNESS_STORAGE_MODE;
+  } else {
+    process.env.SPARKY_FITNESS_STORAGE_MODE = originalStorageMode;
+  }
+});
+
 const app = express();
 app.use(express.json());
 app.use('/', checkInPhotoRoutes);

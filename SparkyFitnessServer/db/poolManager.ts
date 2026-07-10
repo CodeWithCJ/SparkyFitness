@@ -1,6 +1,12 @@
 import pg from 'pg';
 import { log } from '../config/logging.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import {
+  getDbIdleTimeoutMillis,
+  getDbPoolMax,
+  getDbSslConfig,
+  getSystemDbPort,
+} from '../utils/runtimeConfig.js';
 const { Pool, types } = pg;
 
 export const dbContextStorage = new AsyncLocalStorage<{
@@ -19,16 +25,17 @@ let ownerPoolInstance: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let appPoolInstance: any = null;
 function createOwnerPoolInstance() {
+  const sslConfig = getDbSslConfig();
   const newPool = new Pool({
     user: process.env.SPARKY_FITNESS_DB_USER,
     host: process.env.SPARKY_FITNESS_DB_HOST,
     database: process.env.SPARKY_FITNESS_DB_NAME,
     password: process.env.SPARKY_FITNESS_DB_PASSWORD,
-    // @ts-expect-error TS(2322): Type 'string | number' is not assignable to type '... Remove this comment to see the full error message
-    port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
-    max: 10,
-    idleTimeoutMillis: 30000,
+    port: getSystemDbPort(),
+    max: getDbPoolMax(),
+    idleTimeoutMillis: getDbIdleTimeoutMillis(),
     connectionTimeoutMillis: 5000,
+    ...sslConfig,
   });
   newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle owner client', err);
@@ -37,6 +44,7 @@ function createOwnerPoolInstance() {
   return newPool;
 }
 function createAppPoolInstance() {
+  const sslConfig = getDbSslConfig();
   const newPool = new Pool({
     user: process.env.SPARKY_FITNESS_APP_DB_USER,
     host: process.env.SPARKY_FITNESS_DB_HOST,
@@ -44,9 +52,10 @@ function createAppPoolInstance() {
     password: process.env.SPARKY_FITNESS_APP_DB_PASSWORD,
     // @ts-expect-error TS(2322): Type 'string | undefined' is not assignable to typ... Remove this comment to see the full error message
     port: process.env.SPARKY_FITNESS_DB_PORT,
-    max: 10,
-    idleTimeoutMillis: 30000,
+    max: getDbPoolMax(),
+    idleTimeoutMillis: getDbIdleTimeoutMillis(),
     connectionTimeoutMillis: 5000,
+    ...sslConfig,
   });
   newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle app client', err);

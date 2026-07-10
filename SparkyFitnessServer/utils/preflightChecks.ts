@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { log } from '../config/logging.js';
+import { getDbSslConfig } from './runtimeConfig.js';
 function runPreflightChecks() {
   const mandatoryVars = {
     SPARKY_FITNESS_DB_HOST:
@@ -39,6 +40,7 @@ function runPreflightChecks() {
       'Preflight checks failed: Missing mandatory environment variables.'
     );
   }
+  getDbSslConfig();
   // Handle BETTER_AUTH_SECRET as a soft requirement
   if (!process.env.BETTER_AUTH_SECRET) {
     const generatedSecret = crypto.randomBytes(32).toString('hex');

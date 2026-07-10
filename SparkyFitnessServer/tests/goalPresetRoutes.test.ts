@@ -3,7 +3,6 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import goalPresetService from '../services/goalPresetService.js';
-// @ts-expect-error TS(1192): Module '"/home/simsat/dev/SparkyFitness/SparkyFitn... Remove this comment to see the full error message
 import goalPresetRoutes from '../routes/v2/goalPresetRoutes.js';
 // Mock middleware and service
 vi.mock('../services/goalPresetService');

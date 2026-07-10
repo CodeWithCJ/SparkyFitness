@@ -2,6 +2,7 @@ import express from 'express';
 import { log } from '../config/logging.js';
 import { isAdmin } from '../middleware/authMiddleware.js';
 import oidcLogoUpload from '../middleware/oidcLogoUpload.js';
+import { requireUploadsEnabled } from '../middleware/deploymentModeMiddleware.js';
 import oidcProviderRepository from '../models/oidcProviderRepository.js';
 const router = express.Router();
 /**
@@ -111,6 +112,7 @@ router.delete('/:id', isAdmin, async (req, res) => {
 router.post(
   '/:id/logo',
   isAdmin,
+  requireUploadsEnabled,
   oidcLogoUpload.single('logo'),
   async (req, res) => {
     const { id } = req.params;

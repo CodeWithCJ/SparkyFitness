@@ -24,7 +24,8 @@ try {
 
 console.log('Starting server...');
 try {
-  await import('./SparkyFitnessServer.js');
+  const { startServer } = await import('./SparkyFitnessServer.js');
+  await startServer();
 } catch (error) {
   console.error('Failed to start the server module:', error);
   // eslint-disable-next-line n/no-process-exit

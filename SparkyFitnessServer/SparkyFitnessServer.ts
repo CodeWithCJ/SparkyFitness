@@ -1,7 +1,9 @@
+import type {} from './types/express.js';
+
 import path from 'path';
 
 import fs from 'fs';
-import type { ServerResponse } from 'http';
+import type { Server, ServerResponse } from 'http';
 import express from 'express';
 // @ts-expect-error TS7016
 import cors from 'cors';
@@ -13,11 +15,8 @@ import { log } from './config/logging.js';
 import { authenticate } from './middleware/authMiddleware.js';
 import { applySignOutCookieCleanup } from './middleware/signOutCookieCleanup.js';
 import foodRoutes from './routes/foodRoutes.js';
-// @ts-expect-error TS1192
 import v2FoodRoutes from './routes/v2/foodRoutes.js';
-// @ts-expect-error TS1192
 import v2ExerciseEntryRoutes from './routes/v2/exerciseEntryRoutes.js';
-// @ts-expect-error TS1192
 import v2ExerciseRoutes from './routes/v2/exerciseRoutes.js';
 import mealRoutes from './routes/mealRoutes.js';
 import foodEntryRoutes from './routes/foodEntryRoutes.js';
@@ -31,7 +30,6 @@ import measurementRoutes from './routes/measurementRoutes.js';
 import checkInPhotoRoutes from './routes/checkInPhotoRoutes.js';
 import goalRoutes from './routes/goalRoutes.js';
 import goalPresetRoutes from './routes/goalPresetRoutes.js';
-// @ts-expect-error TS1192
 import goalPresetRoutesV2 from './routes/v2/goalPresetRoutes.js';
 import weeklyGoalPlanRoutes from './routes/weeklyGoalPlanRoutes.js';
 import mealPlanTemplateRoutes from './routes/mealPlanTemplateRoutes.js';
@@ -82,14 +80,9 @@ import fitbitService from './services/fitbitService.js';
 import googleHealthService from './services/googleHealthService.js';
 import polarService from './services/polarService.js';
 import stravaService from './services/stravaService.js';
-// @ts-expect-error TS1192
 import dailySummaryRoutes from './routes/dailySummaryRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import mealTypeRoutes from './routes/mealTypeRoutes.js';
-// @ts-expect-error TS7016
-import swaggerUi from 'swagger-ui-express';
-import redoc from 'redoc-express';
-import swaggerSpecs from './config/swagger.js';
 import { createCorsOriginChecker } from './utils/corsHelper.js';
 import authModule from './auth.js';
 import { toNodeHandler } from 'better-auth/node';
@@ -107,6 +100,12 @@ import { deleteExpiredTickets } from './services/passkeyTicketService.js';
 import withingsServiceCentral from './services/withingsService.js';
 import { upsertEnvOidcProvider } from './utils/oidcEnvConfig.js';
 import userRepository from './models/userRepository.js';
+import deploymentCapabilitiesRoutes from './routes/deploymentCapabilitiesRoutes.js';
+import {
+  areBackgroundJobsDisabled,
+  areStartupMigrationsDisabled,
+  getServerPort,
+} from './utils/runtimeConfig.js';
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -116,7 +115,7 @@ const app = express();
 app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
 // 304s from ETag revalidation break the iOS mobile app (#1353).
 app.set('etag', false);
-const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
+const PORT = getServerPort();
 console.log(
   `DEBUG: SPARKY_FITNESS_FRONTEND_URL is: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`
 );
@@ -173,7 +172,7 @@ app.use(
 // local because the global one also runs after the 50mb parser, and
 // authenticate reads req.cookies.
 app.use(
-  '/mcp',
+  ['/mcp', '/api/mcp'],
   express.json({ limit: '1mb' }),
   cookieParser(),
   authenticate,
@@ -183,6 +182,8 @@ app.use(
 // Increased limit to 50mb to accommodate image uploads
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
+app.get('/api/health', (_req, res) => res.json({ status: 'UP' }));
+app.use('/api/deployment-capabilities', deploymentCapabilitiesRoutes);
 // --- Better Auth Mounting Logic (Moved to after migrations) ---
 // @ts-expect-error TS7034
 let syncTrustedProviders;
@@ -200,6 +201,20 @@ const mountBetterAuth = () => {
     throw error; // Propagate to block startup if auth fails
   }
 };
+app.use(async (_req, res, next) => {
+  try {
+    await ensureRuntimeReady();
+    next();
+  } catch (error) {
+    log('error', 'Runtime initialization failed:', error);
+    res.status(503).json({
+      error: {
+        code: 'SERVICE_STARTUP_FAILED',
+        message: 'Service is not ready. Please retry shortly.',
+      },
+    });
+  }
+});
 // Catch ALL requests starting with /api/auth early.
 app.use(async (req, res, next) => {
   // @ts-expect-error TS7005
@@ -400,8 +415,16 @@ app.get(
       const externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
         originalRelativeImagePath
       );
-      await downloadImage(externalImageUrl, exerciseId);
-      res.sendFile(localImagePath, uploadsStaticOptions);
+      const downloadedPath = await downloadImage(
+        externalImageUrl,
+        exerciseId as string
+      );
+      if (!downloadedPath) {
+        return res
+          .status(404)
+          .send('Image is not available in this deployment.');
+      }
+      res.sendFile(downloadedPath, uploadsStaticOptions);
     } catch (error) {
       // @ts-expect-error TS18046
       log('error', `Error serving image: ${error.message}`);
@@ -421,6 +444,7 @@ const publicRoutes = [
   '/api/uploads',
   '/uploads',
   '/api/ping',
+  '/api/deployment-capabilities',
 ];
 if (isPublicApiDocsEnabled) {
   publicRoutes.push('/api/api-docs');
@@ -475,6 +499,7 @@ app.use('/api/exercise-entries', exerciseEntryRoutes);
 app.use('/api/exercise-preset-entries', exercisePresetEntryRoutes);
 app.use('/api/freeexercisedb', freeExerciseDBRoutes);
 app.use('/api/health-data', healthDataRoutes);
+app.use('/health-data', healthDataRoutes);
 app.use('/api/sleep', sleepRoutes);
 app.use('/api/sleep-science', sleepScienceRoutes);
 app.use('/api/auth', (req, res, next) => authRoutes(req, res, next));
@@ -512,19 +537,35 @@ app.use('/api/custom-nutrients', customNutrientRoutes);
 app.use('/api/allergen-preferences', allergenPreferenceRoutes);
 app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
 app.use('/api/meal-types', mealTypeRoutes);
-// Swagger
-app.use(
-  '/api/api-docs/swagger',
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpecs)
-);
-app.get(
-  '/api/api-docs/redoc',
-  // @ts-expect-error TS2349
-  redoc({ title: 'API Docs', specUrl: '/api/api-docs/json' })
-);
-app.get('/api/api-docs/json', (_req, res) => res.json(swaggerSpecs));
-app.get('/api/api-docs', (_req, res) => res.redirect('/api/api-docs/swagger'));
+// Swagger generation scans the route tree, so only load it when public docs are
+// explicitly enabled.
+if (isPublicApiDocsEnabled) {
+  const [
+    { default: swaggerUi },
+    { default: redoc },
+    { default: swaggerSpecs },
+  ] = await Promise.all([
+    // @ts-expect-error TS7016
+    import('swagger-ui-express'),
+    import('redoc-express'),
+    import('./config/swagger.js'),
+  ]);
+
+  app.use(
+    '/api/api-docs/swagger',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpecs)
+  );
+  app.get(
+    '/api/api-docs/redoc',
+    // @ts-expect-error TS2349
+    redoc({ title: 'API Docs', specUrl: '/api/api-docs/json' })
+  );
+  app.get('/api/api-docs/json', (_req, res) => res.json(swaggerSpecs));
+  app.get('/api/api-docs', (_req, res) =>
+    res.redirect('/api/api-docs/swagger')
+  );
+}
 // Backup scheduling is handled by services/backupScheduler.ts
 // Session cleanup scheduling
 const scheduleSessionCleanup = async () => {
@@ -698,24 +739,46 @@ const scheduleGoogleHealthSyncs = async () => {
     }
   });
 };
-applyMigrations()
-  .then(applyRlsPolicies)
-  .then(async () => {
-    // Upsert OIDC provider from env when SPARKY_FITNESS_OIDC_ISSUER_URL + CLIENT_ID + SECRET + PROVIDER_SLUG are set
-    try {
-      await upsertEnvOidcProvider();
-    } catch (err) {
-      log('error', 'OIDC env provider upsert failed:', err);
-    }
-    mountBetterAuth();
-    // Sync trusted SSO providers after database is ready (so Better Auth sees env-upserted and DB providers)
-    // @ts-expect-error TS7005
-    if (syncTrustedProviders) {
-      // @ts-expect-error TS7006
-      await syncTrustedProviders().catch((err) =>
-        console.error('[AUTH] Post-init SSO sync failed:', err)
-      );
-    }
+const prepareDatabaseForStartup = async () => {
+  if (areStartupMigrationsDisabled()) {
+    log(
+      'info',
+      'Startup migrations are disabled by SPARKY_FITNESS_SKIP_STARTUP_MIGRATIONS.'
+    );
+    return;
+  }
+
+  await applyMigrations();
+  await applyRlsPolicies();
+};
+
+app.use(errorHandler);
+
+let runtimeReadyPromise: Promise<void> | null = null;
+
+const prepareRuntimeForRequests = async () => {
+  // Upsert OIDC provider from env when SPARKY_FITNESS_OIDC_ISSUER_URL + CLIENT_ID + SECRET + PROVIDER_SLUG are set
+  await prepareDatabaseForStartup();
+  try {
+    await upsertEnvOidcProvider();
+  } catch (err) {
+    log('error', 'OIDC env provider upsert failed:', err);
+  }
+  mountBetterAuth();
+  // Sync trusted SSO providers after database is ready (so Better Auth sees env-upserted and DB providers)
+  // @ts-expect-error TS7005
+  if (syncTrustedProviders) {
+    // @ts-expect-error TS7006
+    await syncTrustedProviders().catch((err) =>
+      console.error('[AUTH] Post-init SSO sync failed:', err)
+    );
+  }
+  if (areBackgroundJobsDisabled()) {
+    log(
+      'info',
+      'Background jobs are disabled by SPARKY_FITNESS_DISABLE_BACKGROUND_JOBS.'
+    );
+  } else {
     scheduleBackupsOnStartup();
     scheduleSessionCleanup();
     scheduleWithingsSyncs();
@@ -724,50 +787,61 @@ applyMigrations()
     schedulePolarSyncs();
     scheduleStravaSyncs();
     scheduleGoogleHealthSyncs();
-    if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
-      const adminUser = await userRepository.findUserByEmail(
-        process.env.SPARKY_FITNESS_ADMIN_EMAIL
-      );
-      if (adminUser) await userRepository.updateUserRole(adminUser.id, 'admin');
-    }
-    const server = app.listen(PORT, () => {
-      console.log(`DEBUG: Server started and listening on port ${PORT}`);
-      log('info', `SparkyFitnessServer listening on port ${PORT}`);
-      console.log('View API documentation at: /api/api-docs/swagger');
+  }
+  if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
+    const adminUser = await userRepository.findUserByEmail(
+      process.env.SPARKY_FITNESS_ADMIN_EMAIL
+    );
+    if (adminUser) await userRepository.updateUserRole(adminUser.id, 'admin');
+  }
+};
+
+export const ensureRuntimeReady = async () => {
+  runtimeReadyPromise ??= prepareRuntimeForRequests();
+  await runtimeReadyPromise;
+};
+
+const registerShutdownHandlers = (server: Server) => {
+  let shuttingDown = false;
+  // @ts-expect-error TS7006
+  const shutdown = async (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    log('info', `${signal} received, shutting down gracefully...`);
+    server.close(async () => {
+      log('info', 'HTTP server closed, draining database pools...');
+      try {
+        await endPool();
+        log('info', 'Database pools closed. Exiting.');
+      } catch (err) {
+        log('error', 'Error closing database pools:', err);
+      }
+      // eslint-disable-next-line n/no-process-exit
+      process.exit(0);
     });
-    // Fix for reverse proxies using HTTP keepalive (e.g. Traefik, Caddy)
-    server.keepAliveTimeout = 181000; // Must be > proxy's idle timeout (nginx=75s, traefik=default 180s)
-    server.headersTimeout = 182000; // Must be slightly > keepAliveTimeout
-    // Graceful shutdown
-    let shuttingDown = false;
-    // @ts-expect-error TS7006
-    const shutdown = async (signal) => {
-      if (shuttingDown) return;
-      shuttingDown = true;
-      log('info', `${signal} received, shutting down gracefully...`);
-      server.close(async () => {
-        log('info', 'HTTP server closed, draining database pools...');
-        try {
-          await endPool();
-          log('info', 'Database pools closed. Exiting.');
-        } catch (err) {
-          log('error', 'Error closing database pools:', err);
-        }
-        // eslint-disable-next-line n/no-process-exit
-        process.exit(0);
-      });
-      // Force exit if graceful shutdown takes too long
-      setTimeout(() => {
-        log('error', 'Graceful shutdown timed out after 15s, forcing exit.');
-        // eslint-disable-next-line n/no-process-exit
-        process.exit(1);
-      }, 15000).unref();
-    };
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
-  })
-  .catch((error) => {
-    console.error('Failed to start server:', error);
-    process.exitCode = 1;
+    // Force exit if graceful shutdown takes too long
+    setTimeout(() => {
+      log('error', 'Graceful shutdown timed out after 15s, forcing exit.');
+      // eslint-disable-next-line n/no-process-exit
+      process.exit(1);
+    }, 15000).unref();
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+};
+
+export const startServer = async () => {
+  await ensureRuntimeReady();
+  const server = app.listen(PORT, () => {
+    console.log(`DEBUG: Server started and listening on port ${PORT}`);
+    log('info', `SparkyFitnessServer listening on port ${PORT}`);
+    console.log('View API documentation at: /api/api-docs/swagger');
   });
-app.use(errorHandler);
+  // Fix for reverse proxies using HTTP keepalive (e.g. Traefik, Caddy)
+  server.keepAliveTimeout = 181000; // Must be > proxy's idle timeout (nginx=75s, traefik=default 180s)
+  server.headersTimeout = 182000; // Must be slightly > keepAliveTimeout
+  registerShutdownHandlers(server);
+  return server;
+};
+
+export default app;

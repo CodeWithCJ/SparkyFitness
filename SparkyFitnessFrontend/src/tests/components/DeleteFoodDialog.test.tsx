@@ -67,8 +67,11 @@ describe('DeleteFoodDialog', () => {
               mealFoodsCount: 0,
               mealPlansCount: 1,
               mealPlanTemplateAssignmentsCount: 0,
+              currentUserReferences: 2,
               otherUserReferences: 0,
               totalReferences: 2,
+              isPubliclyShared: false,
+              familySharedUsers: [],
             },
           }}
           mealTypes={[{ id: 'dinner', name: 'العشاء' }]}

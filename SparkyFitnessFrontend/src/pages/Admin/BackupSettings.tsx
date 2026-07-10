@@ -17,12 +17,18 @@ import {
 } from '@/hooks/Admin/useBackups';
 import { BackupSettingsForm } from './BackupSettingsForm';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useDeploymentCapabilities } from '@/hooks/useDeploymentCapabilities';
 
 const BackupSettings: React.FC = () => {
   const { t } = useTranslation();
   const { signOut } = useAuth();
   const { loggingLevel } = usePreferences();
-  const { data: settings, isLoading } = useBackupSettings();
+  const { data: capabilities, isLoading: isLoadingCapabilities } =
+    useDeploymentCapabilities();
+  const serverBackupsEnabled = capabilities?.serverBackupsEnabled;
+  const { data: settings, isLoading } = useBackupSettings(
+    serverBackupsEnabled === true
+  );
   const { mutate: saveSettings, isPending: isSaving } =
     useUpdateBackupSettings();
   const { mutate: runManualBackup, isPending: isRunningBackup } =
@@ -63,9 +69,17 @@ const BackupSettings: React.FC = () => {
           {t('admin.backupSettings.title', 'Backup Settings')}
         </AccordionTrigger>
         <AccordionContent className="p-0">
-          {isLoading ? (
+          {isLoadingCapabilities ||
+          (serverBackupsEnabled === true && isLoading) ? (
             <div className="flex justify-center p-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : serverBackupsEnabled === false ? (
+            <div className="p-4 text-sm text-muted-foreground">
+              {t(
+                'admin.backupSettings.unavailableVercel',
+                'Server-managed backup and restore are disabled for this deployment. Use your managed PostgreSQL provider backups for the Vercel MVP.'
+              )}
             </div>
           ) : settings ? (
             <BackupSettingsForm

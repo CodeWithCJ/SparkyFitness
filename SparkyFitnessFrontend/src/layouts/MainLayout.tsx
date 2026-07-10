@@ -450,13 +450,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             {!isMobile && (
               <>
                 <GitHubStarCounter owner="CodeWithCJ" repo="SparkyFitness" />
-                <GitHubSponsorButton owner="CodeWithCJ" />
+                <div className="hidden xl:block">
+                  <GitHubSponsorButton owner="CodeWithCJ" />
+                </div>
               </>
             )}
           </div>
           <div className="flex items-center gap-2">
             <ProfileSwitcher />
-            <span className="text-sm text-muted-foreground hidden sm:inline">
+            <span className="text-sm text-muted-foreground hidden xl:inline">
               Welcome {activeUserName}
             </span>
 
@@ -512,7 +514,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <Button
               key={value}
               variant="ghost"
-              className={`relative flex items-center gap-2 hover:bg-background/50 transition-all ${
+              aria-label={label}
+              title={label}
+              className={`relative flex items-center justify-center gap-1 lg:gap-2 hover:bg-background/50 transition-all ${
                 location.pathname === value
                   ? 'bg-background shadow-sm text-foreground'
                   : 'text-muted-foreground'
@@ -520,7 +524,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               onClick={() => navigate(value)}
             >
               <Icon className="h-4 w-4" />
-              <span>{label}</span>
+              <span className="hidden lg:inline">{label}</span>
             </Button>
           ))}
         </nav>

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "frontend": {
+      "root": ".",
+      "runtime": "container",
+      "entrypoint": "Containerfile"
+    },
+    "backend": {
+      "root": "SparkyFitnessServer",
+      "framework": "express",
+      "entrypoint": "server.ts",
+      "functions": {
+        "server.ts": {
+          "maxDuration": 60
+        }
+      }
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/uploads/:path*",
+      "destination": { "service": "backend", "path": "/api/uploads/:path*" }
+    },
+    {
+      "source": "/mcp/:path*",
+      "destination": { "service": "backend", "path": "/api/mcp/:path*" }
+    },
+    {
+      "source": "/health-data/:path*",
+      "destination": {
+        "service": "backend",
+        "path": "/api/health-data/:path*"
+      }
+    },
+    { "source": "/api/:path*", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}

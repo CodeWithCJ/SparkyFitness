@@ -18,7 +18,7 @@ jest.mock('react-i18next', () => ({
         key === 'mealPlanCalendar.openPlanActions' &&
         typeof defaultValueOrOpts === 'object'
       ) {
-        return `فتح إجراءات ${String(defaultValueOrOpts.planName)}`;
+        return `فتح إجراءات ${String(defaultValueOrOpts['planName'])}`;
       }
       if (mockTranslations[key]) return mockTranslations[key];
       if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;

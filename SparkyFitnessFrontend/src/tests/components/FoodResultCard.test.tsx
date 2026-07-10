@@ -32,8 +32,8 @@ jest.mock('react-i18next', () => ({
       const fallback =
         typeof fallbackOrOptions === 'string'
           ? fallbackOrOptions
-          : typeof fallbackOrOptions?.defaultValue === 'string'
-            ? fallbackOrOptions.defaultValue
+          : typeof fallbackOrOptions?.['defaultValue'] === 'string'
+            ? fallbackOrOptions['defaultValue']
             : key;
       const options =
         typeof fallbackOrOptions === 'object' ? fallbackOrOptions : {};
