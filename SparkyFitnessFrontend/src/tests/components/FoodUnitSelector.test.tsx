@@ -10,6 +10,51 @@ const mockQueryClient = {
   fetchQuery: mockFetchQuery,
 };
 
+const mockTranslations: Record<string, string> = {
+  'foodUnitSelector.addTitle': 'إضافة {{foodName}} للوجبة',
+  'foodUnitSelector.addDescription': 'حدد الكمية والوحدة للصنف.',
+  'foodUnitSelector.loadingUnits': 'جاري تحميل الوحدات…',
+  'foodUnitSelector.quantity': 'الكمية',
+  'foodUnitSelector.unit': 'الوحدة',
+  'foodUnitSelector.manualConversionHelp':
+    'ما نقدر نحوّل هالوحدتين تلقائيًا. أدخل كم {{baseUnit}} في {{pendingUnit}} واحد.',
+  'foodUnitSelector.conversionEquation': '1 {{pendingUnit}} = ؟ {{baseUnit}}',
+  'foodUnitSelector.nutritionFor': 'القيم الغذائية لـ {{quantity}} {{unit}}:',
+  'foodUnitSelector.addToMeal': 'إضافة للوجبة',
+  'common.cancel': 'إلغاء',
+  'units.gram': 'غ',
+  'units.teaspoon': 'ملعقة صغيرة',
+  'units.tablespoon': 'ملعقة كبيرة',
+  'units.cup': 'كوب',
+  'units.milliliter': 'مل',
+  'units.ounce': 'أونصة',
+  'units.serving': 'حصة',
+  'units.piece': 'حبة',
+};
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, defaultValueOrOpts?: string | Record<string, unknown>) => {
+      const translation = mockTranslations[key];
+      if (translation) {
+        const options =
+          typeof defaultValueOrOpts === 'object' ? defaultValueOrOpts : {};
+        return translation.replace(/{{(\w+)}}/g, (_, token: string) =>
+          String(options[token] ?? '')
+        );
+      }
+      if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;
+      if (
+        defaultValueOrOpts &&
+        typeof defaultValueOrOpts.defaultValue === 'string'
+      ) {
+        return defaultValueOrOpts.defaultValue;
+      }
+      return key;
+    },
+  }),
+}));
+
 jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => mockQueryClient,
 }));
@@ -160,7 +205,7 @@ describe('FoodUnitSelector', () => {
     await waitFor(() => {
       expect(mockFetchQuery).toHaveBeenCalled();
       expect(
-        screen.getByRole('button', { name: /^tsp$/i })
+        screen.getByRole('button', { name: 'ملعقة صغيرة' })
       ).toBeInTheDocument();
     });
   };
@@ -182,17 +227,17 @@ describe('FoodUnitSelector', () => {
 
     await renderSelector(food);
 
-    fireEvent.click(screen.getByRole('button', { name: /^tsp$/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'ملعقة صغيرة' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/These units can/i)).toBeInTheDocument();
+      expect(screen.getByText(/ما نقدر نحوّل هالوحدتين/)).toBeInTheDocument();
     });
 
     expect(screen.getByPlaceholderText(/e\.g\. 1/i)).toBeInTheDocument();
     expect(
-      screen.queryByText(/Nutrition for .* tsp:/i)
+      screen.queryByText(/القيم الغذائية لـ .* ملعقة صغيرة:/)
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Add to Meal/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'إضافة للوجبة' })).toBeDisabled();
   });
 
   it('does not derive another incompatible unit before the first manual unit is saved', async () => {
@@ -208,17 +253,17 @@ describe('FoodUnitSelector', () => {
 
     await renderSelector(food);
 
-    fireEvent.click(screen.getByRole('button', { name: /^tsp$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^tbsp$/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'ملعقة صغيرة' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ملعقة كبيرة' }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/1 tbsp = \? g/i)).toHaveValue(null);
+      expect(screen.getByLabelText('1 ملعقة كبيرة = ؟ غ')).toHaveValue(null);
     });
 
     expect(
-      screen.queryByText(/Nutrition for .* tbsp:/i)
+      screen.queryByText(/القيم الغذائية لـ .* ملعقة كبيرة:/)
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Add to Meal/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'إضافة للوجبة' })).toBeDisabled();
   });
 
   it('uses a saved compatible variant immediately after reopen-style loading', async () => {
@@ -241,18 +286,22 @@ describe('FoodUnitSelector', () => {
 
     await renderSelector(food);
 
-    const tspItem = screen.getByRole('button', { name: /^tsp$/i });
+    const tspItem = screen.getByRole('button', { name: 'ملعقة صغيرة' });
 
     expect(tspItem.querySelector('svg.text-green-500')).not.toBeNull();
 
     fireEvent.click(tspItem);
 
     await waitFor(() => {
-      expect(screen.getByText(/Nutrition for .* tsp:/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/القيم الغذائية لـ .* ملعقة صغيرة:/)
+      ).toBeInTheDocument();
     });
 
-    expect(screen.queryByText(/These units can/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Add to Meal/i })).toBeEnabled();
+    expect(
+      screen.queryByText(/ما نقدر نحوّل هالوحدتين/)
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'إضافة للوجبة' })).toBeEnabled();
   });
 
   it('does not show compatible-unit checks when the selected saved variant is AI-estimated', async () => {
@@ -277,7 +326,7 @@ describe('FoodUnitSelector', () => {
 
     await renderSelector(food, { initialVariantId: 'cup-ai' });
 
-    const tbspItem = screen.getByRole('button', { name: /^tbsp$/i });
+    const tbspItem = screen.getByRole('button', { name: 'ملعقة كبيرة' });
 
     expect(tbspItem.querySelector('svg.text-green-500')).toBeNull();
   });

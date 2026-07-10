@@ -2428,7 +2428,67 @@
     "updateLinkedMeal": "Update",
     "addLinkedMeal": "Add to Meal",
     "updateEntryButton": "Update Entry",
-    "saveMealButton": "Save Meal"
+    "saveMealButton": "Save Meal",
+    "linkedMealPreviewTitle": "Linked meal",
+    "linkedMealPreviewDescription": "Read-only preview of this sub-meal.",
+    "linkedMealServingInfo": "Yields {{totalServings}} × {{servingSize}} {{servingUnit}}",
+    "linkedMealNoIngredients": "No ingredients in this meal."
+  },
+  "foodUnitSelector": {
+    "editTitle": "Edit {{foodName}}",
+    "addTitle": "Add {{foodName}} to meal",
+    "editDescription": "Edit the quantity and unit for {{foodName}}.",
+    "addDescription": "Select the quantity and unit for your food entry.",
+    "loadingUnits": "Loading units…",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "customUnit": "Custom unit…",
+    "unitName": "Unit name",
+    "customUnitPlaceholder": "e.g. slice, bar, or scoop",
+    "conversionEquation": "1 {{pendingUnit}} = ? {{baseUnit}}",
+    "factorPlaceholder": "e.g. 1",
+    "invalidConversion": "Enter a valid unit name and conversion factor.",
+    "saveNewUnitError": "Could not save the new unit. Try again.",
+    "manualConversionHelp": "These units can't be converted automatically. Enter how many {{baseUnit}} are in 1 {{pendingUnit}}.",
+    "aiEstimateAria": "AI estimate ({{confidence}} confidence)",
+    "confidenceEstimate": "{{confidence}} estimate",
+    "confidence": {
+      "high": "Good",
+      "medium": "Fair",
+      "low": "Rough"
+    },
+    "nutritionFor": "Nutrition for {{quantity}} {{unit}}:",
+    "saving": "Saving…",
+    "updateFood": "Update food",
+    "addToMeal": "Add to meal"
+  },
+  "mealUnitSelector": {
+    "editTitle": "Edit {{mealName}}",
+    "addTitle": "Add {{mealName}} to meal plan",
+    "editDescription": "Edit the quantity for {{mealName}}.",
+    "addDescription": "Select the quantity for this meal in your meal plan.",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "nutritionFor": "Nutrition for {{quantity}} {{unit}}:",
+    "updateMeal": "Update meal",
+    "addToPlan": "Add to meal plan"
+  },
+  "aiEstimate": {
+    "convertWithAi": "Estimate conversion with AI",
+    "estimating": "Estimating {{fromAmount}} {{fromUnit}} in {{toUnit}}…",
+    "failed": "Could not estimate this conversion. Try again.",
+    "tryAgain": "Try again",
+    "dismiss": "Dismiss",
+    "result": "Estimate: about {{amount}} {{unit}}",
+    "confidenceEstimate": "{{confidence}} confidence estimate",
+    "confidence": {
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    },
+    "lowConfidenceWarning": "This is a rough estimate. Verify it when accuracy matters.",
+    "useEstimate": "Use estimate",
+    "editEstimate": "Edit manually"
   },
   "mealPlanCalendar": {
     "title": "Meal Plan",

@@ -1924,7 +1924,67 @@
     "updateLinkedMeal": "تحديث",
     "addLinkedMeal": "إضافة للوجبة",
     "updateEntryButton": "تحديث التسجيل",
-    "saveMealButton": "حفظ الوجبة"
+    "saveMealButton": "حفظ الوجبة",
+    "linkedMealPreviewTitle": "وجبة مرتبطة",
+    "linkedMealPreviewDescription": "معاينة فقط لمكونات هالوجبة.",
+    "linkedMealServingInfo": "تكفي {{totalServings}} حصص، حجم الحصة {{servingSize}} {{servingUnit}}",
+    "linkedMealNoIngredients": "ما فيه مكونات بهالوجبة."
+  },
+  "foodUnitSelector": {
+    "editTitle": "تعديل {{foodName}}",
+    "addTitle": "إضافة {{foodName}} للوجبة",
+    "editDescription": "عدّل كمية {{foodName}} ووحدة قياسه.",
+    "addDescription": "حدد الكمية والوحدة للصنف.",
+    "loadingUnits": "جاري تحميل الوحدات…",
+    "quantity": "الكمية",
+    "unit": "الوحدة",
+    "customUnit": "وحدة مخصصة…",
+    "unitName": "اسم الوحدة",
+    "customUnitPlaceholder": "مثل: شريحة، لوح، أو مكيال",
+    "conversionEquation": "1 {{pendingUnit}} = ؟ {{baseUnit}}",
+    "factorPlaceholder": "مثل: 1",
+    "invalidConversion": "أدخل اسم وحدة ومعامل تحويل صحيحين.",
+    "saveNewUnitError": "تعذر حفظ الوحدة الجديدة. حاول مرة ثانية.",
+    "manualConversionHelp": "ما نقدر نحوّل بين هالوحدتين تلقائيًا. أدخل كم {{baseUnit}} يعادل {{pendingUnit}} واحد.",
+    "aiEstimateAria": "تقدير بالذكاء الاصطناعي، مستوى الثقة {{confidence}}",
+    "confidenceEstimate": "تقدير بثقة {{confidence}}",
+    "confidence": {
+      "high": "عالية",
+      "medium": "متوسطة",
+      "low": "منخفضة"
+    },
+    "nutritionFor": "القيم الغذائية لـ {{quantity}} {{unit}}:",
+    "saving": "جاري الحفظ…",
+    "updateFood": "تحديث الصنف",
+    "addToMeal": "إضافة للوجبة"
+  },
+  "mealUnitSelector": {
+    "editTitle": "تعديل {{mealName}}",
+    "addTitle": "إضافة {{mealName}} للخطة",
+    "editDescription": "عدّل كمية {{mealName}}.",
+    "addDescription": "حدد الكمية اللي تبي تضيفها من الوجبة.",
+    "quantity": "الكمية",
+    "unit": "الوحدة",
+    "nutritionFor": "القيم الغذائية لـ {{quantity}} {{unit}}:",
+    "updateMeal": "تحديث الوجبة",
+    "addToPlan": "إضافة للخطة"
+  },
+  "aiEstimate": {
+    "convertWithAi": "تقدير التحويل بالذكاء الاصطناعي",
+    "estimating": "جاري تقدير {{fromAmount}} {{fromUnit}} بوحدة {{toUnit}}…",
+    "failed": "تعذر تقدير التحويل. حاول مرة ثانية.",
+    "tryAgain": "إعادة المحاولة",
+    "dismiss": "إغلاق",
+    "result": "التقدير: حوالي {{amount}} {{unit}}",
+    "confidenceEstimate": "تقدير بثقة {{confidence}}",
+    "confidence": {
+      "high": "عالية",
+      "medium": "متوسطة",
+      "low": "منخفضة"
+    },
+    "lowConfidenceWarning": "هالتقدير تقريبي؛ تأكد منه إذا كانت الدقة مهمة.",
+    "useEstimate": "استخدام التقدير",
+    "editEstimate": "تعديل يدوي"
   },
   "nutrition": {
     "calories": "السعرات",
