@@ -19,6 +19,9 @@ await build({
   format: 'esm',
   outfile: 'dist/index.js',
   external,
+  define: {
+    'process.env.npm_package_version': JSON.stringify(packageJson.version),
+  },
   sourcemap: true,
   logLevel: 'info',
 });

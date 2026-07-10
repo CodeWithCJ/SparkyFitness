@@ -84,6 +84,11 @@ function fetchDirect(url: string): Promise<GitHubRawRelease> {
 
 // Function to get the application version from package.json
 function getAppVersion(): string {
+  const injectedVersion = process.env.npm_package_version?.trim();
+  if (injectedVersion) {
+    return injectedVersion;
+  }
+
   try {
     const packageJsonPath = path.resolve(__dirname, '../package.json');
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
