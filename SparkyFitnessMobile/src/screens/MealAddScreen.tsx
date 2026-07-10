@@ -31,6 +31,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import {
   formatMobileNumber,
+  formatMobilePreciseCalories,
   localizeNutrient,
   localizeServingUnit,
   mobileT,
@@ -85,14 +86,6 @@ function formatMealInputNumber(value: number): string {
     maximumFractionDigits: MEAL_SERVING_PRECISION,
     useGrouping: false,
   });
-}
-
-function formatMealCalories(value: number): string {
-  const safeValue = Number.isFinite(value) ? value : 0;
-  const displayValue = Math.abs(safeValue) >= 1 ? Math.round(safeValue) : safeValue;
-  return `${formatMobileNumber(displayValue, {
-    maximumFractionDigits: Math.abs(safeValue) >= 1 ? 0 : 4,
-  })} ${mobileT('units.calorie')}`;
 }
 
 function formatMealMacro(value: number): string {
@@ -620,7 +613,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                 const servingSize = toFiniteNumber(ingredient.serving_size);
                 const quantity = toFiniteNumber(ingredient.quantity);
                 const scale = servingSize > 0 ? quantity / servingSize : 0;
-                const ingredientCalories = formatMealCalories(
+                const ingredientCalories = formatMobilePreciseCalories(
                   toFiniteNumber(ingredient.calories) * scale,
                 );
                 const ingredientProtein = formatMealMacro(
@@ -753,7 +746,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                     {mobileT('mealAdd.mealTotal')}
                   </Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                    {formatMealCalories(totals.calories)}
+                    {formatMobilePreciseCalories(totals.calories)}
                   </Text>
                 </View>
                 <View className="flex-row items-start gap-2 mt-1">
@@ -781,7 +774,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                       {mobileT('mealDetail.perServing')}
                     </Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                      {formatMealCalories(totals.calories / totalServingsCount)}
+                      {formatMobilePreciseCalories(
+                        totals.calories / totalServingsCount,
+                      )}
                     </Text>
                   </View>
                   <View className="flex-row items-start gap-2 mt-1">

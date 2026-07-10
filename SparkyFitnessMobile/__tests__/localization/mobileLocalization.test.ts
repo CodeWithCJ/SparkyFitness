@@ -3,6 +3,7 @@ import {
   MOBILE_LOCALE,
   isMobileRtl,
   formatMobileCalories,
+  formatMobilePreciseCalories,
   formatMobileDuration,
   formatMobileExerciseCount,
   formatMobileFoodVariantLabel,
@@ -51,6 +52,8 @@ describe('mobile localization', () => {
     expect(localizeServingUnit('cups')).toBe('كوب');
     expect(formatMobileNumber(1234.5)).toBe('١٬٢٣٤٫٥');
     expect(formatMobileCalories(350)).toBe('٣٥٠ سعرة');
+    expect(formatMobilePreciseCalories(0.0024)).toBe('٠٫٠٠٢٤ سعرة');
+    expect(formatMobilePreciseCalories(165.4)).toBe('١٦٥ سعرة');
     expect(localizeServingDescription('1 cup (250 ml)')).toBe('١ كوب (٢٥٠ مل)');
     expect(localizeServingDescription('1.5 fl oz')).toBe(
       '١٫٥ أونصة سائلة',

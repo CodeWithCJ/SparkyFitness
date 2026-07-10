@@ -378,6 +378,21 @@ export const ar = {
   'mealAdd.macros':
     '{{protein}} بروتين · {{carbs}} كربوهيدرات · {{fat}} دهون',
 
+  'editLoggedMeal.mealName': 'اسم الوجبة',
+  'editLoggedMeal.servings': 'عدد الحصص',
+  'editLoggedMeal.foods': 'مكوّنات هالوجبة',
+  'editLoggedMeal.noFoods': 'ما فيه أصناف في هالوجبة للحين.',
+  'editLoggedMeal.addFood': 'إضافة صنف غذائي',
+  'editLoggedMeal.saveMeal': 'حفظ الوجبة',
+  'editLoggedMeal.loadFailed': 'ما قدرنا نحمّل الوجبة',
+  'editLoggedMeal.updateFailed': 'ما قدرنا نحفظ الوجبة',
+  'editLoggedMeal.noPermission': 'ما عندك صلاحية تعدّل هالوجبة.',
+
+  'ingredientRow.removeTitle': 'حذف {{name}}؟',
+  'ingredientRow.lastIngredientDescription':
+    'هذا آخر مكوّن. أضف مكوّنًا ثانيًا قبل الحفظ، أو احذف الوجبة كاملة.',
+  'ingredientRow.editIngredient': 'تعديل {{name}}',
+
   'mealTypeDetail.noServerTitle': 'ما فيه خادم مربوط',
   'mealTypeDetail.noServerDescription':
     'اربط خادمك من الإعدادات عشان تشوف تغذية وجبتك.',

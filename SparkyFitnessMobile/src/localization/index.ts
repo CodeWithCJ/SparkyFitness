@@ -205,6 +205,16 @@ export function formatMobileCalories(calories: number): string {
   })} ${mobileT('units.calorie')}`;
 }
 
+export function formatMobilePreciseCalories(calories: number): string {
+  const safeCalories = Number.isFinite(calories) ? calories : 0;
+  const displayCalories =
+    Math.abs(safeCalories) >= 1 ? Math.round(safeCalories) : safeCalories;
+
+  return `${formatMobileNumber(displayCalories, {
+    maximumFractionDigits: Math.abs(safeCalories) >= 1 ? 0 : 4,
+  })} ${mobileT('units.calorie')}`;
+}
+
 export function formatMobileFoodVariantLabel(values: {
   servingSize: number;
   servingUnit: string;

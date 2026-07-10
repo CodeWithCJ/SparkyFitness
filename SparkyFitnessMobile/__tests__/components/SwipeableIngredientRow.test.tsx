@@ -18,7 +18,7 @@ const baseProps = {
 describe('SwipeableIngredientRow', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('long-press opens an Edit / Delete / Cancel menu', () => {
+  it('long-press opens an Arabic edit, delete, and cancel menu', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const screen = render(<SwipeableIngredientRow {...baseProps} />);
 
@@ -29,7 +29,7 @@ describe('SwipeableIngredientRow', () => {
     expect(title).toBe('Chicken');
     expect(message).toBeUndefined();
     const labels = (buttons as AlertButton[]).map((b) => b.text);
-    expect(labels).toEqual(expect.arrayContaining(['Edit', 'Delete', 'Cancel']));
+    expect(labels).toEqual(expect.arrayContaining(['تعديل', 'حذف', 'إلغاء']));
 
     alertSpy.mockRestore();
   });
@@ -49,8 +49,8 @@ describe('SwipeableIngredientRow', () => {
     );
     fireEvent(screen.getByText('Chicken'), 'longPress');
 
-    buttons.find((b) => b.text === 'Edit')?.onPress?.();
-    buttons.find((b) => b.text === 'Delete')?.onPress?.();
+    buttons.find((b) => b.text === 'تعديل')?.onPress?.();
+    buttons.find((b) => b.text === 'حذف')?.onPress?.();
 
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(onConfirmDelete).toHaveBeenCalledTimes(1);
@@ -64,7 +64,9 @@ describe('SwipeableIngredientRow', () => {
 
     fireEvent(screen.getByText('Chicken'), 'longPress');
 
-    expect(alertSpy.mock.calls[0][1]).toMatch(/last ingredient/i);
+    expect(alertSpy.mock.calls[0][1]).toBe(
+      'هذا آخر مكوّن. أضف مكوّنًا ثانيًا قبل الحفظ، أو احذف الوجبة كاملة.',
+    );
 
     alertSpy.mockRestore();
   });
