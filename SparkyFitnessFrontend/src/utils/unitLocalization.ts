@@ -34,6 +34,11 @@ const STANDARD_UNIT_KEYS: Readonly<Record<string, string>> = {
   ft: 'units.foot',
   foot: 'units.foot',
   feet: 'units.foot',
+  step: 'units.step',
+  steps: 'units.step',
+  year: 'units.year',
+  years: 'units.year',
+  bpm: 'units.bpm',
   '%': 'units.percent',
 };
 
