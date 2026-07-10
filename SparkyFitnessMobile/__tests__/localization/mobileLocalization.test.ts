@@ -6,6 +6,7 @@ import {
   formatMobileDuration,
   formatMobileExerciseCount,
   formatMobileFoodVariantLabel,
+  formatMobileIngredientCount,
   formatMobileNumber,
   formatMobileRepCount,
   formatMobileServingCount,
@@ -68,6 +69,9 @@ describe('mobile localization', () => {
     expect(formatMobileServingCount(5)).toBe('٥ حصص');
     expect(formatMobileServingCount(1.5)).toBe('١٫٥ حصة');
     expect(formatMobileServingCount(1.25)).toBe('١٫٢٥ حصة');
+    expect(formatMobileIngredientCount(1)).toBe('مكوّن واحد');
+    expect(formatMobileIngredientCount(2)).toBe('مكوّنين');
+    expect(formatMobileIngredientCount(4)).toBe('٤ مكوّنات');
     expect(localizeNutrientDisplayLabel('Total Carbs')).toBe(
       'إجمالي الكربوهيدرات',
     );

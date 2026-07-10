@@ -318,6 +318,30 @@ export const ar = {
   'foodDetail.deleting': 'جاري الحذف…',
   'foodDetail.deleteFood': 'حذف الصنف',
 
+  'mealDetail.perServing': 'لكل حصة',
+  'mealDetail.total': 'الإجمالي',
+  'mealDetail.editMeal': 'تعديل الوجبة',
+  'mealDetail.noServerTitle': 'ما فيه خادم مربوط',
+  'mealDetail.noServerDescription':
+    'اربط خادمك من الإعدادات عشان تشوف تفاصيل الوجبة.',
+  'mealDetail.loading': 'جاري تحميل الوجبة…',
+  'mealDetail.loadFailed': 'ما قدرنا نحمّل الوجبة',
+  'mealDetail.loadFailedDescription':
+    'تأكد من اتصالك وحاول مرة ثانية.',
+  'mealDetail.yieldSummary': 'تكفي {{servings}} · {{ingredients}}',
+  'mealDetail.foods': 'مكوّنات الوجبة',
+  'mealDetail.linkedMeal': 'وجبة مرتبطة',
+  'mealDetail.viewLinkedMeal': 'فتح الوجبة المرتبطة {{name}}',
+  'mealDetail.macros':
+    '{{protein}} بروتين · {{carbs}} كربوهيدرات · {{fat}} دهون',
+  'mealDetail.logMeal': 'تسجيل الوجبة',
+  'mealDetail.deleting': 'جاري الحذف…',
+  'mealDetail.deleteMeal': 'حذف الوجبة',
+  'mealDetail.ingredient.one': 'مكوّن واحد',
+  'mealDetail.ingredient.two': 'مكوّنين',
+  'mealDetail.ingredient.few': '{{count}} مكوّنات',
+  'mealDetail.ingredient.other': '{{count}} مكوّن',
+
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
   'exerciseCategory.flexibility': 'مرونة',

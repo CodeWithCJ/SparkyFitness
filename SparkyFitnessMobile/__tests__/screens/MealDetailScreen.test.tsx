@@ -47,6 +47,7 @@ jest.mock('../../src/components/NutritionMacroCard', () => {
 const mockNavigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  push: jest.fn(),
   setOptions: jest.fn(),
 } as any;
 jest.mock('@react-navigation/native', () => ({
@@ -152,15 +153,15 @@ describe('MealDetailScreen', () => {
     const screen = renderScreen();
 
     expect(screen.getByText('Lunch Bowl')).toBeTruthy();
-    expect(screen.getByText('Per serving')).toBeTruthy();
-    expect(screen.getByText('Delete Meal')).toBeTruthy();
+    expect(screen.getByText('لكل حصة')).toBeTruthy();
+    expect(screen.getByText('حذف الوجبة')).toBeTruthy();
 
     const headerRightItems = getHeaderRightItems();
     expect(headerRightItems).toBeTruthy();
     expect(headerRightItems()).toEqual([
       expect.objectContaining({
         type: 'button',
-        label: 'Edit',
+        label: 'تعديل',
         identifier: 'meal-detail-edit',
         sharesBackground: true,
       }),
@@ -170,7 +171,7 @@ describe('MealDetailScreen', () => {
   it('logs the meal from the detail screen', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Log Meal'));
+    fireEvent.press(screen.getByText('تسجيل الوجبة'));
 
     expect(navigation.navigate).toHaveBeenCalledWith(
       'FoodEntryAdd',
@@ -209,15 +210,74 @@ describe('MealDetailScreen', () => {
     const screen = renderScreen();
 
     expect(getHeaderRightItems()).toBeUndefined();
-    expect(screen.queryByText('Delete Meal')).toBeNull();
-    expect(screen.getByText('Log Meal')).toBeTruthy();
+    expect(screen.queryByText('حذف الوجبة')).toBeNull();
+    expect(screen.getByText('تسجيل الوجبة')).toBeTruthy();
   });
 
   it('triggers delete confirmation from the delete action', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Delete Meal'));
+    fireEvent.press(screen.getByText('حذف الوجبة'));
 
     expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the yield and ingredient nutrition in Saudi Arabic', () => {
+    const screen = renderScreen();
+
+    expect(screen.getByText('تكفي حصة واحدة · مكوّن واحد')).toBeTruthy();
+    expect(screen.getByText('مكوّنات الوجبة')).toBeTruthy();
+    expect(
+      screen.getByText('٦٠ غ بروتين · ٠ غ كربوهيدرات · ١٢ غ دهون'),
+    ).toBeTruthy();
+    expect(screen.getByText('٤٠٠ سعرة')).toBeTruthy();
+    expect(screen.getByText('٢ حصة')).toBeTruthy();
+  });
+
+  it('opens a linked meal with an Arabic accessibility label', () => {
+    const linkedMeal = buildMeal({
+      foods: [
+        {
+          ...meal.foods[0],
+          id: 'linked-row',
+          item_type: 'meal',
+          child_meal_id: 'meal-2',
+          child_meal_name: 'وجبة النادي',
+        },
+      ],
+    });
+    mockUseMeal.mockReturnValue({
+      meal: linkedMeal,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen();
+    fireEvent.press(screen.getByLabelText('فتح الوجبة المرتبطة وجبة النادي'));
+
+    expect(navigation.push).toHaveBeenCalledWith('MealDetail', {
+      mealId: 'meal-2',
+    });
+    expect(screen.getByText('وجبة مرتبطة')).toBeTruthy();
+  });
+
+  it('shows an Arabic server recovery state', () => {
+    mockUseServerConnection.mockReturnValue({
+      isConnected: false,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen();
+
+    expect(screen.getByText('ما فيه خادم مربوط')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'اربط خادمك من الإعدادات عشان تشوف تفاصيل الوجبة.',
+      ),
+    ).toBeTruthy();
   });
 });
