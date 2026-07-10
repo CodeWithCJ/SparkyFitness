@@ -915,8 +915,8 @@
     "loadingExercises": "Loading exercises..."
   },
   "foodSearchDialog": {
-    "title": "Search and Add Food",
-    "description": "Search for foods to add to your database."
+    "title": "Search and add food",
+    "description": "Search for foods to add to your library."
   },
   "enhancedFoodSearch": {
     "database": "Database",
@@ -963,7 +963,22 @@
     "bySource": "By Source",
     "noResults": "No results",
     "couldntLoad": "Couldn't load",
-    "showAllResults": "Show all {{count}} {{provider}} results"
+    "showAllResults": "Show all {{count}} {{provider}} results",
+    "searchFoodsLabel": "Search foods and meals",
+    "searchingBarcodeTitle": "Searching barcode",
+    "lookingUpBarcode": "Looking up barcode {{barcode}}…",
+    "localFoodFoundTitle": "Food found in your library",
+    "foodFound": "Found {{foodName}}.",
+    "barcodeSuccessTitle": "Barcode scanned",
+    "productFound": "Found {{foodName}}.",
+    "productNotFoundTitle": "Product not found",
+    "productNotFound": "No product was found for this barcode from the selected provider.",
+    "barcodeSearchFailed": "Could not search this barcode.",
+    "foodAddedTitle": "Food added",
+    "foodReadyForMeal": "{{foodName}} is ready to add to your meal.",
+    "editedFoodFailed": "Could not process the edited food.",
+    "detailedNutritionFailed": "Could not retrieve detailed nutrition for this item.",
+    "partialNutritionFallback": "Could not retrieve complete nutrition. Using the available data."
   },
   "sync": {
     "syncAll": "Sync all active providers",
