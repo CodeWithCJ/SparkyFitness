@@ -15,11 +15,11 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   buildExternalVariantOptions,
   buildLocalVariantOptions,
-  formatVariantLabel,
   resolveFoodDisplayValues,
   applyDisplayValuesToFoodInfo,
 } from '../utils/foodDetails';
 import type { RootStackScreenProps } from '../types/navigation';
+import { formatMobileFoodVariantLabel, mobileT } from '../localization';
 
 type FoodDetailScreenProps = RootStackScreenProps<'FoodDetail'>;
 
@@ -59,9 +59,17 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     () => buildExternalVariantOptions(food.externalVariants),
     [food.externalVariants],
   );
-  const variantOptions = localVariantOptions.length > 0
-    ? localVariantOptions
-    : externalVariantOptions;
+  const variantOptions = useMemo(
+    () =>
+      (localVariantOptions.length > 0
+        ? localVariantOptions
+        : externalVariantOptions
+      ).map((option) => ({
+        ...option,
+        label: formatMobileFoodVariantLabel(option),
+      })),
+    [externalVariantOptions, localVariantOptions],
+  );
   const displayValues = useMemo(
     () => resolveFoodDisplayValues({
       item: food,
@@ -73,7 +81,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   );
 
   const selectedVariantLabel = variantOptions.find((option) => option.id === selectedVariantId)?.label
-    ?? formatVariantLabel(displayValues);
+    ?? formatMobileFoodVariantLabel(displayValues);
   const selectedCustomNutrients = useMemo(() => {
     const selectedVariant = variants?.find((variant) => variant.id === selectedVariantId);
     if (selectedVariant) {
@@ -165,11 +173,11 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     right: canManageFood
       ? {
           kind: 'text',
-          label: 'Edit',
+          label: mobileT('common.edit'),
           role: 'secondary',
           disabled: !selectedVariantId,
           onPress: handleEdit,
-          accessibilityLabel: 'Edit food',
+          accessibilityLabel: mobileT('foodDetail.editFood'),
           identifier: 'food-detail-edit',
         }
       : null,
@@ -182,9 +190,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view food details."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          title={mobileT('foodDetail.noServerTitle')}
+          subtitle={mobileT('foodDetail.noServerDescription')}
+          action={{ label: mobileT('common.goToSettings'), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
@@ -205,25 +213,31 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           values={displayValues}
           showNetCarbs={showNetCarbs}
           customNutrients={selectedCustomNutrients}
+          provider_verified={food.provider_verified}
         />
 
         <View className="bg-surface rounded-xl p-4">
-          <Text className="text-text-secondary text-sm mb-2">Serving</Text>
+          <Text className="text-text-secondary text-sm mb-2">
+            {mobileT('foodDetail.serving')}
+          </Text>
           {variantOptions.length > 1 ? (
             <BottomSheetPicker
               value={selectedVariantId ?? variantOptions[0].id}
               options={variantOptions.map((option) => ({ label: option.label, value: option.id }))}
               onSelect={setSelectedVariantId}
-              title="Select Serving"
+              title={mobileT('foodEntry.selectServing')}
               renderTrigger={({ onPress }) => (
                 <TouchableOpacity
                   onPress={onPress}
                   activeOpacity={0.7}
                   className="flex-row items-center justify-between"
                   accessibilityRole="button"
-                  accessibilityLabel="Serving options"
+                  accessibilityLabel={mobileT('foodDetail.servingOptions')}
                 >
-                  <Text className="text-text-primary text-base font-medium flex-1 mr-3">
+                  <Text
+                    className="text-text-primary text-base font-medium flex-1"
+                    style={{ marginEnd: 12 }}
+                  >
                     {selectedVariantLabel}
                   </Text>
                   <Icon name="chevron-down" size={16} color={textPrimary} />
@@ -239,15 +253,18 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           {isVariantsLoading ? (
             <View className="flex-row items-center mt-3">
               <ActivityIndicator size="small" color={accentColor} />
-              <Text className="text-text-secondary text-sm ml-2">
-                Loading serving options...
+              <Text
+                className="text-text-secondary text-sm"
+                style={{ marginStart: 8 }}
+              >
+                {mobileT('foodDetail.loadingServingOptions')}
               </Text>
             </View>
           ) : null}
 
           {isVariantsError ? (
             <Text className="text-text-secondary text-sm mt-3">
-              Some serving options could not be loaded right now.
+              {mobileT('foodDetail.servingOptionsPartial')}
             </Text>
           ) : null}
         </View>
@@ -256,12 +273,14 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           <SettingsRowGroup>
             <SettingsRow
               icon="scan"
-              title="Barcode"
+              title={mobileT('foodDetail.barcode')}
               subtitle={
                 food.barcode ? (
                   food.barcode
                 ) : (
-                  <Text className="text-sm text-text-secondary mt-0.5">Not set</Text>
+                  <Text className="text-sm text-text-secondary mt-0.5">
+                    {mobileT('foodDetail.notSet')}
+                  </Text>
                 )
               }
               onPress={() =>
@@ -282,7 +301,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             item: applyDisplayValuesToFoodInfo(food, displayValues, selectedVariantId),
           })}
         >
-          <Text className="text-white text-base font-semibold">Log Food</Text>
+          <Text className="text-white text-base font-semibold">
+            {mobileT('foodDetail.logFood')}
+          </Text>
         </Button>
 
         {canManageFood && (
@@ -292,7 +313,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             disabled={isDeletePending}
             textClassName="text-bg-danger font-medium"
           >
-            {isDeletePending ? 'Deleting...' : 'Delete Food'}
+            {isDeletePending
+              ? mobileT('foodDetail.deleting')
+              : mobileT('foodDetail.deleteFood')}
           </Button>
         )}
       </ScrollView>

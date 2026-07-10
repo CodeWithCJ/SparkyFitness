@@ -18,6 +18,7 @@ import {
 import type { Exercise } from '../types/exercise';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
+import { formatMobileExerciseCount, mobileT } from '../localization';
 
 type PresetSearchScreenProps = RootStackScreenProps<'PresetSearch'>;
 
@@ -50,7 +51,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   }, [navigation]);
 
   const header = useScreenHeader({
-    title: 'Start Workout',
+    title: mobileT('screens.startWorkout'),
     left: { kind: 'dismiss', onPress: handleCancel, identifier: 'preset-search-cancel' },
   });
 
@@ -85,7 +86,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       <View className="flex-1">
         <Text className="text-text-primary text-base font-medium">{item.name}</Text>
         <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
+          {formatMobileExerciseCount(item.exercises.length)}
         </Text>
       </View>
       {isStarting && startingId === item.id && (
@@ -99,10 +100,15 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       return <StatusView loading />;
     }
     if (isSearchError) {
-      return <StatusView icon="alert-circle" title="Failed to search presets" />;
+      return (
+        <StatusView
+          icon="alert-circle"
+          title={mobileT('presetSearch.searchFailed')}
+        />
+      );
     }
     if (searchResults.length === 0) {
-      return <StatusView title="No matching presets found" />;
+      return <StatusView title={mobileT('presetSearch.noMatches')} />;
     }
     return (
       <FlatList
@@ -126,13 +132,18 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       return (
         <StatusView
           icon="alert-circle"
-          title="Failed to load presets"
-          action={{ label: 'Retry', onPress: () => refetch() }}
+          title={mobileT('presetSearch.loadFailed')}
+          action={{ label: mobileT('common.retry'), onPress: () => refetch() }}
         />
       );
     }
     if (presets.length === 0) {
-      return <StatusView title="No presets yet" subtitle="Start an empty workout, or save a workout as a preset to see it here" />;
+      return (
+        <StatusView
+          title={mobileT('presetSearch.noPresets')}
+          subtitle={mobileT('presetSearch.noPresetsDescription')}
+        />
+      );
     }
     return (
       <FlatList
@@ -156,11 +167,11 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
           style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : borderSubtle }}
         >
           <Icon name="search" size={18} color={textMuted} />
-          <View className="flex-1 ml-2">
+          <View className="flex-1" style={{ marginStart: 8 }}>
             <TextInput
               className="text-text-primary"
               style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-              placeholder="Search presets..."
+              placeholder={mobileT('presetSearch.searchPlaceholder')}
               placeholderTextColor={textMuted}
               value={searchText}
               onChangeText={setSearchText}
@@ -172,7 +183,12 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
             />
           </View>
           {searchText.length > 0 && (
-            <Button variant="header" onPress={() => setSearchText('')} hitSlop={8}>
+            <Button
+              variant="header"
+              onPress={() => setSearchText('')}
+              hitSlop={8}
+              accessibilityLabel={mobileT('exerciseSearch.clearSearch')}
+            >
               <Icon name="close" size={16} color={textMuted} />
             </Button>
           )}
@@ -186,12 +202,15 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
         onPress={handleStartEmpty}
         disabled={isStarting}
         testID="empty-workout-row"
+        accessibilityLabel={mobileT('presetSearch.startFromScratch')}
       >
         <Icon name="add-circle" size={22} color={accentColor} />
-        <View className="flex-1 ml-3">
-          <Text className="text-text-primary text-base font-medium">Empty workout</Text>
+        <View className="flex-1" style={{ marginStart: 12 }}>
+          <Text className="text-text-primary text-base font-medium">
+            {mobileT('presetSearch.startFromScratch')}
+          </Text>
           <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-            Pick your first exercise
+            {mobileT('presetSearch.pickFirstExercise')}
           </Text>
         </View>
         {isStarting && startingId === EMPTY_START_ID && (

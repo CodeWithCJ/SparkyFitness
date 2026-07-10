@@ -17,15 +17,20 @@ import {
 } from '@/components/ui/popover';
 import { CalendarIcon, AlertCircle, RefreshCw, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, subDays } from 'date-fns';
+import { addDays, format, subDays } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  formatIntegrationDate,
+  isSyncRangeWithinLimit,
+} from '@/utils/integrationSync';
 
 interface SyncRangeDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSync: (startDate: string, endDate: string) => void;
   providerType: string;
+  maxDays?: number;
 }
 
 const SyncRangeDialog = ({
@@ -33,24 +38,32 @@ const SyncRangeDialog = ({
   onClose,
   onSync,
   providerType,
+  maxDays,
 }: SyncRangeDialogProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [startDate, setStartDate] = useState<Date | undefined>(
-    subDays(new Date(), 7)
+    subDays(new Date(), 6)
   );
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
 
   const handleSyncClick = () => {
-    if (startDate && endDate) {
+    if (startDate && endDate && !rangeTooLong) {
       onSync(format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
       onClose();
     }
   };
 
   const setPreset = (days: number) => {
-    setStartDate(subDays(new Date(), days));
+    setStartDate(subDays(new Date(), days - 1));
     setEndDate(new Date());
   };
+
+  const rangeTooLong = Boolean(
+    maxDays &&
+    startDate &&
+    endDate &&
+    !isSyncRangeWithinLimit(startDate, endDate, maxDays)
+  );
 
   const getProviderName = (type: string) => {
     switch (type.toLowerCase()) {
@@ -68,6 +81,8 @@ const SyncRangeDialog = ({
         return 'Withings';
       case 'googlehealth':
         return 'Google Health';
+      case 'huaweihealth':
+        return 'HUAWEI Health';
       default:
         return type;
     }
@@ -106,62 +121,66 @@ const SyncRangeDialog = ({
           </Alert>
         )}
 
-        <Alert
-          variant="default"
-          className="mt-2 bg-yellow-50 border-yellow-200"
-        >
-          <Info className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-[10px] leading-tight text-yellow-700">
-            {t(
-              'syncRangeDialog.timeoutWarning',
-              'For large date ranges, the browser may time out, but the server will continue syncing in the background.'
-            )}
-          </AlertDescription>
-        </Alert>
+        {providerType === 'huaweihealth' ? (
+          <Alert variant="default" className="mt-2 border-blue-200 bg-blue-50">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-xs leading-relaxed text-blue-700">
+              {t(
+                'syncRangeDialog.huaweiLimit',
+                'Huawei accepts up to 31 calendar days per manual sync. The most recent 7 days are selected by default.'
+              )}
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert
+            variant="default"
+            className="mt-2 border-yellow-200 bg-yellow-50"
+          >
+            <Info className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-[10px] leading-tight text-yellow-700">
+              {t(
+                'syncRangeDialog.timeoutWarning',
+                'For large date ranges, the browser may time out, but the server will continue syncing in the background.'
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {rangeTooLong && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {t(
+                'syncRangeDialog.rangeTooLong',
+                'Choose a range of {{maxDays}} days or fewer.',
+                { maxDays }
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid gap-6 py-4">
           {/* Presets */}
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPreset(7)}
-              className="text-xs"
-            >
-              {t('syncRangeDialog.last7Days', 'Last 7 Days')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPreset(30)}
-              className="text-xs"
-            >
-              {t('syncRangeDialog.last30Days', 'Last 30 Days')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPreset(90)}
-              className="text-xs"
-            >
-              {t('syncRangeDialog.last90Days', 'Last 90 Days')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPreset(180)}
-              className="text-xs"
-            >
-              {t('syncRangeDialog.last180Days', 'Last 180 Days')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPreset(365)}
-              className="text-xs"
-            >
-              {t('syncRangeDialog.last365Days', 'Last 365 Days')}
-            </Button>
+            {[
+              [7, t('syncRangeDialog.last7Days', 'Last 7 Days')],
+              [30, t('syncRangeDialog.last30Days', 'Last 30 Days')],
+              [90, t('syncRangeDialog.last90Days', 'Last 90 Days')],
+              [180, t('syncRangeDialog.last180Days', 'Last 180 Days')],
+              [365, t('syncRangeDialog.last365Days', 'Last 365 Days')],
+            ]
+              .filter(([days]) => !maxDays || Number(days) <= maxDays)
+              .map(([days, label]) => (
+                <Button
+                  key={String(days)}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreset(Number(days))}
+                  className="text-xs"
+                >
+                  {label}
+                </Button>
+              ))}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -181,7 +200,7 @@ const SyncRangeDialog = ({
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {startDate ? (
-                      format(startDate, 'PP')
+                      formatIntegrationDate(startDate, i18n.language)
                     ) : (
                       <span>{t('common.pickADate', 'Pick a date')}</span>
                     )}
@@ -193,7 +212,13 @@ const SyncRangeDialog = ({
                     selected={startDate}
                     onSelect={setStartDate}
                     disabled={(date) =>
-                      date > new Date() || (endDate ? date > endDate : false)
+                      date > new Date() ||
+                      (endDate ? date > endDate : false) ||
+                      Boolean(
+                        maxDays &&
+                        endDate &&
+                        date < subDays(endDate, maxDays - 1)
+                      )
                     }
                     initialFocus
                   />
@@ -217,7 +242,7 @@ const SyncRangeDialog = ({
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {endDate ? (
-                      format(endDate, 'PP')
+                      formatIntegrationDate(endDate, i18n.language)
                     ) : (
                       <span>{t('common.pickADate', 'Pick a date')}</span>
                     )}
@@ -230,7 +255,12 @@ const SyncRangeDialog = ({
                     onSelect={setEndDate}
                     disabled={(date) =>
                       date > new Date() ||
-                      (startDate ? date < startDate : false)
+                      (startDate ? date < startDate : false) ||
+                      Boolean(
+                        maxDays &&
+                        startDate &&
+                        date > addDays(startDate, maxDays - 1)
+                      )
                     }
                     initialFocus
                   />
@@ -244,7 +274,10 @@ const SyncRangeDialog = ({
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button onClick={handleSyncClick} disabled={!startDate || !endDate}>
+          <Button
+            onClick={handleSyncClick}
+            disabled={!startDate || !endDate || rangeTooLong}
+          >
             {t('syncRangeDialog.syncNow', 'Start Sync')}
           </Button>
         </DialogFooter>

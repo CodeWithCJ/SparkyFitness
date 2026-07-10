@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
-import { format, parseISO, startOfDay } from 'date-fns';
+import { parseISO, startOfDay } from 'date-fns';
 import {
   FatBreakdownAlgorithm,
   MineralCalculationAlgorithm,
@@ -30,6 +30,15 @@ import {
 import { getErrorMessage } from '@/utils/api';
 import { CalorieGoalAdjustmentMode } from '@/utils/calorieCalculations';
 import { GoalMode, GoalModeCalculationMethod } from '@workspace/shared';
+import {
+  buildSaudiDefaultPreferences,
+  resolveTimezonePreference,
+} from '@/utils/defaultPreferences';
+import {
+  LANGUAGE_STORAGE_KEY,
+  SAUDI_DEFAULT_PREFERENCES,
+  resolveLanguagePreference,
+} from '@/utils/localePolicy';
 
 import {
   kgToLbs,
@@ -41,6 +50,7 @@ import {
 } from '@/utils/unitConversions';
 import { DayOfWeek } from '@/types/settings';
 import { todayInZone } from '@workspace/shared';
+import { formatLocalizedDate } from '@/utils/dateLocalization';
 
 // Function to fetch user preferences from the backend
 
@@ -246,11 +256,18 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useCreateWaterContainerMutation();
   const { mutateAsync: setPrimaryWaterContainer } =
     useSetPrimaryWaterContainerMutation();
-  const [weightUnit, setWeightUnitState] = useState<WeightUnit>('kg');
-  const [measurementUnit, setMeasurementUnitState] =
-    useState<MeasurementUnit>('cm');
-  const [distanceUnit, setDistanceUnitState] = useState<'km' | 'miles'>('km');
-  const [dateFormat, setDateFormatState] = useState<string>('MM/dd/yyyy');
+  const [weightUnit, setWeightUnitState] = useState<WeightUnit>(
+    SAUDI_DEFAULT_PREFERENCES.weightUnit
+  );
+  const [measurementUnit, setMeasurementUnitState] = useState<MeasurementUnit>(
+    SAUDI_DEFAULT_PREFERENCES.measurementUnit
+  );
+  const [distanceUnit, setDistanceUnitState] = useState<'km' | 'miles'>(
+    SAUDI_DEFAULT_PREFERENCES.distanceUnit
+  );
+  const [dateFormat, setDateFormatState] = useState<string>(
+    SAUDI_DEFAULT_PREFERENCES.dateFormat
+  );
   const [autoClearHistory, setAutoClearHistoryState] =
     useState<string>('never');
   const [loggingLevel, setLoggingLevelState] = useState<
@@ -264,7 +281,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [barcodeFallbackOpenFoodFacts, setBarcodeFallbackOpenFoodFactsState] =
     useState<boolean>(false);
   const [timezone, setTimezoneState] = useState<string>(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
+    resolveTimezonePreference(Intl.DateTimeFormat().resolvedOptions().timeZone)
   );
   const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10);
@@ -278,7 +295,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<ActivityLevel>('not_much');
   const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustmentState] =
     useState<boolean>(false);
-  const [energyUnit, setEnergyUnitState] = useState<EnergyUnit>('kcal');
+  const [energyUnit, setEnergyUnitState] = useState<EnergyUnit>(
+    SAUDI_DEFAULT_PREFERENCES.energyUnit
+  );
   const [autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImportsState] =
     useState<boolean>(false);
   const [autoScaleOnlineImports, setAutoScaleOnlineImportsState] =
@@ -288,8 +307,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   >([]);
   const [waterDisplayUnit, setWaterDisplayUnitState] = useState<
     'ml' | 'oz' | 'liter'
-  >('ml');
-  const [language, setLanguageState] = useState<string>('en');
+  >(SAUDI_DEFAULT_PREFERENCES.waterDisplayUnit);
+  const [language, setLanguageState] = useState<string>(
+    SAUDI_DEFAULT_PREFERENCES.language
+  );
   const [bmrAlgorithm, setBmrAlgorithmState] = useState<BmrAlgorithm>(
     BmrAlgorithm.MIFFLIN_ST_JEOR
   );
@@ -319,7 +340,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       SugarCalculationAlgorithm.WHO_GUIDELINES
     );
   const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
-  const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
+  const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(
+    SAUDI_DEFAULT_PREFERENCES.firstDayOfWeek
+  );
   const [measurementDecimalPlaces, setMeasurementDecimalPlacesState] =
     useState<number>(0);
   const [goalMode, setGoalModeState] = useState<GoalMode>('maintain');
@@ -510,9 +533,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const formatString = formatStr || 'yyyy-MM-dd';
-      return format(dateToFormat, formatString);
+      return formatLocalizedDate(dateToFormat, formatString, language);
     },
-    [loggingLevel, toUserTimezone]
+    [language, loggingLevel, toUserTimezone]
   );
 
   const formatDate = useCallback(
@@ -567,30 +590,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const createDefaultPreferences = useCallback(async () => {
     if (!user) return;
     try {
-      const defaultPrefs: Partial<DefaultPreferences> = {
-        user_id: user.id,
-        date_format: 'MM/dd/yyyy',
-        default_weight_unit: 'kg',
-        default_measurement_unit: 'cm',
-        default_distance_unit: 'km',
-        system_prompt:
-          'You are Sparky, a helpful AI assistant for health and fitness tracking.',
-        auto_clear_history: 'never',
-        logging_level: 'ERROR' as const,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        item_display_limit: 10,
-        food_display_limit: 10,
-        water_display_unit: waterDisplayUnit,
-        language: 'en',
-        calorie_goal_adjustment_mode: 'dynamic' as const,
-        energy_unit: 'kcal' as const,
-        auto_scale_open_food_facts_imports: false,
-        auto_scale_online_imports: true,
-        selected_diet: 'balanced',
-        first_day_of_week: 0,
-        show_net_carbs: false,
-        ai_assisted_conversions: true,
-      };
+      const defaultPrefs: Partial<DefaultPreferences> =
+        buildSaudiDefaultPreferences(
+          user.id,
+          Intl.DateTimeFormat().resolvedOptions().timeZone
+        );
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
       error(
@@ -599,7 +603,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         err
       );
     }
-  }, [user, loggingLevel, waterDisplayUnit, upsertUserPreferences]);
+  }, [user, loggingLevel, upsertUserPreferences]);
 
   const createDefaultWaterContainer = useCallback(async () => {
     if (!user) return;
@@ -651,8 +655,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         setItemDisplayLimitState(data.item_display_limit || 10);
         setFoodDisplayLimitState(data.food_display_limit || 10);
-        setWaterDisplayUnitState(data.water_display_unit || 'ml');
-        setLanguageState(data.language || 'en');
+        setWaterDisplayUnitState(
+          data.water_display_unit || SAUDI_DEFAULT_PREFERENCES.waterDisplayUnit
+        );
+        setLanguageState(resolveLanguagePreference(data.language));
         setCalorieGoalAdjustmentModeState(
           data.calorie_goal_adjustment_mode || 'dynamic'
         );
@@ -665,7 +671,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setTdeeAllowNegativeAdjustmentState(
           data.tdee_allow_negative_adjustment ?? false
         );
-        setEnergyUnitState(data.energy_unit || 'kcal');
+        setEnergyUnitState(
+          data.energy_unit || SAUDI_DEFAULT_PREFERENCES.energyUnit
+        );
         setAutoScaleOpenFoodFactsImportsState(
           data.auto_scale_open_food_facts_imports ?? false
         );
@@ -700,7 +708,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
             SugarCalculationAlgorithm.WHO_GUIDELINES
         );
         setSelectedDietState(data.selected_diet || 'balanced');
-        setFirstDayOfWeekState(data.first_day_of_week ?? 0);
+        setFirstDayOfWeekState(
+          data.first_day_of_week ?? SAUDI_DEFAULT_PREFERENCES.firstDayOfWeek
+        );
         setMeasurementDecimalPlacesState(data.measurement_decimal_places ?? 0);
         setGoalModeState(data.goal_mode || 'maintain');
         setGoalModeCalculationMethodState(
@@ -758,7 +768,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         if (updates.date_format)
           localStorage.setItem('dateFormat', updates.date_format);
         if (updates.language)
-          localStorage.setItem('language', updates.language);
+          localStorage.setItem(LANGUAGE_STORAGE_KEY, updates.language);
         if (updates.calorie_goal_adjustment_mode)
           localStorage.setItem(
             'calorieGoalAdjustmentMode',
@@ -1088,7 +1098,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           | 'km'
           | 'miles';
         const savedDateFormat = localStorage.getItem('dateFormat');
-        const savedLanguage = localStorage.getItem('language');
+        const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
         const savedCalorieGoalAdjustmentMode = localStorage.getItem(
           'calorieGoalAdjustmentMode'
         ) as 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive';

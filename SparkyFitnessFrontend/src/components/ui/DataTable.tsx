@@ -25,6 +25,7 @@ import { Loader2, ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { DataTablePagination } from './DataTablePagination';
+import { useTranslation } from 'react-i18next';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -82,6 +83,7 @@ export function DataTable<TData, TValue>({
   onSearchChange,
   titleColumnId,
 }: DataTableProps<TData, TValue>) {
+  const { t } = useTranslation();
   const [internalSorting, setInternalSorting] = useState<SortingState>(
     initialState?.sorting || []
   );
@@ -155,11 +157,16 @@ export function DataTable<TData, TValue>({
     <div className="space-y-4">
       {onSearchChange && (
         <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Search className="absolute start-3 top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder={searchPlaceholder || 'Search...'}
+            placeholder={
+              searchPlaceholder || t('common.searchPlaceholder', 'Search…')
+            }
+            aria-label={
+              searchPlaceholder || t('common.searchPlaceholder', 'Search…')
+            }
             onChange={(event) => onSearchChange(event.target.value)}
-            className="pl-10 max-w-sm"
+            className="max-w-sm ps-10"
           />
         </div>
       )}
@@ -176,7 +183,7 @@ export function DataTable<TData, TValue>({
                     <TableHead
                       key={header.id}
                       className={cn(
-                        header.column.id === 'actions' && 'text-right',
+                        header.column.id === 'actions' && 'text-end',
                         canSort && 'cursor-pointer select-none'
                       )}
                       onClick={header.column.getToggleSortingHandler()}
@@ -219,7 +226,7 @@ export function DataTable<TData, TValue>({
                 >
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading...</span>
+                    <span>{t('common.loading', 'Loading…')}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -232,7 +239,7 @@ export function DataTable<TData, TValue>({
                       className="p-0 border-none relative h-[2px]"
                     >
                       <div className="absolute inset-0 bg-blue-500/20" />
-                      <div className="absolute inset-0 bg-blue-500 animate-progress origin-left w-full h-full" />
+                      <div className="absolute inset-0 h-full w-full origin-left animate-progress bg-blue-500 rtl:origin-right" />
                     </TableCell>
                   </TableRow>
                 )}
@@ -251,7 +258,7 @@ export function DataTable<TData, TValue>({
                       <TableCell
                         key={cell.id}
                         className={cn(
-                          cell.column.id === 'actions' && 'text-right',
+                          cell.column.id === 'actions' && 'text-end',
                           cell.column.id === 'select' && 'w-[40px]'
                         )}
                       >
@@ -270,7 +277,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {t('common.noResults', 'No results.')}
                 </TableCell>
               </TableRow>
             )}
@@ -283,13 +290,13 @@ export function DataTable<TData, TValue>({
         {isLoading && !table.getRowModel().rows?.length ? (
           <div className="p-12 text-center text-muted-foreground italic border-2 border-dashed rounded-2xl bg-gray-50/50 dark:bg-gray-900/20">
             <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 opacity-50" />
-            Loading...
+            {t('common.loading', 'Loading…')}
           </div>
         ) : table.getRowModel().rows?.length ? (
           <>
             {isLoading && (
               <div className="absolute inset-x-0 -top-2 h-1 bg-blue-500/30 overflow-hidden rounded-full z-10">
-                <div className="h-full bg-blue-500 animate-progress origin-left" />
+                <div className="h-full bg-blue-500 animate-progress origin-left rtl:origin-right" />
               </div>
             )}
             {table.getRowModel().rows.map((row) => (
@@ -333,11 +340,11 @@ export function DataTable<TData, TValue>({
                                 titleCell.column.columnDef.cell,
                                 titleCell.getContext()
                               )
-                            : 'Item';
+                            : t('common.item', 'Item');
                         })()}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <div className="ms-2 flex shrink-0 items-center gap-1">
                       {(() => {
                         const actionsCell = row
                           .getVisibleCells()

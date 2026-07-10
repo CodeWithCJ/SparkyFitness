@@ -16,22 +16,31 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import type { WeightUnit } from '@/contexts/PreferencesContext';
 import type {
   WorkoutPlaybackDraft,
   WorkoutPlaybackStats,
 } from '@/utils/workoutPlayback';
 import { formatSecondsClock } from '@/utils/timeFormatters';
+import { kgToLbs } from '@/utils/unitConversions';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 const DEFAULT_REST_DISPLAY = '0:00';
 
-function formatWorkoutVolume(totalVolume: number): string {
-  return `${Number(totalVolume.toFixed(1))}`;
+function formatWorkoutVolume(
+  totalVolume: number,
+  weightUnit: WeightUnit
+): number {
+  const displayVolume =
+    weightUnit === 'kg' ? totalVolume : kgToLbs(totalVolume);
+  return Number(displayVolume.toFixed(1));
 }
 
 interface WorkoutPlaybackSummaryProps {
   draft: WorkoutPlaybackDraft;
   elapsedSeconds: number;
   totalVolume: number;
+  weightUnit: WeightUnit;
   stats: WorkoutPlaybackStats | null;
   restRemaining: string;
   isRestActive: boolean;
@@ -49,6 +58,7 @@ const WorkoutPlaybackSummary = ({
   draft,
   elapsedSeconds,
   totalVolume,
+  weightUnit,
   stats,
   restRemaining,
   isRestActive,
@@ -62,6 +72,10 @@ const WorkoutPlaybackSummary = ({
   onSessionNotesChange,
 }: WorkoutPlaybackSummaryProps) => {
   const { t } = useTranslation();
+  const volumeUnit = getLocalizedUnitLabel(
+    weightUnit === 'kg' ? 'kg' : 'lbs',
+    t
+  );
 
   return (
     <>
@@ -72,19 +86,19 @@ const WorkoutPlaybackSummary = ({
           className="w-fit gap-2"
           onClick={onCloseKeepDraft}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
           {t('common.back', 'Back')}
         </Button>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={onCloseKeepDraft}>
-            <X className="mr-1 h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
             {t('exercise.workoutPlaybackDialog.closeKeepDraft', 'Close')}
           </Button>
           <Button type="button" variant="outline" onClick={onDiscard}>
             {t('exercise.workoutPlaybackDialog.discard', 'Discard')}
           </Button>
           <Button type="button" onClick={onFinishWorkout} disabled={isSaving}>
-            <Flag className="mr-1 h-4 w-4" />
+            <Flag className="h-4 w-4" aria-hidden="true" />
             {isSaving
               ? t('exercise.workoutPlaybackDialog.finishing', 'Saving...')
               : t('exercise.workoutPlaybackDialog.finish', 'Finish Workout')}
@@ -117,7 +131,14 @@ const WorkoutPlaybackSummary = ({
                 {t('exercise.workoutPlaybackPage.volume', 'Volume')}
               </span>
               <span className="mt-0.5 text-sm font-medium tabular-nums text-foreground">
-                {formatWorkoutVolume(totalVolume)}
+                {t(
+                  'exercise.workoutPlaybackPage.volumeValue',
+                  '{{value}} {{unit}}',
+                  {
+                    value: formatWorkoutVolume(totalVolume, weightUnit),
+                    unit: volumeUnit,
+                  }
+                )}
               </span>
             </div>
             <div className="flex min-w-0 flex-col items-center justify-center bg-background px-1 py-2">
@@ -125,7 +146,14 @@ const WorkoutPlaybackSummary = ({
                 {t('exercise.workoutPlaybackPage.progress', 'Sets')}
               </span>
               <span className="mt-0.5 text-sm font-medium tabular-nums text-foreground">
-                {stats?.completedSets ?? 0}/{stats?.totalSets ?? 0}
+                {t(
+                  'exercise.workoutPlaybackPage.progressValue',
+                  '{{completed}} of {{total}}',
+                  {
+                    completed: stats?.completedSets ?? 0,
+                    total: stats?.totalSets ?? 0,
+                  }
+                )}
               </span>
             </div>
             <div className="flex min-w-0 flex-col items-center justify-center bg-background px-1 py-2">
@@ -146,15 +174,21 @@ const WorkoutPlaybackSummary = ({
                     className="h-5 w-5"
                     aria-label={
                       draft.rest_timer.state === 'running'
-                        ? t('common.pause', 'Pause')
-                        : t('common.resume', 'Resume')
+                        ? t(
+                            'exercise.workoutPlaybackPage.pauseRest',
+                            'Pause rest'
+                          )
+                        : t(
+                            'exercise.workoutPlaybackPage.resumeRest',
+                            'Resume rest'
+                          )
                     }
                     onClick={onPauseResumeRest}
                   >
                     {draft.rest_timer.state === 'running' ? (
-                      <Pause className="h-3 w-3" />
+                      <Pause className="h-3 w-3" aria-hidden="true" />
                     ) : (
-                      <Play className="h-3 w-3" />
+                      <Play className="h-3 w-3" aria-hidden="true" />
                     )}
                   </Button>
                   <Button
@@ -162,10 +196,13 @@ const WorkoutPlaybackSummary = ({
                     variant="ghost"
                     size="icon"
                     className="h-5 w-5"
-                    aria-label={t('common.skip', 'Skip')}
+                    aria-label={t(
+                      'exercise.workoutPlaybackPage.skipRest',
+                      'Skip rest'
+                    )}
                     onClick={onSkipRest}
                   >
-                    <SkipForward className="h-3 w-3" />
+                    <SkipForward className="h-3 w-3" aria-hidden="true" />
                   </Button>
                 </div>
               )}
@@ -173,10 +210,14 @@ const WorkoutPlaybackSummary = ({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium">
+            <label
+              className="text-sm font-medium"
+              htmlFor="workout-session-notes"
+            >
               {t('exercise.logExerciseEntryDialog.sessionNotes', 'Notes')}
             </label>
             <Textarea
+              id="workout-session-notes"
               value={draft.notes ?? ''}
               rows={2}
               className="resize-none text-sm"
@@ -190,7 +231,10 @@ const WorkoutPlaybackSummary = ({
 
           {saveError && (
             <div className="flex gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <AlertTriangle
+                className="mt-0.5 h-4 w-4 shrink-0"
+                aria-hidden="true"
+              />
               <span>{saveError}</span>
             </div>
           )}

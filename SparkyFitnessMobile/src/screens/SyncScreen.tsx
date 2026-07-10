@@ -58,6 +58,7 @@ import { useSyncHealthData } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
 import { fetchHealthDisplayData } from '../services/healthDataDisplay';
 import { shareHealthDiagnosticReport } from '../services/healthDiagnosticService';
+import { localizeHealthMetricLabel, mobileT } from '../localization';
 
 type SyncScreenProps = RootStackScreenProps<'Sync'>;
 
@@ -67,14 +68,14 @@ interface TimeRangeOption {
 }
 
 const timeRangeOptions: TimeRangeOption[] = [
-  { label: "Today", value: "today" },
-  { label: "Last 24 Hours", value: "24h" },
-  { label: "Last 3 Days", value: "3d" },
-  { label: "Last 7 Days", value: "7d" },
-  { label: "Last 30 Days", value: "30d" },
-  { label: "Last 90 Days", value: "90d" },
-  { label: "Last 6 Months", value: "180d" },
-  { label: "Last Year", value: "365d" },
+  { label: mobileT('sync.range.today'), value: 'today' },
+  { label: mobileT('sync.range.24h'), value: '24h' },
+  { label: mobileT('sync.range.3d'), value: '3d' },
+  { label: mobileT('sync.range.7d'), value: '7d' },
+  { label: mobileT('sync.range.30d'), value: '30d' },
+  { label: mobileT('sync.range.90d'), value: '90d' },
+  { label: mobileT('sync.range.180d'), value: '180d' },
+  { label: mobileT('sync.range.365d'), value: '365d' },
 ];
 
 const SyncScreen: React.FC<SyncScreenProps> = () => {
@@ -95,7 +96,9 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   const [isLoadingHealthData, setIsLoadingHealthData] = useState(true);
   const [healthDataRefreshKey, setHealthDataRefreshKey] = useState(0);
   const isAndroid = Platform.OS === 'android';
-  const healthSettingsName = isAndroid ? 'Health Connect settings' : 'Health app settings';
+  const healthSettingsName = isAndroid
+    ? mobileT('sync.healthConnectSettings')
+    : mobileT('sync.appleHealthSettings');
 
   const [isSharingReport, setIsSharingReport] = useState(false);
 
@@ -188,14 +191,17 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         ]);
         if (!granted) {
           Alert.alert(
-            'Permission Required',
-            'Background access permission is required for background sync. Please grant the permission in Health Connect settings.'
+            mobileT('sync.permissionRequired'),
+            mobileT('sync.backgroundPermissionDescription'),
           );
           return;
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        Alert.alert('Permission Error', `Failed to request background access permission: ${errorMessage}`);
+        Alert.alert(
+          mobileT('sync.permissionError'),
+          mobileT('sync.permissionErrorDescription'),
+        );
         addLog(`[SyncScreen] Background access permission error: ${errorMessage}`, 'ERROR');
         return;
       }
@@ -251,10 +257,17 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
       disableBackgroundDeliveryForMetric(metric.recordType).catch(() => {});
     }
     if (newValue) {
+      const metricLabel = localizeHealthMetricLabel(metric.id, metric.label);
       try {
         const granted = await requestHealthPermissions(metric.permissions);
         if (!granted) {
-          Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in ${healthSettingsName}.`);
+          Alert.alert(
+            mobileT('sync.permissionDenied'),
+            mobileT('sync.readPermissionDescription', {
+              metric: metricLabel,
+              settings: healthSettingsName,
+            }),
+          );
           setHealthMetricStates(prevStates => ({
             ...prevStates,
             [metric.stateKey]: false,
@@ -267,7 +280,10 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
-        Alert.alert('Permission Error', `Failed to request ${metric.label.toLowerCase()} permissions: ${errorMessage}`);
+        Alert.alert(
+          mobileT('sync.permissionError'),
+          mobileT('sync.metricPermissionErrorDescription', { metric: metricLabel }),
+        );
         setHealthMetricStates(prevStates => ({
           ...prevStates,
           [metric.stateKey]: false,
@@ -291,11 +307,15 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
     }
     // Enabling: request the write permission; revert the toggle if denied.
     try {
+      const metricLabel = localizeHealthMetricLabel(metric.id, metric.label);
       const granted = await requestHealthPermissions([metric.permission]);
       if (!granted) {
         Alert.alert(
-          'Permission Denied',
-          `Please grant ${metric.label.toLowerCase()} write permission in ${healthSettingsName}.`
+          mobileT('sync.permissionDenied'),
+          mobileT('sync.writePermissionDescription', {
+            metric: metricLabel,
+            settings: healthSettingsName,
+          }),
         );
         setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
         await saveHealthPreference(metric.preferenceKey, false);
@@ -306,9 +326,10 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
     } catch (permissionError) {
       const errorMessage =
         permissionError instanceof Error ? permissionError.message : String(permissionError);
+      const metricLabel = localizeHealthMetricLabel(metric.id, metric.label);
       Alert.alert(
-        'Permission Error',
-        `Failed to request ${metric.label.toLowerCase()} write permission: ${errorMessage}`
+        mobileT('sync.permissionError'),
+        mobileT('sync.metricPermissionErrorDescription', { metric: metricLabel }),
       );
       setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
       await saveHealthPreference(metric.preferenceKey, false);
@@ -316,7 +337,9 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
     }
   };
 
-  const writebackStoreName = isAndroid ? 'Health Connect' : 'Apple Health';
+  const writebackStoreName = isAndroid
+    ? 'Health Connect'
+    : mobileT('sync.appleHealthName');
 
   // Delete written data, then surface the outcome honestly: success, a warning when
   // some records couldn't be deleted (partial), or an error if it threw. A full purge
@@ -328,14 +351,14 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
       if (ok) {
         Toast.show({
           type: 'success',
-          text1: 'Removed',
-          text2: `Deleted SparkyFitness data from ${writebackStoreName}.`,
+          text1: mobileT('sync.removed'),
+          text2: mobileT('sync.removedDescription', { store: writebackStoreName }),
         });
       } else {
         Toast.show({
           type: 'error',
-          text1: 'Partially removed',
-          text2: `Some records couldn't be deleted from ${writebackStoreName}.`,
+          text1: mobileT('sync.partiallyRemoved'),
+          text2: mobileT('sync.partiallyRemovedDescription', { store: writebackStoreName }),
         });
       }
     } catch (error) {
@@ -343,8 +366,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
       addLog(`[SyncScreen] Failed to remove writeback data: ${errorMessage}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: `Could not remove data from ${writebackStoreName}.`,
+        text1: mobileT('sync.removeFailed'),
+        text2: mobileT('sync.removeFailedDescription', { store: writebackStoreName }),
       });
     }
   };
@@ -352,11 +375,15 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   // Full purge → confirm (it's destructive and turns writeback off).
   const handleRemoveAllData = (): void => {
     Alert.alert(
-      `Remove all ${writebackStoreName} data`,
-      `Delete every nutrition and hydration record SparkyFitness wrote to ${writebackStoreName}, and turn writeback off? Your SparkyFitness diary and records from other apps are not affected.`,
+      mobileT('sync.removeAllTitle', { store: writebackStoreName }),
+      mobileT('sync.removeAllDescription', { store: writebackStoreName }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => doRemoveWritebackData(null) },
+        { text: mobileT('common.cancel'), style: 'cancel' },
+        {
+          text: mobileT('common.delete'),
+          style: 'destructive',
+          onPress: () => doRemoveWritebackData(null),
+        },
       ],
       { cancelable: true }
     );
@@ -384,8 +411,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
 
         if (!granted) {
           Alert.alert(
-            'Permissions Required',
-            `Some permissions were not granted. Please enable all required health permissions in the ${healthSettingsName} to sync all data.`
+            mobileT('sync.permissionsRequired'),
+            mobileT('sync.allPermissionsDescription', { settings: healthSettingsName }),
           );
           HEALTH_METRICS.forEach(metric => {
             newHealthMetricStates[metric.stateKey] = false;
@@ -396,7 +423,10 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
-        Alert.alert('Permission Error', `An error occurred while requesting health permissions: ${errorMessage}`);
+        Alert.alert(
+          mobileT('sync.permissionError'),
+          mobileT('sync.permissionErrorDescription'),
+        );
         HEALTH_METRICS.forEach(metric => {
           newHealthMetricStates[metric.stateKey] = false;
         });
@@ -438,7 +468,11 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
       await shareHealthDiagnosticReport();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Error', `Failed to generate health data report: ${errorMessage}`);
+      addLog(`[SyncScreen] Failed to generate health report: ${errorMessage}`, 'ERROR');
+      Alert.alert(
+        mobileT('sync.reportFailed'),
+        mobileT('sync.reportFailedDescription'),
+      );
     }
     setIsSharingReport(false);
   };
@@ -448,7 +482,10 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
     syncMutation.mutate({ timeRange: selectedTimeRange, healthMetricStates });
   };
 
-  const header = useScreenHeader({ title: 'Health Data Sync', left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: mobileT('screens.sync'),
+    left: { kind: 'back' },
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -460,7 +497,9 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         {/* Sync Range */}
         <View className="bg-surface rounded-xl p-4 py-3 mb-4 shadow-sm">
           <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">Sync Range</Text>
+            <Text className="text-base font-semibold text-text-primary">
+              {mobileT('sync.rangeTitle')}
+            </Text>
             <BottomSheetPicker
               value={selectedTimeRange}
               options={timeRangeOptions}
@@ -468,13 +507,17 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
                 setSelectedTimeRange(value);
                 await saveTimeRange(value);
               }}
-              title="Select Sync Range"
-              containerStyle={{ flex: 1, maxWidth: 180, marginLeft: 16 }}
+              title={mobileT('sync.selectRange')}
+              containerStyle={{ flex: 1, maxWidth: 180, marginStart: 16 }}
             />
           </View>
-          <Text className="text-text-secondary text-xs mt-1">Controls how much data will be included in the next sync</Text>
+          <Text className="text-text-secondary text-xs mt-1">
+            {mobileT('sync.rangeDescription')}
+          </Text>
           {(selectedTimeRange === '180d' || selectedTimeRange === '365d') && (
-            <Text className="text-text-secondary text-xs mt-2">Large time ranges may take a while.</Text>
+            <Text className="text-text-secondary text-xs mt-2">
+              {mobileT('sync.largeRangeWarning')}
+            </Text>
           )}
         </View>
         {/* Sync Now Button */}
@@ -486,12 +529,16 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         >
           <Image
             source={require('../../assets/icons/sync_now_alt.png')}
-            className="w-6 h-6 mr-3"
+            className="w-6 h-6 me-3"
             tintColor="#fff"
           />
           <View className="flex-1">
-            <Text className="text-white text-lg font-semibold">{syncMutation.isPending ? "Syncing..." : "Sync Now"}</Text>
-            <Text className="text-white/80 text-sm mt-0.5">Send your health data to your server</Text>
+            <Text className="text-white text-lg font-semibold">
+              {syncMutation.isPending ? mobileT('sync.syncing') : mobileT('sync.now')}
+            </Text>
+            <Text className="text-white/80 text-sm mt-0.5">
+              {mobileT('sync.nowDescription')}
+            </Text>
           </View>
         </Button>
 
@@ -499,8 +546,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         {!isHealthConnectInitialized && (
           <Text className="text-red-500 mt-2.5 text-center">
             {isAndroid
-              ? 'Health Connect is not available. Please make sure it is installed and enabled.'
-              : 'Health data (HealthKit) is not available. Please enable Health access in the iOS Health app.'}
+              ? mobileT('sync.healthConnectUnavailable')
+              : mobileT('sync.appleHealthUnavailable')}
           </Text>
         )}
 
@@ -509,7 +556,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
           <Text className="text-text-muted text-center mb-2">
             {lastSyncedTimeLoaded
               ? (lastSyncedTime
-                ? <><Text className="font-bold">Last synced:</Text> {formatRelativeTime(new Date(lastSyncedTime))}</>
+                ? <><Text className="font-bold">{mobileT('sync.lastSynced')}</Text> {formatRelativeTime(new Date(lastSyncedTime))}</>
                 : formatRelativeTime(null))
               : ' '}
           </Text>
@@ -519,7 +566,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         {/* Health Disclaimer */}
         {Platform.OS === 'android' && (
           <Text className="text-text-secondary text-sm text-center mb-4 mt-2">
-            <Text className="font-semibold">Not medical advice.</Text> Consult a healthcare professional for medical advice, diagnosis, or treatment.
+            <Text className="font-semibold">{mobileT('sync.medicalDisclaimerTitle')}</Text>{' '}
+            {mobileT('sync.medicalDisclaimerDescription')}
           </Text>
         )}
         <SyncFrequency
@@ -558,22 +606,21 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
               disabled={!isHealthConnectInitialized || isSharingReport}
             >
               {isSharingReport ? (
-                <ActivityIndicator size="small" className="mr-3" />
+                <ActivityIndicator size="small" className="me-3" />
               ) : (
                 <Icon name="share" size={20} color={accentPrimary} />
               )}
-              <View className="flex-1 ml-3">
+              <View className="flex-1 ms-3">
                 <Text className="text-accent-primary text-base font-semibold">
-                  {isSharingReport ? 'Generating...' : 'Health Data Report'}
+                  {isSharingReport ? mobileT('sync.generatingReport') : mobileT('sync.reportTitle')}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-0.5">
-                  Export anonymized health data for bug reports
+                  {mobileT('sync.reportDescription')}
                 </Text>
               </View>
             </Button>
             <Text className="text-text-muted text-xs px-2 mt-2">
-              Reads the last 4 hours of data from Health Connect for troubleshooting.
-              Values are rounded for privacy. Nothing is sent automatically.
+              {mobileT('sync.reportPrivacy')}
             </Text>
           </View>
         )}

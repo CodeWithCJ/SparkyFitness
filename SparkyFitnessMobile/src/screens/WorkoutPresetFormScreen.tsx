@@ -16,7 +16,7 @@ import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useWorkoutPresetForm, type PresetDraft } from '../hooks/useWorkoutPresetForm';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
+import type { HeaderItem } from '../hooks/useScreenHeader';
 import { buildPresetExercisesPayload, canReorderDraftExercises } from '../utils/workoutSession';
 import type { WorkoutSetMetaPatch } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
@@ -29,6 +29,7 @@ import type {
   WorkoutPresetCreatePayload,
   WorkoutPresetUpdatePayload,
 } from '../services/api/workoutPresetsApi';
+import { mobileT } from '../localization';
 
 type EditParams = Extract<RootStackParamList['WorkoutPresetForm'], { mode: 'edit-preset' }>;
 
@@ -88,9 +89,12 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
     <View className="gap-4">
       <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
         <View className="gap-1.5">
-          <Text className="text-text-secondary text-sm font-medium">Name *</Text>
+          <Text className="text-text-secondary text-sm font-medium">
+            {mobileT('workoutPresetForm.name')}
+          </Text>
           <FormInput
-            placeholder="e.g. Push Day"
+            placeholder={mobileT('workoutPresetForm.namePlaceholder')}
+            accessibilityLabel={mobileT('workoutPresetForm.name')}
             value={state.name}
             onChangeText={setName}
             autoCapitalize="words"
@@ -101,9 +105,12 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
         </View>
 
         <View className="gap-1.5">
-          <Text className="text-text-secondary text-sm font-medium">Description</Text>
+          <Text className="text-text-secondary text-sm font-medium">
+            {mobileT('workoutPresetForm.description')}
+          </Text>
           <FormInput
-            placeholder="Optional notes about this routine"
+            placeholder={mobileT('workoutPresetForm.descriptionPlaceholder')}
+            accessibilityLabel={mobileT('workoutPresetForm.description')}
             value={state.description}
             onChangeText={setDescription}
             multiline
@@ -206,7 +213,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         ionicon: 'swap-vertical',
         role: 'secondary',
         onPress: () => exerciseListRef.current?.openReorder(),
-        accessibilityLabel: 'Reorder exercises',
+        accessibilityLabel: mobileT('workoutDetail.reorderExercises'),
         identifier: 'preset-create-reorder',
       }
     : null;
@@ -220,8 +227,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     if (!trimmedName) {
       Toast.show({
         type: 'error',
-        text1: 'Missing name',
-        text2: 'Please enter a name for this preset.',
+        text1: mobileT('workoutPresetForm.missingName'),
+        text2: mobileT('workoutPresetForm.nameRequired'),
       });
       return;
     }
@@ -230,8 +237,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     if (exercisesWithSets.length === 0) {
       Toast.show({
         type: 'error',
-        text1: 'Add an exercise',
-        text2: 'Add at least one exercise with a set before saving.',
+        text1: mobileT('workoutDetail.needsExercise'),
+        text2: mobileT('workoutDetail.needsExerciseDescription'),
       });
       return;
     }
@@ -246,7 +253,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
 
     try {
       const created = await createPresetAsync(payload);
-      Toast.show({ type: 'success', text1: 'Workout preset created' });
+      Toast.show({ type: 'success', text1: mobileT('workoutPresetForm.created') });
       navigation.replace('WorkoutPresetDetail', { preset: created });
     } catch {
       // Error toast handled in useCreateWorkoutPreset.
@@ -254,9 +261,9 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
   };
   return (
     <FormScreenChrome
-      title="New Preset"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
+      title={mobileT('workoutPresetForm.newTitle')}
+      saveLabel={mobileT('common.save')}
+      savingLabel={mobileT('common.saving')}
       isSaving={isPending}
       headerAction={reorderAction}
       onSave={() => {
@@ -390,7 +397,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         ionicon: 'swap-vertical',
         role: 'secondary',
         onPress: () => exerciseListRef.current?.openReorder(),
-        accessibilityLabel: 'Reorder exercises',
+        accessibilityLabel: mobileT('workoutDetail.reorderExercises'),
         identifier: 'preset-edit-reorder',
       }
     : null;
@@ -404,8 +411,8 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     if (!trimmedName) {
       Toast.show({
         type: 'error',
-        text1: 'Missing name',
-        text2: 'Please enter a name for this preset.',
+        text1: mobileT('workoutPresetForm.missingName'),
+        text2: mobileT('workoutPresetForm.nameRequired'),
       });
       return;
     }
@@ -429,7 +436,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
 
     try {
       const updated = await updatePresetAsync({ id: preset.id, payload });
-      Toast.show({ type: 'success', text1: 'Workout preset updated' });
+      Toast.show({ type: 'success', text1: mobileT('workoutPresetForm.updated') });
       navigation.dispatch({
         ...CommonActions.setParams({ updatedPreset: updated }),
         source: returnKey,
@@ -441,9 +448,9 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
   };
   return (
     <FormScreenChrome
-      title="Edit Preset"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
+      title={mobileT('workoutPresetForm.editTitle')}
+      saveLabel={mobileT('common.save')}
+      savingLabel={mobileT('common.saving')}
       isSaving={isPending}
       headerAction={reorderAction}
       onSave={() => {

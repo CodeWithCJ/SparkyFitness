@@ -13,6 +13,10 @@ import {
   type PhotoType,
   type CheckInPhoto,
 } from '@/hooks/CheckIn/useCheckInPhotos';
+import {
+  areUploadsEnabled,
+  useDeploymentCapabilities,
+} from '@/hooks/useDeploymentCapabilities';
 
 interface PhotoSlotProps {
   type: PhotoType;
@@ -21,11 +25,13 @@ interface PhotoSlotProps {
   date: string;
   onUpload: (type: PhotoType, file: File) => void;
   onDelete: (id: string) => void;
+  uploadsAvailable: boolean;
   // True only while THIS slot's upload is in flight (drives the spinner).
   isUploading: boolean;
   // True while ANY slot is uploading — blocks interaction on every slot so a
   // second upload can't race the in-flight one.
-  disabled: boolean;
+  uploadDisabled: boolean;
+  deleteDisabled: boolean;
 }
 
 const PhotoSlot = ({
@@ -35,8 +41,10 @@ const PhotoSlot = ({
   date: _date,
   onUpload,
   onDelete,
+  uploadsAvailable,
   isUploading,
-  disabled,
+  uploadDisabled,
+  deleteDisabled,
 }: PhotoSlotProps) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,8 +75,11 @@ const PhotoSlot = ({
       {/* Photo preview or placeholder */}
       <div
         className="relative w-full aspect-[3/4] rounded-lg border border-border bg-muted overflow-hidden
-                   flex items-center justify-center cursor-pointer group"
-        onClick={() => !disabled && fileInputRef.current?.click()}
+                   flex items-center justify-center group
+                   data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-75
+                   data-[disabled=false]:cursor-pointer"
+        data-disabled={uploadDisabled}
+        onClick={() => !uploadDisabled && fileInputRef.current?.click()}
       >
         {photoUrl ? (
           <>
@@ -77,15 +88,19 @@ const PhotoSlot = ({
               alt={label}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <Camera className="h-8 w-8 text-white" />
-            </div>
+            {uploadsAvailable && (
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="h-8 w-8 text-white" />
+              </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground pointer-events-none">
             <ImageIcon className="h-10 w-10" />
             <span className="text-xs text-center px-2">
-              {t('checkIn.photos.tapToUpload', 'Tap to upload')}
+              {uploadsAvailable
+                ? t('checkIn.photos.tapToUpload', 'Tap to upload')
+                : t('checkIn.photos.unavailableShort', 'Unavailable')}
             </span>
           </div>
         )}
@@ -105,7 +120,7 @@ const PhotoSlot = ({
         accept="image/*"
         className="hidden"
         onChange={handleFileChange}
-        disabled={disabled}
+        disabled={uploadDisabled}
       />
 
       <div className="flex gap-2 w-full">
@@ -114,10 +129,10 @@ const PhotoSlot = ({
           variant="outline"
           size="sm"
           className="flex-1"
-          disabled={disabled}
+          disabled={uploadDisabled}
           onClick={() => fileInputRef.current?.click()}
         >
-          <Upload className="h-3 w-3 mr-1" />
+          <Upload className="h-3 w-3 me-1" />
           {photo
             ? t('checkIn.photos.replace', 'Replace')
             : t('checkIn.photos.upload', 'Upload')}
@@ -129,7 +144,7 @@ const PhotoSlot = ({
             variant="ghost"
             size="sm"
             className="text-destructive hover:text-destructive"
-            disabled={disabled}
+            disabled={deleteDisabled}
             onClick={() => onDelete(photo.id)}
           >
             <Trash2 className="h-3 w-3" />
@@ -164,6 +179,8 @@ export const CheckInPhotos = ({ selectedDate }: CheckInPhotosProps) => {
     uploadingType,
     isDeleting,
   } = useCheckInPhotos(selectedDate);
+  const { data: capabilities } = useDeploymentCapabilities();
+  const uploadsEnabled = areUploadsEnabled(capabilities);
 
   const photoMap = useMemo(
     () => new Map(photos.map((p) => [p.photo_type, p])),
@@ -203,12 +220,22 @@ export const CheckInPhotos = ({ selectedDate }: CheckInPhotosProps) => {
             </div>
           </CollapsibleTrigger>
           {expanded && (
-            <p className="text-sm text-muted-foreground">
-              {t(
-                'checkIn.photos.subtitle',
-                'Upload front, back, and side photos to track your physique over time.'
+            <>
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  'checkIn.photos.subtitle',
+                  'Upload front, back, and side photos to track your physique over time.'
+                )}
+              </p>
+              {!uploadsEnabled && (
+                <p className="text-sm text-muted-foreground">
+                  {t(
+                    'checkIn.photos.uploadsUnavailable',
+                    'Photo uploads are unavailable in this deployment.'
+                  )}
+                </p>
               )}
-            </p>
+            </>
           )}
         </CardHeader>
         <CollapsibleContent>
@@ -223,8 +250,10 @@ export const CheckInPhotos = ({ selectedDate }: CheckInPhotosProps) => {
                   date={selectedDate}
                   onUpload={uploadPhoto}
                   onDelete={deletePhoto}
+                  uploadsAvailable={uploadsEnabled}
                   isUploading={isUploading && uploadingType === type}
-                  disabled={isUploading || isDeleting}
+                  uploadDisabled={isUploading || isDeleting || !uploadsEnabled}
+                  deleteDisabled={isUploading || isDeleting}
                 />
               ))}
             </div>

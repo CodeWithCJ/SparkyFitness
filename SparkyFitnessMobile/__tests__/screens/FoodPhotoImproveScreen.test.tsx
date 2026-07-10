@@ -78,14 +78,14 @@ describe('FoodPhotoImproveScreen', () => {
   it('rejects negative weight', async () => {
     const screen = renderScreen();
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. 350'), '0');
-    fireEvent.press(screen.getByText('Generate estimate'));
+    fireEvent.changeText(screen.getByPlaceholderText('مثال: ٣٥٠'), '0');
+    fireEvent.press(screen.getByText('إنشاء التقدير'));
 
     await waitFor(() => {
       expect(Toast.show).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
-          text1: 'Invalid weight',
+          text1: 'الوزن غير صحيح',
         }),
       );
     });
@@ -95,7 +95,7 @@ describe('FoodPhotoImproveScreen', () => {
   it('Generate with empty fields sends a single-image images[] payload, base64 is read once', async () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Generate estimate'));
+    fireEvent.press(screen.getByText('إنشاء التقدير'));
 
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalledTimes(1);
@@ -116,12 +116,12 @@ describe('FoodPhotoImproveScreen', () => {
   it('Generate path forwards weight+unit+description to the mutation', async () => {
     const screen = renderScreen();
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. 350'), '250');
+    fireEvent.changeText(screen.getByPlaceholderText('مثال: ٣٥٠'), '250');
     fireEvent.changeText(
-      screen.getByPlaceholderText(/salmon with lemon/),
+      screen.getByPlaceholderText(/كبسة دجاج/),
       'yogurt and berries',
     );
-    fireEvent.press(screen.getByText('Generate estimate'));
+    fireEvent.press(screen.getByText('إنشاء التقدير'));
 
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalledTimes(1);
@@ -146,12 +146,12 @@ describe('FoodPhotoImproveScreen', () => {
     } as any);
     const screen = renderScreen();
 
-    expect(screen.queryByText('Generate estimate')).toBeNull();
-    expect(screen.queryByPlaceholderText('e.g. 350')).toBeNull();
-    expect(screen.queryByPlaceholderText(/salmon with lemon/)).toBeNull();
+    expect(screen.queryByText('إنشاء التقدير')).toBeNull();
+    expect(screen.queryByPlaceholderText('مثال: ٣٥٠')).toBeNull();
+    expect(screen.queryByPlaceholderText(/كبسة دجاج/)).toBeNull();
 
-    expect(screen.getByText('Reading your photo…')).toBeTruthy();
-    expect(screen.getByText('Cancel')).toBeTruthy();
+    expect(screen.getByText('جاري قراءة الصورة…')).toBeTruthy();
+    expect(screen.getByText('إلغاء')).toBeTruthy();
   });
 
   it('Cancel aborts the in-flight request and suppresses the error toast', async () => {
@@ -166,7 +166,7 @@ describe('FoodPhotoImproveScreen', () => {
     pending = false;
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Generate estimate'));
+    fireEvent.press(screen.getByText('إنشاء التقدير'));
     await waitFor(() => {
       expect(mockMutate).toHaveBeenCalledTimes(1);
     });
@@ -184,7 +184,7 @@ describe('FoodPhotoImproveScreen', () => {
       </SafeAreaProvider>,
     );
 
-    fireEvent.press(screen.getByText('Cancel'));
+    fireEvent.press(screen.getByText('إلغاء'));
 
     expect(signal.aborted).toBe(true);
     expect(resetFn).toHaveBeenCalledTimes(1);

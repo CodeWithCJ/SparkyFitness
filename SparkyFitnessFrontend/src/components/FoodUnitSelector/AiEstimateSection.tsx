@@ -6,6 +6,8 @@ import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
 import { useAiUnitConversion } from '@/hooks/Foods/useAiUnitConversion';
 import { error as logError } from '@/utils/logging';
 import { OVERALL_CONFIDENCE_LABELS } from '@workspace/shared';
+import { useTranslation } from 'react-i18next';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface AiEstimateSectionProps {
   food: { id: string; name: string; brand?: string | null };
@@ -67,6 +69,7 @@ export function AiEstimateSection({
   onEdit,
 }: AiEstimateSectionProps) {
   const { loggingLevel } = usePreferences();
+  const { t } = useTranslation();
   const requestAiUnitConversion = useAiUnitConversion();
   const [state, setState] = useState<SectionState>({ kind: 'idle' });
 
@@ -100,14 +103,18 @@ export function AiEstimateSection({
         setState({ kind: 'result', data });
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'AI estimate failed.';
       logError(
         loggingLevel,
         `AiEstimateSection: estimate failed for ${food.name} (${fromAmount} ${fromUnit} -> ${toUnit})`,
         err
       );
-      setState({ kind: 'error', message });
+      setState({
+        kind: 'error',
+        message: t(
+          'aiEstimate.failed',
+          'Could not estimate this conversion. Try again.'
+        ),
+      });
     }
   };
 
@@ -121,8 +128,8 @@ export function AiEstimateSection({
           onClick={runEstimate}
           className="w-full"
         >
-          <Sparkles className="h-4 w-4 mr-2" />
-          Convert with AI
+          <Sparkles className="h-4 w-4" />
+          {t('aiEstimate.convertWithAi', 'Estimate conversion with AI')}
         </Button>
       </div>
     );
@@ -133,7 +140,13 @@ export function AiEstimateSection({
       <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span>
-          Estimating {fromAmount} {fromUnit} in {toUnit}...
+          {t('aiEstimate.estimating', {
+            fromAmount,
+            fromUnit: getLocalizedUnitLabel(fromUnit, t),
+            toUnit: getLocalizedUnitLabel(toUnit, t),
+            defaultValue:
+              'Estimating {{fromAmount}} {{fromUnit}} in {{toUnit}}…',
+          })}
         </span>
       </div>
     );
@@ -150,7 +163,7 @@ export function AiEstimateSection({
             size="sm"
             onClick={runEstimate}
           >
-            Try again
+            {t('aiEstimate.tryAgain', 'Try again')}
           </Button>
           <Button
             type="button"
@@ -158,7 +171,7 @@ export function AiEstimateSection({
             size="sm"
             onClick={() => setState({ kind: 'idle' })}
           >
-            Dismiss
+            {t('aiEstimate.dismiss', 'Dismiss')}
           </Button>
         </div>
       </div>
@@ -168,6 +181,10 @@ export function AiEstimateSection({
   // Result - only reachable in 'confirm' mode (auto-apply jumps idle -> loading -> idle).
   const { data } = state;
   const isLow = data.confidence === 'low';
+  const confidence = t(`aiEstimate.confidence.${data.confidence}`, {
+    defaultValue: OVERALL_CONFIDENCE_LABELS[data.confidence],
+  });
+  const localizedToUnit = getLocalizedUnitLabel(toUnit, t);
   return (
     <div className="space-y-2 rounded-md border bg-muted/40 p-3">
       <div className="flex items-center gap-2">
@@ -176,15 +193,25 @@ export function AiEstimateSection({
           aria-hidden
         />
         <span className="text-sm font-medium">
-          Estimated - about {data.estimatedAmount} {toUnit}
+          {t('aiEstimate.result', {
+            amount: data.estimatedAmount,
+            unit: localizedToUnit,
+            defaultValue: 'Estimate: about {{amount}} {{unit}}',
+          })}
         </span>
         <span className="text-xs text-muted-foreground">
-          - {OVERALL_CONFIDENCE_LABELS[data.confidence]} estimate
+          {t('aiEstimate.confidenceEstimate', {
+            confidence,
+            defaultValue: '{{confidence}} confidence estimate',
+          })}
         </span>
       </div>
       {isLow && (
         <p className="text-xs text-destructive">
-          Generic estimate - verify if accuracy matters.
+          {t(
+            'aiEstimate.lowConfidenceWarning',
+            'This is a rough estimate. Verify it when accuracy matters.'
+          )}
         </p>
       )}
       <div className="flex gap-2 pt-1">
@@ -194,7 +221,7 @@ export function AiEstimateSection({
           size="sm"
           onClick={() => onAccept(data)}
         >
-          Use this
+          {t('aiEstimate.useEstimate', 'Use estimate')}
         </Button>
         <Button
           type="button"
@@ -205,7 +232,7 @@ export function AiEstimateSection({
             setState({ kind: 'idle' });
           }}
         >
-          Edit
+          {t('aiEstimate.editEstimate', 'Edit manually')}
         </Button>
       </div>
     </div>

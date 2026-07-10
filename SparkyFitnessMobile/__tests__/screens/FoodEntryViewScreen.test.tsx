@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { pressAction } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodEntryViewScreen from '../../src/screens/FoodEntryViewScreen';
@@ -173,6 +173,7 @@ describe('FoodEntryViewScreen', () => {
 
   const mockCreateVariant = jest.fn();
   const mockUpdateEntry = jest.fn();
+  const mockConfirmAndDelete = jest.fn();
 
   const baseEntry = {
     id: 'entry-1',
@@ -236,7 +237,7 @@ describe('FoodEntryViewScreen', () => {
       isPending: false,
     });
     mockUseDeleteFoodEntry.mockReturnValue({
-      confirmAndDelete: jest.fn(),
+      confirmAndDelete: mockConfirmAndDelete,
       isPending: false,
       invalidateCache: jest.fn(),
     });
@@ -308,13 +309,14 @@ describe('FoodEntryViewScreen', () => {
       expect(navigation.setParams).toHaveBeenCalledWith({
         adjustedValues: undefined,
         adjustedUnitSelection: undefined,
+        adjustedCustomNutrients: undefined,
       });
     });
 
-    expect(screen.getByText('1 serving · 1 cup per serving')).toBeTruthy();
+    expect(screen.getByText('حصة واحدة · ١ كوب لكل حصة')).toBeTruthy();
 
-    pressAction(screen, navigation, 'Edit');
-    pressAction(screen, navigation, 'Done');
+    pressAction(screen, navigation, 'تعديل');
+    pressAction(screen, navigation, 'تم');
 
     expect(mockUpdateEntry).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -326,5 +328,27 @@ describe('FoodEntryViewScreen', () => {
       }),
     );
     expect(screen.queryByText('Create Draft Unit')).toBeNull();
+  });
+
+  it('renders the entry summary and metadata in Arabic', () => {
+    const screen = renderScreen();
+
+    expect(screen.getByText('حصة واحدة · ١ كوب لكل حصة')).toBeTruthy();
+    expect(screen.getByText('سعرة')).toBeTruthy();
+    expect(screen.getByText('البروتين')).toBeTruthy();
+    expect(screen.getByText('الكربوهيدرات')).toBeTruthy();
+    expect(screen.getByText('الدهون')).toBeTruthy();
+    expect(screen.getByText('التاريخ')).toBeTruthy();
+    expect(screen.getByText('الوجبة')).toBeTruthy();
+    expect(screen.getByText('الفطور')).toBeTruthy();
+    expect(screen.getByText('حذف التسجيل')).toBeTruthy();
+  });
+
+  it('opens the localized delete confirmation flow', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('حذف التسجيل'));
+
+    expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
   });
 });

@@ -18,6 +18,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Meal } from '../types/meals';
+import { mobileT } from '../localization';
 
 type MealsLibraryScreenProps = RootStackScreenProps<'MealsLibrary'>;
 
@@ -76,11 +77,11 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
         style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : 'transparent' }}
       >
         <Icon name="search" size={18} color={textMuted} />
-        <View className="flex-1 ml-2">
+        <View className="flex-1" style={{ marginStart: 8 }}>
           <TextInput
             className="text-text-primary"
             style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-            placeholder="Search meals..."
+            placeholder={mobileT('library.searchMeals')}
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -101,12 +102,14 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   const renderEmpty = () => (
     <View className="px-6 py-10 items-center">
       <Text className="text-text-primary text-base font-medium text-center">
-        {isSearchActive ? 'No matching meals found' : 'No meals found'}
+        {isSearchActive
+          ? mobileT('library.noMatchingMeals')
+          : mobileT('library.noMeals')}
       </Text>
       <Text className="text-text-secondary text-sm mt-2 text-center">
         {isSearchActive
-          ? 'Try a different search term to find saved meals.'
-          : 'Meals you create will appear here.'}
+          ? mobileT('library.tryAnotherSearch')
+          : mobileT('library.savedMealsAppear')}
       </Text>
     </View>
   );
@@ -118,15 +121,19 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your meal library."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          title={mobileT('library.noServerTitle')}
+          subtitle={mobileT('library.noServerDescription')}
+          action={{
+            label: mobileT('common.goToSettings'),
+            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
+            variant: 'primary',
+          }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading meals..." />;
+      return <StatusView loading title={mobileT('library.loadingMeals')} />;
     }
 
     if (isError) {
@@ -135,9 +142,18 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title={isSearchActive ? 'Failed to search meals' : 'Failed to load meals'}
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => void (isSearchActive ? refetchSearch() : refetchMeals()), variant: 'primary' }}
+          title={
+            isSearchActive
+              ? mobileT('library.searchMealsFailed')
+              : mobileT('library.loadMealsFailed')
+          }
+          subtitle={mobileT('library.connectionError')}
+          action={{
+            label: mobileT('common.retry'),
+            onPress: () =>
+              void (isSearchActive ? refetchSearch() : refetchMeals()),
+            variant: 'primary',
+          }}
         />
       );
     }
@@ -163,7 +179,10 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
     );
   };
 
-  const header = useScreenHeader({ title: 'Meals', left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: mobileT('library.meals'),
+    left: { kind: 'back' },
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>

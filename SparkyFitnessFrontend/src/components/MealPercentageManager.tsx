@@ -24,19 +24,19 @@ interface MealPercentageManagerProps {
 
 const distributionTemplates = [
   {
-    name: 'Even Distribution',
+    id: 'even',
     values: { breakfast: 25, lunch: 25, dinner: 25, snacks: 25 },
   },
   {
-    name: 'Intermittent Fasting',
+    id: 'intermittentFasting',
     values: { breakfast: 0, lunch: 40, dinner: 40, snacks: 20 },
   },
   {
-    name: 'Protein-Focused Morning',
+    id: 'proteinMorning',
     values: { breakfast: 40, lunch: 30, dinner: 20, snacks: 10 },
   },
   {
-    name: 'No Snacks',
+    id: 'noSnacks',
     values: { breakfast: 30, lunch: 40, dinner: 30, snacks: 0 },
   },
 ];
@@ -51,7 +51,7 @@ const MealPercentageManager = ({
 
   const [locks, setLocks] = useState<Record<string, boolean>>({});
 
-  const selectedTemplateName = useMemo(() => {
+  const selectedTemplateId = useMemo(() => {
     const matchingTemplate = distributionTemplates.find((tpl) => {
       const tplKeys = Object.keys(tpl.values);
       const curKeys = Object.keys(initialPercentages);
@@ -62,13 +62,11 @@ const MealPercentageManager = ({
         JSON.stringify(tpl.values) === JSON.stringify(initialPercentages)
       );
     });
-    return matchingTemplate ? matchingTemplate.name : 'Custom';
+    return matchingTemplate ? matchingTemplate.id : 'custom';
   }, [initialPercentages]);
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal'
-      ? t('common.kcalUnit', 'kcal')
-      : t('common.kJUnit', 'kJ');
+    return unit === 'kcal' ? t('common.kcal') : t('common.kJ');
   };
 
   const calculateCalories = (percentage: number): number => {
@@ -77,10 +75,10 @@ const MealPercentageManager = ({
   };
 
   const handleTemplateChange = useCallback(
-    (templateName: string) => {
-      if (templateName === 'Custom') return;
+    (templateId: string) => {
+      if (templateId === 'custom') return;
       const template = distributionTemplates.find(
-        (tpl) => tpl.name === templateName
+        (candidate) => candidate.id === templateId
       );
       if (template) {
         const newValues = { ...template.values };
@@ -93,8 +91,11 @@ const MealPercentageManager = ({
 
   const handleSliderChange = useCallback(
     (meal: string, value: number) => {
-      // Create a new object with the updated value and send it straight to the parent
-      const newPercentages = { ...initialPercentages, [meal]: value };
+      const clampedValue = Math.max(0, Math.min(100, value));
+      const newPercentages = {
+        ...initialPercentages,
+        [meal]: clampedValue,
+      };
       onPercentagesChange(newPercentages);
     },
     [initialPercentages, onPercentagesChange]
@@ -149,32 +150,36 @@ const MealPercentageManager = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
         <Select
           onValueChange={handleTemplateChange}
-          value={selectedTemplateName}
+          value={selectedTemplateId}
           disabled={hasCustomMeals}
         >
-          <SelectTrigger>
+          <SelectTrigger
+            className="text-start"
+            aria-label={t('goals.mealDistribution.selectTemplate')}
+          >
             <SelectValue
               placeholder={t('goals.mealDistribution.selectTemplate')}
             />
           </SelectTrigger>
           <SelectContent>
-            {selectedTemplateName === 'Custom' && (
-              <SelectItem value="Custom" disabled>
+            {selectedTemplateId === 'custom' && (
+              <SelectItem value="custom" disabled>
                 {t('goals.mealDistribution.custom')}
               </SelectItem>
             )}
             {!hasCustomMeals &&
               distributionTemplates.map((template) => (
-                <SelectItem key={template.name} value={template.name}>
-                  {template.name}
+                <SelectItem key={template.id} value={template.id}>
+                  {t(`goals.mealDistribution.templates.${template.id}`)}
                 </SelectItem>
               ))}
           </SelectContent>
         </Select>
         <Button
+          type="button"
           onClick={distributeRemaining}
           variant="outline"
           className="w-full sm:w-auto"
@@ -185,27 +190,44 @@ const MealPercentageManager = ({
 
       {Object.keys(initialPercentages).map((meal) => {
         const mealPercentage = initialPercentages[meal] ?? 0;
+        const mealLabel = t(`common.${meal}`, { defaultValue: meal });
+        const lockLabel = t(
+          locks[meal]
+            ? 'goals.mealDistribution.unlockMeal'
+            : 'goals.mealDistribution.lockMeal',
+          { meal: mealLabel }
+        );
+        const percentageLabel = t('goals.mealDistribution.mealPercentage', {
+          meal: mealLabel,
+        });
+        const inputId = `meal-percentage-${meal}`;
 
         return (
           <div key={meal} className="space-y-2">
-            <Label htmlFor={meal} className="capitalize font-semibold">
-              {t(`common.${meal}`, meal)} ({calculateCalories(mealPercentage)}{' '}
-              {getEnergyUnitString(energyUnit)})
+            <Label htmlFor={inputId} className="font-semibold">
+              {t('goals.mealDistribution.mealEnergy', {
+                meal: mealLabel,
+                calories: calculateCalories(mealPercentage),
+                unit: getEnergyUnitString(energyUnit),
+              })}
             </Label>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 onClick={() => handleLockToggle(meal)}
+                aria-label={lockLabel}
+                title={lockLabel}
+                aria-pressed={Boolean(locks[meal])}
               >
                 {locks[meal] ? (
-                  <Lock className="w-4 h-4" />
+                  <Lock className="h-4 w-4" aria-hidden="true" />
                 ) : (
-                  <Unlock className="w-4 h-4" />
+                  <Unlock className="h-4 w-4" aria-hidden="true" />
                 )}
               </Button>
               <Slider
-                id={meal}
                 min={0}
                 max={100}
                 step={1}
@@ -214,16 +236,27 @@ const MealPercentageManager = ({
                   handleSliderChange(meal, value || 0)
                 }
                 disabled={locks[meal]}
+                className="min-w-40 flex-1"
+                aria-label={percentageLabel}
               />
-              <div className="flex items-center gap-2">
+              <div className="ms-auto flex items-center gap-2" dir="ltr">
                 <Input
+                  id={inputId}
                   type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={100}
+                  step={1}
                   value={mealPercentage}
-                  onChange={(e) =>
-                    handleSliderChange(meal, parseInt(e.target.value, 10) || 0)
+                  onChange={(event) =>
+                    handleSliderChange(
+                      meal,
+                      Number.parseInt(event.target.value, 10) || 0
+                    )
                   }
-                  className="w-20"
+                  className="w-20 text-end"
                   disabled={locks[meal]}
+                  aria-label={percentageLabel}
                 />
                 <span className="text-sm font-medium">%</span>
               </div>
@@ -233,14 +266,20 @@ const MealPercentageManager = ({
       })}
 
       <div
-        className={`text-right font-semibold ${
-          totalPercentage === 100 ? 'text-green-600' : 'text-red-600'
+        className={`text-end font-semibold ${
+          totalPercentage === 100
+            ? 'text-green-700 dark:text-green-400'
+            : 'text-destructive'
         }`}
+        role="status"
+        aria-live="polite"
       >
-        {t('goals.mealDistribution.total')}: {totalPercentage}%
+        {t('goals.mealDistribution.totalWithPercentage', {
+          total: totalPercentage,
+        })}
         {totalPercentage !== 100 && (
           <p className="text-sm font-normal">
-            ({t('goals.mealDistribution.mustBe100')})
+            {t('goals.mealDistribution.mustBe100')}
           </p>
         )}
       </div>

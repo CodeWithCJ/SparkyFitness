@@ -50,6 +50,13 @@ import {
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  formatMobileNumber,
+  formatMobileRepCount,
+  formatMobileSetCount,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 type Props = RootStackScreenProps<'ActiveWorkout'>;
 
@@ -99,16 +106,18 @@ function RenameWorkoutDialog({
             className="flex-1 justify-center px-6"
             style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
             onPress={onCancel}
-            accessibilityLabel="Dismiss rename"
+            accessibilityLabel={mobileT('activeWorkout.dismissRename')}
           >
             {/* Absorb taps on the card so only the backdrop dismisses. */}
             <Pressable className="bg-surface rounded-2xl p-5" onPress={() => {}} accessible={false}>
-              <Text className="text-lg font-semibold text-text-primary mb-3">Rename workout</Text>
+              <Text className="text-lg font-semibold text-text-primary mb-3">
+                {mobileT('activeWorkout.renameWorkout')}
+              </Text>
               <FormInput
                 ref={inputRef}
                 value={value}
                 onChangeText={setValue}
-                placeholder="Workout name"
+                placeholder={mobileT('activeWorkout.namePlaceholder')}
                 autoCapitalize="words"
                 autoCorrect={false}
                 returnKeyType="done"
@@ -116,10 +125,10 @@ function RenameWorkoutDialog({
               />
               <View className="flex-row justify-end gap-2 mt-4">
                 <Button variant="ghost" onPress={onCancel}>
-                  Cancel
+                  {mobileT('common.cancel')}
                 </Button>
                 <Button variant="primary" onPress={submit} disabled={trimmed.length === 0}>
-                  Save
+                  {mobileT('common.save')}
                 </Button>
               </View>
             </Pressable>
@@ -148,7 +157,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
 
   const { preferences } = usePreferences();
-  const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
+  const weightUnit: 'kg' | 'lbs' =
+    preferences?.default_weight_unit === 'lbs' ? 'lbs' : 'kg';
   const { getImageSource } = useExerciseImageSource();
   const { flush } = useActiveWorkoutAutosave();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
@@ -379,15 +389,21 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const exercise = useActiveWorkoutStore
       .getState()
       .session?.exercises.find((e) => e.id === entryId);
-    const name = exercise?.exercise_snapshot?.name ?? 'this exercise';
-    Alert.alert('Remove exercise?', `${name} will be removed from this workout.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => useActiveWorkoutStore.getState().removeExercise(entryId),
-      },
-    ]);
+    const name =
+      exercise?.exercise_snapshot?.name ?? mobileT('activeWorkout.thisExercise');
+    Alert.alert(
+      mobileT('activeWorkout.removeTitle'),
+      mobileT('activeWorkout.removeDescription', { name }),
+      [
+        { text: mobileT('common.cancel'), style: 'cancel' },
+        {
+          text: mobileT('activeWorkout.remove'),
+          style: 'destructive',
+          onPress: () =>
+            useActiveWorkoutStore.getState().removeExercise(entryId),
+        },
+      ],
+    );
   }, []);
 
   const handleClearExerciseSets = useCallback((entryId: string) => {
@@ -396,12 +412,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const handleClearAllSets = useCallback(() => {
     Alert.alert(
-      'Clear logged sets?',
-      'Un-checks every logged set in this workout. Your set weights and reps are kept.',
+      mobileT('activeWorkout.clearLoggedSetsTitle'),
+      mobileT('activeWorkout.clearLoggedSetsDescription'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: mobileT('common.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: mobileT('activeWorkout.clear'),
           style: 'destructive',
           onPress: () => useActiveWorkoutStore.getState().clearAllCompletions(),
         },
@@ -478,7 +494,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     if (mode === 'pick') {
       return candidates.map((candidate) => ({
         key: candidate.id,
-        label: candidate.exercise_snapshot?.name ?? 'Exercise',
+        label:
+          candidate.exercise_snapshot?.name ?? mobileT('workout.unknownExercise'),
         onPress: () => {
           useActiveWorkoutStore.getState().supersetWith(entryId, candidate.id);
         },
@@ -492,13 +509,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const items: { key: string; label: string; onPress: () => void }[] = [];
     items.push({
       key: 'view',
-      label: 'View exercise',
+      label: mobileT('workoutForm.viewExercise'),
       onPress: () => handlePressThumb(entryId),
     });
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
-        label: 'Superset with…',
+        label: mobileT('workoutForm.supersetWith'),
         onPress: () => {
           // Re-open at the same anchor with the candidate list. AnchoredMenu
           // closes first (onClose), then this runs — both land in one commit.
@@ -509,7 +526,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     if (groupedIds.has(entryId)) {
       items.push({
         key: 'ungroup',
-        label: 'Remove from superset',
+        label: mobileT('workoutForm.removeFromSuperset'),
         onPress: () => {
           useActiveWorkoutStore.getState().ungroupExercise(entryId);
         },
@@ -521,26 +538,26 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     // eslint-disable-next-line react-hooks/refs
     items.push({
       key: 'replace',
-      label: 'Replace exercise',
+      label: mobileT('activeWorkout.replaceExercise'),
       onPress: () => handleReplaceExercise(entryId),
     });
     if (entryHasCompleted) {
       items.push({
         key: 'clear',
-        label: 'Clear logged sets',
+        label: mobileT('activeWorkout.clearLoggedSets'),
         onPress: () => handleClearExerciseSets(entryId),
       });
     }
     if (reorderItemCount >= 2) {
       items.push({
         key: 'reorder',
-        label: 'Reorder exercises',
+        label: mobileT('workoutDetail.reorderExercises'),
         onPress: handleOpenReorder,
       });
     }
     items.push({
       key: 'remove',
-      label: 'Remove exercise',
+      label: mobileT('workoutForm.removeExercise'),
       onPress: () => handleRemoveExercise(entryId),
     });
     return items;
@@ -614,14 +631,15 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       e.sets.some((s) => String(s.id) === setId),
     );
     if (exercise != null && exercise.sets.length <= 1) {
-      const name = exercise.exercise_snapshot?.name ?? 'this exercise';
+      const name =
+        exercise.exercise_snapshot?.name ?? mobileT('activeWorkout.thisExercise');
       Alert.alert(
-        'Remove exercise?',
-        `Deleting the only set removes ${name} from this workout.`,
+        mobileT('activeWorkout.removeTitle'),
+        mobileT('activeWorkout.deleteOnlySetDescription', { name }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: mobileT('common.cancel'), style: 'cancel' },
           {
-            text: 'Remove',
+            text: mobileT('activeWorkout.remove'),
             style: 'destructive',
             onPress: () => useActiveWorkoutStore.getState().deleteSet(setId),
           },
@@ -659,42 +677,51 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       // entry_date can round-trip as an ISO timestamp; un-normalized it would
       // silently miss the daily-summary cache key on invalidation.
       const entryDate = session?.entry_date != null ? normalizeDate(session.entry_date) : null;
-      Alert.alert('Discard workout?', 'This deletes the workout from your diary.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: () => {
-            // Clear and exit first: clearing cancels the pending autosave
-            // debounce and frees the user immediately; the delete finishes in
-            // the background (a racing autosave 404s harmlessly server-side).
-            useActiveWorkoutStore.getState().clearWorkout();
-            navigation.goBack();
-            deleteWorkout(idToDelete)
-              .then(() => {
-                if (entryDate != null) invalidateExerciseCache(queryClient, entryDate);
-              })
-              .catch((error: unknown) => {
-                addLog(`Failed to delete discarded live-start workout: ${error}`, 'ERROR');
-                Toast.show({
-                  type: 'error',
-                  text1: "Couldn't delete workout",
-                  text2: 'It remains in your diary.',
+      Alert.alert(
+        mobileT('activeWorkout.discardTitle'),
+        mobileT('activeWorkout.discardCreatedDescription'),
+        [
+          { text: mobileT('common.cancel'), style: 'cancel' },
+          {
+            text: mobileT('activeWorkout.discard'),
+            style: 'destructive',
+            onPress: () => {
+              // Clear and exit first: clearing cancels the pending autosave
+              // debounce and frees the user immediately; the delete finishes in
+              // the background (a racing autosave 404s harmlessly server-side).
+              useActiveWorkoutStore.getState().clearWorkout();
+              navigation.goBack();
+              deleteWorkout(idToDelete)
+                .then(() => {
+                  if (entryDate != null) {
+                    invalidateExerciseCache(queryClient, entryDate);
+                  }
+                })
+                .catch((error: unknown) => {
+                  addLog(
+                    `${mobileT('activeWorkout.deleteFailed')}: ${error}`,
+                    'ERROR',
+                  );
+                  Toast.show({
+                    type: 'error',
+                    text1: mobileT('activeWorkout.deleteFailed'),
+                    text2: mobileT('activeWorkout.remainsInDiary'),
+                  });
                 });
-              });
+            },
           },
-        },
-      ]);
+        ],
+      );
       return;
     }
 
     Alert.alert(
-      'Discard workout?',
-      'Clears your progress on this device and drops unsaved changes. Edits already saved to the server are kept.',
+      mobileT('activeWorkout.discardTitle'),
+      mobileT('activeWorkout.discardLocalDescription'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: mobileT('common.cancel'), style: 'cancel' },
         {
-          text: 'Discard',
+          text: mobileT('activeWorkout.discard'),
           style: 'destructive',
           onPress: () => {
             useActiveWorkoutStore.getState().clearWorkout();
@@ -711,19 +738,19 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       const ok = await flush();
       if (!ok) {
         Alert.alert(
-          'Could not save your workout',
-          'Some changes have not reached the server yet.',
+          mobileT('activeWorkout.saveFailedTitle'),
+          mobileT('activeWorkout.saveFailedDescription'),
           [
-            { text: 'Retry', onPress: () => void attempt() },
+            { text: mobileT('common.retry'), onPress: () => void attempt() },
             {
-              text: 'Discard changes',
+              text: mobileT('activeWorkout.discardChanges'),
               style: 'destructive',
               onPress: () => {
                 useActiveWorkoutStore.getState().clearWorkout();
                 navigation.goBack();
               },
             },
-            { text: 'Cancel', style: 'cancel' },
+            { text: mobileT('common.cancel'), style: 'cancel' },
           ],
         );
         return;
@@ -745,11 +772,21 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const remaining = totalSets - doneSets;
     const message =
       remaining > 0
-        ? `${doneSets} of ${totalSets} sets logged. ${remaining} still to go.`
-        : `All ${totalSets} sets logged. Nice work!`;
-    Alert.alert('End workout?', message, [
-      { text: 'Keep going', style: 'cancel' },
-      { text: 'End Workout', style: 'default', onPress: () => void handleFinish() },
+        ? mobileT('activeWorkout.endProgress', {
+            done: formatMobileSetCount(doneSets),
+            total: formatMobileSetCount(totalSets),
+            remaining: formatMobileSetCount(remaining),
+          })
+        : mobileT('activeWorkout.endComplete', {
+            total: formatMobileSetCount(totalSets),
+          });
+    Alert.alert(mobileT('activeWorkout.endTitle'), message, [
+      { text: mobileT('activeWorkout.keepGoing'), style: 'cancel' },
+      {
+        text: mobileT('activeWorkout.endWorkout'),
+        style: 'default',
+        onPress: () => void handleFinish(),
+      },
     ]);
   }, [session, completedSetIds, handleFinish]);
 
@@ -759,7 +796,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         className="flex-1 bg-background items-center justify-center"
         style={{ paddingTop: insets.top }}
       >
-        <Text className="text-base text-text-muted">No active workout</Text>
+        <Text className="text-base text-text-muted">
+          {mobileT('activeWorkout.noActive')}
+        </Text>
       </View>
     );
   }
@@ -782,7 +821,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     for (const exercise of session.exercises) {
       const set = exercise.sets.find((s) => String(s.id) === activeSetId);
       if (set) {
-        return `${exercise.exercise_snapshot?.name ?? 'Exercise'} · Set ${set.set_number}`;
+        return mobileT('activeWorkout.restSetLabel', {
+          exercise:
+            exercise.exercise_snapshot?.name ?? mobileT('workout.unknownExercise'),
+          set: formatMobileNumber(set.set_number),
+        });
       }
     }
     return '';
@@ -796,12 +839,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       if (!set) continue;
       if (set.weight != null && set.reps != null) {
         const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
-        return `${w} ${weightUnit} × ${set.reps}`;
+        return `${formatMobileNumber(w)} ${localizeServingUnit(
+          weightUnit,
+        )} × ${formatMobileNumber(set.reps)}`;
       }
-      if (set.reps != null) return `${set.reps} reps`;
+      if (set.reps != null) return formatMobileRepCount(set.reps);
       if (set.weight != null) {
         const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
-        return `${w} ${weightUnit}`;
+        return `${formatMobileNumber(w)} ${localizeServingUnit(weightUnit)}`;
       }
       return null;
     }
@@ -896,13 +941,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
                 // at the divider so consecutive members read as one continuous
                 // line; the run's last member stops ~8px short to end at the
                 // card content rather than the divider.
-                <View style={{ paddingLeft: 10 }}>
+                <View style={{ paddingStart: 10 }}>
                   <View
                     testID={`superset-rail-${exercise.id}`}
                     pointerEvents="none"
                     style={{
                       position: 'absolute',
-                      left: 0,
+                      start: 0,
                       top: 0,
                       bottom: supersetBorder.isLast && isExpanded ? 8 : 0,
                       width: 3,
@@ -923,7 +968,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onPress={handleAddExercise}
           className="mt-5 mx-1"
         >
-          Add Exercise
+          {mobileT('workoutForm.addExercise')}
         </Button>
 
         <Button
@@ -931,7 +976,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onPress={handleConfirmEnd}
           className="mt-2 mb-2 mx-1"
         >
-          End Workout
+          {mobileT('activeWorkout.endWorkout')}
         </Button>
       </KeyboardAwareScrollView>
 

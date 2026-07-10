@@ -12,8 +12,16 @@ import { HEALTH_METRICS } from '../HealthMetrics';
 import { addLog } from './LogService';
 import type { HealthDataDisplayState } from '../types/healthRecords';
 import type { TimeRange } from './storage';
+import {
+  formatMobileCalories,
+  formatMobileDuration,
+  formatMobileHealthRecordCount,
+  formatMobileNumber,
+  formatMobileWorkoutRecordCount,
+  mobileT,
+} from '../localization';
 
-export const NO_DATA_DISPLAY = 'No data';
+export const NO_DATA_DISPLAY = mobileT('healthSync.noData');
 
 // --- Shared helpers for extracting values from polymorphic health records ---
 
@@ -116,14 +124,18 @@ function formatLatestPercentValue(
     .filter(r => r.date && r.value !== null && !isNaN(r.value!) && (filter ? filter(r.value!) : true))
     .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
 
-  return valid.length > 0 ? `${valid[0].value!.toFixed(1)}%` : NO_DATA_DISPLAY;
+  return valid.length > 0
+    ? `${formatMobileNumber(valid[0].value!, { maximumFractionDigits: 1 })}٪`
+    : NO_DATA_DISPLAY;
 }
 
 function formatTemperature(records: unknown[]): string {
   const latestTemp = (records as { time?: string; startTime?: string; temperature?: { inCelsius: number } }[])
     .sort((a, b) => new Date(b.time || b.startTime || '').getTime() - new Date(a.time || a.startTime || '').getTime())[0];
   return latestTemp.temperature?.inCelsius
-    ? `${latestTemp.temperature.inCelsius.toFixed(1)}°C`
+    ? `${formatMobileNumber(latestTemp.temperature.inCelsius, {
+        maximumFractionDigits: 1,
+      })}°م`
     : NO_DATA_DISPLAY;
 }
 
@@ -131,7 +143,9 @@ function formatMassInKg(records: unknown[]): string {
   const latestMass = (records as { startTime?: string; time?: string; mass?: { inKilograms: number } }[])
     .sort((a, b) => new Date(b.startTime || b.time || '').getTime() - new Date(a.startTime || a.time || '').getTime())[0];
   return latestMass.mass?.inKilograms
-    ? `${latestMass.mass.inKilograms.toFixed(1)} kg`
+    ? `${formatMobileNumber(latestMass.mass.inKilograms, {
+        maximumFractionDigits: 1,
+      })} كجم`
     : NO_DATA_DISPLAY;
 }
 
@@ -149,17 +163,23 @@ function makeAggregatedFormatter(
 }
 
 const AGGREGATED_FORMATTERS: Record<string, (start: Date, end: Date) => Promise<string>> = {
-  Steps: makeAggregatedFormatter(getAggregatedStepsByDate, t => t.toLocaleString()),
-  ActiveCaloriesBurned: makeAggregatedFormatter(getAggregatedActiveCaloriesByDate, t => t.toLocaleString()),
-  TotalCaloriesBurned: makeAggregatedFormatter(getAggregatedTotalCaloriesByDate, t => t.toLocaleString()),
-  Distance: makeAggregatedFormatter(getAggregatedDistanceByDate, t => `${(t / 1000).toFixed(2)} km`),
-  FloorsClimbed: makeAggregatedFormatter(getAggregatedFloorsClimbedByDate, t => Math.round(t).toLocaleString()),
+  Steps: makeAggregatedFormatter(getAggregatedStepsByDate, t => formatMobileNumber(t)),
+  ActiveCaloriesBurned: makeAggregatedFormatter(getAggregatedActiveCaloriesByDate, t => formatMobileNumber(t)),
+  TotalCaloriesBurned: makeAggregatedFormatter(getAggregatedTotalCaloriesByDate, t => formatMobileNumber(t)),
+  Distance: makeAggregatedFormatter(
+    getAggregatedDistanceByDate,
+    t => `${formatMobileNumber(t / 1000, { maximumFractionDigits: 2 })} كم`,
+  ),
+  FloorsClimbed: makeAggregatedFormatter(
+    getAggregatedFloorsClimbedByDate,
+    t => formatMobileNumber(Math.round(t)),
+  ),
   BasalMetabolicRate: async (start, end) => {
     // iOS: use aggregated resting energy; Android: fall back to raw HC records
     const aggregated = await getAggregatedBasalEnergyByDate(start, end);
     if (aggregated.length > 0) {
       const avg = aggregated.reduce((sum: number, r) => sum + r.value, 0) / aggregated.length;
-      return `${Math.round(avg)} kcal`;
+      return formatMobileCalories(Math.round(avg));
     }
     const rawRecords = await readHealthRecords('BasalMetabolicRate', start, end) as unknown[];
     if (rawRecords.length === 0) return NO_DATA_DISPLAY;
@@ -176,7 +196,7 @@ const AGGREGATED_FORMATTERS: Record<string, (start: Date, end: Date) => Promise<
     const dailyAvgs = Object.values(dailyBMRs).map(d => d.sum / d.count);
     if (dailyAvgs.length === 0) return NO_DATA_DISPLAY;
     const avg = dailyAvgs.reduce((sum, v) => sum + v, 0) / dailyAvgs.length;
-    return `${Math.round(avg)} kcal`;
+    return formatMobileCalories(Math.round(avg));
   },
 };
 
@@ -191,14 +211,18 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
     const avgHeartRate = bpmValues.length > 0
       ? Math.round(bpmValues.reduce((sum, v) => sum + v, 0) / bpmValues.length)
       : 0;
-    return avgHeartRate > 0 ? `${avgHeartRate} bpm` : NO_DATA_DISPLAY;
+    return avgHeartRate > 0
+      ? `${formatMobileNumber(avgHeartRate)} نبضة/د`
+      : NO_DATA_DISPLAY;
   },
 
   Weight: (records) => {
     const latestWeight = (records as { time: string; weight?: { inKilograms: number } }[])
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
     return latestWeight.weight?.inKilograms
-      ? `${latestWeight.weight.inKilograms.toFixed(1)} kg`
+      ? `${formatMobileNumber(latestWeight.weight.inKilograms, {
+          maximumFractionDigits: 1,
+        })} كجم`
       : NO_DATA_DISPLAY;
   },
 
@@ -210,7 +234,9 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
     const systolic = latestBP.systolic?.inMillimetersOfMercury;
     const diastolic = latestBP.diastolic?.inMillimetersOfMercury;
     return (systolic && diastolic)
-      ? `${Math.round(systolic)}/${Math.round(diastolic)} mmHg`
+      ? `${formatMobileNumber(Math.round(systolic))}/${formatMobileNumber(
+          Math.round(diastolic),
+        )} ملم زئبق`
       : NO_DATA_DISPLAY;
   },
 
@@ -220,22 +246,24 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
       return sum + duration;
     }, 0);
     if (totalSleepMinutes === 0) return NO_DATA_DISPLAY;
-    const hours = Math.floor(totalSleepMinutes / 60);
-    const minutes = Math.round(totalSleepMinutes % 60);
-    return `${hours}h ${minutes}m`;
+    return formatMobileDuration(Math.round(totalSleepMinutes));
   },
 
   Hydration: (records) => {
     const totalHydration = (records as { volume?: { inLiters: number } }[]).reduce((sum, record) =>
       sum + (record.volume?.inLiters || 0), 0);
-    return totalHydration === 0 ? NO_DATA_DISPLAY : `${totalHydration.toFixed(2)} L`;
+    return totalHydration === 0
+      ? NO_DATA_DISPLAY
+      : `${formatMobileNumber(totalHydration, { maximumFractionDigits: 2 })} لتر`;
   },
 
   Height: (records) => {
     const latestHeight = (records as { time: string; height?: { inMeters: number } }[])
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
     return latestHeight.height?.inMeters
-      ? `${(latestHeight.height.inMeters * 100).toFixed(1)} cm`
+      ? `${formatMobileNumber(latestHeight.height.inMeters * 100, {
+          maximumFractionDigits: 1,
+        })} سم`
       : NO_DATA_DISPLAY;
   },
 
@@ -250,7 +278,7 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
       || (latestGlucose.level?.inMilligramsPerDeciliter ? latestGlucose.level.inMilligramsPerDeciliter / 18.018 : null)
       || (latestGlucose.bloodGlucose?.inMilligramsPerDeciliter ? latestGlucose.bloodGlucose.inMilligramsPerDeciliter / 18.018 : null);
     return glucoseValue
-      ? `${glucoseValue.toFixed(1)} mmol/L`
+      ? `${formatMobileNumber(glucoseValue, { maximumFractionDigits: 1 })} مليمول/لتر`
       : NO_DATA_DISPLAY;
   },
 
@@ -260,7 +288,9 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
   RestingHeartRate: (records) => {
     const avgRestingHR = (records as { beatsPerMinute?: number }[]).reduce((sum, record) =>
       sum + (record.beatsPerMinute || 0), 0) / records.length;
-    return avgRestingHR > 0 ? `${Math.round(avgRestingHR)} bpm` : NO_DATA_DISPLAY;
+    return avgRestingHR > 0
+      ? `${formatMobileNumber(Math.round(avgRestingHR))} نبضة/د`
+      : NO_DATA_DISPLAY;
   },
 
   HeartRateVariabilitySDNN: (records) => {
@@ -268,7 +298,7 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
       .filter(r => r.value != null && !isNaN(r.value))
       .sort((a, b) => new Date(b.time ?? 0).getTime() - new Date(a.time ?? 0).getTime())[0];
     const value = latest?.value;
-    return value != null ? `${Math.round(value)} ms` : NO_DATA_DISPLAY;
+    return value != null ? `${formatMobileNumber(Math.round(value))} ملث` : NO_DATA_DISPLAY;
   },
 
   HeartRateVariabilityRmssd: (records) => {
@@ -276,7 +306,7 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
       .filter(r => r.heartRateVariabilityMillis != null && !isNaN(r.heartRateVariabilityMillis))
       .sort((a, b) => new Date(b.time ?? 0).getTime() - new Date(a.time ?? 0).getTime())[0];
     const value = latest?.heartRateVariabilityMillis;
-    return value != null ? `${Math.round(value)} ms` : NO_DATA_DISPLAY;
+    return value != null ? `${formatMobileNumber(Math.round(value))} ملث` : NO_DATA_DISPLAY;
   },
 
   Vo2Max: (records) => {
@@ -288,7 +318,11 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
       .filter(r => r.date && r.value !== null && !isNaN(r.value!) && r.value! > 0 && r.value! < 100)
       .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
 
-    return valid.length > 0 ? `${valid[0].value!.toFixed(1)} ml/min/kg` : NO_DATA_DISPLAY;
+    return valid.length > 0
+      ? `${formatMobileNumber(valid[0].value!, {
+          maximumFractionDigits: 1,
+        })} مل/د/كجم`
+      : NO_DATA_DISPLAY;
   },
 
   LeanBodyMass: formatMassInKg,
@@ -296,7 +330,7 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
 
   WheelchairPushes: (records) => {
     const totalPushes = (records as { count?: number }[]).reduce((sum, record) => sum + (record.count || 0), 0);
-    return totalPushes === 0 ? NO_DATA_DISPLAY : totalPushes.toLocaleString();
+    return totalPushes === 0 ? NO_DATA_DISPLAY : formatMobileNumber(totalPushes);
   },
 
   ExerciseSession: (records) => {
@@ -304,45 +338,57 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
       const duration = (new Date(record.endTime).getTime() - new Date(record.startTime).getTime()) / (1000 * 60);
       return sum + duration;
     }, 0);
-    return totalExerciseMinutes === 0 ? NO_DATA_DISPLAY : `${Math.round(totalExerciseMinutes)} min`;
+    return totalExerciseMinutes === 0
+      ? NO_DATA_DISPLAY
+      : formatMobileDuration(Math.round(totalExerciseMinutes));
   },
 
   ElevationGained: (records) => {
     const totalElevation = (records as { elevation?: { inMeters: number } }[]).reduce((sum, record) =>
       sum + (record.elevation?.inMeters || 0), 0);
-    return totalElevation === 0 ? NO_DATA_DISPLAY : `${Math.round(totalElevation)} m`;
+    return totalElevation === 0
+      ? NO_DATA_DISPLAY
+      : `${formatMobileNumber(Math.round(totalElevation))} م`;
   },
 
   Power: (records) => {
     const avgPower = (records as { power?: { inWatts: number } }[]).reduce((sum, record) =>
       sum + (record.power?.inWatts || 0), 0) / records.length;
-    return avgPower === 0 ? NO_DATA_DISPLAY : `${Math.round(avgPower)} W`;
+    return avgPower === 0
+      ? NO_DATA_DISPLAY
+      : `${formatMobileNumber(Math.round(avgPower))} واط`;
   },
 
   Speed: (records) => {
     const avgSpeed = (records as { speed?: { inMetersPerSecond: number } }[]).reduce((sum, record) =>
       sum + (record.speed?.inMetersPerSecond || 0), 0) / records.length;
-    return avgSpeed === 0 ? NO_DATA_DISPLAY : `${avgSpeed.toFixed(2)} m/s`;
+    return avgSpeed === 0
+      ? NO_DATA_DISPLAY
+      : `${formatMobileNumber(avgSpeed, { maximumFractionDigits: 2 })} م/ث`;
   },
 
   RespiratoryRate: (records) => {
     const avgRespRate = (records as { rate?: number }[]).reduce((sum, record) =>
       sum + (record.rate || 0), 0) / records.length;
-    return avgRespRate === 0 ? NO_DATA_DISPLAY : `${Math.round(avgRespRate)} br/min`;
+    return avgRespRate === 0
+      ? NO_DATA_DISPLAY
+      : `${formatMobileNumber(Math.round(avgRespRate))} نفس/د`;
   },
 
   Nutrition: (records) => {
     const totalNutrition = (records as { energy?: { inCalories: number } }[]).reduce((sum, record) =>
       sum + (record.energy?.inCalories || 0), 0);
-    return totalNutrition === 0 ? NO_DATA_DISPLAY : `${Math.round(totalNutrition / 1000)} kcal`;
+    return totalNutrition === 0
+      ? NO_DATA_DISPLAY
+      : formatMobileCalories(Math.round(totalNutrition / 1000));
   },
 
-  Workout: (records) => `${records.length} workouts`,
+  Workout: (records) => formatMobileWorkoutRecordCount(records.length),
 };
 
 /**
  * Fetches health data from the device for all metrics and formats display values.
- * Returns a map of metric ID to formatted string (e.g., "5,432" for steps, "72 bpm" for heart rate).
+ * Returns a map of metric ID to locale-formatted display strings.
  */
 export async function fetchHealthDisplayData(
   timeRange: TimeRange
@@ -368,11 +414,11 @@ export async function fetchHealthDisplayData(
       const rawFormatter = RAW_FORMATTERS[metric.recordType];
       result[metric.id] = rawFormatter
         ? rawFormatter(records)
-        : `${records.length} record${records.length !== 1 ? 's' : ''}`;
+        : formatMobileHealthRecordCount(records.length);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       addLog(`[healthDataDisplay] Error fetching ${metric.label}: ${errorMessage}`, 'ERROR');
-      result[metric.id] = 'Error';
+      result[metric.id] = mobileT('healthSync.readError');
     }
   }
 

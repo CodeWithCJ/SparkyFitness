@@ -18,6 +18,7 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
+import { localizeServingUnit, mobileT } from '../localization';
 
 type DashboardSettingsScreenProps = RootStackScreenProps<'DashboardSettings'>;
 
@@ -103,7 +104,11 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
       if (context?.previous) {
         queryClient.setQueryData(nutrientDisplayPreferencesQueryKey, context.previous);
       }
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update setting.' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('common.error'),
+        text2: mobileT('dashboardSettings.updateFailed'),
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: nutrientDisplayPreferencesQueryKey });
@@ -126,15 +131,18 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
       );
     }
 
-    if (customNutrients.length === 0) {
+    if (!isConnected || customNutrients.length === 0) {
       return (
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <Text className="text-base font-semibold text-text-primary mb-2">
-            No custom nutrients
+            {isConnected
+              ? mobileT('dashboardSettings.noCustomNutrients')
+              : mobileT('dashboardSettings.noServerTitle')}
           </Text>
           <Text className="text-text-secondary text-sm">
-            Custom nutrients are created in the SparkyFitness web app. Once you add
-            some, they will appear here so you can choose which show on your Dashboard.
+            {isConnected
+              ? mobileT('dashboardSettings.noCustomNutrientsDescription')
+              : mobileT('dashboardSettings.noServerDescription')}
           </Text>
         </View>
       );
@@ -146,13 +154,17 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
           <SettingsRow
             key={cn.id}
             title={cn.name}
-            subtitle={cn.unit}
+            subtitle={localizeServingUnit(cn.unit)}
             rightAccessory={
               <Switch
                 value={base.includes(cn.name)}
                 onValueChange={(value) => handleToggle(cn.name, value)}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
+                accessibilityLabel={mobileT(
+                  'dashboardSettings.showCustomNutrient',
+                  { nutrient: cn.name },
+                )}
               />
             }
           />
@@ -161,7 +173,10 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
     );
   };
 
-  const header = useScreenHeader({ title: 'Dashboard Settings', left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: mobileT('screens.dashboardSettings'),
+    left: { kind: 'back' },
+  });
 
   return (
     <View
@@ -179,38 +194,41 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
       >
         <SettingsRowGroup>
           <SettingsRow
-            title="Ask Sparky"
-            subtitle="Show the Ask Sparky chat launcher on the Dashboard"
+            title={mobileT('dashboardSettings.askSparky')}
+            subtitle={mobileT('dashboardSettings.askSparkyDescription')}
             rightAccessory={
               <Switch
                 value={askSparkyVisible}
                 onValueChange={setAskSparkyVisible}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
+                accessibilityLabel={mobileT('dashboardSettings.askSparky')}
               />
             }
-          />          
+          />
           <SettingsRow
-            title="Hydration"
-            subtitle="Show the hydration card on the Dashboard"
+            title={mobileT('dashboardSettings.hydration')}
+            subtitle={mobileT('dashboardSettings.hydrationDescription')}
             rightAccessory={
               <Switch
                 value={hydrationCardVisible}
                 onValueChange={setHydrationCardVisible}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
+                accessibilityLabel={mobileT('dashboardSettings.hydration')}
               />
             }
           />
           <SettingsRow
-            title="Fasting"
-            subtitle="Show the fasting card on the Dashboard"
+            title={mobileT('dashboardSettings.fasting')}
+            subtitle={mobileT('dashboardSettings.fastingDescription')}
             rightAccessory={
               <Switch
                 value={fastingCardVisible}
                 onValueChange={setFastingCardVisible}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
+                accessibilityLabel={mobileT('dashboardSettings.fasting')}
               />
             }
           />
@@ -218,7 +236,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
         </SettingsRowGroup>
 
         <Text className="text-base font-semibold text-text-primary mb-4">
-          Custom Nutrient Display
+          {mobileT('dashboardSettings.customNutrients')}
         </Text>
 
         {renderContent()}

@@ -1,9 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import Icon from '../components/Icon';
-import Button from '../components/ui/Button';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import CopyMealSheet, { type CopyMealSheetRef } from '../components/CopyMealSheet';
@@ -21,8 +19,12 @@ import {
   calculateMealNutrition,
   filterFoodEntriesByMealType,
 } from '../utils/mealNutrition';
-import { getMealTypeLabel } from '../constants/meals';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  formatMobileFoodCount,
+  localizeMealType,
+  mobileT,
+} from '../localization';
 
 type MealTypeDetailScreenProps = RootStackScreenProps<'MealTypeDetail'>;
 
@@ -45,7 +47,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const label = mealLabel ?? getMealTypeLabel(mealType);
+  const label = mealLabel ?? localizeMealType(mealType);
   const entries = useMemo(
     () => filterFoodEntriesByMealType(summary?.foodEntries ?? [], mealType),
     [summary?.foodEntries, mealType],
@@ -73,40 +75,31 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view meal nutrition."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          title={mobileT('mealTypeDetail.noServerTitle')}
+          subtitle={mobileT('mealTypeDetail.noServerDescription')}
+          action={{ label: mobileT('common.goToSettings'), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return (
-        <View className="flex-1 items-center justify-center p-8">
-          <ActivityIndicator size="large" color={accentColor} />
-          <Text className="text-text-muted text-base mt-4">Loading meal...</Text>
-        </View>
-      );
+      return <StatusView loading title={mobileT('mealTypeDetail.loading')} />;
     }
 
     if (isError) {
       return (
-        <View className="flex-1 items-center justify-center p-8">
-          <Icon name="alert-circle" size={64} color="#EF4444" />
-          <Text className="text-text-muted text-lg text-center mt-4">
-            Failed to load meal
-          </Text>
-          <Text className="text-text-muted text-sm text-center mt-2">
-            Please check your connection and try again.
-          </Text>
-          <Button
-            variant="primary"
-            className="px-6 mt-6"
-            onPress={() => refetch()}
-          >
-            Retry
-          </Button>
-        </View>
+        <StatusView
+          icon="alert-circle"
+          iconColor="#EF4444"
+          iconSize={64}
+          title={mobileT('mealTypeDetail.loadFailed')}
+          subtitle={mobileT('mealTypeDetail.loadFailedDescription')}
+          action={{
+            label: mobileT('common.retry'),
+            onPress: () => void refetch(),
+            variant: 'primary',
+          }}
+        />
       );
     }
 
@@ -116,8 +109,10 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="food"
           iconColor="#9CA3AF"
           iconSize={64}
-          title={`No ${label.toLowerCase()} foods`}
-          subtitle={`${formatDateLabel(date)} has no foods logged for this meal.`}
+          title={mobileT('mealTypeDetail.emptyTitle', { meal: label })}
+          subtitle={mobileT('mealTypeDetail.emptyDescription', {
+            date: formatDateLabel(date),
+          })}
         />
       );
     }
@@ -142,9 +137,11 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">
           <View className="flex-row items-center mb-3">
-            <Text className="text-base font-bold text-text-secondary flex-1">Foods</Text>
+            <Text className="text-base font-bold text-text-secondary flex-1">
+              {mobileT('mealTypeDetail.foods')}
+            </Text>
             <Text className="text-xs text-text-muted font-medium">
-              {entries.length} {entries.length === 1 ? 'item' : 'items'}
+              {formatMobileFoodCount(entries.length)}
             </Text>
           </View>
           {entries.map((entry, index) => (
@@ -169,7 +166,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           ionicon: 'copy-outline',
           role: 'secondary',
           onPress: () => copySheetRef.current?.present(date, mealType),
-          accessibilityLabel: 'Copy meal to another day',
+          accessibilityLabel: mobileT('mealTypeDetail.copyMeal'),
           identifier: 'meal-type-detail-copy',
         }
       : null,

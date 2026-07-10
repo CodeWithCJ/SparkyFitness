@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import MealBuilder from '../../components/MealBuilder';
 import type { Meal, MealFood } from '@/types/meal';
+import { useTranslation } from 'react-i18next';
 
 interface LogMealDialogProps {
   mealTemplate: Meal | null;
@@ -24,6 +25,8 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
   date,
   mealType,
 }) => {
+  const { t } = useTranslation();
+
   const handleSave = () => {
     onOpenChange(false);
   };
@@ -40,10 +43,10 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Log Meal: {mealTemplate.name}</DialogTitle>
-          <DialogDescription>
-            Adjust the portion size or ingredients for this meal entry.
-          </DialogDescription>
+          <DialogTitle>
+            {t('mealLogging.title', { name: mealTemplate.name })}
+          </DialogTitle>
+          <DialogDescription>{t('mealLogging.description')}</DialogDescription>
         </DialogHeader>
         <MealBuilder
           mealId={mealTemplate.id} // Pass template ID so it can be linked

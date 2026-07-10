@@ -33,9 +33,14 @@ import {
 import { MagicLinkRequestDialog } from './MagicLinkRequestDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { AuthResponse } from '@/types/auth';
-import { getErrorMessage } from '@/utils/api';
+import { useTranslation } from 'react-i18next';
+import {
+  PASSWORD_REQUIREMENT_DEFAULTS,
+  getPasswordValidationIssue,
+} from '@/utils/passwordValidation';
 
 const Auth = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { loggingLevel } = usePreferences();
   const { signIn, user: authUser, loading: authLoading } = useAuth();
@@ -244,30 +249,21 @@ const Auth = () => {
     [loggingLevel, queryClient]
   );
 
-  const validatePassword = (pwd: string) => {
-    if (pwd.length < 6) {
-      return 'Password must be at least 6 characters long.';
-    }
-    if (!/[A-Z]/.test(pwd)) {
-      return 'Password must contain at least one uppercase letter.';
-    }
-    if (!/[a-z]/.test(pwd)) {
-      return 'Password must contain at least one lowercase letter.';
-    }
-    if (!/[0-9]/.test(pwd)) {
-      return 'Password must contain at least one number.';
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) {
-      return 'Password must contain at least one special character.';
-    }
-    return null; // No error
+  const getLocalizedPasswordError = (pwd: string) => {
+    const issue = getPasswordValidationIssue(pwd);
+    return issue
+      ? t(
+          `auth.passwordRequirements.${issue}`,
+          PASSWORD_REQUIREMENT_DEFAULTS[issue]
+        )
+      : null;
   };
 
   const handleSignUp = async (e: React.SubmitEvent) => {
     e.preventDefault();
     info(loggingLevel, 'Auth: Attempting sign up.');
 
-    const validationError = validatePassword(password);
+    const validationError = getLocalizedPasswordError(password);
     if (validationError) {
       setPasswordError(validationError);
       setLoading(false);
@@ -343,7 +339,12 @@ const Auth = () => {
       );
     } catch (err: unknown) {
       error(loggingLevel, 'Auth: Sign in failed:', err);
-      setFormError(getErrorMessage(err));
+      setFormError(
+        t(
+          'auth.errors.signInFailed',
+          'We could not sign you in. Check your details and try again.'
+        )
+      );
     }
 
     setLoading(false);
@@ -358,16 +359,22 @@ const Auth = () => {
       if (error) throw error;
 
       info(loggingLevel, 'Auth: Passkey sign-in successful.');
-      toast({ title: 'Success', description: 'Logged in with Passkey!' });
+      toast({
+        title: t('auth.passkey.successTitle', 'Signed in'),
+        description: t(
+          'auth.passkey.successDescription',
+          'You signed in with your passkey.'
+        ),
+      });
       navigate('/');
     } catch (err: unknown) {
-      const message = getErrorMessage(err);
       error(loggingLevel, 'Auth: Passkey sign-in failed:', err);
       toast({
-        title: 'Passkey Error',
-        description:
-          message ||
-          'Failed to sign in with Passkey. Ensure your device supports it.',
+        title: t('auth.passkey.errorTitle', 'Passkey sign-in failed'),
+        description: t(
+          'auth.passkey.errorDescription',
+          'Try again or use another sign-in method.'
+        ),
         variant: 'destructive',
       });
     } finally {
@@ -382,10 +389,10 @@ const Auth = () => {
           <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-300">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-6" />
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-              Almost there!
+              {t('auth.loading.title', 'Signing you in securely')}
             </h2>
             <p className="text-muted-foreground animate-pulse text-sm">
-              Securing your family dashboard...
+              {t('auth.loading.description', 'This should only take a moment.')}
             </p>
           </div>
         ) : showMfaChallenge && mfaChallengeProps ? (
@@ -396,29 +403,35 @@ const Auth = () => {
               <div className="flex items-center justify-center mb-4">
                 <img
                   src="/images/SparkyFitness.webp"
-                  alt="SparkyFitness Logo"
-                  className="h-10 w-10 mr-2"
+                  alt={t('auth.logoAlt', 'SparkyFitness logo')}
+                  className="h-10 w-10 me-2"
                 />
                 <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-300">
                   SparkyFitness
                 </CardTitle>
               </div>
               <CardDescription>
-                Built for Families. Powered by AI. Track food, fitness, water,
-                and health — together.
+                {t(
+                  'auth.tagline',
+                  'Track your nutrition, activity, hydration, and health in one place.'
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {loginSettings?.warning && (
                 <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
-                  <p className="font-semibold">Warning</p>
+                  <p className="font-semibold">
+                    {t('auth.warningTitle', 'Important notice')}
+                  </p>
                   <p>{loginSettings.warning}</p>
                 </div>
               )}
               {formError && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Authentication Failed</AlertTitle>
+                  <AlertTitle>
+                    {t('auth.authenticationFailed', 'Sign-in failed')}
+                  </AlertTitle>
                   <AlertDescription>{formError}</AlertDescription>
                 </Alert>
               )}
@@ -433,7 +446,7 @@ const Auth = () => {
                           debug(loggingLevel, 'Auth: Switched to Sign In tab.');
                         }}
                       >
-                        Sign In
+                        {t('auth.signIn', 'Sign in')}
                       </TabsTrigger>
                       <TabsTrigger
                         value="signup"
@@ -442,23 +455,31 @@ const Auth = () => {
                           debug(loggingLevel, 'Auth: Switched to Sign Up tab.');
                         }}
                       >
-                        Sign Up
+                        {t('auth.createAccount', 'Create account')}
                       </TabsTrigger>
                     </TabsList>
                   )}
                   {loginSettings?.signup_disabled && (
                     <p className="text-center text-xs text-muted-foreground">
-                      Registration is currently disabled.
+                      {t(
+                        'auth.registrationDisabled',
+                        'New account registration is currently unavailable.'
+                      )}
                     </p>
                   )}
                   <TabsContent value="signin">
                     <form onSubmit={handleSignIn} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="signin-email">Email</Label>
+                        <Label htmlFor="signin-email">
+                          {t('auth.email', 'Email')}
+                        </Label>
                         <Input
                           id="signin-email"
                           type="email"
-                          placeholder="Enter your email"
+                          placeholder={t(
+                            'auth.emailPlaceholder',
+                            'name@example.com'
+                          )}
                           value={email}
                           onChange={(e) => {
                             debug(
@@ -472,11 +493,16 @@ const Auth = () => {
                         />
                       </div>
                       <div className="space-y-2 relative">
-                        <Label htmlFor="signin-password">Password</Label>
+                        <Label htmlFor="signin-password">
+                          {t('auth.password', 'Password')}
+                        </Label>
                         <Input
                           id="signin-password"
                           type={showPassword ? 'text' : 'password'}
-                          placeholder="Enter your password"
+                          placeholder={t(
+                            'auth.passwordPlaceholder',
+                            'Enter your password'
+                          )}
                           value={password}
                           onChange={(e) => {
                             debug(
@@ -493,12 +519,12 @@ const Auth = () => {
                           passwordToggleHandler={passwordToggleHandler}
                         />
                       </div>
-                      <div className="text-right text-sm">
+                      <div className="text-end text-sm">
                         <a
                           href="/forgot-password"
                           className="font-medium text-primary hover:underline"
                         >
-                          Forgot password?
+                          {t('auth.forgotPassword', 'Forgot your password?')}
                         </a>
                       </div>
                       <Button
@@ -506,7 +532,9 @@ const Auth = () => {
                         className="w-full"
                         disabled={loading}
                       >
-                        {loading ? 'Signing in...' : 'Sign In'}
+                        {loading
+                          ? t('auth.signingIn', 'Signing in…')
+                          : t('auth.signIn', 'Sign in')}
                       </Button>
                     </form>
                     <div className="relative my-6">
@@ -515,7 +543,7 @@ const Auth = () => {
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
                         <span className="bg-background px-2 text-muted-foreground">
-                          Or sign in with
+                          {t('auth.orSignInWith', 'Or continue with')}
                         </span>
                       </div>
                     </div>
@@ -525,15 +553,16 @@ const Auth = () => {
                       onClick={handlePasskeySignIn}
                       disabled={loading}
                     >
-                      <Fingerprint className="h-4 w-4 mr-2 text-primary" /> Sign
-                      in with Passkey
+                      <Fingerprint className="h-4 w-4 me-2 text-primary" />
+                      {t('auth.signInWithPasskey', 'Sign in with a passkey')}
                     </Button>
                     <Button
                       variant="outline"
                       className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center mb-2"
                       onClick={() => setIsMagicLinkRequestDialogOpen(true)}
                     >
-                      <Zap className="h-4 w-4 mr-2" /> Request Magic Link
+                      <Zap className="h-4 w-4 me-2" />
+                      {t('auth.requestMagicLink', 'Email me a sign-in link')}
                     </Button>
                     {loginSettings?.oidc.enabled && (
                       <>
@@ -554,11 +583,15 @@ const Auth = () => {
                             {provider.logo_url && (
                               <img
                                 src={provider.logo_url}
-                                alt={`${provider.display_name} logo`}
-                                className="h-5 w-5 mr-2"
+                                alt={t('auth.providerLogoAlt', {
+                                  provider: provider.display_name,
+                                  defaultValue: '{{provider}} logo',
+                                })}
+                                className="h-5 w-5 me-2"
                               />
                             )}
-                            {provider.display_name || 'Sign In with OIDC'}
+                            {provider.display_name ||
+                              t('auth.signInWithProvider', 'Sign in with SSO')}
                           </Button>
                         ))}
                       </>
@@ -569,11 +602,16 @@ const Auth = () => {
                     <TabsContent value="signup">
                       <form onSubmit={handleSignUp} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="signup-name">Full Name</Label>
+                          <Label htmlFor="signup-name">
+                            {t('auth.fullName', 'Full name')}
+                          </Label>
                           <Input
                             id="signup-name"
                             type="text"
-                            placeholder="Enter your full name"
+                            placeholder={t(
+                              'auth.fullNamePlaceholder',
+                              'Enter your full name'
+                            )}
                             value={fullName}
                             onChange={(e) => {
                               debug(
@@ -587,11 +625,16 @@ const Auth = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="signup-email">Email</Label>
+                          <Label htmlFor="signup-email">
+                            {t('auth.email', 'Email')}
+                          </Label>
                           <Input
                             id="signup-email"
                             type="email"
-                            placeholder="Enter your email"
+                            placeholder={t(
+                              'auth.emailPlaceholder',
+                              'name@example.com'
+                            )}
                             value={email}
                             onChange={(e) => {
                               debug(
@@ -605,11 +648,16 @@ const Auth = () => {
                           />
                         </div>
                         <div className="space-y-2 relative">
-                          <Label htmlFor="signup-password">Password</Label>
+                          <Label htmlFor="signup-password">
+                            {t('auth.password', 'Password')}
+                          </Label>
                           <Input
                             id="signup-password"
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="Create a password"
+                            placeholder={t(
+                              'auth.createPasswordPlaceholder',
+                              'Create a password'
+                            )}
                             value={password}
                             onChange={(e) => {
                               debug(
@@ -618,7 +666,7 @@ const Auth = () => {
                               );
                               setPassword(e.target.value);
                               setPasswordError(
-                                validatePassword(e.target.value)
+                                getLocalizedPasswordError(e.target.value)
                               );
                             }}
                             required
@@ -639,7 +687,9 @@ const Auth = () => {
                           className="w-full"
                           disabled={loading || !!passwordError}
                         >
-                          {loading ? 'Creating account...' : 'Sign Up'}
+                          {loading
+                            ? t('auth.creatingAccount', 'Creating account…')
+                            : t('auth.createAccount', 'Create account')}
                         </Button>
                       </form>
                     </TabsContent>
@@ -654,8 +704,8 @@ const Auth = () => {
                     onClick={handlePasskeySignIn}
                     disabled={loading}
                   >
-                    <Fingerprint className="h-4 w-4 mr-2 text-primary" /> Sign
-                    in with Passkey
+                    <Fingerprint className="h-4 w-4 me-2 text-primary" />
+                    {t('auth.signInWithPasskey', 'Sign in with a passkey')}
                   </Button>
 
                   {loginSettings?.oidc?.enabled &&
@@ -664,7 +714,7 @@ const Auth = () => {
                         <div className="flex items-center my-4">
                           <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
                           <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">
-                            Or sign in with
+                            {t('auth.orSignInWith', 'Or continue with')}
                           </span>
                           <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
                         </div>
@@ -685,11 +735,18 @@ const Auth = () => {
                               {provider.logo_url && (
                                 <img
                                   src={provider.logo_url}
-                                  alt={`${provider.display_name} logo`}
-                                  className="h-5 w-5 mr-2"
+                                  alt={t('auth.providerLogoAlt', {
+                                    provider: provider.display_name,
+                                    defaultValue: '{{provider}} logo',
+                                  })}
+                                  className="h-5 w-5 me-2"
                                 />
                               )}
-                              {provider.display_name || 'Sign In with OIDC'}
+                              {provider.display_name ||
+                                t(
+                                  'auth.signInWithProvider',
+                                  'Sign in with SSO'
+                                )}
                             </Button>
                           ))}
                         </div>

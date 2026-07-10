@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn } from '@/utils/logging';
 import type { Meal } from '@/types/meal';
+import { useTranslation } from 'react-i18next';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface MealUnitSelectorProps {
   meal: Meal;
@@ -37,11 +39,8 @@ const MealUnitSelector = ({
   confirmLabel,
 }: MealUnitSelectorProps) => {
   const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
+  const { t } = useTranslation();
   debug(loggingLevel, 'MealUnitSelector component rendered.', { meal, open });
-
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal' ? 'kcal' : 'kJ';
-  };
 
   // Default the prefilled quantity to one serving's worth (meal.serving_size),
   // matching MealBuilder. For an 8-serving meal this prefills 1.
@@ -116,6 +115,10 @@ const MealUnitSelector = ({
 
   // Get display unit (prefer meal's serving_unit, fallback to 'serving')
   const displayUnit = meal?.serving_unit || 'serving';
+  const localizedDisplayUnit = getLocalizedUnitLabel(displayUnit, t);
+  const localizedEnergyUnit = getLocalizedUnitLabel(energyUnit, t);
+  const gramUnit = getLocalizedUnitLabel('g', t);
+  const isEditing = initialQuantity !== undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,15 +126,27 @@ const MealUnitSelector = ({
         <DialogHeader>
           <DialogTitle>
             {title ??
-              (initialQuantity
-                ? `Edit ${meal?.name}`
-                : `Add ${meal?.name} to Meal Plan`)}
+              (isEditing
+                ? t('mealUnitSelector.editTitle', {
+                    mealName: meal?.name,
+                    defaultValue: 'Edit {{mealName}}',
+                  })
+                : t('mealUnitSelector.addTitle', {
+                    mealName: meal?.name,
+                    defaultValue: 'Add {{mealName}} to meal plan',
+                  }))}
           </DialogTitle>
           <DialogDescription>
             {description ??
-              (initialQuantity
-                ? `Edit the quantity for ${meal?.name}.`
-                : `Select the quantity for this meal in your meal plan.`)}
+              (isEditing
+                ? t('mealUnitSelector.editDescription', {
+                    mealName: meal?.name,
+                    defaultValue: 'Edit the quantity for {{mealName}}.',
+                  })
+                : t(
+                    'mealUnitSelector.addDescription',
+                    'Select the quantity for this meal in your meal plan.'
+                  ))}
           </DialogDescription>
         </DialogHeader>
 
@@ -139,10 +154,13 @@ const MealUnitSelector = ({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="quantity">Quantity</Label>
+                <Label htmlFor="quantity">
+                  {t('mealUnitSelector.quantity', 'Quantity')}
+                </Label>
                 <Input
                   id="quantity"
                   type="number"
+                  inputMode="decimal"
                   step="any"
                   min="0.01"
                   value={quantity}
@@ -155,11 +173,13 @@ const MealUnitSelector = ({
                 />
               </div>
               <div>
-                <Label htmlFor="unit">Unit</Label>
+                <Label htmlFor="unit">
+                  {t('mealUnitSelector.unit', 'Unit')}
+                </Label>
                 <Input
                   id="unit"
                   type="text"
-                  value={displayUnit}
+                  value={localizedDisplayUnit}
                   disabled
                   className="bg-muted"
                 />
@@ -169,33 +189,48 @@ const MealUnitSelector = ({
             {nutrition && (
               <div className="bg-muted p-3 rounded-lg">
                 <h4 className="font-medium mb-2">
-                  Nutrition for {quantity} {displayUnit}:
+                  {t('mealUnitSelector.nutritionFor', {
+                    quantity,
+                    unit: localizedDisplayUnit,
+                    defaultValue: 'Nutrition for {{quantity}} {{unit}}:',
+                  })}
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
                     {Math.round(
                       convertEnergy(nutrition.calories, 'kcal', energyUnit)
                     )}{' '}
-                    {getEnergyUnitString(energyUnit)}
+                    {localizedEnergyUnit}
                   </div>
-                  <div>{nutrition.protein.toFixed(1)}g protein</div>
-                  <div>{nutrition.carbs.toFixed(1)}g carbs</div>
-                  <div>{nutrition.fat.toFixed(1)}g fat</div>
+                  <div>
+                    {t('nutrition.protein', 'Protein')}:{' '}
+                    {nutrition.protein.toFixed(1)} {gramUnit}
+                  </div>
+                  <div>
+                    {t('nutrition.carbs', 'Carbohydrates')}:{' '}
+                    {nutrition.carbs.toFixed(1)} {gramUnit}
+                  </div>
+                  <div>
+                    {t('nutrition.fat', 'Fat')}: {nutrition.fat.toFixed(1)}{' '}
+                    {gramUnit}
+                  </div>
                 </div>
               </div>
             )}
 
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Cancel
+                {t('common.cancel', 'Cancel')}
               </Button>
               <Button type="submit">
                 {confirmLabel ??
-                  (initialQuantity ? 'Update Meal' : 'Add to Meal Plan')}
+                  (isEditing
+                    ? t('mealUnitSelector.updateMeal', 'Update meal')
+                    : t('mealUnitSelector.addToPlan', 'Add to meal plan'))}
               </Button>
             </div>
           </div>

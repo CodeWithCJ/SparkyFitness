@@ -7,7 +7,11 @@ let mockShowNetCarbs = false;
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (_key: string, defaultValue?: string) => defaultValue ?? _key,
+    t: (_key: string, defaultValue?: string | object) => {
+      if (_key === 'units.gram') return 'غ';
+
+      return typeof defaultValue === 'string' ? defaultValue : `[${_key}]`;
+    },
   }),
 }));
 
@@ -70,7 +74,10 @@ describe('NutritionSummaryCard net carbs summary', () => {
     renderSummary();
 
     expect(screen.getByText('Carbohydrates')).toBeInTheDocument();
-    expect(screen.getByText('30.0g')).toBeInTheDocument();
+    expect(screen.getByText('30.0 غ')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '[diary.copyAllToDate]' })
+    ).toBeInTheDocument();
   });
 
   it('shows net carbs and subtracts fiber when enabled', () => {
@@ -78,7 +85,7 @@ describe('NutritionSummaryCard net carbs summary', () => {
     renderSummary();
 
     expect(screen.getByText('Net Carbs')).toBeInTheDocument();
-    expect(screen.getByText('22.0g')).toBeInTheDocument();
-    expect(screen.getByText('of 50.0g')).toBeInTheDocument();
+    expect(screen.getByText('22.0 غ')).toBeInTheDocument();
+    expect(screen.getByText('of 50.0 غ')).toBeInTheDocument();
   });
 });

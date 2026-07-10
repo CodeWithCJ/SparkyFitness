@@ -26,6 +26,7 @@ import { useSupersetBorders } from './ActiveWorkoutRail';
 import type { WorkoutDraftExercise, WorkoutSetMetaPatch } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
+import { mobileT } from '../localization';
 
 interface WorkoutFormExerciseListProps {
   exercises: WorkoutDraftExercise[];
@@ -345,14 +346,14 @@ const WorkoutFormExerciseList = forwardRef<
     if (onViewExercise) {
       items.push({
         key: 'view',
-        label: 'View exercise',
+        label: mobileT('workoutForm.viewExercise'),
         onPress: () => handleViewExercise(clientId),
       });
     }
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
-        label: 'Superset with…',
+        label: mobileT('workoutForm.supersetWith'),
         onPress: () => {
           // Re-open at the same anchor with the candidate list. AnchoredMenu
           // closes first (onClose), then this runs — both land in one commit.
@@ -363,13 +364,13 @@ const WorkoutFormExerciseList = forwardRef<
     if (groupedIds.has(clientId)) {
       items.push({
         key: 'ungroup',
-        label: 'Remove from superset',
+        label: mobileT('workoutForm.removeFromSuperset'),
         onPress: () => ungroupExercise(clientId),
       });
     }
     items.push({
       key: 'remove',
-      label: 'Remove exercise',
+      label: mobileT('workoutForm.removeExercise'),
       onPress: () => {
         const exercise = exercises.find(e => e.clientId === clientId);
         if (exercise) onRemoveExercise(exercise);
@@ -440,13 +441,13 @@ const WorkoutFormExerciseList = forwardRef<
               // the full wrapper height, meeting the next member's rail at the
               // divider so consecutive members read as one continuous line; the
               // run's last member stops ~8px short to end at the card content.
-              <View style={{ paddingLeft: 10 }}>
+              <View style={{ paddingStart: 10 }}>
                 <View
                   testID={`superset-rail-${clientId}`}
                   pointerEvents="none"
                   style={{
                     position: 'absolute',
-                    left: 0,
+                    start: 0,
                     top: 0,
                     bottom: supersetBorder.isLast && isExpanded ? 8 : 0,
                     width: 3,
@@ -467,10 +468,12 @@ const WorkoutFormExerciseList = forwardRef<
           className="flex-row items-center self-center py-2 px-3 rounded-lg"
           onPress={onAddExercisePress}
           activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel={mobileT('workoutForm.addExercise')}
         >
           <Icon name="add-circle" size={20} color={accentPrimary} />
-          <Text className="text-lg font-medium ml-2" style={{ color: accentPrimary }}>
-            Add Exercise
+          <Text className="text-lg font-medium ms-2" style={{ color: accentPrimary }}>
+            {mobileT('workoutForm.addExercise')}
           </Text>
         </TouchableOpacity>
       </Animated.View>

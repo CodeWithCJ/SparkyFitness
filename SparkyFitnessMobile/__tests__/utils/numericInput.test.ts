@@ -1,4 +1,32 @@
-import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../../src/utils/numericInput';
+import {
+  DECIMAL_INPUT_REGEX,
+  INTEGER_INPUT_REGEX,
+  normalizeLocalizedDigits,
+  parseDecimalInput,
+} from '../../src/utils/numericInput';
+
+describe('normalizeLocalizedDigits', () => {
+  it('normalizes Arabic-Indic and Persian digits without changing identifiers', () => {
+    expect(normalizeLocalizedDigits('٠١٢٣٤٥٦٧٨٩')).toBe('0123456789');
+    expect(normalizeLocalizedDigits('۰۱۲۳۴۵۶۷۸۹')).toBe('0123456789');
+    expect(normalizeLocalizedDigits('ABC-١۲٣')).toBe('ABC-123');
+  });
+});
+
+describe('INTEGER_INPUT_REGEX', () => {
+  it('accepts Western, Arabic-Indic, and Persian whole-number input', () => {
+    expect(INTEGER_INPUT_REGEX.test('12')).toBe(true);
+    expect(INTEGER_INPUT_REGEX.test('١٢')).toBe(true);
+    expect(INTEGER_INPUT_REGEX.test('۱۲')).toBe(true);
+    expect(INTEGER_INPUT_REGEX.test('')).toBe(true);
+  });
+
+  it('rejects decimal separators, signs, and letters', () => {
+    expect(INTEGER_INPUT_REGEX.test('١٢٫٥')).toBe(false);
+    expect(INTEGER_INPUT_REGEX.test('-12')).toBe(false);
+    expect(INTEGER_INPUT_REGEX.test('12h')).toBe(false);
+  });
+});
 
 describe('parseDecimalInput', () => {
   describe('empty / nullish', () => {
@@ -21,6 +49,21 @@ describe('parseDecimalInput', () => {
       expect(parseDecimalInput('0')).toBe(0);
       expect(parseDecimalInput('42')).toBe(42);
       expect(parseDecimalInput('1000')).toBe(1000);
+    });
+  });
+
+  describe('Arabic and Persian numerals', () => {
+    it('parses Arabic-Indic integers and decimals', () => {
+      expect(parseDecimalInput('١٢٣')).toBe(123);
+      expect(parseDecimalInput('١٢٣٫٥')).toBe(123.5);
+    });
+
+    it('parses Arabic thousands separators', () => {
+      expect(parseDecimalInput('١٬٢٣٤٫٥')).toBe(1234.5);
+    });
+
+    it('parses Persian digits from pasted values', () => {
+      expect(parseDecimalInput('۱۲۳٫۵')).toBe(123.5);
     });
   });
 
@@ -140,16 +183,16 @@ describe('parseDecimalInput', () => {
     });
 
     it('rejects invalid thousand groupings', () => {
-      expect(parseDecimalInput('1,2,3')).toBeNaN();       // groups too short
-      expect(parseDecimalInput('12,34,567')).toBeNaN();   // 2-digit middle group
-      expect(parseDecimalInput('1,23,456')).toBeNaN();    // 2-digit middle group
+      expect(parseDecimalInput('1,2,3')).toBeNaN(); // groups too short
+      expect(parseDecimalInput('12,34,567')).toBeNaN(); // 2-digit middle group
+      expect(parseDecimalInput('1,23,456')).toBeNaN(); // 2-digit middle group
       expect(parseDecimalInput('1.2.3')).toBeNaN();
     });
 
     it('rejects mixed-separator garbage', () => {
       expect(parseDecimalInput('1.234,56,7')).toBeNaN();
       expect(parseDecimalInput('1,234.56.78')).toBeNaN();
-      expect(parseDecimalInput('1,234,56')).toBeNaN();    // mis-grouped thousands
+      expect(parseDecimalInput('1,234,56')).toBeNaN(); // mis-grouped thousands
     });
 
     it('rejects lone separators', () => {
@@ -163,9 +206,9 @@ describe('parseDecimalInput', () => {
       expect(parseDecimalInput('1 23,4')).toBeNaN();
       expect(parseDecimalInput('12 34')).toBeNaN();
       expect(parseDecimalInput('1 2 3')).toBeNaN();
-      expect(parseDecimalInput('1 234 56')).toBeNaN();      // trailing 2-digit group
-      expect(parseDecimalInput('1234 567')).toBeNaN();      // 4-digit leading group
-      expect(parseDecimalInput('1  234')).toBeNaN();        // double space
+      expect(parseDecimalInput('1 234 56')).toBeNaN(); // trailing 2-digit group
+      expect(parseDecimalInput('1234 567')).toBeNaN(); // 4-digit leading group
+      expect(parseDecimalInput('1  234')).toBeNaN(); // double space
     });
 
     it('accepts outer whitespace around otherwise-valid values', () => {
@@ -197,6 +240,12 @@ describe('DECIMAL_INPUT_REGEX', () => {
     expect(DECIMAL_INPUT_REGEX.test('1.001,5')).toBe(true);
     expect(DECIMAL_INPUT_REGEX.test('1 001,5')).toBe(true);
     expect(DECIMAL_INPUT_REGEX.test('1\u00a0001,5')).toBe(true);
+  });
+
+  it('accepts Arabic and Persian numerals while typing', () => {
+    expect(DECIMAL_INPUT_REGEX.test('١٢٣٫٥')).toBe(true);
+    expect(DECIMAL_INPUT_REGEX.test('١٬٢٣٤٫٥')).toBe(true);
+    expect(DECIMAL_INPUT_REGEX.test('۱۲۳٫۵')).toBe(true);
   });
 
   it('rejects letters and other garbage', () => {

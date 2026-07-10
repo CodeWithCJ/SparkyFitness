@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon, { IconName } from './Icon';
+import { mobileT } from '../localization';
 
 export type AnchorRect = {
   x: number;
@@ -98,7 +99,11 @@ const AnchoredMenu: React.FC<Props> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Dismiss menu">
+      <Pressable
+        className="flex-1"
+        onPress={onClose}
+        accessibilityLabel={mobileT('common.dismissMenu')}
+      >
         <View
           className="absolute bg-surface rounded-xl border border-border-subtle shadow-lg py-1"
           style={menuStyle}

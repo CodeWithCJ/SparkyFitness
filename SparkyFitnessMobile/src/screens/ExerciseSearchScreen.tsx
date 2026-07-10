@@ -27,10 +27,10 @@ import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
-import { getApiErrorMessage } from '../services/api/errors';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { RootStackScreenProps } from '../types/navigation';
+import { localizeExerciseCategory, mobileT } from '../localization';
 
 type ExerciseSearchScreenProps = RootStackScreenProps<'ExerciseSearch'>;
 
@@ -42,8 +42,8 @@ type ExerciseSection = {
 type TabKey = 'search' | 'online';
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'search', label: 'Search' },
-  { key: 'online', label: 'Online' },
+  { key: 'search', label: mobileT('exerciseSearch.saved') },
+  { key: 'online', label: mobileT('exerciseSearch.online') },
 ] as const;
 
 const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation, route }) => {
@@ -105,7 +105,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     providerId: selectedProvider ?? undefined,
   });
 
-useEffect(() => {
+  useEffect(() => {
     if (providers.length === 0) return;
     if (hasUserSelectedProvider.current && providers.some((p) => p.id === selectedProvider)) return;
     // Default the provider once the list loads; guarded by a ref tracking an
@@ -130,12 +130,12 @@ useEffect(() => {
       const exercise = await importExercise(item.source, item.id);
       queryClient.invalidateQueries({ queryKey: suggestedExercisesQueryKey });
       handleSelectExercise(exercise);
-    } catch (error) {
+    } catch {
       // apiFetch already logs the failure; surface it so the tap isn't silent.
       Toast.show({
         type: 'error',
-        text1: 'Failed to add exercise',
-        text2: getApiErrorMessage(error) ?? undefined,
+        text1: mobileT('exerciseSearch.addFailed'),
+        text2: mobileT('common.retry'),
       });
     }
     setImportingExerciseId(null);
@@ -169,7 +169,7 @@ useEffect(() => {
           <Text className="text-text-primary text-base font-medium">{item.name}</Text>
           {item.category && (
             <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-              {item.category}
+              {localizeExerciseCategory(item.category)}
             </Text>
           )}
         </View>
@@ -179,8 +179,8 @@ useEffect(() => {
 
   const sections = useMemo(() => {
     const allSections: ExerciseSection[] = [
-      { title: 'Recent', data: recentExercises },
-      { title: 'Popular', data: topExercises },
+      { title: mobileT('exerciseSearch.recent'), data: recentExercises },
+      { title: mobileT('exerciseSearch.popular'), data: topExercises },
     ];
     return allSections.filter((section) => section.data.length > 0);
   }, [recentExercises, topExercises]);
@@ -200,11 +200,11 @@ useEffect(() => {
         style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : borderSubtle }}
       >
         <Icon name="search" size={18} color={textMuted} />
-        <View className="flex-1 ml-2">
+        <View className="flex-1" style={{ marginStart: 8 }}>
           <TextInput
             className="text-text-primary"
             style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-            placeholder="Search exercises..."
+            placeholder={mobileT('library.searchExercises')}
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -216,7 +216,12 @@ useEffect(() => {
           />
         </View>
         {searchText.length > 0 && (
-          <Button variant="header" onPress={() => setSearchText('')} hitSlop={8}>
+          <Button
+            variant="header"
+            onPress={() => setSearchText('')}
+            hitSlop={8}
+            accessibilityLabel={mobileT('exerciseSearch.clearSearch')}
+          >
             <Icon name="close" size={16} color={textMuted} />
           </Button>
         )}
@@ -232,11 +237,16 @@ useEffect(() => {
     }
 
     if (isSearchError) {
-      return <StatusView icon="alert-circle" title="Failed to search exercises" />;
+      return (
+        <StatusView
+          icon="alert-circle"
+          title={mobileT('exerciseSearch.searchFailed')}
+        />
+      );
     }
 
     if (searchResults.length === 0) {
-      return <StatusView title="No matching exercises found" />;
+      return <StatusView title={mobileT('library.noMatchingExercises')} />;
     }
 
     return (
@@ -252,7 +262,12 @@ useEffect(() => {
 
   const renderSearchTab = () => {
     if (!isConnected) {
-      return <StatusView icon="cloud-offline" title="Connect to a server to view exercises" />;
+      return (
+        <StatusView
+          icon="cloud-offline"
+          title={mobileT('exerciseSearch.connectToView')}
+        />
+      );
     }
 
     if (isSearchActive) {
@@ -267,14 +282,17 @@ useEffect(() => {
       return (
         <StatusView
           icon="alert-circle"
-          title="Failed to load exercises"
-          action={{ label: 'Retry', onPress: () => refetchSuggested() }}
+          title={mobileT('library.loadExercisesFailed')}
+          action={{
+            label: mobileT('common.retry'),
+            onPress: () => refetchSuggested(),
+          }}
         />
       );
     }
 
     if (sections.length === 0) {
-      return <StatusView title="Search for an exercise to get started" />;
+      return <StatusView title={mobileT('exerciseSearch.startPrompt')} />;
     }
 
     return (
@@ -298,12 +316,17 @@ useEffect(() => {
       activeOpacity={0.7}
       disabled={importingExerciseId !== null}
       onPress={() => handleImportExercise(item)}
+      accessibilityLabel={mobileT('exerciseSearch.addExercise', {
+        exercise: item.name,
+      })}
     >
       <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-3">
+        <View className="flex-1" style={{ marginEnd: 12 }}>
           <Text className="text-text-primary text-base font-medium">{item.name}</Text>
           {item.category && (
-            <Text className="text-text-secondary text-sm mt-0.5">{item.category}</Text>
+            <Text className="text-text-secondary text-sm mt-0.5">
+              {localizeExerciseCategory(item.category)}
+            </Text>
           )}
         </View>
         {importingExerciseId === item.id ? (
@@ -324,7 +347,7 @@ useEffect(() => {
           className="py-3"
           textClassName="text-sm"
         >
-          Failed to load more. Tap to retry
+          {mobileT('exerciseSearch.loadMoreFailed')}
         </Button>
       );
     }
@@ -343,7 +366,7 @@ useEffect(() => {
           className="py-4 mb-4"
           textClassName="text-sm"
         >
-          Load More
+          {mobileT('exerciseSearch.loadMore')}
         </Button>
       );
     }
@@ -356,11 +379,18 @@ useEffect(() => {
     }
 
     if (isOnlineSearchError) {
-      return <StatusView icon="alert-circle" title={`Failed to search ${selectedProviderName}`} />;
+      return (
+        <StatusView
+          icon="alert-circle"
+          title={mobileT('exerciseSearch.providerSearchFailed', {
+            provider: selectedProviderName,
+          })}
+        />
+      );
     }
 
     if (onlineSearchResults.length === 0) {
-      return <StatusView title="No matching exercises found" />;
+      return <StatusView title={mobileT('library.noMatchingExercises')} />;
     }
 
     return (
@@ -377,7 +407,12 @@ useEffect(() => {
 
   const renderOnlineTab = () => {
     if (!isConnected) {
-      return <StatusView icon="cloud-offline" title="Connect to a server to search online exercises" />;
+      return (
+        <StatusView
+          icon="cloud-offline"
+          title={mobileT('exerciseSearch.connectOnline')}
+        />
+      );
     }
 
     if (isProvidersLoading) {
@@ -388,14 +423,23 @@ useEffect(() => {
       return (
         <StatusView
           icon="alert-circle"
-          title="Failed to load providers"
-          action={{ label: 'Retry', onPress: () => refetchProviders() }}
+          title={mobileT('exerciseSearch.providersFailed')}
+          action={{
+            label: mobileT('common.retry'),
+            onPress: () => refetchProviders(),
+          }}
         />
       );
     }
 
     if (providers.length === 0) {
-      return <StatusView icon="globe" iconColor={textMuted} title="No online exercise providers configured" />;
+      return (
+        <StatusView
+          icon="globe"
+          iconColor={textMuted}
+          title={mobileT('exerciseSearch.noProviders')}
+        />
+      );
     }
 
     return (
@@ -416,6 +460,11 @@ useEffect(() => {
                   setSelectedProvider(provider.id);
                 }}
                 activeOpacity={0.7}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isActive }}
+                accessibilityLabel={mobileT('exerciseSearch.selectProvider', {
+                  provider: provider.provider_name,
+                })}
                 className={`flex-row items-center rounded-full px-3 py-1 border ${
                   isActive
                     ? 'border-accent-primary bg-accent-primary'
@@ -436,7 +485,13 @@ useEffect(() => {
         {isOnlineSearchActive ? (
           renderOnlineSearchResults()
         ) : (
-          <StatusView icon="search" iconColor={textSecondary} title={`Search ${selectedProviderName} for exercises`} />
+          <StatusView
+            icon="search"
+            iconColor={textSecondary}
+            title={mobileT('exerciseSearch.searchProvider', {
+              provider: selectedProviderName,
+            })}
+          />
         )}
       </View>
     );
@@ -452,7 +507,7 @@ useEffect(() => {
   };
 
   const header = useScreenHeader({
-    title: 'Exercises',
+    title: mobileT('screens.selectExercise'),
     left: { kind: 'dismiss', onPress: () => navigation.goBack(), identifier: 'exercise-search-cancel' },
   });
 

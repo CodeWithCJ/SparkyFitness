@@ -3,7 +3,6 @@ import express from 'express';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'super... Remove this comment to see the full error message
 import request from 'supertest';
 import exerciseService from '../services/exerciseService.js';
-// @ts-expect-error TS(2691): An import path cannot end with a '.ts' extension.
 import exerciseRoutesV2 from '../routes/v2/exerciseRoutes.js';
 
 vi.mock('../services/exerciseService.js', () => ({

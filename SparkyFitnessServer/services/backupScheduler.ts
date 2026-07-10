@@ -2,6 +2,7 @@ import cron, { type ScheduledTask } from 'node-cron';
 import backupSettingsRepository from '../models/backupSettingsRepository.js';
 import { performBackup, applyRetentionPolicy } from './backupService.js';
 import { log } from '../config/logging.js';
+import { areServerBackupsEnabled } from '../utils/runtimeConfig.js';
 
 let scheduledTask: ScheduledTask | null = null;
 
@@ -47,6 +48,10 @@ export const buildCronExpression = (
 };
 
 const buildNewTask = async (): Promise<ScheduledTask | null> => {
+  if (!areServerBackupsEnabled()) {
+    log('info', '[CRON] Server-managed backups disabled — skipping schedule');
+    return null;
+  }
   const settings = await backupSettingsRepository.getBackupSettings();
   if (!settings?.backup_enabled) {
     log('info', '[CRON] Scheduled backups disabled — skipping schedule');

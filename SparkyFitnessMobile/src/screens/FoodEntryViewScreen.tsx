@@ -20,8 +20,8 @@ import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import NutritionMacroCard from '../components/NutritionMacroCard';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
-import { getMealTypeLabel } from '../constants/meals';
 import { useMealTypes, usePreferences, useServerConnection, useCustomNutrients } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
@@ -30,7 +30,6 @@ import { useProfile } from '../hooks/useProfile';
 import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import type { FoodFormData } from '../components/FoodForm';
 import { toFormString, parseOptional, buildNutrientDisplayList } from '../types/foodInfo';
-import { getNetCarbsValue } from '../utils/nutrientUtils';
 import type { FoodVariantDetail } from '../types/foods';
 import type { FoodEntry } from '../types/foodEntries';
 import type {
@@ -41,12 +40,19 @@ import type { RootStackScreenProps } from '../types/navigation';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
-  formatVariantLabel,
-  formatServingUnit,
   buildLocalUnitVariants,
   unitVariantToDisplayValues,
 } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import {
+  formatMobileFoodVariantLabel,
+  formatMobileNumber,
+  formatMobileServingCount,
+  localizeMealType,
+  localizeNutrientDisplayLabel,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
 
@@ -188,7 +194,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const variantPickerOptions = useMemo(() => {
     const baseOptions = (variants ?? []).map((variant) => ({
       id: variant.id,
-      label: formatVariantLabel({
+      label: formatMobileFoodVariantLabel({
         servingSize: variant.serving_size,
         servingUnit: variant.serving_unit,
         calories: variant.calories,
@@ -223,7 +229,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     return [
       {
         id: createdVariantOverride.id,
-        label: formatVariantLabel(
+        label: formatMobileFoodVariantLabel(
           unitVariantToDisplayValues(createdVariantOverride),
         ),
         ...unitVariantToDisplayValues(createdVariantOverride),
@@ -371,7 +377,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const servingSizeRef = useRef(displayValues.servingSize);
 
   const mealPickerOptions = mealTypes.map((mealType) => ({
-    label: getMealTypeLabel(mealType.name),
+    label: localizeMealType(mealType.name),
     value: mealType.id,
   }));
 
@@ -640,23 +646,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       },
     });
 
-  const [accentColor, textPrimary, proteinColor, carbsColor, fatColor] =
-    useCSSVariable([
-      '--color-accent-primary',
-      '--color-text-primary',
-      '--color-macro-protein',
-      '--color-macro-carbs',
-      '--color-macro-fat',
-    ]) as [string, string, string, string, string];
+  const [accentColor, textPrimary] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-primary',
+  ]) as [string, string];
 
   const { preferences } = usePreferences();
   const showNetCarbs = preferences?.show_net_carbs === true;
-
-  const viewCalories = Math.round(scaledValue(entry.calories, entry));
-  const viewProtein = Math.round(scaledValue(entry.protein, entry));
-  const viewCarbs = Math.round(scaledValue(entry.carbs, entry));
-  const viewFat = Math.round(scaledValue(entry.fat, entry));
-  const viewFiber = Math.round(scaledValue(entry.dietary_fiber, entry));
 
   // Per-mode gates: each mode reads from a different source (view = entry,
   // edit = displayValues), so each needs its own fiber check. Without these
@@ -664,37 +660,45 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   // total carbs.
   const viewUseNetCarbs = showNetCarbs && entry.dietary_fiber != null;
   const editUseNetCarbs = showNetCarbs && displayValues.fiber !== undefined;
-  const viewDisplayCarbs = viewUseNetCarbs
-    ? getNetCarbsValue(viewCarbs, viewFiber)
-    : viewCarbs;
-  const editDisplayCarbs = editUseNetCarbs
-    ? getNetCarbsValue(displayValues.carbs, displayValues.fiber)
-    : displayValues.carbs;
-  const viewCarbsLabel = viewUseNetCarbs ? 'Net Carbs' : 'Carbs';
-  const editCarbsLabel = editUseNetCarbs ? 'Net Carbs' : 'Carbs';
 
-  const viewProteinCals = viewProtein * 4;
-  const viewCarbsCals = viewDisplayCarbs * 4;
-  const viewFatCals = viewFat * 9;
-  const viewTotalMacroCals =
-    viewProteinCals + viewCarbsCals + viewFatCals;
-
-  const editProteinCals = displayValues.protein * 4;
-  const editCarbsCals = editDisplayCarbs * 4;
-  const editFatCals = displayValues.fat * 9;
-  const editTotalMacroCals =
-    editProteinCals + editCarbsCals + editFatCals;
+  const displayedNutrition = isEditing
+    ? {
+        calories: scaled(displayValues.calories),
+        protein: scaled(displayValues.protein),
+        carbs: scaled(displayValues.carbs),
+        fat: scaled(displayValues.fat),
+        fiber:
+          displayValues.fiber !== undefined
+            ? scaled(displayValues.fiber)
+            : undefined,
+      }
+    : {
+        calories: scaledValue(entry.calories, entry),
+        protein: scaledValue(entry.protein, entry),
+        carbs: scaledValue(entry.carbs, entry),
+        fat: scaledValue(entry.fat, entry),
+        fiber:
+          entry.dietary_fiber !== undefined
+            ? scaledValue(entry.dietary_fiber, entry)
+            : undefined,
+      };
 
   const servings = entry.serving_size
     ? entry.quantity / entry.serving_size
     : entry.quantity;
-  const servingsCount =
-    servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2));
-  const formattedEntryUnit = formatServingUnit(entry.unit || '');
-  const servingsDisplay =
-    servings === 1
-      ? `1 serving \u00b7 ${entry.serving_size} ${formattedEntryUnit} per serving`
-      : `${servingsCount} servings \u00b7 ${entry.serving_size} ${formattedEntryUnit} per serving`;
+  const servingsDisplay = `${formatMobileServingCount(servings)} \u00b7 ${mobileT(
+    'foodEntry.perServing',
+    {
+      amount: `${formatMobileNumber(entry.serving_size, {
+        maximumFractionDigits: 4,
+      })} ${localizeServingUnit(entry.unit || '')}`,
+    },
+  )}`;
+  const editPerServingDisplay = mobileT('foodEntry.perServing', {
+    amount: `${formatMobileNumber(displayValues.servingSize, {
+      maximumFractionDigits: 4,
+    })} ${localizeServingUnit(displayValues.servingUnit)}`,
+  });
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
   // Use the same per-mode gate the macro bar uses, and pass carbs raw —
@@ -709,9 +713,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const hasAdditional = additionalNutrients.length > 0 || customNutrientRows.length > 0;
   const showAdditionalRows = showMoreNutrients && hasAdditional;
   const renderNutrientValue = (value: number, unit: string) =>
-    isEditing
-      ? `${Math.round(scaled(value))}${unit}`
-      : `${Math.round(scaledValue(value, entry))}${unit}`;
+    `${formatMobileNumber(
+      Math.round(isEditing ? scaled(value) : scaledValue(value, entry)),
+      { maximumFractionDigits: 0 },
+    )}${unit ? ` ${localizeServingUnit(unit)}` : ''}`;
 
   // View mode: back + owner-gated Edit. Edit mode: 'Done' (not 'Save') commits
   // the changes — the entry stays on screen, so Done reads as "finish editing".
@@ -723,18 +728,18 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ? isEditing
         ? {
             kind: 'primary',
-            label: 'Done',
+            label: mobileT('common.done'),
             disabled: isUpdatePending || quantity <= 0,
             onPress: handleSave,
-            accessibilityLabel: 'Save food entry changes',
+            accessibilityLabel: mobileT('foodEntry.saveChanges'),
             identifier: 'food-entry-view-done',
           }
         : {
             kind: 'text',
-            label: 'Edit',
+            label: mobileT('common.edit'),
             role: 'secondary',
             onPress: () => updateEdit({ isEditing: true }),
-            accessibilityLabel: 'Edit food entry',
+            accessibilityLabel: mobileT('foodEntry.editEntry'),
             identifier: 'food-entry-view-edit',
           }
       : null,
@@ -753,7 +758,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       >
         <Animated.View layout={LinearTransition.duration(300)}>
           <Text className="text-text-primary text-3xl font-bold">
-            {(isEditing && adjustedValues?.name) || entry.food_name || 'Unknown food'}
+            {(isEditing && adjustedValues?.name) ||
+              entry.food_name ||
+              mobileT('diary.unknownFood')}
           </Text>
           {((isEditing && adjustedValues?.brand) || entry.brand_name) && (
             <Text className="text-text-muted mt-1 font-semibold">
@@ -772,16 +779,16 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     onDecrement={() => adjustQuantity(-1)}
                     keyboardType="decimal-pad"
                   />
-                  <Text className="text-text-primary text-base font-medium ml-2">
-                    {formatServingUnit(displayValues.servingUnit)}
+                  <Text
+                    className="text-text-primary text-base font-medium"
+                    style={{ marginStart: 8 }}
+                  >
+                    {localizeServingUnit(displayValues.servingUnit)}
                   </Text>
                 </View>
                 <View className="flex-row items-center mt-2">
                   <Text className="text-text-secondary text-sm">
-                    {editServings % 1 === 0
-                      ? editServings
-                      : parseFloat(editServings.toFixed(2))}{' '}
-                    {editServings === 1 ? 'serving' : 'servings'}
+                    {formatMobileServingCount(editServings)}
                   </Text>
                   {variantPickerOptions.length > 1 ? (
                     <BottomSheetPicker
@@ -791,23 +798,23 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         value: variant.id,
                       }))}
                       onSelect={handleVariantChange}
-                      title="Select Serving"
+                      title={mobileT('foodEntry.selectServing')}
                       renderTrigger={({ onPress }) => (
                         <TouchableOpacity
                           onPress={onPress}
                           activeOpacity={0.7}
-                          className="flex-row items-center ml-1"
+                          className="flex-row items-center"
+                          style={{ marginStart: 4 }}
                         >
                           <Text className="text-text-secondary text-sm">
-                            {' - '}
-                            {displayValues.servingSize} {formatServingUnit(displayValues.servingUnit)} per
-                            serving
+                            {' · '}
+                            {editPerServingDisplay}
                           </Text>
                           <Icon
                             name="chevron-down"
                             size={12}
                             color={textPrimary}
-                            style={{ marginLeft: 4 }}
+                            style={{ marginStart: 4 }}
                             weight="medium"
                           />
                         </TouchableOpacity>
@@ -815,9 +822,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     />
                   ) : (
                     <Text className="text-text-secondary text-sm">
-                      {' - '}
-                      {displayValues.servingSize} {formatServingUnit(displayValues.servingUnit)} per
-                      serving
+                      {' · '}
+                      {editPerServingDisplay}
                     </Text>
                   )}
                 </View>
@@ -832,124 +838,38 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           )}
         </Animated.View>
 
-        <Animated.View
-          layout={LinearTransition.duration(300)}
-          className="bg-surface rounded-xl p-4 shadow-sm"
-        >
-          <Pressable onPress={isEditing ? navigateToNutritionForm : undefined} disabled={!isEditing}>
-            <Animated.View
-              layout={LinearTransition.duration(300)}
-              className="flex-row items-center"
-            >
-              <View className="flex-1 items-center pr-10">
-                <Text className="text-text-primary text-3xl font-medium">
-                  {isEditing
-                    ? Math.round(scaled(displayValues.calories))
-                    : viewCalories}
-                </Text>
-                <Text className="text-text-secondary text-base mt-1">
-                  calories
-                </Text>
-              </View>
-              <Animated.View
-                layout={LinearTransition.duration(300)}
-                className="flex-2 gap-3"
-              >
-                {(isEditing
-                  ? [
-                      {
-                        label: 'Protein',
-                        value: displayValues.protein,
-                        color: proteinColor,
-                        calFactor: 4,
-                        totalCals: editTotalMacroCals,
-                        displayValue: Math.round(scaled(displayValues.protein)),
-                      },
-                      {
-                        label: editCarbsLabel,
-                        value: editDisplayCarbs,
-                        color: carbsColor,
-                        calFactor: 4,
-                        totalCals: editTotalMacroCals,
-                        displayValue: Math.round(scaled(editDisplayCarbs)),
-                      },
-                      {
-                        label: 'Fat',
-                        value: displayValues.fat,
-                        color: fatColor,
-                        calFactor: 9,
-                        totalCals: editTotalMacroCals,
-                        displayValue: Math.round(scaled(displayValues.fat)),
-                      },
-                    ]
-                  : [
-                      {
-                        label: 'Protein',
-                        value: viewProtein,
-                        color: proteinColor,
-                        calFactor: 4,
-                        totalCals: viewTotalMacroCals,
-                        displayValue: viewProtein,
-                      },
-                      {
-                        label: viewCarbsLabel,
-                        value: viewDisplayCarbs,
-                        color: carbsColor,
-                        calFactor: 4,
-                        totalCals: viewTotalMacroCals,
-                        displayValue: viewDisplayCarbs,
-                      },
-                      {
-                        label: 'Fat',
-                        value: viewFat,
-                        color: fatColor,
-                        calFactor: 9,
-                        totalCals: viewTotalMacroCals,
-                        displayValue: viewFat,
-                      },
-                    ]
-                ).map((macro) => (
-                  <View key={macro.label} className="flex-row items-center">
-                    <Text className="text-text-secondary text-sm w-14">
-                      {macro.label}
-                    </Text>
-                    <View className="flex-1 h-2 rounded-full bg-progress-track overflow-hidden mx-2">
-                      {macro.totalCals > 0 && (
-                        <View
-                          className="h-full rounded-full"
-                          style={{
-                            backgroundColor: macro.color,
-                            width: `${Math.round(
-                              (macro.value * macro.calFactor / macro.totalCals) * 100,
-                            )}%`,
-                          }}
-                        />
-                      )}
-                    </View>
-                    <Text className="text-text-primary text-sm font-medium w-10 text-right">
-                      {macro.displayValue}g
-                    </Text>
-                  </View>
-                ))}
-              </Animated.View>
-              {isEditing && (
-                <FadeView>
+        <Animated.View layout={LinearTransition.duration(300)}>
+          <Pressable
+            onPress={isEditing ? navigateToNutritionForm : undefined}
+            disabled={!isEditing}
+            accessibilityRole={isEditing ? 'button' : undefined}
+            accessibilityLabel={
+              isEditing ? mobileT('foodEntry.adjustNutrition') : undefined
+            }
+          >
+            <NutritionMacroCard
+              calories={displayedNutrition.calories}
+              protein={displayedNutrition.protein}
+              carbs={displayedNutrition.carbs}
+              fat={displayedNutrition.fat}
+              fiber={displayedNutrition.fiber}
+              showNetCarbs={showNetCarbs}
+            />
+            {isEditing ? (
+              <FadeView>
+                <View className="flex-row items-center justify-center mt-3">
+                  <Text className="text-text-secondary text-xs">
+                    {mobileT('foodEntry.tapToEditNutrition')}
+                  </Text>
                   <Icon
                     name="chevron-forward"
-                    size={16}
+                    size={14}
                     color={textPrimary}
-                    style={{ marginLeft: 8 }}
+                    style={{ marginStart: 4 }}
                   />
-                </FadeView>
-              )}
-            </Animated.View>
-            {isEditing && (
-              <FadeView>
-                <Text className="text-text-secondary text-xs text-center mt-4">
-                  Tap to edit nutrition
-                </Text>
+                </View>
               </FadeView>
-            )}
+            ) : null}
           </Pressable>
         </Animated.View>
 
@@ -968,7 +888,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                       }`}
                     >
                       <Text className="text-text-secondary text-sm">
-                        {nutrient.label}
+                        {localizeNutrientDisplayLabel(nutrient.label)}
                       </Text>
                       <Text className="text-text-primary text-sm">
                         {renderNutrientValue(nutrient.value, nutrient.unit)}
@@ -993,7 +913,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         }`}
                       >
                         <Text className="text-text-secondary text-sm">
-                          {nutrient.label}
+                          {localizeNutrientDisplayLabel(nutrient.label)}
                         </Text>
                         <Text className="text-text-primary text-sm">
                           {renderNutrientValue(nutrient.value, nutrient.unit)}
@@ -1026,13 +946,19 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 <Button
                   variant="ghost"
                   onPress={() => setShowMoreNutrients((prev) => !prev)}
+                  accessibilityLabel={
+                    showMoreNutrients
+                      ? mobileT('nutrition.showLessAccessibility')
+                      : mobileT('nutrition.showMoreAccessibility')
+                  }
+                  accessibilityState={{ expanded: showMoreNutrients }}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   className="self-start py-0 px-0"
                 >
                   <Text style={{ color: accentColor }} className="text-sm font-medium">
                     {showMoreNutrients
-                      ? 'Hide extra nutrients'
-                      : 'Show more nutrients'}
+                      ? mobileT('nutrition.showLess')
+                      : mobileT('nutrition.showMore')}
                   </Text>
                 </Button>
               </Animated.View>
@@ -1045,7 +971,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           className="mt-2 flex-row items-center"
         >
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">Date</Text>
+            <Text
+              className="text-text-secondary text-base"
+              style={{ marginEnd: 8 }}
+            >
+              {mobileT('foodEntry.date')}
+            </Text>
             {isEditing ? (
               <TouchableOpacity
                 onPress={() => calendarRef.current?.present()}
@@ -1059,7 +990,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   name="chevron-down"
                   size={12}
                   color={textPrimary}
-                  style={{ marginLeft: 6 }}
+                  style={{ marginStart: 6 }}
                   weight="medium"
                 />
               </TouchableOpacity>
@@ -1071,13 +1002,18 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           </View>
 
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">Meal</Text>
+            <Text
+              className="text-text-secondary text-base"
+              style={{ marginEnd: 8 }}
+            >
+              {mobileT('foodEntry.meal')}
+            </Text>
             {isEditing && selectedMealType ? (
               <BottomSheetPicker
                 value={effectiveMealId!}
                 options={mealPickerOptions}
                 onSelect={(id) => updateEdit({ selectedMealId: id })}
-                title="Select Meal"
+                title={mobileT('foodEntry.selectMeal')}
                 renderTrigger={({ onPress }) => (
                   <TouchableOpacity
                     onPress={onPress}
@@ -1085,13 +1021,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     className="flex-row items-center"
                   >
                     <Text className="text-text-primary text-base font-medium">
-                      {getMealTypeLabel(selectedMealType.name)}
+                      {localizeMealType(selectedMealType.name)}
                     </Text>
                     <Icon
                       name="chevron-down"
                       size={12}
                       color={textPrimary}
-                      style={{ marginLeft: 6 }}
+                      style={{ marginStart: 6 }}
                       weight="medium"
                     />
                   </TouchableOpacity>
@@ -1099,7 +1035,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               />
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {getMealTypeLabel(entry.meal_type)}
+                {localizeMealType(entry.meal_type)}
               </Text>
             )}
           </View>
@@ -1113,7 +1049,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
             className="mt-2"
             textClassName="text-bg-danger font-medium"
           >
-            {isDeletePending ? 'Deleting...' : 'Delete Entry'}
+            {isDeletePending
+              ? mobileT('foodEntry.deleting')
+              : mobileT('foodEntry.deleteEntry')}
           </Button>
         </Animated.View>
       </ScrollView>

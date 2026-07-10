@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Alert, View, Text, TouchableOpacity } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { mobileT } from '../localization';
 
 interface SwipeableIngredientRowProps {
   foodName: string;
@@ -36,15 +37,15 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
 
   const handleDeletePress = () => {
     const message = isLastIngredient
-      ? 'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.'
+      ? mobileT('ingredientRow.lastIngredientDescription')
       : undefined;
     Alert.alert(
-      `Remove ${foodName}?`,
+      mobileT('ingredientRow.removeTitle', { name: foodName }),
       message,
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => swipeableRef.current?.close() },
+        { text: mobileT('common.cancel'), style: 'cancel', onPress: () => swipeableRef.current?.close() },
         {
-          text: 'Remove',
+          text: mobileT('common.delete'),
           style: 'destructive',
           onPress: () => {
             swipeableRef.current?.close();
@@ -68,11 +69,15 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
       style?: 'cancel' | 'destructive';
       onPress?: () => void;
     }[] = [];
-    if (onPress) buttons.push({ text: 'Edit', onPress });
-    buttons.push({ text: 'Delete', style: 'destructive', onPress: onConfirmDelete });
-    buttons.push({ text: 'Cancel', style: 'cancel' });
+    if (onPress) buttons.push({ text: mobileT('common.edit'), onPress });
+    buttons.push({
+      text: mobileT('common.delete'),
+      style: 'destructive',
+      onPress: onConfirmDelete,
+    });
+    buttons.push({ text: mobileT('common.cancel'), style: 'cancel' });
     const message = isLastIngredient
-      ? 'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.'
+      ? mobileT('ingredientRow.lastIngredientDescription')
       : undefined;
     Alert.alert(foodName, message, buttons);
   };
@@ -88,7 +93,9 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
       activeOpacity={0.7}
       disabled={disabled}
     >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+      <Text className="text-text-danger font-semibold text-sm">
+        {mobileT('common.delete')}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -96,7 +103,7 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
     <View
       className={`flex-row items-center px-3 py-2 bg-surface ${showBottomBorder ? 'border-b border-border-subtle' : ''}`}
     >
-      <View className="flex-1 mr-2">
+      <View className="flex-1" style={{ marginEnd: 8 }}>
         <Text className="text-text-primary text-base" numberOfLines={1}>
           {foodName}
         </Text>
@@ -120,7 +127,9 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
           onPress={onPress}
           onLongPress={handleLongPress}
           disabled={disabled}
-          accessibilityLabel={`Edit ${foodName}`}
+          accessibilityLabel={mobileT('ingredientRow.editIngredient', {
+            name: foodName,
+          })}
           accessibilityRole="button"
         >
           {rowBody}

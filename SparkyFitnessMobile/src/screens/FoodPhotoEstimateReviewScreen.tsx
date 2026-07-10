@@ -22,13 +22,17 @@ import {
 } from '../utils/foodPhotoEstimate';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FoodPhotoFlowScreenProps, RootStackParamList } from '../types/navigation';
+import { formatMobileNumber, mobileT } from '../localization';
 
 type Props = FoodPhotoFlowScreenProps<'EstimateReview'>;
 
 const toFieldString = (n: number | undefined | null): string => {
   if (n === undefined || n === null || !Number.isFinite(n)) return '';
   const rounded = Math.round(n * 100) / 100;
-  return String(rounded);
+  return formatMobileNumber(rounded, {
+    maximumFractionDigits: 2,
+    useGrouping: false,
+  });
 };
 
 const TONE_BG_CLASS: Record<ConfidenceTone, string> = {
@@ -75,12 +79,12 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
 
   const initialFormValues = useMemo<Partial<FoodFormData>>(
     () => ({
-      name: estimate.meal_summary || 'Photo estimate',
+      name: estimate.meal_summary || mobileT('foodPhoto.photoEstimateFallback'),
       brand: '',
       servingSize:
         request?.totalWeight !== undefined
           ? toFieldString(request.totalWeight)
-          : String(Math.round(estimate.totals.total_grams)),
+          : toFieldString(Math.round(estimate.totals.total_grams)),
       servingUnit:
         request?.totalWeight !== undefined ? request.weightUnit ?? 'g' : 'g',
       calories: toFieldString(estimate.totals.calories_kcal),
@@ -100,13 +104,20 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   const overallLabel = overallConfidenceLabels[estimate.overall_confidence];
 
   const totalWeightLabel = useMemo(
-    () => `${Math.round(estimate.totals.total_grams)} g`,
+    () =>
+      `${formatMobileNumber(Math.round(estimate.totals.total_grams), {
+        maximumFractionDigits: 0,
+      })} ${mobileT('units.g')}`,
     [estimate.totals.total_grams],
   );
 
   const handleSubmit = (data: FoodFormData) => {
     if (!data.name.trim()) {
-      Toast.show({ type: 'error', text1: 'Name required', text2: 'Give this food a name.' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('foodPhoto.nameRequired'),
+        text2: mobileT('foodPhoto.giveFoodName'),
+      });
       return;
     }
 
@@ -122,8 +133,8 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     ) {
       Toast.show({
         type: 'error',
-        text1: 'Invalid nutrition',
-        text2: 'Calories, protein, carbs, and fat must be non-negative numbers.',
+        text1: mobileT('foodPhoto.invalidNutrition'),
+        text2: mobileT('foodPhoto.requiredNutritionNonNegative'),
       });
       return;
     }
@@ -144,8 +155,8 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     if (Object.values(optionalNutrients).some((v) => v === null)) {
       Toast.show({
         type: 'error',
-        text1: 'Invalid nutrition',
-        text2: 'All nutrition values must be non-negative numbers.',
+        text1: mobileT('foodPhoto.invalidNutrition'),
+        text2: mobileT('foodPhoto.allNutritionNonNegative'),
       });
       return;
     }
@@ -154,8 +165,8 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     if (!Number.isFinite(servingSizeValue) || servingSizeValue <= 0) {
       Toast.show({
         type: 'error',
-        text1: 'Invalid serving size',
-        text2: 'Serving size must be a positive number.',
+        text1: mobileT('foodPhoto.invalidServingSize'),
+        text2: mobileT('foodPhoto.servingSizePositive'),
       });
       return;
     }
@@ -200,7 +211,8 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       >
         <View className="flex-row items-center justify-between mb-1">
           <Text
-            className="text-text-primary text-base font-medium flex-1 pr-2"
+            className="text-text-primary text-base font-medium flex-1"
+            style={{ paddingEnd: 8 }}
             numberOfLines={2}
           >
             {item.name}
@@ -216,7 +228,8 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         </View>
         <Text className="text-text-secondary text-sm">
           {portion ? `${portion} · ` : ''}
-          {grams} g
+          {formatMobileNumber(grams, { maximumFractionDigits: 0 })}{' '}
+          {mobileT('units.g')}
         </Text>
       </View>
     );
@@ -230,10 +243,12 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         className={`flex-row items-center justify-between rounded-lg p-3 ${TONE_BG_CLASS[overallTone]}`}
       >
         <Text className={`text-sm font-semibold ${TONE_TEXT_CLASS[overallTone]}`}>
-          {overallLabel} estimate
+          {mobileT('foodPhoto.estimateConfidence', {
+            confidence: overallLabel,
+          })}
         </Text>
         <Icon
-          name={showConfidenceReason ? 'chevron-down' : 'chevron-forward'}
+          name={showConfidenceReason ? 'chevron-up' : 'chevron-down'}
           size={14}
           color={textPrimary}
         />
@@ -255,7 +270,9 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     estimate.items.length > 0 ? (
       <View>
         <Text className="text-text-secondary text-xs mb-3">
-          Total estimated weight: {totalWeightLabel}
+          {mobileT('foodPhoto.totalEstimatedWeight', {
+            weight: totalWeightLabel,
+          })}
         </Text>
         <Button
           variant="ghost"
@@ -266,15 +283,17 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         >
           <Text style={{ color: accentPrimary }} className="text-sm font-medium">
             {showIngredients
-              ? 'Hide detected ingredients ▴'
-              : 'Show detected ingredients ▾'}
+              ? `${mobileT('foodPhoto.hideDetectedIngredients')} ▴`
+              : `${mobileT('foodPhoto.showDetectedIngredients')} ▾`}
           </Text>
         </Button>
         {showIngredients ? estimate.items.map(renderItem) : null}
       </View>
     ) : (
       <Text className="text-text-secondary text-xs">
-        Total estimated weight: {totalWeightLabel}
+        {mobileT('foodPhoto.totalEstimatedWeight', {
+          weight: totalWeightLabel,
+        })}
       </Text>
     );
 
@@ -289,19 +308,19 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
           onPress={() => dismissFlow()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10 p-0"
-          accessibilityLabel="Cancel"
+          accessibilityLabel={mobileT('common.cancel')}
         >
           <Icon name="close" size={22} color={backColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Review estimate
+          {mobileT('foodPhoto.reviewEstimate')}
         </Text>
       </View>
 
       <FoodForm
         initialValues={initialFormValues}
         onSubmit={handleSubmit}
-        submitLabel="Next"
+        submitLabel={mobileT('common.next')}
         convertServingSizeOnUnitChange
         headerChildren={headerChildren}
       >

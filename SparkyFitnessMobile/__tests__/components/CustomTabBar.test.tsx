@@ -37,9 +37,10 @@ describe('CustomTabBar', () => {
           {
             navigation: {} as never,
             route,
-            options: route.name === 'Add'
-              ? { tabBarAccessibilityLabel: 'Add' }
-              : { title: route.name },
+            options:
+              route.name === 'Add'
+                ? { tabBarAccessibilityLabel: 'Add' }
+                : { title: route.name },
             render: jest.fn(),
           },
         ]),
@@ -64,7 +65,12 @@ describe('CustomTabBar', () => {
       </SafeAreaProvider>,
     );
 
-    fireEvent.press(screen.getByLabelText('Add'));
+    expect(screen.getByText('الرئيسية')).toBeTruthy();
+    expect(screen.getByText('اليوميات')).toBeTruthy();
+    expect(screen.getByText('المكتبة')).toBeTruthy();
+    expect(screen.getByText('الإعدادات')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('إضافة'));
 
     expect(props.navigation.emit).toHaveBeenCalledWith({
       type: 'tabPress',

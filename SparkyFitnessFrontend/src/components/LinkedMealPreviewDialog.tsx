@@ -13,6 +13,7 @@ import {
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
 import type { MealFood } from '@/types/meal';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface LinkedMealPreviewDialogProps {
   mealId: string | null;
@@ -34,6 +35,7 @@ const LinkedMealPreviewDialog = ({
   const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
   const { data: meal, isLoading } = useMeal(mealId ?? undefined, open);
+  const localizedEnergyUnit = getLocalizedUnitLabel(energyUnit, t);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,7 +65,10 @@ const LinkedMealPreviewDialog = ({
             <p className="text-sm text-muted-foreground">
               {t('mealBuilder.linkedMealServingInfo', {
                 servingSize: meal.serving_size,
-                servingUnit: meal.serving_unit,
+                servingUnit: getLocalizedUnitLabel(
+                  meal.serving_unit || 'serving',
+                  t
+                ),
                 totalServings: meal.total_servings,
                 defaultValue: `Yields {{totalServings}} × {{servingSize}} {{servingUnit}}`,
               })}
@@ -75,14 +80,14 @@ const LinkedMealPreviewDialog = ({
                 return (
                   <div
                     key={idx}
-                    className="flex items-center justify-between text-sm border-b py-1 last:border-b-0"
+                    className="flex flex-col gap-1 border-b py-2 text-sm last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <span>
                       {component.item_type === 'meal'
                         ? component.child_meal_name
                         : component.food_name}
                     </span>
-                    <span className="flex gap-2 text-muted-foreground">
+                    <span className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
                       {PREVIEW_NUTRIENTS.map((key) => {
                         const meta = getNutrientMetadata(key);
                         const val = (component[key] as number) || 0;
@@ -92,10 +97,14 @@ const LinkedMealPreviewDialog = ({
                                 convertEnergy(val * scale, 'kcal', energyUnit)
                               )
                             : formatNutrientValue(key, val * scale, []);
+                        const label = t(meta.label, meta.defaultLabel);
+                        const unit =
+                          key === 'calories'
+                            ? localizedEnergyUnit
+                            : getLocalizedUnitLabel(meta.unit, t);
                         return (
                           <span key={key} className={meta.color}>
-                            {displayVal}
-                            {key === 'calories' ? '' : meta.unit}
+                            {label}: {displayVal} {unit}
                           </span>
                         );
                       })}
@@ -103,6 +112,14 @@ const LinkedMealPreviewDialog = ({
                   </div>
                 );
               })}
+              {(meal.foods || []).length === 0 && (
+                <p className="py-2 text-sm text-muted-foreground">
+                  {t(
+                    'mealBuilder.linkedMealNoIngredients',
+                    'No ingredients in this meal.'
+                  )}
+                </p>
+              )}
             </div>
           </div>
         )}

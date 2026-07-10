@@ -12,8 +12,10 @@ import { updateFood } from '../services/api/foodsApi';
 import { lookupBarcodeV2 } from '../services/api/externalFoodSearchApi';
 import { foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
-import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { mobileT } from '../localization';
+import { normalizeLocalizedDigits } from '../utils/numericInput';
 
 type EditBarcodeScreenProps = RootStackScreenProps<'EditBarcode'>;
 
@@ -42,7 +44,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     // Consume a one-shot navigation param: guarded by the nonce and paired with
     // clearing the param via setParams, so it can't move to a render-time derive.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setValue(pendingScannedBarcode);
+    setValue(normalizeLocalizedDigits(pendingScannedBarcode));
     navigation.setParams({
       pendingScannedBarcode: undefined,
       scannedBarcodeNonce: undefined,
@@ -66,7 +68,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     });
   };
 
-  const trimmed = value.trim();
+  const trimmed = normalizeLocalizedDigits(value.trim());
   const isUnchanged = (() => {
     if (trimmed === '' && currentBarcode == null) return true;
     if (trimmed === '' || currentBarcode == null) return false;
@@ -81,8 +83,8 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     if (!BARCODE_REGEX.test(barcode)) {
       Toast.show({
         type: 'error',
-        text1: 'Invalid barcode',
-        text2: 'Barcode must be 8-14 digits.',
+        text1: mobileT('foodFormScreen.invalidBarcode'),
+        text2: mobileT('foodFormScreen.barcodeDigits'),
       });
       return;
     }
@@ -95,14 +97,22 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     try {
       const lookup = await lookupBarcodeV2(barcode);
       if (lookup.source === 'local' && lookup.food?.id && lookup.food.id !== foodId) {
-        const otherName = lookup.food.name || 'another food';
+        const otherName = lookup.food.name || mobileT('editBarcode.anotherFood');
         const proceed = await new Promise<boolean>((resolve) => {
           Alert.alert(
-            'Barcode already in use',
-            `This barcode is already attached to "${otherName}". Attach it to "${foodName}" anyway?`,
+            mobileT('editBarcode.inUseTitle'),
+            mobileT('editBarcode.inUseDescription', { otherName, foodName }),
             [
-              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-              { text: 'Attach', style: 'default', onPress: () => resolve(true) },
+              {
+                text: mobileT('common.cancel'),
+                style: 'cancel',
+                onPress: () => resolve(false),
+              },
+              {
+                text: mobileT('editBarcode.attach'),
+                style: 'default',
+                onPress: () => resolve(true),
+              },
             ],
             { cancelable: true, onDismiss: () => resolve(false) },
           );
@@ -122,7 +132,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
       const stored = updated?.barcode ?? null;
       dispatchUpdate(stored);
       invalidateCaches();
-      Toast.show({ type: 'success', text1: 'Barcode saved' });
+      Toast.show({ type: 'success', text1: mobileT('editBarcode.saved') });
       navigation.goBack();
     } catch (error) {
       addLog('[EditBarcode] Failed to save barcode', 'ERROR', [
@@ -131,27 +141,27 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
       ]);
       Toast.show({
         type: 'error',
-        text1: 'Could not save barcode',
-        text2: 'Please try again.',
+        text1: mobileT('editBarcode.saveFailed'),
+        text2: mobileT('editBarcode.tryAgain'),
       });
     }
   };
 
   const handleRemove = () => {
     Alert.alert(
-      'Remove barcode',
-      `Remove the barcode from "${foodName}"?`,
+      mobileT('editBarcode.removeTitle'),
+      mobileT('editBarcode.removeDescription', { foodName }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: mobileT('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: mobileT('editBarcode.remove'),
           style: 'destructive',
           onPress: async () => {
             try {
               await mutation.mutateAsync(null);
               dispatchUpdate(null);
               invalidateCaches();
-              Toast.show({ type: 'success', text1: 'Barcode removed' });
+              Toast.show({ type: 'success', text1: mobileT('editBarcode.removed') });
               navigation.goBack();
             } catch (error) {
               addLog('[EditBarcode] Failed to remove barcode', 'ERROR', [
@@ -160,8 +170,8 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
               ]);
               Toast.show({
                 type: 'error',
-                text1: 'Could not remove barcode',
-                text2: 'Please try again.',
+                text1: mobileT('editBarcode.removeFailed'),
+                text2: mobileT('editBarcode.tryAgain'),
               });
             }
           },
@@ -172,14 +182,14 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
 
   // Diary/Food drill-in, so the left slot stays a back chevron (not a modal X).
   const header = useScreenHeader({
-    title: 'Barcode',
+    title: mobileT('foodFormScreen.barcode'),
     left: { kind: 'back' },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
+      label: mobileT('common.save'),
       disabled: saveDisabled,
       onPress: () => void handleSave(),
-      accessibilityLabel: 'Save barcode',
+      accessibilityLabel: mobileT('editBarcode.saveAccessibility'),
       identifier: 'edit-barcode-save',
     },
   });
@@ -193,12 +203,14 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
         keyboardShouldPersistTaps="handled"
       >
         <View className="gap-2">
-          <Text className="text-sm text-text-secondary">For {foodName}</Text>
+          <Text className="text-sm text-text-secondary">
+            {mobileT('editBarcode.forFood', { foodName })}
+          </Text>
           <FormInput
             placeholder="012345678905"
             keyboardType="number-pad"
             value={value}
-            onChangeText={setValue}
+            onChangeText={(nextValue) => setValue(normalizeLocalizedDigits(nextValue))}
             maxLength={14}
             autoCorrect={false}
             returnKeyType="done"
@@ -208,11 +220,11 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
           />
           {!isValidFormat ? (
             <Text className="text-sm" style={{ color: '#dc2626' }}>
-              Barcode must be 8-14 digits.
+              {mobileT('foodFormScreen.barcodeDigits')}
             </Text>
           ) : (
             <Text className="text-xs" style={{ color: textSecondary }}>
-              Standard barcodes are 8 to 14 digits.
+              {mobileT('foodFormScreen.barcodeHelp')}
             </Text>
           )}
         </View>
@@ -226,7 +238,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
             })
           }
         >
-          Scan with camera
+          {mobileT('foodFormScreen.scanCamera')}
         </Button>
 
         {currentBarcode != null ? (
@@ -236,7 +248,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
             disabled={mutation.isPending}
             textClassName="text-bg-danger font-medium"
           >
-            Remove barcode
+            {mobileT('editBarcode.removeTitle')}
           </Button>
         ) : null}
       </ScrollView>

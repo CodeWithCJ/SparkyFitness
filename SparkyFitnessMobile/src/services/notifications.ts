@@ -7,6 +7,7 @@ import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../stores/appPreferencesStore';
+import { mobileT } from '../localization';
 
 const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
@@ -43,12 +44,12 @@ export async function initNotifications(): Promise<void> {
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-        name: 'Workout timer',
+        name: mobileT('notifications.workoutChannel'),
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
       });
       await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
-        name: 'Fasting',
+        name: mobileT('notifications.fastingChannel'),
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
       });
@@ -71,8 +72,8 @@ export async function ensureNotificationPermission(): Promise<boolean> {
       hasShownDeniedToast = true;
       Toast.show({
         type: 'info',
-        text1: 'Notifications off',
-        text2: 'Timer will still alert in the app.',
+        text1: mobileT('notifications.offTitle'),
+        text2: mobileT('notifications.offDescription'),
       });
     }
     return false;
@@ -95,7 +96,7 @@ export async function scheduleRestNotification(
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: content?.title ?? 'Rest complete',
+        title: content?.title ?? mobileT('notifications.restComplete'),
         body: content?.body ?? exerciseName,
         sound: true,
       },
@@ -133,8 +134,8 @@ export async function scheduleFastGoalNotification(
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Fasting goal reached',
-        body: "You've hit your fasting goal. Great work!",
+        title: mobileT('notifications.fastingGoalTitle'),
+        body: mobileT('notifications.fastingGoalBody'),
         sound: true,
       },
       trigger: {

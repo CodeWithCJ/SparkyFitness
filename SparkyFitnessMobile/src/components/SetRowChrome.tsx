@@ -1,10 +1,11 @@
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { mobileT } from '../localization';
 
 /**
  * Presentation shared by the set rows (ActiveWorkoutSetRow and the activity
- * form's EditableSetRow): the iOS keyboard accessory bar and the right-swipe
- * Delete action.
+ * form's EditableSetRow): the iOS keyboard accessory bar and the directional
+ * swipe-to-delete action.
  */
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
@@ -48,7 +49,9 @@ export function SetInputAccessoryBar({
       }}
     >
       <TouchableOpacity onPress={onDone} hitSlop={HIT_SLOP}>
-        <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>Done</Text>
+        <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
+          {mobileT('common.done')}
+        </Text>
       </TouchableOpacity>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
         {actions.map((action) => (
@@ -69,7 +72,7 @@ export function SetInputAccessoryBar({
   );
 }
 
-/** Right-swipe Delete action for ReanimatedSwipeable's renderRightActions. */
+/** Delete action for either side of ReanimatedSwipeable. */
 export function SetSwipeDeleteAction({
   onPress,
   accessibilityLabel,
@@ -85,7 +88,9 @@ export function SetSwipeDeleteAction({
       activeOpacity={0.7}
       accessibilityLabel={accessibilityLabel}
     >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+      <Text className="text-text-danger font-semibold text-sm">
+        {mobileT('common.delete')}
+      </Text>
     </TouchableOpacity>
   );
 }

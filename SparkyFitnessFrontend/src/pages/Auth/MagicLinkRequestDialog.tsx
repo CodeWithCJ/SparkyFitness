@@ -9,64 +9,76 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from 'react-i18next';
 interface MagicLinkRequestDialogProps {
   onClose: () => void;
   onRequest: (email: string) => Promise<void>;
   loading: boolean;
-  initialEmail?: string; // Add optional initialEmail prop
+  initialEmail?: string;
 }
 
 export const MagicLinkRequestDialog: React.FC<MagicLinkRequestDialogProps> = ({
   onClose,
   onRequest,
   loading,
-  initialEmail, // Add initialEmail prop
+  initialEmail,
 }) => {
-  const [email, setEmail] = useState(initialEmail || ''); // Use initialEmail for default value
+  const { t } = useTranslation();
+  const [email, setEmail] = useState(initialEmail || '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(
-      'MagicLinkRequestDialog: Sending magic link request for email:',
-      email
-    ); // Add logging
     await onRequest(email);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-md p-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="magic-link-title"
+    >
+      <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Request Magic Link</CardTitle>
+          <CardTitle id="magic-link-title">
+            {t('auth.magicLink.title', 'Email me a sign-in link')}
+          </CardTitle>
           <CardDescription>
-            Enter your email to receive a magic link for login.
+            {t(
+              'auth.magicLink.description',
+              'We will send a secure sign-in link to your email.'
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="magic-link-email">Email</Label>
+              <Label htmlFor="magic-link-email">
+                {t('auth.email', 'Email')}
+              </Label>
               <Input
                 id="magic-link-email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t('auth.emailPlaceholder', 'name@example.com')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={loading}
               >
-                Cancel
+                {t('common.cancel', 'Cancel')}
               </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? 'Sending...' : 'Send Magic Link'}
+                {loading
+                  ? t('auth.magicLink.sending', 'Sending link…')
+                  : t('auth.magicLink.submit', 'Send sign-in link')}
               </Button>
             </div>
           </form>

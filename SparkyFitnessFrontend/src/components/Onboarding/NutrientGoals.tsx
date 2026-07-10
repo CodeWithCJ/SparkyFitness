@@ -10,6 +10,149 @@ import { ExpandedGoals } from '@/types/goals';
 import { MealPercentages } from '@/types/meal';
 import MealPercentageManager from '../MealPercentageManager';
 
+interface NutrientField {
+  key: string;
+  labelKey: string;
+  unitKey: string;
+  decimals: 0 | 1;
+  caloriesPerGram?: 4 | 9;
+  highlighted?: boolean;
+}
+
+interface NutrientSection {
+  titleKey: string;
+  fields: readonly NutrientField[];
+}
+
+const NUTRIENT_SECTIONS: readonly NutrientSection[] = [
+  {
+    titleKey: 'onboarding.nutrientGoalsDailyMacros',
+    fields: [
+      {
+        key: 'carbs',
+        labelKey: 'onboarding.nutrientGoalsCarbohydrates',
+        unitKey: 'onboarding.nutrientGoalsGramUnit',
+        decimals: 1,
+        caloriesPerGram: 4,
+      },
+      {
+        key: 'protein',
+        labelKey: 'onboarding.nutrientGoalsProtein',
+        unitKey: 'onboarding.nutrientGoalsGramUnit',
+        decimals: 1,
+        caloriesPerGram: 4,
+      },
+      {
+        key: 'fat',
+        labelKey: 'onboarding.nutrientGoalsFat',
+        unitKey: 'onboarding.nutrientGoalsGramUnit',
+        decimals: 1,
+        caloriesPerGram: 9,
+      },
+      {
+        key: 'dietary_fiber',
+        labelKey: 'onboarding.nutrientGoalsFiber',
+        unitKey: 'onboarding.nutrientGoalsGramUnit',
+        decimals: 1,
+        highlighted: true,
+      },
+    ],
+  },
+  {
+    titleKey: 'onboarding.nutrientGoalsFatBreakdown',
+    fields: [
+      {
+        key: 'saturated_fat',
+        labelKey: 'onboarding.nutrientGoalsSaturatedFat',
+        unitKey: 'onboarding.nutrientGoalsGramUnit',
+        decimals: 1,
+      },
+      {
+        key: 'trans_fat',
+        labelKey: 'onboarding.nutrientGoalsTransFat',
+        unitKey: 'onboarding.nutrientGoalsGramUnit',
+        decimals: 1,
+      },
+      {
+        key: 'polyunsaturated_fat',
+        labelKey: 'onboarding.nutrientGoalsPolyunsaturatedFat',
+        unitKey: 'onboarding.nutrientGoalsGramUnit',
+        decimals: 1,
+      },
+      {
+        key: 'monounsaturated_fat',
+        labelKey: 'onboarding.nutrientGoalsMonounsaturatedFat',
+        unitKey: 'onboarding.nutrientGoalsGramUnit',
+        decimals: 1,
+      },
+    ],
+  },
+  {
+    titleKey: 'onboarding.nutrientGoalsMinerals',
+    fields: [
+      {
+        key: 'cholesterol',
+        labelKey: 'onboarding.nutrientGoalsCholesterol',
+        unitKey: 'onboarding.nutrientGoalsMilligramUnit',
+        decimals: 0,
+      },
+      {
+        key: 'sodium',
+        labelKey: 'onboarding.nutrientGoalsSodium',
+        unitKey: 'onboarding.nutrientGoalsMilligramUnit',
+        decimals: 0,
+      },
+      {
+        key: 'potassium',
+        labelKey: 'onboarding.nutrientGoalsPotassium',
+        unitKey: 'onboarding.nutrientGoalsMilligramUnit',
+        decimals: 0,
+      },
+      {
+        key: 'calcium',
+        labelKey: 'onboarding.nutrientGoalsCalcium',
+        unitKey: 'onboarding.nutrientGoalsMilligramUnit',
+        decimals: 0,
+      },
+      {
+        key: 'iron',
+        labelKey: 'onboarding.nutrientGoalsIron',
+        unitKey: 'onboarding.nutrientGoalsMilligramUnit',
+        decimals: 1,
+      },
+    ],
+  },
+  {
+    titleKey: 'onboarding.nutrientGoalsSugarsVitamins',
+    fields: [
+      {
+        key: 'sugars',
+        labelKey: 'onboarding.nutrientGoalsSugar',
+        unitKey: 'onboarding.nutrientGoalsGramUnit',
+        decimals: 1,
+      },
+      {
+        key: 'vitamin_a',
+        labelKey: 'onboarding.nutrientGoalsVitaminA',
+        unitKey: 'onboarding.nutrientGoalsMicrogramUnit',
+        decimals: 0,
+      },
+      {
+        key: 'vitamin_c',
+        labelKey: 'onboarding.nutrientGoalsVitaminC',
+        unitKey: 'onboarding.nutrientGoalsMilligramUnit',
+        decimals: 1,
+      },
+    ],
+  },
+];
+
+const WATER_UNITS = [
+  { value: 'ml', labelKey: 'onboarding.nutrientGoalsWaterUnitMl' },
+  { value: 'oz', labelKey: 'onboarding.nutrientGoalsWaterUnitOz' },
+  { value: 'liter', labelKey: 'onboarding.nutrientGoalsWaterUnitLiter' },
+] as const;
+
 export interface NutrientGoalsProps {
   convertEnergy: (
     value: number,
@@ -44,544 +187,208 @@ export const NutrientGoals = ({
 }: NutrientGoalsProps) => {
   const { t } = useTranslation();
   const { data: customNutrients } = useCustomNutrients();
+
+  const updatePlanValue = (key: string, value: number) => {
+    setEditedPlan((previous) =>
+      previous ? { ...previous, [key]: value } : null
+    );
+  };
+
+  const getMacroPercentage = (field: NutrientField): number => {
+    if (!field.caloriesPerGram || !editedPlan?.calories) return 0;
+
+    const caloriesInKcal = convertEnergy(
+      editedPlan.calories,
+      localEnergyUnit,
+      'kcal'
+    );
+    const adjustedCalories =
+      caloriesInKcal - Number(editedPlan.dietary_fiber || 0) * 2;
+    if (adjustedCalories <= 0) return 0;
+
+    const amount = Number(editedPlan[field.key] ?? 0);
+    return Math.round(
+      ((amount * field.caloriesPerGram) / adjustedCalories) * 100
+    );
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-      {/* 1. Daily Macro Targets */}
-      <div className="bg-card rounded-2xl overflow-hidden border border-border">
-        <div className="bg-muted px-4 py-3 border-b border-border">
-          <h3 className="text-foreground font-bold text-sm">
-            Daily Macro Targets
-          </h3>
-        </div>
-        <Table>
-          <TableBody>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Carbohydrates (
-                {editedPlan?.calories
-                  ? (() => {
-                      const adjusted =
-                        convertEnergy(
-                          editedPlan.calories,
-                          localEnergyUnit,
-                          'kcal'
-                        ) -
-                        (editedPlan.dietary_fiber || 0) * 2;
-                      return adjusted > 0
-                        ? Math.round(((editedPlan.carbs * 4) / adjusted) * 100)
-                        : 0;
-                    })()
-                  : 0}
-                %)
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.carbs ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev ? { ...prev, carbs: Number(e.target.value) } : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">g</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Protein (
-                {editedPlan?.calories
-                  ? (() => {
-                      const adjusted =
-                        convertEnergy(
-                          editedPlan.calories,
-                          localEnergyUnit,
-                          'kcal'
-                        ) -
-                        (editedPlan.dietary_fiber || 0) * 2;
-                      return adjusted > 0
-                        ? Math.round(
-                            ((editedPlan.protein * 4) / adjusted) * 100
-                          )
-                        : 0;
-                    })()
-                  : 0}
-                %)
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.protein ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, protein: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">g</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Fats (
-                {editedPlan?.calories
-                  ? (() => {
-                      const adjusted =
-                        convertEnergy(
-                          editedPlan.calories,
-                          localEnergyUnit,
-                          'kcal'
-                        ) -
-                        (editedPlan.dietary_fiber || 0) * 2;
-                      return adjusted > 0
-                        ? Math.round(((editedPlan.fat * 9) / adjusted) * 100)
-                        : 0;
-                    })()
-                  : 0}
-                %)
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.fat ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev ? { ...prev, fat: Number(e.target.value) } : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">g</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-none hover:bg-transparent bg-muted/40">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Fiber
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.dietary_fiber ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, dietary_fiber: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">g</span>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* 2. Fat Breakdown */}
-      <div className="bg-card rounded-2xl overflow-hidden border border-border">
-        <div className="bg-muted px-4 py-3 border-b border-border">
-          <h3 className="text-foreground font-bold text-sm">Fat Breakdown</h3>
-        </div>
-        <Table>
-          <TableBody>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Saturated Fat
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.saturated_fat ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, saturated_fat: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">g</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Trans Fat
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.trans_fat ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, trans_fat: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">g</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Polyunsaturated
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.polyunsaturated_fat ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              polyunsaturated_fat: Number(e.target.value),
-                            }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">g</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-none hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Monounsaturated
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.monounsaturated_fat ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              monounsaturated_fat: Number(e.target.value),
-                            }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">g</span>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* 3. Minerals & Other */}
-      <div className="bg-card rounded-2xl overflow-hidden border border-border">
-        <div className="bg-muted px-4 py-3 border-b border-border">
-          <h3 className="text-foreground font-bold text-sm">
-            Minerals & Other
-          </h3>
-        </div>
-        <Table>
-          <TableBody>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Cholesterol
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={1}
-                    value={(editedPlan?.cholesterol ?? 0).toFixed(0)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, cholesterol: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">mg</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Sodium
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={1}
-                    value={(editedPlan?.sodium ?? 0).toFixed(0)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, sodium: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">mg</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Potassium
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={1}
-                    value={(editedPlan?.potassium ?? 0).toFixed(0)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, potassium: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">mg</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Calcium
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={1}
-                    value={(editedPlan?.calcium ?? 0).toFixed(0)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, calcium: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">mg</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-none hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Iron
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.iron ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev ? { ...prev, iron: Number(e.target.value) } : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">mg</span>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* 4. Sugars & Vitamins */}
-      <div className="bg-card rounded-2xl overflow-hidden border border-border">
-        <div className="bg-muted px-4 py-3 border-b border-border">
-          <h3 className="text-foreground font-bold text-sm">
-            Sugars & Vitamins
-          </h3>
-        </div>
-        <Table>
-          <TableBody>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Sugar
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.sugars ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, sugars: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">g</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Vitamin A
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={1}
-                    value={(editedPlan?.vitamin_a ?? 0).toFixed(0)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, vitamin_a: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">µg</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-none hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Vitamin C
-              </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
-                <div className="flex items-center justify-end gap-1">
-                  <Input
-                    type="number"
-                    step={0.1}
-                    value={(editedPlan?.vitamin_c ?? 0).toFixed(1)}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? { ...prev, vitamin_c: Number(e.target.value) }
-                          : null
-                      )
-                    }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
-                  />
-                  <span className="text-sm">mg</span>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* 5. Custom Nutrients (Conditionally Rendered) */}
-      {customNutrients && customNutrients.length > 0 && (
-        <div className="bg-card rounded-2xl overflow-hidden border border-border">
-          <div className="bg-muted px-4 py-3 border-b border-border">
-            <h3 className="text-foreground font-bold text-sm">
-              Custom Nutrients
+    <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {NUTRIENT_SECTIONS.map((section) => (
+        <section
+          key={section.titleKey}
+          className="overflow-hidden rounded-2xl border border-border bg-card"
+          aria-labelledby={`${section.titleKey}-heading`}
+        >
+          <div className="border-b border-border bg-muted px-4 py-3">
+            <h3
+              id={`${section.titleKey}-heading`}
+              className="text-sm font-bold text-foreground"
+            >
+              {t(section.titleKey)}
             </h3>
           </div>
           <Table>
             <TableBody>
-              {customNutrients.map((cn) => (
-                <TableRow
-                  key={cn.id}
-                  className="border-border hover:bg-transparent"
-                >
-                  <TableCell className="font-medium text-muted-foreground text-sm">
-                    {cn.name}
-                  </TableCell>
-                  <TableCell className="text-right text-foreground font-bold">
-                    <div className="flex items-center justify-end gap-1">
-                      <Input
-                        type="number"
-                        step={0.1}
-                        value={Number(editedPlan?.[cn.name] ?? 0).toFixed(1)}
-                        onChange={(e) =>
-                          setEditedPlan((prev) =>
-                            prev
-                              ? { ...prev, [cn.name]: Number(e.target.value) }
-                              : null
-                          )
-                        }
-                        className="w-20 text-right bg-transparent h-8 text-sm"
-                      />
-                      <span className="text-sm">{cn.unit}</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {section.fields.map((field) => {
+                const label = t(field.labelKey);
+                const inputId = `nutrient-goal-${field.key}`;
+                const displayLabel = field.caloriesPerGram
+                  ? t('onboarding.nutrientGoalsLabelWithPercentage', {
+                      label,
+                      percentage: getMacroPercentage(field),
+                    })
+                  : label;
+
+                return (
+                  <TableRow
+                    key={field.key}
+                    className={`border-border hover:bg-transparent ${field.highlighted ? 'bg-muted/40' : ''}`}
+                  >
+                    <TableCell className="text-sm font-medium text-muted-foreground">
+                      <label htmlFor={inputId}>{displayLabel}</label>
+                    </TableCell>
+                    <TableCell className="text-end font-bold text-foreground">
+                      <div className="flex items-center justify-end gap-1">
+                        <Input
+                          id={inputId}
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step={field.decimals === 0 ? 1 : 0.1}
+                          value={Number(editedPlan?.[field.key] ?? 0).toFixed(
+                            field.decimals
+                          )}
+                          onChange={(event) =>
+                            updatePlanValue(
+                              field.key,
+                              Number(event.target.value)
+                            )
+                          }
+                          className="h-8 w-20 bg-transparent text-end text-sm"
+                          dir="ltr"
+                          aria-label={label}
+                        />
+                        <span className="text-sm font-normal">
+                          {t(field.unitKey)}
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
-        </div>
+        </section>
+      ))}
+
+      {customNutrients && customNutrients.length > 0 && (
+        <section
+          className="overflow-hidden rounded-2xl border border-border bg-card"
+          aria-labelledby="custom-nutrient-goals-heading"
+        >
+          <div className="border-b border-border bg-muted px-4 py-3">
+            <h3
+              id="custom-nutrient-goals-heading"
+              className="text-sm font-bold text-foreground"
+            >
+              {t('onboarding.nutrientGoalsCustom')}
+            </h3>
+          </div>
+          <Table>
+            <TableBody>
+              {customNutrients.map((nutrient) => {
+                const inputId = `custom-nutrient-goal-${nutrient.id}`;
+                return (
+                  <TableRow
+                    key={nutrient.id}
+                    className="border-border hover:bg-transparent"
+                  >
+                    <TableCell className="text-sm font-medium text-muted-foreground">
+                      <label htmlFor={inputId}>{nutrient.name}</label>
+                    </TableCell>
+                    <TableCell className="text-end font-bold text-foreground">
+                      <div className="flex items-center justify-end gap-1">
+                        <Input
+                          id={inputId}
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step={0.1}
+                          value={Number(
+                            editedPlan?.[nutrient.name] ?? 0
+                          ).toFixed(1)}
+                          onChange={(event) =>
+                            updatePlanValue(
+                              nutrient.name,
+                              Number(event.target.value)
+                            )
+                          }
+                          className="h-8 w-20 bg-transparent text-end text-sm"
+                          dir="ltr"
+                          aria-label={nutrient.name}
+                        />
+                        <span className="text-sm font-normal">
+                          {nutrient.unit}
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </section>
       )}
 
-      {/* 6. Hydration & Exercise */}
-      <div className="bg-card rounded-2xl overflow-hidden border border-border">
-        <div className="bg-muted px-4 py-3 border-b border-border">
-          <h3 className="text-foreground font-bold text-sm">
-            Hydration & Exercise
+      <section
+        className="overflow-hidden rounded-2xl border border-border bg-card"
+        aria-labelledby="hydration-exercise-goals-heading"
+      >
+        <div className="border-b border-border bg-muted px-4 py-3">
+          <h3
+            id="hydration-exercise-goals-heading"
+            className="text-sm font-bold text-foreground"
+          >
+            {t('onboarding.nutrientGoalsHydrationExercise')}
           </h3>
         </div>
-        <div className="p-3 border-b border-border flex justify-center gap-2">
-          {(['ml', 'oz', 'liter'] as const).map((unit) => (
+        <div
+          className="flex justify-center gap-2 border-b border-border p-3"
+          role="group"
+          aria-label={t('onboarding.nutrientGoalsWaterUnitLabel')}
+        >
+          {WATER_UNITS.map(({ value, labelKey }) => (
             <button
-              key={unit}
-              onClick={() => setLocalWaterUnit(unit)}
-              className={`px-2 py-1 rounded text-xs font-medium transition-colors ${localWaterUnit === unit ? 'bg-green-600 text-white' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+              key={value}
+              type="button"
+              onClick={() => setLocalWaterUnit(value)}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                localWaterUnit === value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+              aria-pressed={localWaterUnit === value}
             >
-              {unit}
+              {t(labelKey)}
             </button>
           ))}
         </div>
         <Table>
           <TableBody>
             <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Water Goal
+              <TableCell className="text-sm font-medium text-muted-foreground">
+                <label htmlFor="nutrient-goal-water">
+                  {t('onboarding.nutrientGoalsWaterGoal')}
+                </label>
               </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
+              <TableCell className="text-end font-bold text-foreground">
                 <div className="flex items-center justify-end gap-1">
                   <Input
+                    id="nutrient-goal-water"
                     type="number"
+                    inputMode="decimal"
+                    min={0}
                     step={0.1}
                     value={
                       editedPlan?.water_goal_ml
@@ -591,82 +398,104 @@ export const NutrientGoals = ({
                           ).toFixed(1)
                         : ''
                     }
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      const ml = convertSelectedUnitToMl(val, localWaterUnit);
-                      setEditedPlan((prev) =>
-                        prev ? { ...prev, water_goal_ml: ml } : null
-                      );
-                    }}
-                    className="w-20 text-right bg-transparent h-8 text-sm"
+                    onChange={(event) =>
+                      updatePlanValue(
+                        'water_goal_ml',
+                        convertSelectedUnitToMl(
+                          Number(event.target.value),
+                          localWaterUnit
+                        )
+                      )
+                    }
+                    className="h-8 w-20 bg-transparent text-end text-sm"
+                    dir="ltr"
+                    aria-label={t('onboarding.nutrientGoalsWaterGoal')}
                   />
-                  <span className="text-xs">{localWaterUnit}</span>
+                  <span className="text-xs font-normal">
+                    {t(
+                      WATER_UNITS.find(({ value }) => value === localWaterUnit)
+                        ?.labelKey ?? 'onboarding.nutrientGoalsWaterUnitMl'
+                    )}
+                  </span>
                 </div>
               </TableCell>
             </TableRow>
             <TableRow className="border-border hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Exercise Duration
+              <TableCell className="text-sm font-medium text-muted-foreground">
+                <label htmlFor="nutrient-goal-exercise-duration">
+                  {t('onboarding.nutrientGoalsExerciseDuration')}
+                </label>
               </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
+              <TableCell className="text-end font-bold text-foreground">
                 <div className="flex items-center justify-end gap-1">
                   <Input
+                    id="nutrient-goal-exercise-duration"
                     type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1}
                     value={editedPlan?.target_exercise_duration_minutes ?? ''}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              target_exercise_duration_minutes: Number(
-                                e.target.value
-                              ),
-                            }
-                          : null
+                    onChange={(event) =>
+                      updatePlanValue(
+                        'target_exercise_duration_minutes',
+                        Number(event.target.value)
                       )
                     }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
+                    className="h-8 w-20 bg-transparent text-end text-sm"
+                    dir="ltr"
+                    aria-label={t('onboarding.nutrientGoalsExerciseDuration')}
                   />
-                  <span className="text-sm">min</span>
+                  <span className="text-sm font-normal">
+                    {t('onboarding.nutrientGoalsMinuteUnit')}
+                  </span>
                 </div>
               </TableCell>
             </TableRow>
             <TableRow className="border-none hover:bg-transparent">
-              <TableCell className="font-medium text-muted-foreground text-sm">
-                Exercise Calories
+              <TableCell className="text-sm font-medium text-muted-foreground">
+                <label htmlFor="nutrient-goal-exercise-calories">
+                  {t('onboarding.nutrientGoalsExerciseCalories')}
+                </label>
               </TableCell>
-              <TableCell className="text-right text-foreground font-bold">
+              <TableCell className="text-end font-bold text-foreground">
                 <div className="flex items-center justify-end gap-1">
                   <Input
+                    id="nutrient-goal-exercise-calories"
                     type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1}
                     value={editedPlan?.target_exercise_calories_burned ?? ''}
-                    onChange={(e) =>
-                      setEditedPlan((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              target_exercise_calories_burned: Number(
-                                e.target.value
-                              ),
-                            }
-                          : null
+                    onChange={(event) =>
+                      updatePlanValue(
+                        'target_exercise_calories_burned',
+                        Number(event.target.value)
                       )
                     }
-                    className="w-20 text-right bg-transparent h-8 text-sm"
+                    className="h-8 w-20 bg-transparent text-end text-sm"
+                    dir="ltr"
+                    aria-label={t('onboarding.nutrientGoalsExerciseCalories')}
                   />
-                  <span className="text-sm">kcal</span>
+                  <span className="text-sm font-normal">
+                    {t('onboarding.nutrientGoalsKcalUnit')}
+                  </span>
                 </div>
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
-      </div>
+      </section>
 
-      {/* 6. Meal Calorie Distribution */}
-      <div className="bg-card rounded-2xl overflow-hidden border border-border">
-        <div className="bg-muted px-4 py-3 border-b border-border">
-          <h3 className="text-foreground font-bold text-sm">
-            {t('goals.mealDistribution.title', 'Meal Calorie Distribution')}
+      <section
+        className="overflow-hidden rounded-2xl border border-border bg-card"
+        aria-labelledby="meal-calorie-distribution-heading"
+      >
+        <div className="border-b border-border bg-muted px-4 py-3">
+          <h3
+            id="meal-calorie-distribution-heading"
+            className="text-sm font-bold text-foreground"
+          >
+            {t('onboarding.nutrientGoalsMealDistribution')}
           </h3>
         </div>
         <div className="p-4">
@@ -676,7 +505,7 @@ export const NutrientGoals = ({
             onPercentagesChange={handlePercentagesChange}
           />
         </div>
-      </div>
+      </section>
     </div>
   );
 };

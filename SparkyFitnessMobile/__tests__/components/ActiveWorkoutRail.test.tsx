@@ -88,6 +88,12 @@ describe('ActiveWorkoutRail superset borders', () => {
     );
   }
 
+  it('localizes the add-exercise tile', () => {
+    const { getByLabelText, getByText } = renderRail();
+    expect(getByLabelText('إضافة تمرين')).toBeTruthy();
+    expect(getByText('إضافة')).toBeTruthy();
+  });
+
   it('draws a bottom bar in the group color under each grouped thumb', () => {
     const { getByTestId } = renderRail();
     for (const entryId of ['ex-a', 'ex-b']) {
@@ -101,8 +107,9 @@ describe('ActiveWorkoutRail superset borders', () => {
     const { getByTestId } = renderRail();
     const interior = StyleSheet.flatten(getByTestId('superset-bar-ex-a').props.style);
     const last = StyleSheet.flatten(getByTestId('superset-bar-ex-b').props.style);
-    expect(interior.right).toBeLessThan(0); // bridges into the gap
-    expect(last.right).toBeGreaterThan(0); // stops inside its own thumb
+    expect(interior.start).toBe(4);
+    expect(interior.end).toBeLessThan(0); // bridges into the gap
+    expect(last.end).toBeGreaterThan(0); // stops inside its own thumb
   });
 
   it('draws no bar for ungrouped exercises', () => {

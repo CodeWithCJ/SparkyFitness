@@ -30,6 +30,8 @@ import {
 } from '../services/api/authService';
 import ReauthModal from '../components/ReauthModal';
 import { getActiveServerConfig } from '../services/storage';
+import { mobileT, MOBILE_LOCALE } from '../localization';
+import { addLog } from '../services/LogService';
 
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -75,10 +77,11 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
       setPasskeys(list);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      addLog(`[PasskeySettings] Failed to load passkeys: ${msg}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: `Failed to load passkeys: ${msg}`,
+        text1: mobileT('passkeys.loadFailed'),
+        text2: mobileT('passkeys.tryAgain'),
       });
     } finally {
       setLoading(false);
@@ -97,8 +100,8 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
     await addPasskey(url, token, name);
     Toast.show({
       type: 'success',
-      text1: 'Success',
-      text2: 'Passkey registered successfully!',
+      text1: mobileT('passkeys.registered'),
+      text2: mobileT('passkeys.registeredDescription'),
     });
     setNewPasskeyName('');
     await fetchList();
@@ -106,14 +109,18 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
 
   const reportAddError = (err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
+    addLog(`[PasskeySettings] Failed to register passkey: ${msg}`, 'ERROR');
     if (msg.includes('cancelled') || msg.includes('cancel')) {
       Toast.show({
         type: 'info',
-        text1: 'Cancelled',
-        text2: 'Passkey registration was cancelled.',
+        text1: mobileT('passkeys.cancelled'),
+        text2: mobileT('passkeys.cancelledDescription'),
       });
     } else {
-      Alert.alert('Registration Failed', msg);
+      Alert.alert(
+        mobileT('passkeys.registrationFailed'),
+        mobileT('passkeys.tryAgain'),
+      );
     }
   };
 
@@ -121,7 +128,10 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
     if (!activeConfig || !activeConfig.sessionToken) return;
     const name = newPasskeyName.trim();
     if (!name) {
-      Alert.alert('Required', 'Please enter a name for this passkey.');
+      Alert.alert(
+        mobileT('passkeys.nameRequiredTitle'),
+        mobileT('passkeys.nameRequiredDescription'),
+      );
       return;
     }
 
@@ -159,7 +169,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
       // Re-read the config so we use the freshly-minted session token.
       const fresh = await getActiveServerConfig();
       if (!fresh || !fresh.sessionToken) {
-        throw new Error('No active session. Please sign in again.');
+        throw new Error('NO_ACTIVE_SESSION');
       }
       await registerPasskeyWithConfig(fresh.url, fresh.sessionToken, name);
     } catch (err) {
@@ -171,12 +181,14 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
 
   const handleDeletePasskey = (id: string, name: string | null) => {
     Alert.alert(
-      'Delete Passkey',
-      `Are you sure you want to delete "${name || 'Unnamed Passkey'}"?`,
+      mobileT('passkeys.deleteTitle'),
+      mobileT('passkeys.deleteDescription', {
+        name: name || mobileT('passkeys.unnamed'),
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: mobileT('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: mobileT('common.delete'),
           style: 'destructive',
           onPress: async () => {
             if (!activeConfig || !activeConfig.sessionToken) return;
@@ -185,13 +197,17 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
               await deletePasskey(activeConfig.url, activeConfig.sessionToken, id);
               Toast.show({
                 type: 'success',
-                text1: 'Deleted',
-                text2: 'Passkey was removed.',
+                text1: mobileT('passkeys.deleted'),
+                text2: mobileT('passkeys.deletedDescription'),
               });
               await fetchList();
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
-              Alert.alert('Error', `Failed to delete passkey: ${msg}`);
+              addLog(`[PasskeySettings] Failed to delete passkey: ${msg}`, 'ERROR');
+              Alert.alert(
+                mobileT('passkeys.deleteFailed'),
+                mobileT('passkeys.tryAgain'),
+              );
             } finally {
               setActionLoading(false);
             }
@@ -202,7 +218,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   };
 
   const header = useScreenHeader({
-    title: 'Passkeys',
+    title: mobileT('screens.passkeySettings'),
     left: { kind: 'back' },
   });
 
@@ -226,20 +242,21 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
           <View className="bg-surface rounded-xl p-6 items-center shadow-sm border border-border-subtle">
             <Icon name="lock-closed" size={48} color={textMuted} />
             <Text className="text-base text-text-primary text-center mt-4">
-              Passkeys are only supported on servers using session-based authentication.
+              {mobileT('passkeys.sessionOnly')}
             </Text>
             <Text className="text-sm text-text-muted text-center mt-2">
-              If you connect via an API Key, passkeys cannot be used.
+              {mobileT('passkeys.apiKeyUnsupported')}
             </Text>
           </View>
         ) : (
           <>
             <View className="mb-4">
               <Text className="text-sm text-text-secondary mb-2">
-                Server: {activeConfig?.url}
+                {mobileT('passkeys.server')}{' '}
+                <Text style={{ writingDirection: 'ltr' }}>{activeConfig?.url}</Text>
               </Text>
               <Text className="text-xs text-text-muted">
-                Passkeys allow you to sign in securely using Face ID, Touch ID, or your device PIN without entering your password.
+                {mobileT('passkeys.description')}
               </Text>
             </View>
 
@@ -253,10 +270,10 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                   <Icon name="fingerprint" size={40} color={textMuted} />
                 </View>
                 <Text className="text-base font-semibold text-text-primary text-center">
-                  No Passkeys Registered
+                  {mobileT('passkeys.emptyTitle')}
                 </Text>
                 <Text className="text-sm text-text-muted text-center mt-2">
-                  Add this device or biometric credentials to sign in quickly next time.
+                  {mobileT('passkeys.emptyDescription')}
                 </Text>
               </View>
             ) : (
@@ -268,18 +285,25 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                       index < passkeys.length - 1 ? 'border-b border-border-subtle' : ''
                     }`}
                   >
-                    <View className="flex-1 mr-4">
+                    <View className="flex-1 me-4">
                       <Text className="text-base font-semibold text-text-primary">
-                        {passkey.name || 'Unnamed Passkey'}
+                        {passkey.name || mobileT('passkeys.unnamed')}
                       </Text>
                       <Text className="text-xs text-text-muted mt-1">
-                        Registered: {new Date(passkey.createdAt).toLocaleDateString()}
+                        {mobileT('passkeys.registeredAt', {
+                          date: new Date(passkey.createdAt).toLocaleDateString(
+                            `${MOBILE_LOCALE}-u-ca-gregory`,
+                            { dateStyle: 'medium' },
+                          ),
+                        })}
                       </Text>
                     </View>
                     <TouchableOpacity
                       onPress={() => handleDeletePasskey(passkey.id, passkey.name)}
                       disabled={actionLoading}
-                      accessibilityLabel="Delete passkey"
+                      accessibilityLabel={mobileT('passkeys.deleteAccessibility', {
+                        name: passkey.name || mobileT('passkeys.unnamed'),
+                      })}
                       className="p-2"
                     >
                       <Icon name="trash" size={20} color="#ef4444" />
@@ -305,14 +329,14 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
               }}
             >
               {actionLoading ? (
-                <ActivityIndicator size="small" color={accentPrimary} style={{ marginRight: 8 }} />
+                <ActivityIndicator size="small" color={accentPrimary} style={{ marginEnd: 8 }} />
               ) : (
-                <View style={{ marginRight: 8 }}>
+                <View style={{ marginEnd: 8 }}>
                   <Icon name="fingerprint" size={20} color={accentPrimary} />
                 </View>
               )}
               <Text className="text-base font-semibold text-text-primary">
-                Add Passkey
+                {mobileT('passkeys.add')}
               </Text>
             </Button>
           </>
@@ -336,14 +360,14 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
           >
             <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm border border-border-subtle">
               <Text className="text-[20px] font-bold text-center text-text-primary mb-4">
-                Register Passkey
+                {mobileT('passkeys.registerTitle')}
               </Text>
               <Text className="text-sm text-text-secondary mb-4">
-                Give this passkey a friendly name to identify it later (e.g. My iPhone).
+                {mobileT('passkeys.registerDescription')}
               </Text>
 
               <FormInput
-                placeholder="e.g. My iPhone"
+                placeholder={mobileT('passkeys.namePlaceholder')}
                 value={newPasskeyName}
                 onChangeText={setNewPasskeyName}
                 autoCapitalize="sentences"
@@ -356,7 +380,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                   onPress={() => setModalVisible(false)}
                   className="flex-1 py-2.5"
                 >
-                  Cancel
+                  {mobileT('common.cancel')}
                 </Button>
                 <Button
                   variant="primary"
@@ -364,7 +388,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                   className="flex-1 py-2.5"
                   style={{ backgroundColor: accentPrimary }}
                 >
-                  Continue
+                  {mobileT('common.continue')}
                 </Button>
               </View>
             </View>

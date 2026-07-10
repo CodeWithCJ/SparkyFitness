@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
+import { mobileT } from '../localization';
 
 interface StepperInputProps {
   value: string;
@@ -27,6 +28,9 @@ interface StepperInputProps {
   inputRef?: React.Ref<TextInput>;
   /** Compact size for inline use in set rows */
   compact?: boolean;
+  decrementLabel?: string;
+  incrementLabel?: string;
+  inputAccessibilityLabel?: string;
 }
 
 type TextInputFocusEvent = NativeSyntheticEvent<TextInputFocusEventData>;
@@ -44,6 +48,9 @@ function StepperInput({
   inputProps,
   inputRef,
   compact = false,
+  decrementLabel = mobileT('common.decrease'),
+  incrementLabel = mobileT('common.increase'),
+  inputAccessibilityLabel,
 }: StepperInputProps) {
   const [accentColor, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -69,6 +76,8 @@ function StepperInput({
         style={{ width: size, height: size, borderRightWidth: 1, borderRightColor: borderColor }}
         className="items-center justify-center"
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={decrementLabel}
       >
         <Icon name="remove" size={iconSize} color={accentColor} />
       </TouchableOpacity>
@@ -87,6 +96,7 @@ function StepperInput({
         }}
         keyboardType={keyboardType}
         placeholder={placeholder}
+        accessibilityLabel={inputAccessibilityLabel}
         selectTextOnFocus={selectTextOnFocus}
         className="text-text-primary text-base text-center"
         style={{ width: inputWidth, height: size, fontSize, lineHeight: fontSize + 2, padding: 0 }}
@@ -97,6 +107,8 @@ function StepperInput({
         style={{ width: size, height: size, borderLeftWidth: 1, borderLeftColor: borderColor }}
         className="items-center justify-center"
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={incrementLabel}
       >
         <Icon name="add" size={iconSize} color={accentColor} />
       </TouchableOpacity>

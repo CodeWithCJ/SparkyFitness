@@ -14,6 +14,7 @@ import {
   getSupersetRuns,
   type SupersetRun,
 } from '../utils/workoutSession';
+import { mobileT } from '../localization';
 
 const THUMB_SIZE = 52;
 /** contentContainer gap-3 — non-last superset bars extend across it. */
@@ -127,7 +128,8 @@ function ActiveWorkoutRail({
       contentContainerClassName="px-3 py-2 gap-3"
     >
       {exercises.map((exercise) => {
-        const name = exercise.exercise_snapshot?.name ?? 'Exercise';
+        const name =
+          exercise.exercise_snapshot?.name ?? mobileT('workout.unknownExercise');
         const image = exercise.exercise_snapshot?.images?.[0] ?? null;
         const fallbackIcon =
           (exercise.exercise_snapshot?.category &&
@@ -177,7 +179,7 @@ function ActiveWorkoutRail({
                 />
               </View>
               {isDone && (
-                <View className="absolute" style={{ right: -2, top: -2 }}>
+                <View className="absolute" style={{ end: -2, top: -2 }}>
                   <CompletionCheck size={18} iconSize={11} />
                 </View>
               )}
@@ -190,7 +192,7 @@ function ActiveWorkoutRail({
                   testID={`rail-current-${exercise.id}`}
                   className="absolute items-center justify-center rounded-full"
                   style={{
-                    left: -2,
+                    start: -2,
                     top: -2,
                     width: 18,
                     height: 18,
@@ -210,10 +212,10 @@ function ActiveWorkoutRail({
                   // Flat bar just under the thumb block (thumb + 2px padding
                   // + 2px ring border on each side).
                   top: THUMB_SIZE + 8 + 1,
-                  left: BAR_INSET,
+                  start: BAR_INSET,
                   // Non-last members bridge the item gap up to the next
                   // member's inset so the group reads as one shared line.
-                  right: supersetBorder.isLast ? BAR_INSET : -(ITEM_GAP + BAR_INSET),
+                  end: supersetBorder.isLast ? BAR_INSET : -(ITEM_GAP + BAR_INSET),
                   height: 3,
                   backgroundColor: supersetBorder.color,
                 }}
@@ -239,7 +241,7 @@ function ActiveWorkoutRail({
       <Pressable
         onPress={onPressAdd}
         accessibilityRole="button"
-        accessibilityLabel="Add exercise"
+        accessibilityLabel={mobileT('workoutForm.addExercise')}
         className="items-center"
         style={{ width: THUMB_SIZE + 16 }}
       >
@@ -255,7 +257,7 @@ function ActiveWorkoutRail({
           className="mt-1 text-center text-[11px] leading-[13px] font-medium"
           style={{ color: accentPrimary }}
         >
-          Add
+          {mobileT('common.add')}
         </Text>
       </Pressable>
     </ScrollView>

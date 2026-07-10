@@ -41,8 +41,11 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import {{APPLICATION_ID}}.R
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.text.NumberFormat
 import java.util.Locale
 import org.json.JSONObject
+
+private val SAUDI_ARABIC_LOCALE = Locale("ar", "SA")
 
 class CalorieWidget : GlanceAppWidget() {
 
@@ -68,7 +71,7 @@ class CalorieWidget : GlanceAppWidget() {
             remainingText = "—"
             progress = 0f
         } else {
-            remainingText = "${formatInt(snapshot.remaining)} kcal left"
+            remainingText = "${formatInt(snapshot.remaining)} سعرة باقية"
             progress = snapshot.progress.coerceIn(0.0, 1.0).toFloat()
         }
 
@@ -119,7 +122,7 @@ class CalorieWidget : GlanceAppWidget() {
                     ) {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_search),
-                            contentDescription = "Search food",
+                            contentDescription = "البحث عن صنف غذائي",
                             colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
                             modifier = GlanceModifier.size(24.dp),
                         )
@@ -139,7 +142,7 @@ class CalorieWidget : GlanceAppWidget() {
                     ) {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_scan),
-                            contentDescription = "Scan barcode",
+                            contentDescription = "مسح باركود منتج",
                             colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
                             modifier = GlanceModifier.size(24.dp),
                         )
@@ -194,7 +197,7 @@ class CalorieWidget : GlanceAppWidget() {
     }
 
     private fun formatInt(value: Double): String {
-        return String.format(Locale.getDefault(), "%,d", value.toLong())
+        return NumberFormat.getIntegerInstance(SAUDI_ARABIC_LOCALE).format(value.toLong())
     }
 
     companion object {

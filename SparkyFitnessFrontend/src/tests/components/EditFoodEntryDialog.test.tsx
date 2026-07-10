@@ -9,6 +9,54 @@ const mockUpdateFoodEntry = jest.fn();
 const mockCreateVariant = jest.fn();
 let mockVariantsData: unknown[] = [];
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: string | Record<string, string | number>) => {
+      const values = typeof options === 'object' ? options : {};
+      const translations: Record<string, string> = {
+        'foodEntryEditor.title': 'تعديل سجل الطعام',
+        'foodEntryEditor.description': 'عدّل الكمية أو وحدة الحصة أو الوجبة.',
+        'foodEntryEditor.latestVariantNotice':
+          'بنحدّث هذا السجل باستخدام أحدث بيانات الحصة المتاحة للطعام.',
+        'foodEntryEditor.loading': 'جارٍ تحميل بيانات الطعام…',
+        'foodEntryEditor.quantity': 'الكمية',
+        'foodEntryEditor.unit': 'الوحدة',
+        'foodEntryEditor.meal': 'الوجبة',
+        'foodEntryEditor.customUnit': 'وحدة مخصصة…',
+        'foodEntryEditor.unitName': 'اسم الوحدة',
+        'foodEntryEditor.unitNamePlaceholder': 'مثل: شريحة، حبة، مغرفة',
+        'foodEntryEditor.conversionFactorPlaceholder': 'مثل: 1',
+        'foodEntryEditor.cancel': 'إلغاء',
+        'foodEntryEditor.save': 'حفظ التغييرات',
+        'foodEntryEditor.saving': 'جارٍ الحفظ…',
+        'foodEntryEditor.confidence.high': 'عالية',
+        'foodEntryEditor.confidence.medium': 'متوسطة',
+        'foodEntryEditor.confidence.low': 'منخفضة',
+        'units.gram': 'غ',
+        'units.cup': 'كوب',
+        'units.tablespoon': 'ملعقة كبيرة',
+        'units.teaspoon': 'ملعقة صغيرة',
+      };
+
+      if (key === 'foodEntryEditor.manualConversionHelp') {
+        return `ما قدرنا نحول تلقائيًا بين ${values['from']} و${values['to']}.`;
+      }
+      if (key === 'foodEntryEditor.aiEstimate') {
+        return `تقدير آلي (ثقة ${values['confidence']})`;
+      }
+      if (key === 'foodEntryEditor.conversionEquation') {
+        return `1 ${values['from']} = كم ${values['to']}؟`;
+      }
+
+      return translations[key] ?? (typeof options === 'string' ? options : key);
+    },
+  }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: jest.fn(),
+  },
+}));
+
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     loggingLevel: 'DEBUG',
@@ -192,16 +240,16 @@ describe('EditFoodEntryDialog', () => {
       expect(screen.getByText('Cornstarch')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /^tsp$/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'ملعقة صغيرة' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/These units can/i)).toBeInTheDocument();
+      expect(screen.getByText(/ما قدرنا نحول تلقائيًا/)).toBeInTheDocument();
     });
 
-    expect(screen.getByPlaceholderText(/e\.g\. 1/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('مثل: 1')).toBeInTheDocument();
     expect(screen.queryByTestId('nutrient-grid')).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /Save Changes/i })
+      screen.getByRole('button', { name: 'حفظ التغييرات' })
     ).toBeDisabled();
   });
 
@@ -231,11 +279,11 @@ describe('EditFoodEntryDialog', () => {
 
     await waitFor(() => {
       expect(
-        screen.getAllByLabelText(/AI estimate \(Fair confidence\)/i).length
+        screen.getAllByLabelText(/تقدير آلي \(ثقة متوسطة\)/).length
       ).toBeGreaterThan(0);
     });
 
-    const tbspButton = screen.getByRole('button', { name: /^tbsp$/i });
+    const tbspButton = screen.getByRole('button', { name: 'ملعقة كبيرة' });
     expect(tbspButton.querySelector('svg.text-green-500')).toBeNull();
   });
 });

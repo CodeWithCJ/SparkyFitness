@@ -4,12 +4,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
 import Icon from './Icon';
+import { formatMobileNumber, mobileT } from '../localization';
 
 export function formatRestCountdown(remainingMs: number): string {
   const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  return `${formatMobileNumber(minutes, {
+    maximumFractionDigits: 0,
+    useGrouping: false,
+  })}:${formatMobileNumber(seconds, {
+    minimumIntegerDigits: 2,
+    maximumFractionDigits: 0,
+    useGrouping: false,
+  })}`;
 }
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
@@ -86,7 +94,11 @@ function ActiveWorkoutRestBar({
             onPress={paused ? onResume : onPause}
             hitSlop={HIT_SLOP}
             accessibilityRole="button"
-            accessibilityLabel={paused ? 'Resume rest' : 'Pause rest'}
+            accessibilityLabel={
+              paused
+                ? mobileT('activeWorkout.resumeRest')
+                : mobileT('activeWorkout.pauseRest')
+            }
             className="h-9 w-9 rounded-full bg-raised items-center justify-center"
           >
             <Icon
@@ -99,14 +111,14 @@ function ActiveWorkoutRestBar({
           <Pressable
             onPress={() => onAdjust(-15)}
             accessibilityRole="button"
-            accessibilityLabel="Shorten rest by 15 seconds"
+            accessibilityLabel={mobileT('activeWorkout.shortenRest')}
             className="rounded-full bg-raised px-3 py-2"
           >
             <Text
               className="text-sm font-semibold text-text-primary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              −15s
+              −{formatMobileNumber(15)} {mobileT('units.secondShort')}
             </Text>
           </Pressable>
         </View>
@@ -125,21 +137,21 @@ function ActiveWorkoutRestBar({
           <Pressable
             onPress={() => onAdjust(15)}
             accessibilityRole="button"
-            accessibilityLabel="Extend rest by 15 seconds"
+            accessibilityLabel={mobileT('activeWorkout.extendRest')}
             className="rounded-full bg-raised px-3 py-2"
           >
             <Text
               className="text-sm font-semibold text-text-primary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              +15s
+              +{formatMobileNumber(15)} {mobileT('units.secondShort')}
             </Text>
           </Pressable>
           <Pressable
             onPress={onSkip}
             hitSlop={HIT_SLOP}
             accessibilityRole="button"
-            accessibilityLabel="Skip rest"
+            accessibilityLabel={mobileT('activeWorkout.skipRest')}
             className="h-9 w-9 rounded-full items-center justify-center"
             style={{ backgroundColor: accentPrimary }}
           >
@@ -162,7 +174,7 @@ function ActiveWorkoutRestBar({
               className="text-xs text-text-secondary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              Target {nextSetText}
+              {mobileT('activeWorkout.target', { target: nextSetText })}
             </Text>
           )}
         </View>

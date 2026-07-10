@@ -6,6 +6,7 @@ import type { ToolCallMessagePart } from '@assistant-ui/react-native';
 import Icon from '../Icon';
 import MarkdownMessage from './MarkdownMessage';
 import { getToolDisplay, isLookupTool } from '../../constants/chat';
+import { isMobileRtl, mobileT } from '../../localization';
 
 /**
  * Generic collapsible card for a single tool call. The server's logging tools
@@ -40,6 +41,11 @@ export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
   const { label, icon } = getToolDisplay(part.toolName);
   const hasResult = part.result !== undefined;
   const resultIsString = typeof part.result === 'string';
+  const statusLabel = mobileT(`chat.tool.status.${status}`, { tool: label });
+  const disclosureHint = expanded
+    ? mobileT('chat.tool.collapseHint')
+    : mobileT('chat.tool.expandHint');
+  const collapsedChevron = isMobileRtl ? 'chevron-back' : 'chevron-forward';
 
   // Status indicator + tool icon + label, shared by both card shapes.
   const header = (
@@ -68,15 +74,29 @@ export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
       {isLookupTool(part.toolName) ? (
         // Lookup/search results are raw JSON for the model, not the user — show
         // just the labeled status with nothing to expand.
-        <View className="flex-row items-center gap-2 px-3 py-2">{header}</View>
+        <View
+          accessible
+          accessibilityLabel={statusLabel}
+          className="flex-row items-center gap-2 px-3 py-2"
+        >
+          {header}
+        </View>
       ) : (
         <>
           <Pressable
             onPress={() => setExpanded((value) => !value)}
+            accessibilityRole="button"
+            accessibilityLabel={statusLabel}
+            accessibilityHint={disclosureHint}
+            accessibilityState={{ expanded }}
             className="flex-row items-center gap-2 px-3 py-2"
           >
             {header}
-            <Icon name={expanded ? 'chevron-down' : 'chevron-forward'} size={16} color={muted} />
+            <Icon
+              name={expanded ? 'chevron-down' : collapsedChevron}
+              size={16}
+              color={muted}
+            />
           </Pressable>
 
           {expanded && (

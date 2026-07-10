@@ -178,7 +178,10 @@ describe('useStartLiveWorkout', () => {
       await result.current.startLiveWorkout({ exercises: EXERCISES });
     });
 
-    expect(alertSpy).toHaveBeenCalledWith('No Server Connected', expect.any(String));
+    expect(alertSpy).toHaveBeenCalledWith(
+      'ما فيه خادم متصل',
+      'اربط خادمك من الإعدادات عشان تبدأ تمرينًا.',
+    );
     expect(mockCreateWorkout).not.toHaveBeenCalled();
     expect(navigation.replace).not.toHaveBeenCalled();
   });
@@ -194,10 +197,10 @@ describe('useStartLiveWorkout', () => {
     });
 
     expect(alertSpy).toHaveBeenCalledWith(
-      'Replace current workout?',
-      expect.stringContaining('workout in progress'),
+      'استبدال التمرين الحالي؟',
+      expect.stringContaining('تمرين جارٍ'),
       expect.arrayContaining([
-        expect.objectContaining({ text: 'Clear & Start' }),
+        expect.objectContaining({ text: 'مسح وبدء' }),
       ]),
     );
     // Without confirming the prompt, nothing is created.
@@ -210,10 +213,10 @@ describe('useStartLiveWorkout', () => {
       useActiveWorkoutStore.getState().startWorkout(makeSession());
     });
 
-    // Simulate tapping the destructive "Clear & Start" button.
+    // Simulate tapping the destructive replace button.
     alertSpy.mockImplementation((_title, _message, buttons) => {
       const confirm = (buttons as { text: string; onPress?: () => void }[] | undefined)?.find(
-        (b) => b.text === 'Clear & Start',
+        (b) => b.text === 'مسح وبدء',
       );
       confirm?.onPress?.();
       return undefined as never;
@@ -236,7 +239,11 @@ describe('useStartLiveWorkout', () => {
     });
 
     expect(mockToastShow).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error', text1: 'Nothing to start' }),
+      expect.objectContaining({
+        type: 'error',
+        text1: 'ما فيه تمارين نبدأ فيها',
+        text2: 'هذا القالب ما فيه تمارين.',
+      }),
     );
     expect(mockCreateWorkout).not.toHaveBeenCalled();
   });

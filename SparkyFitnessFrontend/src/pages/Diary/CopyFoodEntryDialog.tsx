@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -51,7 +50,8 @@ const CopyFoodEntryDialog = ({
   const [selectedMealType, setSelectedMealType] =
     useState<string>(sourceMealType);
 
-  const { data: availableMealTypes } = useMealTypes();
+  const { data: availableMealTypes, isLoading: mealTypesLoading } =
+    useMealTypes();
 
   const isAllDayCopy = sourceMealType === 'all';
 
@@ -96,38 +96,40 @@ const CopyFoodEntryDialog = ({
         <DialogHeader>
           <DialogTitle>
             {isAllDayCopy
-              ? t('copyFoodEntryDialog.titleAll', 'Copy Entire Day')
-              : t('copyFoodEntryDialog.title', 'Copy Food Entries')}
+              ? t('foodDiary.copyFoodEntryDialog.titleAll', 'Copy Entire Day')
+              : t('foodDiary.copyFoodEntryDialog.title', 'Copy Food Entries')}
           </DialogTitle>
           <DialogDescription>
             {isAllDayCopy
               ? t(
-                  'copyFoodEntryDialog.descriptionAll',
+                  'foodDiary.copyFoodEntryDialog.descriptionAll',
                   'Select the target date to copy all food entries from this day.'
                 )
               : t(
-                  'copyFoodEntryDialog.description',
+                  'foodDiary.copyFoodEntryDialog.description',
                   'Select the target date and meal type to copy the food entries.'
                 )}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="targetDate" className="text-right">
-              {t('copyFoodEntryDialog.targetDate', 'Target Date')}
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-center sm:gap-4">
+            <Label htmlFor="targetDate" className="text-start">
+              {t('foodDiary.copyFoodEntryDialog.targetDate', 'Target Date')}
             </Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
+                  id="targetDate"
+                  type="button"
                   variant={'outline'}
                   className={cn(
-                    'col-span-3 justify-start text-left font-normal',
+                    'w-full justify-start text-start font-normal',
                     !selectedDate && 'text-muted-foreground'
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="me-2 h-4 w-4" aria-hidden="true" />
                   {selectedDate ? (
-                    format(selectedDate, 'PPP')
+                    formatDateInUserTimezone(selectedDate, 'PPP')
                   ) : (
                     <span>{t('common.pickADate', 'Pick a date')}</span>
                   )}
@@ -146,9 +148,9 @@ const CopyFoodEntryDialog = ({
             </Popover>
           </div>
           {!isAllDayCopy && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="mealType" className="text-right">
-                {t('copyFoodEntryDialog.mealType', 'Meal Type')}
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-center sm:gap-4">
+              <Label htmlFor="mealType" className="text-start">
+                {t('foodDiary.copyFoodEntryDialog.mealType', 'Meal Type')}
               </Label>
               <Select
                 onValueChange={(value) => {
@@ -157,18 +159,23 @@ const CopyFoodEntryDialog = ({
                 }}
                 value={selectedMealType}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger id="mealType" className="w-full">
                   <SelectValue
                     placeholder={t(
-                      'copyFoodEntryDialog.selectMealTypePlaceholder',
+                      'foodDiary.copyFoodEntryDialog.selectMealTypePlaceholder',
                       'Select meal type'
                     )}
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableMealTypes?.length === 0 && (
+                  {mealTypesLoading && (
                     <SelectItem value="loading" disabled>
-                      Loading...
+                      {t('foodDiary.copyFoodEntryDialog.loadingMealTypes')}
+                    </SelectItem>
+                  )}
+                  {!mealTypesLoading && availableMealTypes?.length === 0 && (
+                    <SelectItem value="empty" disabled>
+                      {t('foodDiary.copyFoodEntryDialog.noMealTypes')}
                     </SelectItem>
                   )}
                   {availableMealTypes?.map((meal) => (
@@ -182,11 +189,15 @@ const CopyFoodEntryDialog = ({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button onClick={handleCopyClick} disabled={!selectedDate}>
-            {t('copyFoodEntryDialog.copyButton', 'Copy')}
+          <Button
+            type="button"
+            onClick={handleCopyClick}
+            disabled={!selectedDate}
+          >
+            {t('foodDiary.copyFoodEntryDialog.copyButton', 'Copy')}
           </Button>
         </DialogFooter>
       </DialogContent>

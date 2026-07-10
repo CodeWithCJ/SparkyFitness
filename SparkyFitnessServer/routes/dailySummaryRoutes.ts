@@ -102,4 +102,4 @@ const handler: RequestHandler = async (req, res, next) => {
 
 router.get('/', handler);
 
-module.exports = router;
+export default router;

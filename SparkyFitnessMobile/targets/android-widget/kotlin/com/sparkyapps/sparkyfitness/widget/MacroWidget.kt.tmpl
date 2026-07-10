@@ -44,9 +44,12 @@ import androidx.glance.unit.ColorProvider
 import {{APPLICATION_ID}}.R
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.roundToLong
 import org.json.JSONObject
+
+private val SAUDI_ARABIC_LOCALE = Locale("ar", "SA")
 
 class MacroWidget : GlanceAppWidget() {
 
@@ -98,7 +101,7 @@ class MacroWidget : GlanceAppWidget() {
                     ActionButton(
                         intent = searchIntent,
                         icon = R.drawable.ic_widget_search,
-                        contentDescription = "Search food",
+                        contentDescription = "البحث عن صنف غذائي",
                         modifier = GlanceModifier
                             .defaultWeight()
                             .height(40.dp),
@@ -112,7 +115,7 @@ class MacroWidget : GlanceAppWidget() {
                     ActionButton(
                         intent = scanIntent,
                         icon = R.drawable.ic_widget_scan,
-                        contentDescription = "Scan barcode",
+                        contentDescription = "مسح باركود منتج",
                         modifier = GlanceModifier
                             .defaultWeight()
                             .height(40.dp),
@@ -126,9 +129,9 @@ class MacroWidget : GlanceAppWidget() {
     private fun CalorieHeader(snapshot: MacroSnapshot?, fontSize: Int = 20) {
         val calories = snapshot?.displayCalories
         val text = if (snapshot?.hasData == true && calories != null) {
-            "${formatInt(calories)} kcal left"
+            "${formatInt(calories)} سعرة باقية"
         } else {
-            "— kcal left"
+            "— سعرة باقية"
         }
         Text(
             text = text,
@@ -145,21 +148,21 @@ class MacroWidget : GlanceAppWidget() {
     @Composable
     private fun MacroRows(snapshot: MacroSnapshot?, spacing: Int) {
         MacroRow(
-            label = "Protein",
+            label = "البروتين",
             grams = snapshot?.protein ?: 0.0,
             progress = snapshot.progressFor(MacroKind.PROTEIN),
             color = MacroPalette.protein,
         )
         Spacer(modifier = GlanceModifier.height(spacing.dp))
         MacroRow(
-            label = "Carbs",
+            label = "الكربوهيدرات",
             grams = snapshot?.carbs ?: 0.0,
             progress = snapshot.progressFor(MacroKind.CARBS),
             color = MacroPalette.carbs,
         )
         Spacer(modifier = GlanceModifier.height(spacing.dp))
         MacroRow(
-            label = "Fat",
+            label = "الدهون",
             grams = snapshot?.fat ?: 0.0,
             progress = snapshot.progressFor(MacroKind.FAT),
             color = MacroPalette.fat,
@@ -195,7 +198,7 @@ class MacroWidget : GlanceAppWidget() {
                 )
                 Spacer(modifier = GlanceModifier.defaultWeight())
                 Text(
-                    text = "${formatInt(grams)} g",
+                    text = "${formatInt(grams)} غ",
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurface,
                         fontSize = 14.sp,
@@ -321,7 +324,7 @@ class MacroWidget : GlanceAppWidget() {
     }
 
     private fun formatInt(value: Double): String {
-        return String.format(Locale.getDefault(), "%,d", value.roundToLong())
+        return NumberFormat.getIntegerInstance(SAUDI_ARABIC_LOCALE).format(value.roundToLong())
     }
 
     companion object {

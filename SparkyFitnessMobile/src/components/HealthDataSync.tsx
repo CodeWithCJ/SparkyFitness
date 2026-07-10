@@ -6,6 +6,11 @@ import Button from './ui/Button';
 import CollapsibleSection from './CollapsibleSection';
 import { saveCollapsedCategories, loadCollapsedCategories } from '../services/storage';
 import { NO_DATA_DISPLAY } from '../services/healthDataDisplay';
+import {
+  localizeHealthCategory,
+  localizeHealthMetricLabel,
+  mobileT,
+} from '../localization';
 
 // Re-export HealthMetric for backwards compatibility
 export type { HealthMetric };
@@ -47,13 +52,15 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   const [learnMoreExpanded, setLearnMoreExpanded] = useState(false);
 
   const isIOS = Platform.OS === 'ios';
-  const platformSubtitle = isIOS ? 'Apple Health' : 'Health Connect';
+  const platformSubtitle = isIOS
+    ? mobileT('sync.appleHealthName')
+    : 'Health Connect';
   const platformSummary = isIOS
-    ? 'Reads selected data from Apple Health and syncs it to your self-hosted server.'
-    : 'Reads selected data from Health Connect and syncs it to your self-hosted server.';
+    ? mobileT('healthSync.appleSummary')
+    : mobileT('healthSync.healthConnectSummary');
   const platformDetail = isIOS
-    ? 'SparkyFitness reads the health data you select below using Apple Health (HealthKit). If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).\n\nManage or remove access in Settings → Health → Data Access & Devices → SparkyFitnessMobile'
-    : 'SparkyFitness reads the health data you select below using Health Connect. If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).';
+    ? mobileT('healthSync.appleDetail')
+    : mobileT('healthSync.healthConnectDetail');
 
   const handleLearnMoreToggle = useCallback(() => {
     setLearnMoreExpanded((prev) => !prev);
@@ -90,25 +97,26 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   const renderMetricItem = (metric: HealthMetric) => {
     const value = healthData?.[metric.id];
     const showLoading = isLoadingHealthData && !value;
+    const metricLabel = localizeHealthMetricLabel(metric.id, metric.label);
 
     return (
       <View key={metric.id} className="flex-row justify-between items-center mb-2">
-        <View className="flex-row items-center flex-1 mr-2">
+        <View className="flex-row items-center flex-1 me-2">
           <Image source={metric.icon} className="w-6 h-6" />
           <Text
-            className="ml-2 text-base text-text-primary flex-shrink"
+            className="ms-2 text-base text-text-primary flex-shrink"
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {metric.label}
+            {metricLabel}
           </Text>
         </View>
         {showLoading && (
-          <ActivityIndicator size="small" className="mr-2" />
+          <ActivityIndicator size="small" className="me-2" />
         )}
         {value && (
           <Text
-            className={`text-sm mr-2 flex-shrink-0 ${value === NO_DATA_DISPLAY ? 'text-text-muted italic' : 'text-text-muted'}`}
+            className={`text-sm me-2 flex-shrink-0 ${value === NO_DATA_DISPLAY ? 'text-text-muted italic' : 'text-text-muted'}`}
             numberOfLines={1}
           >
             {value}
@@ -119,6 +127,9 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           value={healthMetricStates[metric.stateKey]}
           trackColor={{ false: formDisabled, true: formEnabled }}
           thumbColor="#FFFFFF"
+          accessibilityLabel={mobileT('healthSync.metricAccessibility', {
+            metric: metricLabel,
+          })}
         />
       </View>
     );
@@ -126,7 +137,9 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold mb-3 text-text-primary">Health Data to Sync</Text>
+      <Text className="text-lg font-bold mb-3 text-text-primary">
+        {mobileT('healthSync.dataTitle')}
+      </Text>
       <View className="mb-3">
         <Text className="text-sm font-semibold text-text-secondary mb-1">{platformSubtitle}</Text>
         <Text className="text-sm text-text-secondary">{platformSummary}</Text>
@@ -134,7 +147,8 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           <>
             <Text className="text-sm text-text-secondary mt-2">{platformDetail}</Text>
             <Text className="text-sm text-text-secondary mt-1">
-              <Text className="font-semibold">Not medical advice.</Text> Consult a healthcare professional for medical advice, diagnosis, or treatment.
+              <Text className="font-semibold">{mobileT('sync.medicalDisclaimerTitle')}</Text>{' '}
+              {mobileT('sync.medicalDisclaimerDescription')}
             </Text>
           </>
         )}
@@ -144,17 +158,19 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           className="self-start py-0 px-0 mt-1"
           textClassName="text-sm"
         >
-          {learnMoreExpanded ? 'Show less' : 'Learn more'}
+          {learnMoreExpanded
+            ? mobileT('healthSync.showLess')
+            : mobileT('healthSync.learnMore')}
         </Button>
       </View>
       <View className="flex-row justify-between items-center mb-2">
-        <View className="flex-row items-center flex-1 mr-2">
+        <View className="flex-row items-center flex-1 me-2">
           <Text
             className="font-bold text-base text-text-primary flex-1"
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            Enable All Health Metrics
+            {mobileT('healthSync.enableAll')}
           </Text>
         </View>
         <Switch
@@ -162,10 +178,11 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           value={isAllMetricsEnabled}
           trackColor={{ false: formDisabled, true: formEnabled }}
           thumbColor="#FFFFFF"
+          accessibilityLabel={mobileT('healthSync.enableAll')}
         />
       </View>
       <Text className="text-xs text-text-muted mb-3">
-        Enabling many health metrics may increase battery usage. Each enabled metric allows the app to wake in the background when new data is available.
+        {mobileT('healthSync.batteryWarning')}
       </Text>
       {isLoaded && CATEGORY_ORDER.map((category) => {
         const metricsInCategory = groupedMetrics[category];
@@ -175,7 +192,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         return (
           <CollapsibleSection
             key={category}
-            title={category}
+            title={localizeHealthCategory(category)}
             expanded={!collapsedCategories.has(category)}
             onToggle={() => handleCategoryToggle(category)}
             itemCount={metricsInCategory.length}

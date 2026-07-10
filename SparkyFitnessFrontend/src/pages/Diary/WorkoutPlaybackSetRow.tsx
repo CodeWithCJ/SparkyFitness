@@ -24,10 +24,6 @@ import {
 
 function formatRestChip(seconds: number | null | undefined): string {
   const value = seconds ?? DEFAULT_REST_SECONDS;
-  if (value < 60) {
-    return `${value}s`;
-  }
-
   return formatSecondsClock(value);
 }
 
@@ -98,7 +94,7 @@ const WorkoutPlaybackSetRow = ({
   return (
     <div>
       <div
-        className={`w-full rounded-sm border px-2 py-1.5 text-left ${
+        className={`w-full rounded-sm border px-2 py-1.5 text-start ${
           completed
             ? 'border-border/60 bg-muted/40 text-muted-foreground'
             : 'border-border/70 bg-background'
@@ -108,7 +104,11 @@ const WorkoutPlaybackSetRow = ({
           <div className="col-span-2 flex min-w-0 items-center justify-between gap-2 sm:col-start-1 sm:col-span-1 sm:justify-start">
             <div className="flex min-w-0 items-center gap-2">
               <Checkbox
-                aria-label={`Complete set ${setNumber}`}
+                aria-label={t(
+                  'exercise.workoutPlaybackPage.completeSet',
+                  'Complete set {{setNumber}}',
+                  { setNumber }
+                )}
                 checked={completed}
                 className="data-[state=checked]:border-emerald-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:text-white"
                 onClick={(event) => {
@@ -126,7 +126,11 @@ const WorkoutPlaybackSetRow = ({
                 type="button"
                 variant="ghost"
                 className="h-auto p-0 text-sm font-medium hover:bg-transparent"
-                aria-label={`Select set ${setNumber} for ${exerciseName}`}
+                aria-label={t(
+                  'exercise.workoutPlaybackPage.selectSet',
+                  'Select set {{setNumber}} for {{exerciseName}}',
+                  { setNumber, exerciseName }
+                )}
                 onClick={() => onSelectSet(pointer)}
               >
                 {t(
@@ -147,7 +151,11 @@ const WorkoutPlaybackSetRow = ({
             }
           >
             <SelectTrigger
-              aria-label={`Type set ${setNumber}`}
+              aria-label={t(
+                'exercise.workoutPlaybackPage.typeSet',
+                'Set type for set {{setNumber}}',
+                { setNumber }
+              )}
               onClick={(event) => event.stopPropagation()}
               className="col-span-2 border-border/70 bg-transparent shadow-none outline-none ring-0 focus:border-border/70 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-border/70 data-[state=open]:outline-none data-[state=open]:ring-0 data-[state=open]:shadow-none sm:col-start-2 sm:col-span-1"
             >
@@ -167,7 +175,11 @@ const WorkoutPlaybackSetRow = ({
             inputMode="numeric"
             min={0}
             step={1}
-            aria-label={`Reps set ${setNumber}`}
+            aria-label={t(
+              'exercise.workoutPlaybackPage.repsSet',
+              'Repetitions for set {{setNumber}}',
+              { setNumber }
+            )}
             value={reps ?? ''}
             onClick={(event) => event.stopPropagation()}
             onChange={(event) =>
@@ -192,7 +204,11 @@ const WorkoutPlaybackSetRow = ({
               placeholder={t('common.weight', 'Weight')}
               onChange={(value) => onSetFieldChange(pointer, 'weight', value)}
               inputClassName="focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-              aria-label={`Weight set ${setNumber}`}
+              aria-label={t(
+                'exercise.workoutPlaybackPage.weightSet',
+                'Weight for set {{setNumber}}',
+                { setNumber }
+              )}
             />
           </div>
 
@@ -200,13 +216,20 @@ const WorkoutPlaybackSetRow = ({
             type="button"
             variant="outline"
             className="col-span-1 w-full min-w-0 justify-center px-2 text-xs tabular-nums sm:col-start-5 sm:col-span-1"
-            aria-label={`Edit rest for set ${setNumber}`}
+            aria-label={t(
+              'exercise.workoutPlaybackPage.editRest',
+              'Edit rest for set {{setNumber}}',
+              { setNumber }
+            )}
             onClick={(event) => {
               event.stopPropagation();
               onOpenRestEditor(pointer);
             }}
           >
-            <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+            <Timer
+              className="h-3.5 w-3.5 text-muted-foreground"
+              aria-hidden="true"
+            />
             {formatRestChip(restTime)}
           </Button>
 
@@ -216,13 +239,17 @@ const WorkoutPlaybackSetRow = ({
               variant="ghost"
               size="icon"
               className="cursor-pointer"
-              aria-label={`Toggle notes for set ${setNumber}`}
+              aria-label={t(
+                'exercise.workoutPlaybackPage.toggleNotes',
+                'Show or hide notes for set {{setNumber}}',
+                { setNumber }
+              )}
               onClick={(event) => {
                 event.stopPropagation();
                 onToggleNotesVisibility(notesKey);
               }}
             >
-              <MessageSquare className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button
               type="button"
@@ -230,19 +257,27 @@ const WorkoutPlaybackSetRow = ({
               size="icon"
               className="cursor-pointer"
               disabled={!canRemove}
-              aria-label={`Remove set ${setNumber} for ${exerciseName}`}
+              aria-label={t(
+                'exercise.workoutPlaybackPage.removeSet',
+                'Remove set {{setNumber}} from {{exerciseName}}',
+                { setNumber, exerciseName }
+              )}
               onClick={(event) => {
                 event.stopPropagation();
                 onRemoveSet(pointer);
               }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
 
           {isNotesVisible && (
             <Textarea
-              aria-label={`Set notes ${setNumber}`}
+              aria-label={t(
+                'exercise.workoutPlaybackPage.notesSet',
+                'Notes for set {{setNumber}}',
+                { setNumber }
+              )}
               value={notes ?? ''}
               onClick={(event) => event.stopPropagation()}
               onChange={(event) =>

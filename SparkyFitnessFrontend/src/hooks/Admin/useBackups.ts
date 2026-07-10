@@ -9,12 +9,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BackupSettingsMutator } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 
-export const useBackupSettings = () => {
+export const useBackupSettings = (enabled = true) => {
   const { t } = useTranslation();
 
   return useQuery({
     queryKey: backupKeys.all,
     queryFn: fetchBackupSettings,
+    enabled,
     meta: {
       errorTitle: t('admin.backupSettings.error', 'Error'),
       errorMessage: t(

@@ -45,7 +45,7 @@ import { Badge } from '@/components/ui/badge';
 const WorkoutPlansManager = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { loggingLevel } = usePreferences();
+  const { loggingLevel, formatDate } = usePreferences();
   const isMobile = useIsMobile();
 
   const [isAddPlanDialogOpen, setIsAddPlanDialogOpen] = useState(false);
@@ -181,14 +181,21 @@ const WorkoutPlansManager = () => {
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
-            aria-label="Select all"
+            aria-label={t(
+              'workoutPlansManager.selectAllPlans',
+              'Select all workout plans'
+            )}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label={t(
+              'workoutPlansManager.selectPlan',
+              'Select {{planName}}',
+              { planName: row.original.plan_name }
+            )}
           />
         ),
         enableSorting: false,
@@ -203,7 +210,7 @@ const WorkoutPlansManager = () => {
             <div className="flex flex-col">
               <span className="font-semibold">{plan.plan_name}</span>
               {plan.description && (
-                <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                <span className="max-w-[200px] truncate text-xs text-muted-foreground">
                   {plan.description}
                 </span>
               )}
@@ -217,18 +224,31 @@ const WorkoutPlansManager = () => {
         cell: ({ row }) => {
           const plan = row.original;
           return (
-            <Badge
-              variant={plan.is_active ? 'default' : 'secondary'}
-              className="font-normal text-[10px] cursor-pointer hover:opacity-80 transition-opacity"
+            <button
+              type="button"
+              aria-label={t(
+                plan.is_active
+                  ? 'workoutPlansManager.deactivatePlan'
+                  : 'workoutPlansManager.activatePlan',
+                plan.is_active
+                  ? 'Deactivate {{planName}}'
+                  : 'Activate {{planName}}',
+                { planName: plan.plan_name }
+              )}
               onClick={(e) => {
                 e.stopPropagation();
                 handleTogglePlanActive(plan.id, !plan.is_active);
               }}
             >
-              {plan.is_active
-                ? t('workoutPlansManager.activeStatus')
-                : t('workoutPlansManager.inactiveStatus')}
-            </Badge>
+              <Badge
+                variant={plan.is_active ? 'default' : 'secondary'}
+                className="cursor-pointer text-[10px] font-normal transition-opacity hover:opacity-80"
+              >
+                {plan.is_active
+                  ? t('workoutPlansManager.activeStatus')
+                  : t('workoutPlansManager.inactiveStatus')}
+              </Badge>
+            </button>
           );
         },
       },
@@ -239,12 +259,12 @@ const WorkoutPlansManager = () => {
           const plan = row.original;
           return (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CalendarDays className="h-3 w-3" />
-              <span>{new Date(plan.start_date!).toLocaleDateString()}</span>
-              <span>-</span>
+              <CalendarDays className="h-3 w-3" aria-hidden="true" />
+              <span>{formatDate(plan.start_date!)}</span>
+              <span aria-hidden="true">–</span>
               <span>
                 {plan.end_date
-                  ? new Date(plan.end_date).toLocaleDateString()
+                  ? formatDate(plan.end_date)
                   : t('workoutPlansManager.ongoingStatus', 'Ongoing')}
               </span>
             </div>
@@ -260,9 +280,17 @@ const WorkoutPlansManager = () => {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  aria-label={t(
+                    'workoutPlansManager.openActions',
+                    'Open actions for {{planName}}',
+                    { planName: plan.plan_name }
+                  )}
+                >
+                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -275,7 +303,7 @@ const WorkoutPlansManager = () => {
                     setIsEditDialogOpen(true);
                   }}
                 >
-                  <Edit className="mr-2 h-4 w-4" />
+                  <Edit className="h-4 w-4" aria-hidden="true" />
                   {t('common.edit', 'Edit')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -285,12 +313,12 @@ const WorkoutPlansManager = () => {
                 >
                   {plan.is_active ? (
                     <>
-                      <X className="mr-2 h-4 w-4" />
+                      <X className="h-4 w-4" aria-hidden="true" />
                       {t('workoutPlansManager.deactivate', 'Deactivate')}
                     </>
                   ) : (
                     <>
-                      <CheckSquare className="mr-2 h-4 w-4" />
+                      <CheckSquare className="h-4 w-4" aria-hidden="true" />
                       {t('workoutPlansManager.activate', 'Activate')}
                     </>
                   )}
@@ -300,7 +328,7 @@ const WorkoutPlansManager = () => {
                   className="text-destructive focus:text-destructive"
                   onClick={() => handleDeletePlan(plan.id)}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                   {t('common.delete', 'Delete')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -309,7 +337,7 @@ const WorkoutPlansManager = () => {
         },
       },
     ],
-    [t, handleTogglePlanActive, handleDeletePlan]
+    [t, formatDate, handleTogglePlanActive, handleDeletePlan]
   );
 
   if (!plans) return null;
@@ -326,6 +354,7 @@ const WorkoutPlansManager = () => {
           </CardTitle>
           <div className="flex gap-2">
             <Button
+              type="button"
               variant="outline"
               size={isMobile ? 'icon' : 'default'}
               onClick={toggleEditMode}
@@ -339,26 +368,36 @@ const WorkoutPlansManager = () => {
                   ? t('common.cancel', 'Cancel')
                   : t('common.select', 'Select')
               }
+              aria-label={
+                isEditMode
+                  ? t('common.cancel', 'Cancel')
+                  : t('common.select', 'Select')
+              }
             >
               {isEditMode ? (
                 isMobile ? (
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5" aria-hidden="true" />
                 ) : (
                   t('common.cancel', 'Cancel')
                 )
               ) : isMobile ? (
-                <CheckSquare className="w-5 h-5" />
+                <CheckSquare className="h-5 w-5" aria-hidden="true" />
               ) : (
                 t('common.select', 'Select')
               )}
             </Button>
             <Button
+              type="button"
               onClick={() => setIsAddPlanDialogOpen(true)}
               size={isMobile ? 'icon' : 'default'}
               className="shrink-0"
               title={t('workoutPlansManager.addPlanButton', 'Add Plan')}
+              aria-label={t('workoutPlansManager.addPlanButton', 'Add Plan')}
             >
-              <Plus className={isMobile ? 'h-5 w-5' : 'h-4 w-4 mr-2'} />
+              <Plus
+                className={isMobile ? 'h-5 w-5' : 'h-4 w-4'}
+                aria-hidden="true"
+              />
               {!isMobile && (
                 <span>
                   {t('workoutPlansManager.addPlanButton', 'Add Plan')}

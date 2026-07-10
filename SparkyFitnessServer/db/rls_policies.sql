@@ -661,7 +661,9 @@ CREATE POLICY modify_policy ON public.exercise_entry_sets FOR ALL TO PUBLIC
 USING (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_sets.exercise_entry_id AND has_diary_access(ee.user_id)))
 WITH CHECK (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_sets.exercise_entry_id AND has_diary_access(ee.user_id)));
 
--- Provider configs: admin-global (is_public) OR own OR family delegation
+-- Provider configs: admin-global (is_public) OR own OR family delegation.
+-- Strictly private types such as huaweihealth never pass the family branch;
+-- Huawei rows are also created with is_public=FALSE by the integration service.
 -- Drop any old policy names first (idempotent)
 DROP POLICY IF EXISTS select_policy ON public.external_data_providers;
 DROP POLICY IF EXISTS modify_policy ON public.external_data_providers;

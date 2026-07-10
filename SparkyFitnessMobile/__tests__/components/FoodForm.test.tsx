@@ -158,7 +158,7 @@ describe('FoodForm', () => {
     );
 
     fireEvent.changeText(screen.getByDisplayValue('100'), '150');
-    fireEvent.press(screen.getByText('Add Food'));
+    fireEvent.press(screen.getByText('إضافة الصنف'));
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -214,7 +214,11 @@ describe('FoodForm', () => {
     );
 
     fireEvent.changeText(screen.getByDisplayValue('100'), '150');
-    fireEvent(screen.getByLabelText('Auto Scale Nutrition'), 'valueChange', true);
+    fireEvent(
+      screen.getByLabelText('ضبط التغذية تلقائيًا'),
+      'valueChange',
+      true,
+    );
     fireEvent.changeText(screen.getByDisplayValue('150'), '200');
 
     expect(screen.getByDisplayValue('160')).toBeTruthy();
@@ -239,7 +243,7 @@ describe('FoodForm', () => {
       />,
     );
 
-    expect(screen.queryByLabelText('Auto Scale Nutrition')).toBeNull();
+    expect(screen.queryByLabelText('ضبط التغذية تلقائيًا')).toBeNull();
   });
 
   it('initializes auto scale from the provided default and still allows local toggle changes', () => {
@@ -263,7 +267,11 @@ describe('FoodForm', () => {
     fireEvent.changeText(screen.getByDisplayValue('100'), '150');
     expect(screen.getByDisplayValue('180')).toBeTruthy();
 
-    fireEvent(screen.getByLabelText('Auto Scale Nutrition'), 'valueChange', false);
+    fireEvent(
+      screen.getByLabelText('ضبط التغذية تلقائيًا'),
+      'valueChange',
+      false,
+    );
     fireEvent.changeText(screen.getByDisplayValue('150'), '200');
 
     expect(screen.getByDisplayValue('180')).toBeTruthy();
@@ -286,17 +294,17 @@ describe('FoodForm', () => {
     );
 
     const servingUnitPickerCall = mockBottomSheetPicker.mock.calls.find(
-      ([props]) => props.title === 'Select Unit',
+      ([props]) => props.title === 'اختيار الوحدة',
     );
 
     expect(servingUnitPickerCall?.[0].sections).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ title: 'Weight', options: expect.any(Array) }),
-        expect.objectContaining({ title: 'Volume', options: expect.any(Array) }),
+        expect.objectContaining({ title: 'الوزن', options: expect.any(Array) }),
+        expect.objectContaining({ title: 'الحجم', options: expect.any(Array) }),
         expect.objectContaining({
-          title: 'Quantity',
+          title: 'العدد',
           options: expect.arrayContaining([
-            expect.objectContaining({ label: 'portion', value: 'portion' }),
+            expect.objectContaining({ label: 'كمية', value: 'portion' }),
           ]),
         }),
       ]),
@@ -372,9 +380,11 @@ describe('FoodForm', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('1')).toBeTruthy();
     });
-    expect(screen.getByText('oz')).toBeTruthy();
+    expect(screen.getByText('أونصة')).toBeTruthy();
     expect(mockFoodUnitSelectorSheet).toHaveBeenCalled();
-    expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.title).toBe('Select Unit');
+    expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.title).toBe(
+      'اختيار الوحدة',
+    );
     expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.selectedSelection).toEqual({
       kind: 'existing',
       variant: {
@@ -454,7 +464,7 @@ describe('FoodForm', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('100')).toBeTruthy();
     });
-    expect(screen.getByText('kg')).toBeTruthy();
+    expect(screen.getByText('كجم')).toBeTruthy();
     expect(screen.getByDisplayValue('120000')).toBeTruthy();
     expect(screen.getByDisplayValue('10000')).toBeTruthy();
     expect(screen.getByDisplayValue('8000')).toBeTruthy();
@@ -521,7 +531,7 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByText('cup')).toBeTruthy();
+      expect(screen.getByText('كوب')).toBeTruthy();
     });
 
     expect(screen.getByDisplayValue('120')).toBeTruthy();
@@ -550,7 +560,7 @@ describe('FoodForm', () => {
     expect(latestSelectorProps?.showManualUpdateBanner).toBeUndefined();
     expect(
       screen.getByText(
-        "Can't convert between units. Update nutrition values manually.",
+        'ما نقدر نحوّل بين هالوحدات. حدّث القيم الغذائية يدويًا.',
       ),
     ).toBeTruthy();
   });
@@ -600,7 +610,7 @@ describe('FoodForm', () => {
 
     expect(
       screen.getByText(
-        "Can't convert between units. Update nutrition values manually.",
+        'ما نقدر نحوّل بين هالوحدات. حدّث القيم الغذائية يدويًا.',
       ),
     ).toBeTruthy();
   });
@@ -667,7 +677,9 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(false);
+      expect(
+        screen.getByLabelText('ضبط التغذية تلقائيًا').props.value,
+      ).toBe(false);
     });
   });
 
@@ -736,8 +748,12 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);
-      expect(screen.getByText('Convert with AI')).toBeTruthy();
+      expect(
+        screen.getByLabelText('ضبط التغذية تلقائيًا').props.value,
+      ).toBe(true);
+      expect(
+        screen.getByText('تقدير التحويل بالذكاء الاصطناعي'),
+      ).toBeTruthy();
     });
   });
 
@@ -814,7 +830,9 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);
+      expect(
+        screen.getByLabelText('ضبط التغذية تلقائيًا').props.value,
+      ).toBe(true);
     });
   });
 
@@ -875,12 +893,16 @@ describe('FoodForm', () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "Can't convert between units. Update nutrition values manually.",
+          'ما نقدر نحوّل بين هالوحدات. حدّث القيم الغذائية يدويًا.',
         ),
       ).toBeTruthy();
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(false);
+      expect(
+        screen.getByLabelText('ضبط التغذية تلقائيًا').props.value,
+      ).toBe(false);
     });
-    expect(screen.queryByText('Convert with AI')).toBeNull();
+    expect(
+      screen.queryByText('تقدير التحويل بالذكاء الاصطناعي'),
+    ).toBeNull();
   });
 
   it('shows the manual-update banner and AI button when an AI-selected unit swaps to an AI-convertible unit', async () => {
@@ -945,11 +967,15 @@ describe('FoodForm', () => {
       // below is the AI affordance when the swap is eligible.
       expect(
         screen.getByText(
-          "Can't convert between units. Update nutrition values manually.",
+          'ما نقدر نحوّل بين هالوحدات. حدّث القيم الغذائية يدويًا.',
         ),
       ).toBeTruthy();
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);
-      expect(screen.getByText('Convert with AI')).toBeTruthy();
+      expect(
+        screen.getByLabelText('ضبط التغذية تلقائيًا').props.value,
+      ).toBe(true);
+      expect(
+        screen.getByText('تقدير التحويل بالذكاء الاصطناعي'),
+      ).toBeTruthy();
     });
   });
 
@@ -997,20 +1023,22 @@ describe('FoodForm', () => {
       />,
     );
 
-    fireEvent.press(screen.getByText('Add Food'));
+    fireEvent.press(screen.getByText('إضافة الصنف'));
 
     expect(Alert.alert).toHaveBeenCalledWith(
-      'Manual Nutrition Update',
-      "Can't convert between units. Update nutrition values manually before saving.",
+      'تحديث القيم يدويًا',
+      'ما نقدر نحوّل بين هالوحدات. حدّث القيم الغذائية يدويًا قبل الحفظ.',
       expect.arrayContaining([
-        expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
-        expect.objectContaining({ text: 'Save Anyway' }),
+        expect.objectContaining({ text: 'إلغاء', style: 'cancel' }),
+        expect.objectContaining({ text: 'حفظ على أي حال' }),
       ]),
     );
     expect(onSubmit).not.toHaveBeenCalled();
 
     const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
-    const saveAnyway = buttons.find((button: { text: string }) => button.text === 'Save Anyway');
+    const saveAnyway = buttons.find(
+      (button: { text: string }) => button.text === 'حفظ على أي حال',
+    );
     saveAnyway?.onPress?.();
 
     expect(onSubmit).toHaveBeenCalled();
@@ -1151,7 +1179,7 @@ describe('FoodForm', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('100')).toBeTruthy();
     });
-    expect(screen.getByText('cup')).toBeTruthy();
+    expect(screen.getByText('كوب')).toBeTruthy();
     expect(screen.getAllByDisplayValue('0').length).toBeGreaterThanOrEqual(4);
   });
 
@@ -1224,7 +1252,7 @@ describe('FoodForm', () => {
       />,
     );
 
-    fireEvent.press(screen.getByText('Add Food'));
+    fireEvent.press(screen.getByText('إضافة الصنف'));
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1279,7 +1307,7 @@ describe('FoodForm', () => {
     // label below the unit row (no sparkle, no "AI ·" prefix). The "AI"
     // marker + sparkle is reserved for the dropdown rows inside the sheet
     // (mirroring web), which aren't rendered while the sheet is closed.
-    expect(screen.getByText(/Fair estimate/)).toBeTruthy();
+    expect(screen.getByText(/تقدير متوسط الثقة/)).toBeTruthy();
     expect(screen.queryByText(/^AI$/)).toBeNull();
   });
 
@@ -1321,12 +1349,12 @@ describe('FoodForm', () => {
       />,
     );
 
-    expect(screen.getByText(/Fair estimate/)).toBeTruthy();
+    expect(screen.getByText(/تقدير متوسط الثقة/)).toBeTruthy();
 
     fireEvent.changeText(screen.getByDisplayValue('120'), '150');
 
     await waitFor(() => {
-      expect(screen.queryByText(/Fair estimate/)).toBeNull();
+      expect(screen.queryByText(/تقدير متوسط الثقة/)).toBeNull();
     });
 
     expect(onUnitSelectionChange).toHaveBeenCalledWith(
@@ -1409,7 +1437,9 @@ describe('FoodForm', () => {
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByText('Convert with AI')).toBeTruthy();
+      expect(
+        screen.getByText('تقدير التحويل بالذكاء الاصطناعي'),
+      ).toBeTruthy();
     });
   });
 

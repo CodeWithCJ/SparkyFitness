@@ -59,26 +59,30 @@ export const SortableSetItem = React.memo(
     };
 
     const hasNotes = !!set.notes;
+    const setNumber = set.set_number ?? setIndex + 1;
     const typeBadgeClass =
       SET_TYPE_STYLES[set.set_type ?? ''] ?? 'bg-muted text-muted-foreground';
 
     return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className="group flex flex-col"
-        {...attributes}
-      >
-        <div className="flex items-center gap-2 px-1 py-1 rounded-md hover:bg-muted/50 transition-colors">
+      <div ref={setNodeRef} style={style} className="group flex flex-col">
+        <div className="flex min-w-[760px] items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-muted/50">
           {/* Drag handle */}
-          <div {...listeners} className="cursor-grab shrink-0">
-            <GripVertical className="h-4 w-4 text-muted-foreground/50" />
-          </div>
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="shrink-0 cursor-grab touch-none rounded-sm text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={t('workout.setItem.dragSet', 'Move set {{setNumber}}', {
+              setNumber,
+            })}
+          >
+            <GripVertical className="h-4 w-4" aria-hidden="true" />
+          </button>
 
-          <div className="grid grid-cols-[20px_140px_1fr_1fr_1fr_1fr_1fr_72px] gap-1.5 grow">
+          <div className="grid grow grid-cols-[20px_140px_1fr_1fr_1fr_1fr_1fr_72px] gap-1.5">
             {/* Set number badge */}
             <div className="h-8 flex items-center justify-center rounded-md border border-border/50 bg-muted text-xs font-semibold text-muted-foreground">
-              {set.set_number}
+              {setNumber}
             </div>
 
             {/* Type select with colored badge */}
@@ -88,14 +92,25 @@ export const SortableSetItem = React.memo(
                 onSetChange(exerciseIndex, setIndex, 'set_type', v)
               }
             >
-              <SelectTrigger className="h-8 text-xs font-medium px-2">
+              <SelectTrigger
+                className="h-8 px-2 text-xs font-medium"
+                aria-label={t(
+                  'workout.setItem.typeSet',
+                  'Set type for set {{setNumber}}',
+                  { setNumber }
+                )}
+              >
                 <span
                   className={cn(
                     'px-1.5 py-0.5 rounded-full text-[11px] font-medium truncate',
                     typeBadgeClass
                   )}
                 >
-                  {set.set_type || <SelectValue />}
+                  {set.set_type ? (
+                    t(`workout.setType.${set.set_type}`, set.set_type)
+                  ) : (
+                    <SelectValue />
+                  )}
                 </span>
               </SelectTrigger>
               <SelectContent>
@@ -119,6 +134,13 @@ export const SortableSetItem = React.memo(
             <Input
               className="h-8 text-sm"
               type="number"
+              inputMode="numeric"
+              dir="ltr"
+              aria-label={t(
+                'workout.setItem.repsSet',
+                'Repetitions for set {{setNumber}}',
+                { setNumber }
+              )}
               placeholder="—"
               value={set.reps ?? ''}
               onChange={(e) =>
@@ -138,6 +160,11 @@ export const SortableSetItem = React.memo(
               unit={weightUnit}
               type="weight"
               placeholder="—"
+              aria-label={t(
+                'workout.setItem.weightSet',
+                'Weight for set {{setNumber}}',
+                { setNumber }
+              )}
               onChange={(v) =>
                 onSetChange(exerciseIndex, setIndex, 'weight', v)
               }
@@ -147,11 +174,18 @@ export const SortableSetItem = React.memo(
             <Input
               className="h-8 text-sm"
               type="number"
+              inputMode="decimal"
+              dir="ltr"
               min="0"
               max="10"
               step="0.5"
               placeholder="—"
               value={set.rpe ?? ''}
+              aria-label={t(
+                'workout.setItem.rpeSet',
+                'Perceived exertion for set {{setNumber}}',
+                { setNumber }
+              )}
               onChange={(e) =>
                 onSetChange(
                   exerciseIndex,
@@ -168,7 +202,14 @@ export const SortableSetItem = React.memo(
               placeholder="—"
               decimals={2}
               step={0.01}
+              inputMode="decimal"
+              dir="ltr"
               value={set.duration ?? null}
+              aria-label={t(
+                'workout.setItem.durationSet',
+                'Duration in minutes for set {{setNumber}}',
+                { setNumber }
+              )}
               onValueChange={(v) =>
                 onSetChange(exerciseIndex, setIndex, 'duration', v ?? undefined)
               }
@@ -178,8 +219,15 @@ export const SortableSetItem = React.memo(
             <Input
               className="h-8 text-sm"
               type="number"
+              inputMode="numeric"
+              dir="ltr"
               placeholder="—"
               value={set.rest_time ?? ''}
+              aria-label={t(
+                'workout.setItem.restSet',
+                'Rest in seconds for set {{setNumber}}',
+                { setNumber }
+              )}
               onChange={(e) =>
                 onSetChange(
                   exerciseIndex,
@@ -191,33 +239,51 @@ export const SortableSetItem = React.memo(
             />
 
             {/* Actions — hidden until row hover */}
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 className={cn(
                   'h-7 w-7',
                   (hasNotes || showNotes) && 'text-blue-500'
                 )}
+                aria-label={t(
+                  'workout.setItem.toggleNotes',
+                  'Show or hide notes for set {{setNumber}}',
+                  { setNumber }
+                )}
                 onClick={() => setShowNotes(!showNotes)}
               >
-                <MessageSquare className="h-3.5 w-3.5" />
+                <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
+                aria-label={t(
+                  'workout.setItem.duplicateSet',
+                  'Duplicate set {{setNumber}}',
+                  { setNumber }
+                )}
                 onClick={() => onDuplicateSet(exerciseIndex, setIndex)}
               >
-                <Copy className="h-3.5 w-3.5" />
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 text-destructive/60 hover:text-destructive"
+                aria-label={t(
+                  'workout.setItem.removeSet',
+                  'Remove set {{setNumber}}',
+                  { setNumber }
+                )}
                 onClick={() => onRemoveSet(exerciseIndex, setIndex)}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -225,9 +291,14 @@ export const SortableSetItem = React.memo(
 
         {/* Notes */}
         {showNotes && (
-          <div className="pl-9 pr-1 pb-1">
+          <div className="pb-1 pe-1 ps-9">
             <Input
-              className="h-7 text-xs bg-muted/50 italic placeholder:not-italic"
+              className="h-7 bg-muted/50 text-xs italic placeholder:not-italic"
+              aria-label={t(
+                'workout.setItem.notesSet',
+                'Notes for set {{setNumber}}',
+                { setNumber }
+              )}
               placeholder={t(
                 'workout.notesPlaceholder',
                 'Add a note for this set...'

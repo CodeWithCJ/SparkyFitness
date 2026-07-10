@@ -25,21 +25,27 @@ const FoodSearchDialog = ({
   open,
   onOpenChange,
   onFoodSelect,
-  title = 'Search and Add Food',
-  description = 'Search for foods to add to your database.',
+  title,
+  description,
   hideDatabaseTab = false,
   hideMealTab = false,
   mealType = undefined,
 }: FoodSearchDialogProps) => {
   const { t } = useTranslation();
+  const resolvedTitle =
+    title ?? t('foodSearchDialog.title', 'Search and add food');
+  const resolvedDescription =
+    description ??
+    t(
+      'foodSearchDialog.description',
+      'Search for foods to add to your library.'
+    );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('foodSearchDialog.title', title)}</DialogTitle>
-          <DialogDescription>
-            {t('foodSearchDialog.description', description)}
-          </DialogDescription>
+          <DialogTitle>{resolvedTitle}</DialogTitle>
+          <DialogDescription>{resolvedDescription}</DialogDescription>
         </DialogHeader>
         <EnhancedFoodSearch
           onFoodSelect={onFoodSelect}

@@ -26,7 +26,7 @@ const BulkActionToolbar: React.FC<BulkActionToolbarProps> = ({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl px-4 py-3 flex items-center justify-between animate-in fade-in slide-in-from-bottom-8 duration-300">
+    <div className="fixed bottom-6 start-1/2 z-50 flex w-[90%] max-w-2xl -translate-x-1/2 animate-in items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-2xl duration-300 fade-in slide-in-from-bottom-8 rtl:translate-x-1/2 dark:border-gray-800 dark:bg-gray-900">
       <div className="flex items-center gap-3">
         <Checkbox
           id="select-all-toolbar"
@@ -57,7 +57,7 @@ const BulkActionToolbar: React.FC<BulkActionToolbarProps> = ({
           onClick={onClear}
           className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >
-          <X className="h-4 w-4 mr-1.5" />
+          <X className="h-4 w-4" />
           {t('common.cancel', 'Cancel')}
         </Button>
         <Button
@@ -66,7 +66,7 @@ const BulkActionToolbar: React.FC<BulkActionToolbarProps> = ({
           onClick={onDelete}
           className="rounded-xl shadow-sm px-4"
         >
-          <Trash2 className="h-4 w-4 mr-1.5" />
+          <Trash2 className="h-4 w-4" />
           {t('common.delete', 'Delete')}
         </Button>
       </div>

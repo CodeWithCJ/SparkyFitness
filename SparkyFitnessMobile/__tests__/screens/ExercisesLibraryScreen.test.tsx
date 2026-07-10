@@ -123,7 +123,7 @@ describe('ExercisesLibraryScreen', () => {
     const screen = renderScreen();
 
     await act(async () => {
-      fireEvent.changeText(screen.getByPlaceholderText('Search exercises...'), 'sq');
+      fireEvent.changeText(screen.getByPlaceholderText('ابحث في التمارين…'), 'sq');
     });
 
     expect(mockUseExercisesLibrary).toHaveBeenLastCalledWith('sq', { enabled: true });
@@ -140,8 +140,8 @@ describe('ExercisesLibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('No server configured')).toBeTruthy();
-    fireEvent.press(screen.getByText('Go to Settings'));
+    expect(screen.getByText('ما فيه خادم مربوط')).toBeTruthy();
+    fireEvent.press(screen.getByText('الذهاب للإعدادات'));
     expect(navigation.navigate).toHaveBeenCalledWith('Tabs', { screen: 'Settings' });
   });
 
@@ -153,8 +153,8 @@ describe('ExercisesLibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('Failed to load exercises')).toBeTruthy();
-    fireEvent.press(screen.getByText('Retry'));
+    expect(screen.getByText('ما قدرنا نحمّل التمارين')).toBeTruthy();
+    fireEvent.press(screen.getByText('حاول مرة ثانية'));
     expect(refetch).toHaveBeenCalled();
   });
 });

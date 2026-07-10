@@ -13,7 +13,9 @@ const mockBottomSheetControls = {
   }),
   dismiss: jest.fn(),
   onDismiss: undefined as (() => void) | undefined,
-  onAnimate: undefined as ((fromIndex: number, toIndex: number) => void) | undefined,
+  onAnimate: undefined as
+    | ((fromIndex: number, toIndex: number) => void)
+    | undefined,
 };
 
 jest.mock('@gorhom/bottom-sheet', () => {
@@ -35,15 +37,22 @@ jest.mock('@gorhom/bottom-sheet', () => {
           dismiss: mockBottomSheetControls.dismiss,
         }));
 
-        return React.createElement(View, { testID: 'add-sheet-modal' }, children);
+        return React.createElement(
+          View,
+          { testID: 'add-sheet-modal' },
+          children,
+        );
       },
     ),
-    BottomSheetView: ({ children }: any) => React.createElement(View, null, children),
+    BottomSheetView: ({ children }: any) =>
+      React.createElement(View, null, children),
     BottomSheetBackdrop: () => null,
   };
 });
 
-function renderAddSheet(overrides: Partial<React.ComponentProps<typeof AddSheet>> = {}) {
+function renderAddSheet(
+  overrides: Partial<React.ComponentProps<typeof AddSheet>> = {},
+) {
   const ref = React.createRef<AddSheetRef>();
   const props = {
     onAddFood: jest.fn(),
@@ -61,7 +70,10 @@ function renderAddSheet(overrides: Partial<React.ComponentProps<typeof AddSheet>
 }
 
 describe('AddSheet', () => {
-  let requestAnimationFrameSpy: jest.SpyInstance<number, [FrameRequestCallback]>;
+  let requestAnimationFrameSpy: jest.SpyInstance<
+    number,
+    [FrameRequestCallback]
+  >;
   let cancelAnimationFrameSpy: jest.SpyInstance<void, [number]>;
 
   beforeEach(() => {
@@ -122,16 +134,19 @@ describe('AddSheet', () => {
     const { ref, getByText } = renderAddSheet();
 
     act(() => ref.current?.present());
-    expect(getByText('Measurements')).toBeTruthy();
+    expect(getByText('القياسات')).toBeTruthy();
   });
 
   it('invokes onSyncHealthData when the secondary Sync Health Data row is pressed', () => {
     const onSyncHealthData = jest.fn();
     const onDismissWithoutAction = jest.fn();
-    const { ref, getByText } = renderAddSheet({ onSyncHealthData, onDismissWithoutAction });
+    const { ref, getByText } = renderAddSheet({
+      onSyncHealthData,
+      onDismissWithoutAction,
+    });
 
     act(() => ref.current?.present());
-    fireEvent.press(getByText('Sync Health Data'));
+    fireEvent.press(getByText('مزامنة البيانات الصحية'));
     act(() => mockBottomSheetControls.onDismiss?.());
 
     expect(onSyncHealthData).toHaveBeenCalledTimes(1);
@@ -143,14 +158,14 @@ describe('AddSheet', () => {
 
     act(() => ref.current?.present({ initialMenu: 'exercise' }));
 
-    expect(getByText('Workout')).toBeTruthy();
-    expect(getByText('Live sets & reps')).toBeTruthy();
-    expect(getByText('Activity')).toBeTruthy();
-    expect(getByText('Log Workout')).toBeTruthy();
-    expect(getByText('Past sets & reps')).toBeTruthy();
+    expect(getByText('تمرين مباشر')).toBeTruthy();
+    expect(getByText('مجموعات وتكرارات مباشرة')).toBeTruthy();
+    expect(getByText('نشاط')).toBeTruthy();
+    expect(getByText('تسجيل تمرين سابق')).toBeTruthy();
+    expect(getByText('مجموعات وتكرارات سابقة')).toBeTruthy();
     expect(queryByText('Preset')).toBeNull();
 
-    fireEvent.press(getByText('Workout'));
+    fireEvent.press(getByText('تمرين مباشر'));
     expect(props.onStartWorkout).toHaveBeenCalledTimes(1);
     expect(props.onLogWorkout).not.toHaveBeenCalled();
   });
@@ -159,7 +174,7 @@ describe('AddSheet', () => {
     const { ref, props, getByText } = renderAddSheet();
 
     act(() => ref.current?.present({ initialMenu: 'exercise' }));
-    fireEvent.press(getByText('Log Workout'));
+    fireEvent.press(getByText('تسجيل تمرين سابق'));
 
     expect(props.onLogWorkout).toHaveBeenCalledTimes(1);
     expect(props.onStartWorkout).not.toHaveBeenCalled();

@@ -3,6 +3,12 @@ import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import MacroCompositionRing from './MacroCompositionRing';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
+import {
+  formatMobileNumber,
+  localizeNutrient,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 export interface NutritionGoalPercentages {
   calories?: number | null;
@@ -31,6 +37,22 @@ interface NutritionMacroCardProps {
 const RING_SIZE = 130;
 const RING_STROKE = 12;
 
+function formatRoundedNumber(value: number): string {
+  return formatMobileNumber(Math.round(value), {
+    maximumFractionDigits: 0,
+  });
+}
+
+function formatMacroAmount(value: number): string {
+  return `${formatRoundedNumber(value)} ${localizeServingUnit('g')}`;
+}
+
+function formatGoalPercent(value: number): string {
+  return mobileT('nutrition.goalPercent', {
+    percent: formatMobileNumber(value, { maximumFractionDigits: 1 }),
+  });
+}
+
 const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
   calories,
   protein,
@@ -51,7 +73,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
 
   const useNetCarbs = showNetCarbs && fiber !== undefined;
   const displayCarbs = useNetCarbs ? getNetCarbsValue(carbs, fiber) : carbs;
-  const carbsLabel = useNetCarbs ? 'Net Carbs' : 'Carbs';
+  const carbsLabel = localizeNutrient(useNetCarbs ? 'netCarbs' : 'carbs');
 
   const proteinCals = protein * 4;
   const carbsCals = displayCarbs * 4;
@@ -70,7 +92,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
   const macros = [
     {
       key: 'Protein',
-      label: 'Protein',
+      label: localizeNutrient('protein'),
       value: protein,
       color: proteinColor,
       goalPercent: goalPercentages?.protein,
@@ -84,7 +106,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
     },
     {
       key: 'Fat',
-      label: 'Fat',
+      label: localizeNutrient('fat'),
       value: fat,
       color: fatColor,
       goalPercent: goalPercentages?.fat,
@@ -107,14 +129,16 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
 
       {showGoalProgress ? (
         <View className="flex-row items-center">
-          <View className="flex-1 items-center pr-10">
+          <View className="flex-1 items-center" style={{ paddingEnd: 40 }}>
             <Text className="text-text-primary text-3xl font-medium">
-              {Math.round(calories)}
+              {formatRoundedNumber(calories)}
             </Text>
-            <Text className="text-text-secondary text-base mt-2">calories</Text>
+            <Text className="text-text-secondary text-base mt-2">
+              {mobileT('nutrition.calories')}
+            </Text>
             {goalPercentages?.calories != null ? (
               <Text className="text-text-muted text-sm mt-1">
-                {goalPercentages.calories}% of goal
+                {formatGoalPercent(goalPercentages.calories)}
               </Text>
             ) : null}
           </View>
@@ -128,7 +152,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                   <View className="flex-row justify-between mb-1">
                     <Text className="text-text-secondary text-sm">{macro.label}</Text>
                     <Text className="text-text-primary text-sm font-medium">
-                      {Math.round(macro.value)}g
+                      {formatMacroAmount(macro.value)}
                     </Text>
                   </View>
                   <View className="h-2 rounded-full bg-progress-track overflow-hidden">
@@ -144,7 +168,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                   </View>
                   {goalPct != null ? (
                     <Text className="text-text-muted text-xs mt-1">
-                      {goalPct}% of goal
+                      {formatGoalPercent(goalPct)}
                     </Text>
                   ) : null}
                 </View>
@@ -167,13 +191,15 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
             />
             <View className="absolute items-center justify-center">
               <Text className="text-text-primary text-3xl font-medium">
-                {Math.round(calories)}
+                {formatRoundedNumber(calories)}
               </Text>
-              <Text className="text-text-secondary text-xs mt-0.5">calories</Text>
+              <Text className="text-text-secondary text-xs mt-0.5">
+                {mobileT('nutrition.calories')}
+              </Text>
             </View>
           </View>
 
-          <View className="flex-1 gap-3 pl-5">
+          <View className="flex-1 gap-3" style={{ paddingStart: 20 }}>
             {macros.map((macro) => (
               <View key={macro.key} className="flex-row items-center gap-2">
                 <View
@@ -186,7 +212,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                 />
                 <Text className="text-text-secondary text-sm flex-1">{macro.label}</Text>
                 <Text className="text-text-primary text-sm font-medium">
-                  {Math.round(macro.value)}g
+                  {formatMacroAmount(macro.value)}
                 </Text>
               </View>
             ))}

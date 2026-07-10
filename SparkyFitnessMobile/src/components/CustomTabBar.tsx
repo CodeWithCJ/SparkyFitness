@@ -1,9 +1,16 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, Platform, StyleSheet } from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  Platform,
+  StyleSheet,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Icon, { type IconName } from './Icon';
+import { mobileT } from '../localization';
 
 export const TAB_BAR_HEIGHT = 56;
 /**
@@ -21,11 +28,14 @@ const TAB_ICONS: Record<string, IconName> = {
   Settings: 'settings',
 };
 
-const CustomTabBar: React.FC<BottomTabBarProps> = ({
-  state,
-  descriptors,
-  navigation,
-}) => {
+const TAB_LABEL_KEYS = {
+  Dashboard: 'tabs.dashboard',
+  Diary: 'tabs.diary',
+  Library: 'tabs.library',
+  Settings: 'tabs.settings',
+} as const;
+
+const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   const insets = useSafeAreaInsets();
   const [chrome, chromeBorder, tabActive, tabInactive, accentPrimary] =
     useCSSVariable([
@@ -47,7 +57,6 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
       }}
     >
       {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
         const isFocused = state.index === index;
         const isAddButton = route.name === 'Add';
 
@@ -76,10 +85,13 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
 
         if (isAddButton) {
           return (
-            <View key={route.key} className="flex-1 items-center justify-end pb-1">
+            <View
+              key={route.key}
+              className="flex-1 items-center justify-end pb-1"
+            >
               <TouchableOpacity
                 accessibilityRole="button"
-                accessibilityLabel={options.tabBarAccessibilityLabel ?? 'Add'}
+                accessibilityLabel={mobileT('tabs.add')}
                 onPress={onPress}
                 onLongPress={onLongPress}
                 activeOpacity={0.8}
@@ -105,10 +117,9 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
           );
         }
 
-        const label =
-          typeof options.tabBarLabel === 'string'
-            ? options.tabBarLabel
-            : options.title ?? route.name;
+        const labelKey =
+          TAB_LABEL_KEYS[route.name as keyof typeof TAB_LABEL_KEYS];
+        const label = labelKey ? mobileT(labelKey) : route.name;
         const iconName = TAB_ICONS[route.name];
         const tintColor = isFocused ? tabActive : tabInactive;
 
@@ -117,7 +128,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
             key={route.key}
             accessibilityRole="button"
             accessibilityState={isFocused ? { selected: true } : undefined}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
+            accessibilityLabel={label}
             onPress={onPress}
             onLongPress={onLongPress}
             className="flex-1 items-center justify-center pt-2 pb-1 gap-0.5"
@@ -131,7 +142,9 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
               />
             )}
             <Text
-              className={`text-[10px] ${isFocused ? 'font-semibold' : 'font-medium'}`}
+              className={`text-[10px] ${
+                isFocused ? 'font-semibold' : 'font-medium'
+              }`}
               style={{ color: tintColor }}
               numberOfLines={1}
             >

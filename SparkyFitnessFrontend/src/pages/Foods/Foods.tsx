@@ -68,6 +68,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 const FoodDatabaseManager = () => {
   const { t } = useTranslation();
@@ -170,14 +171,14 @@ const FoodDatabaseManager = () => {
     (food: Food) => {
       if (!food.user_id) {
         return (
-          <Badge variant="outline" className="text-xs w-fit">
+          <Badge variant="outline" className="w-fit text-xs">
             {t('foodDatabaseManager.system', 'System')}
           </Badge>
         );
       }
       if (food.user_id === user?.id && !food.shared_with_public) {
         return (
-          <Badge variant="secondary" className="text-xs w-fit">
+          <Badge variant="secondary" className="w-fit text-xs">
             {t('foodDatabaseManager.private', 'Private')}
           </Badge>
         );
@@ -185,7 +186,7 @@ const FoodDatabaseManager = () => {
       return (
         <Badge
           variant="outline"
-          className="text-xs w-fit bg-blue-50 text-blue-700"
+          className="w-fit bg-blue-50 text-xs text-blue-700"
         >
           {t('foodDatabaseManager.family', 'Family')}
         </Badge>
@@ -204,14 +205,21 @@ const FoodDatabaseManager = () => {
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
-            aria-label="Select all"
+            aria-label={t(
+              'foodDatabaseManager.selectAllFoods',
+              'Select all foods'
+            )}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label={t(
+              'foodDatabaseManager.selectFood',
+              'Select {{foodName}}',
+              { foodName: row.original.name }
+            )}
             disabled={!canEdit(row.original)}
           />
         ),
@@ -226,15 +234,15 @@ const FoodDatabaseManager = () => {
         cell: ({ row }) => {
           const food = row.original;
           return (
-            <div className="flex flex-col gap-1 min-w-[150px]">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex min-w-[150px] flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-bold text-gray-900 dark:text-gray-100">
                   {food.name}
                 </span>
                 {food.brand && (
                   <Badge
                     variant="secondary"
-                    className="text-[10px] h-5 px-1.5 font-black uppercase tracking-tight bg-blue-100/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50"
+                    className="h-5 border border-blue-200/50 bg-blue-100/50 px-1.5 text-[10px] font-black uppercase tracking-tight text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                   >
                     {food.brand}
                   </Badge>
@@ -243,9 +251,9 @@ const FoodDatabaseManager = () => {
                 {food.shared_with_public && (
                   <Badge
                     variant="outline"
-                    className="text-[10px] bg-green-50 text-green-700 h-5 px-1.5 font-bold"
+                    className="h-5 bg-green-50 px-1.5 text-[10px] font-bold text-green-700"
                   >
-                    <Share2 className="h-2.5 w-2.5 mr-1" />
+                    <Share2 className="me-1 h-2.5 w-2.5" aria-hidden="true" />
                     {t('foodDatabaseManager.public', 'Public')}
                   </Badge>
                 )}
@@ -275,7 +283,7 @@ const FoodDatabaseManager = () => {
             <div className="flex flex-col text-center">
               <span>{t(meta.label, meta.defaultLabel)}</span>
               <span className="text-[10px] font-normal text-muted-foreground">
-                ({meta.unit})
+                ({getLocalizedUnitLabel(meta.unit, t)})
               </span>
             </div>
           ),
@@ -316,8 +324,15 @@ const FoodDatabaseManager = () => {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
+                <Button
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  aria-label={t(
+                    'foodDatabaseManager.openFoodActions',
+                    'Open actions for {{foodName}}',
+                    { foodName: food.name }
+                  )}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -326,21 +341,21 @@ const FoodDatabaseManager = () => {
                   {t('common.actions', 'Actions')}
                 </DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => setViewingFood(food)}>
-                  <Eye className="mr-2 h-4 w-4" />
+                  <Eye className="me-2 h-4 w-4" />
                   {t('common.view', 'View details')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!isEditable}
                   onClick={() => handleEdit(food)}
                 >
-                  <Edit className="mr-2 h-4 w-4" />
+                  <Edit className="me-2 h-4 w-4" />
                   {t('foodDatabaseManager.editFood', 'Edit food')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={isDuplicating}
                   onClick={() => handleDuplicate(food)}
                 >
-                  <Copy className="mr-2 h-4 w-4" />
+                  <Copy className="me-2 h-4 w-4" />
                   {t('foodDatabaseManager.duplicateFood', 'Duplicate food')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -354,12 +369,12 @@ const FoodDatabaseManager = () => {
                 >
                   {food.shared_with_public ? (
                     <>
-                      <Lock className="mr-2 h-4 w-4" />
+                      <Lock className="me-2 h-4 w-4" />
                       {t('foodDatabaseManager.makePrivate', 'Make private')}
                     </>
                   ) : (
                     <>
-                      <Share2 className="mr-2 h-4 w-4" />
+                      <Share2 className="me-2 h-4 w-4" />
                       {t(
                         'foodDatabaseManager.shareWithPublic',
                         'Share with public'
@@ -373,7 +388,7 @@ const FoodDatabaseManager = () => {
                   className="text-destructive focus:text-destructive"
                   onClick={() => handleDeleteRequest(food)}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="me-2 h-4 w-4" />
                   {t('foodDatabaseManager.deleteFood', 'Delete food')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -414,16 +429,16 @@ const FoodDatabaseManager = () => {
       {/* Food Database Section */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
+          <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">
             {t('foodDatabaseManager.foodDatabase', 'Food Database')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {/* Controls */}
-          <div className="flex flex-col gap-4 mb-4">
+          <div className="mb-4 flex flex-col gap-4">
             <div className="flex flex-row flex-wrap items-center gap-4">
-              <div className="relative flex-1 min-w-[180px]">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <div className="relative min-w-[180px] flex-1">
+                <Search className="absolute start-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder={t(
                     'foodDatabaseManager.searchFoodsPlaceholder',
@@ -431,7 +446,7 @@ const FoodDatabaseManager = () => {
                   )}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="ps-10"
                 />
               </div>
 
@@ -471,7 +486,7 @@ const FoodDatabaseManager = () => {
                 </Select>
               </div>
 
-              <div className="flex gap-2 shrink-0 ml-auto">
+              <div className="ms-auto flex shrink-0 gap-2">
                 <Button
                   variant="outline"
                   size={isMobile ? 'icon' : 'default'}
@@ -482,6 +497,11 @@ const FoodDatabaseManager = () => {
                       : ''
                   }`}
                   title={
+                    isEditMode
+                      ? t('common.cancel', 'Cancel')
+                      : t('common.select', 'Select')
+                  }
+                  aria-label={
                     isEditMode
                       ? t('common.cancel', 'Cancel')
                       : t('common.select', 'Select')
@@ -504,8 +524,12 @@ const FoodDatabaseManager = () => {
                   onClick={() => setShowFoodSearchDialog(true)}
                   className="shrink-0"
                   title={t('foodDatabaseManager.addNewFood', 'Add New Food')}
+                  aria-label={t(
+                    'foodDatabaseManager.addNewFood',
+                    'Add New Food'
+                  )}
                 >
-                  <Plus className={isMobile ? 'w-5 h-5' : 'w-4 h-4 mr-2'} />
+                  <Plus className={isMobile ? 'h-5 w-5' : 'me-2 h-4 w-4'} />
                   {!isMobile && (
                     <span>
                       {t('foodDatabaseManager.addNewFood', 'Add New Food')}
@@ -597,7 +621,7 @@ const FoodDatabaseManager = () => {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent
           requireConfirmation
-          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+          className="max-h-[90vh] max-w-4xl overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle>
@@ -624,7 +648,7 @@ const FoodDatabaseManager = () => {
       >
         <DialogContent
           requireConfirmation
-          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+          className="max-h-[90vh] max-w-4xl overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle>
@@ -687,9 +711,9 @@ const FoodDatabaseManager = () => {
         open={!!viewingFood}
         onOpenChange={(open) => !open && setViewingFood(null)}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+            <DialogTitle className="flex items-center gap-3 text-2xl font-bold">
               {viewingFood?.name}
               {viewingFood?.brand && (
                 <Badge
@@ -711,7 +735,7 @@ const FoodDatabaseManager = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {Array.from(
               new Set([
                 ...visibleNutrients,
@@ -736,15 +760,15 @@ const FoodDatabaseManager = () => {
               return (
                 <div
                   key={nutrient}
-                  className="flex flex-col p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
+                  className="flex flex-col rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800"
                 >
-                  <span className="text-[10px] uppercase font-bold text-gray-500 mb-1">
+                  <span className="mb-1 text-[10px] font-bold uppercase text-gray-500">
                     {t(meta.label, meta.defaultLabel)}
                   </span>
                   <span className={cn('text-lg font-bold', meta.color)}>
                     {formatNutrientValue(nutrient, val, customNutrients)}
-                    <span className="text-xs ml-1 font-normal text-gray-400">
-                      {meta.unit}
+                    <span className="ms-1 text-xs font-normal text-gray-400">
+                      {getLocalizedUnitLabel(meta.unit, t)}
                     </span>
                   </span>
                 </div>

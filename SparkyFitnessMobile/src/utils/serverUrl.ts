@@ -1,5 +1,6 @@
 import ipaddr from 'ipaddr.js';
 import { Platform } from 'react-native';
+import { mobileT } from '../localization';
 
 /** Trims whitespace and any trailing slashes from a server URL. */
 export const normalizeUrl = (url: string): string => url.trim().replace(/\/+$/, '');
@@ -72,5 +73,5 @@ export const getInsecureUrlError = (url: string): string | null => {
   if (__DEV__ && isPrivateOrLocalHost(url)) return null;
 
   const healthPolicy = Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
-  return `HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`;
+  return mobileT('server.httpsRequired', { healthPolicy });
 };

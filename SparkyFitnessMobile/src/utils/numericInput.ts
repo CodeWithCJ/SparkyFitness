@@ -23,11 +23,29 @@
  * rejected at keystroke time — {@link parseDecimalInput} applies strict
  * structural validation when the value is actually read.
  */
-export const DECIMAL_INPUT_REGEX = /^[\d.,\s\u00a0\u202f]*$/;
+export const DECIMAL_INPUT_REGEX =
+  /^[\d\u0660-\u0669\u06f0-\u06f9.,\u066b\u066c\s\u00a0\u202f]*$/;
+
+/** Whole-number input filter with Arabic-Indic and Persian digit support. */
+export const INTEGER_INPUT_REGEX = /^[\d\u0660-\u0669\u06f0-\u06f9]*$/;
 
 const WHITESPACE_REGEX = /[\s\u00a0\u202f]/g;
 const OUTER_WHITESPACE_REGEX = /^[\s\u00a0\u202f]+|[\s\u00a0\u202f]+$/g;
 const HAS_INNER_WHITESPACE_REGEX = /[\s\u00a0\u202f]/;
+const ARABIC_INDIC_DIGITS_REGEX = /[\u0660-\u0669]/g;
+const PERSIAN_DIGITS_REGEX = /[\u06f0-\u06f9]/g;
+
+export function normalizeLocalizedDigits(value: string): string {
+  return value
+    .replace(ARABIC_INDIC_DIGITS_REGEX, digit =>
+      String(digit.charCodeAt(0) - 0x0660),
+    )
+    .replace(PERSIAN_DIGITS_REGEX, digit =>
+      String(digit.charCodeAt(0) - 0x06f0),
+    )
+    .replace(/\u066b/g, '.')
+    .replace(/\u066c/g, ',');
+}
 // Space-grouped thousands (French/Scandinavian): leading 1–3 digits, then
 // one or more groups of exactly 3 digits each separated by a single space
 // character (including U+00A0 / U+202F, which is what Intl.NumberFormat
@@ -49,12 +67,12 @@ const SPACE_THOUSANDS = /^\d{1,3}(?:[\s\u00a0\u202f]\d{3})+(?:[.,]\d+)?$/;
 // (`"1,234.56"` / `"1.234,56"`) stay unambiguous and still parse as
 // thousands even with a single group.
 const PLAIN_INT = /^\d+$/;
-const US_THOUSANDS_WITH_DECIMAL = /^\d{1,3}(?:,\d{3})+\.\d+$/;   // 1,234.56 / 1,234,567.89
-const US_THOUSANDS = /^\d{1,3}(?:,\d{3}){2,}$/;                   // 1,234,567 (≥2 groups)
-const EU_THOUSANDS_WITH_DECIMAL = /^\d{1,3}(?:\.\d{3})+,\d+$/;    // 1.234,56 / 1.234.567,89
-const EU_THOUSANDS = /^\d{1,3}(?:\.\d{3}){2,}$/;                  // 1.234.567 (≥2 groups)
-const DOT_DECIMAL = /^(?:\d+\.\d*|\.\d+)$/;                       // 1.5 / 1. / .5
-const COMMA_DECIMAL = /^(?:\d+,\d*|,\d+)$/;                       // 1,5 / 1, / ,5
+const US_THOUSANDS_WITH_DECIMAL = /^\d{1,3}(?:,\d{3})+\.\d+$/; // 1,234.56 / 1,234,567.89
+const US_THOUSANDS = /^\d{1,3}(?:,\d{3}){2,}$/; // 1,234,567 (≥2 groups)
+const EU_THOUSANDS_WITH_DECIMAL = /^\d{1,3}(?:\.\d{3})+,\d+$/; // 1.234,56 / 1.234.567,89
+const EU_THOUSANDS = /^\d{1,3}(?:\.\d{3}){2,}$/; // 1.234.567 (≥2 groups)
+const DOT_DECIMAL = /^(?:\d+\.\d*|\.\d+)$/; // 1.5 / 1. / .5
+const COMMA_DECIMAL = /^(?:\d+,\d*|,\d+)$/; // 1,5 / 1, / ,5
 
 /**
  * Parse a user-entered decimal string. Accepts both `.` and `,` as the
@@ -69,7 +87,10 @@ export function parseDecimalInput(value: string | null | undefined): number {
   // Trim outer whitespace only — interior whitespace must be validated
   // before it is stripped, otherwise malformed input like `"1 23,4"` would
   // silently collapse to `"123,4"` and parse as a plausible number.
-  const outerTrimmed = value.replace(OUTER_WHITESPACE_REGEX, '');
+  const outerTrimmed = normalizeLocalizedDigits(value).replace(
+    OUTER_WHITESPACE_REGEX,
+    '',
+  );
   if (outerTrimmed === '') return NaN;
 
   let s: string;

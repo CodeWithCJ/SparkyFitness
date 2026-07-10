@@ -10,6 +10,7 @@ import {
 } from '../services/api/workoutPresetsApi';
 import { workoutPresetsQueryKey } from './queryKeys';
 import type { WorkoutPreset } from '../types/workoutPresets';
+import { mobileT } from '../localization';
 
 const isAuthzError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
@@ -34,8 +35,8 @@ export function useCreateWorkoutPreset() {
     onError: () => {
       Toast.show({
         type: 'error',
-        text1: 'Could not create workout preset',
-        text2: 'Please try again.',
+        text1: mobileT('workoutPresetMutation.createFailed'),
+        text2: mobileT('common.retry'),
       });
     },
   });
@@ -56,9 +57,13 @@ export function useUpdateWorkoutPreset() {
     },
     onError: (error) => {
       const message = isAuthzError(error)
-        ? "You don't have permission to edit this preset."
-        : 'Please try again.';
-      Toast.show({ type: 'error', text1: 'Failed to update preset', text2: message });
+        ? mobileT('workoutPresetMutation.editForbidden')
+        : mobileT('common.retry');
+      Toast.show({
+        type: 'error',
+        text1: mobileT('workoutPresetMutation.updateFailed'),
+        text2: message,
+      });
     },
   });
 
@@ -86,19 +91,27 @@ export function useDeleteWorkoutPreset({ presetId, onSuccess }: UseDeleteWorkout
     },
     onError: (error) => {
       const message = isAuthzError(error)
-        ? "You don't have permission to delete this preset."
-        : 'Please try again.';
-      Toast.show({ type: 'error', text1: 'Failed to delete preset', text2: message });
+        ? mobileT('workoutPresetMutation.deleteForbidden')
+        : mobileT('common.retry');
+      Toast.show({
+        type: 'error',
+        text1: mobileT('workoutPresetMutation.deleteFailed'),
+        text2: message,
+      });
     },
   });
 
   const confirmAndDelete = () => {
     Alert.alert(
-      'Delete Workout Preset?',
-      'This preset will be permanently removed from your library.',
+      mobileT('workoutPresetMutation.deleteTitle'),
+      mobileT('workoutPresetMutation.deleteDescription'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => mutation.mutate() },
+        { text: mobileT('common.cancel'), style: 'cancel' },
+        {
+          text: mobileT('common.delete'),
+          style: 'destructive',
+          onPress: () => mutation.mutate(),
+        },
       ],
     );
   };

@@ -39,7 +39,12 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
   return {
     __esModule: true,
     METRIC_OPTIONS: ['rpe', 'volume', 'e1rm', 'tenrm'],
-    METRIC_MENU_LABELS: { rpe: 'RPE', volume: 'Volume', e1rm: 'Est. 1RM', tenrm: 'Est. 10RM' },
+    METRIC_MENU_LABELS: {
+      rpe: 'مقياس الجهد (RPE)',
+      volume: 'الحجم التدريبي',
+      e1rm: 'الوزن التقديري لتكرار واحد',
+      tenrm: 'الوزن التقديري لـ ١٠ تكرارات',
+    },
     default: (props: any) => {
       const id = props.exercise.id;
       const firstSetId = String(props.exercise.sets[0]?.id);
@@ -290,9 +295,9 @@ describe('WorkoutFormExerciseList', () => {
         makeExercise('c'),
       ]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.getByText('Superset with…')).toBeTruthy();
-      expect(utils.getByText('Remove from superset')).toBeTruthy();
-      expect(utils.getByText('Remove exercise')).toBeTruthy();
+      expect(utils.getByText('سوبر سِت مع…')).toBeTruthy();
+      expect(utils.getByText('إزالة من السوبر سِت')).toBeTruthy();
+      expect(utils.getByText('إزالة التمرين')).toBeTruthy();
     });
 
     it('hides Superset with… when there are no ungrouped candidates', () => {
@@ -301,8 +306,8 @@ describe('WorkoutFormExerciseList', () => {
         makeExercise('b', { supersetGroup: 1 }),
       ]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.queryByText('Superset with…')).toBeNull();
-      expect(utils.getByText('Remove from superset')).toBeTruthy();
+      expect(utils.queryByText('سوبر سِت مع…')).toBeNull();
+      expect(utils.getByText('إزالة من السوبر سِت')).toBeTruthy();
     });
 
     it('drives the pick flow: Superset with… lists candidates and dispatches supersetWith', () => {
@@ -336,7 +341,7 @@ describe('WorkoutFormExerciseList', () => {
     it('no longer offers Reorder exercises in the card menu (moved to the screen header)', () => {
       const utils = renderList([makeExercise('a'), makeExercise('b')]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.queryByText('Reorder exercises')).toBeNull();
+      expect(utils.queryByText('إعادة ترتيب التمارين')).toBeNull();
     });
   });
 
@@ -344,7 +349,7 @@ describe('WorkoutFormExerciseList', () => {
     it('omits the View exercise menu item when onViewExercise is absent', () => {
       const utils = renderList([makeExercise('a')]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.queryByText('View exercise')).toBeNull();
+      expect(utils.queryByText('عرض تفاصيل التمرين')).toBeNull();
       expect(utils.queryByTestId('menu-item-view')).toBeNull();
     });
 
@@ -400,7 +405,7 @@ describe('WorkoutFormExerciseList', () => {
 
     // Every set type (current one check-marked) plus a Delete item.
     expect(utils.getByTestId('menu-item-warmup')).toBeTruthy();
-    expect(utils.getByText('✓ Normal')).toBeTruthy();
+    expect(utils.getByText('✓ عادية')).toBeTruthy();
     expect(utils.getByTestId('menu-item-drop')).toBeTruthy();
     expect(utils.getByTestId('menu-item-failure')).toBeTruthy();
     expect(utils.getByTestId('menu-item-delete')).toBeTruthy();
@@ -524,7 +529,7 @@ describe('WorkoutFormExerciseList', () => {
 
   it('renders the Add Exercise footer', () => {
     const utils = renderList([makeExercise('a')]);
-    fireEvent.press(utils.getByText('Add Exercise'));
+    fireEvent.press(utils.getByText('إضافة تمرين'));
     expect(utils.callbacks.onAddExercisePress).toHaveBeenCalledTimes(1);
   });
 

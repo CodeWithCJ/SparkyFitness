@@ -306,6 +306,7 @@ const AddExternalProviderForm = ({
                       label: type.display_name,
                       is_strictly_private: type.is_strictly_private,
                     }))
+                    .filter((type) => type.value !== 'huaweihealth')
                     .filter((type) => !isAdminMode || !type.is_strictly_private)
                     .map((type) => (
                       <SelectItem key={type.value} value={type.value}>

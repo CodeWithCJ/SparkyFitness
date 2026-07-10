@@ -7,6 +7,7 @@ import Icon, { IconName } from '../components/Icon';
 import type { RootStackScreenProps } from '../types/navigation';
 import { markFoodPhotoIntroSeen } from '../services/foodPhotoIntro';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { mobileT } from '../localization';
 
 type Props = RootStackScreenProps<'FoodPhotoIntro'>;
 
@@ -64,6 +65,8 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="p-2"
+          accessibilityLabel={mobileT('common.back')}
+          accessibilityRole="button"
         >
           <Icon name="chevron-back" size={22} color={textPrimary} />
         </TouchableOpacity>
@@ -72,36 +75,35 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <View className="flex-1 px-6">
         <Text className="text-text-primary text-2xl font-semibold">
-          Estimate nutrition from a photo
+          {mobileT('foodPhoto.introTitle')}
         </Text>
         <Text className="text-text-secondary text-base mt-2 mb-6">
-          Turn a meal photo into an editable nutrition estimate.
+          {mobileT('foodPhoto.introDescription')}
         </Text>
 
         <Bullet
           icon="scale"
           iconColor={accentPrimary}
           iconBackground={`${accentPrimary}1F`}
-          title="Add weight when you know it"
+          title={mobileT('foodPhoto.weightTitle')}
         >
-          A total meal weight helps with portions, calories, and macros.
+          {mobileT('foodPhoto.weightDescription')}
         </Bullet>
         <Bullet
           icon="document-text"
           iconColor={catViolet}
           iconBackground={`${catViolet}1F`}
-          title="Add a short description"
+          title={mobileT('foodPhoto.descriptionTitle')}
         >
-          Mention sauces, oils, toppings, restaurant names, or anything hidden.
+          {mobileT('foodPhoto.descriptionDescription')}
         </Bullet>
         <Bullet
           icon="pencil"
           iconColor={catOrange}
           iconBackground={`${catOrange}1F`}
-          title="Review before saving"
+          title={mobileT('foodPhoto.reviewTitle')}
         >
-          Photo estimates are a starting point. You&apos;ll be able to edit
-          everything before it&apos;s logged.
+          {mobileT('foodPhoto.reviewDescription')}
         </Bullet>
 
       </View>
@@ -111,10 +113,10 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
       >
         <Button variant="primary" onPress={handleContinue}>
-          Continue
+          {mobileT('common.continue')}
         </Button>
         <Button variant="ghost" onPress={handleLogManually}>
-          Log manually instead
+          {mobileT('foodPhoto.logManually')}
         </Button>
       </View>
     </View>

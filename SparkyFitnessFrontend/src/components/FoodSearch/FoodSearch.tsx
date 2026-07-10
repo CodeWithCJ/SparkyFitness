@@ -669,8 +669,11 @@ const EnhancedFoodSearch = ({
     setIsOnlineLoading(true);
 
     toast({
-      title: 'Searching barcode',
-      description: `Looking up: ${barcode}...`,
+      title: t('enhancedFoodSearch.searchingBarcodeTitle', 'Searching barcode'),
+      description: t('enhancedFoodSearch.lookingUpBarcode', {
+        barcode,
+        defaultValue: 'Looking up barcode {{barcode}}…',
+      }),
     });
 
     try {
@@ -683,8 +686,14 @@ const EnhancedFoodSearch = ({
           onFoodSelect(data.food, 'food');
           setShowBarcodeScanner(false);
           toast({
-            title: 'Food found in database',
-            description: `Found: ${data.food.name}`,
+            title: t(
+              'enhancedFoodSearch.localFoodFoundTitle',
+              'Food found in your library'
+            ),
+            description: t('enhancedFoodSearch.foodFound', {
+              foodName: data.food.name,
+              defaultValue: 'Found {{foodName}}.',
+            }),
           });
           return;
         }
@@ -706,21 +715,33 @@ const EnhancedFoodSearch = ({
         setScannedFood(mapped);
 
         toast({
-          title: 'Barcode scanned successfully',
-          description: `Found product: ${data.food.name}`,
+          title: t('enhancedFoodSearch.barcodeSuccessTitle', 'Barcode scanned'),
+          description: t('enhancedFoodSearch.productFound', {
+            foodName: data.food.name,
+            defaultValue: 'Found {{foodName}}.',
+          }),
         });
       } else {
         setScannedFood(null);
         toast({
-          title: 'Product not found',
-          description: `No product found for this barcode using selected provider.`,
+          title: t(
+            'enhancedFoodSearch.productNotFoundTitle',
+            'Product not found'
+          ),
+          description: t(
+            'enhancedFoodSearch.productNotFound',
+            'No product was found for this barcode from the selected provider.'
+          ),
           variant: 'destructive',
         });
       }
     } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to search barcode.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'enhancedFoodSearch.barcodeSearchFailed',
+          'Could not search this barcode.'
+        ),
         variant: 'destructive',
       });
     } finally {
@@ -736,13 +757,19 @@ const EnhancedFoodSearch = ({
       setEditingProduct(null);
 
       toast({
-        title: 'Food added',
-        description: `${foodData.name} has been added and is ready to be added to your meal`,
+        title: t('enhancedFoodSearch.foodAddedTitle', 'Food added'),
+        description: t('enhancedFoodSearch.foodReadyForMeal', {
+          foodName: foodData.name,
+          defaultValue: '{{foodName}} is ready to add to your meal.',
+        }),
       });
-    } catch (error) {
+    } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to process the edited food',
+        title: t('common.error', 'Error'),
+        description: t(
+          'enhancedFoodSearch.editedFoodFailed',
+          'Could not process the edited food.'
+        ),
         variant: 'destructive',
       });
     }
@@ -780,8 +807,11 @@ const EnhancedFoodSearch = ({
       setShowEditDialog(true);
     } else {
       toast({
-        title: 'Error',
-        description: 'Failed to retrieve detailed nutrition for this item.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'enhancedFoodSearch.detailedNutritionFailed',
+          'Could not retrieve detailed nutrition for this item.'
+        ),
         variant: 'destructive',
       });
     }
@@ -821,9 +851,11 @@ const EnhancedFoodSearch = ({
         setShowEditDialog(true);
       } catch {
         toast({
-          title: 'Error',
-          description:
-            'Failed to retrieve detailed nutrition. Using partial data.',
+          title: t('common.error', 'Error'),
+          description: t(
+            'enhancedFoodSearch.partialNutritionFallback',
+            'Could not retrieve complete nutrition. Using the available data.'
+          ),
           variant: 'destructive',
         });
         setEditingProduct(food);
@@ -906,42 +938,49 @@ const EnhancedFoodSearch = ({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row flex-wrap gap-2">
         <Button
+          type="button"
           onClick={() => setShowAddFoodDialog(true)}
           className="whitespace-nowrap"
         >
-          <Plus className="w-4 h-4 mr-2" />{' '}
+          <Plus className="h-4 w-4" />
           {t('enhancedFoodSearch.customFood', 'Custom Food')}
         </Button>
         <Button
+          type="button"
           onClick={() => setShowImportFromCsvDialog(true)}
           className="whitespace-nowrap"
           variant="outline"
         >
-          <Plus className="w-4 h-4 mr-2" />{' '}
+          <Plus className="h-4 w-4" />
           {t('enhancedFoodSearch.importFromCSV', 'Import from CSV')}
         </Button>
         <Button
+          type="button"
           variant="outline"
           onClick={() => setShowBarcodeScanner(true)}
           className="whitespace-nowrap"
         >
-          <Camera className="w-4 h-4 mr-2" />{' '}
+          <Camera className="h-4 w-4" />
           {t('enhancedFoodSearch.scanBarcode', 'Scan Barcode')}
         </Button>
       </div>
 
-      <div className="flex space-x-2 items-center">
+      <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={t(
               'enhancedFoodSearch.searchFoodsPlaceholder',
               'Search for foods...'
             )}
             value={searchTerm}
+            aria-label={t(
+              'enhancedFoodSearch.searchFoodsLabel',
+              'Search foods and meals'
+            )}
             autoFocus
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
+            className="ps-9"
           />
         </div>
         {(isOnlineLoading || localPending || anyProviderLoading) && (
@@ -962,7 +1001,13 @@ const EnhancedFoodSearch = ({
               setManualProviderId(value);
             }}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger
+              className="w-[180px]"
+              aria-label={t(
+                'enhancedFoodSearch.selectProvider',
+                'Select provider'
+              )}
+            >
               <SelectValue
                 placeholder={t(
                   'enhancedFoodSearch.selectProvider',
@@ -1197,7 +1242,7 @@ const EnhancedFoodSearch = ({
                           if (errored) r.refetch();
                           else if (expandable) toggleProvider(r.provider.id);
                         }}
-                        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 disabled:hover:bg-transparent disabled:cursor-default"
+                        className="flex w-full items-center justify-between px-3 py-2 text-start hover:bg-muted/50 disabled:cursor-default disabled:hover:bg-transparent"
                       >
                         <span className="flex items-center gap-2">
                           <span
@@ -1237,7 +1282,7 @@ const EnhancedFoodSearch = ({
                             (expanded ? (
                               <ChevronDown className="w-4 h-4" />
                             ) : (
-                              <ChevronRight className="w-4 h-4" />
+                              <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                             ))}
                         </span>
                       </button>

@@ -1,12 +1,13 @@
 import { useReducer, useCallback } from 'react';
 import { clearDraft } from '../services/workoutDraftService';
 import { useDraftPersistence } from './useDraftPersistence';
-import { getTodayDate, normalizeDate } from '../utils/dateUtils';
+import { formatMonthDayShort, getTodayDate, normalizeDate } from '../utils/dateUtils';
 import { kmToMiles, distanceToKm } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
 import type { Exercise } from '../types/exercise';
 import type { ActivityDraft } from '../types/drafts';
 import type { IndividualSessionResponse } from '@workspace/shared';
+import { formatMobileNumber, mobileT } from '../localization';
 
 export type { ActivityDraft } from '../types/drafts';
 
@@ -29,20 +30,20 @@ function createEmptyDraft(): ActivityDraft {
   };
 }
 
-function formatActivityDate(dateString: string): string {
-  const [year, month, day] = dateString.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 function defaultActivityName(exerciseName: string, dateString: string): string {
-  return `${exerciseName} - ${formatActivityDate(dateString)}`;
+  return mobileT('activity.defaultName', {
+    exercise: exerciseName,
+    date: formatMonthDayShort(dateString),
+  });
 }
 
 function calculateCalories(caloriesPerHour: number, durationStr: string): string {
   const duration = parseDecimalInput(durationStr);
   if (!caloriesPerHour || isNaN(duration) || duration <= 0) return '';
-  return String(Math.round(caloriesPerHour * (duration / 60)));
+  return formatMobileNumber(Math.round(caloriesPerHour * (duration / 60)), {
+    maximumFractionDigits: 0,
+    useGrouping: false,
+  });
 }
 
 export interface ActivityDraftSubmission {
@@ -70,7 +71,9 @@ export function getActivityDraftSubmission(
   const hasDuration = !isNaN(durationMinutes) && durationMinutes > 0;
   const hasCalories = !isNaN(caloriesBurned) && caloriesBurned > 0;
   const hasDistance = !isNaN(distanceValue) && distanceValue > 0;
-  const avgHeartRateValue = state.avgHeartRate ? parseInt(state.avgHeartRate, 10) : null;
+  const avgHeartRateValue = state.avgHeartRate
+    ? Math.trunc(parseDecimalInput(state.avgHeartRate))
+    : null;
 
   return {
     exerciseId: state.exerciseId,
@@ -166,7 +169,10 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
       let distance = '';
       if (entry.distance != null && entry.distance > 0) {
         const displayDistance = distanceUnit === 'miles' ? kmToMiles(entry.distance) : entry.distance;
-        distance = String(parseFloat(displayDistance.toFixed(2)));
+        distance = formatMobileNumber(parseFloat(displayDistance.toFixed(2)), {
+          maximumFractionDigits: 2,
+          useGrouping: false,
+        });
       }
       return {
         type: 'activity',
@@ -176,11 +182,23 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         exerciseCategory: entry.exercise_snapshot?.category ?? null,
         exerciseImages: entry.exercise_snapshot?.images ?? [],
         caloriesPerHour: 0,
-        duration: String(entry.duration_minutes),
+        duration: formatMobileNumber(entry.duration_minutes, {
+          maximumFractionDigits: 2,
+          useGrouping: false,
+        }),
         distance,
-        calories: String(entry.calories_burned),
+        calories: formatMobileNumber(entry.calories_burned, {
+          maximumFractionDigits: 2,
+          useGrouping: false,
+        }),
         caloriesManuallySet: true,
-        avgHeartRate: entry.avg_heart_rate != null ? String(entry.avg_heart_rate) : '',
+        avgHeartRate:
+          entry.avg_heart_rate != null
+            ? formatMobileNumber(entry.avg_heart_rate, {
+                maximumFractionDigits: 0,
+                useGrouping: false,
+              })
+            : '',
         entryDate: entry.entry_date ? normalizeDate(entry.entry_date) : getTodayDate(),
         notes: entry.notes ?? '',
       };

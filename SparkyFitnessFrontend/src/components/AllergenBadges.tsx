@@ -1,5 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { useAllergenPreferences } from '@/hooks/useAllergenPreferences';
+import { useTranslation } from 'react-i18next';
+import { getLocalizedAllergenLabel } from '@/utils/allergenLocalization';
 
 interface AllergenBadgesProps {
   allergens?: string[] | null;
@@ -13,6 +15,7 @@ interface AllergenBadgesProps {
  * track allergens.
  */
 const AllergenBadges = ({ allergens, traces }: AllergenBadgesProps) => {
+  const { t } = useTranslation();
   const { data: preferences } = useAllergenPreferences();
   const userAllergens =
     preferences?.map((p) => p.allergen_name.toLowerCase()) ?? [];
@@ -31,22 +34,21 @@ const AllergenBadges = ({ allergens, traces }: AllergenBadgesProps) => {
     return null;
 
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
+    <div className="mt-1 flex flex-wrap gap-1">
       {matchingAllergens.map((a) => (
-        <Badge
-          key={`allergen-${a}`}
-          variant="destructive"
-          className="text-xs capitalize"
-        >
-          ⚠ {a}
+        <Badge key={`allergen-${a}`} variant="destructive" className="text-xs">
+          ⚠ {getLocalizedAllergenLabel(a, t)}
         </Badge>
       ))}
-      {matchingTraces.map((t) => (
+      {matchingTraces.map((trace) => (
         <Badge
-          key={`trace-${t}`}
-          className="text-xs capitalize bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-300"
+          key={`trace-${trace}`}
+          className="border-orange-300 bg-orange-100 text-xs text-orange-800 dark:bg-orange-900 dark:text-orange-200"
         >
-          trace: {t}
+          {t('foodResultCard.traceAllergen', {
+            allergen: getLocalizedAllergenLabel(trace, t),
+            defaultValue: 'Trace: {{allergen}}',
+          })}
         </Badge>
       ))}
     </div>

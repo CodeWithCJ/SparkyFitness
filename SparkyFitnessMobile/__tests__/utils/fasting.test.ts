@@ -27,32 +27,32 @@ function buildFast(overrides: Partial<FastingLog> = {}): FastingLog {
 
 describe('formatElapsedClock', () => {
   test('formats hours/minutes/seconds with zero-padding', () => {
-    expect(formatElapsedClock(0)).toBe('00:00:00');
-    expect(formatElapsedClock(3723 * 1000)).toBe('01:02:03');
+    expect(formatElapsedClock(0)).toBe('٠٠:٠٠:٠٠');
+    expect(formatElapsedClock(3723 * 1000)).toBe('٠١:٠٢:٠٣');
   });
 
   test('does not cap hours at 24', () => {
-    expect(formatElapsedClock(25 * HOUR)).toBe('25:00:00');
+    expect(formatElapsedClock(25 * HOUR)).toBe('٢٥:٠٠:٠٠');
   });
 
   test('clamps negative input to zero', () => {
-    expect(formatElapsedClock(-5000)).toBe('00:00:00');
+    expect(formatElapsedClock(-5000)).toBe('٠٠:٠٠:٠٠');
   });
 });
 
 describe('formatHoursMinutes', () => {
   test('drops the hours when zero', () => {
-    expect(formatHoursMinutes(0)).toBe('0m');
-    expect(formatHoursMinutes(47 * 60 * 1000)).toBe('47m');
+    expect(formatHoursMinutes(0)).toBe('٠ دقيقة');
+    expect(formatHoursMinutes(47 * 60 * 1000)).toBe('٤٧ دقيقة');
   });
 
   test('renders hours and minutes', () => {
-    expect(formatHoursMinutes(107 * 60 * 1000)).toBe('1h 47m');
-    expect(formatHoursMinutes(964 * 60 * 1000)).toBe('16h 4m');
+    expect(formatHoursMinutes(107 * 60 * 1000)).toBe('ساعة و٤٧ دقيقة');
+    expect(formatHoursMinutes(964 * 60 * 1000)).toBe('١٦ ساعة و٤ دقائق');
   });
 
   test('clamps negative input to zero', () => {
-    expect(formatHoursMinutes(-1000)).toBe('0m');
+    expect(formatHoursMinutes(-1000)).toBe('٠ دقيقة');
   });
 });
 
@@ -67,9 +67,9 @@ describe('computeFastTimerValues', () => {
 
     expect(v.hasGoal).toBe(true);
     expect(v.goalHours).toBe(16);
-    expect(v.hhmmss).toBe('14:12:38');
+    expect(v.hhmmss).toBe('١٤:١٢:٣٨');
     expect(Math.round(v.progress * 100)).toBe(89);
-    expect(v.remainingLabel).toBe('1h 47m');
+    expect(v.remainingLabel).toBe('ساعة و٤٧ دقيقة');
     expect(v.stage.key).toBe('catabolic');
   });
 
@@ -84,7 +84,7 @@ describe('computeFastTimerValues', () => {
     expect(v.remainingMs).toBeNull();
     expect(v.remainingLabel).toBeNull();
     expect(v.progress).toBe(0);
-    expect(v.elapsedLabel).toBe('18h 0m');
+    expect(v.elapsedLabel).toBe('١٨ ساعة');
     expect(v.stage.key).toBe('fat-burning');
   });
 
@@ -111,7 +111,7 @@ describe('formatFastingStats', () => {
       total_minutes_fasted: null,
       average_duration_minutes: null,
     });
-    expect(display.fastsCount).toBe('0');
+    expect(display.fastsCount).toBe('٠');
     expect(display.avgFastValue).toBe('—');
     expect(display.avgFastUnit).toBe('');
     expect(display.totalValue).toBe('—');
@@ -120,7 +120,7 @@ describe('formatFastingStats', () => {
 
   test('handles a fully undefined stats object', () => {
     const display = formatFastingStats(undefined);
-    expect(display.fastsCount).toBe('0');
+    expect(display.fastsCount).toBe('٠');
     expect(display.avgFastValue).toBe('—');
     expect(display.totalValue).toBe('—');
   });
@@ -131,11 +131,11 @@ describe('formatFastingStats', () => {
       total_minutes_fasted: 44520,
       average_duration_minutes: 948,
     });
-    expect(display.fastsCount).toBe('47');
-    expect(display.avgFastValue).toBe('15.8');
-    expect(display.avgFastUnit).toBe('h');
-    expect(display.totalValue).toBe('742');
-    expect(display.totalUnit).toBe('h');
+    expect(display.fastsCount).toBe('٤٧');
+    expect(display.avgFastValue).toBe('١٥٫٨');
+    expect(display.avgFastUnit).toBe('ساعة');
+    expect(display.totalValue).toBe('٧٤٢');
+    expect(display.totalUnit).toBe('ساعة');
   });
 });
 
@@ -154,7 +154,7 @@ describe('formatLastFast', () => {
     const result = formatLastFast(
       buildFast({ duration_minutes: 964, end_time: yesterday }),
     );
-    expect(result).toBe('Last fast 16h 4m · yesterday');
+    expect(result).toBe('آخر صيام ١٦ ساعة و٤ دقائق · أمس');
   });
 
   test('formats a completed fast that ended today', () => {
@@ -162,6 +162,6 @@ describe('formatLastFast', () => {
     const result = formatLastFast(
       buildFast({ duration_minutes: 120, end_time: now }),
     );
-    expect(result).toBe('Last fast 2h 0m · today');
+    expect(result).toBe('آخر صيام ساعتين · اليوم');
   });
 });

@@ -6,6 +6,11 @@ import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-nativ
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { WATER_UNIT_LABELS } from '../utils/unitConversions';
+import {
+  formatMobileNumber,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 interface ContainerOption {
   id: number;
@@ -109,7 +114,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   const useDecimals = unit === 'liter' || unit === 'oz';
   const displayConsumed = useDecimals ? parseFloat(convertedConsumed.toFixed(1)) : Math.round(convertedConsumed);
   const displayGoal = useDecimals ? parseFloat(convertedGoal.toFixed(1)) : Math.round(convertedGoal);
-  const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
+  const unitLabel = localizeServingUnit(WATER_UNIT_LABELS[unit] ?? unit);
 
   const showButtons = !!onIncrement || !!onDecrement;
   const noContainer = containerVolume == null;
@@ -117,15 +122,18 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-3">Hydration</Text>
+      <Text className="text-md font-bold text-text-secondary mb-3">
+        {mobileT('dashboard.hydration')}
+      </Text>
       <View className="flex-row items-center">
-        <View className="flex-row items-center mr-4">
+        <View className="flex-row items-center" style={{ marginEnd: 16 }}>
           {showButtons && (
             <Button
               variant="ghost"
               onPress={onDecrement}
               disabled={disableDecrement || noContainer}
               className="p-2"
+              accessibilityLabel={mobileT('dashboard.decreaseWater')}
               style={disableDecrement || noContainer ? { opacity: 0.3 } : undefined}
             >
               <Icon name="remove-circle" size={28} color={hydrationColor} />
@@ -146,18 +154,21 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
               onPress={onIncrement}
               disabled={noContainer}
               className="p-2"
+              accessibilityLabel={mobileT('dashboard.increaseWater')}
               style={noContainer ? { opacity: 0.3 } : undefined}
             >
               <Icon name="add-circle" size={28} color={hydrationColor} />
             </Button>
           )}
         </View>
-        <View className="flex-1 items-center mr-2">
+        <View className="flex-1 items-center" style={{ marginEnd: 8 }}>
           <Text className="text-2xl font-bold text-text-primary">
-            {displayConsumed.toLocaleString()} {unitLabel}
+            {formatMobileNumber(displayConsumed)} {unitLabel}
           </Text>
           <Text className="text-sm text-text-secondary mt-0.5">
-            of {displayGoal.toLocaleString()} {unitLabel}
+            {mobileT('dashboard.hydrationGoal', {
+              goal: `${formatMobileNumber(displayGoal)} ${unitLabel}`,
+            })}
           </Text>
           {showChips && (
             <View className="flex-row flex-wrap justify-center mt-2 gap-1">
@@ -167,6 +178,11 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
                   <Pressable
                     key={c.id}
                     onPress={() => onSelectContainer?.(c.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={mobileT('dashboard.selectContainer', {
+                      container: c.name,
+                    })}
+                    accessibilityState={{ selected: active }}
                     className={`rounded-full px-3 py-1 border ${active ? 'bg-accent-primary border-accent-primary' : 'bg-raised border-border-subtle'}`}
                   >
                     <Text className={`text-xs font-medium ${active ? 'text-white' : 'text-text-primary'}`}>
@@ -181,12 +197,16 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
       </View>
       {showButtons && containerVolume != null && !showChips && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel} per bottle
+          {mobileT('dashboard.perBottle', {
+            amount: `${formatMobileNumber(
+              convertFromMl(containerVolume, unit),
+            )} ${unitLabel}`,
+          })}
         </Text>
       )}
       {showButtons && containerVolume == null && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          Configure water container on server to{'\n'}enable quick add/remove buttons
+          {mobileT('dashboard.waterContainerMissing')}
         </Text>
       )}
     </View>

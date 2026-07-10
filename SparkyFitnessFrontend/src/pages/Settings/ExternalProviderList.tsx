@@ -116,7 +116,11 @@ const ExternalProviderList = ({
   const { data: globalProviders = [], isLoading: globalProvidersLoading } =
     useGlobalExternalProviders(isAdminMode);
 
-  const providers = isAdminMode ? globalProviders : userProviders;
+  const providers = isAdminMode
+    ? globalProviders
+    : userProviders.filter(
+        (provider) => provider.provider_type !== 'huaweihealth'
+      );
   const providersLoading = isAdminMode
     ? globalProvidersLoading
     : userProvidersLoading;
