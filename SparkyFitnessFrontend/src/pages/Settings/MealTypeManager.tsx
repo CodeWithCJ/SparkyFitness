@@ -222,13 +222,16 @@ const MealTypeManager = () => {
                   <Input
                     type="time"
                     className="w-[100px] h-8 text-xs p-1"
-                    value={toHourMinute(item.default_time) || ''}
-                    onChange={async (e) => {
+                    key={`${item.id}-${item.default_time}`}
+                    defaultValue={toHourMinute(item.default_time) || ''}
+                    onBlur={async (e) => {
                       const val = e.target.value;
-                      await updateMealType({
-                        id: item.id,
-                        data: { default_time: val || null },
-                      });
+                      if (val !== (toHourMinute(item.default_time) || '')) {
+                        await updateMealType({
+                          id: item.id,
+                          data: { default_time: val || null },
+                        });
+                      }
                     }}
                   />
                 </div>

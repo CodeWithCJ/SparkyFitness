@@ -71,11 +71,11 @@ describe('defaultMealTypeForTime', () => {
 });
 
 describe('prefillEntryTime', () => {
-  it('uses default time if set', () => {
+  it('uses default time if set and not today', () => {
     expect(
       prefillEntryTime({
         defaultTime: '08:30:00',
-        isToday: true,
+        isToday: false,
         tz: 'America/New_York',
       })
     ).toBe('08:30');
@@ -86,6 +86,15 @@ describe('prefillEntryTime', () => {
         tz: 'America/New_York',
       })
     ).toBe('12:00');
+  });
+
+  it('prefills current time today even if defaultTime is set', () => {
+    const timeStr = prefillEntryTime({
+      defaultTime: '08:30:00',
+      isToday: true,
+      tz: 'America/New_York',
+    });
+    expect(timeStr).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
   });
 
   it('returns empty string if not today and no default time is set', () => {

@@ -340,6 +340,7 @@ const WorkoutPlaybackPage = () => {
 
   const handleStartTimeChange = useCallback(
     (timeStr: string) => {
+      if (!timeStr) return;
       setDraft((currentDraft) => {
         if (!currentDraft) return null;
         try {

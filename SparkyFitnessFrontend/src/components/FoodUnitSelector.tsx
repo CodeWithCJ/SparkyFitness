@@ -130,8 +130,10 @@ const FoodUnitSelector = ({
   const [mealType, setMealType] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const wasOpenRef = useRef(false);
+
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
       if (initialTime !== undefined) {
         setEntryTime(initialTime || '');
       } else {
@@ -151,6 +153,7 @@ const FoodUnitSelector = ({
         setMealType(matched);
       }
     }
+    wasOpenRef.current = open;
   }, [open, initialTime, showMealTypeSelect, availableMealTypes, timezone]);
 
   const resolvedDefaultMealTime = (() => {
