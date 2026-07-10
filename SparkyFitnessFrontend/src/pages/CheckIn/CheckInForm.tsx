@@ -13,6 +13,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
 import { UnitInput } from '@/components/ui/UnitInput';
 import { CustomCategoriesResponse } from '@workspace/shared';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface CheckInFormProps {
   bodyFatPercentage: string;
@@ -74,6 +75,11 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
     measurementUnit: defaultMeasurementUnit,
   } = usePreferences();
   const { t } = useTranslation();
+  const weightLabel = t('checkIn.weight', 'Weight');
+  const heightLabel = t('checkIn.height', 'Height');
+  const neckLabel = t('checkIn.neck', 'Neck');
+  const waistLabel = t('checkIn.waist', 'Waist');
+  const hipsLabel = t('checkIn.hips', 'Hips');
 
   return (
     <Card>
@@ -82,14 +88,15 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <Label htmlFor="weight">{t('checkIn.weight', 'Weight')}</Label>
+              <Label htmlFor="weight">{weightLabel}</Label>
               <UnitInput
                 id="weight"
                 type="weight"
                 unit={defaultWeightUnit}
                 value={weight}
+                aria-label={weightLabel}
                 onChange={(val) =>
                   setWeight(val !== null ? val.toString() : '')
                 }
@@ -97,12 +104,13 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
             </div>
 
             <div>
-              <Label htmlFor="height">{t('checkIn.height', 'Height')}</Label>
+              <Label htmlFor="height">{heightLabel}</Label>
               <UnitInput
                 id="height"
                 type="height"
                 unit={defaultMeasurementUnit}
                 value={height}
+                aria-label={heightLabel}
                 onChange={(val) =>
                   setHeight(val !== null ? val.toString() : '')
                 }
@@ -114,6 +122,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
               <Input
                 id="steps"
                 type="number"
+                inputMode="numeric"
                 value={steps}
                 onChange={(e) => {
                   setSteps(e.target.value);
@@ -123,34 +132,37 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
             </div>
 
             <div>
-              <Label htmlFor="neck">{t('checkIn.neck', 'Neck')}</Label>
+              <Label htmlFor="neck">{neckLabel}</Label>
               <UnitInput
                 id="neck"
                 type="measurement"
                 unit={defaultMeasurementUnit}
                 value={neck}
+                aria-label={neckLabel}
                 onChange={(val) => setNeck(val !== null ? val.toString() : '')}
               />
             </div>
 
             <div>
-              <Label htmlFor="waist">{t('checkIn.waist', 'Waist')}</Label>
+              <Label htmlFor="waist">{waistLabel}</Label>
               <UnitInput
                 id="waist"
                 type="measurement"
                 unit={defaultMeasurementUnit}
                 value={waist}
+                aria-label={waistLabel}
                 onChange={(val) => setWaist(val !== null ? val.toString() : '')}
               />
             </div>
 
             <div>
-              <Label htmlFor="hips">{t('checkIn.hips', 'Hips')}</Label>
+              <Label htmlFor="hips">{hipsLabel}</Label>
               <UnitInput
                 id="hips"
                 type="measurement"
                 unit={defaultMeasurementUnit}
                 value={hips}
+                aria-label={hipsLabel}
                 onChange={(val) => setHips(val !== null ? val.toString() : '')}
               />
             </div>
@@ -162,7 +174,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center space-x-2 mb-2">
+                      <div className="mb-2 flex items-center gap-2">
                         <Switch
                           id="use-most-recent-toggle"
                           checked={useMostRecentForCalculation}
@@ -184,7 +196,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center gap-2">
                 <Input
                   id="bodyFat"
                   type="number"
@@ -196,17 +208,11 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                     'Enter body fat percentage'
                   )}
                 />
-                <Button
-                  type="button"
-                  onClick={handleCalculateBodyFat}
-                  className="ml-2"
-                >
+                <Button type="button" onClick={handleCalculateBodyFat}>
                   {t('checkIn.calculate', 'Calculate')}
                 </Button>
               </div>
             </div>
-            {/* Custom Categories */}
-
             {/* Custom Categories */}
             {customCategories.map((category) => {
               const isConvertible = shouldConvertCustomMeasurement(
@@ -219,11 +225,13 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                   ? defaultWeightUnit
                   : defaultMeasurementUnit
                 : category.measurement_type;
+              const categoryName = category.display_name || category.name;
+              const localizedUnit = getLocalizedUnitLabel(unitToUse, t);
 
               return (
                 <div key={category.id}>
                   <Label htmlFor={`custom-${category.id}`}>
-                    {category.display_name || category.name} ({unitToUse})
+                    {categoryName} ({localizedUnit})
                   </Label>
                   {isConvertible && category.data_type === 'numeric' ? (
                     <UnitInput
@@ -237,6 +245,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                       }
                       unit={unitToUse}
                       value={customValues[category.id] || ''}
+                      aria-label={categoryName}
                       onChange={(val) => {
                         setCustomValues((prev) => ({
                           ...prev,
@@ -261,10 +270,8 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                         }));
                       }}
                       placeholder={t('checkIn.enterCustomCategory', {
-                        categoryName: (
-                          category.display_name || category.name
-                        ).toLowerCase(),
-                        defaultValue: `Enter ${(category.display_name || category.name).toLowerCase()}`,
+                        categoryName: categoryName.toLowerCase(),
+                        defaultValue: `Enter ${categoryName.toLowerCase()}`,
                       })}
                     />
                   )}
@@ -279,6 +286,11 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                       }));
                     }}
                     placeholder={t('checkIn.notesOptional', 'Notes (optional)')}
+                    aria-label={t(
+                      'checkIn.notesForCategory',
+                      'Notes for {{categoryName}}',
+                      { categoryName }
+                    )}
                     className="mt-2"
                   />
                 </div>

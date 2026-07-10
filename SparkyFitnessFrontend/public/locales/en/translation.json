@@ -1940,6 +1940,7 @@
     "enterBodyFatPercentage": "Enter body fat percentage",
     "calculate": "Calculate",
     "notesOptional": "Notes (optional)",
+    "notesForCategory": "Notes for {{categoryName}}",
     "saving": "Saving...",
     "saveCheckIn": "Save Check-In",
     "saveMeasurements": "Save Measurements",
