@@ -1683,6 +1683,10 @@
     "makePublic": "Share this meal publicly",
     "publicHelp": "When enabled, other app users can discover this meal."
   },
+  "mealLogging": {
+    "title": "Log meal “{{name}}”",
+    "description": "Review the portion and ingredients before adding this meal to your diary."
+  },
   "checkIn": {
     "howAreYouFeelingToday": "How are you feeling today?",
     "neutral": "Neutral",
