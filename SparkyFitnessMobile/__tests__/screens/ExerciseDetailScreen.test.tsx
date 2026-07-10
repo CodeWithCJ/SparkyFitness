@@ -11,6 +11,12 @@ import {
 } from '../../src/hooks';
 import { fetchExerciseById } from '../../src/services/api/exerciseApi';
 import type { Exercise } from '../../src/types/exercise';
+import {
+  formatMobileNumber,
+  localizeExerciseCategory,
+  localizeExerciseSource,
+  mobileT,
+} from '../../src/localization';
 
 jest.mock('../../src/hooks', () => ({
   useDeleteExerciseLibrary: jest.fn(),
@@ -144,20 +150,20 @@ describe('ExerciseDetailScreen', () => {
     const screen = renderScreen();
 
     expect(screen.getByText('Bench Press')).toBeTruthy();
-    expect(screen.getByText('strength')).toBeTruthy();
-    expect(screen.getByText('360')).toBeTruthy();
+    expect(screen.getByText(localizeExerciseCategory('strength'))).toBeTruthy();
+    expect(screen.getByText(formatMobileNumber(360))).toBeTruthy();
     expect(screen.getByText('Barbell, Bench')).toBeTruthy();
     expect(screen.getByText('Chest')).toBeTruthy();
     expect(screen.getByText('Triceps, Shoulders')).toBeTruthy();
 
-    fireEvent.press(screen.getByText('Exercise details'));
-    expect(screen.getByText('sparky')).toBeTruthy();
+    fireEvent.press(screen.getByText(mobileT('exerciseDetail.details')));
+    expect(screen.getByText(localizeExerciseSource('sparky'))).toBeTruthy();
   });
 
   it('navigates to ActivityAdd with the selected exercise when Log Exercise is pressed', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Log Exercise'));
+    fireEvent.press(screen.getByText(mobileT('exerciseDetail.logExercise')));
 
     expect(navigation.navigate).toHaveBeenCalledWith(
       'ActivityAdd',
@@ -171,8 +177,8 @@ describe('ExerciseDetailScreen', () => {
   it('shows Start Workout and Log Exercise by default', () => {
     const screen = renderScreen();
 
-    expect(screen.queryByText('Start Workout')).toBeTruthy();
-    expect(screen.queryByText('Log Exercise')).toBeTruthy();
+    expect(screen.queryByText(mobileT('exerciseDetail.startWorkout'))).toBeTruthy();
+    expect(screen.queryByText(mobileT('exerciseDetail.logExercise'))).toBeTruthy();
   });
 
   it('hides Start Workout and Log Exercise when hideWorkoutActions is set', () => {
@@ -187,8 +193,8 @@ describe('ExerciseDetailScreen', () => {
       </Providers>,
     );
 
-    expect(screen.queryByText('Start Workout')).toBeNull();
-    expect(screen.queryByText('Log Exercise')).toBeNull();
+    expect(screen.queryByText(mobileT('exerciseDetail.startWorkout'))).toBeNull();
+    expect(screen.queryByText(mobileT('exerciseDetail.logExercise'))).toBeNull();
   });
 
   it('hides empty optional sections', () => {
@@ -199,26 +205,25 @@ describe('ExerciseDetailScreen', () => {
       calories_per_hour: 0,
     });
 
-    expect(screen.queryByText('Equipment')).toBeNull();
-    expect(screen.queryByText('Primary muscles')).toBeNull();
-    expect(screen.queryByText('Secondary muscles')).toBeNull();
-    expect(screen.queryByText('Calories / hour')).toBeNull();
+    expect(screen.queryByText(mobileT('exerciseDetail.equipment'))).toBeNull();
+    expect(screen.queryByText(mobileT('exerciseDetail.primaryMuscles'))).toBeNull();
+    expect(screen.queryByText(mobileT('exerciseDetail.secondaryMuscles'))).toBeNull();
+    expect(screen.queryByText(mobileT('exerciseDetail.caloriesPerHour'))).toBeNull();
   });
 
   it('shows Edit and Delete for non-custom exercises even when the user matches', () => {
     const screen = renderScreen({ source: 'sparky', userId: 'user-1', isCustom: true });
 
-    expectActionPresent(screen, navigation, 'Edit');
-    expect(screen.queryByText('Delete Exercise')).toBeTruthy();
-    
+    expectActionPresent(screen, navigation, mobileT('common.edit'));
+    expect(screen.queryByText(mobileT('exerciseDetail.deleteExercise'))).toBeTruthy();
   });
 
 
   it('hides Edit and Delete when the user does not own the exercise', () => {
     const screen = renderScreen({ source: 'custom', userId: 'someone-else', isCustom: true });
 
-    expect(screen.queryByText('Edit')).toBeNull();
-    expect(screen.queryByText('Delete Exercise')).toBeNull();
+    expect(screen.queryByText(mobileT('common.edit'))).toBeNull();
+    expect(screen.queryByText(mobileT('exerciseDetail.deleteExercise'))).toBeNull();
   });
 
   it('hides Edit and Delete when offline', () => {
@@ -231,14 +236,14 @@ describe('ExerciseDetailScreen', () => {
 
     const screen = renderScreen(ownedCustomExercise);
 
-    expect(screen.queryByText('Edit')).toBeNull();
-    expect(screen.queryByText('Delete Exercise')).toBeNull();
+    expect(screen.queryByText(mobileT('common.edit'))).toBeNull();
+    expect(screen.queryByText(mobileT('exerciseDetail.deleteExercise'))).toBeNull();
   });
 
   it('shows Edit and navigates to ExerciseForm in edit mode for an owned custom exercise', () => {
     const screen = renderScreen(ownedCustomExercise);
 
-    pressAction(screen, navigation, 'Edit');
+    pressAction(screen, navigation, mobileT('common.edit'));
 
     expect(navigation.navigate).toHaveBeenCalledWith(
       'ExerciseForm',
@@ -253,7 +258,7 @@ describe('ExerciseDetailScreen', () => {
   it('shows Delete and triggers confirmAndDelete', () => {
     const screen = renderScreen(ownedCustomExercise);
 
-    fireEvent.press(screen.getByText('Delete Exercise'));
+    fireEvent.press(screen.getByText(mobileT('exerciseDetail.deleteExercise')));
 
     expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
   });
