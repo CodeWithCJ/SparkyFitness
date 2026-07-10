@@ -24,6 +24,21 @@ describe('parseDecimalInput', () => {
     });
   });
 
+  describe('Arabic and Persian numerals', () => {
+    it('parses Arabic-Indic integers and decimals', () => {
+      expect(parseDecimalInput('١٢٣')).toBe(123);
+      expect(parseDecimalInput('١٢٣٫٥')).toBe(123.5);
+    });
+
+    it('parses Arabic thousands separators', () => {
+      expect(parseDecimalInput('١٬٢٣٤٫٥')).toBe(1234.5);
+    });
+
+    it('parses Persian digits from pasted values', () => {
+      expect(parseDecimalInput('۱۲۳٫۵')).toBe(123.5);
+    });
+  });
+
   describe('single decimal separator', () => {
     it('handles a dot as the decimal', () => {
       expect(parseDecimalInput('1.5')).toBe(1.5);
@@ -197,6 +212,12 @@ describe('DECIMAL_INPUT_REGEX', () => {
     expect(DECIMAL_INPUT_REGEX.test('1.001,5')).toBe(true);
     expect(DECIMAL_INPUT_REGEX.test('1 001,5')).toBe(true);
     expect(DECIMAL_INPUT_REGEX.test('1\u00a0001,5')).toBe(true);
+  });
+
+  it('accepts Arabic and Persian numerals while typing', () => {
+    expect(DECIMAL_INPUT_REGEX.test('١٢٣٫٥')).toBe(true);
+    expect(DECIMAL_INPUT_REGEX.test('١٬٢٣٤٫٥')).toBe(true);
+    expect(DECIMAL_INPUT_REGEX.test('۱۲۳٫۵')).toBe(true);
   });
 
   it('rejects letters and other garbage', () => {

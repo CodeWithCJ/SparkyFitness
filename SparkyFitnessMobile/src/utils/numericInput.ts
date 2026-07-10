@@ -23,11 +23,26 @@
  * rejected at keystroke time — {@link parseDecimalInput} applies strict
  * structural validation when the value is actually read.
  */
-export const DECIMAL_INPUT_REGEX = /^[\d.,\s\u00a0\u202f]*$/;
+export const DECIMAL_INPUT_REGEX =
+  /^[\d\u0660-\u0669\u06f0-\u06f9.,\u066b\u066c\s\u00a0\u202f]*$/;
 
 const WHITESPACE_REGEX = /[\s\u00a0\u202f]/g;
 const OUTER_WHITESPACE_REGEX = /^[\s\u00a0\u202f]+|[\s\u00a0\u202f]+$/g;
 const HAS_INNER_WHITESPACE_REGEX = /[\s\u00a0\u202f]/;
+const ARABIC_INDIC_DIGITS_REGEX = /[\u0660-\u0669]/g;
+const PERSIAN_DIGITS_REGEX = /[\u06f0-\u06f9]/g;
+
+function normalizeLocalizedNumerals(value: string): string {
+  return value
+    .replace(ARABIC_INDIC_DIGITS_REGEX, digit =>
+      String(digit.charCodeAt(0) - 0x0660),
+    )
+    .replace(PERSIAN_DIGITS_REGEX, digit =>
+      String(digit.charCodeAt(0) - 0x06f0),
+    )
+    .replace(/\u066b/g, '.')
+    .replace(/\u066c/g, ',');
+}
 // Space-grouped thousands (French/Scandinavian): leading 1–3 digits, then
 // one or more groups of exactly 3 digits each separated by a single space
 // character (including U+00A0 / U+202F, which is what Intl.NumberFormat
@@ -69,7 +84,10 @@ export function parseDecimalInput(value: string | null | undefined): number {
   // Trim outer whitespace only — interior whitespace must be validated
   // before it is stripped, otherwise malformed input like `"1 23,4"` would
   // silently collapse to `"123,4"` and parse as a plausible number.
-  const outerTrimmed = value.replace(OUTER_WHITESPACE_REGEX, '');
+  const outerTrimmed = normalizeLocalizedNumerals(value).replace(
+    OUTER_WHITESPACE_REGEX,
+    '',
+  );
   if (outerTrimmed === '') return NaN;
 
   let s: string;
