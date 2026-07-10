@@ -116,14 +116,8 @@ private struct RingWithLabel: View {
 
     private var remainingText: String {
         guard snapshot.hasData else { return "—" }
-        return Self.numberFormatter.string(from: NSNumber(value: Int(snapshot.remaining.rounded()))) ?? "0"
+        return formatArabicInteger(snapshot.remaining)
     }
-
-    private static let numberFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        return f
-    }()
 
     var body: some View {
         CalorieRing(progress: snapshot.progress, size: ringSize, strokeWidth: strokeWidth)
@@ -133,7 +127,7 @@ private struct RingWithLabel: View {
                         .font(.system(size: numberFontSize, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
-                    Text("kcal left")
+                    Text("سعرة باقية")
                         .font(.system(size: numberFontSize * 0.58))
                         .foregroundStyle(.secondary)
                 }
@@ -147,14 +141,8 @@ private struct StatBlock: View {
     let value: Double
 
     private var valueText: String {
-        Self.numberFormatter.string(from: NSNumber(value: Int(value.rounded()))) ?? "0"
+        formatArabicInteger(value)
     }
-
-    private static let numberFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        return f
-    }()
 
     var body: some View {
         HStack(spacing: 8) {
@@ -177,6 +165,7 @@ private struct StatBlock: View {
 struct ActionButton: View {
     let icon: String
     let destination: URL
+    let accessibilityLabel: String
 
     var body: some View {
         Link(destination: destination) {
@@ -185,6 +174,7 @@ struct ActionButton: View {
                 .foregroundStyle(Color("AccentColor"))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
+                .accessibilityLabel(Text(accessibilityLabel))
         }
     }
 }
@@ -206,6 +196,7 @@ struct widgetEntryView: View {
                 mediumBody
             }
         }
+        .environment(\.layoutDirection, .rightToLeft)
         .widgetURL(dashboardURL)
     }
 
@@ -218,8 +209,8 @@ struct widgetEntryView: View {
                 numberFontSize: 18
             )
             VStack(spacing: 3) {
-                StatBlock(label: "Food", value: entry.snapshot.food)
-                StatBlock(label: "Burned", value: entry.snapshot.burned)
+                StatBlock(label: "الأكل", value: entry.snapshot.food)
+                StatBlock(label: "المحروقة", value: entry.snapshot.burned)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -241,9 +232,9 @@ struct widgetEntryView: View {
                 )
 
                 VStack(alignment: .leading, spacing: 20) {
-                    StatBlock(label: "Goal", value: entry.snapshot.goal)
-                    StatBlock(label: "Food", value: entry.snapshot.food)
-                    StatBlock(label: "Burned", value: entry.snapshot.burned)
+                    StatBlock(label: "الهدف", value: entry.snapshot.goal)
+                    StatBlock(label: "الأكل", value: entry.snapshot.food)
+                    StatBlock(label: "المحروقة", value: entry.snapshot.burned)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -255,11 +246,13 @@ struct widgetEntryView: View {
                 VStack(spacing: 16) {
                     ActionButton(
                         icon: "magnifyingglass",
-                        destination: URL(string: "sparkyfitnessmobile://search")!
+                        destination: URL(string: "sparkyfitnessmobile://search")!,
+                        accessibilityLabel: "البحث عن صنف غذائي"
                     )
                     ActionButton(
                         icon: "barcode.viewfinder",
-                        destination: URL(string: "sparkyfitnessmobile://scan")!
+                        destination: URL(string: "sparkyfitnessmobile://scan")!,
+                        accessibilityLabel: "مسح باركود منتج"
                     )
                 }
                 .frame(width: buttonColumnWidth)
@@ -278,8 +271,8 @@ struct widget: Widget {
             widgetEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Calorie Tracker")
-        .description("Today's calorie intake at a glance.")
+        .configurationDisplayName("متابعة السعرات")
+        .description("ملخص سعراتك اليومية واختصارات التسجيل.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

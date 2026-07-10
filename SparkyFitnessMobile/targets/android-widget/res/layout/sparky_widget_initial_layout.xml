@@ -3,13 +3,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:layoutDirection="rtl"
+    android:textDirection="rtl"
     android:background="#FFFFFFFF"
     android:padding="12dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="1,650 kcal left"
+        android:text="١٬٦٥٠ سعرة باقية"
         android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#FF1F1F1F"
@@ -58,7 +60,7 @@
                 android:layout_height="24dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_widget_search"
-                android:contentDescription="Search food" />
+                android:contentDescription="البحث عن صنف غذائي" />
         </FrameLayout>
 
         <TextView
@@ -77,7 +79,7 @@
                 android:layout_height="24dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_widget_scan"
-                android:contentDescription="Scan barcode" />
+                android:contentDescription="مسح باركود منتج" />
         </FrameLayout>
     </LinearLayout>
 </LinearLayout>
