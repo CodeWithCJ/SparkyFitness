@@ -1715,7 +1715,10 @@
   },
   "mealLogging": {
     "title": "Log meal “{{name}}”",
-    "description": "Review the portion and ingredients before adding this meal to your diary."
+    "description": "Review the portion and ingredients before adding this meal to your diary.",
+    "editTitle": "Edit meal “{{name}}”",
+    "editDescription": "Update the portion or ingredients, then save your changes.",
+    "editScopeNotice": "Changes here affect only this diary record and do not change the original meal template."
   },
   "foodNutrition": {
     "baseValues": "Base values per {{size}} {{unit}}"
