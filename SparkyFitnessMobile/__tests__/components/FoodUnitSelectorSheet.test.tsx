@@ -118,7 +118,10 @@ describe('FoodUnitSelectorSheet', () => {
       />,
     );
 
-    expect(screen.getByText('Select Unit')).toBeTruthy();
+    expect(screen.getByText('اختيار الوحدة')).toBeTruthy();
+    expect(screen.getByText('الوزن')).toBeTruthy();
+    expect(screen.getByText('الحجم')).toBeTruthy();
+    expect(screen.getByText('العدد')).toBeTruthy();
     expect(screen.queryByText('Available Units')).toBeNull();
     expect(screen.queryByText('100 g (120 cal)')).toBeNull();
     expect(screen.queryByText('Custom')).toBeNull();
@@ -185,6 +188,9 @@ describe('FoodUnitSelectorSheet', () => {
     const aiRow = screen.getByTestId('food-unit-option-cup');
     expect(within(aiRow).queryByText('icon-sparkles')).toBeTruthy();
     expect(within(aiRow).queryByText('icon-checkmark')).toBeNull();
+    expect(
+      screen.getByLabelText('تقدير بالذكاء الاصطناعي (ثقة متوسطة)'),
+    ).toBeTruthy();
   });
 
   it('highlights the selected grouped unit row for a draft/manual selection', () => {
@@ -246,7 +252,7 @@ describe('FoodUnitSelectorSheet', () => {
       />,
     );
 
-    expect(screen.getByText('Saved Custom Units')).toBeTruthy();
+    expect(screen.getByText('وحداتك المحفوظة')).toBeTruthy();
 
     const selectedRowStyle =
       screen.getByTestId('food-unit-custom-variant-variant-fillet').props.style;
@@ -269,7 +275,7 @@ describe('FoodUnitSelectorSheet', () => {
       />,
     );
 
-    fireEvent.press(screen.getByText('kg'));
+    fireEvent.press(screen.getByText('كجم'));
 
     await waitFor(() => {
       expect(onSelect).toHaveBeenCalledWith({
@@ -303,7 +309,7 @@ describe('FoodUnitSelectorSheet', () => {
       />,
     );
 
-    fireEvent.press(screen.getByText('g'));
+    fireEvent.press(screen.getByText('غ'));
 
     await waitFor(() => {
       expect(onSelect).toHaveBeenCalledWith({
@@ -328,7 +334,7 @@ describe('FoodUnitSelectorSheet', () => {
       />,
     );
 
-    fireEvent.press(screen.getByText('cup'));
+    fireEvent.press(screen.getByText('كوب'));
 
     await waitFor(() => {
       expect(onSelect).toHaveBeenCalled();
@@ -402,13 +408,13 @@ describe('FoodUnitSelectorSheet', () => {
       />,
     );
 
-    fireEvent.press(screen.getByText('kg'));
+    fireEvent.press(screen.getByText('كجم'));
 
     await waitFor(() => {
       expect(mockToast.show).toHaveBeenCalledWith({
         type: 'error',
-        text1: 'Could not update that unit',
-        text2: 'Please try again.',
+        text1: 'ما قدرنا نحدّث هالوحدة',
+        text2: 'حاول مرة ثانية',
       });
     });
   });

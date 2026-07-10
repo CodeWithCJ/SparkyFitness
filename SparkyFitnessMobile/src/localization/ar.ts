@@ -368,6 +368,19 @@ export const ar = {
   'copyMeal.copied': 'تم نسخ الوجبة',
   'copyMeal.failed': 'ما قدرنا ننسخ الوجبة',
 
+  'foodUnit.selectUnit': 'اختيار الوحدة',
+  'foodUnit.savedCustomUnits': 'وحداتك المحفوظة',
+  'foodUnit.group.weight': 'الوزن',
+  'foodUnit.group.volume': 'الحجم',
+  'foodUnit.group.quantity': 'العدد',
+  'foodUnit.updateFailed': 'ما قدرنا نحدّث هالوحدة',
+  'foodUnit.aiEstimate': 'تقدير بالذكاء الاصطناعي',
+  'foodUnit.aiEstimateConfidence':
+    'تقدير بالذكاء الاصطناعي (ثقة {{confidence}})',
+  'foodUnit.confidence.high': 'عالية',
+  'foodUnit.confidence.medium': 'متوسطة',
+  'foodUnit.confidence.low': 'منخفضة',
+
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
   'exerciseCategory.flexibility': 'مرونة',
