@@ -20,6 +20,7 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
 import { ExpandedGoals } from '@/types/goals';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 export interface DayTotals {
   calories: number; // Stored internally as kcal
@@ -74,7 +75,7 @@ const NutritionSummaryCard = ({
   };
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal' ? t('common.kcal') : t('common.kJ');
+    return getLocalizedUnitLabel(unit, t);
   };
 
   const summaryPreferences = nutrientDisplayPreferences.find(
@@ -159,7 +160,7 @@ const NutritionSummaryCard = ({
             const unit =
               nutrient === 'calories'
                 ? getEnergyUnitString(energyUnit)
-                : metadata.unit;
+                : getLocalizedUnitLabel(metadata.unit, t);
 
             const label =
               displayNutrient === 'net_carbs'

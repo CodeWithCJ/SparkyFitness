@@ -32,6 +32,7 @@ import {
 import { useCopyFoodEntriesFromYesterdayMutation } from '@/hooks/Diary/useFoodEntries';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface MealTotals {
   calories: number;
@@ -153,7 +154,7 @@ const MealCard = ({
     useCopyFoodEntriesFromYesterdayMutation();
   const localizedMealName = getLocalizedMealTypeName(meal.type || meal.name, t);
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal' ? t('common.kcal') : t('common.kJ');
+    return getLocalizedUnitLabel(unit, t);
   };
   debug(loggingLevel, 'MealCard: Component rendered for meal:', meal.name);
   debug(loggingLevel, 'MealCard: meal.entries:', meal.entries);
@@ -371,7 +372,10 @@ const MealCard = ({
                   : (item as FoodEntry).brand_name;
                 const quantity = (item as FoodEntry | FoodEntryMeal).quantity;
                 const unit = (item as FoodEntry | FoodEntryMeal).unit;
-                const servingLabel = [quantity, unit]
+                const localizedServingUnit = unit
+                  ? getLocalizedUnitLabel(unit, t)
+                  : unit;
+                const servingLabel = [quantity, localizedServingUnit]
                   .filter((value) => value !== undefined && value !== null)
                   .join(' ');
                 const entryIsHighlighted =
@@ -423,7 +427,7 @@ const MealCard = ({
                   const unitDisplay =
                     nutrient === 'calories'
                       ? getEnergyUnitString(energyUnit)
-                      : metadata.unit;
+                      : getLocalizedUnitLabel(metadata.unit, t);
 
                   return { metadata, displayValue, unitDisplay };
                 };
@@ -731,7 +735,7 @@ const MealCard = ({
                     const unitDisplay =
                       nutrient === 'calories'
                         ? getEnergyUnitString(energyUnit)
-                        : metadata.unit;
+                        : getLocalizedUnitLabel(metadata.unit, t);
 
                     return (
                       <div key={nutrient} className="text-center min-w-[40px]">
