@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import FastingTimerRing from '../Fasting/FastingTimerRing';
-import { Play, Timer, Square } from 'lucide-react';
+import { CircleAlert, Play, Square, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -37,6 +37,7 @@ import {
   useFastingStats,
   useStartFastMutation,
 } from '@/hooks/Fasting/useFasting';
+import { formatLocalizedMinutes } from '@/utils/timeFormatters';
 
 const HomeDashboardFasting = () => {
   const { t } = useTranslation();
@@ -95,9 +96,7 @@ const HomeDashboardFasting = () => {
       new Date(),
       parseISO(activeFast.start_time)
     );
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${h}h ${m}m`;
+    return formatLocalizedMinutes(mins, t);
   };
 
   const fastDurationHours = activeFast
@@ -106,19 +105,19 @@ const HomeDashboardFasting = () => {
     : 0;
 
   return (
-    <Card className="flex flex-col h-full bg-card/50 backdrop-blur-sm border-primary/20">
+    <Card className="flex h-full flex-col border-primary/20 bg-card/50 backdrop-blur-sm">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-xl">
-          <Timer className="w-5 h-5 text-primary" />
-          {t('fasting.checklistTitle', 'Fasting Timer')}
+          <Timer className="h-5 w-5 text-primary" aria-hidden="true" />
+          {t('fasting.timerTitle', 'Fasting timer')}
         </CardTitle>
         <CardDescription>
           {activeFast
-            ? 'You are currently fasting'
-            : 'Ready to start a new fast?'}
+            ? t('fasting.activeDescription', 'Your fast is in progress.')
+            : t('fasting.readyDescription', 'Ready to start a new fast?')}
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-6">
+      <CardContent className="flex flex-1 flex-col gap-6">
         <div className="flex flex-col items-center justify-center">
           {activeFast && activeFast.start_time && activeFast.target_end_time ? (
             <div className="flex justify-center">
@@ -129,9 +128,11 @@ const HomeDashboardFasting = () => {
               />
             </div>
           ) : (
-            <div className="text-center space-y-4 py-4">
-              <div className="w-32 h-32 rounded-full bg-secondary/50 flex items-center justify-center mx-auto border-2 border-dashed border-muted-foreground/30">
-                <span className="text-4xl">🍽️</span>
+            <div className="space-y-4 py-4 text-center">
+              <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/30 bg-secondary/50">
+                <span className="text-4xl" aria-hidden="true">
+                  🍽️
+                </span>
               </div>
               <Button
                 onClick={() => {
@@ -140,7 +141,8 @@ const HomeDashboardFasting = () => {
                 }}
                 className="w-full gap-2 font-semibold"
               >
-                <Play className="w-4 h-4" /> Start Fast
+                <Play className="h-4 w-4" aria-hidden="true" />
+                {t('fasting.startFast', 'Start fast')}
               </Button>
             </div>
           )}
@@ -156,30 +158,50 @@ const HomeDashboardFasting = () => {
               variant="destructive"
               size="lg"
               onClick={() => setShowEndDialog(true)}
-              className="w-full shadow-md hover:shadow-lg transition-all"
+              className="w-full shadow-md transition-all hover:shadow-lg"
             >
-              <Square className="w-4 h-4 mr-2 fill-current" /> End Fast
+              <Square className="h-4 w-4 fill-current" aria-hidden="true" />
+              {t('fasting.endFast', 'End fast')}
             </Button>
           </>
         )}
 
+        <div
+          role="note"
+          className="flex items-start gap-2 rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground"
+        >
+          <CircleAlert
+            className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+            aria-hidden="true"
+          />
+          <span>
+            {t(
+              'fasting.safetyNote',
+              'If you have diabetes, a chronic condition, or take regular medication, consult your clinician before fasting. Stop if you develop severe dizziness or symptoms of low or high blood sugar or dehydration.'
+            )}
+          </span>
+        </div>
+
         {/* Mini Stats Row */}
         {stats && (
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-            <div className="flex flex-col items-center p-2 bg-secondary/20 rounded-lg">
-              <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
-                Total Fasts
+          <div className="grid grid-cols-2 gap-4 border-t pt-4">
+            <div className="flex flex-col items-center rounded-lg bg-secondary/20 p-2">
+              <span className="text-xs font-bold tracking-wide text-muted-foreground">
+                {t('fasting.totalFasts', 'Total fasts')}
               </span>
               <span className="text-xl font-bold">
                 {stats.total_completed_fasts}
               </span>
             </div>
-            <div className="flex flex-col items-center p-2 bg-secondary/20 rounded-lg">
-              <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
-                Avg Duration
+            <div className="flex flex-col items-center rounded-lg bg-secondary/20 p-2">
+              <span className="text-xs font-bold tracking-wide text-muted-foreground">
+                {t('fasting.averageDuration', 'Average duration')}
               </span>
               <span className="text-xl font-bold">
-                {Math.round(parseInt(stats.average_duration_minutes) / 60)}h
+                {formatLocalizedMinutes(
+                  parseInt(stats.average_duration_minutes),
+                  t
+                )}
               </span>
             </div>
           </div>
@@ -190,50 +212,67 @@ const HomeDashboardFasting = () => {
       <Dialog open={showStartDialog} onOpenChange={setShowStartDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Start a New Fast</DialogTitle>
+            <DialogTitle>
+              {t('fasting.startDialogTitle', 'Start a new fast')}
+            </DialogTitle>
             <DialogDescription>
-              Select a protocol to begin your fast.
+              {t(
+                'fasting.startDialogDescription',
+                'Choose a duration and set your start time.'
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Start Time</Label>
+              <Label htmlFor="fast-start-time">
+                {t('fasting.startTime', 'Start time')}
+              </Label>
               <Input
+                id="fast-start-time"
                 type="datetime-local"
+                dir="ltr"
                 value={startLocal}
                 onChange={(e) => setStartLocal(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label>Fasting Protocol</Label>
+              <Label htmlFor="fasting-protocol">
+                {t('fasting.protocol', 'Fasting duration')}
+              </Label>
               <Select
                 value={selectedPresetId}
                 onValueChange={setSelectedPresetId}
               >
-                <SelectTrigger>
+                <SelectTrigger id="fasting-protocol">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {FASTING_PRESETS.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.name} ({p.fastingHours}:{p.eatingHours})
+                      {t(p.labelKey, p.name)} ({p.fastingHours}:{p.eatingHours})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                {
-                  FASTING_PRESETS.find((p) => p.id === selectedPresetId)
-                    ?.description
-                }
+                {(() => {
+                  const preset = FASTING_PRESETS.find(
+                    (item) => item.id === selectedPresetId
+                  );
+                  return preset
+                    ? t(preset.descriptionKey, preset.description)
+                    : null;
+                })()}
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowStartDialog(false)}>
-              Cancel
+              {t('fasting.cancel', 'Cancel')}
             </Button>
-            <Button onClick={handleStartFast}>Start Fasting</Button>
+            <Button onClick={handleStartFast}>
+              {t('fasting.confirmStart', 'Start fasting')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

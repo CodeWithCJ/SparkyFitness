@@ -1653,6 +1653,80 @@
     "avgSleepStress": "متوسط التوتر أثناء النوم",
     "restingHR": "معدل نبض الراحة"
   },
+  "fasting": {
+    "timerTitle": "مؤقّت الصيام",
+    "activeDescription": "صيامك شغّال.",
+    "readyDescription": "جاهز تبدأ صيامك؟",
+    "startFast": "بدء الصيام",
+    "endFast": "إنهاء الصيام",
+    "totalFasts": "مرات الصيام",
+    "averageDuration": "متوسط المدة",
+    "startDialogTitle": "ابدأ صيام جديد",
+    "startDialogDescription": "اختر المدة اللي تناسبك وحدد وقت البداية.",
+    "startTime": "وقت البداية",
+    "endTime": "وقت النهاية",
+    "protocol": "مدة الصيام",
+    "cancel": "إلغاء",
+    "confirmStart": "ابدأ الصيام",
+    "endDialogTitle": "تمّ صيامك",
+    "endDialogDescription": "صمت مدة {{duration}}.",
+    "endDialogHelp": "إذا تأخرت في تشغيل المؤقّت أو إيقافه، عدّل الأوقات قبل الحفظ.",
+    "confirmEnd": "إنهاء وحفظ",
+    "invalidTimeRange": "لازم يكون وقت النهاية بعد وقت البداية.",
+    "durationLabel": "مدة الصيام",
+    "goalReached": "اكتملت المدة",
+    "progressPercent": "{{progress}}٪",
+    "timerLabel": "مدة الصيام المنقضية: {{duration}}. اكتمل {{progress}}.",
+    "hourMarker": "{{hours}} س",
+    "zonesLabel": "الخط الزمني للصيام",
+    "zoneRange": "{{start}}–{{end}} س",
+    "zoneRangeOpen": "{{start}} س فأكثر",
+    "safetyNote": "إذا عندك سكري أو مرض مزمن أو تستخدم أدوية بانتظام، استشر طبيبك قبل الصيام. أوقف الصيام إذا حسّيت بدوخة شديدة أو ظهرت عليك أعراض هبوط أو ارتفاع السكر أو الجفاف.",
+    "presets": {
+      "sixteenEight": {
+        "name": "نظام 16:8",
+        "description": "صيام 16 ساعة ونافذة أكل 8 ساعات."
+      },
+      "eighteenSix": {
+        "name": "نظام 18:6",
+        "description": "صيام 18 ساعة ونافذة أكل 6 ساعات."
+      },
+      "twentyFour": {
+        "name": "نظام 20:4",
+        "description": "صيام 20 ساعة ونافذة أكل 4 ساعات."
+      },
+      "circadian": {
+        "name": "نظام الساعة الحيوية",
+        "description": "صيام ليلي لمدة تقارب 13 ساعة."
+      },
+      "twelveTwelve": {
+        "name": "نظام 12:12",
+        "description": "صيام متوازن لمدة 12 ساعة ونافذة أكل 12 ساعة."
+      }
+    },
+    "zones": {
+      "starting": {
+        "name": "بداية الصيام",
+        "description": "أول أربع ساعات بعد آخر وجبة."
+      },
+      "daily": {
+        "name": "الصيام اليومي",
+        "description": "مدة شائعة في أنظمة الصيام اليومية."
+      },
+      "extended": {
+        "name": "صيام ممتد",
+        "description": "انتبه للسوائل وأعراض التعب."
+      },
+      "long": {
+        "name": "صيام طويل",
+        "description": "الصيام الطويل قد يحتاج توجيهًا طبيًا."
+      },
+      "veryLong": {
+        "name": "صيام طويل جدًا",
+        "description": "لا تكمل بدون إشراف طبي."
+      }
+    }
+  },
   "nutrition": {
     "calories": "السعرات",
     "protein": "البروتين",

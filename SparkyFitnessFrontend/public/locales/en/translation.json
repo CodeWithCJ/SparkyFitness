@@ -2157,6 +2157,80 @@
     "avgSleepStress": "Average sleep stress",
     "restingHR": "Resting heart rate"
   },
+  "fasting": {
+    "timerTitle": "Fasting timer",
+    "activeDescription": "Your fast is in progress.",
+    "readyDescription": "Ready to start a new fast?",
+    "startFast": "Start fast",
+    "endFast": "End fast",
+    "totalFasts": "Total fasts",
+    "averageDuration": "Average duration",
+    "startDialogTitle": "Start a new fast",
+    "startDialogDescription": "Choose a duration and set your start time.",
+    "startTime": "Start time",
+    "endTime": "End time",
+    "protocol": "Fasting duration",
+    "cancel": "Cancel",
+    "confirmStart": "Start fasting",
+    "endDialogTitle": "Fast complete",
+    "endDialogDescription": "You fasted for {{duration}}.",
+    "endDialogHelp": "If you started or stopped the timer late, adjust the times before saving.",
+    "confirmEnd": "End and save",
+    "invalidTimeRange": "The end time must be after the start time.",
+    "durationLabel": "Fasting duration",
+    "goalReached": "Duration complete",
+    "progressPercent": "{{progress}}%",
+    "timerLabel": "Elapsed fasting time: {{duration}}. {{progress}} complete.",
+    "hourMarker": "{{hours}} hr",
+    "zonesLabel": "Fasting timeline",
+    "zoneRange": "{{start}}–{{end}} hr",
+    "zoneRangeOpen": "{{start}}+ hr",
+    "safetyNote": "If you have diabetes, a chronic condition, or take regular medication, consult your clinician before fasting. Stop if you develop severe dizziness or symptoms of low or high blood sugar or dehydration.",
+    "presets": {
+      "sixteenEight": {
+        "name": "16:8 schedule",
+        "description": "Fast for 16 hours with an 8-hour eating window."
+      },
+      "eighteenSix": {
+        "name": "18:6 schedule",
+        "description": "Fast for 18 hours with a 6-hour eating window."
+      },
+      "twentyFour": {
+        "name": "20:4 schedule",
+        "description": "Fast for 20 hours with a 4-hour eating window."
+      },
+      "circadian": {
+        "name": "Circadian schedule",
+        "description": "Fast overnight for about 13 hours."
+      },
+      "twelveTwelve": {
+        "name": "12:12 schedule",
+        "description": "A balanced 12-hour fast with a 12-hour eating window."
+      }
+    },
+    "zones": {
+      "starting": {
+        "name": "Starting",
+        "description": "The first four hours after your last meal."
+      },
+      "daily": {
+        "name": "Daily fasting",
+        "description": "A common range for daily fasting schedules."
+      },
+      "extended": {
+        "name": "Extended fasting",
+        "description": "Pay attention to hydration and fatigue symptoms."
+      },
+      "long": {
+        "name": "Long fast",
+        "description": "Long fasts may require medical guidance."
+      },
+      "veryLong": {
+        "name": "Very long fast",
+        "description": "Do not continue without medical supervision."
+      }
+    }
+  },
   "foodDatabaseManager": {
     "foodSharedWithPublic": "Food shared with public",
     "foodMadePrivate": "Food made private",
