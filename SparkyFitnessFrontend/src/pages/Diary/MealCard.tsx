@@ -66,6 +66,7 @@ import { getLocalizedMealTypeName } from '@/utils/mealTypeLocalization';
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
 
 const GLYCEMIC_INDEX_KEYS: Readonly<Record<GlycemicIndex, string>> = {
+  None: 'mealCard.glycemic.none',
   'Very Low': 'mealCard.glycemic.veryLow',
   Low: 'mealCard.glycemic.low',
   Medium: 'mealCard.glycemic.medium',

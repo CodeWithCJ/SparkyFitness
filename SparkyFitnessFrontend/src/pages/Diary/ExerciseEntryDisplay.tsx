@@ -247,12 +247,14 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           <div className="flex flex-wrap gap-1 mb-1.5">
             {exerciseEntry.sets!.map((set, index) => {
               const parts: string[] = [];
-              if (Number.isFinite(set.reps))
+              if (Number.isFinite(set.reps)) {
+                const reps = Number(set.reps);
                 parts.push(
                   t('exerciseCard.repsCount', {
-                    count: set.reps,
+                    count: reps,
                   })
                 );
+              }
               if (set.weight && Number.isFinite(set.weight))
                 parts.push(getLocalizedWeight(set.weight));
               if (Number.isFinite(set.rpe))

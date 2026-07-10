@@ -498,6 +498,7 @@
     "fromPlan": "من الخطة",
     "glycemicIndex": "المؤشر السكري: {{value}}",
     "glycemic": {
+      "none": "غير محدد",
       "veryLow": "منخفض جدًا",
       "low": "منخفض",
       "medium": "متوسط",

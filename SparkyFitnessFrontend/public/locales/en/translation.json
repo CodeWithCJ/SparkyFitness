@@ -1652,6 +1652,7 @@
     "fromPlan": "From plan",
     "glycemicIndex": "GI: {{value}}",
     "glycemic": {
+      "none": "Not specified",
       "veryLow": "Very low",
       "low": "Low",
       "medium": "Medium",

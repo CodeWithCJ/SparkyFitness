@@ -75,7 +75,6 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   initialSets,
   energyUnit,
   convertEnergy,
-  getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
   const {
