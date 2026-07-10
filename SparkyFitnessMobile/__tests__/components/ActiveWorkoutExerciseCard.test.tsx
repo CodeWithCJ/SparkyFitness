@@ -199,15 +199,7 @@ describe('ActiveWorkoutExerciseCard', () => {
     fireEvent.press(getByLabelText('More options for Bench Press'));
 
     expect(callbacks.onPressOverflow).toHaveBeenCalledTimes(1);
-    expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
-      'ex-uuid-1',
-      expect.objectContaining({
-        x: expect.any(Number),
-        y: expect.any(Number),
-        width: expect.any(Number),
-        height: expect.any(Number),
-      }),
-    );
+    expect(callbacks.onPressOverflow).toHaveBeenCalledWith('ex-uuid-1');
   });
 
   it('offers no overflow trigger while collapsed (expand first)', () => {
@@ -248,19 +240,13 @@ describe('ActiveWorkoutExerciseCard', () => {
     it('opens the overflow menu from a collapsed row long-press', () => {
       const { getByLabelText, callbacks } = renderCard(false);
       fireEvent(getByLabelText('Expand Bench Press'), 'longPress');
-      expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
-        'ex-uuid-1',
-        expect.objectContaining({ x: expect.any(Number) }),
-      );
+      expect(callbacks.onPressOverflow).toHaveBeenCalledWith('ex-uuid-1');
     });
 
     it('opens the overflow menu from an expanded name long-press', () => {
       const { getAllByLabelText, callbacks } = renderCard(true);
       fireEvent(getAllByLabelText('Collapse Bench Press')[0], 'longPress');
-      expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
-        'ex-uuid-1',
-        expect.objectContaining({ x: expect.any(Number) }),
-      );
+      expect(callbacks.onPressOverflow).toHaveBeenCalledWith('ex-uuid-1');
     });
 
     it('does not wire long-press in edit mode (screen-scoped to live)', () => {

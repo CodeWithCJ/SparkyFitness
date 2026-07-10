@@ -1,15 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import Icon from './Icon';
 import KeyboardCollapsible from './KeyboardCollapsible';
-import AnchoredMenu, {
-  measureAnchoredMenuTrigger,
-  type AnchorRect,
-  type AnchoredMenuItem,
-} from './AnchoredMenu';
+import ActionSheet, { type ActionSheetItem, type ActionSheetRef } from './ActionSheet';
 
 /** Per-exercise completion used by the segmented progress bar. */
 export interface ExerciseProgress {
@@ -58,7 +54,7 @@ interface ActiveWorkoutHeaderProps {
   onAddExercise?: () => void;
   /** When provided, adds a "Reorder exercises" action above Discard. */
   onReorder?: () => void;
-  /** When provided (any set logged), adds a "Clear logged sets" action. */
+  /** When provided (any set logged), adds a "Clear all logged sets" action. */
   onClearAllSets?: () => void;
 }
 
@@ -88,27 +84,18 @@ function ActiveWorkoutHeader({
     '--color-progress-track',
   ]) as [string, string, string, string, string];
 
-  const menuAnchorRef = useRef<View>(null);
-  const [menuAnchor, setMenuAnchor] = useState<AnchorRect | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
-
-  const openMenu = () => {
-    measureAnchoredMenuTrigger(menuAnchorRef.current, (anchor) => {
-      setMenuAnchor(anchor);
-      setMenuVisible(true);
-    });
-  };
+  const menuSheetRef = useRef<ActionSheetRef>(null);
+  const openMenu = () => menuSheetRef.current?.present();
 
   const doneCount = progress.filter(
     (p) => p.totalSets > 0 && p.completedSets >= p.totalSets,
   ).length;
 
-  const menuItems: AnchoredMenuItem[] = [];
+  const menuItems: ActionSheetItem[] = [];
   if (onEndWorkout) {
     menuItems.push({
       key: 'end-workout',
       label: 'End workout',
-      icon: 'checkmark-circle',
       onPress: onEndWorkout,
     });
   }
@@ -116,7 +103,6 @@ function ActiveWorkoutHeader({
     menuItems.push({
       key: 'rename',
       label: 'Rename workout',
-      icon: 'pencil',
       onPress: onRename,
     });
   }
@@ -124,7 +110,6 @@ function ActiveWorkoutHeader({
     menuItems.push({
       key: 'add-exercise',
       label: 'Add exercise',
-      icon: 'add',
       onPress: onAddExercise,
     });
   }
@@ -132,22 +117,21 @@ function ActiveWorkoutHeader({
     menuItems.push({
       key: 'reorder',
       label: 'Reorder exercises',
-      icon: 'swap-vertical',
       onPress: onReorder,
     });
   }
   if (onClearAllSets) {
     menuItems.push({
       key: 'clear-sets',
-      label: 'Clear logged sets',
-      icon: 'arrow-undo',
+      label: 'Clear all logged sets',
+      destructive: true,
       onPress: onClearAllSets,
     });
   }
   menuItems.push({
     key: 'discard',
     label: 'Discard workout',
-    icon: 'trash',
+    destructive: true,
     onPress: onDiscard,
   });
 
@@ -176,17 +160,15 @@ function ActiveWorkoutHeader({
           </Text>
         </View>
 
-        <View ref={menuAnchorRef} collapsable={false}>
-          <Pressable
-            onPress={openMenu}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="Workout menu"
-            className="p-2"
-          >
-            <Icon name="ellipsis-horizontal" size={22} color={textMuted} />
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={openMenu}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Workout menu"
+          className="p-2"
+        >
+          <Icon name="ellipsis-horizontal" size={22} color={textMuted} />
+        </Pressable>
       </View>
 
       {/* Folds away with the keyboard so the log gets the row's height back;
@@ -225,12 +207,7 @@ function ActiveWorkoutHeader({
         </View>
       </KeyboardCollapsible>
 
-      <AnchoredMenu
-        visible={menuVisible}
-        anchor={menuAnchor}
-        onClose={() => setMenuVisible(false)}
-        items={menuItems}
-      />
+      <ActionSheet ref={menuSheetRef} title={name} items={menuItems} />
     </View>
   );
 }

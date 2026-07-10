@@ -30,7 +30,11 @@ import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
 import KeyboardCollapsible from '../components/KeyboardCollapsible';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
 import ActiveWorkoutRestBar from '../components/ActiveWorkoutRestBar';
-import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
+import ActionSheet, {
+  type ActionSheetItem,
+  type ActionSheetRef,
+} from '../components/ActionSheet';
+import { type AnchorRect } from '../components/AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
 import WorkoutReorderList from '../components/WorkoutReorderList';
 import Button from '../components/ui/Button';
@@ -399,7 +403,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const handleClearAllSets = useCallback(() => {
     Alert.alert(
-      'Clear logged sets?',
+      'Clear all logged sets?',
       'Un-checks every logged set in this workout. Your set weights and reps are kept.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -493,22 +497,23 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     useActiveWorkoutStore.getState().setExerciseNotes(entryId, text);
   }, []);
 
-  // Card ⋮ menu. 'main' offers the superset actions; 'pick' swaps in the
-  // candidate list (ungrouped exercises other than the current one) at the
-  // same anchor.
+  // Card ⋮ menu, presented as a bottom sheet titled with the exercise name.
+  // 'main' offers the exercise actions; 'pick' swaps the superset candidate
+  // list (ungrouped exercises other than the current one) into the same sheet.
   const [overflowMenu, setOverflowMenu] = useState<{
     entryId: string;
-    anchor: AnchorRect;
     mode: 'main' | 'pick';
   } | null>(null);
-  const handlePressOverflow = useCallback(
-    (entryId: string, anchor: AnchorRect) => {
-      setOverflowMenu({ entryId, anchor, mode: 'main' });
-    },
-    [],
-  );
+  const overflowSheetRef = useRef<ActionSheetRef>(null);
+  const handlePressOverflow = useCallback((entryId: string) => {
+    // The sheet slides into the keyboard's space — drop the keyboard first,
+    // mirroring what logging a set does.
+    Keyboard.dismiss();
+    setOverflowMenu({ entryId, mode: 'main' });
+    overflowSheetRef.current?.present();
+  }, []);
 
-  const overflowMenuItems = useMemo(() => {
+  const overflowMenuItems = useMemo<ActionSheetItem[]>(() => {
     if (overflowMenu == null || session == null) return [];
     const { entryId, mode } = overflowMenu;
     const groupedIds = new Set(supersetRuns.flatMap((run) => run.entryIds));
@@ -530,7 +535,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const entryHasCompleted =
       entry?.sets.some((s) => completedSetIds[String(s.id)] != null) ?? false;
 
-    const items: { key: string; label: string; onPress: () => void }[] = [];
+    const items: ActionSheetItem[] = [];
     items.push({
       key: 'view',
       label: 'View exercise',
@@ -545,10 +550,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       items.push({
         key: 'superset-with',
         label: 'Superset with…',
+        // Keeps the sheet presented; the candidate list swaps in place.
+        dismissOnPress: false,
         onPress: () => {
-          // Re-open at the same anchor with the candidate list. AnchoredMenu
-          // closes first (onClose), then this runs — both land in one commit.
-          setOverflowMenu({ ...overflowMenu, mode: 'pick' });
+          setOverflowMenu((prev) => (prev ? { ...prev, mode: 'pick' } : prev));
         },
       });
     }
@@ -574,19 +579,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       items.push({
         key: 'clear',
         label: 'Clear logged sets',
+        destructive: true,
         onPress: () => handleClearExerciseSets(entryId),
-      });
-    }
-    if (reorderItemCount >= 2) {
-      items.push({
-        key: 'reorder',
-        label: 'Reorder exercises',
-        onPress: handleOpenReorder,
       });
     }
     items.push({
       key: 'remove',
       label: 'Remove exercise',
+      destructive: true,
       onPress: () => handleRemoveExercise(entryId),
     });
     return items;
@@ -594,8 +594,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     overflowMenu,
     session,
     supersetRuns,
-    reorderItemCount,
-    handleOpenReorder,
     completedSetIds,
     handlePressThumb,
     handleToggleExerciseNote,
@@ -1031,12 +1029,21 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onClose={() => setMetricMenuAnchor(null)}
       />
 
-      <AnchoredMenu
-        visible={overflowMenu != null && overflowMenuItems.length > 0}
-        anchor={overflowMenu?.anchor ?? null}
-        onClose={() => setOverflowMenu(null)}
-        minWidth={200}
+      <ActionSheet
+        ref={overflowSheetRef}
+        title={
+          overflowMenu?.mode === 'pick'
+            ? 'Superset with…'
+            : (session.exercises.find((e) => e.id === overflowMenu?.entryId)
+                ?.exercise_snapshot?.name ?? 'Exercise')
+        }
         items={overflowMenuItems}
+        onBack={
+          overflowMenu?.mode === 'pick'
+            ? () => setOverflowMenu((prev) => (prev ? { ...prev, mode: 'main' } : prev))
+            : undefined
+        }
+        onDismiss={() => setOverflowMenu(null)}
       />
 
       <SetTypeMenu

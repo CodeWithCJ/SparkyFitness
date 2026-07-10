@@ -82,7 +82,7 @@ interface ActiveWorkoutExerciseCardProps {
   onToggleExpanded: (entryId: string) => void;
   onPressRestChip?: (entryId: string, currentSec: number | null) => void;
   onPressMetricHeader: (anchor: AnchorRect) => void;
-  onPressOverflow?: (entryId: string, anchor: AnchorRect) => void;
+  onPressOverflow?: (entryId: string) => void;
   onComplete?: (setId: string) => void;
   onUncomplete?: (setId: string) => void;
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
@@ -325,23 +325,10 @@ function ActiveWorkoutExerciseCard({
     measureAnchoredMenuTrigger(metricAnchorRef.current, onPressMetricHeader);
   };
 
-  const overflowAnchorRef = useRef<View>(null);
-  const openOverflowMenu = () => {
-    measureAnchoredMenuTrigger(overflowAnchorRef.current, (anchor) =>
-      onPressOverflow?.(exercise.id, anchor),
-    );
-  };
-
-  // Live-only long-press opens the same overflow menu. The collapsed row has no
-  // ⋮ anchor, so it measures its own ref; the expanded card reuses the ⋮ anchor.
-  const collapsedRowRef = useRef<View>(null);
-  const openMenuFromCollapsedRow = () => {
-    measureAnchoredMenuTrigger(collapsedRowRef.current, (anchor) =>
-      onPressOverflow?.(exercise.id, anchor),
-    );
-  };
-  const longPressMenu = isLive && onPressOverflow ? openMenuFromCollapsedRow : undefined;
-  const longPressExpandedMenu = isLive && onPressOverflow ? openOverflowMenu : undefined;
+  const openOverflowMenu = () => onPressOverflow?.(exercise.id);
+  // Live-only long-press opens the same overflow menu (the collapsed row has
+  // no ⋮ of its own, so this is its only entry point).
+  const longPressMenu = isLive && onPressOverflow ? openOverflowMenu : undefined;
 
   // Row callbacks that feed set-keyed SCREEN state (focus, note expand) must
   // hand back render keys, not raw set ids — the screen stores and compares
@@ -415,7 +402,6 @@ function ActiveWorkoutExerciseCard({
               into the row's py-3 padding, so the expand target spans the whole
               row height instead of just the text box. */}
           <Pressable
-            ref={collapsedRowRef}
             onPress={() => onToggleExpanded(exercise.id)}
             onLongPress={longPressMenu}
             hitSlop={{ top: 10, bottom: 10 }}
@@ -460,7 +446,7 @@ function ActiveWorkoutExerciseCard({
             name matches the chevron's generous hit area. */}
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
-          onLongPress={longPressExpandedMenu}
+          onLongPress={longPressMenu}
           hitSlop={{ top: 10, bottom: 4 }}
           className="flex-1 self-stretch justify-center"
           accessibilityRole="button"
@@ -471,17 +457,15 @@ function ActiveWorkoutExerciseCard({
           </Text>
         </Pressable>
         {!readOnly && (
-          <View ref={overflowAnchorRef} collapsable={false}>
-            <Pressable
-              onPress={openOverflowMenu}
-              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-              accessibilityRole="button"
-              accessibilityLabel={`More options for ${name}`}
-              className="p-1"
-            >
-              <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={openOverflowMenu}
+            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel={`More options for ${name}`}
+            className="p-1"
+          >
+            <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
+          </Pressable>
         )}
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
