@@ -780,6 +780,39 @@ export const ar = {
   'reauth.noServer': 'ما فيه خادم محدد. ارجع للإعدادات واختر خادم.',
   'reauth.server': 'الخادم',
 
+  'passkeys.loadFailed': 'ما قدرنا نحمّل مفاتيح المرور',
+  'passkeys.tryAgain': 'تأكد من اتصالك وحاول مرة ثانية.',
+  'passkeys.registered': 'تمت إضافة مفتاح المرور',
+  'passkeys.registeredDescription': 'صار جاهز للدخول الآمن والسريع.',
+  'passkeys.cancelled': 'تم الإلغاء',
+  'passkeys.cancelledDescription': 'ما تمت إضافة مفتاح المرور.',
+  'passkeys.registrationFailed': 'ما قدرنا نضيف مفتاح المرور',
+  'passkeys.nameRequiredTitle': 'سمِّ مفتاح المرور',
+  'passkeys.nameRequiredDescription': 'اكتب اسمًا يسهّل عليك تمييزه لاحقًا.',
+  'passkeys.deleteTitle': 'حذف مفتاح المرور؟',
+  'passkeys.deleteDescription': 'متأكد تبي تحذف «{{name}}»؟',
+  'passkeys.deleted': 'تم حذف مفتاح المرور',
+  'passkeys.deletedDescription': 'ما عاد يقدر يسجّل دخولك.',
+  'passkeys.deleteFailed': 'ما قدرنا نحذف مفتاح المرور',
+  'passkeys.sessionOnly':
+    'مفاتيح المرور متاحة للخوادم اللي تستخدم تسجيل الدخول بالحساب.',
+  'passkeys.apiKeyUnsupported':
+    'إذا كنت متصلًا بمفتاح API، غيّر طريقة الدخول أول.',
+  'passkeys.server': 'الخادم:',
+  'passkeys.description':
+    'سجّل دخولك بأمان عن طريق بصمة الوجه أو الإصبع أو رمز قفل جهازك، بدون كلمة مرور.',
+  'passkeys.emptyTitle': 'ما عندك مفاتيح مرور',
+  'passkeys.emptyDescription':
+    'أضف هالجهاز عشان يكون دخولك أسرع المرة الجاية.',
+  'passkeys.unnamed': 'مفتاح مرور بدون اسم',
+  'passkeys.registeredAt': 'أُضيف في {{date}}',
+  'passkeys.deleteAccessibility': 'حذف {{name}}',
+  'passkeys.add': 'إضافة مفتاح مرور',
+  'passkeys.registerTitle': 'إضافة مفتاح مرور',
+  'passkeys.registerDescription':
+    'اختر له اسمًا واضحًا عشان تعرفه لاحقًا، مثل «جوالي».',
+  'passkeys.namePlaceholder': 'مثل: جوالي',
+
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
   'exerciseCategory.flexibility': 'مرونة',
