@@ -59,6 +59,9 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   Vo2Max: 'ml/min/kg',
   height: 'm',
   Height: 'm',
+  neck: 'cm',
+  waist: 'cm',
+  hips: 'cm',
   hydration: 'L',
   Hydration: 'L',
   lean_body_mass: 'kg',
@@ -590,6 +593,17 @@ function prepareCheckInMeasurement(
       }
       return { measurements: { height: heightCm } };
     }
+    case 'neck':
+    case 'waist':
+    case 'hips': {
+      const numericValue = parseFloat(entry.value);
+      if (isNaN(numericValue) || numericValue <= 0) {
+        return {
+          error: `Invalid value for ${entry.type}. Must be a positive number.`,
+        };
+      }
+      return { measurements: { [canonical]: numericValue } };
+    }
     default:
       // Unreachable: only the four check-in handlers route here.
       return { error: `Unsupported check-in measurement type: ${entry.type}` };
@@ -737,6 +751,25 @@ const bodyFatHandler: HealthTypeHandler = {
 };
 
 const heightHandler: HealthTypeHandler = {
+  handle: handleCheckInEntry,
+  handleBatch: checkInHandleBatch,
+};
+
+// Body-circumference measurements share the check-in write path so they land in
+// their check_in_measurements columns (neck/waist/hips) rather than falling
+// through to custom_measurements. Values are stored as-is; callers convert to
+// the stored metric unit (cm) before sending.
+const neckHandler: HealthTypeHandler = {
+  handle: handleCheckInEntry,
+  handleBatch: checkInHandleBatch,
+};
+
+const waistHandler: HealthTypeHandler = {
+  handle: handleCheckInEntry,
+  handleBatch: checkInHandleBatch,
+};
+
+const hipsHandler: HealthTypeHandler = {
   handle: handleCheckInEntry,
   handleBatch: checkInHandleBatch,
 };
@@ -1151,6 +1184,9 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   weight: weightHandler,
   body_fat: bodyFatHandler,
   height: heightHandler,
+  neck: neckHandler,
+  waist: waistHandler,
+  hips: hipsHandler,
   SleepSession: sleepSessionHandler,
   Stress: stressHandler,
   Workout: workoutHandler,

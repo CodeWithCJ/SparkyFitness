@@ -200,3 +200,53 @@ export const UpdateWaterIntakeLogTimeBodySchema = z
 export type UpdateWaterIntakeLogTimeBody = z.infer<
   typeof UpdateWaterIntakeLogTimeBodySchema
 >;
+
+// CSV import of health data (measurements, sleep, vitals, activity, hydration).
+// Rows are parsed client-side into flat HealthDataPayloadItem-shaped objects and
+// fed straight into measurementService.processHealthData, which owns the real
+// per-type validation, timezone resolution, and dedup. The schema is therefore
+// deliberately permissive (.loose()) and only enforces the invariants the
+// pipeline itself assumes: a type, and at least one date/timestamp field.
+export const ImportHealthDataItemSchema = z
+  .object({
+    type: requiredLegacyString('type'),
+    value: nullableOptionalLegacyNumber,
+    unit: optionalLegacyString,
+    date: optionalLegacyString,
+    entry_date: optionalLegacyString,
+    timestamp: optionalLegacyString,
+    source: optionalLegacyString,
+    source_id: optionalLegacyString,
+    record_timezone: nullableOptionalLegacyString,
+    record_utc_offset_minutes: nullableOptionalLegacyNumber,
+    // Sleep session fields (only present on SleepSession rows).
+    bedtime: optionalLegacyString,
+    wake_time: optionalLegacyString,
+    duration_in_seconds: nullableOptionalLegacyNumber,
+    time_asleep_in_seconds: nullableOptionalLegacyNumber,
+    deep_sleep_seconds: nullableOptionalLegacyNumber,
+    light_sleep_seconds: nullableOptionalLegacyNumber,
+    rem_sleep_seconds: nullableOptionalLegacyNumber,
+    awake_sleep_seconds: nullableOptionalLegacyNumber,
+    sleep_score: nullableOptionalLegacyNumber,
+    entry_hour: nullableOptionalLegacyNumber,
+    notes: optionalLegacyString,
+  })
+  .loose()
+  .refine((item) => Boolean(item.date || item.entry_date || item.timestamp), {
+    message: 'Each row needs a date, entry_date, or timestamp',
+    path: ['date'],
+  });
+
+export type ImportHealthDataItem = z.infer<typeof ImportHealthDataItemSchema>;
+
+export const ImportHealthDataBodySchema = z
+  .object({
+    items: z
+      .array(ImportHealthDataItemSchema)
+      .min(1, 'items must contain at least one row')
+      .max(5000, 'items cannot exceed 5000 rows per request'),
+  })
+  .loose();
+
+export type ImportHealthDataBody = z.infer<typeof ImportHealthDataBodySchema>;
