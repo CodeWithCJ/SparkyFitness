@@ -1490,6 +1490,9 @@
   "diary": {
     "loading": "Preparing your diary…",
     "nutritionSummary": "Nutrition Summary",
+    "copyAllToDate": "Copy the full day to another date",
+    "copyAllFromYesterday": "Copy all food from yesterday",
+    "nutrientProgress": "{{nutrient}} progress",
     "dailyEnergyGoal": "Daily Energy Goal",
     "waterIntake": "Water Intake",
     "exercise": "Exercise",
