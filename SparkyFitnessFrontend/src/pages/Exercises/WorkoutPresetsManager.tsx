@@ -45,6 +45,8 @@ import { useLogWorkoutPresetMutation } from '@/hooks/Exercises/useExerciseEntrie
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { createWorkoutPlaybackRouteState } from '@/utils/workoutPlayback';
 import { formatWeight } from '@/utils/numberFormatting';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
+import type { TFunction } from 'i18next';
 import WorkoutPresetSelector from './WorkoutPresetSelector';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
@@ -55,6 +57,17 @@ import { DataTable } from '@/components/ui/DataTable';
 import { ColumnDef, RowSelectionState } from '@tanstack/react-table';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '@/components/ui/badge';
+
+function formatLocalizedWorkoutVolume(
+  totalVolume: number,
+  weightUnit: string,
+  t: TFunction
+): string {
+  const displayUnit = weightUnit === 'st_lbs' ? 'lbs' : weightUnit;
+  return formatWeight(totalVolume, displayUnit)
+    .replace(/\bkg$/, getLocalizedUnitLabel('kg', t))
+    .replace(/\blbs$/, getLocalizedUnitLabel('lbs', t));
+}
 
 const WorkoutPresetsManager = () => {
   const { t } = useTranslation();
@@ -198,14 +211,21 @@ const WorkoutPresetsManager = () => {
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
-            aria-label="Select all"
+            aria-label={t(
+              'workoutPresetsManager.selectAllTemplates',
+              'Select all workout templates'
+            )}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label={t(
+              'workoutPresetsManager.selectTemplate',
+              'Select {{templateName}}',
+              { templateName: row.original.name }
+            )}
             disabled={row.original.user_id !== user?.id}
           />
         ),
@@ -221,7 +241,7 @@ const WorkoutPresetsManager = () => {
             <div className="flex flex-col">
               <span className="font-semibold">{preset.name}</span>
               {preset.description && (
-                <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                <span className="max-w-[200px] truncate text-xs text-muted-foreground">
                   {preset.description}
                 </span>
               )}
@@ -236,7 +256,9 @@ const WorkoutPresetsManager = () => {
           const count = row.original.exercises?.length || 0;
           return (
             <Badge variant="secondary" className="font-normal">
-              {count} {count === 1 ? 'exercise' : 'exercises'}
+              {t('workoutPresetsManager.exerciseCount', '{{count}} exercises', {
+                count,
+              })}
             </Badge>
           );
         },
@@ -263,12 +285,21 @@ const WorkoutPresetsManager = () => {
           return (
             <div className="flex items-center gap-4 text-xs">
               <div className="flex items-center gap-1">
-                <Layers className="w-3 h-3 text-blue-500" />
-                <span>{totalSets} sets</span>
+                <Layers className="h-3 w-3 text-blue-500" aria-hidden="true" />
+                <span>
+                  {t('workoutPresetsManager.setCount', '{{count}} sets', {
+                    count: totalSets,
+                  })}
+                </span>
               </div>
               <div className="flex items-center gap-1">
-                <Dumbbell className="w-3 h-3 text-indigo-500" />
-                <span>{formatWeight(totalWeight, weightUnit)}</span>
+                <Dumbbell
+                  className="h-3 w-3 text-indigo-500"
+                  aria-hidden="true"
+                />
+                <span>
+                  {formatLocalizedWorkoutVolume(totalWeight, weightUnit, t)}
+                </span>
               </div>
             </div>
           );
@@ -284,9 +315,17 @@ const WorkoutPresetsManager = () => {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  aria-label={t(
+                    'workoutPresetsManager.openActions',
+                    'Open actions for {{templateName}}',
+                    { templateName: preset.name }
+                  )}
+                >
+                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -296,13 +335,13 @@ const WorkoutPresetsManager = () => {
                 <DropdownMenuItem
                   onClick={() => handleStartWorkoutPlayback(preset)}
                 >
-                  <Play className="mr-2 h-4 w-4" />
+                  <Play className="h-4 w-4" aria-hidden="true" />
                   {t('workoutPresetsManager.startWorkout', 'Start Workout')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleLogPresetToDiary(preset)}
                 >
-                  <CalendarPlus className="mr-2 h-4 w-4" />
+                  <CalendarPlus className="h-4 w-4" aria-hidden="true" />
                   {t('workoutPresetsManager.logToDiary', 'Log to Diary')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -312,7 +351,7 @@ const WorkoutPresetsManager = () => {
                     setIsEditDialogOpen(true);
                   }}
                 >
-                  <Edit className="mr-2 h-4 w-4" />
+                  <Edit className="h-4 w-4" aria-hidden="true" />
                   {t('common.edit', 'Edit')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -321,7 +360,7 @@ const WorkoutPresetsManager = () => {
                   className="text-destructive focus:text-destructive"
                   onClick={() => handleDeletePreset(preset.id.toString())}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                   {t('common.delete', 'Delete')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -352,6 +391,7 @@ const WorkoutPresetsManager = () => {
           </CardTitle>
           <div className="flex gap-2">
             <Button
+              type="button"
               variant="outline"
               size={isMobile ? 'icon' : 'default'}
               onClick={toggleEditMode}
@@ -365,27 +405,40 @@ const WorkoutPresetsManager = () => {
                   ? t('common.cancel', 'Cancel')
                   : t('common.select', 'Select')
               }
+              aria-label={
+                isEditMode
+                  ? t('common.cancel', 'Cancel')
+                  : t('common.select', 'Select')
+              }
             >
               {isEditMode ? (
                 isMobile ? (
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5" aria-hidden="true" />
                 ) : (
                   t('common.cancel', 'Cancel')
                 )
               ) : isMobile ? (
-                <CheckSquare className="w-5 h-5" />
+                <CheckSquare className="h-5 w-5" aria-hidden="true" />
               ) : (
                 t('common.select', 'Select')
               )}
             </Button>
             <Button
+              type="button"
               variant="outline"
               size={isMobile ? 'icon' : 'default'}
               onClick={() => setIsStartWorkoutDialogOpen(true)}
               className="shrink-0"
               title={t('workoutPresetsManager.startWorkout', 'Start Workout')}
+              aria-label={t(
+                'workoutPresetsManager.startWorkout',
+                'Start Workout'
+              )}
             >
-              <Play className={isMobile ? 'w-5 h-5' : 'h-4 w-4 mr-2'} />
+              <Play
+                className={isMobile ? 'h-5 w-5' : 'h-4 w-4'}
+                aria-hidden="true"
+              />
               {!isMobile && (
                 <span>
                   {t('workoutPresetsManager.startWorkout', 'Start Workout')}
@@ -393,12 +446,20 @@ const WorkoutPresetsManager = () => {
               )}
             </Button>
             <Button
+              type="button"
               onClick={() => setIsAddPresetDialogOpen(true)}
               size={isMobile ? 'icon' : 'default'}
               className="shrink-0"
               title={t('workoutPresetsManager.addPresetButton', 'Add presets')}
+              aria-label={t(
+                'workoutPresetsManager.addPresetButton',
+                'Add template'
+              )}
             >
-              <Plus className={isMobile ? 'w-5 h-5' : 'h-4 w-4 mr-2'} />
+              <Plus
+                className={isMobile ? 'h-5 w-5' : 'h-4 w-4'}
+                aria-hidden="true"
+              />
               {!isMobile && (
                 <span>
                   {t('workoutPresetsManager.addPresetButton', 'Add presets')}
@@ -447,7 +508,10 @@ const WorkoutPresetsManager = () => {
                 className="text-gray-500"
               >
                 {isFetchingNextPage ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2
+                    className="h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
                 ) : (
                   t('workoutPresetsManager.loadMore', 'Load more')
                 )}
