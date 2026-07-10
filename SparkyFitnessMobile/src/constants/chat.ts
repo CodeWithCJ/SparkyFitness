@@ -1,14 +1,15 @@
 import type { IconName } from '../components/Icon';
+import { mobileT } from '../localization';
 
 /**
  * Tappable starter prompts shown in the empty chat state. Tuned for mobile from
  * the web app's defaults — short, action-oriented, one per row.
  */
 export const CHAT_SUGGESTIONS = [
-  'Log two eggs and a banana for breakfast',
-  'Log a 30 minute run today',
-  'How many calories do I have left today?',
-  'Suggest a high-protein snack',
+  mobileT('chat.suggestion.breakfast'),
+  mobileT('chat.suggestion.run'),
+  mobileT('chat.suggestion.calories'),
+  mobileT('chat.suggestion.snack'),
 ] as const;
 
 export interface ToolDisplay {

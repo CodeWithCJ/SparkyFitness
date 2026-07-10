@@ -48,8 +48,10 @@ describe('isLookupTool', () => {
 });
 
 describe('CHAT_SUGGESTIONS', () => {
-  it('provides non-empty starter prompts', () => {
+  it('provides non-empty Saudi Arabic starter prompts', () => {
     expect(CHAT_SUGGESTIONS.length).toBeGreaterThan(0);
+    expect(CHAT_SUGGESTIONS).toContain('سجّل بيضتين وموزة على الفطور');
+    expect(CHAT_SUGGESTIONS).toContain('كم باقي لي من السعرات اليوم؟');
     CHAT_SUGGESTIONS.forEach((suggestion) => {
       expect(suggestion.trim().length).toBeGreaterThan(0);
     });
