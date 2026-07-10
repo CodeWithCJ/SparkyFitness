@@ -39,7 +39,6 @@ import {
 import { ExternalProvider } from '../types/externalProviders';
 import Toast from 'react-native-toast-message';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
-import { getApiErrorMessage } from '../services/api/errors';
 import { FoodItem, TopFoodItem } from '../types/foods';
 import { ExternalFoodItem } from '../types/externalFoods';
 import { Meal } from '../types/meals';
@@ -60,6 +59,12 @@ import { interleaveTopMatches } from '../utils/topMatches';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import {
+  formatMobileCalories,
+  formatMobileNumber,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 
@@ -230,7 +235,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }));
     // Offer the aggregated view only when there is more than one provider.
     if (providers.length > 1) {
-      opts.unshift({ label: 'All Sources', value: ALL_PROVIDERS_VALUE });
+      opts.unshift({
+        label: mobileT('foodSearch.allSources'),
+        value: ALL_PROVIDERS_VALUE,
+      });
     }
     return opts;
   }, [providers]);
@@ -378,7 +386,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           sfSymbol: 'xmark',
           identifier: 'food-search-close',
           tintColor: headerActionColor,
-          accessibilityLabel: 'Close',
+          accessibilityLabel: mobileT('common.close'),
           onPress: () => navigation.goBack(),
         }),
       ],
@@ -387,7 +395,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           sfSymbol: 'plus',
           identifier: 'food-search-add',
           tintColor: headerSaveColor,
-          accessibilityLabel: isMealBuilderMode ? 'Add Food' : 'Add Food or Meal',
+          accessibilityLabel: isMealBuilderMode
+            ? mobileT('foodSearch.addFood')
+            : mobileT('foodSearch.addFoodOrMeal'),
           onPress: handleAddPress,
         }),
       ],
@@ -420,10 +430,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             providerId,
           );
           showFoodInfo(externalFoodItemToFoodInfo(detailed));
-        } catch (error) {
-          const message =
-            getApiErrorMessage(error) ?? "Couldn't load full nutrition details.";
-          Toast.show({ type: 'error', text1: 'Details unavailable', text2: message });
+        } catch {
+          Toast.show({
+            type: 'error',
+            text1: mobileT('foodSearch.detailsUnavailable'),
+            text2: mobileT('foodSearch.partialDetails'),
+          });
           showFoodInfo(externalFoodItemToFoodInfo(item));
         }
         setLoadingFoodId(null);
@@ -544,8 +556,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const landingSections = useMemo<LandingSection[]>(() => {
     return [
-      { title: 'Recently Logged', data: recentFoods.slice(0, 6) },
-      { title: 'Top Foods', data: topFoods },
+      {
+        title: mobileT('foodSearch.recentlyLogged'),
+        data: recentFoods.slice(0, 6),
+      },
+      { title: mobileT('foodSearch.topFoods'), data: topFoods },
     ].filter((section) => section.data.length > 0);
   }, [recentFoods, topFoods]);
 
@@ -572,7 +587,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             count: searchResults.length,
           });
         }
-        sections.push({ key: 'foods', kind: 'food', title: 'Your Foods', data });
+        sections.push({
+          key: 'foods',
+          kind: 'food',
+          title: mobileT('foodSearch.yourFoods'),
+          data,
+        });
       }
       if (!isMealBuilderMode && mealResults.length > 0) {
         const capMeals = willShowOnline && !showAllMeals;
@@ -587,7 +607,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             count: mealResults.length,
           });
         }
-        sections.push({ key: 'meals', kind: 'meal', title: 'Your Meals', data });
+        sections.push({
+          key: 'meals',
+          kind: 'meal',
+          title: mobileT('foodSearch.yourMeals'),
+          data,
+        });
       }
     } else {
       sections.push({
@@ -607,7 +632,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         sections.push({
           key: 'online-top',
           kind: 'online-top',
-          title: 'Top Matches',
+          title: mobileT('foodSearch.topMatches'),
           data: topMatches.map((m) => ({
             type: 'online-top',
             online: m.online,
@@ -618,7 +643,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         sections.push({
           key: 'by-source-label',
           kind: 'label',
-          title: 'By Source',
+          title: mobileT('foodSearch.bySource'),
           data: [],
         });
         for (const r of providerResults) {
@@ -692,7 +717,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       onPress={() => showFoodInfo(foodItemToFoodInfo(item))}
     >
       <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-3">
+        <View className="flex-1" style={{ marginEnd: 12 }}>
           <Text className="text-text-primary text-base font-medium">{item.name}</Text>
           {item.brand ? (
             <Text className="text-text-secondary text-sm mt-0.5">{item.brand}</Text>
@@ -700,11 +725,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
-            {item.default_variant.calories} cal
+            {formatMobileCalories(item.default_variant.calories)}
           </Text>
           <Text className="text-text-secondary text-xs">
-            {item.default_variant.serving_size}{' '}
-            {formatServingUnit(item.default_variant.serving_unit)}
+            {formatMobileNumber(item.default_variant.serving_size)}{' '}
+            {localizeServingUnit(
+              formatServingUnit(item.default_variant.serving_unit),
+            )}
           </Text>
         </View>
       </View>
@@ -725,7 +752,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       }}
     >
       <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-3">
+        <View className="flex-1" style={{ marginEnd: 12 }}>
           <View className="flex-row items-center gap-1">
             <Text className="text-text-primary text-base font-medium">{item.name}</Text>
             {item.provider_verified ? (
@@ -767,12 +794,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           ) : (
             <>
               <Text className="text-text-primary text-base font-semibold">
-                {item.calories} cal
+                {formatMobileCalories(item.calories)}
               </Text>
               <Text className="text-text-secondary text-xs">
                 {item.serving_description
                   ? formatServingDescription(item.serving_description)
-                  : `${item.serving_size} ${formatServingUnit(item.serving_unit)}`}
+                  : `${formatMobileNumber(item.serving_size)} ${localizeServingUnit(
+                      formatServingUnit(item.serving_unit),
+                    )}`}
               </Text>
             </>
           )}
@@ -790,7 +819,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       onPress={() => handleSelectProvider(provider.id)}
     >
       <Text className="text-sm font-medium" style={{ color: accentColor }}>
-        Show all {count} {provider.provider_name} results
+        {mobileT('foodSearch.showAllProvider', {
+          provider: provider.provider_name,
+          count: formatMobileNumber(count, { maximumFractionDigits: 0 }),
+        })}
       </Text>
     </TouchableOpacity>
   );
@@ -804,7 +836,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       }
     >
       <Text className="text-sm font-medium" style={{ color: accentColor }}>
-        Show all {count} {section === 'foods' ? 'foods' : 'meals'}
+        {mobileT(
+          section === 'foods'
+            ? 'foodSearch.showAllFoods'
+            : 'foodSearch.showAllMeals',
+          { count: formatMobileNumber(count, { maximumFractionDigits: 0 }) },
+        )}
       </Text>
     </TouchableOpacity>
   );
@@ -865,8 +902,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
               accessibilityElementsHidden={item.pending}
             >
               {isMealBuilderMode
-                ? 'No saved foods found'
-                : 'No saved foods or meals found'}
+                ? mobileT('foodSearch.noSavedFoods')
+                : mobileT('foodSearch.noSavedFoodsOrMeals')}
             </Text>
             {item.pending ? (
               <View
@@ -875,8 +912,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
                 accessibilityRole="progressbar"
                 accessibilityLabel={
                   isMealBuilderMode
-                    ? 'Searching saved foods'
-                    : 'Searching saved foods and meals'
+                    ? mobileT('foodSearch.searchingSavedFoods')
+                    : mobileT('foodSearch.searchingSavedFoodsAndMeals')
                 }
               >
                 <ActivityIndicator size="small" color={accentColor} />
@@ -897,8 +934,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (section.kind === 'online' || section.kind === 'online-top') {
       const canSwitch = providerOptions.length > 1;
       const label =
-        section.kind === 'online-top' ? 'Top Matches' : 'Online Results';
-      const value = isAllProviders ? 'All Sources' : selectedProviderName;
+        section.kind === 'online-top'
+          ? mobileT('foodSearch.topMatches')
+          : mobileT('foodSearch.onlineResults');
+      const value = isAllProviders
+        ? mobileT('foodSearch.allSources')
+        : selectedProviderName;
       const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
       const header = (
         <View
@@ -930,7 +971,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           value={selectedProvider ?? ''}
           options={providerOptions}
           onSelect={handleSelectProvider}
-          title="Online provider"
+          title={mobileT('foodSearch.onlineProvider')}
           renderTrigger={({ onPress }) => (
             <Pressable
               onPress={() => {
@@ -940,7 +981,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
                 onPress();
               }}
               accessibilityRole="button"
-              accessibilityLabel={`Source ${value}, tap to change`}
+              accessibilityLabel={mobileT('foodSearch.sourceChange', {
+                source: value,
+              })}
             >
               {header}
             </Pressable>
@@ -973,13 +1016,25 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           accessibilityRole="button"
           accessibilityLabel={
             errored
-              ? `${provider.provider_name}, could not load, tap to retry`
+              ? mobileT('foodSearch.providerLoadFailed', {
+                  provider: provider.provider_name,
+                })
               : empty
-                ? `${provider.provider_name}, no results`
+                ? mobileT('foodSearch.providerNoResults', {
+                    provider: provider.provider_name,
+                  })
                 : expandable
-                  ? `${provider.provider_name}, ${count} results, tap to ${
-                      expanded ? 'collapse' : 'expand'
-                    }`
+                  ? mobileT('foodSearch.providerResults', {
+                      provider: provider.provider_name,
+                      count: formatMobileNumber(count, {
+                        maximumFractionDigits: 0,
+                      }),
+                      action: mobileT(
+                        expanded
+                          ? 'foodSearch.collapse'
+                          : 'foodSearch.expand',
+                      ),
+                    })
                   : provider.provider_name
           }
         >
@@ -993,7 +1048,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             </Text>
             {expandable ? (
               <View className="px-1.5 py-0.5 rounded-full bg-background">
-                <Text className="text-text-secondary text-xs">{count}</Text>
+                <Text className="text-text-secondary text-xs">
+                  {formatMobileNumber(count, { maximumFractionDigits: 0 })}
+                </Text>
               </View>
             ) : null}
           </View>
@@ -1001,11 +1058,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             <ActivityIndicator size="small" color={textMuted} />
           ) : errored ? (
             <View className="flex-row items-center gap-1">
-              <Text className="text-text-muted text-xs">Couldn&apos;t load</Text>
+              <Text className="text-text-muted text-xs">
+                {mobileT('foodSearch.couldNotLoad')}
+              </Text>
               <Icon name="sync" size={14} color={textMuted} />
             </View>
           ) : empty ? (
-            <Text className="text-text-muted text-xs">No results</Text>
+            <Text className="text-text-muted text-xs">
+              {mobileT('foodSearch.noResults')}
+            </Text>
           ) : (
             <Icon
               name={expanded ? 'chevron-down' : 'chevron-forward'}
@@ -1038,7 +1099,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           className="py-3"
           textClassName="text-sm"
         >
-          Failed to load more. Tap to retry
+          {mobileT('foodSearch.loadMoreFailed')}
         </Button>
       );
     }
@@ -1057,7 +1118,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           className="py-4 mb-4"
           textClassName="text-sm"
         >
-          Load More
+          {mobileT('foodSearch.loadMore')}
         </Button>
       );
     }
@@ -1065,7 +1126,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       return (
         <View className="px-4 py-4">
           <Text className="text-text-secondary text-sm text-center">
-            No online results from {selectedProviderName}
+            {mobileT('foodSearch.noOnlineResults', {
+              provider: selectedProviderName,
+            })}
           </Text>
         </View>
       );
@@ -1100,7 +1163,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="p-0"
-          accessibilityLabel="Close"
+          accessibilityLabel={mobileT('common.close')}
         >
           <Icon name="close" size={22} color={headerActionColor} />
         </Button>
@@ -1130,11 +1193,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             <Icon name="search" size={18} color={textMuted} />
           )}
         </View>
-        <View className="flex-1 ml-2">
+        <View className="flex-1" style={{ marginStart: 8 }}>
           <TextInput
             className="text-text-primary"
             style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-            placeholder="Search foods..."
+            placeholder={mobileT('foodSearch.searchPlaceholder')}
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -1151,8 +1214,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             variant="header"
             onPress={() => setSearchText('')}
             hitSlop={8}
-            className="ml-2"
-            accessibilityLabel="Clear search"
+            style={{ marginStart: 8 }}
+            accessibilityLabel={mobileT('foodSearch.clearSearch')}
           >
             <Icon name="close" size={20} color={textMuted} />
           </Button>
@@ -1161,8 +1224,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             variant="header"
             onPress={openFoodScan}
             hitSlop={8}
-            className="ml-2"
-            accessibilityLabel="Scan Food"
+            style={{ marginStart: 8 }}
+            accessibilityLabel={mobileT('foodSearch.scanFood')}
           >
             <Icon name="scan" size={20} color={headerActionColor} />
           </Button>
@@ -1176,7 +1239,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             onPress={handleAddPress}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="p-0"
-            accessibilityLabel={isMealBuilderMode ? 'Add Food' : 'Add Food or Meal'}
+            accessibilityLabel={
+              isMealBuilderMode
+                ? mobileT('foodSearch.addFood')
+                : mobileT('foodSearch.addFoodOrMeal')
+            }
           >
             <Icon name="add" size={26} color={accentColor} />
           </Button>
@@ -1193,7 +1260,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="cloud-offline" size={48} color={accentColor} />
           <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to search foods
+            {mobileT('foodSearch.connectServer')}
           </Text>
         </View>
       );
@@ -1228,10 +1295,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="alert-circle" size={48} color={accentColor} />
           <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to load foods
+            {mobileT('foodSearch.loadFailed')}
           </Text>
           <Button variant="secondary" onPress={() => refetch()} className="mt-4 px-6">
-            Retry
+            {mobileT('common.retry')}
           </Button>
         </View>
       );
@@ -1241,7 +1308,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="search" size={48} color={textSecondary} />
           <Text className="text-text-secondary text-base mt-4 text-center">
-            Search for a food or meal to log
+            {mobileT('foodSearch.startPrompt')}
           </Text>
         </View>
       );
@@ -1274,27 +1341,37 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         anchor={menuAnchor}
         onClose={() => setMenuVisible(false)}
         items={[
-          { key: 'food', label: 'New Food', icon: 'food', onPress: openCreateFood },
-          { key: 'meal', label: 'New Meal', icon: 'meal', onPress: openMealAdd },
+          {
+            key: 'food',
+            label: mobileT('foodSearch.newFood'),
+            icon: 'food',
+            onPress: openCreateFood,
+          },
+          {
+            key: 'meal',
+            label: mobileT('foodSearch.newMeal'),
+            icon: 'meal',
+            onPress: openMealAdd,
+          },
         ]}
       />
       <Popover
         visible={introVisible}
         anchor={searchBarLayout}
         onDismiss={dismissIntro}
-        title="Search everything here"
+        title={mobileT('foodSearch.introTitle')}
         showDismissButton={false}
       >
-        Saved foods, meals, and online results appear together as you type.
+        {mobileT('foodSearch.introDescription')}
       </Popover>
       <Popover
         visible={providerPopoverVisible}
         anchor={providerAnchor}
         onDismiss={dismissProviderPopover}
-        title="Choose a source"
+        title={mobileT('foodSearch.sourceTitle')}
         showDismissButton={false}
       >
-        Tap here to switch providers or search All Sources.
+        {mobileT('foodSearch.sourceDescription')}
       </Popover>
     </View>
   );
