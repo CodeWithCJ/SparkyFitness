@@ -3,17 +3,21 @@ import { useTranslation } from 'react-i18next';
 
 interface AppLoadingScreenProps {
   messageKey?: string;
+  fullScreen?: boolean;
 }
 
 export const AppLoadingScreen = ({
   messageKey = 'common.loadingPage',
+  fullScreen = true,
 }: AppLoadingScreenProps) => {
   const { t } = useTranslation();
   const message = t(messageKey);
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center bg-background px-6"
+      className={`flex items-center justify-center bg-background px-6 ${
+        fullScreen ? 'min-h-screen' : 'min-h-64 w-full'
+      }`}
       role="status"
       aria-label={message}
       aria-live="polite"

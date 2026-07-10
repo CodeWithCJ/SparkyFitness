@@ -1450,6 +1450,7 @@
     "totalSets": "Total Sets"
   },
   "diary": {
+    "loading": "Preparing your diary…",
     "nutritionSummary": "Nutrition Summary",
     "dailyEnergyGoal": "Daily Energy Goal",
     "waterIntake": "Water Intake",
@@ -1487,6 +1488,7 @@
     "pickADate": "Pick a date",
     "success": "Success",
     "error": "Error",
+    "userNotFound": "We could not identify the active user, so this entry cannot be edited.",
     "genericError": "An unexpected error occurred.",
     "pastDateWarning": "Warning: You are adding food entries for a past date.",
     "futureDateWarning": "Warning: You are adding food entries for a future date.",

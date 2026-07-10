@@ -45,6 +45,7 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import { todayInZone } from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
+import { AppLoadingScreen } from '@/components/AppLoadingScreen';
 
 const Diary = () => {
   const { t } = useTranslation();
@@ -285,11 +286,8 @@ const Diary = () => {
         'currentUserId is undefined when trying to edit entry.'
       );
       toast({
-        title: t('foodDiary.error', 'Error'),
-        description: t(
-          'foodDiary.userNotFound',
-          'User not found, cannot edit entry.'
-        ),
+        title: t('foodDiary.error'),
+        description: t('foodDiary.userNotFound'),
         variant: 'destructive',
       });
       return;
@@ -329,13 +327,13 @@ const Diary = () => {
     const list: DiaryWidget[] = [
       {
         key: 'energy',
-        title: t('diary.dailyEnergyGoal', 'Daily Energy Goal'),
+        title: t('diary.dailyEnergyGoal'),
         icon: Flame,
         render: () => <DailyProgress selectedDate={selectedDate} />,
       },
       {
         key: 'nutrition',
-        title: t('diary.nutritionSummary', 'Nutrition Summary'),
+        title: t('diary.nutritionSummary'),
         icon: Salad,
         render: () => (
           <NutritionSummaryCard
@@ -350,7 +348,7 @@ const Diary = () => {
       },
       {
         key: 'water',
-        title: t('diary.waterIntake', 'Water Intake'),
+        title: t('diary.waterIntake'),
         icon: Droplet,
         render: () => <WaterIntake selectedDate={selectedDate} />,
       },
@@ -402,7 +400,7 @@ const Diary = () => {
 
     list.push({
       key: 'exercise',
-      title: t('diary.exercise', 'Exercise'),
+      title: t('diary.exercise'),
       icon: Dumbbell,
       render: () => (
         <ExerciseCard
@@ -429,7 +427,9 @@ const Diary = () => {
     t,
   ]);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return <AppLoadingScreen messageKey="diary.loading" fullScreen={false} />;
+  }
   return (
     <div className="space-y-6">
       <DayNavigator
