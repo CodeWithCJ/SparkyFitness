@@ -776,6 +776,10 @@ export const ar = {
     'قد تتعارض «{{name}}» مع ترويسة يضيفها التطبيق. تبي تكمل؟',
   'serverConfig.saveFailed': 'ما قدرنا نحفظ إعدادات الخادم. حاول مرة ثانية.',
 
+  'reauth.sessionExpired': 'انتهت جلسة الدخول',
+  'reauth.noServer': 'ما فيه خادم محدد. ارجع للإعدادات واختر خادم.',
+  'reauth.server': 'الخادم',
+
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
   'exerciseCategory.flexibility': 'مرونة',
