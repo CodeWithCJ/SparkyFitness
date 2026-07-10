@@ -17,6 +17,8 @@ import {
   formatMobileServingCount,
   formatMobileSetCount,
   localizeExerciseCategory,
+  localizeExerciseMetadata,
+  localizeExerciseSource,
   localizeHealthCategory,
   localizeHealthMetricLabel,
   localizeMealType,
@@ -48,7 +50,16 @@ describe('mobile localization', () => {
 
   it('localizes known exercise categories without changing custom categories', () => {
     expect(localizeExerciseCategory('strength')).toBe('قوة');
+    expect(localizeExerciseCategory('Olympic Weightlifting')).toBe(
+      'رفع الأثقال الأولمبي',
+    );
     expect(localizeExerciseCategory('CrossFit')).toBe('CrossFit');
+    expect(localizeExerciseMetadata('level', 'intermediate')).toBe('متوسط');
+    expect(localizeExerciseMetadata('force', 'push')).toBe('دفع');
+    expect(localizeExerciseMetadata('mechanic', 'compound')).toBe('مركّب');
+    expect(localizeExerciseMetadata('level', 'elite')).toBe('elite');
+    expect(localizeExerciseSource('Sparky')).toBe('سباركي');
+    expect(localizeExerciseSource('ExerciseDB')).toBe('ExerciseDB');
   });
 
   it('uses reviewed Arabic health metric names with a safe fallback', () => {

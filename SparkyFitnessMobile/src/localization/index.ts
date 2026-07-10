@@ -144,6 +144,28 @@ export function localizeExerciseCategory(category: string): string {
   return mobileT(`exerciseCategory.${normalizedCategory}`, undefined, category);
 }
 
+const exerciseMetadataKeyPrefixes = {
+  level: 'exerciseLevel',
+  force: 'exerciseForce',
+  mechanic: 'exerciseMechanic',
+} as const;
+
+export function localizeExerciseMetadata(
+  kind: keyof typeof exerciseMetadataKeyPrefixes,
+  value: string,
+): string {
+  const normalizedValue = value.trim().toLowerCase();
+  const prefix = exerciseMetadataKeyPrefixes[kind];
+
+  return mobileT(`${prefix}.${normalizedValue}`, undefined, value);
+}
+
+export function localizeExerciseSource(source: string): string {
+  const normalizedSource = source.trim().toLowerCase();
+
+  return mobileT(`source.${normalizedSource}`, undefined, source);
+}
+
 export function localizeMealType(name: string): string {
   const normalizedName = name.trim().toLowerCase();
   const key = normalizedName === 'snack' ? 'snacks' : normalizedName;
