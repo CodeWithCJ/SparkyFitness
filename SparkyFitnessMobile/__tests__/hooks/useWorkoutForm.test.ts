@@ -10,6 +10,11 @@ import type { PresetSessionResponse, ExerciseEntrySetResponse } from '@workspace
 import type { WorkoutPreset } from '../../src/types/workoutPresets';
 
 jest.mock('../../src/utils/dateUtils', () => ({
+  formatMonthDayShort: (date: string) =>
+    ({
+      '2026-03-12': '١٢ مارس',
+      '2026-04-01': '١ أبريل',
+    })[date] ?? date,
   getTodayDate: () => '2026-03-12',
   normalizeDate: (d: string) => d.split('T')[0],
 }));
@@ -484,7 +489,7 @@ describe('workoutFormReducer', () => {
 
       const result = workoutFormReducer(state, { type: 'RESET' });
       expect(result.type).toBe('workout');
-      expect(result.name).toBe('Workout - Mar 12');
+      expect(result.name).toBe('تمرين - ١٢ مارس');
       expect(result.nameManuallySet).toBe(false);
       expect(result.exercises).toEqual([]);
       expect(result.entryDate).toBeTruthy();
@@ -524,7 +529,7 @@ describe('workoutFormReducer', () => {
         nameManuallySet: false,
       };
       const result = workoutFormReducer(state, { type: 'SET_DATE', date: '2026-04-01' });
-      expect(result.name).toBe('Workout - Apr 1');
+      expect(result.name).toBe('تمرين - ١ أبريل');
     });
   });
 
@@ -672,7 +677,7 @@ describe('workoutFormReducer', () => {
       });
       const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
 
-      expect(result.exercises[0].exerciseName).toBe('Unknown');
+      expect(result.exercises[0].exerciseName).toBe('تمرين غير معروف');
       expect(result.exercises[0].exerciseCategory).toBeNull();
     });
 
@@ -1299,7 +1304,7 @@ describe('workoutFormReducer', () => {
 
       const result = getWorkoutDraftSubmission(state, 'lbs');
 
-      expect(result.name).toBe('Workout');
+      expect(result.name).toBe('تمرين');
       expect(result.exerciseCount).toBe(0);
       expect(result.canSave).toBe(false);
       expect(result.exercisesWithSets).toEqual([]);

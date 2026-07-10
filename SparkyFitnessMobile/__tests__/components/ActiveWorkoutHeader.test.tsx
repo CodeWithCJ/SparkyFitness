@@ -140,7 +140,7 @@ describe('ActiveWorkoutHeader', () => {
     const onDiscard = jest.fn();
     const { getByLabelText, getByText } = renderHeaderComponent({}, { onDiscard });
     fireEvent.press(getByLabelText('قائمة التمرين'));
-    fireEvent.press(getByText('حذف التمرين'));
+    fireEvent.press(getByText('تجاهل التمرين'));
     expect(onDiscard).toHaveBeenCalledTimes(1);
   });
 

@@ -7,25 +7,22 @@ import {
   useDraftExerciseActions,
   type DraftExercisesAction,
 } from './draftExercisesSlice';
-import { getTodayDate, normalizeDate } from '../utils/dateUtils';
+import { formatMonthDayShort, getTodayDate, normalizeDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
 import { buildExercisesPayload } from '../utils/workoutSession';
 import type { WorkoutDraft, WorkoutDraftExercise } from '../types/drafts';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { WorkoutPreset } from '../types/workoutPresets';
+import { mobileT } from '../localization';
 
 export type { WorkoutDraft, WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 
 // --- Helpers ---
 
-function formatWorkoutDate(dateString: string): string {
-  const [year, month, day] = dateString.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 export function defaultWorkoutName(dateString: string): string {
-  return `Workout - ${formatWorkoutDate(dateString)}`;
+  return mobileT('workout.defaultName', {
+    date: formatMonthDayShort(dateString),
+  });
 }
 
 function createEmptyDraft(): WorkoutDraft {
@@ -55,7 +52,7 @@ export function getWorkoutDraftSubmission(
   const exercisesWithSets = state.exercises.filter(exercise => exercise.sets.length > 0);
 
   return {
-    name: state.name.trim() || 'Workout',
+    name: state.name.trim() || mobileT('workout.unnamed'),
     entryDate: state.entryDate,
     exercisesWithSets,
     exerciseCount: exercisesWithSets.length,
@@ -116,7 +113,8 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           clientId: generateClientId(),
           serverId: exercise.id,
           exerciseId: exercise.exercise_id,
-          exerciseName: exercise.exercise_snapshot?.name ?? 'Unknown',
+          exerciseName:
+            exercise.exercise_snapshot?.name ?? mobileT('workout.unknownExercise'),
           exerciseCategory: exercise.exercise_snapshot?.category ?? null,
           images: exercise.exercise_snapshot?.images ?? [],
           supersetGroup: exercise.superset_group ?? null,

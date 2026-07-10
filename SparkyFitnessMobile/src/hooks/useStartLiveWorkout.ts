@@ -12,6 +12,7 @@ import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { ensureNotificationPermission } from '../services/notifications';
 import { getTodayDate } from '../utils/dateUtils';
 import type { RootStackParamList } from '../types/navigation';
+import { mobileT } from '../localization';
 
 type StartLiveWorkoutNavigation = Pick<
   NativeStackNavigationProp<RootStackParamList>,
@@ -52,8 +53,8 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
       if (exercises.length === 0) {
         Toast.show({
           type: 'error',
-          text1: 'Nothing to start',
-          text2: 'This preset has no exercises.',
+          text1: mobileT('startWorkout.emptyTitle'),
+          text2: mobileT('startWorkout.emptyDescription'),
         });
         return;
       }
@@ -95,19 +96,19 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
     async (args: StartLiveWorkoutArgs) => {
       if (!queryClient.getQueryData(serverConnectionQueryKey)) {
         Alert.alert(
-          'No Server Connected',
-          'Configure your server connection in Settings to start a workout.',
+          mobileT('alerts.noServerTitle'),
+          mobileT('alerts.startWorkoutNeedsServer'),
         );
         return;
       }
       if (useActiveWorkoutStore.getState().sessionId !== null) {
         Alert.alert(
-          'Replace current workout?',
-          'You already have a workout in progress. Starting a new one clears it here — any sets already saved stay in your diary.',
+          mobileT('workoutDetail.replaceTitle'),
+          mobileT('workoutDetail.replaceDescription'),
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: mobileT('common.cancel'), style: 'cancel' },
             {
-              text: 'Clear & Start',
+              text: mobileT('workoutDetail.clearAndStart'),
               style: 'destructive',
               onPress: () => {
                 void (async () => {
