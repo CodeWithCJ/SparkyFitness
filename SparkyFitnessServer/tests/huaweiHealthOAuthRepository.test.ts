@@ -1,0 +1,92 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { query, release, getClient } = vi.hoisted(() => {
+  const query = vi.fn();
+  const release = vi.fn();
+  return {
+    query,
+    release,
+    getClient: vi.fn(async () => ({ query, release })),
+  };
+});
+
+vi.mock('../db/poolManager.js', () => ({ getClient }));
+
+import huaweiHealthOAuthRepository from '../integrations/huaweihealth/huaweiHealthOAuthRepository.js';
+
+describe('Huawei Health OAuth repository', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('stores state through the owner RLS context without using a system client', async () => {
+    query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'provider-1' }] });
+
+    await huaweiHealthOAuthRepository.storeOAuthState(
+      'user-1',
+      'user-1',
+      'state.nonce.123'
+    );
+
+    expect(getClient).toHaveBeenCalledWith('user-1', 'user-1');
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('provider_type = $2 AND is_public = FALSE'),
+      ['user-1', 'huaweihealth', 'state.nonce.123']
+    );
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('creates a private inactive provider lazily when none exists', async () => {
+    query
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'provider-1' }] });
+
+    await huaweiHealthOAuthRepository.storeOAuthState(
+      'user-1',
+      'user-1',
+      'state.nonce.123'
+    );
+
+    expect(query.mock.calls[1][0]).toContain(
+      'VALUES ($1, $2, $3, FALSE, FALSE, $4, NOW(), NOW())'
+    );
+    expect(query.mock.calls[1][1]).toEqual([
+      'user-1',
+      'HUAWEI Health',
+      'huaweihealth',
+      'state.nonce.123',
+    ]);
+  });
+
+  it('consumes matching state atomically under a row lock', async () => {
+    query.mockResolvedValueOnce({
+      rows: [{ oauth_state: 'state.nonce.123' }],
+    });
+
+    await expect(
+      huaweiHealthOAuthRepository.consumeOAuthState('user-1', 'user-1', 'state')
+    ).resolves.toBe('state.nonce.123');
+
+    expect(query.mock.calls[0][0]).toContain('FOR UPDATE');
+    expect(query.mock.calls[0][0]).toContain('SET oauth_state = NULL');
+    expect(query.mock.calls[0][1]).toEqual(['user-1', 'huaweihealth', 'state']);
+  });
+
+  it('stores only encrypted token material and keeps the row private', async () => {
+    query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'provider-1' }] });
+
+    await huaweiHealthOAuthRepository.saveTokens('user-1', 'user-1', {
+      accessToken: { encryptedText: 'access', iv: 'aiv', tag: 'atag' },
+      refreshToken: { encryptedText: 'refresh', iv: 'riv', tag: 'rtag' },
+      tokenExpiresAt: new Date('2026-07-10T13:00:00.000Z'),
+      scope: 'openid',
+      externalUserId: 'huawei-user',
+    });
+
+    const sql = query.mock.calls[0][0] as string;
+    expect(sql).toContain('encrypted_access_token = $3');
+    expect(sql).toContain('encrypted_refresh_token = $6');
+    expect(sql).toContain('is_public = FALSE');
+    expect(query.mock.calls[0][1]).not.toContain('client-secret');
+  });
+});
