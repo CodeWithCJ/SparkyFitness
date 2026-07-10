@@ -32,7 +32,7 @@ describe('foodPhotoEstimate', () => {
         const copy = mapEstimateError(code);
         expect(copy.invalidateAiSettings).toBe(true);
         expect(copy.stayOnForm).toBe(false);
-        expect(copy.title.toLowerCase()).toContain('ai');
+        expect(copy.title).toBe('الذكاء الاصطناعي غير مهيأ');
       }
     });
 
@@ -40,7 +40,7 @@ describe('foodPhotoEstimate', () => {
       const copy = mapEstimateError('IMAGE_TOO_LARGE');
       expect(copy.stayOnForm).toBe(false);
       expect(copy.invalidateAiSettings).toBe(false);
-      expect(copy.message.toLowerCase()).toContain('retake');
+      expect(copy.message).toContain('صورة جديدة');
     });
 
     test('CONTENT_BLOCKED stays on form so user keeps typed context', () => {
@@ -60,8 +60,8 @@ describe('foodPhotoEstimate', () => {
       const copy = mapEstimateError('TIMEOUT');
       expect(copy.stayOnForm).toBe(true);
       expect(copy.invalidateAiSettings).toBe(false);
-      expect(copy.title.toLowerCase()).toContain('timed out');
-      expect(copy.message.toLowerCase()).toContain('too long');
+      expect(copy.title).toBe('مزود الذكاء الاصطناعي تأخر بالرد');
+      expect(copy.message).toContain('وقتًا أطول من المتوقع');
     });
   });
 });

@@ -5,6 +5,7 @@ import {
   type ConfidenceTone,
   type FoodPhotoEstimateErrorCode,
 } from '@workspace/shared';
+import { mobileT } from '../localization';
 
 export type { ConfidenceTone };
 
@@ -31,36 +32,36 @@ export function mapEstimateError(
     case 'UNSUPPORTED_PROVIDER':
     case 'API_KEY_MISSING':
       return {
-        title: 'AI not configured',
-        message: 'Configure an AI provider in the web app to use photo estimates.',
+        title: mobileT('foodPhoto.errorAiNotConfigured'),
+        message: mobileT('foodPhoto.errorAiNotConfiguredDescription'),
         stayOnForm: false,
         invalidateAiSettings: true,
       };
     case 'IMAGE_TOO_LARGE':
       return {
-        title: 'Photo too large',
-        message: 'Retake the photo at lower quality.',
+        title: mobileT('foodPhoto.errorImageTooLarge'),
+        message: mobileT('foodPhoto.errorImageTooLargeDescription'),
         stayOnForm: false,
         invalidateAiSettings: false,
       };
     case 'UNSUPPORTED_MIME_TYPE':
       return {
-        title: 'Unexpected image format',
-        message: 'Retake the photo.',
+        title: mobileT('foodPhoto.errorUnexpectedFormat'),
+        message: mobileT('foodPhoto.errorUnexpectedFormatDescription'),
         stayOnForm: false,
         invalidateAiSettings: false,
       };
     case 'CONTENT_BLOCKED':
       return {
-        title: 'Could not process photo',
-        message: 'The provider blocked this image. Try another shot.',
+        title: mobileT('foodPhoto.errorProcessFailed'),
+        message: mobileT('foodPhoto.errorProcessFailedDescription'),
         stayOnForm: true,
         invalidateAiSettings: false,
       };
     case 'TIMEOUT':
       return {
-        title: 'AI provider timed out',
-        message: 'The estimate took too long. Try again, or log this food manually.',
+        title: mobileT('foodPhoto.errorTimedOut'),
+        message: mobileT('foodPhoto.errorTimedOutDescription'),
         stayOnForm: true,
         invalidateAiSettings: false,
       };
@@ -69,8 +70,8 @@ export function mapEstimateError(
     case 'INVALID_REQUEST':
     default:
       return {
-        title: "Couldn't reach AI provider",
-        message: 'Try again, or log this food manually.',
+        title: mobileT('foodPhoto.errorProviderUnavailable'),
+        message: mobileT('foodPhoto.errorProviderUnavailableDescription'),
         stayOnForm: true,
         invalidateAiSettings: false,
       };

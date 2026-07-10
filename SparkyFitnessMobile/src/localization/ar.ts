@@ -406,6 +406,63 @@ export const ar = {
   'foodPhoto.reviewDescription':
     'التقدير نقطة بداية؛ تقدر تعدّل كل التفاصيل قبل ما تسجّل الوجبة.',
   'foodPhoto.logManually': 'أفضّل التسجيل اليدوي',
+  'foodPhoto.improveTitle': 'حسّن التقدير',
+  'foodPhoto.readingPhoto': 'جاري قراءة الصورة…',
+  'foodPhoto.readingPhotos': 'جاري قراءة الصور…',
+  'foodPhoto.identifyingIngredients': 'جاري تحديد المكوّنات…',
+  'foodPhoto.estimatingPortions': 'جاري تقدير الكميات…',
+  'foodPhoto.calculatingNutrition': 'جاري حساب القيم الغذائية…',
+  'foodPhoto.almostThere': 'قربنا نخلص…',
+  'foodPhoto.cameraPermissionTitle': 'نحتاج إذن الكاميرا',
+  'foodPhoto.cameraPermissionDescription':
+    'فعّل إذن الكاميرا عشان تضيف صورة.',
+  'foodPhoto.takePhotoFailed': 'ما قدرنا نلتقط الصورة',
+  'foodPhoto.loadPhotoFailed': 'ما قدرنا نحمّل الصورة',
+  'foodPhoto.invalidWeight': 'الوزن غير صحيح',
+  'foodPhoto.weightPositive': 'لازم يكون الوزن الإجمالي رقمًا أكبر من صفر.',
+  'foodPhoto.descriptionTooLong': 'الوصف طويل',
+  'foodPhoto.descriptionLimit': 'خل الوصف أقل من {{count}} حرف.',
+  'foodPhoto.noImages': 'ما فيه صور',
+  'foodPhoto.addImageFirst': 'أضف صورة واحدة على الأقل عشان ننشئ التقدير.',
+  'foodPhoto.readPhotoFailed': 'ما قدرنا نقرأ الصورة',
+  'foodPhoto.retakeAndRetry': 'التقط الصورة من جديد وحاول مرة ثانية.',
+  'foodPhoto.removeImage': 'حذف الصورة {{number}}',
+  'foodPhoto.addAnotherImage': 'إضافة صورة ثانية',
+  'foodPhoto.add': 'إضافة',
+  'foodPhoto.hiddenDetailsSingle':
+    'أضف أي تفاصيل ما تبان بوضوح في الصورة.',
+  'foodPhoto.hiddenDetailsMultiple':
+    'أضف أي تفاصيل ما تبان بوضوح في الصور.',
+  'foodPhoto.totalWeight': 'الوزن الإجمالي (اختياري)',
+  'foodPhoto.weightPlaceholder': 'مثال: ٣٥٠',
+  'foodPhoto.grams': 'غرام',
+  'foodPhoto.ounces': 'أونصة',
+  'foodPhoto.description': 'الوصف (اختياري)',
+  'foodPhoto.descriptionHint':
+    'اذكر الزيت والزبدة والكريمة والصوص والإضافات والأطباق الجانبية واسم المطعم.',
+  'foodPhoto.descriptionPlaceholder': 'مثال: كبسة دجاج مع دقوس ولبن',
+  'foodPhoto.generateEstimate': 'إنشاء التقدير',
+  'foodPhoto.dismiss': 'إغلاق نافذة إضافة الصور',
+  'foodPhoto.takePhoto': 'التقاط صورة',
+  'foodPhoto.chooseLibrary': 'اختيار من مكتبة الصور',
+  'foodPhoto.errorAiNotConfigured': 'الذكاء الاصطناعي غير مهيأ',
+  'foodPhoto.errorAiNotConfiguredDescription':
+    'أضف مزود ذكاء اصطناعي من نسخة الويب عشان تستخدم تقدير الصور.',
+  'foodPhoto.errorImageTooLarge': 'حجم الصورة كبير',
+  'foodPhoto.errorImageTooLargeDescription':
+    'التقط صورة جديدة بجودة أقل.',
+  'foodPhoto.errorUnexpectedFormat': 'صيغة الصورة غير مدعومة',
+  'foodPhoto.errorUnexpectedFormatDescription': 'التقط صورة جديدة.',
+  'foodPhoto.errorProcessFailed': 'ما قدرنا نعالج الصورة',
+  'foodPhoto.errorProcessFailedDescription':
+    'مزود الخدمة رفض الصورة. جرّب لقطة ثانية.',
+  'foodPhoto.errorTimedOut': 'مزود الذكاء الاصطناعي تأخر بالرد',
+  'foodPhoto.errorTimedOutDescription':
+    'التقدير أخذ وقتًا أطول من المتوقع. حاول مرة ثانية، أو سجّل الصنف يدويًا.',
+  'foodPhoto.errorProviderUnavailable':
+    'ما قدرنا نوصل لمزود الذكاء الاصطناعي',
+  'foodPhoto.errorProviderUnavailableDescription':
+    'حاول مرة ثانية، أو سجّل الصنف يدويًا.',
 
   'mealTypeDetail.noServerTitle': 'ما فيه خادم مربوط',
   'mealTypeDetail.noServerDescription':
