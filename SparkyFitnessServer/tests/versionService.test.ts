@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { getAppVersion } from '../services/versionService.js';
@@ -15,11 +14,14 @@ describe('versionService.getAppVersion', () => {
     }
   });
 
-  it('uses the build-injected package version when package.json is not bundled', () => {
+  it('uses the runtime-injected package version when present', () => {
     process.env.npm_package_version = '0.17.3';
-    vi.spyOn(fs, 'readFileSync').mockImplementation(() => {
-      throw new Error('ENOENT: package.json was not bundled');
-    });
+
+    expect(getAppVersion()).toBe('0.17.3');
+  });
+
+  it('falls back to the statically bundled package version', () => {
+    delete process.env.npm_package_version;
 
     expect(getAppVersion()).toBe('0.17.3');
   });

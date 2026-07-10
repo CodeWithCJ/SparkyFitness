@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import axios from 'axios';
 import { z } from 'zod/v4';
+import { getAppVersion } from '../../services/versionService.js';
 import {
   huaweiActivitiesResponseSchema,
   huaweiConsentsResponseSchema,
@@ -136,7 +137,7 @@ export function createHuaweiHealthClient(
     'Content-Type': 'application/json; charset=UTF-8',
     'x-caller-trace-id': randomUUID(),
     'x-client-id': requireConfig().clientId,
-    'x-version': process.env.npm_package_version?.trim() || 'unknown',
+    'x-version': getAppVersion(),
   });
 
   return {
