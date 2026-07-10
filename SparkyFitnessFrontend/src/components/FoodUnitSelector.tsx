@@ -341,7 +341,6 @@ const FoodUnitSelector = ({
           ? initialQuantity
           : food.default_variant?.serving_size || 1
       );
-      setEntryTime(initialTime ?? '');
       resetConversionState();
     }
   }, [
