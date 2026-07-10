@@ -183,6 +183,11 @@ describe('WorkoutDetailScreen', () => {
     const screen = renderScreen(buildSession());
 
     expect(screen.getByText('Bench Press')).toBeTruthy();
+    expect(screen.getByText('سباركي')).toBeTruthy();
+    expect(screen.getByText('التمارين')).toBeTruthy();
+    expect(screen.getByText('المجموعات')).toBeTruthy();
+    expect(screen.getByText('الحجم التدريبي')).toBeTruthy();
+    expect(screen.getByText('ابدأ التمرين')).toBeTruthy();
     expect(screen.getByText('مجموعة واحدة · ٦٠٠ كجم')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('توسيع Bench Press'));
@@ -243,7 +248,12 @@ describe('WorkoutDetailScreen', () => {
       mockUpdateSession.mockResolvedValue(buildSession());
       const screen = renderScreen(buildSession());
 
-      fireEvent.press(screen.getByLabelText('Edit workout'));
+      fireEvent.press(screen.getByLabelText('تعديل التمرين'));
+
+      expect(screen.getByText('الاسم')).toBeTruthy();
+      expect(screen.getByPlaceholderText('اسم التمرين')).toBeTruthy();
+      expect(screen.getByText('الملاحظات')).toBeTruthy();
+      expect(screen.getByPlaceholderText('أضف ملاحظات…')).toBeTruthy();
 
       // The form list renders the shared card in edit mode with its form
       // affordances.
@@ -260,7 +270,7 @@ describe('WorkoutDetailScreen', () => {
       fireEvent.changeText(rpeInput, '8.6');
       fireEvent(rpeInput, 'blur');
 
-      fireEvent.press(screen.getByLabelText('Save'));
+      fireEvent.press(screen.getByLabelText('حفظ'));
 
       await waitFor(() => expect(mockUpdateSession).toHaveBeenCalled());
       const { payload } = mockUpdateSession.mock.calls[0][0];
@@ -279,7 +289,7 @@ describe('WorkoutDetailScreen', () => {
         }),
       );
 
-      fireEvent.press(screen.getByLabelText('Edit workout'));
+      fireEvent.press(screen.getByLabelText('تعديل التمرين'));
 
       // The completed set shows a green check that now toggles completion.
       expect(screen.getByTestId('completed-badge')).toBeTruthy();
@@ -287,6 +297,16 @@ describe('WorkoutDetailScreen', () => {
       // The value cell still activates for editing.
       fireEvent.press(screen.getByLabelText('تعديل وزن المجموعة ١'));
       expect(screen.getByLabelText('مقياس الجهد')).toBeTruthy();
+    });
+
+    it('recalculates volume from Arabic-Indic rep input', () => {
+      const screen = renderScreen(buildSession());
+
+      fireEvent.press(screen.getByLabelText('تعديل التمرين'));
+      fireEvent.press(screen.getByLabelText('تعديل تكرارات المجموعة ١'));
+      fireEvent.changeText(screen.getByLabelText('التكرارات'), '١٢');
+
+      expect(screen.getByText('٧٢٠ كجم')).toBeTruthy();
     });
 
     it('persists a completion toggle through the save payload', async () => {
@@ -301,9 +321,9 @@ describe('WorkoutDetailScreen', () => {
         }),
       );
 
-      fireEvent.press(screen.getByLabelText('Edit workout'));
+      fireEvent.press(screen.getByLabelText('تعديل التمرين'));
       fireEvent.press(screen.getByLabelText('إلغاء إكمال المجموعة ١'));
-      fireEvent.press(screen.getByLabelText('Save'));
+      fireEvent.press(screen.getByLabelText('حفظ'));
 
       await waitFor(() => expect(mockUpdateSession).toHaveBeenCalled());
       const { payload } = mockUpdateSession.mock.calls[0][0];

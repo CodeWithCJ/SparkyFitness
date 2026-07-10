@@ -113,7 +113,7 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
 export function getSourceLabel(source: string | null): { label: string; isSparky: boolean } {
   const s = source?.toLowerCase() ?? null;
   if (s == null || s === 'manual' || s === 'sparky' || s === 'workout plan') {
-    return { label: 'Sparky', isSparky: true };
+    return { label: mobileT('source.sparky'), isSparky: true };
   }
   return { label: SOURCE_DISPLAY_NAMES[s] ?? source!, isSparky: false };
 }

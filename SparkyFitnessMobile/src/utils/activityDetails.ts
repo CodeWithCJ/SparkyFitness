@@ -1,4 +1,5 @@
 import type { ActivityDetailResponse } from '@workspace/shared';
+import { formatMobileNumber, mobileT } from '../localization';
 
 export interface ActivitySummaryItem {
   label: string;
@@ -10,7 +11,14 @@ function parseDetailData(detailData: unknown): unknown {
 
   while (typeof data === 'string') {
     try {
-      data = JSON.parse(data);
+      const parsed = JSON.parse(data) as unknown;
+      if (typeof parsed !== 'string') return parsed;
+
+      const trimmed = parsed.trim();
+      if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+        return parsed;
+      }
+      data = parsed;
     } catch {
       return data;
     }
@@ -36,6 +44,17 @@ function readNumber(record: Record<string, unknown>, keys: string[]): number | n
   return null;
 }
 
+function formatZoneDuration(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${formatMobileNumber(minutes)} ${mobileT('units.minuteShort')} ${formatMobileNumber(seconds)} ${mobileT('units.secondShort')}`;
+}
+
+function formatWithingsZone(zone: string): string {
+  const numericSuffix = zone.match(/(\d+)\s*$/)?.[1];
+  return numericSuffix == null ? zone : formatMobileNumber(Number(numericSuffix));
+}
+
 export function extractActivitySummary(details: ActivityDetailResponse[]): ActivitySummaryItem[] {
   const items: ActivitySummaryItem[] = [];
 
@@ -46,7 +65,10 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
     if (data == null) continue;
 
     if (typeof data !== 'object') {
-      items.push({ label: detail.detail_type, value: String(data) });
+      items.push({
+        label: detail.detail_type,
+        value: typeof data === 'number' ? formatMobileNumber(data) : String(data),
+      });
       continue;
     }
 
@@ -66,7 +88,10 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
           'averageHR',
         ]);
         if (averageHeartRate != null) {
-          items.push({ label: 'Avg HR', value: `${averageHeartRate} bpm` });
+          items.push({
+            label: mobileT('activityDetail.averageHeartRate'),
+            value: `${formatMobileNumber(averageHeartRate)} ${mobileT('units.beatsPerMinute')}`,
+          });
         }
 
         const maxHeartRate = readNumber(garminActivity, [
@@ -74,7 +99,10 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
           'maxHR',
         ]);
         if (maxHeartRate != null) {
-          items.push({ label: 'Max HR', value: `${maxHeartRate} bpm` });
+          items.push({
+            label: mobileT('activityDetail.maxHeartRate'),
+            value: `${formatMobileNumber(maxHeartRate)} ${mobileT('units.beatsPerMinute')}`,
+          });
         }
 
         const elevationGain = readNumber(garminActivity, [
@@ -82,7 +110,10 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
           'totalAscent',
         ]);
         if (elevationGain != null) {
-          items.push({ label: 'Elevation Gain', value: `${elevationGain} m` });
+          items.push({
+            label: mobileT('activityDetail.elevationGain'),
+            value: `${formatMobileNumber(elevationGain)} ${mobileT('units.meterShort')}`,
+          });
         }
 
         const averageCadence = readNumber(garminActivity, [
@@ -90,7 +121,10 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
           'averageRunCadence',
         ]);
         if (averageCadence != null) {
-          items.push({ label: 'Avg Cadence', value: `${averageCadence} spm` });
+          items.push({
+            label: mobileT('activityDetail.averageCadence'),
+            value: `${formatMobileNumber(averageCadence)} ${mobileT('units.stepsPerMinute')}`,
+          });
         }
       }
 
@@ -106,9 +140,12 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
             continue;
           }
 
-          const mins = Math.floor(secondsInZone / 60);
-          const secs = secondsInZone % 60;
-          items.push({ label: `Zone ${zoneNumber}`, value: `${mins}m ${secs}s` });
+          items.push({
+            label: mobileT('activityDetail.zone', {
+              zone: formatMobileNumber(zoneNumber),
+            }),
+            value: formatZoneDuration(secondsInZone),
+          });
         }
       }
 
@@ -120,9 +157,12 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
       for (const [zone, seconds] of Object.entries(withingsZones)) {
         if (typeof seconds !== 'number' || seconds <= 0) continue;
 
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        items.push({ label: `HR ${zone}`, value: `${mins}m ${secs}s` });
+        items.push({
+          label: mobileT('activityDetail.heartRateZone', {
+            zone: formatWithingsZone(zone),
+          }),
+          value: formatZoneDuration(seconds),
+        });
       }
       continue;
     }

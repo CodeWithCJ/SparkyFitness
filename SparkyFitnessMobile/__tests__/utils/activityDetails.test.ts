@@ -31,11 +31,11 @@ describe('extractActivitySummary', () => {
     ]);
 
     expect(items).toEqual([
-      { label: 'Avg HR', value: '145 bpm' },
-      { label: 'Max HR', value: '173 bpm' },
-      { label: 'Elevation Gain', value: '81 m' },
-      { label: 'Avg Cadence', value: '164 spm' },
-      { label: 'Zone 3', value: '2m 5s' },
+      { label: 'متوسط النبض', value: '١٤٥ نبضة/دقيقة' },
+      { label: 'أعلى نبض', value: '١٧٣ نبضة/دقيقة' },
+      { label: 'الارتفاع المكتسب', value: '٨١ م' },
+      { label: 'متوسط الإيقاع', value: '١٦٤ خطوة/دقيقة' },
+      { label: 'المنطقة ٣', value: '٢ د ٥ ث' },
     ]);
   });
 
@@ -63,7 +63,7 @@ describe('extractActivitySummary', () => {
     ]);
 
     expect(items).toEqual([
-      { label: 'effort_score', value: '7' },
+      { label: 'effort_score', value: '٧' },
     ]);
   });
 
@@ -107,9 +107,9 @@ describe('extractActivitySummary', () => {
       }),
     ]);
 
-    expect(items).toContainEqual({ label: 'Avg HR', value: '145 bpm' });
-    expect(items).toContainEqual({ label: 'Max HR', value: '178 bpm' });
-    expect(items).toContainEqual({ label: 'Elevation Gain', value: '120 m' });
+    expect(items).toContainEqual({ label: 'متوسط النبض', value: '١٤٥ نبضة/دقيقة' });
+    expect(items).toContainEqual({ label: 'أعلى نبض', value: '١٧٨ نبضة/دقيقة' });
+    expect(items).toContainEqual({ label: 'الارتفاع المكتسب', value: '١٢٠ م' });
   });
 
   test('extracts Garmin data from direct activity with alternate keys', () => {
@@ -130,10 +130,10 @@ describe('extractActivitySummary', () => {
       }),
     ]);
 
-    expect(items).toContainEqual({ label: 'Avg HR', value: '140 bpm' });
-    expect(items).toContainEqual({ label: 'Max HR', value: '170 bpm' });
-    expect(items).toContainEqual({ label: 'Elevation Gain', value: '80 m' });
-    expect(items).toContainEqual({ label: 'Avg Cadence', value: '170 spm' });
+    expect(items).toContainEqual({ label: 'متوسط النبض', value: '١٤٠ نبضة/دقيقة' });
+    expect(items).toContainEqual({ label: 'أعلى نبض', value: '١٧٠ نبضة/دقيقة' });
+    expect(items).toContainEqual({ label: 'الارتفاع المكتسب', value: '٨٠ م' });
+    expect(items).toContainEqual({ label: 'متوسط الإيقاع', value: '١٧٠ خطوة/دقيقة' });
   });
 
   test('extracts Garmin HR zones and skips zero-second zones', () => {
@@ -153,8 +153,8 @@ describe('extractActivitySummary', () => {
       }),
     ]);
 
-    expect(items).toContainEqual({ label: 'Zone 1', value: '5m 0s' });
-    expect(items).toContainEqual({ label: 'Zone 2', value: '10m 0s' });
+    expect(items).toContainEqual({ label: 'المنطقة ١', value: '٥ د ٠ ث' });
+    expect(items).toContainEqual({ label: 'المنطقة ٢', value: '١٠ د ٠ ث' });
     expect(items).toHaveLength(2);
   });
 
@@ -175,8 +175,8 @@ describe('extractActivitySummary', () => {
       }),
     ]);
 
-    expect(items).toContainEqual({ label: 'HR Zone 1', value: '3m 0s' });
-    expect(items).toContainEqual({ label: 'HR Zone 2', value: '6m 0s' });
+    expect(items).toContainEqual({ label: 'منطقة النبض ١', value: '٣ د ٠ ث' });
+    expect(items).toContainEqual({ label: 'منطقة النبض ٢', value: '٦ د ٠ ث' });
     expect(items).toHaveLength(2);
   });
 
@@ -235,7 +235,7 @@ describe('extractActivitySummary', () => {
     ]);
 
     expect(items).toHaveLength(1);
-    expect(items[0]).toEqual({ label: 'Zone 2', value: '2m 0s' });
+    expect(items[0]).toEqual({ label: 'المنطقة ٢', value: '٢ د ٠ ث' });
   });
 
   test('handles Withings HR zones with non-number values', () => {
@@ -253,6 +253,6 @@ describe('extractActivitySummary', () => {
     ]);
 
     expect(items).toHaveLength(1);
-    expect(items[0]).toEqual({ label: 'HR Zone 2', value: '5m 0s' });
+    expect(items[0]).toEqual({ label: 'منطقة النبض ٢', value: '٥ د ٠ ث' });
   });
 });

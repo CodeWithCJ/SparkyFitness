@@ -193,15 +193,15 @@ describe('workoutSession', () => {
 
   describe('getSourceLabel', () => {
     it('returns Sparky for null source', () => {
-      expect(getSourceLabel(null)).toEqual({ label: 'Sparky', isSparky: true });
+      expect(getSourceLabel(null)).toEqual({ label: 'سباركي', isSparky: true });
     });
 
     it('returns Sparky for "manual" source', () => {
-      expect(getSourceLabel('manual')).toEqual({ label: 'Sparky', isSparky: true });
+      expect(getSourceLabel('manual')).toEqual({ label: 'سباركي', isSparky: true });
     });
 
     it('returns Sparky for "sparky" source', () => {
-      expect(getSourceLabel('sparky')).toEqual({ label: 'Sparky', isSparky: true });
+      expect(getSourceLabel('sparky')).toEqual({ label: 'سباركي', isSparky: true });
     });
 
     it('returns Apple Health for HealthKit source', () => {
