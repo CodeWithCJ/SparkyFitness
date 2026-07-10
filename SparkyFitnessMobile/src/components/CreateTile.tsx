@@ -27,16 +27,22 @@ const CreateTile: React.FC<CreateTileProps> = ({
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}، ${subtitle}`}
       accessibilityState={{ disabled }}
       style={disabled ? { opacity: 0.7 } : undefined}
       className={`bg-surface rounded-xl px-3 py-3 flex-row items-center shadow-sm ${className}`}
     >
       <Icon name={icon} size={24} color={accentPrimary} />
-      <View className="flex-1 ml-4">
+      <View className="flex-1" style={{ marginStart: 16 }}>
         <Text className="text-text-primary text-sm font-medium" numberOfLines={1}>
           {title}
         </Text>
-        <Text className="text-text-secondary text-xs" numberOfLines={1}>
+        <Text
+          className="text-text-secondary text-xs"
+          numberOfLines={2}
+          style={{ minHeight: 30 }}
+        >
           {subtitle}
         </Text>
       </View>

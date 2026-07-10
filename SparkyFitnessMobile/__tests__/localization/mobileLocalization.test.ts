@@ -2,6 +2,7 @@ import {
   MOBILE_LANGUAGE,
   MOBILE_LOCALE,
   isMobileRtl,
+  localizeExerciseCategory,
   mobileT,
 } from '../../src/localization';
 
@@ -23,5 +24,10 @@ describe('mobile localization', () => {
 
   it('falls back to the supplied copy for a missing key', () => {
     expect(mobileT('missing.key', undefined, 'نص احتياطي')).toBe('نص احتياطي');
+  });
+
+  it('localizes known exercise categories without changing custom categories', () => {
+    expect(localizeExerciseCategory('strength')).toBe('قوة');
+    expect(localizeExerciseCategory('CrossFit')).toBe('CrossFit');
   });
 });

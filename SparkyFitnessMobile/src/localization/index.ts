@@ -20,3 +20,13 @@ export function mobileT(
     return value === undefined ? match : String(value);
   });
 }
+
+export function localizeExerciseCategory(category: string): string {
+  const normalizedCategory = category.trim().toLowerCase();
+
+  return mobileT(
+    `exerciseCategory.${normalizedCategory}`,
+    undefined,
+    category,
+  );
+}
