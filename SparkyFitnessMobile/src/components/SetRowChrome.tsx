@@ -4,8 +4,8 @@ import { mobileT } from '../localization';
 
 /**
  * Presentation shared by the set rows (ActiveWorkoutSetRow and the activity
- * form's EditableSetRow): the iOS keyboard accessory bar and the right-swipe
- * Delete action.
+ * form's EditableSetRow): the iOS keyboard accessory bar and the directional
+ * swipe-to-delete action.
  */
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
@@ -72,7 +72,7 @@ export function SetInputAccessoryBar({
   );
 }
 
-/** Right-swipe Delete action for ReanimatedSwipeable's renderRightActions. */
+/** Delete action for either side of ReanimatedSwipeable. */
 export function SetSwipeDeleteAction({
   onPress,
   accessibilityLabel,

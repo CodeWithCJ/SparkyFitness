@@ -1,5 +1,5 @@
 import type { ActivityDetailResponse } from '@workspace/shared';
-import { extractActivitySummary } from '../../src/utils/activityDetails';
+import { extractActivitySummary, formatActivityPace } from '../../src/utils/activityDetails';
 
 function activityDetail(overrides: Partial<ActivityDetailResponse> = {}): ActivityDetailResponse {
   return {
@@ -254,5 +254,24 @@ describe('extractActivitySummary', () => {
 
     expect(items).toHaveLength(1);
     expect(items[0]).toEqual({ label: 'منطقة النبض ٢', value: '٥ د ٠ ث' });
+  });
+});
+
+describe('formatActivityPace', () => {
+  test('formats kilometre pace with Arabic digits and unit', () => {
+    expect(formatActivityPace(30, 5, 'km')).toBe('٦:٠٠ / كم');
+  });
+
+  test('converts kilometre distance before formatting mile pace', () => {
+    expect(formatActivityPace(30, 5, 'miles')).toBe('٩:٣٩ / ميل');
+  });
+
+  test('carries rounded seconds into the next minute', () => {
+    expect(formatActivityPace(5.999, 1, 'km')).toBe('٦:٠٠ / كم');
+  });
+
+  test('returns null when duration or distance is unavailable', () => {
+    expect(formatActivityPace(0, 5, 'km')).toBeNull();
+    expect(formatActivityPace(30, 0, 'km')).toBeNull();
   });
 });

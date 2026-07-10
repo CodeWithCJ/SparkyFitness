@@ -12,8 +12,9 @@ import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
+import { formatActivityPace } from '../utils/activityDetails';
 import {
   useDeleteExerciseEntry,
   useUpdateExerciseEntry,
@@ -31,6 +32,11 @@ import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { WorkoutDraftSet } from '../types/drafts';
 import type { ExerciseEntrySetResponse } from '@workspace/shared';
+import {
+  formatMobileNumber,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 type Props = RootStackScreenProps<'ActivityDetail'>;
 
@@ -42,8 +48,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { preferences } = usePreferences();
-  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
-  const weightUnit = (preferences?.default_weight_unit as 'kg' | 'lbs') ?? 'kg';
+  const distanceUnit: 'km' | 'miles' =
+    preferences?.default_distance_unit === 'miles' ? 'miles' : 'km';
+  const weightUnit: 'kg' | 'lbs' =
+    preferences?.default_weight_unit === 'lbs' ? 'lbs' : 'kg';
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
@@ -115,9 +123,17 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       return {
         clientId,
         weight: set.weight != null
-          ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
+          ? formatMobileNumber(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)), {
+              maximumFractionDigits: 1,
+              useGrouping: false,
+            })
           : '',
-        reps: set.reps != null ? String(set.reps) : '',
+        reps: set.reps != null
+          ? formatMobileNumber(set.reps, {
+              maximumFractionDigits: 0,
+              useGrouping: false,
+            })
+          : '',
       };
     });
     originalSetsRef.current = originals;
@@ -175,7 +191,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     const setsPayload = draftSets.map((set, index) => {
       const w = parseDecimalInput(set.weight);
-      const r = parseInt(set.reps, 10);
+      const r = Math.trunc(parseDecimalInput(set.reps));
       const original = originalSetsRef.current.get(set.clientId);
       return {
         ...(original && {
@@ -228,21 +244,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setActiveSetKey(null);
       originalSetsRef.current.clear();
     } catch (error) {
-      addLog(`Failed to save activity: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
+      addLog(`${mobileT('activity.saveFailed')}: ${error}`, 'ERROR');
+      Toast.show({
+        type: 'error',
+        text1: mobileT('activity.saveFailed'),
+        text2: mobileT('common.retry'),
+      });
     }
-  };
-
-  // --- Formatting helpers ---
-
-  const formatPace = (durationMin: number, distanceKm: number): string | null => {
-    if (durationMin <= 0 || distanceKm <= 0) return null;
-    const distanceInUnit = distanceFromKm(distanceKm, distanceUnit);
-    const paceMinPerUnit = durationMin / distanceInUnit;
-    const minutes = Math.floor(paceMinPerUnit);
-    const seconds = Math.round((paceMinPerUnit - minutes) * 60);
-    const label = distanceUnit === 'miles' ? 'mi' : 'km';
-    return `${minutes}:${String(seconds).padStart(2, '0')} / ${label}`;
   };
 
   // --- Stats grid ---
@@ -257,7 +265,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const buildStats = (): StatItem[] => {
     const stats: StatItem[] = [];
-    const distLabel = distanceUnit === 'miles' ? 'mi' : 'km';
+    const distLabel = localizeServingUnit(distanceUnit === 'miles' ? 'mi' : 'km');
     const paceDuration = isEditing ? submission.durationMinutes : duration;
     const paceDistanceKm = isEditing ? submission.distanceKm : session.distance;
 
@@ -266,11 +274,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         value: isEditing
           ? (formState.duration || '—')
           : (duration > 0
-              ? String(Number(duration.toFixed(2)))
+              ? formatMobileNumber(duration, { maximumFractionDigits: 2 })
               : '—'),
-        label: 'Duration',
+        label: mobileT('activityDetail.duration'),
         editKey: 'duration',
-        editSuffix: 'min',
+        editSuffix: mobileT('units.minute'),
         keyboardType: 'decimal-pad',
       });
     }
@@ -279,11 +287,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         value: isEditing
           ? (formState.calories || '—')
           : (calories > 0
-              ? (calories % 1 === 0 ? String(calories) : calories.toFixed(1))
+              ? formatMobileNumber(calories, { maximumFractionDigits: 1 })
               : '—'),
-        label: 'Calories',
+        label: mobileT('activityDetail.calories'),
         editKey: 'calories',
-        editSuffix: 'cal',
+        editSuffix: mobileT('units.calorie'),
         keyboardType: 'decimal-pad',
       });
     }
@@ -292,9 +300,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         value: isEditing
           ? (formState.distance || '—')
           : (session.distance != null && session.distance > 0
-              ? String(distanceFromKm(session.distance, distanceUnit).toFixed(1))
+              ? formatMobileNumber(
+                  distanceFromKm(session.distance, distanceUnit),
+                  { maximumFractionDigits: 1 },
+                )
               : '—'),
-        label: 'Distance',
+        label: mobileT('activityDetail.distance'),
         editKey: 'distance',
         editSuffix: distLabel,
         keyboardType: 'decimal-pad',
@@ -304,19 +315,24 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       stats.push({
         value: isEditing
           ? (formState.avgHeartRate || '—')
-          : (session.avg_heart_rate != null ? String(session.avg_heart_rate) : '—'),
-        label: 'Avg Heart Rate',
+          : (session.avg_heart_rate != null
+              ? formatMobileNumber(session.avg_heart_rate, { maximumFractionDigits: 0 })
+              : '—'),
+        label: mobileT('activityDetail.averageHeartRate'),
         editKey: 'avgHeartRate',
-        editSuffix: 'bpm',
+        editSuffix: mobileT('units.beatsPerMinute'),
         keyboardType: 'numeric',
       });
     }
     if (session.steps != null && session.steps > 0) {
-      stats.push({ value: session.steps.toLocaleString(), label: 'Steps' });
+      stats.push({
+        value: formatMobileNumber(session.steps, { maximumFractionDigits: 0 }),
+        label: mobileT('activityDetail.steps'),
+      });
     }
     if (paceDistanceKm != null && paceDistanceKm > 0 && paceDuration > 0) {
-      const pace = formatPace(paceDuration, paceDistanceKm);
-      if (pace) stats.push({ value: pace, label: 'Pace' });
+      const pace = formatActivityPace(paceDuration, paceDistanceKm, distanceUnit);
+      if (pace) stats.push({ value: pace, label: mobileT('activityDetail.pace') });
     }
     return stats;
   };
@@ -375,12 +391,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 onChangeText={(v) => updateFieldValue(stat.editKey!, v)}
                 onBlur={() => setActiveField(null)}
                 keyboardType={stat.keyboardType ?? 'numeric'}
-                placeholder="0"
+                placeholder={formatMobileNumber(0)}
                 autoFocus
                 style={{
                   borderWidth: 0,
                   backgroundColor: 'transparent',
-                  paddingLeft: 0,
+                  paddingStart: 0,
                   paddingTop: 0,
                   paddingBottom: 0,
                   fontSize: 18,
@@ -396,7 +412,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           {stat.editSuffix && (
             <Text
               className="text-sm text-text-muted"
-              style={{ position: 'absolute', right: 0, bottom: 0 }}
+              style={{ position: 'absolute', end: 0, bottom: 0 }}
             >
               {stat.editSuffix}
             </Text>
@@ -413,6 +429,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           className="flex-1"
           onPress={() => setActiveField(stat.editKey!)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={mobileT('activityDetail.editField', { field: stat.label })}
         >
           {content}
         </TouchableOpacity>
@@ -443,10 +461,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
-  // View mode: name title + owner-only Edit. Edit mode: "Edit Activity" title,
+  // View mode: name title + owner-only edit. Edit mode: localized edit title,
   // X-dismiss owning the left slot with swipe-back disabled, Save on the right.
   const header = useScreenHeader({
-    nativeTitle: isEditing ? 'Edit Activity' : name,
+    nativeTitle: isEditing ? mobileT('activityDetail.editTitle') : name,
     animateKey: isEditing ? 'edit' : 'view',
     borderless: true,
     nativeOptions: { gestureEnabled: !isEditing, headerBackVisible: !isEditing },
@@ -455,28 +473,28 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           kind: 'dismiss',
           onPress: cancelEditing,
           disabled: isSaving,
-          accessibilityLabel: 'Cancel',
+          accessibilityLabel: mobileT('common.cancel'),
           identifier: 'activity-detail-cancel',
         }
       : { kind: 'back' },
     right: isEditing
       ? {
           kind: 'primary',
-          label: SAVE_LABEL,
-          busyLabel: SAVING_LABEL,
+          label: mobileT('common.save'),
+          busyLabel: mobileT('common.saving'),
           busy: isSaving,
           disabled: isSaving,
           onPress: handleSave,
-          accessibilityLabel: 'Save',
+          accessibilityLabel: mobileT('common.save'),
           identifier: 'activity-detail-save',
         }
       : isSparky
         ? {
             kind: 'text',
-            label: 'Edit',
+            label: mobileT('common.edit'),
             role: 'secondary',
             onPress: startEditing,
-            accessibilityLabel: 'Edit activity',
+            accessibilityLabel: mobileT('activityDetail.editActivity'),
             identifier: 'activity-detail-edit',
           }
         : null,
@@ -497,21 +515,26 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           {firstImageSource && (
             <SafeImage
               source={firstImageSource}
-              style={{ width: 48, height: 48, borderRadius: 10, marginRight: 12 }}
+              style={{ width: 48, height: 48, borderRadius: 10, marginEnd: 12 }}
             />
           )}
           <View className="flex-1">
             {isEditing ? (
               <FadeView key="edit-title">
-                <TouchableOpacity onPress={() => setActiveField('name')} activeOpacity={0.6}>
+                <TouchableOpacity
+                  onPress={() => setActiveField('name')}
+                  activeOpacity={0.6}
+                  accessibilityRole="button"
+                  accessibilityLabel={mobileT('activity.editName')}
+                >
                   {activeField === 'name' ? (
                     <FormInput
                       value={formState.name}
                       onChangeText={setName}
                       onBlur={() => setActiveField(null)}
-                      placeholder="Activity Name"
+                      placeholder={mobileT('activity.namePlaceholder')}
                       autoFocus
-                      style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 8, paddingBottom: 8, fontSize: 20, fontWeight: '700' }}
+                      style={{ borderWidth: 0, backgroundColor: 'transparent', paddingStart: 0, paddingTop: 8, paddingBottom: 8, fontSize: 20, fontWeight: '700' }}
                     />
                   ) : (
                     <Text className="text-xl font-bold text-text-primary mb-0.5">
@@ -533,11 +556,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   className="flex-row items-center"
                   onPress={() => calendarSheetRef.current?.present()}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={mobileT('activity.chooseDate')}
                 >
                   <Text className="text-sm" style={{ color: accentPrimary }}>
                     {formatDateLabel(formState.entryDate)}
                   </Text>
-                  <Icon name="chevron-down" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
+                  <Icon name="chevron-down" size={14} color={accentPrimary} style={{ marginStart: 2 }} />
                 </TouchableOpacity>
               ) : entryDate ? (
                 <Text className="text-sm text-text-muted">{formatDate(entryDate)}</Text>
@@ -554,7 +579,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing ? (
           draftSets.length > 0 || hasSets ? (
             <View className="py-4">
-              <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-2">
+                {mobileT('activityDetail.sets')}
+              </Text>
               <EditableSetList
                 exerciseClientId={SET_CLIENT_ID_PREFIX}
                 sets={draftSets}
@@ -572,20 +599,34 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         ) : hasSets ? (
           <>
             <View className="py-4">
-              <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-2">
+                {mobileT('activityDetail.sets')}
+              </Text>
               <View className="flex-row py-1 mb-1">
-                <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
-                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
-                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+                <Text className="text-xs font-semibold text-text-muted w-10 text-center">
+                  {mobileT('activityDetail.set')}
+                </Text>
+                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+                  {mobileT('activityDetail.weight')}
+                </Text>
+                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+                  {mobileT('activityDetail.reps')}
+                </Text>
               </View>
               {session.sets.map(set => {
                 const displayWeight = set.weight != null
-                  ? `${parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1))} ${weightUnit}`
+                  ? `${formatMobileNumber(weightFromKg(set.weight, weightUnit), {
+                      maximumFractionDigits: 1,
+                    })} ${localizeServingUnit(weightUnit)}`
                   : '\u2014';
-                const displayReps = set.reps != null ? String(set.reps) : '\u2014';
+                const displayReps = set.reps != null
+                  ? formatMobileNumber(set.reps, { maximumFractionDigits: 0 })
+                  : '\u2014';
                 return (
                   <View key={set.id} className="flex-row py-1.5">
-                    <Text className="text-sm text-text-muted w-10 text-center">{set.set_number}</Text>
+                    <Text className="text-sm text-text-muted w-10 text-center">
+                      {formatMobileNumber(set.set_number, { maximumFractionDigits: 0 })}
+                    </Text>
                     <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
                     <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
                   </View>
@@ -599,22 +640,31 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {(isEditing || session.notes) && (
           <>
             <View className="py-4">
-              <Text className="text-sm font-medium text-text-secondary mb-2">Notes</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-2">
+                {mobileT('activity.notes')}
+              </Text>
               {isEditing ? (
                 activeField === 'notes' ? (
                   <FormInput
                     value={formState.notes}
                     onChangeText={setNotes}
                     onBlur={() => setActiveField(null)}
-                    placeholder="Add notes..."
+                    placeholder={mobileT('activityDetail.addNotes')}
                     multiline
                     autoFocus
                     style={{ minHeight: 60 }}
                   />
                 ) : (
-                  <TouchableOpacity onPress={() => setActiveField('notes')} activeOpacity={0.6}>
+                  <TouchableOpacity
+                    onPress={() => setActiveField('notes')}
+                    activeOpacity={0.6}
+                    accessibilityRole="button"
+                    accessibilityLabel={mobileT('activityDetail.editField', {
+                      field: mobileT('activity.notes'),
+                    })}
+                  >
                     <Text className="text-sm text-text-primary">
-                      {formState.notes || 'Add notes...'}
+                      {formState.notes || mobileT('activityDetail.addNotes')}
                     </Text>
                   </TouchableOpacity>
                 )
@@ -635,7 +685,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               className="mt-4"
             >
               <Text className="text-bg-danger text-base font-medium">
-                {isDeleting ? 'Deleting...' : 'Delete Activity'}
+                {isDeleting
+                  ? mobileT('activityDetail.deleting')
+                  : mobileT('activityDetail.deleteActivity')}
               </Text>
             </Button>
           </FadeView>

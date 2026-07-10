@@ -9,6 +9,12 @@ import Icon from './Icon';
 import StepperInput from './StepperInput';
 import { SetInputAccessoryBar, SetSwipeDeleteAction } from './SetRowChrome';
 import { parseDecimalInput } from '../utils/numericInput';
+import {
+  formatMobileNumber,
+  isMobileRtl,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 interface EditableSetRowProps {
   exerciseClientId: string;
@@ -81,13 +87,19 @@ function EditableSetRow({
   const handleStepWeight = useCallback((direction: number) => {
     const current = parseDecimalInput(weight) || 0;
     const next = Math.max(0, current + direction * 5);
-    handleUpdateWeight(String(next));
+    handleUpdateWeight(formatMobileNumber(next, {
+      maximumFractionDigits: 2,
+      useGrouping: false,
+    }));
   }, [weight, handleUpdateWeight]);
 
   const handleStepReps = useCallback((direction: number) => {
-    const current = parseInt(reps, 10) || 0;
+    const current = Math.trunc(parseDecimalInput(reps)) || 0;
     const next = Math.max(0, current + direction);
-    handleUpdateReps(String(next));
+    handleUpdateReps(formatMobileNumber(next, {
+      maximumFractionDigits: 0,
+      useGrouping: false,
+    }));
   }, [reps, handleUpdateReps]);
 
   const handleRemove = useCallback(() => {
@@ -95,9 +107,10 @@ function EditableSetRow({
   }, [exerciseClientId, onRemoveSet, setClientId]);
 
   const handleConfirmRemove = useCallback(() => {
-    Alert.alert(`Set ${setNumber}`, undefined, [
-      { text: 'Delete', style: 'destructive', onPress: handleRemove },
-      { text: 'Cancel', style: 'cancel' },
+    const localizedSetNumber = formatMobileNumber(setNumber, { maximumFractionDigits: 0 });
+    Alert.alert(mobileT('activityDetail.setNumber', { set: localizedSetNumber }), undefined, [
+      { text: mobileT('common.delete'), style: 'destructive', onPress: handleRemove },
+      { text: mobileT('common.cancel'), style: 'cancel' },
     ]);
   }, [handleRemove, setNumber]);
 
@@ -116,7 +129,13 @@ function EditableSetRow({
     onAddSet(exerciseClientId);
   }, [activeField, exerciseClientId, nextSetKey, onActivateSet, onAddSet]);
 
-  const advanceLabel = activeField === 'weight' ? 'Next' : 'Next Set';
+  const advanceLabel = activeField === 'weight'
+    ? mobileT('workoutSet.next')
+    : mobileT('workoutSet.nextSet');
+  const localizedSetNumber = formatMobileNumber(setNumber, { maximumFractionDigits: 0 });
+  const editWeightLabel = mobileT('workoutSet.editWeight', { set: localizedSetNumber });
+  const editRepsLabel = mobileT('workoutSet.editReps', { set: localizedSetNumber });
+  const deleteSetLabel = mobileT('workoutSet.delete', { set: localizedSetNumber });
 
   const accessoryId = `set-${setClientId}`;
   const weightInputProps = useMemo(
@@ -138,7 +157,9 @@ function EditableSetRow({
     return (
       <>
         <View className="flex-row items-center py-3">
-          <Text className="text-base text-text-muted w-10 text-center">{setNumber}</Text>
+          <Text className="text-base text-text-muted w-10 text-center">
+            {localizedSetNumber}
+          </Text>
           <View className="flex-1 items-center">
             <StepperInput
               compact
@@ -147,8 +168,10 @@ function EditableSetRow({
               onIncrement={() => handleStepWeight(1)}
               onDecrement={() => handleStepWeight(-1)}
               keyboardType="decimal-pad"
+              placeholder={formatMobileNumber(0)}
               inputRef={weightInputRef}
               inputProps={weightInputProps}
+              inputAccessibilityLabel={editWeightLabel}
             />
           </View>
           <View className="flex-1 items-center">
@@ -159,8 +182,10 @@ function EditableSetRow({
               onIncrement={() => handleStepReps(1)}
               onDecrement={() => handleStepReps(-1)}
               keyboardType="number-pad"
+              placeholder={formatMobileNumber(0)}
               inputRef={repsInputRef}
               inputProps={repsInputProps}
+              inputAccessibilityLabel={editRepsLabel}
             />
           </View>
           <Button
@@ -168,6 +193,7 @@ function EditableSetRow({
             onPress={handleRemove}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             className="py-0 px-0"
+            accessibilityLabel={deleteSetLabel}
           >
             <Icon name="remove-circle" size={18} color={dangerColor} />
           </Button>
@@ -184,22 +210,39 @@ function EditableSetRow({
     );
   }
 
-  const displayWeight = weight ? `${weight} ${weightUnit}` : '\u2013';
-  const displayReps = reps || '\u2013';
+  const numericWeight = parseDecimalInput(weight);
+  const numericReps = parseDecimalInput(reps);
+  const displayWeight = Number.isFinite(numericWeight)
+    ? `${formatMobileNumber(numericWeight, { maximumFractionDigits: 2 })} ${localizeServingUnit(weightUnit)}`
+    : '\u2013';
+  const displayReps = Number.isFinite(numericReps)
+    ? formatMobileNumber(Math.trunc(numericReps), { maximumFractionDigits: 0 })
+    : '\u2013';
 
   return (
     <ReanimatedSwipeable
-      renderRightActions={() => <SetSwipeDeleteAction onPress={handleRemove} />}
+      renderLeftActions={isMobileRtl
+        ? () => <SetSwipeDeleteAction onPress={handleRemove} />
+        : undefined}
+      renderRightActions={!isMobileRtl
+        ? () => <SetSwipeDeleteAction onPress={handleRemove} />
+        : undefined}
+      overshootLeft={false}
       overshootRight={false}
-      rightThreshold={40}
+      leftThreshold={isMobileRtl ? 40 : undefined}
+      rightThreshold={!isMobileRtl ? 40 : undefined}
     >
       <View className="flex-row items-center py-3 bg-background">
-        <Text className="text-base text-text-muted w-10 text-center">{setNumber}</Text>
+        <Text className="text-base text-text-muted w-10 text-center">
+          {localizedSetNumber}
+        </Text>
         <TouchableOpacity
           className="flex-1 py-1"
           onPress={handleActivateWeight}
           onLongPress={handleConfirmRemove}
           activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel={editWeightLabel}
         >
           <Text className="text-base text-text-primary text-center">{displayWeight}</Text>
         </TouchableOpacity>
@@ -208,6 +251,8 @@ function EditableSetRow({
           onPress={handleActivateReps}
           onLongPress={handleConfirmRemove}
           activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel={editRepsLabel}
         >
           <Text className="text-base text-text-primary text-center">{displayReps}</Text>
         </TouchableOpacity>

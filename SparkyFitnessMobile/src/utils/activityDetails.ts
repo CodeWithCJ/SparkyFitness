@@ -1,9 +1,33 @@
 import type { ActivityDetailResponse } from '@workspace/shared';
-import { formatMobileNumber, mobileT } from '../localization';
+import { distanceFromKm } from './unitConversions';
+import { formatMobileNumber, localizeServingUnit, mobileT } from '../localization';
 
 export interface ActivitySummaryItem {
   label: string;
   value: string;
+}
+
+export function formatActivityPace(
+  durationMinutes: number,
+  distanceKm: number,
+  distanceUnit: 'km' | 'miles',
+): string | null {
+  if (durationMinutes <= 0 || distanceKm <= 0) return null;
+
+  const distanceInUnit = distanceFromKm(distanceKm, distanceUnit);
+  const totalSeconds = Math.round((durationMinutes / distanceInUnit) * 60);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const unit = localizeServingUnit(distanceUnit === 'miles' ? 'mi' : 'km');
+
+  return `${formatMobileNumber(minutes, {
+    maximumFractionDigits: 0,
+    useGrouping: false,
+  })}:${formatMobileNumber(seconds, {
+    minimumIntegerDigits: 2,
+    maximumFractionDigits: 0,
+    useGrouping: false,
+  })} / ${unit}`;
 }
 
 function parseDetailData(detailData: unknown): unknown {
