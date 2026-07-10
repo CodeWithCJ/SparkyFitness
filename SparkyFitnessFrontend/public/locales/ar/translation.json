@@ -99,6 +99,8 @@
     "monday": "الاثنين",
     "no": "لا",
     "notApplicable": "غير منطبق",
+    "reps": "التكرارات",
+    "weight": "الوزن",
     "pickADate": "اختر تاريخًا",
     "today": "اليوم",
     "previousDay": "اليوم السابق",
@@ -123,6 +125,21 @@
     "tuesday": "الثلاثاء",
     "wednesday": "الأربعاء",
     "yes": "نعم"
+  },
+  "workout": {
+    "notesPlaceholder": "أضف ملاحظة لهالمجموعة…",
+    "setType": {
+      "Normal": "عادية",
+      "Working Set": "مجموعة عمل",
+      "Warm-up": "إحماء",
+      "Drop Set": "دروب سِت",
+      "Failure": "حتى الفشل",
+      "AMRAP": "أقصى عدد تكرارات",
+      "Back-off": "تخفيف الحمل",
+      "Rest-Pause": "راحة قصيرة",
+      "Cluster": "مجموعات عنقودية",
+      "Technique": "تقنية"
+    }
   },
   "units": {
     "gram": "غ",
@@ -783,6 +800,17 @@
       "cancel": "إلغاء",
       "saveEntry": "حفظ التمرين",
       "saving": "جارٍ حفظ التمرين…"
+    },
+    "workoutPlaybackPage": {
+      "completeSet": "إكمال المجموعة {{setNumber}}",
+      "selectSet": "اختيار المجموعة {{setNumber}} لتمرين {{exerciseName}}",
+      "typeSet": "نوع المجموعة {{setNumber}}",
+      "repsSet": "تكرارات المجموعة {{setNumber}}",
+      "weightSet": "وزن المجموعة {{setNumber}}",
+      "editRest": "تعديل راحة المجموعة {{setNumber}}",
+      "toggleNotes": "إظهار أو إخفاء ملاحظات المجموعة {{setNumber}}",
+      "removeSet": "حذف المجموعة {{setNumber}} من تمرين {{exerciseName}}",
+      "notesSet": "ملاحظات المجموعة {{setNumber}}"
     },
     "activityDetailsEditor": {
       "fieldNameLabel": "إسم الحقل",

@@ -11,7 +11,18 @@ let mockLocationState: { returnTo?: string; draft?: unknown } | null = null;
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, defaultValue?: string) => defaultValue || key,
+    t: (
+      key: string,
+      defaultValue?: string,
+      options?: Record<string, string | number>
+    ) => {
+      const template = defaultValue || key;
+      return Object.entries(options ?? {}).reduce(
+        (value, [name, replacement]) =>
+          value.replaceAll(`{{${name}}}`, String(replacement)),
+        template
+      );
+    },
   }),
 }));
 
@@ -94,7 +105,9 @@ describe('WorkoutPlaybackPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Upper Body')).toBeInTheDocument();
     });
-    expect(screen.getAllByLabelText('Reps set 1')[0]).toBeInTheDocument();
+    expect(
+      screen.getAllByLabelText('Repetitions for set 1')[0]
+    ).toBeInTheDocument();
   });
 
   it('starts rest countdown when current set is completed', () => {
@@ -125,18 +138,22 @@ describe('WorkoutPlaybackPage', () => {
     render(<WorkoutPlaybackPage />);
 
     const repsInput = screen.getAllByLabelText(
-      'Reps set 1'
+      'Repetitions for set 1'
     )[0] as HTMLInputElement;
     fireEvent.change(repsInput, { target: { value: '12' } });
     expect(repsInput.value).toBe('12');
 
     fireEvent.click(screen.getByLabelText('Add set for Bench Press'));
-    expect(screen.getAllByLabelText('Reps set 2').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByLabelText('Repetitions for set 2').length
+    ).toBeGreaterThan(0);
 
     fireEvent.click(
-      screen.getAllByLabelText('Remove set 2 for Bench Press')[0]!
+      screen.getAllByLabelText('Remove set 2 from Bench Press')[0]!
     );
-    expect(screen.queryByLabelText('Reps set 2')).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Repetitions for set 2')
+    ).not.toBeInTheDocument();
 
     const sessionNotes = screen.getAllByPlaceholderText(
       'Any notes about this session...'
@@ -144,9 +161,11 @@ describe('WorkoutPlaybackPage', () => {
     fireEvent.change(sessionNotes, { target: { value: 'Felt strong today' } });
     expect(sessionNotes.value).toBe('Felt strong today');
 
-    expect(screen.queryByLabelText('Set notes 1')).not.toBeInTheDocument();
-    fireEvent.click(screen.getAllByLabelText('Toggle notes for set 1')[0]!);
-    expect(screen.getByLabelText('Set notes 1')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Notes for set 1')).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getAllByLabelText('Show or hide notes for set 1')[0]!
+    );
+    expect(screen.getByLabelText('Notes for set 1')).toBeInTheDocument();
   });
 
   it('allows extending a finished exercise after expanding it', () => {
@@ -164,7 +183,9 @@ describe('WorkoutPlaybackPage', () => {
     fireEvent.click(screen.getByLabelText('Expand Bench Press'));
     fireEvent.click(screen.getByLabelText('Add set for Bench Press'));
 
-    expect(screen.getAllByLabelText('Reps set 2').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByLabelText('Repetitions for set 2').length
+    ).toBeGreaterThan(0);
   });
 
   it('edits rest via rest chip presets', () => {

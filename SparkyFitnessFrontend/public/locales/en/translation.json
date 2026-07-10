@@ -575,6 +575,17 @@
       "saveEntry": "Save exercise",
       "saving": "Saving exercise…"
     },
+    "workoutPlaybackPage": {
+      "completeSet": "Complete set {{setNumber}}",
+      "selectSet": "Select set {{setNumber}} for {{exerciseName}}",
+      "typeSet": "Set type for set {{setNumber}}",
+      "repsSet": "Repetitions for set {{setNumber}}",
+      "weightSet": "Weight for set {{setNumber}}",
+      "editRest": "Edit rest for set {{setNumber}}",
+      "toggleNotes": "Show or hide notes for set {{setNumber}}",
+      "removeSet": "Remove set {{setNumber}} from {{exerciseName}}",
+      "notesSet": "Notes for set {{setNumber}}"
+    },
     "activityDetailsEditor": {
       "fieldNameLabel": "Field Name",
       "fieldNamePlaceholder": "e.g., 'Weather', 'Mood'",
@@ -1533,7 +1544,24 @@
     "errorOccurred": "An Error Occurred",
     "confirm": "Confirm",
     "notApplicable": "N/A",
+    "reps": "Reps",
+    "weight": "Weight",
     "totalSets": "Total Sets"
+  },
+  "workout": {
+    "notesPlaceholder": "Add a note for this set…",
+    "setType": {
+      "Normal": "Normal",
+      "Working Set": "Working set",
+      "Warm-up": "Warm-up",
+      "Drop Set": "Drop set",
+      "Failure": "To failure",
+      "AMRAP": "AMRAP",
+      "Back-off": "Back-off",
+      "Rest-Pause": "Rest-pause",
+      "Cluster": "Cluster",
+      "Technique": "Technique"
+    }
   },
   "units": {
     "gram": "g",
