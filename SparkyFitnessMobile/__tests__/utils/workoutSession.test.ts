@@ -57,7 +57,8 @@ type IndividualSession = Extract<ExerciseSessionResponse, { type: 'individual' }
 type PresetSession = Extract<ExerciseSessionResponse, { type: 'preset' }>;
 
 /** Format a number the same way the source does (runtime-locale toLocaleString). */
-const fmt = (n: number) => n.toLocaleString();
+const fmt = (n: number) =>
+  new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 0 }).format(n);
 
 const makeIndividual = (overrides?: Partial<IndividualSession>): IndividualSession => ({
   type: 'individual',
@@ -204,7 +205,7 @@ describe('workoutSession', () => {
     });
 
     it('returns Apple Health for HealthKit source', () => {
-      expect(getSourceLabel('HealthKit')).toEqual({ label: 'Apple Health', isSparky: false });
+      expect(getSourceLabel('HealthKit')).toEqual({ label: 'صحتي', isSparky: false });
     });
 
     it('returns Garmin for garmin source (lowercase)', () => {
@@ -226,27 +227,27 @@ describe('workoutSession', () => {
 
   describe('formatDuration', () => {
     it('formats minutes less than 60', () => {
-      expect(formatDuration(30)).toBe('30 min');
+      expect(formatDuration(30)).toBe('٣٠ دقيقة');
     });
 
     it('formats exactly 60 minutes', () => {
-      expect(formatDuration(60)).toBe('1h');
+      expect(formatDuration(60)).toBe('ساعة');
     });
 
     it('formats hours and minutes', () => {
-      expect(formatDuration(90)).toBe('1h 30m');
+      expect(formatDuration(90)).toBe('ساعة و٣٠ دقيقة');
     });
 
     it('rounds fractional minutes', () => {
-      expect(formatDuration(30.6)).toBe('31 min');
+      expect(formatDuration(30.6)).toBe('٣١ دقيقة');
     });
 
     it('formats hours without remaining minutes', () => {
-      expect(formatDuration(120)).toBe('2h');
+      expect(formatDuration(120)).toBe('ساعتين');
     });
 
     it('formats zero minutes', () => {
-      expect(formatDuration(0)).toBe('0 min');
+      expect(formatDuration(0)).toBe('٠ دقيقة');
     });
   });
 
@@ -381,7 +382,7 @@ describe('workoutSession', () => {
         name: null,
         exercise_snapshot: null as any,
       });
-      expect(getWorkoutSummary(session).name).toBe('Unknown exercise');
+      expect(getWorkoutSummary(session).name).toBe('تمرين غير معروف');
     });
   });
 
@@ -406,7 +407,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('2 exercises · 3 sets');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('تمرينين · ٣ مجموعات');
       });
 
       it('shows singular "exercise" for one exercise', () => {
@@ -421,7 +422,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 30, 100)).toContain('1 exercise');
+        expect(buildSessionSubtitle(session, 30, 100)).toContain('تمرين واحد');
       });
 
       it('includes volume in kg when sets have weight and reps', () => {
@@ -440,7 +441,9 @@ describe('workoutSession', () => {
           ],
         });
         // 500 + 640 = 1140 kg
-        expect(buildSessionSubtitle(session, 60, 300)).toBe(`1 exercise · 2 sets · ${fmt(1140)} kg`);
+        expect(buildSessionSubtitle(session, 60, 300)).toBe(
+          `تمرين واحد · مجموعتين · ${fmt(1140)} كجم`,
+        );
       });
 
       it('converts volume to lbs when weightUnit is lbs', () => {
@@ -456,7 +459,7 @@ describe('workoutSession', () => {
           ],
         });
         const result = buildSessionSubtitle(session, 60, 300, 'lbs');
-        expect(result).toContain('lbs');
+        expect(result).toContain('رطل');
         // 1000 kg * 2.20462 ≈ 2205 lbs
         expect(result).toContain(`${fmt(2205)}`);
       });
@@ -473,7 +476,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 2 sets');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('تمرين واحد · مجموعتين');
       });
 
       it('omits sets count when no sets exist', () => {
@@ -488,7 +491,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('تمرين واحد');
       });
     });
 
@@ -501,7 +504,9 @@ describe('workoutSession', () => {
             { weight: null, reps: null },
           ] as any,
         });
-        expect(buildSessionSubtitle(session, 45, 200)).toBe('3 sets · 45 min · 200 Cal');
+        expect(buildSessionSubtitle(session, 45, 200)).toBe(
+          '٣ مجموعات · ٤٥ دقيقة · ٢٠٠ سعرة',
+        );
       });
 
       it('includes volume when sets have weight and reps', () => {
@@ -512,7 +517,9 @@ describe('workoutSession', () => {
           ] as any,
         });
         // 1080 kg total
-        expect(buildSessionSubtitle(session, 30, 150)).toBe(`2 sets · ${fmt(1080)} kg · 30 min · 150 Cal`);
+        expect(buildSessionSubtitle(session, 30, 150)).toBe(
+          `مجموعتين · ${fmt(1080)} كجم · ٣٠ دقيقة · ١٥٠ سعرة`,
+        );
       });
 
       it('converts volume to lbs', () => {
@@ -524,7 +531,9 @@ describe('workoutSession', () => {
         });
         const result = buildSessionSubtitle(session, 20, 100, 'lbs');
         // 1000 kg * 2.20462 ≈ 2205 lbs
-        expect(result).toBe(`2 sets · ${fmt(2205)} lbs · 20 min · 100 Cal`);
+        expect(result).toBe(
+          `مجموعتين · ${fmt(2205)} رطل · ٢٠ دقيقة · ١٠٠ سعرة`,
+        );
       });
 
       it('omits volume when weights are zero', () => {
@@ -534,7 +543,9 @@ describe('workoutSession', () => {
             { weight: 0, reps: 10 },
           ] as any,
         });
-        expect(buildSessionSubtitle(session, 30, 200)).toBe('2 sets · 30 min · 200 Cal');
+        expect(buildSessionSubtitle(session, 30, 200)).toBe(
+          'مجموعتين · ٣٠ دقيقة · ٢٠٠ سعرة',
+        );
       });
 
       it('omits duration when zero', () => {
@@ -545,7 +556,9 @@ describe('workoutSession', () => {
           ] as any,
         });
         // 800 kg volume
-        expect(buildSessionSubtitle(session, 0, 150)).toBe('2 sets · 800 kg · 150 Cal');
+        expect(buildSessionSubtitle(session, 0, 150)).toBe(
+          'مجموعتين · ٨٠٠ كجم · ١٥٠ سعرة',
+        );
       });
 
       it('omits calories when zero', () => {
@@ -555,7 +568,7 @@ describe('workoutSession', () => {
             { weight: null, reps: null },
           ] as any,
         });
-        expect(buildSessionSubtitle(session, 20, 0)).toBe('2 sets · 20 min');
+        expect(buildSessionSubtitle(session, 20, 0)).toBe('مجموعتين · ٢٠ دقيقة');
       });
 
       it('shows only set count when volume, duration, and calories are all zero', () => {
@@ -565,46 +578,48 @@ describe('workoutSession', () => {
             { weight: null, reps: null },
           ] as any,
         });
-        expect(buildSessionSubtitle(session, 0, 0)).toBe('2 sets');
+        expect(buildSessionSubtitle(session, 0, 0)).toBe('مجموعتين');
       });
     });
 
     describe('individual activity (single or no sets)', () => {
       it('shows duration and calories', () => {
         const session = makeIndividual();
-        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 300 Cal');
+        expect(buildSessionSubtitle(session, 30, 300)).toBe('٣٠ دقيقة · ٣٠٠ سعرة');
       });
 
       it('includes distance in km', () => {
         const session = makeIndividual({ distance: 5.5 });
-        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 5.5 km · 300 Cal');
+        expect(buildSessionSubtitle(session, 30, 300)).toBe(
+          '٣٠ دقيقة · ٥٫٥ كم · ٣٠٠ سعرة',
+        );
       });
 
       it('converts distance to miles', () => {
         const session = makeIndividual({ distance: 10 }); // 10 km
         const result = buildSessionSubtitle(session, 60, 500, 'kg', 'miles');
         // 10 km * 0.621371 ≈ 6.2 mi
-        expect(result).toBe('1h · 6.2 mi · 500 Cal');
+        expect(result).toBe('ساعة · ٦٫٢ ميل · ٥٠٠ سعرة');
       });
 
       it('omits distance when null', () => {
         const session = makeIndividual({ distance: null });
-        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
+        expect(buildSessionSubtitle(session, 45, 250)).toBe('٤٥ دقيقة · ٢٥٠ سعرة');
       });
 
       it('omits distance when zero', () => {
         const session = makeIndividual({ distance: 0 });
-        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
+        expect(buildSessionSubtitle(session, 45, 250)).toBe('٤٥ دقيقة · ٢٥٠ سعرة');
       });
 
       it('omits duration when zero', () => {
         const session = makeIndividual();
-        expect(buildSessionSubtitle(session, 0, 300)).toBe('300 Cal');
+        expect(buildSessionSubtitle(session, 0, 300)).toBe('٣٠٠ سعرة');
       });
 
       it('omits calories when zero', () => {
         const session = makeIndividual();
-        expect(buildSessionSubtitle(session, 30, 0)).toBe('30 min');
+        expect(buildSessionSubtitle(session, 30, 0)).toBe('٣٠ دقيقة');
       });
 
       it('returns empty string when all values are zero/null', () => {
@@ -618,7 +633,9 @@ describe('workoutSession', () => {
           distance: 5,
         });
         // Single set still enters the sets branch — weight 100 * reps 10 = 1000 kg volume
-        expect(buildSessionSubtitle(session, 30, 200)).toBe(`1 set · ${fmt(1000)} kg · 30 min · 200 Cal`);
+        expect(buildSessionSubtitle(session, 30, 200)).toBe(
+          `مجموعة واحدة · ${fmt(1000)} كجم · ٣٠ دقيقة · ٢٠٠ سعرة`,
+        );
       });
     });
   });
@@ -2190,9 +2207,9 @@ describe('workoutSession', () => {
 
     describe('formatVolume', () => {
       it('rounds and appends the unit, converting for lbs', () => {
-        expect(formatVolume(1000, 'kg')).toBe(`${fmt(1000)} kg`);
+        expect(formatVolume(1000, 'kg')).toBe(`${fmt(1000)} كجم`);
         // 1000 kg ≈ 2204.6 lbs
-        expect(formatVolume(1000, 'lbs')).toBe(`${fmt(2205)} lbs`);
+        expect(formatVolume(1000, 'lbs')).toBe(`${fmt(2205)} رطل`);
       });
     });
 

@@ -7,6 +7,7 @@ export const isMobileRtl = true;
 const defaultNumberFormatter = new Intl.NumberFormat(MOBILE_LOCALE, {
   maximumFractionDigits: 1,
 });
+const arabicPluralRules = new Intl.PluralRules(MOBILE_LOCALE);
 
 const servingUnitAliases: Readonly<Record<string, string>> = {
   g: 'g',
@@ -133,4 +134,42 @@ export function formatMobileCalories(calories: number): string {
   return `${formatMobileNumber(Math.round(calories), {
     maximumFractionDigits: 0,
   })} ${mobileT('units.calorie')}`;
+}
+
+function formatArabicCount(
+  count: number,
+  keyPrefix: 'workout.exercise' | 'workout.set' | 'workout.minute' | 'workout.hour',
+): string {
+  const category = arabicPluralRules.select(count);
+  const form =
+    category === 'one' || category === 'two' || category === 'few'
+      ? category
+      : 'other';
+
+  return mobileT(`${keyPrefix}.${form}`, {
+    count: formatMobileNumber(count, { maximumFractionDigits: 0 }),
+  });
+}
+
+export function formatMobileExerciseCount(count: number): string {
+  return formatArabicCount(count, 'workout.exercise');
+}
+
+export function formatMobileSetCount(count: number): string {
+  return formatArabicCount(count, 'workout.set');
+}
+
+export function formatMobileDuration(minutes: number): string {
+  const roundedMinutes = Math.round(minutes);
+  if (roundedMinutes < 60) {
+    return formatArabicCount(roundedMinutes, 'workout.minute');
+  }
+
+  const hours = Math.floor(roundedMinutes / 60);
+  const remainingMinutes = roundedMinutes % 60;
+  const hoursLabel = formatArabicCount(hours, 'workout.hour');
+
+  return remainingMinutes > 0
+    ? `${hoursLabel} و${formatArabicCount(remainingMinutes, 'workout.minute')}`
+    : hoursLabel;
 }

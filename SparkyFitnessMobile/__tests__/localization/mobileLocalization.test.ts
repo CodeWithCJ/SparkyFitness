@@ -3,7 +3,10 @@ import {
   MOBILE_LOCALE,
   isMobileRtl,
   formatMobileCalories,
+  formatMobileDuration,
+  formatMobileExerciseCount,
   formatMobileNumber,
+  formatMobileSetCount,
   localizeExerciseCategory,
   localizeMealType,
   localizeServingUnit,
@@ -41,5 +44,13 @@ describe('mobile localization', () => {
     expect(localizeServingUnit('cups')).toBe('كوب');
     expect(formatMobileNumber(1234.5)).toBe('١٬٢٣٤٫٥');
     expect(formatMobileCalories(350)).toBe('٣٥٠ سعرة');
+  });
+
+  it('uses Arabic singular, dual, and plural workout summaries', () => {
+    expect(formatMobileExerciseCount(1)).toBe('تمرين واحد');
+    expect(formatMobileExerciseCount(2)).toBe('تمرينين');
+    expect(formatMobileExerciseCount(5)).toBe('٥ تمارين');
+    expect(formatMobileSetCount(2)).toBe('مجموعتين');
+    expect(formatMobileDuration(90)).toBe('ساعة و٣٠ دقيقة');
   });
 });

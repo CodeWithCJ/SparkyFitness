@@ -16,6 +16,15 @@ import type { WorkoutPresetExercisePayload } from '../services/api/workoutPreset
 import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
 import { parseDecimalInput } from './numericInput';
 import { DEFAULT_REST_SEC } from './workoutSupersets';
+import {
+  formatMobileCalories,
+  formatMobileDuration,
+  formatMobileExerciseCount,
+  formatMobileNumber,
+  formatMobileSetCount,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 // The superset/reorder algebra lives in its own module; re-exported here so
 // the many existing import sites keep working.
@@ -93,7 +102,7 @@ export function getWorkoutIcon(session: ExerciseSessionResponse): IconName {
 }
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
-  healthkit: 'Apple Health',
+  healthkit: 'صحتي',
   'health connect': 'Health Connect',
   garmin: 'Garmin',
   strava: 'Strava',
@@ -110,10 +119,7 @@ export function getSourceLabel(source: string | null): { label: string; isSparky
 }
 
 export function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${Math.round(minutes)} min`;
-  const hrs = Math.floor(minutes / 60);
-  const mins = Math.round(minutes % 60);
-  return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+  return formatMobileDuration(minutes);
 }
 
 export function getFirstImage(session: ExerciseSessionResponse): string | null {
@@ -199,7 +205,10 @@ export function getWorkoutSummary(session: ExerciseSessionResponse): {
     };
   }
   return {
-    name: session.name ?? session.exercise_snapshot?.name ?? 'Unknown exercise',
+    name:
+      session.name ??
+      session.exercise_snapshot?.name ??
+      mobileT('workout.unknownExercise'),
     duration: session.duration_minutes,
     calories: session.calories_burned,
   };
@@ -221,11 +230,15 @@ export function buildSessionSubtitle(
     );
 
     const parts: string[] = [];
-    parts.push(`${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}`);
-    if (totalSets > 0) parts.push(`${totalSets} sets`);
+    parts.push(formatMobileExerciseCount(exerciseCount));
+    if (totalSets > 0) parts.push(formatMobileSetCount(totalSets));
     if (totalVolumeKg > 0) {
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
-      parts.push(`${vol.toLocaleString()} ${weightUnit}`);
+      parts.push(
+        `${formatMobileNumber(vol, {
+          maximumFractionDigits: 0,
+        })} ${localizeServingUnit(weightUnit)}`,
+      );
     }
     return parts.join(' \u00b7 ');
   }
@@ -237,13 +250,17 @@ export function buildSessionSubtitle(
       (sum, set) => sum + (set.weight ?? 0) * (set.reps ?? 0), 0,
     );
     const parts: string[] = [];
-    parts.push(`${totalSets} set${totalSets !== 1 ? 's' : ''}`);
+    parts.push(formatMobileSetCount(totalSets));
     if (totalVolumeKg > 0) {
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
-      parts.push(`${vol.toLocaleString()} ${weightUnit}`);
+      parts.push(
+        `${formatMobileNumber(vol, {
+          maximumFractionDigits: 0,
+        })} ${localizeServingUnit(weightUnit)}`,
+      );
     }
     if (duration > 0) parts.push(formatDuration(duration));
-    if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
+    if (calories > 0) parts.push(formatMobileCalories(calories));
     return parts.join(' \u00b7 ');
   }
 
@@ -252,10 +269,14 @@ export function buildSessionSubtitle(
   if (duration > 0) parts.push(formatDuration(duration));
   if (session.distance != null && session.distance > 0) {
     const dist = distanceFromKm(session.distance, distanceUnit);
-    const label = distanceUnit === 'miles' ? 'mi' : 'km';
-    parts.push(`${dist.toFixed(1)} ${label}`);
+    parts.push(
+      `${formatMobileNumber(dist, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })} ${localizeServingUnit(distanceUnit)}`,
+    );
   }
-  if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
+  if (calories > 0) parts.push(formatMobileCalories(calories));
   return parts.join(' \u00b7 ');
 }
 
@@ -440,7 +461,9 @@ export function presetExerciseToCardExercise(
 
 export function formatVolume(volumeKg: number, weightUnit: string): string {
   const value = weightFromKg(volumeKg, weightUnit as 'kg' | 'lbs');
-  return `${Math.round(value).toLocaleString()} ${weightUnit}`;
+  return `${formatMobileNumber(Math.round(value), {
+    maximumFractionDigits: 0,
+  })} ${localizeServingUnit(weightUnit)}`;
 }
 
 export type RpeTone = 'easy' | 'moderate' | 'hard' | 'max';
