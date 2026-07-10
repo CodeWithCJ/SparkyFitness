@@ -3,14 +3,25 @@ import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { DEFAULT_REST_SEC } from '../utils/workoutSession';
+import { formatMobileNumber, mobileT } from '../localization';
 
-/** Format a rest duration as `m:ss` when ≥ 60s, otherwise `Ns`. */
+/** Format a rest duration as localized `m:ss` when ≥ 60s, otherwise seconds. */
 export function formatRest(seconds: number | null | undefined): string {
   const value = seconds ?? DEFAULT_REST_SEC;
-  if (value < 60) return `${value}s`;
+  if (value < 60) {
+    return `${formatMobileNumber(value, {
+      maximumFractionDigits: 0,
+    })} ${mobileT('units.secondShort')}`;
+  }
   const mins = Math.floor(value / 60);
   const secs = value % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return `${formatMobileNumber(mins, {
+    maximumFractionDigits: 0,
+  })}:${formatMobileNumber(secs, {
+    minimumIntegerDigits: 2,
+    maximumFractionDigits: 0,
+    useGrouping: false,
+  })}`;
 }
 
 interface RestPeriodChipProps {
@@ -29,7 +40,9 @@ function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProp
     return (
       <View className="flex-row items-center">
         <Icon name="timer" size={14} color={textSecondary} />
-        <Text className="text-sm text-text-secondary ml-1">Rest · {formatRest(value)}</Text>
+        <Text className="text-sm text-text-secondary ms-1">
+          {mobileT('workoutCard.rest')} · {formatRest(value)}
+        </Text>
       </View>
     );
   }
@@ -41,8 +54,8 @@ function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProp
       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
     >
       <Icon name="timer" size={14} color={accentPrimary} />
-      <Text className="text-sm ml-1" style={{ color: accentPrimary }}>
-        Rest · {formatRest(value)}
+      <Text className="text-sm ms-1" style={{ color: accentPrimary }}>
+        {mobileT('workoutCard.rest')} · {formatRest(value)}
       </Text>
     </Pressable>
   );

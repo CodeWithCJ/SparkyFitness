@@ -232,7 +232,7 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     // No expand tap needed — preset cards default expanded.
-    expect(screen.getByText('KG')).toBeTruthy();
+    expect(screen.getByText('كجم')).toBeTruthy();
     expect(screen.getByText('100')).toBeTruthy();
     expect(screen.getByText('5')).toBeTruthy();
   });
@@ -258,7 +258,7 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     // 100kg → ~220.5 lbs
-    expect(screen.getByText('LBS')).toBeTruthy();
+    expect(screen.getByText('رطل')).toBeTruthy();
     expect(screen.getByText('220.5')).toBeTruthy();
   });
 
@@ -303,9 +303,9 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('Rest · 45s')).toBeTruthy();
-    expect(screen.queryByText('Rest · 1:30')).toBeNull();
-    expect(screen.queryByText('Rest · 2:00')).toBeNull();
+    expect(screen.getByText('راحة · ٤٥ ث')).toBeTruthy();
+    expect(screen.queryByText('راحة · ١:٣٠')).toBeNull();
+    expect(screen.queryByText('راحة · ٢:٠٠')).toBeNull();
   });
 
   it('renders a superset rail on each grouped exercise', () => {
@@ -361,7 +361,7 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('45s')).toBeTruthy();
-    expect(screen.getByText('1:30')).toBeTruthy();
+    expect(screen.getByText('٤٥ ث')).toBeTruthy();
+    expect(screen.getByText('١:٣٠')).toBeTruthy();
   });
 });

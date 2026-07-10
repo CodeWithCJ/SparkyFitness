@@ -183,16 +183,16 @@ describe('WorkoutDetailScreen', () => {
     const screen = renderScreen(buildSession());
 
     expect(screen.getByText('Bench Press')).toBeTruthy();
-    expect(screen.getByText('1 sets · ٦٠٠ كجم')).toBeTruthy();
+    expect(screen.getByText('مجموعة واحدة · ٦٠٠ كجم')).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText('Expand Bench Press'));
+    fireEvent.press(screen.getByLabelText('توسيع Bench Press'));
 
-    expect(screen.getByText('Reps')).toBeTruthy();
-    expect(screen.getByLabelText('Change metric column')).toBeTruthy();
+    expect(screen.getByText('التكرارات')).toBeTruthy();
+    expect(screen.getByLabelText('تغيير عمود القياس')).toBeTruthy();
     expect(screen.getByTestId('set-row')).toBeTruthy();
     // View mode: no live-workout editing affordances.
-    expect(screen.queryByLabelText('Add set to Bench Press')).toBeNull();
-    expect(screen.queryByLabelText('More options for Bench Press')).toBeNull();
+    expect(screen.queryByLabelText('إضافة مجموعة إلى Bench Press')).toBeNull();
+    expect(screen.queryByLabelText('خيارات إضافية لـ Bench Press')).toBeNull();
   });
 
   it('derives done vs upcoming set states from server completed_at timestamps', () => {
@@ -208,7 +208,7 @@ describe('WorkoutDetailScreen', () => {
     });
     const screen = renderScreen(session);
 
-    fireEvent.press(screen.getByLabelText('Expand Bench Press'));
+    fireEvent.press(screen.getByLabelText('توسيع Bench Press'));
 
     // One static checkmark for the completed set; the pending set renders
     // an empty slot, and neither exposes complete/un-complete controls.
@@ -219,9 +219,9 @@ describe('WorkoutDetailScreen', () => {
 
   it('opens the metric menu from the column header and updates the shared store', () => {
     const screen = renderScreen(buildSession());
-    fireEvent.press(screen.getByLabelText('Expand Bench Press'));
+    fireEvent.press(screen.getByLabelText('توسيع Bench Press'));
 
-    fireEvent.press(screen.getByLabelText('Change metric column'));
+    fireEvent.press(screen.getByLabelText('تغيير عمود القياس'));
     fireEvent.press(screen.getByLabelText('Volume'));
 
     expect(useAppPreferencesStore.getState().activeWorkoutMetricColumn).toBe('volume');
@@ -229,13 +229,13 @@ describe('WorkoutDetailScreen', () => {
 
   it('hides the rest chip on imported (non-Sparky) workouts', () => {
     const sparky = renderScreen(buildSession());
-    fireEvent.press(sparky.getByLabelText('Expand Bench Press'));
-    expect(sparky.getByText('Rest · 1:30')).toBeTruthy();
+    fireEvent.press(sparky.getByLabelText('توسيع Bench Press'));
+    expect(sparky.getByText('راحة · ١:٣٠')).toBeTruthy();
     sparky.unmount();
 
     const imported = renderScreen(buildSession({ source: 'healthkit' }));
-    fireEvent.press(imported.getByLabelText('Expand Bench Press'));
-    expect(imported.queryByText('Rest · 1:30')).toBeNull();
+    fireEvent.press(imported.getByLabelText('توسيع Bench Press'));
+    expect(imported.queryByText('راحة · ١:٣٠')).toBeNull();
   });
 
   describe('edit mode', () => {
@@ -247,8 +247,8 @@ describe('WorkoutDetailScreen', () => {
 
       // The form list renders the shared card in edit mode with its form
       // affordances.
-      expect(screen.getByLabelText('Add set to Bench Press')).toBeTruthy();
-      expect(screen.getByLabelText('More options for Bench Press')).toBeTruthy();
+      expect(screen.getByLabelText('إضافة مجموعة إلى Bench Press')).toBeTruthy();
+      expect(screen.getByLabelText('خيارات إضافية لـ Bench Press')).toBeTruthy();
 
       // Tap the set number → set-type menu → Warmup.
       fireEvent.press(screen.getByLabelText('Change type for set 1'));
