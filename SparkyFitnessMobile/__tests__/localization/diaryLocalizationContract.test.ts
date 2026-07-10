@@ -65,4 +65,27 @@ describe('diary localization contract', () => {
       expect(sources).not.toContain(englishCopy);
     }
   });
+
+  it('keeps swipe actions and long-press menus Arabic', () => {
+    const sources = [
+      'src/components/SwipeableFoodRow.tsx',
+      'src/components/SwipeableExerciseRow.tsx',
+      'src/hooks/useDeleteFoodEntry.ts',
+      'src/hooks/useDeleteFoodEntryMeal.ts',
+    ]
+      .map(read)
+      .join('\n');
+
+    expect(sources).toContain("mobileT('common.delete')");
+    expect(sources).toContain("mobileT('diary.adjustServing')");
+
+    for (const englishCopy of [
+      'Adjust serving',
+      'Unknown food',
+      'Delete Entry',
+      'Please try again.',
+    ]) {
+      expect(sources).not.toContain(englishCopy);
+    }
+  });
 });

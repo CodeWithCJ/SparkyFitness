@@ -19,6 +19,7 @@ import { normalizeDate } from '../utils/dateUtils';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { syncExerciseSessionInCache } from './syncExerciseSessionInCache';
 import { suggestedExercisesQueryKey } from './queryKeys';
+import { mobileT } from '../localization';
 
 // Library/catalog mutations don't have an `entryDate`, so they cannot reuse
 // `invalidateExerciseCache` (which is keyed to a date). Use this helper to
@@ -96,15 +97,19 @@ function useDeleteMutation({
       onSuccess?.();
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: 'Failed to delete', text2: 'Please try again.' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('delete.failedTitle'),
+        text2: mobileT('common.retry'),
+      });
     },
   });
 
   const confirmAndDelete = () => {
     Alert.alert(confirmTitle, confirmMessage, [
-      { text: 'Cancel', style: 'cancel' },
+      { text: mobileT('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: mobileT('common.delete'),
         style: 'destructive',
         onPress: () => mutation.mutate(),
       },
@@ -215,8 +220,8 @@ export function useDeleteWorkout({ sessionId, entryDate, onSuccess }: UseDeleteW
     deleteFn: deleteWorkoutApi,
     id: sessionId,
     entryDate,
-    confirmTitle: 'Delete Workout?',
-    confirmMessage: 'This workout and all its exercises will be permanently removed.',
+    confirmTitle: mobileT('delete.workoutTitle'),
+    confirmMessage: mobileT('delete.workoutDescription'),
     onSuccess,
   });
 }
@@ -236,8 +241,8 @@ export function useDeleteExerciseEntry({
     deleteFn: deleteExerciseEntryApi,
     id: entryId,
     entryDate,
-    confirmTitle: 'Delete Activity?',
-    confirmMessage: 'This activity will be permanently removed.',
+    confirmTitle: mobileT('delete.activityTitle'),
+    confirmMessage: mobileT('delete.activityDescription'),
     onSuccess,
   });
 }
