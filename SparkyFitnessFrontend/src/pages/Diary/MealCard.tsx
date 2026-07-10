@@ -60,6 +60,7 @@ import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import AllergenBadges from '@/components/AllergenBadges';
+import { getLocalizedMealTypeName } from '@/utils/mealTypeLocalization';
 
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
 
@@ -142,6 +143,7 @@ const MealCard = ({
   const highlightFoodId = searchParams.get('highlight') ?? null;
   const { mutate: copyFoodEntriesFromYesterday } =
     useCopyFoodEntriesFromYesterdayMutation();
+  const localizedMealName = getLocalizedMealTypeName(meal.type || meal.name, t);
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal'
       ? t('common.kcalUnit', 'kcal')
@@ -226,7 +228,7 @@ const MealCard = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg sm:text-xl dark:text-slate-300">
-                {meal.name}
+                {localizedMealName}
               </CardTitle>
               <span className="text-xs sm:text-sm text-gray-500">
                 {Math.round(convertEnergy(totals.calories, 'kcal', energyUnit))}
@@ -260,23 +262,12 @@ const MealCard = ({
                   <DialogHeader>
                     <DialogTitle>
                       {t('mealCard.addFoodToMeal', {
-                        mealName: t(`common.${meal.type}`, meal.name),
-                        defaultValue: `Add Food to ${t(
-                          `common.${meal.type}`,
-                          meal.name
-                        )}`,
+                        mealName: localizedMealName,
                       })}
                     </DialogTitle>
                     <DialogDescription>
                       {t('mealCard.searchFoodsForMeal', {
-                        mealName: t(
-                          `common.${meal.type}`,
-                          meal.name
-                        ).toLowerCase(),
-                        defaultValue: `Search for foods to add to your ${t(
-                          `common.${meal.type}`,
-                          meal.name
-                        ).toLowerCase()}.`,
+                        mealName: localizedMealName,
                       })}
                       <br />
                       <span className="text-red-500">

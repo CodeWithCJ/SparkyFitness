@@ -46,6 +46,7 @@ import {
 import { todayInZone } from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 import { AppLoadingScreen } from '@/components/AppLoadingScreen';
+import { getLocalizedMealTypeName } from '@/utils/mealTypeLocalization';
 
 const Diary = () => {
   const { t } = useTranslation();
@@ -357,7 +358,7 @@ const Diary = () => {
     for (const mealTypeObj of visibleMealTypes) {
       list.push({
         key: mealWidgetKey(mealTypeObj.id),
-        title: mealTypeObj.name,
+        title: getLocalizedMealTypeName(mealTypeObj.name, t),
         icon: UtensilsCrossed,
         render: () => (
           <MealCard
