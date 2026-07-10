@@ -708,8 +708,11 @@
   "exerciseCard": {
     "title": "Exercise",
     "addExercise": "Add Exercise",
+    "startWorkout": "Start workout",
     "noEntries": "No exercise entries for this day.",
     "exerciseTotal": "Exercise Total",
+    "duration": "Duration",
+    "averageHeartRate": "Average heart rate",
     "editExerciseInDatabase": "Edit Exercise in Database",
     "editExerciseInDatabaseDescription": "Edit the details of the selected exercise in the database.",
     "name": "Name",
