@@ -33,6 +33,10 @@ import {
   type WorkoutCardExercise,
 } from '../utils/workoutSession';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
+import {
+  formatMobileSetCount,
+  mobileT,
+} from '../localization';
 
 /** Fixed height of a single exercise (member) row. */
 export const REORDER_ROW_HEIGHT = 64;
@@ -203,7 +207,7 @@ function ReorderItemRow({
 
   const rows = item.entryIds.map((entryId) => {
     const exercise = exercisesById.get(entryId);
-    const name = exercise?.exercise_snapshot?.name ?? 'Exercise';
+    const name = exercise?.exercise_snapshot?.name ?? mobileT('workout.unknownExercise');
     const setCount = exercise?.sets.length ?? 0;
     return (
       <View
@@ -220,7 +224,7 @@ function ReorderItemRow({
             {name}
           </Text>
           <Text className="text-sm text-text-muted">
-            {setCount} set{setCount === 1 ? '' : 's'}
+            {formatMobileSetCount(setCount)}
           </Text>
         </View>
       </View>
@@ -229,7 +233,7 @@ function ReorderItemRow({
 
   return (
     <Animated.View
-      style={[{ marginBottom: REORDER_ITEM_GAP, paddingLeft: isRun ? 10 : 0 }, animatedStyle]}
+      style={[{ marginBottom: REORDER_ITEM_GAP, paddingStart: isRun ? 10 : 0 }, animatedStyle]}
     >
       {isRun && railColor ? (
         <View
@@ -237,7 +241,7 @@ function ReorderItemRow({
           pointerEvents="none"
           style={{
             position: 'absolute',
-            left: 0,
+            start: 0,
             top: 0,
             bottom: 0,
             width: 3,
@@ -252,7 +256,7 @@ function ReorderItemRow({
           <View
             testID={`reorder-handle-${item.key}`}
             className="px-4 py-2 justify-center"
-            accessibilityLabel="Drag to reorder"
+            accessibilityLabel={mobileT('workoutForm.dragToReorder')}
             accessibilityRole="adjustable"
           >
             <Icon name="reorder-handle" size={24} color={textMuted} />
@@ -424,15 +428,17 @@ function WorkoutReorderList({
           className="flex-row items-center justify-between px-4 pb-3 border-b border-border-subtle"
           style={{ paddingTop: headerTopPad }}
         >
-          <Text className="text-lg font-semibold text-text-primary">Reorder exercises</Text>
+          <Text className="text-lg font-semibold text-text-primary">
+            {mobileT('workoutDetail.reorderExercises')}
+          </Text>
           <Pressable
             onPress={onDone}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
-            accessibilityLabel="Done reordering"
+            accessibilityLabel={mobileT('workoutForm.doneReordering')}
           >
             <Text className="text-base font-semibold" style={{ color: accent }}>
-              Done
+              {mobileT('common.done')}
             </Text>
           </Pressable>
         </View>

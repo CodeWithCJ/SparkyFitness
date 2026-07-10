@@ -295,9 +295,9 @@ describe('WorkoutFormExerciseList', () => {
         makeExercise('c'),
       ]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.getByText('Superset with…')).toBeTruthy();
-      expect(utils.getByText('Remove from superset')).toBeTruthy();
-      expect(utils.getByText('Remove exercise')).toBeTruthy();
+      expect(utils.getByText('سوبر سِت مع…')).toBeTruthy();
+      expect(utils.getByText('إزالة من السوبر سِت')).toBeTruthy();
+      expect(utils.getByText('إزالة التمرين')).toBeTruthy();
     });
 
     it('hides Superset with… when there are no ungrouped candidates', () => {
@@ -306,8 +306,8 @@ describe('WorkoutFormExerciseList', () => {
         makeExercise('b', { supersetGroup: 1 }),
       ]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.queryByText('Superset with…')).toBeNull();
-      expect(utils.getByText('Remove from superset')).toBeTruthy();
+      expect(utils.queryByText('سوبر سِت مع…')).toBeNull();
+      expect(utils.getByText('إزالة من السوبر سِت')).toBeTruthy();
     });
 
     it('drives the pick flow: Superset with… lists candidates and dispatches supersetWith', () => {
@@ -341,7 +341,7 @@ describe('WorkoutFormExerciseList', () => {
     it('no longer offers Reorder exercises in the card menu (moved to the screen header)', () => {
       const utils = renderList([makeExercise('a'), makeExercise('b')]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.queryByText('Reorder exercises')).toBeNull();
+      expect(utils.queryByText('إعادة ترتيب التمارين')).toBeNull();
     });
   });
 
@@ -349,7 +349,7 @@ describe('WorkoutFormExerciseList', () => {
     it('omits the View exercise menu item when onViewExercise is absent', () => {
       const utils = renderList([makeExercise('a')]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
-      expect(utils.queryByText('View exercise')).toBeNull();
+      expect(utils.queryByText('عرض تفاصيل التمرين')).toBeNull();
       expect(utils.queryByTestId('menu-item-view')).toBeNull();
     });
 
@@ -529,7 +529,7 @@ describe('WorkoutFormExerciseList', () => {
 
   it('renders the Add Exercise footer', () => {
     const utils = renderList([makeExercise('a')]);
-    fireEvent.press(utils.getByText('Add Exercise'));
+    fireEvent.press(utils.getByText('إضافة تمرين'));
     expect(utils.callbacks.onAddExercisePress).toHaveBeenCalledTimes(1);
   });
 
