@@ -11,6 +11,7 @@ import {
   formatMobileHealthRecordCount,
   formatMobileIngredientCount,
   formatMobileItemCount,
+  formatMobileLogCount,
   formatMobileNumber,
   formatMobileRepCount,
   formatMobileServingCount,
@@ -60,6 +61,9 @@ describe('mobile localization', () => {
     expect(localizeHealthCategory('Vitals')).toBe('المؤشرات الحيوية');
     expect(formatMobileItemCount(2)).toBe('عنصرين');
     expect(formatMobileHealthRecordCount(4)).toBe('٤ سجلات');
+    expect(formatMobileLogCount(1)).toBe('عرض سجل واحد');
+    expect(formatMobileLogCount(2)).toBe('عرض سجلين');
+    expect(formatMobileLogCount(4)).toBe('عرض ٤ سجلات');
   });
 
   it('localizes diary meal types, serving units, and numbers', () => {

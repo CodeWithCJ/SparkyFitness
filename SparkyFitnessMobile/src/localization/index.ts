@@ -261,7 +261,8 @@ function formatArabicCount(
     | 'mealTypeDetail.food'
     | 'section.item'
     | 'healthSync.record'
-    | 'healthSync.workoutRecord',
+    | 'healthSync.workoutRecord'
+    | 'logs.count',
 ): string {
   const category = arabicPluralRules.select(count);
   const form =
@@ -304,6 +305,10 @@ export function formatMobileHealthRecordCount(count: number): string {
 
 export function formatMobileWorkoutRecordCount(count: number): string {
   return formatArabicCount(count, 'healthSync.workoutRecord');
+}
+
+export function formatMobileLogCount(count: number): string {
+  return formatArabicCount(count, 'logs.count');
 }
 
 export function formatMobileDuration(minutes: number): string {

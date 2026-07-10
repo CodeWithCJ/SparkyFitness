@@ -1,5 +1,6 @@
 import {
   formatDate,
+  formatDateTime,
   formatDateLabel,
   formatMonthDayShort,
   formatRelativeTime,
@@ -16,6 +17,14 @@ describe('Saudi Arabic date formatting', () => {
     expect(formatDate('2026-07-10')).toBe('الجمعة، ١٠ يوليو');
     expect(formatWeekdayShort('2026-07-10')).toBe('الجمعة');
     expect(formatMonthDayShort('2026-07-10')).toBe('١٠ يوليو');
+  });
+
+  it('formats timestamps with Arabic numerals and the Gregorian year', () => {
+    const result = formatDateTime(new Date(2026, 6, 10, 9, 13, 42));
+
+    expect(result).toContain('٢٠٢٦');
+    expect(result).toContain('٩:١٣:٤٢');
+    expect(result).not.toContain('١٤٤٨');
   });
 
   it('uses natural Arabic labels for today and yesterday', () => {

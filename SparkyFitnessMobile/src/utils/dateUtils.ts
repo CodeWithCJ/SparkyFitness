@@ -82,6 +82,16 @@ export const formatMonthDayShort = (dateString: string): string =>
     day: 'numeric',
   });
 
+export const formatDateTime = (timestamp: Date): string =>
+  timestamp.toLocaleString(SAUDI_GREGORIAN_LOCALE, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
 // Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
 export const formatDateLabel = (dateString: string): string => {
   const today = getTodayDate();

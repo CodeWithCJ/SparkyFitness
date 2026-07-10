@@ -30,15 +30,21 @@ import {
 } from '../services/LogService';
 import type { LogEntry, LogStatus } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  formatMobileLogCount,
+  formatMobileNumber,
+  mobileT,
+} from '../localization';
+import { formatDateTime } from '../utils/dateUtils';
 
 type LogScreenProps = RootStackScreenProps<'Logs'>;
 
 const MAX_LOGS_TO_LOAD = 1000;
 const LEVEL_CHIPS: { status: LogStatus; label: string; color: string; activeColor?: string }[] = [
-  { status: 'ERROR', label: 'Error', color: '#dc3545' },
-  { status: 'WARNING', label: 'Warning', color: '#ffc107' },
-  { status: 'INFO', label: 'Info', color: '#007bff', activeColor: '#ffffff' },
-  { status: 'DEBUG', label: 'Debug', color: '#6c757d', activeColor: '#d1d5db' },
+  { status: 'ERROR', label: mobileT('logs.level.error'), color: '#dc3545' },
+  { status: 'WARNING', label: mobileT('logs.level.warning'), color: '#ffc107' },
+  { status: 'INFO', label: mobileT('logs.level.info'), color: '#007bff', activeColor: '#ffffff' },
+  { status: 'DEBUG', label: mobileT('logs.level.debug'), color: '#6c757d', activeColor: '#d1d5db' },
 ];
 
 const getStatusColor = (status: string): string => {
@@ -106,24 +112,21 @@ const FilterChip: React.FC<FilterChipProps> = ({ label, count, active, color, ac
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
       <Animated.View
-        className="flex-row items-center rounded-full px-3 py-1.5 mr-2 mb-2 border"
+        className="flex-row items-center rounded-full px-3 py-1.5 me-2 mb-2 border"
         style={chipStyle}
       >
         {color && (
-          <Animated.View className="w-2 h-2 rounded-full mr-2" style={dotStyle} />
+          <Animated.View className="w-2 h-2 rounded-full me-2" style={dotStyle} />
         )}
         <Animated.Text className="text-sm font-medium" style={labelStyle}>
-          {label} {count}
+          {label} {formatMobileNumber(count)}
         </Animated.Text>
       </Animated.View>
     </TouchableOpacity>
   );
 };
 
-const pluralize = (count: number, [singular, plural]: [string, string]): string =>
-  count === 1 ? singular : plural;
-
-const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
+const LogScreen: React.FC<LogScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -152,7 +155,11 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
     try {
       await setViewSelectedStatuses(next);
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save log filter.' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('common.error'),
+        text2: mobileT('logs.filterSaveFailed'),
+      });
       console.error('Failed to persist log filter selection', error);
     }
   };
@@ -171,12 +178,12 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
 
   const handleClearLogs = useCallback((): void => {
     Alert.alert(
-      'Clear Logs',
-      'Are you sure you want to clear all logs?',
+      mobileT('logs.clearTitle'),
+      mobileT('logs.clearDescription'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: mobileT('common.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: mobileT('logs.clearAction'),
           onPress: async () => {
             await clearLogs();
             setLogs([]);
@@ -191,32 +198,44 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
 
   // Clear is destructive-ish but not a save, so it stays a neutral text action.
   const header = useScreenHeader({
-    title: 'Logs',
+    title: mobileT('screens.logs'),
     left: { kind: 'back' },
     right: {
       kind: 'text',
-      label: 'Clear',
+      label: mobileT('logs.clearAction'),
       role: 'secondary',
       disabled: !hasLogs,
       onPress: handleClearLogs,
-      accessibilityLabel: 'Clear logs',
+      accessibilityLabel: mobileT('logs.clearAccessibility'),
       identifier: 'logs-clear',
     },
   });
 
   const handleCopyLogToClipboard = (item: LogEntry): void => {
-    let logText = `Status: ${item.status}\n`;
-    logText += `Message: ${item.message}\n`;
+    const lines = [
+      mobileT('logs.copyStatus', { status: item.status }),
+      mobileT('logs.copyMessage', { message: item.message }),
+    ];
 
     if (item.details && item.details.length > 0) {
-      logText += `Details: ${item.details.join(', ')}\n`;
+      lines.push(
+        mobileT('logs.copyDetails', { details: item.details.join('، ') }),
+      );
     }
 
-    logText += `Timestamp: ${new Date(item.timestamp).toLocaleString()}`;
+    lines.push(
+      mobileT('logs.copyTimestamp', {
+        timestamp: formatDateTime(new Date(item.timestamp)),
+      }),
+    );
 
-    Clipboard.setString(logText);
+    Clipboard.setString(lines.join('\n'));
 
-    Toast.show({ type: 'success', text1: 'Copied', text2: 'Log entry copied to clipboard' });
+    Toast.show({
+      type: 'success',
+      text1: mobileT('logs.copied'),
+      text2: mobileT('logs.copiedDescription'),
+    });
   };
 
   const filteredLogs = useMemo(() => {
@@ -236,10 +255,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
 
   const showSummary = allActive || selectedStatuses.length > 1;
 
-  const summaryLabel = useMemo(() => {
-    const n = filteredLogs.length;
-    return `Showing ${n} ${pluralize(n, ['log', 'logs'])}`;
-  }, [filteredLogs.length]);
+  const summaryLabel = formatMobileLogCount(filteredLogs.length);
 
   const ListHeader = (
     <View>
@@ -250,7 +266,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
         contentContainerStyle={{ paddingHorizontal: 16 }}
       >
         <FilterChip
-          label="All"
+          label={mobileT('logs.all')}
           count={logs.length}
           active={allActive}
           onPress={handleSelectAll}
@@ -285,7 +301,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
             onPress={() => handleCopyLogToClipboard(item)}
             activeOpacity={0.7}
           >
-            <View className="mr-3 items-center justify-center">
+            <View className="me-3 items-center justify-center">
               <Icon
                 name={getStatusIcon(item.status)}
                 size={28}
@@ -305,7 +321,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
                   item.details.map((detail, index) => (
                     <Text
                       key={index}
-                      className="bg-raised rounded px-2 py-1 mr-2 mb-1 text-sm text-text-primary"
+                      className="bg-raised rounded px-2 py-1 me-2 mb-1 text-sm text-text-primary"
                       numberOfLines={3}
                       ellipsizeMode="tail"
                     >
@@ -314,7 +330,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
                   ))}
               </View>
               <Text className="text-sm text-text-muted">
-                {new Date(item.timestamp).toLocaleString()}
+                {formatDateTime(new Date(item.timestamp))}
               </Text>
             </View>
           </TouchableOpacity>
@@ -323,7 +339,9 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
         ListEmptyComponent={() => (
           <View className="items-center py-8">
             <Text className="text-text-muted text-base">
-              {logs.length === 0 ? 'No logs yet.' : 'No logs match the current filter.'}
+              {logs.length === 0
+                ? mobileT('logs.empty')
+                : mobileT('logs.noMatches')}
             </Text>
           </View>
         )}
