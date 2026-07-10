@@ -108,7 +108,7 @@ describe('EditBarcodeScreen', () => {
     const screen = renderScreen();
 
     fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '012345678905');
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
 
     await waitFor(() => {
       expect(mockUpdateFood).toHaveBeenCalledWith('food-1', { barcode: '012345678905' });
@@ -119,7 +119,7 @@ describe('EditBarcodeScreen', () => {
     // Server normalized 12-digit UPC-A to 13-digit EAN-13 — that's what we echo.
     expect(dispatched.payload.params.updatedBarcode).toBe('0012345678905');
     expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'success', text1: 'Barcode saved' }),
+      expect.objectContaining({ type: 'success', text1: 'تم حفظ الباركود' }),
     );
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
   });
@@ -140,11 +140,11 @@ describe('EditBarcodeScreen', () => {
     fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '012345678905');
 
     await act(async () => {
-      pressAction(screen, navigation, 'Save');
+      pressAction(screen, navigation, 'حفظ');
     });
 
     expect(alertSpy).toHaveBeenCalledWith(
-      'Barcode already in use',
+      'الباركود مستخدم',
       expect.stringContaining('Other Yogurt'),
       expect.any(Array),
       expect.any(Object),
@@ -156,11 +156,11 @@ describe('EditBarcodeScreen', () => {
 
   it('shows the Remove button only when a barcode is currently set', () => {
     const screenWithout = renderScreen({ currentBarcode: null });
-    expect(screenWithout.queryByText('Remove barcode')).toBeNull();
+    expect(screenWithout.queryByText('حذف الباركود')).toBeNull();
     screenWithout.unmount();
 
     const screenWith = renderScreen({ currentBarcode: '3017620422003' });
-    expect(screenWith.getByText('Remove barcode')).toBeTruthy();
+    expect(screenWith.getByText('حذف الباركود')).toBeTruthy();
   });
 
   it('removes the barcode after confirm and dispatches null back', async () => {
@@ -176,13 +176,13 @@ describe('EditBarcodeScreen', () => {
     const alertSpy = jest
       .spyOn(Alert, 'alert')
       .mockImplementation((_title, _msg, buttons) => {
-        const removeBtn = buttons?.find((b: any) => b.text === 'Remove');
+        const removeBtn = buttons?.find((b: any) => b.text === 'حذف');
         removeBtn?.onPress?.();
       });
 
     const screen = renderScreen({ currentBarcode: '3017620422003' });
     await act(async () => {
-      fireEvent.press(screen.getByText('Remove barcode'));
+      fireEvent.press(screen.getByText('حذف الباركود'));
     });
 
     await waitFor(() => {
@@ -201,7 +201,7 @@ describe('EditBarcodeScreen', () => {
     fireEvent.changeText(screen.getByPlaceholderText('012345678905'), 'abc');
 
     // Save is disabled when value is invalid, so the regex inline error shows.
-    expect(screen.getByText(/Barcode must be 8-14 digits/)).toBeTruthy();
+    expect(screen.getByText(/الباركود لازم يكون من ٨ إلى ١٤ رقمًا/)).toBeTruthy();
     expect(mockUpdateFood).not.toHaveBeenCalled();
   });
 
@@ -209,7 +209,7 @@ describe('EditBarcodeScreen', () => {
     const screen = renderScreen({ currentBarcode: '0012345678905' });
     fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '012345678905');
 
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
     // Save is disabled because the normalized value matches; nothing happens.
     expect(mockLookupBarcodeV2).not.toHaveBeenCalled();
     expect(mockUpdateFood).not.toHaveBeenCalled();
@@ -225,6 +225,28 @@ describe('EditBarcodeScreen', () => {
     expect(navigation.setParams).toHaveBeenCalledWith({
       pendingScannedBarcode: undefined,
       scannedBarcodeNonce: undefined,
+    });
+  });
+
+  it('normalizes Arabic barcode digits before validation and saving', async () => {
+    mockLookupBarcodeV2.mockResolvedValue({ source: 'not_found', food: null } as any);
+    mockUpdateFood.mockResolvedValue({
+      id: 'food-1',
+      name: 'Greek Yogurt',
+      brand: null,
+      is_custom: true,
+      barcode: '0012345678905',
+      default_variant: {} as any,
+    } as any);
+
+    const screen = renderScreen();
+    fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '٠١٢٣٤٥٦٧٨٩٠٥');
+    pressAction(screen, navigation, 'حفظ');
+
+    await waitFor(() => {
+      expect(mockUpdateFood).toHaveBeenCalledWith('food-1', {
+        barcode: '012345678905',
+      });
     });
   });
 });

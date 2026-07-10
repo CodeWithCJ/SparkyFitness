@@ -29,12 +29,13 @@ import { activeAiServiceSettingQueryKey } from '../hooks/queryKeys';
 import { addLog } from '../services/LogService';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 import { mapEstimateError } from '../utils/foodPhotoEstimate';
+import { formatMobileNumber, mobileT } from '../localization';
 
 type Props = FoodPhotoFlowScreenProps<'Improve'>;
 
 const WEIGHT_UNITS: Segment<'g' | 'oz'>[] = [
-  { key: 'g', label: 'grams' },
-  { key: 'oz', label: 'ounces' },
+  { key: 'g', label: mobileT('foodPhoto.grams') },
+  { key: 'oz', label: mobileT('foodPhoto.ounces') },
 ];
 
 const DESCRIPTION_MAX = 500;
@@ -89,11 +90,11 @@ const FADE_IN_MS = 200;
 const FADE_OUT_MS = 150;
 
 const PENDING_MESSAGES: { startsAt: number; text: string }[] = [
-  { startsAt: 0, text: 'Reading your photo…' },
-  { startsAt: 6, text: 'Identifying ingredients…' },
-  { startsAt: 15, text: 'Estimating portions…' },
-  { startsAt: 28, text: 'Calculating nutrition…' },
-  { startsAt: 45, text: 'Almost there…' },
+  { startsAt: 0, text: mobileT('foodPhoto.readingPhoto') },
+  { startsAt: 6, text: mobileT('foodPhoto.identifyingIngredients') },
+  { startsAt: 15, text: mobileT('foodPhoto.estimatingPortions') },
+  { startsAt: 28, text: mobileT('foodPhoto.calculatingNutrition') },
+  { startsAt: 45, text: mobileT('foodPhoto.almostThere') },
 ];
 
 function pendingMessageFor(elapsedSec: number, imageCount: number): string {
@@ -101,9 +102,9 @@ function pendingMessageFor(elapsedSec: number, imageCount: number): string {
   for (const m of PENDING_MESSAGES) {
     if (elapsedSec >= m.startsAt) current = m.text;
   }
-  // Pluralize the first ("Reading your photo…") message for multi-image sets.
+  // Use the plural reading status for multi-image sets.
   if (imageCount > 1 && current === PENDING_MESSAGES[0].text) {
-    return 'Reading your photos…';
+    return mobileT('foodPhoto.readingPhotos');
   }
   return current;
 }
@@ -199,8 +200,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       if (!permission.granted) {
         Toast.show({
           type: 'error',
-          text1: 'Camera permission needed',
-          text2: 'Enable camera access to add a photo.',
+          text1: mobileT('foodPhoto.cameraPermissionTitle'),
+          text2: mobileT('foodPhoto.cameraPermissionDescription'),
         });
         return;
       }
@@ -214,7 +215,10 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Food Photo Improve] Camera capture failed: ${message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Could not take photo' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('foodPhoto.takePhotoFailed'),
+      });
     } finally {
       pickerLock.current = false;
     }
@@ -239,7 +243,10 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Food Photo Improve] Library pick failed: ${message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Could not load photo' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('foodPhoto.loadPhotoFailed'),
+      });
     } finally {
       pickerLock.current = false;
     }
@@ -272,8 +279,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       if (Number.isNaN(parsedWeight)) {
         Toast.show({
           type: 'error',
-          text1: 'Invalid weight',
-          text2: 'Total weight must be a positive number.',
+          text1: mobileT('foodPhoto.invalidWeight'),
+          text2: mobileT('foodPhoto.weightPositive'),
         });
         return;
       }
@@ -283,8 +290,12 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       if (descriptionTooLong) {
         Toast.show({
           type: 'error',
-          text1: 'Description too long',
-          text2: `Keep it under ${DESCRIPTION_MAX} characters.`,
+          text1: mobileT('foodPhoto.descriptionTooLong'),
+          text2: mobileT('foodPhoto.descriptionLimit', {
+            count: formatMobileNumber(DESCRIPTION_MAX, {
+              maximumFractionDigits: 0,
+            }),
+          }),
         });
         return;
       }
@@ -294,8 +305,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     if (images.length === 0) {
       Toast.show({
         type: 'error',
-        text1: 'No images',
-        text2: 'Add at least one photo to generate an estimate.',
+        text1: mobileT('foodPhoto.noImages'),
+        text2: mobileT('foodPhoto.addImageFirst'),
       });
       return;
     }
@@ -320,8 +331,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       addLog(`[Food Photo Improve] Failed to read photo: ${message}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Could not read photo',
-        text2: 'Please retake the photo and try again.',
+        text1: mobileT('foodPhoto.readPhotoFailed'),
+        text2: mobileT('foodPhoto.retakeAndRetry'),
       });
       return;
     }
@@ -392,13 +403,13 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={() => navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10 p-0"
-          accessibilityLabel="Cancel"
+          accessibilityLabel={mobileT('common.cancel')}
           disabled={isPending}
         >
           <Icon name="close" size={22} color={backColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Improve estimate
+          {mobileT('foodPhoto.improveTitle')}
         </Text>
       </View>
 
@@ -433,7 +444,11 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Pressable
                     onPress={() => removeImage(index)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    accessibilityLabel={`Remove image ${index + 1}`}
+                    accessibilityLabel={mobileT('foodPhoto.removeImage', {
+                      number: formatMobileNumber(index + 1, {
+                        maximumFractionDigits: 0,
+                      }),
+                    })}
                     className="absolute top-1 right-1 rounded-full bg-background/80 p-0.5"
                   >
                     <Icon name="close" size={16} color={textPrimary} />
@@ -444,12 +459,14 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             {!isPending && !atImageCap ? (
               <Pressable
                 onPress={() => setSheetVisible(true)}
-                accessibilityLabel="Add another image"
+                accessibilityLabel={mobileT('foodPhoto.addAnotherImage')}
                 className="rounded-xl items-center justify-center border border-dashed border-border-subtle"
                 style={{ width: 96, height: 96 }}
               >
                 <Icon name="add" size={28} color={accentPrimary} />
-                <Text className="text-text-secondary text-xs mt-1">Add</Text>
+                <Text className="text-text-secondary text-xs mt-1">
+                  {mobileT('foodPhoto.add')}
+                </Text>
               </Pressable>
             ) : null}
           </ScrollView>
@@ -477,17 +494,20 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             exiting={FadeOut.duration(FADE_OUT_MS)}
           >
             <Text className="text-text-secondary text-sm mb-4 leading-5">
-              Add anything the {images.length > 1 ? 'photos' : 'photo'} might not
-              make obvious.
+              {mobileT(
+                images.length > 1
+                  ? 'foodPhoto.hiddenDetailsMultiple'
+                  : 'foodPhoto.hiddenDetailsSingle',
+              )}
             </Text>
 
             <Text className="text-text-primary text-base font-semibold mb-2">
-              Total weight (optional)
+              {mobileT('foodPhoto.totalWeight')}
             </Text>
             <View className="flex-row items-center gap-2 mb-2">
               <FormInput
                 className="flex-1"
-                placeholder="e.g. 350"
+                placeholder={mobileT('foodPhoto.weightPlaceholder')}
                 keyboardType="decimal-pad"
                 value={totalWeight}
                 onChangeText={handleWeightChange}
@@ -503,15 +523,14 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <Text className="text-text-primary text-base font-semibold mb-2">
-              Description (optional)
+              {mobileT('foodPhoto.description')}
             </Text>
             <Text className="text-text-secondary text-sm mb-2 leading-5">
-              Include oils, butter, cream, sauces, toppings, sides, or restaurant
-              names.
+              {mobileT('foodPhoto.descriptionHint')}
             </Text>
             <FormInput
               className="mb-1"
-              placeholder='e.g. salmon with lemon dill cream sauce'
+              placeholder={mobileT('foodPhoto.descriptionPlaceholder')}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -526,7 +545,12 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
                 opacity: descriptionTooLong ? 1 : 0.6,
               }}
             >
-              {description.length}/{DESCRIPTION_MAX}
+              {formatMobileNumber(description.length, {
+                maximumFractionDigits: 0,
+              })}
+              /{formatMobileNumber(DESCRIPTION_MAX, {
+                maximumFractionDigits: 0,
+              })}
             </Text>
           </Animated.View>
         )}
@@ -547,7 +571,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
               exiting={FadeOut.duration(FADE_OUT_MS)}
             >
               <Button variant="outline" onPress={handleCancel}>
-                Cancel
+                {mobileT('common.cancel')}
               </Button>
             </Animated.View>
           ) : (
@@ -562,7 +586,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
                   void submit();
                 }}
               >
-                Generate estimate
+                {mobileT('foodPhoto.generateEstimate')}
               </Button>
             </Animated.View>
           )}
@@ -578,7 +602,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         <Pressable
           className="flex-1 justify-end bg-black/50"
           onPress={() => setSheetVisible(false)}
-          accessibilityLabel="Dismiss"
+          accessibilityLabel={mobileT('foodPhoto.dismiss')}
         >
           <Pressable
             // Tap-absorbing wrapper only; hide it from screen readers so they
@@ -595,7 +619,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
               <View className="h-1 w-10 rounded-full bg-border-subtle" />
             </View>
             <Text className="text-text-primary text-base font-semibold mb-2 px-1">
-              Add another image
+              {mobileT('foodPhoto.addAnotherImage')}
             </Text>
             <Button
               variant="outline"
@@ -605,7 +629,9 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
               }}
             >
               <Icon name="camera" size={22} color={accentPrimary} />
-              <Text className="text-text-primary text-base">Take photo</Text>
+              <Text className="text-text-primary text-base">
+                {mobileT('foodPhoto.takePhoto')}
+              </Text>
             </Button>
             <Button
               variant="outline"
@@ -616,7 +642,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             >
               <Icon name="photo-library" size={22} color={accentPrimary} />
               <Text className="text-text-primary text-base">
-                Choose from library
+                {mobileT('foodPhoto.chooseLibrary')}
               </Text>
             </Button>
           </Pressable>

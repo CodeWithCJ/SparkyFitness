@@ -99,6 +99,27 @@ describe('getExternalDataProvidersForUser - non-owner credential redaction', () 
 });
 
 describe('getExternalDataProviders - runtime availability', () => {
+  it('reports token presence without returning encrypted token material', async () => {
+    // @ts-expect-error mocked repository method
+    externalProviderRepository.getExternalDataProviders.mockResolvedValue([
+      {
+        id: 'provider-1',
+        user_id: OWNER,
+        provider_type: 'huaweihealth',
+        provider_name: 'HUAWEI Health',
+        is_public: false,
+        is_active: true,
+        encrypted_access_token: 'ciphertext-must-stay-on-server',
+      },
+    ]);
+
+    const result =
+      await externalProviderService.getExternalDataProviders(OWNER);
+
+    expect(result[0].has_token).toBe(true);
+    expect(result[0].encrypted_access_token).toBeUndefined();
+  });
+
   it('marks YAZIO inactive when provider OAuth credentials are missing', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.getExternalDataProviders.mockResolvedValue([
@@ -160,6 +181,19 @@ describe('createExternalDataProvider - mutual exclusion', () => {
     await expect(promise).rejects.toThrow(pattern);
     await expect(promise).rejects.toMatchObject({ statusCode: 400 });
   };
+
+  it('reserves HUAWEI Health rows for the dedicated OAuth flow', async () => {
+    await expectBadRequest(
+      externalProviderService.createExternalDataProvider(OWNER, {
+        provider_type: 'huaweihealth',
+        provider_name: 'Anything',
+      }),
+      /dedicated HUAWEI Health connection flow/i
+    );
+    expect(
+      externalProviderRepository.createExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
 
   it('rejects an OFF row with only app_id populated', async () => {
     await expectBadRequest(
@@ -276,6 +310,25 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
     externalProviderRepository.updateExternalDataProvider.mockResolvedValue({
       id: PROVIDER_ID,
     });
+  });
+
+  it('prevents generic edits to a managed HUAWEI Health row', async () => {
+    // @ts-expect-error mocked repository method
+    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
+      id: PROVIDER_ID,
+      provider_type: 'huaweihealth',
+      is_public: false,
+    });
+
+    await expectBadRequest(
+      externalProviderService.updateExternalDataProvider(OWNER, PROVIDER_ID, {
+        provider_name: 'Changed name',
+      }),
+      /dedicated HUAWEI Health connection flow/i
+    );
+    expect(
+      externalProviderRepository.updateExternalDataProvider
+    ).not.toHaveBeenCalled();
   });
 
   it('merges newly entered YAZIO client credentials with existing stored login credentials', async () => {
@@ -512,12 +565,40 @@ describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
   });
 });
 
+describe('deleteExternalDataProvider - managed provider guard', () => {
+  it('requires the dedicated disconnect flow for HUAWEI Health', async () => {
+    // @ts-expect-error mocked repository method
+    externalProviderRepository.checkExternalDataProviderOwnership.mockResolvedValue(
+      true
+    );
+    // @ts-expect-error mocked repository method
+    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
+      id: PROVIDER_ID,
+      provider_type: 'huaweihealth',
+      is_public: false,
+    });
+
+    await expect(
+      externalProviderService.deleteExternalDataProvider(OWNER, PROVIDER_ID)
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(
+      externalProviderRepository.deleteExternalDataProvider
+    ).not.toHaveBeenCalled();
+  });
+});
+
 describe('deleteExternalDataProvider', () => {
   it('invalidates the OFF session cache after deletion', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.checkExternalDataProviderOwnership.mockResolvedValue(
       true
     );
+    // @ts-expect-error mocked repository method
+    externalProviderRepository.getExternalDataProviderById.mockResolvedValue({
+      id: PROVIDER_ID,
+      provider_type: 'openfoodfacts',
+      is_public: false,
+    });
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.deleteExternalDataProvider.mockResolvedValue(
       true

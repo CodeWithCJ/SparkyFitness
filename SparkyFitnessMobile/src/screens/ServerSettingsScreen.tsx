@@ -33,6 +33,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useServerConfigs, useServerConnection } from '../hooks';
 import { serverConfigsQueryKey, serverConnectionQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
+import { mobileT } from '../localization';
 
 type ServerSettingsScreenProps = RootStackScreenProps<'ServerSettings'>;
 
@@ -68,8 +69,8 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
       if (config?.url.toLowerCase().startsWith('http://')) {
         Toast.show({
           type: 'error',
-          text1: 'Error',
-          text2: 'HTTPS is required for server connections. Please edit this configuration to use HTTPS.',
+          text1: mobileT('serverSettings.secureConnectionRequired'),
+          text2: mobileT('serverSettings.httpsRequired'),
         });
         return;
       }
@@ -79,15 +80,15 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
       queryClient.clear();
       await refetchServerConfigs();
       refetchConnection();
-      Toast.show({ type: 'success', text1: 'Active server changed' });
+      Toast.show({ type: 'success', text1: mobileT('serverSettings.activeChanged') });
       addLog('Active server configuration changed.', 'INFO');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       addLog(`Failed to set active server configuration: ${errorMessage}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: `Failed to set active server configuration: ${errorMessage}`,
+        text1: mobileT('serverSettings.activeChangeFailed'),
+        text2: mobileT('serverSettings.tryAgain'),
       });
     }
   };
@@ -105,21 +106,36 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
       addLog('Server configuration deleted.', 'INFO');
 
       if (remaining.length === 0) {
-        Alert.alert('Success', 'Server configuration deleted.', [
-          { text: 'OK', onPress: () => notifyNoConfigs() },
+        Alert.alert(mobileT('serverSettings.deleted'), mobileT('serverSettings.noServersLeft'), [
+          { text: mobileT('common.done'), onPress: () => notifyNoConfigs() },
         ]);
       } else {
-        Toast.show({ type: 'success', text1: 'Server configuration deleted' });
+        Toast.show({ type: 'success', text1: mobileT('serverSettings.deleted') });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: `Failed to delete server configuration: ${errorMessage}`,
+        text1: mobileT('serverSettings.deleteFailed'),
+        text2: mobileT('serverSettings.tryAgain'),
       });
       addLog(`Failed to delete server configuration: ${errorMessage}`, 'ERROR');
     }
+  };
+
+  const confirmDeleteConfig = (config: ServerConfig): void => {
+    Alert.alert(
+      mobileT('serverSettings.deleteTitle'),
+      mobileT('serverSettings.deleteDescription', { url: config.url }),
+      [
+        { text: mobileT('common.cancel'), style: 'cancel' },
+        {
+          text: mobileT('serverSettings.delete'),
+          style: 'destructive',
+          onPress: () => void handleDeleteConfig(config.id),
+        },
+      ],
+    );
   };
 
   const handleConfigureServer = (config: ServerConfig): void => {
@@ -137,7 +153,10 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
   const openWebDashboard = async (): Promise<void> => {
     try {
       if (!activeConfig || !activeConfig.url) {
-        Alert.alert('No Server Configured', 'Please add a server first.');
+        Alert.alert(
+          mobileT('serverSettings.noServerTitle'),
+          mobileT('serverSettings.noServerDescription'),
+        );
         return;
       }
 
@@ -156,8 +175,8 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
       addLog(`Error opening web dashboard: ${errorMessage}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: `Could not open web dashboard: ${errorMessage}`,
+        text1: mobileT('serverSettings.openWebFailed'),
+        text2: mobileT('serverSettings.tryAgain'),
       });
     }
   };
@@ -168,7 +187,9 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
       const result = await refetchConnection();
       Toast.show({
         type: result.data ? 'success' : 'error',
-        text1: result.data ? 'Connected' : 'Connection failed',
+        text1: result.data
+          ? mobileT('serverSettings.connected')
+          : mobileT('serverSettings.connectionFailed'),
       });
     } finally {
       setIsTesting(false);
@@ -181,11 +202,21 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
     if (Platform.OS === 'android' && !isActive) {
       Alert.alert(
         item.url,
-        'Select an action',
+        mobileT('serverSettings.selectAction'),
         [
-          { text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) },
-          { text: 'Configure', onPress: () => handleConfigureServer(item) },
-          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteConfig(item.id) },
+          {
+            text: mobileT('serverSettings.setActive'),
+            onPress: () => handleSetActiveConfig(item.id),
+          },
+          {
+            text: mobileT('serverSettings.configure'),
+            onPress: () => handleConfigureServer(item),
+          },
+          {
+            text: mobileT('serverSettings.delete'),
+            style: 'destructive',
+            onPress: () => confirmDeleteConfig(item),
+          },
         ],
         { cancelable: true },
       );
@@ -193,20 +224,41 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
     }
 
     const buttons = [
-      ...(!isActive ? [{ text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) }] : []),
-      { text: 'Configure', onPress: () => handleConfigureServer(item) },
-      { text: 'Delete', style: 'destructive' as const, onPress: () => handleDeleteConfig(item.id) },
-      ...(Platform.OS === 'ios' ? [{ text: 'Cancel', style: 'cancel' as const }] : []),
+      ...(!isActive
+        ? [
+            {
+              text: mobileT('serverSettings.setActive'),
+              onPress: () => handleSetActiveConfig(item.id),
+            },
+          ]
+        : []),
+      {
+        text: mobileT('serverSettings.configure'),
+        onPress: () => handleConfigureServer(item),
+      },
+      {
+        text: mobileT('serverSettings.delete'),
+        style: 'destructive' as const,
+        onPress: () => confirmDeleteConfig(item),
+      },
+      ...(Platform.OS === 'ios'
+        ? [{ text: mobileT('common.cancel'), style: 'cancel' as const }]
+        : []),
     ];
     Alert.alert(
       item.url,
-      isActive ? 'Active configuration' : 'Select an action',
+      isActive
+        ? mobileT('serverSettings.activeConfiguration')
+        : mobileT('serverSettings.selectAction'),
       buttons,
       { cancelable: true },
     );
   };
 
-  const header = useScreenHeader({ title: 'Server Settings', left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: mobileT('screens.serverSettings'),
+    left: { kind: 'back' },
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -221,24 +273,31 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
         {activeConfig && (
           <>
             <Text className="text-text-secondary text-xs font-semibold uppercase px-2 mb-2">
-              Active Server
+              {mobileT('serverSettings.activeServer')}
             </Text>
             <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
             <Pressable
               onPress={() => showConfigMenu(activeConfig)}
-              accessibilityLabel={`Options for ${activeConfig.url}`}
-              accessibilityHint={isConnected ? 'Connected' : 'Connection failed'}
+              accessibilityLabel={mobileT('serverSettings.optionsFor', {
+                url: activeConfig.url,
+              })}
+              accessibilityHint={
+                isConnected
+                  ? mobileT('serverSettings.connected')
+                  : mobileT('serverSettings.connectionFailed')
+              }
               accessibilityRole="button"
               className="flex-row items-center"
             >
               <View
-                className="w-2.5 h-2.5 rounded-full mr-2"
+                className="w-2.5 h-2.5 rounded-full me-2"
                 style={{ backgroundColor: isConnected ? success : danger }}
               />
               <Text
                 className="text-base text-text-primary flex-1"
                 numberOfLines={1}
                 ellipsizeMode="middle"
+                style={{ writingDirection: 'ltr', textAlign: 'left' }}
               >
                 {activeConfig.url}
               </Text>
@@ -246,7 +305,9 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
             <View className="flex-row gap-3 mt-4">
               <Button variant="ghost" onPress={openWebDashboard} className="flex-1 flex-row">
                 <Icon name="globe" size={18} color={accentPrimary} />
-                <Text className="text-base text-accent-primary font-semibold ml-2">Open Web</Text>
+                <Text className="text-base text-accent-primary font-semibold ms-2">
+                  {mobileT('serverSettings.openWeb')}
+                </Text>
               </Button>
               <Button
                 variant="ghost"
@@ -259,8 +320,8 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
                 ) : (
                   <>
                     <Icon name="wifi" size={18} color={accentPrimary} />
-                    <Text className="text-base text-accent-primary font-semibold ml-2">
-                      Test Connection
+                    <Text className="text-base text-accent-primary font-semibold ms-2">
+                      {mobileT('serverSettings.testConnection')}
                     </Text>
                   </>
                 )}
@@ -273,7 +334,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
         {otherConfigs.length > 0 && (
           <>
             <Text className="text-text-secondary text-xs font-semibold uppercase px-2 mb-2">
-              Other Servers
+              {mobileT('serverSettings.otherServers')}
             </Text>
             <View className="bg-surface rounded-xl mb-4 shadow-sm">
               {otherConfigs.map((cfg, i) => (
@@ -281,14 +342,15 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
                   key={cfg.id}
                   onPress={() => showConfigMenu(cfg)}
                   className={`p-4 flex-row items-center justify-between${i > 0 ? ' border-t border-border-subtle' : ''}`}
-                  accessibilityLabel={`Options for ${cfg.url}`}
+                  accessibilityLabel={mobileT('serverSettings.optionsFor', { url: cfg.url })}
                   accessibilityRole="button"
                 >
-                  <View className="flex-1 mr-3">
+                  <View className="flex-1 me-3">
                     <Text
                       className="text-base text-text-primary"
                       numberOfLines={1}
                       ellipsizeMode="middle"
+                      style={{ writingDirection: 'ltr', textAlign: 'left' }}
                     >
                       {cfg.url}
                     </Text>
@@ -302,19 +364,21 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
 
         {allConfigs.length === 0 && (
           <View className="items-center py-8">
-            <Text className="text-text-secondary mb-4">No servers configured yet.</Text>
+            <Text className="text-text-secondary mb-4">
+              {mobileT('serverSettings.empty')}
+            </Text>
           </View>
         )}
 
         <Button
           variant="ghost"
           onPress={handleAddNewConfig}
-          accessibilityLabel="Add new configuration"
+          accessibilityLabel={mobileT('serverSettings.addAccessibility')}
           className="self-center flex-row mt-2 py-1 px-0"
         >
           <Icon name="add" size={24} color={textLink} />
-          <Text className="ml-2 text-base font-medium" style={{ color: textLink }}>
-            Add Server
+          <Text className="ms-2 text-base font-medium" style={{ color: textLink }}>
+            {mobileT('serverSettings.addServer')}
           </Text>
         </Button>
       </ScrollView>

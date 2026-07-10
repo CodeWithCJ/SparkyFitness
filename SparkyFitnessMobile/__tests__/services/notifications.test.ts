@@ -67,6 +67,7 @@ describe('notifications service', () => {
       expect(mockSetChannel).toHaveBeenCalledWith(
         'workout-timer',
         expect.objectContaining({
+          name: 'مؤقت التمرين',
           importance: Notifications.AndroidImportance.HIGH,
         }),
       );
@@ -78,6 +79,7 @@ describe('notifications service', () => {
       expect(mockSetChannel).toHaveBeenCalledWith(
         'fasting',
         expect.objectContaining({
+          name: 'الصيام',
           importance: Notifications.AndroidImportance.HIGH,
         }),
       );
@@ -109,6 +111,11 @@ describe('notifications service', () => {
 
       expect(await ensureNotificationPermission()).toBe(false);
       expect(mockToastShow).toHaveBeenCalledTimes(1);
+      expect(mockToastShow).toHaveBeenCalledWith({
+        type: 'info',
+        text1: 'التنبيهات مقفلة',
+        text2: 'المؤقت بيظل ينبهك داخل التطبيق.',
+      });
 
       // Subsequent undetermined→denied must not re-show the toast.
       expect(await ensureNotificationPermission()).toBe(false);
@@ -130,7 +137,7 @@ describe('notifications service', () => {
       const id = await scheduleRestNotification('Bench Press', 60);
       expect(id).toBe('mock-id');
       expect(mockSchedule).toHaveBeenCalledWith({
-        content: expect.objectContaining({ title: 'Rest complete', body: 'Bench Press' }),
+        content: expect.objectContaining({ title: 'خلص وقت الراحة', body: 'Bench Press' }),
         trigger: expect.objectContaining({
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: 60,
@@ -162,7 +169,10 @@ describe('notifications service', () => {
 
       expect(id).toBe('fast-goal-id');
       expect(mockSchedule).toHaveBeenCalledWith({
-        content: expect.objectContaining({ title: 'Fasting goal reached' }),
+        content: expect.objectContaining({
+          title: 'وصلت لهدف الصيام',
+          body: 'أكملت هدفك، عساك على القوة!',
+        }),
         trigger: expect.objectContaining({
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           channelId: 'fasting',

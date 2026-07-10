@@ -32,6 +32,7 @@ import {
 import { useCopyFoodEntriesFromYesterdayMutation } from '@/hooks/Diary/useFoodEntries';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface MealTotals {
   calories: number;
@@ -60,8 +61,18 @@ import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import AllergenBadges from '@/components/AllergenBadges';
+import { getLocalizedMealTypeName } from '@/utils/mealTypeLocalization';
 
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
+
+const GLYCEMIC_INDEX_KEYS: Readonly<Record<GlycemicIndex, string>> = {
+  None: 'mealCard.glycemic.none',
+  'Very Low': 'mealCard.glycemic.veryLow',
+  Low: 'mealCard.glycemic.low',
+  Medium: 'mealCard.glycemic.medium',
+  High: 'mealCard.glycemic.high',
+  'Very High': 'mealCard.glycemic.veryHigh',
+};
 
 const MOBILE_NUTRIENT_LABEL_OVERRIDES: Record<
   string,
@@ -142,10 +153,9 @@ const MealCard = ({
   const highlightFoodId = searchParams.get('highlight') ?? null;
   const { mutate: copyFoodEntriesFromYesterday } =
     useCopyFoodEntriesFromYesterdayMutation();
+  const localizedMealName = getLocalizedMealTypeName(meal.type || meal.name, t);
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal'
-      ? t('common.kcalUnit', 'kcal')
-      : t('common.kJUnit', 'kJ');
+    return getLocalizedUnitLabel(unit, t);
   };
   debug(loggingLevel, 'MealCard: Component rendered for meal:', meal.name);
   debug(loggingLevel, 'MealCard: meal.entries:', meal.entries);
@@ -223,27 +233,28 @@ const MealCard = ({
     <>
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center sm:gap-4">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg sm:text-xl dark:text-slate-300">
-                {meal.name}
+                {localizedMealName}
               </CardTitle>
               <span className="text-xs sm:text-sm text-gray-500">
                 {Math.round(convertEnergy(totals.calories, 'kcal', energyUnit))}
                 {!!meal.targetCalories &&
                   ` / ${Math.round(
                     convertEnergy(meal.targetCalories, 'kcal', energyUnit)
-                  )}`}
+                  )}`}{' '}
                 {getEnergyUnitString(energyUnit)}
               </span>
             </div>
-            <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
+            <div className="flex flex-wrap justify-end gap-2 sm:gap-4">
               <Dialog
                 open={isFoodSearchOpen}
                 onOpenChange={handleFoodSearchOpenChange}
               >
                 <DialogTrigger asChild>
                   <Button
+                    type="button"
                     size="default"
                     onClick={() =>
                       debug(
@@ -251,45 +262,29 @@ const MealCard = ({
                         `MealCard: Add Food button clicked for ${meal.name}.`
                       )
                     }
-                    title="Add a new food item"
+                    aria-label={t('mealCard.addFoodAction')}
+                    title={t('mealCard.addFoodAction')}
                   >
-                    <Utensils className="w-4 h-4" />
+                    <Utensils className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
                       {t('mealCard.addFoodToMeal', {
-                        mealName: t(`common.${meal.type}`, meal.name),
-                        defaultValue: `Add Food to ${t(
-                          `common.${meal.type}`,
-                          meal.name
-                        )}`,
+                        mealName: localizedMealName,
                       })}
                     </DialogTitle>
                     <DialogDescription>
                       {t('mealCard.searchFoodsForMeal', {
-                        mealName: t(
-                          `common.${meal.type}`,
-                          meal.name
-                        ).toLowerCase(),
-                        defaultValue: `Search for foods to add to your ${t(
-                          `common.${meal.type}`,
-                          meal.name
-                        ).toLowerCase()}.`,
+                        mealName: localizedMealName,
                       })}
                       <br />
                       <span className="text-red-500">
                         {(selectedDateRelation === 'past' &&
-                          t(
-                            'foodDiary.pastDateWarning',
-                            'Warning: You are adding food entries for a past date.'
-                          )) ||
+                          t('foodDiary.pastDateWarning')) ||
                           (selectedDateRelation === 'future' &&
-                            t(
-                              'foodDiary.futureDateWarning',
-                              'Warning: You are adding food entries for a future date.'
-                            )) ||
+                            t('foodDiary.futureDateWarning')) ||
                           ''}
                       </span>
                     </DialogDescription>
@@ -318,40 +313,48 @@ const MealCard = ({
               </Dialog>
               {/* Existing clock icon would go here if it were part of this component */}
               <Button
+                type="button"
                 size="default"
                 onClick={() => onCopyClick(meal.type)}
-                title="Copy to another date"
+                aria-label={t('mealCard.copyToDateAction')}
+                title={t('mealCard.copyToDateAction')}
               >
-                <ClipboardCopy className="w-4 h-4" />
+                <ClipboardCopy className="h-4 w-4" aria-hidden="true" />
               </Button>
               <Button
+                type="button"
                 size="default"
                 onClick={() => onCopyFamilyClick(meal.type)}
-                title="Copy with Family"
+                aria-label={t('mealCard.copyWithFamilyAction')}
+                title={t('mealCard.copyWithFamilyAction')}
               >
-                <Users className="w-4 h-4" />
+                <Users className="h-4 w-4" aria-hidden="true" />
               </Button>
               <Button
+                type="button"
                 size="default"
                 onClick={handleCopyFromYesterday}
-                title="Copy food entries from yesterday's meal"
+                aria-label={t('mealCard.copyYesterdayAction')}
+                title={t('mealCard.copyYesterdayAction')}
               >
-                <History className="w-4 h-4" />
+                <History className="h-4 w-4" aria-hidden="true" />
               </Button>
               <Button
+                type="button"
                 size="default"
                 onClick={() => onConvertToMealClick(meal.type)}
-                title="Save as a new Meal"
+                aria-label={t('mealCard.saveAsMealAction')}
+                title={t('mealCard.saveAsMealAction')}
               >
-                <PlusCircle className="w-4 h-4" />
+                <PlusCircle className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {meal.entries.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No foods added yet
+            <div className="py-8 text-center text-muted-foreground">
+              {t('mealCard.empty')}
             </div>
           ) : (
             <div className="space-y-3">
@@ -370,7 +373,10 @@ const MealCard = ({
                   : (item as FoodEntry).brand_name;
                 const quantity = (item as FoodEntry | FoodEntryMeal).quantity;
                 const unit = (item as FoodEntry | FoodEntryMeal).unit;
-                const servingLabel = [quantity, unit]
+                const localizedServingUnit = unit
+                  ? getLocalizedUnitLabel(unit, t)
+                  : unit;
+                const servingLabel = [quantity, localizedServingUnit]
                   .filter((value) => value !== undefined && value !== null)
                   .join(' ');
                 const entryIsHighlighted =
@@ -422,7 +428,7 @@ const MealCard = ({
                   const unitDisplay =
                     nutrient === 'calories'
                       ? getEnergyUnitString(energyUnit)
-                      : metadata.unit;
+                      : getLocalizedUnitLabel(metadata.unit, t);
 
                   return { metadata, displayValue, unitDisplay };
                 };
@@ -462,7 +468,7 @@ const MealCard = ({
                             {servingLabel && <span>{servingLabel}</span>}
                             {isFromMealPlan && (
                               <Badge variant="outline" className="text-[10px]">
-                                From Plan
+                                {t('mealCard.fromPlan')}
                               </Badge>
                             )}
                             {giValue &&
@@ -474,7 +480,9 @@ const MealCard = ({
                                   variant="secondary"
                                   className="text-[10px] font-medium"
                                 >
-                                  GI: {giValue}
+                                  {t('mealCard.glycemicIndex', {
+                                    value: t(GLYCEMIC_INDEX_KEYS[giValue]),
+                                  })}
                                 </Badge>
                               )}
                           </div>
@@ -486,7 +494,7 @@ const MealCard = ({
                           )}
                         </div>
                         {mobileCalories && (
-                          <div className="text-right">
+                          <div className="text-end">
                             <div
                               className={cn(
                                 'text-xl font-semibold leading-none',
@@ -553,9 +561,10 @@ const MealCard = ({
                             );
                             onEditEntry(item);
                           }}
-                          title="Edit entry"
+                          aria-label={t('mealCard.editEntry')}
+                          title={t('mealCard.editEntry')}
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
                           size="icon"
@@ -572,9 +581,10 @@ const MealCard = ({
                               isFoodEntryMeal ? 'foodEntryMeal' : 'foodEntry'
                             );
                           }}
-                          title="Remove entry"
+                          aria-label={t('mealCard.removeEntry')}
+                          title={t('mealCard.removeEntry')}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
                     </div>
@@ -602,7 +612,7 @@ const MealCard = ({
                         </span>
                         {isFromMealPlan && (
                           <Badge variant="outline" className="text-xs w-fit">
-                            From Plan
+                            {t('mealCard.fromPlan')}
                           </Badge>
                         )}
                         {giValue &&
@@ -612,7 +622,9 @@ const MealCard = ({
                               variant="secondary"
                               className="text-xs w-fit font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-transparent dark:text-purple-600"
                             >
-                              GI: {giValue}
+                              {t('mealCard.glycemicIndex', {
+                                value: t(GLYCEMIC_INDEX_KEYS[giValue]),
+                              })}
                             </Badge>
                           )}
                       </div>
@@ -648,8 +660,9 @@ const MealCard = ({
                         />
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <Button
+                        type="button"
                         size="sm"
                         variant="ghost"
                         onClick={() => {
@@ -660,11 +673,13 @@ const MealCard = ({
                           );
                           onEditEntry(item); // Pass the item directly
                         }}
-                        title="Edit entry"
+                        aria-label={t('mealCard.editEntry')}
+                        title={t('mealCard.editEntry')}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       <Button
+                        type="button"
                         size="sm"
                         variant="ghost"
                         onClick={() => {
@@ -678,8 +693,10 @@ const MealCard = ({
                             isFoodEntryMeal ? 'foodEntryMeal' : 'foodEntry'
                           );
                         }}
+                        aria-label={t('mealCard.removeEntry')}
+                        title={t('mealCard.removeEntry')}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
@@ -688,12 +705,12 @@ const MealCard = ({
 
               <Separator />
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 gap-4">
+              <div className="flex flex-col items-start justify-between gap-4 pt-2 sm:flex-row sm:items-center">
                 <span className="font-semibold dark:text-slate-300">
-                  {meal.name} Total:
+                  {t('mealCard.mealTotal', { mealName: localizedMealName })}
                 </span>
                 <div
-                  className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-[35%] sm:ml-auto"
+                  className="grid w-full gap-x-2 gap-y-2 text-xs sm:ms-auto sm:w-[35%] sm:text-sm"
                   style={{
                     gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '40px' : '60px'}, 1fr))`,
                   }}
@@ -719,7 +736,7 @@ const MealCard = ({
                     const unitDisplay =
                       nutrient === 'calories'
                         ? getEnergyUnitString(energyUnit)
-                        : metadata.unit;
+                        : getLocalizedUnitLabel(metadata.unit, t);
 
                     return (
                       <div key={nutrient} className="text-center min-w-[40px]">
@@ -747,14 +764,13 @@ const MealCard = ({
         >
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Food Database</DialogTitle>
+              <DialogTitle>{t('mealCard.editDatabaseTitle')}</DialogTitle>
               <DialogDescription>
-                Edit the nutritional information for this food in your database.
+                {t('mealCard.editDatabaseDescription')}
               </DialogDescription>
             </DialogHeader>
-            <p className="text-red-500">
-              Editing food details is temporarily unavailable due to schema
-              changes.
+            <p className="text-destructive">
+              {t('mealCard.editDatabaseUnavailable')}
             </p>
           </DialogContent>
         </Dialog>

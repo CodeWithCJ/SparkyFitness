@@ -58,8 +58,16 @@ const WorkoutPlaybackExercisesList = ({
         const isExpanded =
           !isComplete || expandedCompletedExercises[exerciseKey] === true;
         const toggleLabel = isExpanded
-          ? t('common.collapse', 'Collapse')
-          : t('common.expand', 'Expand');
+          ? t(
+              'exercise.workoutPlaybackPage.collapseExercise',
+              'Collapse {{exerciseName}}',
+              { exerciseName: exercise.exercise_name }
+            )
+          : t(
+              'exercise.workoutPlaybackPage.expandExercise',
+              'Expand {{exerciseName}}',
+              { exerciseName: exercise.exercise_name }
+            );
 
         return (
           <Card
@@ -73,36 +81,47 @@ const WorkoutPlaybackExercisesList = ({
                     {exercise.exercise_name}
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    {completedSets}/{totalSets}{' '}
-                    {t('exercise.workoutPlaybackDialog.sets', 'sets')}
+                    {t(
+                      'exercise.workoutPlaybackPage.completedSets',
+                      '{{completed}} of {{total}} sets',
+                      {
+                        completed: completedSets,
+                        total: totalSets,
+                        count: totalSets,
+                      }
+                    )}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="flex cursor-pointer items-center gap-1.5 text-left"
-                  aria-label={`${toggleLabel} ${exercise.exercise_name}`}
-                  onClick={() => {
-                    if (!isComplete) return;
-                    setExpandedCompletedExercises((current) => ({
-                      ...current,
-                      [exerciseKey]: !current[exerciseKey],
-                    }));
-                  }}
-                >
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      isExpanded ? 'rotate-180' : ''
-                    } ${isComplete ? 'text-emerald-500' : ''}`}
-                  />
+                {isComplete ? (
+                  <button
+                    type="button"
+                    className="flex cursor-pointer items-center gap-1.5 text-start"
+                    aria-label={toggleLabel}
+                    onClick={() => {
+                      setExpandedCompletedExercises((current) => ({
+                        ...current,
+                        [exerciseKey]: !current[exerciseKey],
+                      }));
+                    }}
+                  >
+                    <ChevronDown
+                      className={`h-4 w-4 text-emerald-500 transition-transform ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <span className="text-[11px] text-muted-foreground">
+                      {t('exercise.workoutPlaybackPage.completed', 'Completed')}
+                    </span>
+                  </button>
+                ) : (
                   <span className="text-[11px] text-muted-foreground">
-                    {isComplete
-                      ? t('exercise.workoutPlaybackPage.completed', 'Completed')
-                      : t(
-                          'exercise.workoutPlaybackPage.inProgress',
-                          'In Progress'
-                        )}
+                    {t(
+                      'exercise.workoutPlaybackPage.inProgress',
+                      'In progress'
+                    )}
                   </span>
-                </button>
+                )}
               </div>
             </CardHeader>
             {isExpanded && (
@@ -172,7 +191,11 @@ const WorkoutPlaybackExercisesList = ({
                 <div className="mt-2 flex justify-center">
                   <button
                     type="button"
-                    aria-label={`Add set for ${exercise.exercise_name}`}
+                    aria-label={t(
+                      'exercise.workoutPlaybackPage.addSetForExercise',
+                      'Add set for {{exerciseName}}',
+                      { exerciseName: exercise.exercise_name }
+                    )}
                     className="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                     onClick={() => onAddSet(exerciseIndex)}
                   >

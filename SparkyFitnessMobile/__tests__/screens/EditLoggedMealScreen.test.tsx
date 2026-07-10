@@ -301,7 +301,7 @@ describe('EditLoggedMealScreen', () => {
     fireEvent.changeText(screen.getByTestId('quantity-input'), '2');
     fireEvent.press(screen.getByTestId('mealtype-mt-lunch'));
 
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
 
     expect(mockUpdateMeal).toHaveBeenCalledTimes(1);
     const payload = mockUpdateMeal.mock.calls[0][0];
@@ -327,7 +327,7 @@ describe('EditLoggedMealScreen', () => {
 
     const screen = renderScreen();
     fireEvent.changeText(screen.getByTestId('quantity-input'), '2');
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.meal_template_id).toBeNull();
@@ -337,19 +337,19 @@ describe('EditLoggedMealScreen', () => {
 
   it('confirms deletion when the Delete Meal button is pressed', () => {
     const screen = renderScreen();
-    fireEvent.press(screen.getByText('Delete Meal'));
+    fireEvent.press(screen.getByText('حذف الوجبة'));
     expect(mockConfirmAndDelete).toHaveBeenCalled();
   });
 
   it('disables Save when nothing has changed', () => {
     const screen = renderScreen();
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
     expect(mockUpdateMeal).not.toHaveBeenCalled();
   });
 
-  it('opens the meal-builder picker when Add Food is pressed', () => {
+  it('opens the meal-builder picker when add food is pressed', () => {
     const screen = renderScreen();
-    fireEvent.press(screen.getByText('Add Food'));
+    fireEvent.press(screen.getByText('إضافة صنف غذائي'));
     expect(navigation.push).toHaveBeenCalledWith('FoodSearch', { pickerMode: 'meal-builder' });
   });
 
@@ -363,7 +363,7 @@ describe('EditLoggedMealScreen', () => {
       focusCallback?.();
     });
 
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods).toHaveLength(2);
@@ -394,7 +394,7 @@ describe('EditLoggedMealScreen', () => {
       focusCallback?.();
     });
 
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods).toHaveLength(1);
@@ -414,7 +414,7 @@ describe('EditLoggedMealScreen', () => {
       focusCallback?.();
     });
 
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods[1]).toEqual(expect.objectContaining({ food_id: 'food-9', quantity: 100 }));
@@ -428,7 +428,7 @@ describe('EditLoggedMealScreen', () => {
 
     expect(mockDeleteEntry).not.toHaveBeenCalled();
 
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods).toHaveLength(1);
     expect(payload.foods[0].food_id).toBe('food-1');
@@ -441,7 +441,7 @@ describe('EditLoggedMealScreen', () => {
     expect(mockDeleteEntry).not.toHaveBeenCalled();
     expect(mockConfirmAndDelete).not.toHaveBeenCalled();
     // An empty meal cannot be saved.
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
     expect(mockUpdateMeal).not.toHaveBeenCalled();
   });
 

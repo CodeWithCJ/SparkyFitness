@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';
 
@@ -33,6 +34,7 @@ const DialogContent = React.forwardRef<
     requireConfirmation?: boolean;
   }
 >(({ className, children, requireConfirmation = false, ...props }, ref) => {
+  const { t } = useTranslation();
   const [showConfirm, setShowConfirm] = React.useState(false);
   const hiddenCloseRef = React.useRef<HTMLButtonElement>(null);
 
@@ -68,15 +70,15 @@ const DialogContent = React.forwardRef<
           <button
             type="button"
             onClick={handleCloseAttempt}
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+            className="absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
           >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
+            <X className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">{t('dialog.close')}</span>
           </button>
         ) : (
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
+          <DialogPrimitive.Close className="absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <X className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">{t('dialog.close')}</span>
           </DialogPrimitive.Close>
         )}
 
@@ -88,22 +90,21 @@ const DialogContent = React.forwardRef<
           <DialogPrimitive.Portal>
             <DialogOverlay className="z-60" />
             <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
-              <div className="flex flex-col space-y-1.5 text-center sm:text-left">
+              <div className="flex flex-col space-y-1.5 text-center sm:text-start">
                 <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
-                  Close Window
+                  {t('dialog.confirmCloseTitle')}
                 </DialogPrimitive.Title>
                 <DialogPrimitive.Description className="text-sm text-muted-foreground">
-                  Are you sure you want to close this? Any unsaved changes will
-                  be lost.
+                  {t('dialog.confirmCloseDescription')}
                 </DialogPrimitive.Description>
               </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+              <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => setShowConfirm(false)}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
                 >
-                  Cancel
+                  {t('dialog.keepEditing')}
                 </button>
                 <button
                   type="button"
@@ -111,9 +112,9 @@ const DialogContent = React.forwardRef<
                     setShowConfirm(false);
                     hiddenCloseRef.current?.click();
                   }}
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+                  className="inline-flex h-10 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
                 >
-                  Close
+                  {t('dialog.discardChanges')}
                 </button>
               </div>
             </DialogPrimitive.Content>
@@ -131,7 +132,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      'flex flex-col space-y-1.5 text-center sm:text-left',
+      'flex flex-col space-y-1.5 text-center sm:text-start',
       className
     )}
     {...props}
@@ -145,7 +146,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2',
+      'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
       className
     )}
     {...props}

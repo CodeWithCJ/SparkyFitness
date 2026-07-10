@@ -1,5 +1,17 @@
 import Foundation
 
+let arabicNumberFormatter: NumberFormatter = {
+    let formatter = NumberFormatter()
+    formatter.locale = Locale(identifier: "ar_SA")
+    formatter.numberStyle = .decimal
+    formatter.maximumFractionDigits = 0
+    return formatter
+}()
+
+func formatArabicInteger(_ value: Double) -> String {
+    arabicNumberFormatter.string(from: NSNumber(value: Int(value.rounded()))) ?? "٠"
+}
+
 let snapshotDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.calendar = Calendar(identifier: .gregorian)

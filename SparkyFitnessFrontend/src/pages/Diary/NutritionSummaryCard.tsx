@@ -20,6 +20,7 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
 import { ExpandedGoals } from '@/types/goals';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 export interface DayTotals {
   calories: number; // Stored internally as kcal
@@ -74,9 +75,7 @@ const NutritionSummaryCard = ({
   };
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal'
-      ? t('common.kcalUnit', 'kcal')
-      : t('common.kJUnit', 'kJ');
+    return getLocalizedUnitLabel(unit, t);
   };
 
   const summaryPreferences = nutrientDisplayPreferences.find(
@@ -98,16 +97,20 @@ const NutritionSummaryCard = ({
           </CardTitle>
           <div className="flex items-center gap-2">
             <Button
+              type="button"
               onClick={() => setIsCopyDialogOpen(true)}
-              title={t('diary.copyAllToDate', 'Copy entire day to date')}
+              aria-label={t('diary.copyAllToDate')}
+              title={t('diary.copyAllToDate')}
             >
-              <ClipboardCopy className="h-4 w-4" />
+              <ClipboardCopy className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button
+              type="button"
               onClick={handleCopyAllFromYesterday}
-              title={t('diary.copyAllFromYesterday', 'Copy all from yesterday')}
+              aria-label={t('diary.copyAllFromYesterday')}
+              title={t('diary.copyAllFromYesterday')}
             >
-              <History className="h-4 w-4" />
+              <History className="h-4 w-4" aria-hidden="true" />
             </Button>
             <EditGoalsForToday selectedDate={selectedDate} />
           </div>
@@ -157,7 +160,7 @@ const NutritionSummaryCard = ({
             const unit =
               nutrient === 'calories'
                 ? getEnergyUnitString(energyUnit)
-                : metadata.unit;
+                : getLocalizedUnitLabel(metadata.unit, t);
 
             const label =
               displayNutrient === 'net_carbs'
@@ -170,23 +173,33 @@ const NutritionSummaryCard = ({
 
             return (
               <div key={nutrient} className="text-center">
-                <div className={`text-lg sm:text-xl font-bold ${colorClass}`}>
+                <div className={`text-lg font-bold sm:text-xl ${colorClass}`}>
                   {displayTotal}
+                  {unit && ' '}
                   {unit}
                 </div>
-                <div className="text-xs text-gray-500 leading-tight">
+                <div className="text-xs leading-tight text-muted-foreground">
                   {t('diary.of', 'of')} {displayGoal}
+                  {unit && ' '}
                   {unit}
                 </div>
                 <div
-                  className="text-xs text-gray-500 truncate w-full"
+                  className="w-full truncate text-xs text-muted-foreground"
                   title={label}
                 >
                   {label}
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                <div
+                  className="mt-1 h-1.5 w-full rounded-full bg-muted"
+                  role="progressbar"
+                  aria-label={t('diary.nutrientProgress', { nutrient: label })}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(percentage)}
+                >
                   <div
                     className="h-1.5 rounded-full"
+                    aria-hidden="true"
                     style={{
                       width: `${percentage}%`,
                       backgroundColor: metadata.chartColor,

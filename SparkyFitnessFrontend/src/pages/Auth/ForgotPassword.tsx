@@ -12,9 +12,10 @@ import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info } from '@/utils/logging';
 import { useRequestPasswordResetMutation } from '@/hooks/Auth/useAuth';
-import { getErrorMessage } from '@/utils/api';
+import { useTranslation } from 'react-i18next';
 
 const ForgotPassword = () => {
+  const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, 'ForgotPassword: Component rendered.');
 
@@ -33,11 +34,19 @@ const ForgotPassword = () => {
     try {
       await requestPasswordReset(email);
       setMessage(
-        'If an account with that email exists, a password reset link has been sent.'
+        t(
+          'auth.passwordRecovery.requestOutcome',
+          'If an account uses that email, we sent it a password reset link.'
+        )
       );
     } catch (err: unknown) {
-      const message = getErrorMessage(err);
-      setMessage(message || 'An unexpected error occurred.');
+      debug(loggingLevel, 'ForgotPassword: Reset request failed.', err);
+      setMessage(
+        t(
+          'auth.passwordRecovery.error',
+          'We could not send the link. Check your connection and try again.'
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -45,30 +54,33 @@ const ForgotPassword = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md dark:bg-gray-">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <img
               src="/images/SparkyFitness.webp"
-              alt="SparkyFitness Logo"
-              className="h-10 w-10 mr-2"
+              alt={t('auth.logoAlt', 'SparkyFitness logo')}
+              className="h-10 w-10 me-2"
             />
             <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-300">
               SparkyFitness
             </CardTitle>
           </div>
           <CardDescription>
-            Enter your email to receive a password reset link.
+            {t(
+              'auth.passwordRecovery.description',
+              'Enter your email and we will send you a password reset link.'
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('auth.email', 'Email')}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t('auth.emailPlaceholder', 'name@example.com')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -76,7 +88,9 @@ const ForgotPassword = () => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Sending...' : 'Send Reset Link'}
+              {loading
+                ? t('auth.passwordRecovery.sending', 'Sending link…')
+                : t('auth.passwordRecovery.submit', 'Send reset link')}
             </Button>
             {message && (
               <p className="text-center text-sm text-muted-foreground">
@@ -85,7 +99,7 @@ const ForgotPassword = () => {
             )}
             <div className="text-center text-sm">
               <a href="/" className="font-medium text-primary hover:underline">
-                Back to Sign In
+                {t('auth.backToSignIn', 'Back to sign in')}
               </a>
             </div>
           </form>

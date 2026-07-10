@@ -16,6 +16,7 @@ import {
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 const AI_BADGE_TONE_CLASSES: Record<ConfidenceTone, string> = {
   success:
@@ -68,16 +69,49 @@ const FoodResultCard = ({
     !!providerBadgeColor &&
     providerBadgeColor.startsWith('#') &&
     providerBadgeColor.length === 7;
+  const confidence = foodItem.default_variant?.ai_confidence
+    ? t(
+        `foodUnitSelector.confidence.${foodItem.default_variant.ai_confidence}`,
+        {
+          defaultValue:
+            OVERALL_CONFIDENCE_LABELS[
+              foodItem.default_variant.ai_confidence as AiConfidence
+            ],
+        }
+      )
+    : '';
+  const glycemicIndex = foodItem.default_variant?.glycemic_index;
+  const glycemicKey = glycemicIndex
+    ? glycemicIndex
+        .toLowerCase()
+        .replace(/\s+(\w)/g, (_, letter: string) => letter.toUpperCase())
+    : '';
 
   return (
     <Card
       className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${onCardClick ? 'cursor-pointer' : ''}`}
       onClick={onCardClick}
+      role={onCardClick ? 'button' : undefined}
+      tabIndex={onCardClick ? 0 : undefined}
+      aria-label={
+        onCardClick
+          ? t('foodResultCard.openItem', {
+              itemName: item.name,
+              defaultValue: 'Open {{itemName}}',
+            })
+          : undefined
+      }
+      onKeyDown={(event) => {
+        if (onCardClick && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          onCardClick();
+        }
+      }}
     >
       <CardContent className="p-4">
-        <div className="flex justify-between items-start">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               <h3 className="font-medium">{item.name}</h3>
               {isFood && foodItem.brand && (
                 <Badge variant="secondary" className="text-xs">
@@ -113,9 +147,9 @@ const FoodResultCard = ({
               {isFood && foodItem.provider_verified && (
                 <Badge
                   variant="outline"
-                  className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                  className="gap-1 bg-emerald-50 text-xs text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                 >
-                  <CheckCircle className="h-3 w-3 mr-1" />
+                  <CheckCircle className="h-3 w-3" />
                   {t('enhancedFoodSearch.verified', 'Verified')}
                 </Badge>
               )}
@@ -124,16 +158,13 @@ const FoodResultCard = ({
                 foodItem.default_variant.ai_confidence && (
                   <Badge
                     variant="outline"
-                    className={`text-xs ${AI_BADGE_TONE_CLASSES[CONFIDENCE_TONES[foodItem.default_variant.ai_confidence as AiConfidence]]}`}
+                    className={`gap-1 text-xs ${AI_BADGE_TONE_CLASSES[CONFIDENCE_TONES[foodItem.default_variant.ai_confidence as AiConfidence]]}`}
                   >
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    AI{' '}
-                    {
-                      OVERALL_CONFIDENCE_LABELS[
-                        foodItem.default_variant.ai_confidence as AiConfidence
-                      ]
-                    }{' '}
-                    estimate
+                    <Sparkles className="h-3 w-3" />
+                    {t('foodResultCard.aiEstimate', {
+                      confidence,
+                      defaultValue: 'AI estimate ({{confidence}} confidence)',
+                    })}
                   </Badge>
                 )}
               {!isOnline &&
@@ -148,8 +179,8 @@ const FoodResultCard = ({
                 )}
               {!isOnline &&
                 (isFood ? foodItem.shared_with_public : mealItem.is_public) && (
-                  <Badge variant="outline" className="text-xs">
-                    <Share2 className="h-3 w-3 mr-1" />
+                  <Badge variant="outline" className="gap-1 text-xs">
+                    <Share2 className="h-3 w-3" />
                     {t('enhancedFoodSearch.public', 'Public')}
                   </Badge>
                 )}
@@ -163,13 +194,16 @@ const FoodResultCard = ({
                     {t('enhancedFoodSearch.family', 'Family')}
                   </Badge>
                 )}
-              {isFood &&
-                foodItem.default_variant?.glycemic_index &&
-                foodItem.default_variant.glycemic_index !== 'None' && (
-                  <Badge variant="outline" className="text-xs">
-                    GI: {foodItem.default_variant.glycemic_index}
-                  </Badge>
-                )}
+              {isFood && glycemicIndex && glycemicIndex !== 'None' && (
+                <Badge variant="outline" className="text-xs">
+                  {t('foodDiary.glycemicIndex', {
+                    value: t(
+                      `foodDiary.glycemic.${glycemicKey}`,
+                      glycemicIndex
+                    ),
+                  })}
+                </Badge>
+              )}
             </div>
             {isMeal && mealItem.description && (
               <p className="text-sm text-gray-500">{mealItem.description}</p>
@@ -178,7 +212,7 @@ const FoodResultCard = ({
               <img
                 src={imageUrl}
                 alt={item.name}
-                className="w-16 h-16 object-cover rounded-md mr-4"
+                className="me-4 h-16 w-16 rounded-md object-cover"
               />
             )}
             {isFood && foodItem.default_variant && (
@@ -192,8 +226,14 @@ const FoodResultCard = ({
                   customNutrients={nutrientConfig.customNutrients}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Per {foodItem.default_variant.serving_size}
-                  {foodItem.default_variant.serving_unit}
+                  {t('mealManagement.perServing', {
+                    servingSize: foodItem.default_variant.serving_size,
+                    servingUnit: getLocalizedUnitLabel(
+                      foodItem.default_variant.serving_unit,
+                      t
+                    ),
+                    defaultValue: 'Per {{servingSize}} {{servingUnit}}',
+                  })}
                 </p>
                 <AllergenBadges
                   allergens={foodItem.default_variant.allergens}
@@ -204,14 +244,15 @@ const FoodResultCard = ({
           </div>
           {isOnline && onEditClick && (
             <Button
+              type="button"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 onEditClick();
               }}
-              className="ml-2"
+              className="ms-2"
             >
-              <Edit className="w-4 h-4 mr-1" />
+              <Edit className="h-4 w-4" />
               {t('enhancedFoodSearch.editAndAdd', 'Edit & Add')}
             </Button>
           )}

@@ -41,7 +41,9 @@ WIP
 
 # Mobile App Exclusions
 SparkyFitnessMobile/node_modules
+SparkyFitnessMobile/android
 SparkyFitnessMobile/android/build
+SparkyFitnessMobile/ios
 SparkyFitnessMobile/ios/build
 SparkyFitnessMobile/web-build
 SparkyFitnessMobile/.expo

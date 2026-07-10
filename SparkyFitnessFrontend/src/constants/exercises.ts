@@ -122,14 +122,14 @@ export const EXERCISE_CATEGORY_META: Record<
   },
 };
 export const DAYS_OF_WEEK = [
-  { id: 0, name: 'Sunday' },
-  { id: 1, name: 'Monday' },
-  { id: 2, name: 'Tuesday' },
-  { id: 3, name: 'Wednesday' },
-  { id: 4, name: 'Thursday' },
-  { id: 5, name: 'Friday' },
-  { id: 6, name: 'Saturday' },
-];
+  { id: 0, name: 'Sunday', labelKey: 'common.sunday' },
+  { id: 1, name: 'Monday', labelKey: 'common.monday' },
+  { id: 2, name: 'Tuesday', labelKey: 'common.tuesday' },
+  { id: 3, name: 'Wednesday', labelKey: 'common.wednesday' },
+  { id: 4, name: 'Thursday', labelKey: 'common.thursday' },
+  { id: 5, name: 'Friday', labelKey: 'common.friday' },
+  { id: 6, name: 'Saturday', labelKey: 'common.saturday' },
+] as const;
 
 export const DATE_FORMATS = [
   { value: 'MM/dd/yyyy', label: 'MM/dd/yyyy (e.g., 12/25/2024)' },

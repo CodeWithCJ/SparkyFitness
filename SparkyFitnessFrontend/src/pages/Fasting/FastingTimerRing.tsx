@@ -2,6 +2,7 @@ import type React from 'react';
 import { useEffect, useState, useMemo, useId } from 'react';
 import { cn } from '@/lib/utils';
 import { Flame } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface FastingTimerRingProps {
   startTime: Date;
@@ -16,6 +17,7 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
   targetEndTime,
   size = 220,
 }) => {
+  const { t } = useTranslation();
   const [now, setNow] = useState<Date>(new Date());
 
   useEffect(() => {
@@ -41,30 +43,44 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
   const getZone = (hours: number) => {
     if (hours < 4)
       return {
-        name: 'Anabolic',
+        key: 'starting',
         color: 'from-blue-400 to-blue-600',
         icon: null,
       };
     if (hours < 16)
       return {
-        name: 'Catabolic',
+        key: 'daily',
         color: 'from-yellow-400 to-orange-500',
         icon: null,
       };
     if (hours < 24)
       return {
-        name: 'Fat Burning',
+        key: 'extended',
         color: 'from-red-400 to-red-600',
-        icon: <Flame className="w-4 h-4 inline" />,
+        icon: <Flame className="inline h-4 w-4" aria-hidden="true" />,
+      };
+    if (hours < 72)
+      return {
+        key: 'long',
+        color: 'from-violet-400 to-violet-600',
+        icon: <Flame className="inline h-4 w-4" aria-hidden="true" />,
       };
     return {
-      name: 'Ketosis',
-      color: 'from-violet-400 to-violet-600',
-      icon: <Flame className="w-4 h-4 inline" />,
+      key: 'veryLong',
+      color: 'from-indigo-400 to-indigo-600',
+      icon: <Flame className="inline h-4 w-4" aria-hidden="true" />,
     };
   };
 
   const zone = useMemo(() => getZone(hoursFasted), [hoursFasted]);
+  const duration = formatTime(elapsedMs);
+  const progressLabel =
+    progress >= 100
+      ? t('fasting.goalReached', 'Duration complete')
+      : t('fasting.progressPercent', '{{progress}}%', {
+          progress: Math.round(progress),
+        });
+  const zoneLabel = t(`fasting.zones.${zone.key}.name`, zone.key);
 
   const radius = size / 2 - 14;
   const circumference = 2 * Math.PI * radius;
@@ -87,10 +103,18 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
 
   return (
     <div
+      role="timer"
+      aria-label={t(
+        'fasting.timerLabel',
+        'Elapsed fasting time: {{duration}}. {{progress}} complete.',
+        { duration, progress: progressLabel }
+      )}
       className="relative flex items-center justify-center"
       style={{ width: size, height: size }}
     >
       <svg
+        aria-hidden="true"
+        focusable="false"
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
@@ -185,7 +209,7 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
                 transform: `rotate(${-angleDeg}deg)`,
               }}
             >
-              {h === 0 ? '0h' : `${h}h`}
+              {t('fasting.hourMarker', '{{hours}} hr', { hours: h })}
             </text>
           );
         })}
@@ -215,21 +239,24 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
         </g>
       </svg>
 
-      <div className="absolute z-10 flex flex-col items-center text-center px-4">
-        <div className="text-2xl font-extrabold font-mono tracking-tight">
-          {formatTime(elapsedMs)}
+      <div className="absolute z-10 flex flex-col items-center px-4 text-center">
+        <div
+          dir="ltr"
+          className="font-mono text-2xl font-extrabold tracking-tight"
+        >
+          {duration}
         </div>
         <div
           className={cn(
-            'inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full text-sm font-medium text-white',
+            'mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium text-white',
             `bg-gradient-to-r ${zone.color}`
           )}
         >
           {zone.icon}
-          <span>{zone.name}</span>
+          <span>{zoneLabel}</span>
         </div>
-        <div className="text-xs text-muted-foreground mt-2">
-          {progress >= 100 ? 'Goal Reached' : `${Math.round(progress)}%`}
+        <div className="mt-2 text-xs text-muted-foreground">
+          {progressLabel}
         </div>
       </div>
     </div>

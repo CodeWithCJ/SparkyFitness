@@ -16,14 +16,15 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
+import { mobileT } from '../localization';
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
 
 const themeOptions: { label: string; value: ThemePreference }[] = [
-  { label: 'Light', value: 'Light' },
-  { label: 'Dark', value: 'Dark' },
-  { label: 'AMOLED', value: 'Amoled' },
-  { label: 'System', value: 'System' },
+  { label: mobileT('appSettings.themeLight'), value: 'Light' },
+  { label: mobileT('appSettings.themeDark'), value: 'Dark' },
+  { label: mobileT('appSettings.themeAmoled'), value: 'Amoled' },
+  { label: mobileT('appSettings.themeSystem'), value: 'System' },
 ];
 
 const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
@@ -47,7 +48,10 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const header = useScreenHeader({ title: 'App Settings', left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: mobileT('screens.appSettings'),
+    left: { kind: 'back' },
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -62,12 +66,14 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Theme</Text>
+            <Text className="text-base text-text-primary">
+              {mobileT('appSettings.theme')}
+            </Text>
             <BottomSheetPicker
               value={appTheme}
               options={themeOptions}
               onSelect={setThemePreference}
-              title="Theme"
+              title={mobileT('appSettings.theme')}
               containerStyle={{ flex: 1, maxWidth: 200 }}
             />
           </View>
@@ -75,61 +81,73 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
         {supportsLiquidGlassTabBar && (
           <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
             <View className="flex-row justify-between items-center">
-              <Text className="text-base text-text-primary">Liquid Glass navigation</Text>
+              <Text className="text-base text-text-primary">
+                {mobileT('appSettings.liquidGlass')}
+              </Text>
               <Switch
                 value={liquidGlassEnabled}
                 onValueChange={setLiquidGlassTabBarEnabled}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
+                accessibilityLabel={mobileT('appSettings.liquidGlass')}
               />
             </View>
             <Text className="text-text-secondary text-sm mt-2">
-              Use the iOS 26 glass tab bar and screen headers.
+              {mobileT('appSettings.liquidGlassDescription')}
             </Text>
           </View>
         )}
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Notifications</Text>
+            <Text className="text-base text-text-primary">
+              {mobileT('appSettings.notifications')}
+            </Text>
             <Switch
               value={notificationsEnabled}
               onValueChange={setNotificationsEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
+              accessibilityLabel={mobileT('appSettings.notifications')}
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">
-            Alerts for workout rest timers and fasting goals.
+            {mobileT('appSettings.notificationsDescription')}
           </Text>
         </View>
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Haptic Feedback</Text>
+            <Text className="text-base text-text-primary">
+              {mobileT('appSettings.haptics')}
+            </Text>
             <Switch
               value={hapticsEnabled}
               onValueChange={setHapticsEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
+              accessibilityLabel={mobileT('appSettings.haptics')}
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">
-            Light vibrations for timers and confirmations.
+            {mobileT('appSettings.hapticsDescription')}
           </Text>
         </View>
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Camera shutter</Text>
+            <Text className="text-base text-text-primary">
+              {mobileT('appSettings.cameraSound')}
+            </Text>
             <Switch
               value={soundsEnabled}
               onValueChange={setSoundsEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
+              accessibilityLabel={mobileT('appSettings.cameraSound')}
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">
-            Play a sound when capturing photos.
+            {mobileT('appSettings.cameraSoundDescription')}
           </Text>
         </View>
 

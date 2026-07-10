@@ -183,6 +183,28 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      sans-serif;
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+  }
+
+  html[dir='rtl'] body {
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      'Noto Sans Arabic',
+      Tahoma,
+      Arial,
+      sans-serif;
+    letter-spacing: 0;
+    line-height: 1.65;
   }
 }
 

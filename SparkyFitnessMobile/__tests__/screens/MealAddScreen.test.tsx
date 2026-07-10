@@ -205,12 +205,12 @@ describe('MealAddScreen', () => {
   it('shows an error when the meal name is missing and does not submit', () => {
     const screen = renderScreen();
 
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
-      text1: 'Missing meal name',
-      text2: 'Please enter a name for your meal.',
+      text1: 'اسم الوجبة ناقص',
+      text2: 'اكتب اسمًا للوجبة.',
     });
     expect(mockCreateMealAsync).not.toHaveBeenCalled();
   });
@@ -218,17 +218,17 @@ describe('MealAddScreen', () => {
   it('shows an error when the total servings is invalid and does not submit', () => {
     const screen = renderScreen();
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Lunch');
+    fireEvent.changeText(screen.getByPlaceholderText('مثال: كبسة دجاج'), 'Lunch');
     // Default unit is 'serving', which hides the Serving Size input, so the
     // single placeholder="1" field on screen is Total Servings. Typing 0 here
     // trips total_servings validation.
-    fireEvent.changeText(screen.getByPlaceholderText('1'), '0');
-    pressAction(screen, navigation, 'Save');
+    fireEvent.changeText(screen.getByPlaceholderText('١'), '0');
+    pressAction(screen, navigation, 'حفظ');
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
-      text1: 'Invalid total servings',
-      text2: 'Total servings must be greater than zero.',
+      text1: 'عدد الحصص غير صحيح',
+      text2: 'لازم يكون عدد الحصص أكبر من صفر.',
     });
     expect(mockCreateMealAsync).not.toHaveBeenCalled();
   });
@@ -236,13 +236,13 @@ describe('MealAddScreen', () => {
   it('shows an error when there are no ingredients and does not submit', () => {
     const screen = renderScreen();
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Lunch');
-    pressAction(screen, navigation, 'Save');
+    fireEvent.changeText(screen.getByPlaceholderText('مثال: كبسة دجاج'), 'Lunch');
+    pressAction(screen, navigation, 'حفظ');
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
-      text1: 'No ingredients yet',
-      text2: 'Add at least one food before saving this meal.',
+      text1: 'الوجبة بدون مكوّنات',
+      text2: 'أضف صنفًا غذائيًا واحدًا على الأقل قبل الحفظ.',
     });
     expect(mockCreateMealAsync).not.toHaveBeenCalled();
   });
@@ -257,13 +257,13 @@ describe('MealAddScreen', () => {
       focusCallback?.();
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Lunch');
-    pressAction(screen, navigation, 'Save');
+    fireEvent.changeText(screen.getByPlaceholderText('مثال: كبسة دجاج'), 'Lunch');
+    pressAction(screen, navigation, 'حفظ');
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
-      text1: 'Missing ingredient data',
-      text2: 'One of the selected foods is missing a serving variant. Please re-add it.',
+      text1: 'بيانات أحد المكوّنات ناقصة',
+      text2: 'أحد الأصناف ما له حصة محفوظة. احذفه وأضفه من جديد.',
     });
     expect(mockCreateMealAsync).not.toHaveBeenCalled();
   });
@@ -278,10 +278,10 @@ describe('MealAddScreen', () => {
       focusCallback?.();
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), '  My Meal  ');
-    fireEvent.changeText(screen.getByPlaceholderText('Notes about this meal'), '  Tasty  ');
-    fireEvent.changeText(screen.getByPlaceholderText('1'), '2');
-    pressAction(screen, navigation, 'Save');
+    fireEvent.changeText(screen.getByPlaceholderText('مثال: كبسة دجاج'), '  My Meal  ');
+    fireEvent.changeText(screen.getByPlaceholderText('ملاحظات عن الوجبة'), '  Tasty  ');
+    fireEvent.changeText(screen.getByPlaceholderText('١'), '2');
+    pressAction(screen, navigation, 'حفظ');
 
     await waitFor(() => {
       expect(mockCreateMealAsync).toHaveBeenCalledTimes(1);
@@ -328,18 +328,18 @@ describe('MealAddScreen', () => {
       focusCallback?.();
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'My Meal');
-    fireEvent.press(screen.getByText('ml'));
+    fireEvent.changeText(screen.getByPlaceholderText('مثال: كبسة دجاج'), 'My Meal');
+    fireEvent.press(screen.getByText('مل'));
 
     await waitFor(() => {
-      expect(screen.getByText(/Total Amount \(ml\)/)).toBeTruthy();
-      expect(screen.getByText(/Serving Size \(ml\)/)).toBeTruthy();
+      expect(screen.getByText(/الكمية الإجمالية \(مل\)/)).toBeTruthy();
+      expect(screen.getByText(/حجم الحصة \(مل\)/)).toBeTruthy();
     });
 
-    const numericInputs = screen.getAllByPlaceholderText('1');
+    const numericInputs = screen.getAllByPlaceholderText('١');
     fireEvent.changeText(numericInputs[0], '1000');
     fireEvent.changeText(numericInputs[1], '333');
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, 'حفظ');
 
     await waitFor(() => {
       expect(mockCreateMealAsync).toHaveBeenCalledTimes(1);
@@ -411,11 +411,11 @@ describe('MealAddScreen', () => {
     if (Platform.OS !== 'ios') {
       // On iOS the "Edit Meal" title comes from the native stack header
       // (configured in App.tsx), so it is only rendered inline on Android.
-      expect(screen.getByText('Edit Meal')).toBeTruthy();
+      expect(screen.getByText('تعديل الوجبة')).toBeTruthy();
     }
     expect(screen.getByDisplayValue('Lunch Bowl')).toBeTruthy();
     expect(screen.getByDisplayValue('Tasty')).toBeTruthy();
-    expect(screen.getByDisplayValue('2')).toBeTruthy();
+    expect(screen.getByDisplayValue('٢')).toBeTruthy();
     expect(screen.getByText(/Chicken/)).toBeTruthy();
   });
 
@@ -433,8 +433,8 @@ describe('MealAddScreen', () => {
       params: { mode: 'edit', mealId: meal.id, initialMeal: meal },
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), '  Edited Meal  ');
-    pressAction(screen, navigation, 'Save');
+    fireEvent.changeText(screen.getByPlaceholderText('مثال: كبسة دجاج'), '  Edited Meal  ');
+    pressAction(screen, navigation, 'حفظ');
 
     await waitFor(() => {
       expect(mockUpdateMealAsync).toHaveBeenCalledTimes(1);
@@ -482,7 +482,7 @@ describe('MealAddScreen', () => {
       params: { mode: 'edit', mealId: meal.id, initialMeal: meal },
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Changed Name');
+    fireEvent.changeText(screen.getByPlaceholderText('مثال: كبسة دجاج'), 'Changed Name');
     mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
       ingredient: buildIngredient({
         food_id: 'food-2',
@@ -518,8 +518,8 @@ describe('MealAddScreen', () => {
     });
 
     expect(screen.queryByText(/NaN/)).toBeNull();
-    expect(screen.getAllByText('0 cal').length).toBeGreaterThan(0);
-    expect(screen.getByText('0 cup')).toBeTruthy();
+    expect(screen.getAllByText('٠ سعرة').length).toBeGreaterThan(0);
+    expect(screen.getByText('٠ كوب')).toBeTruthy();
   });
 
   it('renders small converted-unit nutrition values without rounding them down to zero', () => {
@@ -541,8 +541,10 @@ describe('MealAddScreen', () => {
     });
 
     expect(screen.queryByText(/NaN/)).toBeNull();
-    expect(screen.getAllByText('0.0024 cal').length).toBeGreaterThan(0);
-    expect(screen.getByText('0.001g protein · 0.0016g carbs · 0.0004g fat')).toBeTruthy();
+    expect(screen.getAllByText('٠٫٠٠٢٤ سعرة').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText('٠٫٠٠١ غ بروتين · ٠٫٠٠١٦ غ كربوهيدرات · ٠٫٠٠٠٤ غ دهون'),
+    ).toBeTruthy();
   });
 
   it('coerces numeric-string converted drafts and falls back to serving_unit when unit is blank', () => {
@@ -565,11 +567,11 @@ describe('MealAddScreen', () => {
       focusCallback?.();
     });
 
-    expect(screen.getAllByText('120 cal').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/protein/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/carbs/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/fat/).length).toBeGreaterThan(0);
-    expect(screen.getByText('1 oz')).toBeTruthy();
+    expect(screen.getAllByText('١٢٠ سعرة').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/بروتين/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/كربوهيدرات/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/دهون/).length).toBeGreaterThan(0);
+    expect(screen.getByText('١ أونصة')).toBeTruthy();
 
     fireEvent.press(screen.getByText(/Chicken/));
 

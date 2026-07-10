@@ -8,14 +8,13 @@ import {
 import { apiKeyClient } from '@better-auth/api-key/client';
 import { ssoClient } from '@better-auth/sso/client';
 import { passkeyClient } from '@better-auth/passkey/client';
-import { BetterAuthClientPlugin } from 'better-auth';
 
 export const authClient = createAuthClient({
   // Use /api/auth as the base URL.
   baseURL: window.location.origin + '/api/auth',
   plugins: [
     magicLinkClient(),
-    adminClient() as unknown as BetterAuthClientPlugin,
+    adminClient(),
     twoFactorClient(),
     emailOTPClient(),
     ssoClient(),

@@ -39,6 +39,11 @@ import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 import { markCurrentVersionSeen } from '../services/whatsNewBanner';
 import { queryClient, serverConnectionQueryKey } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  formatMobileNumber,
+  mobileT,
+} from '../localization';
+import { normalizeLocalizedDigits } from '../utils/numericInput';
 
 type AuthTab = 'signIn' | 'apiKey';
 
@@ -134,7 +139,7 @@ export default function OnboardingScreen({ navigation }: Props) {
   const handleNext = async () => {
     const url = normalizeUrl(serverUrl);
     if (!url) {
-      setError('Enter a valid Frontend URL');
+      setError(mobileT('onboarding.enterValidUrl'));
       return;
     }
 
@@ -172,7 +177,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         setError('');
         setPage(2);
       } else {
-        setError('Could not reach server. Check the URL and try again.');
+        setError(mobileT('onboarding.serverUnreachable'));
       }
     } finally {
       setCheckingUrl(false);
@@ -196,11 +201,11 @@ export default function OnboardingScreen({ navigation }: Props) {
   const handleSignIn = async () => {
     const url = normalizeUrl(serverUrl);
     if (!email.trim()) {
-      setError('Please enter your email.');
+      setError(mobileT('onboarding.emailRequired'));
       return;
     }
     if (!password) {
-      setError('Please enter your password.');
+      setError(mobileT('onboarding.passwordRequired'));
       return;
     }
 
@@ -238,11 +243,11 @@ export default function OnboardingScreen({ navigation }: Props) {
       addLog('Connected via sign in.', 'INFO');
       await finishWithConnection();
     } catch (err) {
-      if (err instanceof LoginError) {
-        setError(err.message);
-      } else {
-        setError('Could not connect to server. Check the URL and try again.');
-      }
+      setError(
+        err instanceof LoginError && err.statusCode === 401
+          ? mobileT('onboarding.invalidCredentials')
+          : mobileT('onboarding.signInFailed'),
+      );
     } finally {
       setLoading(false);
     }
@@ -265,12 +270,8 @@ export default function OnboardingScreen({ navigation }: Props) {
         addLog(`Connected via OIDC provider ${providerId}.`, 'INFO');
         await finishWithConnection();
       }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(String(err));
-      }
+    } catch {
+      setError(mobileT('onboarding.oidcFailed'));
     } finally {
       setLoading(false);
     }
@@ -293,12 +294,8 @@ export default function OnboardingScreen({ navigation }: Props) {
         addLog('Connected via Passkey.', 'INFO');
         await finishWithConnection();
       }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(String(err));
-      }
+    } catch {
+      setError(mobileT('onboarding.passkeyFailed'));
     } finally {
       setLoading(false);
     }
@@ -307,7 +304,7 @@ export default function OnboardingScreen({ navigation }: Props) {
   const handleConnectApiKey = async () => {
     const url = normalizeUrl(serverUrl);
     if (!apiKey.trim()) {
-      setError('Please enter an API key.');
+      setError(mobileT('onboarding.apiKeyRequired'));
       return;
     }
 
@@ -324,13 +321,15 @@ export default function OnboardingScreen({ navigation }: Props) {
       });
 
       if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
         if (response.status === 401) {
-          setError('Invalid API key. Please check and try again.');
+          setError(mobileT('onboarding.invalidApiKey'));
         } else {
-          setError(
-            `Connection failed (${response.status}): ${errorText || 'Unknown error'}`,
-          );
+          setError(mobileT('onboarding.connectionFailedStatus', {
+            status: formatMobileNumber(response.status, {
+              maximumFractionDigits: 0,
+              useGrouping: false,
+            }),
+          }));
         }
         return;
       }
@@ -343,9 +342,8 @@ export default function OnboardingScreen({ navigation }: Props) {
 
       addLog('Connected with API key.', 'INFO');
       await finishWithConnection();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(`Could not connect to server: ${message}`);
+    } catch {
+      setError(mobileT('onboarding.apiConnectionFailed'));
     } finally {
       setLoading(false);
     }
@@ -362,9 +360,9 @@ export default function OnboardingScreen({ navigation }: Props) {
   // --- MFA handlers ---
 
   const handleVerifyMfa = async () => {
-    const code = mfaCode.trim();
+    const code = normalizeLocalizedDigits(mfaCode.trim());
     if (!code) {
-      setError('Please enter the verification code.');
+      setError(mobileT('onboarding.verificationCodeRequired'));
       return;
     }
 
@@ -388,22 +386,22 @@ export default function OnboardingScreen({ navigation }: Props) {
     } catch (err) {
       if (err instanceof LoginError) {
         if (err.statusCode === 429) {
-          setError('Too many attempts. Please wait a moment and try again.');
+          setError(mobileT('onboarding.tooManyAttempts'));
         } else if (err.message.toLowerCase().includes('invalid code')) {
-          setError('Invalid verification code. Please try again.');
+          setError(mobileT('onboarding.invalidVerificationCode'));
         } else if (
           err.message.includes('INVALID_TWO_FACTOR_COOKIE') ||
           err.message.toLowerCase().includes('invalid two factor cookie') ||
           err.message.includes('expired')
         ) {
           await clearAuthCookies();
-          setError('Your session has expired. Please sign in again.');
+          setError(mobileT('onboarding.sessionExpired'));
           setStep('auth');
         } else {
-          setError(err.message);
+          setError(mobileT('onboarding.verificationFailed'));
         }
       } else {
-        setError('Verification failed. Please try again.');
+        setError(mobileT('onboarding.verificationFailed'));
       }
     } finally {
       setLoading(false);
@@ -418,12 +416,8 @@ export default function OnboardingScreen({ navigation }: Props) {
     try {
       await sendEmailOtp(url);
       setEmailOtpSent(true);
-    } catch (err) {
-      if (err instanceof LoginError) {
-        setError(err.message);
-      } else {
-        setError('Failed to send email code. Please try again.');
-      }
+    } catch {
+      setError(mobileT('onboarding.sendEmailCodeFailed'));
     } finally {
       setLoading(false);
     }
@@ -462,16 +456,18 @@ export default function OnboardingScreen({ navigation }: Props) {
           resizeMode="contain"
         />
         <Text className="text-3xl font-bold text-text-primary">
-          SparkyFitness
+          {mobileT('onboarding.appName')}
         </Text>
         <Text className="text-base text-text-secondary mt-1">
-          Your self-hosted fitness tracker
+          {mobileT('onboarding.tagline')}
         </Text>
       </View>
 
       {/* Server URL input */}
       <View className="mb-6">
-        <Text className="text-sm mb-2 text-text-secondary">Frontend URL</Text>
+        <Text className="text-sm mb-2 text-text-secondary">
+          {mobileT('onboarding.serverUrl')}
+        </Text>
         <View
           className="flex-row items-center rounded-lg pr-2.5 bg-raised"
           style={{ borderWidth: 1, borderColor: isServerUrlFocused ? accentPrimary : borderSubtle }}
@@ -480,7 +476,7 @@ export default function OnboardingScreen({ navigation }: Props) {
             <TextInput
               className="p-2.5 text-base text-text-primary"
               style={{ lineHeight: 20 }}
-              placeholder="https://your-sparky-app.com"
+              placeholder={mobileT('onboarding.serverUrlPlaceholder')}
               placeholderTextColor={textMuted}
               value={serverUrl}
               onChangeText={(text) => {
@@ -497,7 +493,7 @@ export default function OnboardingScreen({ navigation }: Props) {
           <Button
             variant="ghost"
             onPress={async () => setServerUrl(await Clipboard.getString())}
-            accessibilityLabel="Paste URL from clipboard"
+            accessibilityLabel={mobileT('onboarding.pasteUrl')}
             className="p-2 py-2 px-2 rounded-lg"
           >
             <Icon name="paste" size={20} color={textSecondary} />
@@ -510,7 +506,7 @@ export default function OnboardingScreen({ navigation }: Props) {
       {/* Actions */}
       <View className="gap-3 mt-2">
         <PrimaryButton
-          label="Next"
+          label={mobileT('common.next')}
           onPress={handleNext}
           loading={checkingUrl}
         />
@@ -519,7 +515,7 @@ export default function OnboardingScreen({ navigation }: Props) {
           onPress={finishOnboarding}
           className="py-2.5"
         >
-          Later
+          {mobileT('common.later')}
         </Button>
       </View>
 
@@ -535,25 +531,24 @@ export default function OnboardingScreen({ navigation }: Props) {
           accessibilityState={{ expanded: learnMoreExpanded }}
         >
           <Icon
-            name={learnMoreExpanded ? 'chevron-down' : 'chevron-forward'}
+            name={learnMoreExpanded ? 'chevron-up' : 'chevron-down'}
             size={14}
             color={accentPrimary}
           />
           <Text
-            className="text-sm ml-1"
-            style={{ color: accentPrimary }}
+            className="text-sm"
+            style={{ color: accentPrimary, marginStart: 4 }}
           >
-            Learn more about SparkyFitness
+            {mobileT('onboarding.learnMore')}
           </Text>
         </Pressable>
         {learnMoreExpanded && (
           <View className="mt-4 rounded-2xl bg-raised p-4 shadow-sm">
             <Text className="text-sm text-text-secondary leading-relaxed">
-              SparkyFitness helps you track your food, workouts, and health data in one place.
-              
+              {mobileT('onboarding.learnMoreTracking')}
             </Text>
             <Text className="mt-2 text-sm text-text-secondary leading-relaxed">
-              It runs on your own server so your data stays private.
+              {mobileT('onboarding.learnMorePrivacy')}
             </Text>
           </View>
         )}
@@ -567,14 +562,26 @@ export default function OnboardingScreen({ navigation }: Props) {
     const hasOidc = authSettings?.oidc.enabled && authSettings.oidc.providers.length > 0;
     
     if (hasEmail) {
-      segments.push({ key: 'signIn' as const, label: 'Sign In' });
+      segments.push({
+        key: 'signIn' as const,
+        label: mobileT('onboarding.signIn'),
+      });
     } else if (hasOidc) {
-      segments.push({ key: 'signIn' as const, label: 'SSO' });
+      segments.push({
+        key: 'signIn' as const,
+        label: mobileT('onboarding.sso'),
+      });
     } else if (authSettings) {
-      segments.push({ key: 'signIn' as const, label: 'Passkey' });
+      segments.push({
+        key: 'signIn' as const,
+        label: mobileT('onboarding.passkey'),
+      });
     }
     
-    segments.push({ key: 'apiKey' as const, label: 'API Key' });
+    segments.push({
+      key: 'apiKey' as const,
+      label: mobileT('onboarding.apiKey'),
+    });
     return segments;
   };
 
@@ -587,7 +594,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         {/* Header with server URL */}
         <View className="items-center mb-5">
           <Text className="text-2xl font-bold text-text-primary">
-            Connect to SparkyFitness
+            {mobileT('onboarding.connectTitle')}
           </Text>
           <Text
             className="text-base text-text-secondary mt-1"
@@ -614,7 +621,9 @@ export default function OnboardingScreen({ navigation }: Props) {
             {hasEmail && (
               <>
                 <View className="mb-3">
-                  <Text className="text-sm mb-2 text-text-secondary">Email</Text>
+                  <Text className="text-sm mb-2 text-text-secondary">
+                    {mobileT('onboarding.email')}
+                  </Text>
                   <FormInput
                     placeholder="email@example.com"
                     value={email}
@@ -625,9 +634,11 @@ export default function OnboardingScreen({ navigation }: Props) {
                   />
                 </View>
                 <View className="mb-4">
-                  <Text className="text-sm mb-2 text-text-secondary">Password</Text>
+                  <Text className="text-sm mb-2 text-text-secondary">
+                    {mobileT('onboarding.password')}
+                  </Text>
                   <FormInput
-                    placeholder="Password"
+                    placeholder={mobileT('onboarding.password')}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -642,7 +653,9 @@ export default function OnboardingScreen({ navigation }: Props) {
                 {hasEmail && (
                   <View className="flex-row items-center my-4">
                     <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
-                    <Text className="mx-3 text-xs text-text-muted uppercase" style={{ marginHorizontal: 12 }}>Or sign in with</Text>
+                    <Text className="mx-3 text-xs text-text-muted" style={{ marginHorizontal: 12 }}>
+                      {mobileT('onboarding.orSignInWith')}
+                    </Text>
                     <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
                   </View>
                 )}
@@ -670,12 +683,15 @@ export default function OnboardingScreen({ navigation }: Props) {
                                 ? provider.logo_url
                                 : `${normalizeUrl(serverUrl)}${provider.logo_url}`,
                             }}
-                            style={{ width: 20, height: 20, marginRight: 8 }}
+                            style={{ width: 20, height: 20, marginEnd: 8 }}
                             resizeMode="contain"
                           />
                         )}
                         <Text className="text-base font-semibold text-text-primary">
-                          {provider.display_name || `Sign in with ${provider.id}`}
+                          {provider.display_name ||
+                            mobileT('onboarding.signInWithProvider', {
+                              provider: provider.id,
+                            })}
                         </Text>
                       </View>
                     </Button>
@@ -701,11 +717,11 @@ export default function OnboardingScreen({ navigation }: Props) {
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ marginRight: 8 }}>
+                    <View style={{ marginEnd: 8 }}>
                       <Icon name="fingerprint" size={20} color={accentPrimary} />
                     </View>
                     <Text className="text-base font-semibold text-text-primary">
-                      Sign in with Passkey
+                      {mobileT('onboarding.signInWithPasskey')}
                     </Text>
                   </View>
                 </Button>
@@ -715,7 +731,7 @@ export default function OnboardingScreen({ navigation }: Props) {
             {authSettings && !hasEmail && !hasOidc && (
               <View className="py-6 px-4 items-center bg-raised rounded-lg border" style={{ borderWidth: 1, borderColor: borderSubtle }}>
                 <Text className="text-center text-sm text-text-secondary">
-                  No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.
+                  {mobileT('onboarding.noSignInMethods')}
                 </Text>
               </View>
             )}
@@ -725,7 +741,9 @@ export default function OnboardingScreen({ navigation }: Props) {
         {/* API Key field */}
         {authTab === 'apiKey' && (
           <View className="mb-4">
-            <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
+            <Text className="text-sm mb-2 text-text-secondary">
+              {mobileT('onboarding.apiKey')}
+            </Text>
             <View
               className="flex-row items-center rounded-lg pr-2.5 bg-raised"
               style={{ borderWidth: 1, borderColor: isApiKeyFocused ? accentPrimary : borderSubtle }}
@@ -746,7 +764,7 @@ export default function OnboardingScreen({ navigation }: Props) {
               <Button
                 variant="ghost"
                 onPress={async () => setApiKey(await Clipboard.getString())}
-                accessibilityLabel="Paste API key from clipboard"
+                accessibilityLabel={mobileT('onboarding.pasteApiKey')}
                 className="p-2 py-2 px-2 rounded-lg"
               >
                 <Icon name="paste" size={20} color={textSecondary} />
@@ -761,7 +779,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         <View className="gap-3 mt-4">
           {(authTab === 'apiKey' || hasEmail) && (
             <PrimaryButton
-              label="Connect"
+              label={mobileT('onboarding.connect')}
               onPress={handleConnect}
               loading={loading}
             />
@@ -770,7 +788,7 @@ export default function OnboardingScreen({ navigation }: Props) {
             variant="ghost"
             onPress={finishOnboarding}
           >
-            Later
+            {mobileT('common.later')}
           </Button>
         </View>
       </>
@@ -781,7 +799,7 @@ export default function OnboardingScreen({ navigation }: Props) {
     <>
       <View className="items-center mb-5">
         <Text className="text-2xl font-bold text-text-primary">
-          Two-Factor Authentication
+          {mobileT('onboarding.mfaTitle')}
         </Text>
       </View>
 
@@ -840,7 +858,9 @@ export default function OnboardingScreen({ navigation }: Props) {
                 className="self-start flex-row items-center gap-1 py-2 px-2"
               >
                 <Icon name="chevron-back" size={18} color={accentPrimary} />
-                <Text className="text-base text-accent-primary font-semibold">Back</Text>
+                <Text className="text-base text-accent-primary font-semibold">
+                  {mobileT('common.back')}
+                </Text>
               </Pressable>
             </View>
           )}

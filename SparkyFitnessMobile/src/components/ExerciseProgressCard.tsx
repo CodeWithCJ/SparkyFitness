@@ -3,6 +3,11 @@ import { View, Text } from 'react-native';
 import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
+import {
+  formatMobileNumber,
+  isMobileRtl,
+  mobileT,
+} from '../localization';
 
 interface ProgressBarProps {
   label: string;
@@ -61,7 +66,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, c
   }));
 
   const overflowStyle = useAnimatedStyle(() => ({
-    left: overflowX.value,
+    ...(isMobileRtl
+      ? { right: overflowX.value }
+      : { left: overflowX.value }),
     width: overflowWidth.value,
   }));
 
@@ -70,7 +77,15 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, c
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-sm font-semibold text-text-primary">{label}</Text>
         <Text className="text-sm text-text-primary">
-          {goal > 0 ? `${Math.round(current)} / ${Math.round(goal)} ${unit}` : `${Math.round(current)} ${unit}`}
+          {goal > 0
+            ? `${formatMobileNumber(Math.round(current), {
+                maximumFractionDigits: 0,
+              })} / ${formatMobileNumber(Math.round(goal), {
+                maximumFractionDigits: 0,
+              })} ${unit}`
+            : `${formatMobileNumber(Math.round(current), {
+                maximumFractionDigits: 0,
+              })} ${unit}`}
         </Text>
       </View>
       {showBar && <View
@@ -90,7 +105,13 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, c
           >
             <Animated.View
               style={[
-                { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
+                {
+                  position: 'absolute',
+                  ...(isMobileRtl ? { right: 0 } : { left: 0 }),
+                  top: 0,
+                  height: barHeight,
+                  backgroundColor: color,
+                },
                 fillStyle,
               ]}
             />
@@ -129,31 +150,35 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-4">Exercise</Text>
+      <Text className="text-md font-bold text-text-secondary mb-4">
+        {mobileT('dashboard.exercise')}
+      </Text>
       {hasEntries ? (
         <>
           <ProgressBar
-            label="Minutes"
+            label={mobileT('dashboard.minutes')}
             current={exerciseMinutes}
             goal={exerciseMinutesGoal}
-            unit="min"
+            unit={mobileT('units.minute')}
             color={exerciseColor}
             trackColor={trackColor}
             opacity={0.8}
           />
           <View className="h-3" />
           <ProgressBar
-            label="Calories"
+            label={mobileT('dashboard.calories')}
             current={exerciseCalories}
             goal={exerciseCaloriesGoal}
-            unit="Cal"
+            unit={mobileT('units.calorie')}
             color={exerciseColor}
             trackColor={trackColor}
             opacity={0.5}
           />
         </>
       ) : (
-        <Text className="text-sm text-text-secondary text-center py-2">No exercise entries yet</Text>
+        <Text className="text-sm text-text-secondary text-center py-2">
+          {mobileT('dashboard.noExercise')}
+        </Text>
       )}
     </View>
   );

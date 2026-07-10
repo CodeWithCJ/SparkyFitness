@@ -23,12 +23,17 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import {
   CONFIDENCE_TONES,
   FOOD_FORM_UNIT_GROUPS,
-  OVERALL_CONFIDENCE_LABELS,
   getConversionFactor,
   shouldOfferAiConversion,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
+import {
+  formatMobileNumber,
+  localizeNutrient,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 export interface FoodFormData {
   name: string;
@@ -139,8 +144,15 @@ const NUMERIC_FOOD_FORM_FIELD_SET = new Set<keyof FoodFormData>(
 );
 
 const SERVING_UNIT_SECTIONS = FOOD_FORM_UNIT_GROUPS.map((group) => ({
-  title: group.label,
-  options: group.units.map((unit) => ({ label: unit, value: unit })),
+  title: mobileT(
+    `foodUnit.group.${group.label.toLowerCase()}`,
+    undefined,
+    group.label,
+  ),
+  options: group.units.map((unit) => ({
+    label: localizeServingUnit(unit),
+    value: unit,
+  })),
 }));
 
 const NUTRITION_FIELDS: (keyof FoodFormData)[] = [
@@ -486,7 +498,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
   return (
     <View className="gap-2 mt-1.5" pointerEvents={disabled ? 'none' : 'auto'} style={disabled ? { opacity: 0.5 } : undefined}>
       <Text className="text-text-secondary text-sm font-medium">
-        Equivalent sizes
+        {mobileT('foodForm.equivalentSizes')}
       </Text>
       {items.map((item, index) => {
         const sizeText =
@@ -498,7 +510,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
           >
             <View className="flex-1">
               <FormInput
-                placeholder="0"
+                placeholder={formatMobileNumber(0)}
                 value={sizeText}
                 onChangeText={(text) => {
                   if (!DECIMAL_INPUT_REGEX.test(text)) return;
@@ -516,8 +528,8 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
                 value={item.serving_unit}
                 sections={SERVING_UNIT_SECTIONS}
                 onSelect={(value) => updateRow(index, { serving_unit: value })}
-                title="Select Unit"
-                placeholder="unit"
+                title={mobileT('foodUnit.selectUnit')}
+                placeholder={mobileT('foodForm.unitPlaceholder')}
                 renderTrigger={({ onPress, selectedOption }) => (
                   <TouchableOpacity
                     onPress={onPress}
@@ -529,7 +541,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
                       className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
                       style={{ fontSize: 16 }}
                     >
-                      {selectedOption?.label ?? 'unit'}
+                      {selectedOption?.label ?? mobileT('foodForm.unitPlaceholder')}
                     </Text>
                     <Icon
                       name="chevron-down"
@@ -544,7 +556,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
             <TouchableOpacity
               onPress={() => removeRow(index)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel="Remove equivalent"
+              accessibilityLabel={mobileT('foodForm.removeEquivalent')}
             >
               <Icon name="remove-circle" size={22} color={textMuted} />
             </TouchableOpacity>
@@ -558,7 +570,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
         className="self-start py-0 px-0"
       >
         <Text style={{ color: accentColor }} className="text-sm font-medium">
-          + Add equivalent
+          {mobileT('foodForm.addEquivalent')}
         </Text>
       </Button>
     </View>
@@ -570,7 +582,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   onSubmit,
   submitRequestRef,
   onServingChange,
-  submitLabel = 'Add Food',
+  submitLabel = mobileT('foodForm.addFood'),
   isSubmitting = false,
   hideSubmitButton = false,
   showAutoScaleNutrition = false,
@@ -1099,8 +1111,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!(Number.isFinite(anchor.serving_size) && anchor.serving_size > 0)) {
       Toast.show({
         type: 'error',
-        text1: "Couldn't estimate",
-        text2: 'The food has no trusted default to scale from.',
+        text1: mobileT('foodForm.couldNotEstimate'),
+        text2: mobileT('foodForm.noTrustedDefault'),
       });
       return;
     }
@@ -1110,7 +1122,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!Number.isFinite(fromAmount) || fromAmount <= 0) {
       Toast.show({
         type: 'error',
-        text1: 'Set a serving size first',
+        text1: mobileT('foodForm.setServingFirst'),
       });
       return;
     }
@@ -1119,7 +1131,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     try {
       const result = await requestAiUnitConversion({
         foodId: unitSelector?.foodId ?? 'pending-new-food',
-        foodName: form.name.trim() || 'Untitled food',
+        foodName: form.name.trim() || mobileT('foodForm.untitledFood'),
         brand: form.brand.trim() || undefined,
         fromUnit: context.fromUnit,
         fromAmount,
@@ -1214,13 +1226,11 @@ const FoodForm: React.FC<FoodFormProps> = ({
       void unitSelector?.onUnitSelectionChange?.(aiSelection);
 
       swapContextRef.current = null;
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'AI estimate failed.';
+    } catch {
       Toast.show({
         type: 'error',
-        text1: "Couldn't estimate",
-        text2: message,
+        text1: mobileT('foodForm.couldNotEstimate'),
+        text2: mobileT('foodForm.estimateFailed'),
       });
     } finally {
       setIsEstimatingAi(false);
@@ -1260,11 +1270,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
   ) => (
     <View className="gap-1.5 flex-1">
       <Text className="text-text-secondary text-sm font-medium">
-        {label}{unit ? ` (${unit})` : ''}{required ? ' *' : ''}
+        {label}
+        {unit ? ` (${localizeServingUnit(unit)})` : ''}
+        {required ? ' *' : ''}
       </Text>
       <FormInput
         ref={fieldRefs[field as keyof typeof fieldRefs]}
-        placeholder="0"
+        placeholder={formatMobileNumber(0)}
         value={form[field]}
         onChangeText={(v) => {
           if (DECIMAL_INPUT_REGEX.test(v)) update(field, v);
@@ -1294,15 +1306,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
 
     Alert.alert(
-      'Manual Nutrition Update',
-      "Can't convert between units. Update nutrition values manually before saving.",
+      mobileT('foodForm.manualUpdateTitle'),
+      mobileT('foodForm.manualUpdateDescription'),
       [
         {
-          text: 'Cancel',
+          text: mobileT('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Save Anyway',
+          text: mobileT('foodForm.saveAnyway'),
           onPress: submitForm,
         },
       ],
@@ -1327,20 +1339,40 @@ const FoodForm: React.FC<FoodFormProps> = ({
         {headerChildren}
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
           {/* Food info */}
-          {renderTextField('Food Name', 'name', 'e.g. Chicken Breast', true, 'brand')}
-          {renderTextField('Brand', 'brand', 'Optional', false, 'servingSize')}
+          {renderTextField(
+            mobileT('foodForm.foodName'),
+            'name',
+            mobileT('foodForm.foodNamePlaceholder'),
+            true,
+            'brand',
+          )}
+          {renderTextField(
+            mobileT('foodForm.brand'),
+            'brand',
+            mobileT('foodForm.optional'),
+            false,
+            'servingSize',
+          )}
 
           {/* Serving */}
           <View className="flex-row gap-3">
-            {renderNumericField('Serving Size', 'servingSize', undefined, false, 'calories')}
+            {renderNumericField(
+              mobileT('foodForm.servingSize'),
+              'servingSize',
+              undefined,
+              false,
+              'calories',
+            )}
             <View className="gap-1.5 flex-1">
-              <Text className="text-text-secondary text-sm font-medium">Serving Unit</Text>
+              <Text className="text-text-secondary text-sm font-medium">
+                {mobileT('foodForm.servingUnit')}
+              </Text>
               {unitSelector ? (
                 <FoodUnitSelectorSheet
                   variants={unitSelector.variants}
                   selectedVariantId={selectedSavedVariantId}
                   selectedSelection={selectedUnitSelection}
-                  title="Select Unit"
+                  title={mobileT('foodUnit.selectUnit')}
                   onSelect={handleUnitSelectorSelection}
                   renderTrigger={({ onPress }) => (
                     <TouchableOpacity
@@ -1350,11 +1382,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
                       style={{ height: 44 }}
                     >
                       <Text
-                        className="text-text-primary flex-1 pr-2"
-                        style={{ fontSize: 16 }}
+                        className="text-text-primary flex-1"
+                        style={{ fontSize: 16, marginEnd: 8 }}
                         numberOfLines={1}
                       >
-                        {form.servingUnit || 'unit'}
+                        {form.servingUnit
+                          ? localizeServingUnit(form.servingUnit)
+                          : mobileT('foodForm.unitPlaceholder')}
                       </Text>
                       <Icon
                         name="chevron-down"
@@ -1370,8 +1404,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   value={form.servingUnit}
                   sections={SERVING_UNIT_SECTIONS}
                   onSelect={(v) => update('servingUnit', v)}
-                  title="Select Unit"
-                  placeholder="unit"
+                  title={mobileT('foodUnit.selectUnit')}
+                  placeholder={mobileT('foodForm.unitPlaceholder')}
                   renderTrigger={({ onPress, selectedOption }) => (
                     <TouchableOpacity
                       onPress={onPress}
@@ -1383,7 +1417,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
                         style={{ fontSize: 16 }}
                       >
-                        {selectedOption?.label ?? 'unit'}
+                        {selectedOption?.label ??
+                          mobileT('foodForm.unitPlaceholder')}
                       </Text>
                       <Icon
                         name="chevron-down"
@@ -1410,9 +1445,11 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
           {showAutoScaleNutrition ? (
             <View className="flex-row items-center justify-between mt-1.5">
-              <Text className="text-text-secondary text-base">Auto Scale Nutrition</Text>
+              <Text className="text-text-secondary text-base">
+                {mobileT('foodForm.autoScaleNutrition')}
+              </Text>
               <Switch
-                accessibilityLabel="Auto Scale Nutrition"
+                accessibilityLabel={mobileT('foodForm.autoScaleNutrition')}
                 value={autoScaleNutrition}
                 onValueChange={(value) => {
                   hasTouchedAutoScaleRef.current = true;
@@ -1425,8 +1462,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
           ) : null}
 
           {showManualUpdateBanner ? (() => {
-            // AI eligibility for this swap. When true, the Convert with AI
-            // button appears below the banner. The banner text itself is
+            // AI eligibility for this swap. When true, the estimate action
+            // appears below the banner. The banner text itself is
             // unconditional now — the button is the affordance.
             const canAiConvert =
               aiEstimatesAvailable &&
@@ -1447,7 +1484,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   className="text-sm font-medium flex-1"
                   style={{ color: infoText }}
                 >
-                  {"Can't convert between units. Update nutrition values manually."}
+                  {mobileT('foodForm.manualUpdateBanner')}
                 </Text>
               </View>
               {canAiConvert ? (
@@ -1461,7 +1498,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     <View className="flex-row items-center gap-2">
                       <ActivityIndicator size="small" color={textPrimary} />
                       <Text className="text-text-primary font-semibold">
-                        Estimating…
+                        {mobileT('foodForm.estimating')}
                       </Text>
                     </View>
                   ) : (
@@ -1473,7 +1510,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         style={androidSparkleStyle}
                       />
                       <Text className="text-text-primary font-semibold">
-                        Convert with AI
+                        {mobileT('foodForm.convertWithAi')}
                       </Text>
                     </View>
                   )}
@@ -1507,24 +1544,22 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     ],
                 }}
               >
-                {
-                  OVERALL_CONFIDENCE_LABELS[
-                    selectedUnitSelection.variant
-                      .ai_confidence as AiConfidence
-                  ]
-                }{' '}
-                estimate
+                {mobileT('foodForm.aiEstimateConfidence', {
+                  confidence: mobileT(
+                    `foodForm.confidence.${selectedUnitSelection.variant.ai_confidence as AiConfidence}`,
+                  ),
+                })}
               </Text>
             </View>
           ) : null}
 
           <View className="gap-1.5 mt-1.5">
             <Text className="text-text-primary text-sm font-bold">
-              Calories (kcal) *
+              {mobileT('foodForm.caloriesKcal')} *
             </Text>
             <FormInput
               ref={fieldRefs.calories}
-              placeholder="0"
+              placeholder={formatMobileNumber(0)}
               value={form.calories}
               onChangeText={(v) => {
                 if (DECIMAL_INPUT_REGEX.test(v)) update('calories', v);
@@ -1533,46 +1568,54 @@ const FoodForm: React.FC<FoodFormProps> = ({
             />
           </View>
           <View className="flex-row gap-3">
-            {renderNumericField('Fat', 'fat', 'g', false, 'carbs')}
-            {renderNumericField('Carbs', 'carbs', 'g', false, 'protein')}
+            {renderNumericField(localizeNutrient('fat'), 'fat', 'g', false, 'carbs')}
+            {renderNumericField(localizeNutrient('carbs'), 'carbs', 'g', false, 'protein')}
           </View>
           <View className="flex-row gap-3">
-            {renderNumericField('Protein', 'protein', 'g', false, 'fiber')}
-            {renderNumericField('Fiber', 'fiber', 'g', false, showMoreNutrients ? 'saturatedFat' : undefined)}
+            {renderNumericField(localizeNutrient('protein'), 'protein', 'g', false, 'fiber')}
+            {renderNumericField(localizeNutrient('dietary_fiber'), 'fiber', 'g', false, showMoreNutrients ? 'saturatedFat' : undefined)}
           </View>
           <Button
             variant="ghost"
             onPress={() => setShowMoreNutrients((prev) => !prev)}
+            accessibilityLabel={
+              showMoreNutrients
+                ? mobileT('nutrition.showLessAccessibility')
+                : mobileT('nutrition.showMoreAccessibility')
+            }
+            accessibilityState={{ expanded: showMoreNutrients }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="self-start py-0 px-0"
             textClassName="text-sm"
           >
             <Text style={{ color: accentColor }} className="text-sm font-medium">
-              {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}
+              {showMoreNutrients
+                ? mobileT('nutrition.showLess')
+                : mobileT('nutrition.showMore')}
             </Text>
           </Button>
 
           {showMoreNutrients && (
             <>
               <View className="flex-row gap-3">
-                {renderNumericField('Saturated Fat', 'saturatedFat', 'g', false, 'transFat')}
-                {renderNumericField('Trans Fat', 'transFat', 'g', false, 'cholesterol')}
+                {renderNumericField(localizeNutrient('saturatedFat'), 'saturatedFat', 'g', false, 'transFat')}
+                {renderNumericField(localizeNutrient('transFat'), 'transFat', 'g', false, 'cholesterol')}
               </View>
               <View className="flex-row gap-3">
-                {renderNumericField('Cholesterol', 'cholesterol', 'mg', false, 'sodium')}
-                {renderNumericField('Sodium', 'sodium', 'mg', false, 'sugars')}
+                {renderNumericField(localizeNutrient('cholesterol'), 'cholesterol', 'mg', false, 'sodium')}
+                {renderNumericField(localizeNutrient('sodium'), 'sodium', 'mg', false, 'sugars')}
               </View>
               <View className="flex-row gap-3">
-                {renderNumericField('Sugars', 'sugars', 'g', false, 'calcium')}
-                {renderNumericField('Calcium', 'calcium', 'mg', false, 'iron')}
+                {renderNumericField(localizeNutrient('sugars'), 'sugars', 'g', false, 'calcium')}
+                {renderNumericField(localizeNutrient('calcium'), 'calcium', 'mg', false, 'iron')}
               </View>
               <View className="flex-row gap-3">
-                {renderNumericField('Iron', 'iron', 'mg', false, 'vitaminA')}
-                {renderNumericField('Vitamin A', 'vitaminA', 'mcg', false, 'vitaminC')}
+                {renderNumericField(localizeNutrient('iron'), 'iron', 'mg', false, 'vitaminA')}
+                {renderNumericField(localizeNutrient('vitaminA'), 'vitaminA', 'mcg', false, 'vitaminC')}
               </View>
               <View className="flex-row gap-3">
-                {renderNumericField('Vitamin C', 'vitaminC', 'mg', false, 'potassium')}
-                {renderNumericField('Potassium', 'potassium', 'mg')}
+                {renderNumericField(localizeNutrient('vitaminC'), 'vitaminC', 'mg', false, 'potassium')}
+                {renderNumericField(localizeNutrient('potassium'), 'potassium', 'mg')}
               </View>
               {Array.from({ length: Math.ceil(customNutrientDefs.length / 2) }, (_, rowIndex) => {
                 const first = customNutrientDefs[rowIndex * 2];
@@ -1581,10 +1624,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   <View key={first.name} className="flex-row gap-3">
                     <View className="gap-1.5 flex-1">
                       <Text className="text-text-secondary text-sm font-medium">
-                        {first.name}{first.unit ? ` (${first.unit})` : ''}
+                        {first.name}
+                        {first.unit
+                          ? ` (${localizeServingUnit(first.unit)})`
+                          : ''}
                       </Text>
                       <FormInput
-                        placeholder="0"
+                        placeholder={formatMobileNumber(0)}
                         value={customNutrientForm[first.name] ?? ''}
                         onChangeText={(v) => updateCustomNutrient(first.name, v)}
                         keyboardType="decimal-pad"
@@ -1593,10 +1639,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     {second ? (
                       <View className="gap-1.5 flex-1">
                         <Text className="text-text-secondary text-sm font-medium">
-                          {second.name}{second.unit ? ` (${second.unit})` : ''}
+                          {second.name}
+                          {second.unit
+                            ? ` (${localizeServingUnit(second.unit)})`
+                            : ''}
                         </Text>
                         <FormInput
-                          placeholder="0"
+                          placeholder={formatMobileNumber(0)}
                           value={customNutrientForm[second.name] ?? ''}
                           onChangeText={(v) => updateCustomNutrient(second.name, v)}
                           keyboardType="decimal-pad"

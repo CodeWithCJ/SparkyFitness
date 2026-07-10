@@ -27,6 +27,11 @@ import {
   scheduleRestNotification,
 } from '../services/notifications';
 import { fireSelectionHaptic, fireSuccessHaptic } from '../services/haptics';
+import {
+  formatMobileNumber,
+  formatMobileRepCount,
+  mobileT,
+} from '../localization';
 
 const STORAGE_KEY = '@SparkyFitness/active-workout';
 
@@ -666,15 +671,27 @@ function buildRestNotificationContent(
       const set = exercise.sets.find((s) => String(s.id) === setId);
       if (set != null) {
         const name = exercise.exercise_snapshot?.name ?? fallbackExerciseName;
-        let body = `${name} · Set ${set.set_number} of ${exercise.sets.length}`;
+        let body = mobileT('notifications.restBody', {
+          exercise: name,
+          set: formatMobileNumber(set.set_number, { maximumFractionDigits: 0 }),
+          total: formatMobileNumber(exercise.sets.length, {
+            maximumFractionDigits: 0,
+          }),
+        });
         if (set.reps != null) {
-          body += ` · ${set.reps} rep${set.reps === 1 ? '' : 's'} target`;
+          body = mobileT('notifications.restTarget', {
+            body,
+            reps: formatMobileRepCount(set.reps),
+          });
         }
-        return { title: 'Rest complete — next set up', body };
+        return { title: mobileT('notifications.restNextSet'), body };
       }
     }
   }
-  return { title: 'Rest complete', body: fallbackExerciseName };
+  return {
+    title: mobileT('notifications.restComplete'),
+    body: fallbackExerciseName,
+  };
 }
 
 /**

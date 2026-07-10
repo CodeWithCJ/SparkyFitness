@@ -86,6 +86,8 @@ const WorkoutPlaybackDialogs = ({
               <Input
                 id="custom-rest-seconds"
                 type="number"
+                inputMode="numeric"
+                dir="ltr"
                 min={MIN_REST_SECONDS}
                 max={MAX_REST_SECONDS}
                 step={5}

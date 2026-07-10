@@ -7,6 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import EditableSetRow from './EditableSetRow';
 import type { WorkoutDraftSet } from '../types/drafts';
+import { mobileT } from '../localization';
 
 interface EditableSetListProps {
   exerciseClientId: string;
@@ -41,9 +42,15 @@ function EditableSetList({
       {sets.length > 0 && (
         <Animated.View className="mt-2" layout={LinearTransition.duration(300)}>
           <View className="flex-row items-center py-1 mb-1">
-            <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
-            <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
-            <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+            <Text className="text-xs font-semibold text-text-muted w-10 text-center">
+              {mobileT('activityDetail.set')}
+            </Text>
+            <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+              {mobileT('activityDetail.weight')}
+            </Text>
+            <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+              {mobileT('activityDetail.reps')}
+            </Text>
             <View style={{ width: 18 }} />
           </View>
           {sets.map((set, index) => {
@@ -82,10 +89,12 @@ function EditableSetList({
         className="flex-row items-center justify-center py-3"
         onPress={() => onAddSet(exerciseClientId)}
         activeOpacity={0.6}
+        accessibilityRole="button"
+        accessibilityLabel={mobileT('workoutCard.addSet')}
       >
         <Icon name="add" size={18} color={accentPrimary} />
-        <Text className="text-base font-medium ml-1" style={{ color: accentPrimary }}>
-          Add Set
+        <Text className="text-base font-medium ms-1" style={{ color: accentPrimary }}>
+          {mobileT('workoutCard.addSet')}
         </Text>
       </TouchableOpacity>
     </>

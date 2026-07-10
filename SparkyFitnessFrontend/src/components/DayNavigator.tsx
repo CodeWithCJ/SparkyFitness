@@ -34,6 +34,9 @@ const DayNavigator = ({
 
   const selectedPickerDate = parseDateInUserTimezone(selectedDate);
   const selectedDateRelation = getDateRelationToToday(selectedDate);
+  const formattedSelectedDate = selectedPickerDate
+    ? formatDate(selectedPickerDate)
+    : t('common.pickADate');
 
   const handleDateSelect = (newDate: Date | undefined) => {
     debug(loggingLevel, 'Handling date select from calendar:', newDate);
@@ -71,12 +74,13 @@ const DayNavigator = ({
       <div className="flex justify-end">
         {selectedDateRelation !== 'today' && (
           <Button
+            type="button"
             variant="ghost"
             size="sm"
             className="text-xs text-muted-foreground h-9 px-3 rounded-full border border-border/60"
             onClick={handleToday}
           >
-            Today
+            {t('common.today')}
           </Button>
         )}
       </div>
@@ -98,18 +102,27 @@ const DayNavigator = ({
           />
         )}
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           onClick={handlePreviousDay}
-          className="relative h-12 w-12 sm:h-9 sm:w-9 rounded-none border-r border-border/60"
+          className="relative h-12 w-12 sm:h-9 sm:w-9 rounded-none border-e border-border/60"
+          aria-label={t('common.previousDay')}
         >
-          <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
+          <ChevronLeft
+            className="h-5 w-5 sm:h-4 sm:w-4 rtl:rotate-180"
+            aria-hidden="true"
+          />
         </Button>
         <Popover>
           <PopoverTrigger asChild>
             <Button
+              type="button"
               variant="ghost"
               className="relative h-12 px-4 sm:h-9 rounded-none font-normal text-sm gap-2"
+              aria-label={t('common.openDatePicker', {
+                date: formattedSelectedDate,
+              })}
             >
               <CalendarIcon
                 className={cn(
@@ -119,7 +132,7 @@ const DayNavigator = ({
                 )}
               />
               {selectedPickerDate ? (
-                formatDate(selectedPickerDate)
+                formattedSelectedDate
               ) : (
                 <span className="text-muted-foreground">
                   {t('foodDiary.pickADate', 'Pick a Date')}
@@ -137,12 +150,17 @@ const DayNavigator = ({
           </PopoverContent>
         </Popover>
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           onClick={handleNextDay}
-          className="relative h-12 w-12 sm:h-9 sm:w-9 rounded-none border-l border-border/60"
+          className="relative h-12 w-12 sm:h-9 sm:w-9 rounded-none border-s border-border/60"
+          aria-label={t('common.nextDay')}
         >
-          <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
+          <ChevronRight
+            className="h-5 w-5 sm:h-4 sm:w-4 rtl:rotate-180"
+            aria-hidden="true"
+          />
         </Button>
       </div>
       <div />

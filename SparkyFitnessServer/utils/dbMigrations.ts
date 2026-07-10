@@ -8,9 +8,42 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const migrationsDir = path.join(__dirname, '../db/migrations');
+const migrationAdvisoryLockId = 2026070901;
+const betterAuthCutoverMigration = '20260125000000_better_auth_migration.sql';
+
+function isSupabasePostgresHost(): boolean {
+  return (
+    process.env.SPARKY_FITNESS_DB_PROVIDER === 'supabase' ||
+    process.env.SPARKY_FITNESS_DB_HOST?.endsWith('.supabase.co') === true
+  );
+}
+
+function prepareMigrationSqlForRuntime(file: string, sql: string): string {
+  if (!isSupabasePostgresHost()) {
+    return sql;
+  }
+
+  if (file <= betterAuthCutoverMigration) {
+    return sql
+      .replaceAll(
+        'CREATE SCHEMA IF NOT EXISTS auth;',
+        'CREATE SCHEMA IF NOT EXISTS legacy_auth;'
+      )
+      .replaceAll('auth.users', 'legacy_auth.users');
+  }
+
+  return sql.replaceAll('auth.users', '"user"');
+}
+
 async function applyMigrations() {
   const client = await getSystemClient();
+  let hasMigrationLock = false;
   try {
+    await client.query('SELECT pg_advisory_lock($1)', [
+      migrationAdvisoryLockId,
+    ]);
+    hasMigrationLock = true;
+    log('info', 'Acquired migration advisory lock.');
     // The preflightChecks.js script now ensures these variables are set.
     const appUserRaw = process.env.SPARKY_FITNESS_APP_DB_USER;
     // @ts-expect-error TS(2532): Object is possibly 'undefined'.
@@ -60,7 +93,10 @@ async function applyMigrations() {
       if (!appliedMigrations.has(file)) {
         log('info', `Applying migration: ${file}`);
         const filePath = path.join(migrationsDir, file);
-        const sql = fs.readFileSync(filePath, 'utf8');
+        const sql = prepareMigrationSqlForRuntime(
+          file,
+          fs.readFileSync(filePath, 'utf8')
+        );
         // The grantPermissions.js script now handles dynamic permission granting.
         // We simply execute the original migration script content.
         await client.query(sql);
@@ -80,10 +116,21 @@ async function applyMigrations() {
     log('error', 'Error applying migrations:', error);
     throw error;
   } finally {
+    if (hasMigrationLock) {
+      try {
+        await client.query('SELECT pg_advisory_unlock($1)', [
+          migrationAdvisoryLockId,
+        ]);
+        log('info', 'Released migration advisory lock.');
+      } catch (unlockError) {
+        log('error', 'Error releasing migration advisory lock:', unlockError);
+      }
+    }
     client.release();
   }
 }
-export { applyMigrations };
+export { applyMigrations, prepareMigrationSqlForRuntime };
 export default {
   applyMigrations,
+  prepareMigrationSqlForRuntime,
 };

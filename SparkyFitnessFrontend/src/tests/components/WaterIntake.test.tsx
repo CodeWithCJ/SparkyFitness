@@ -11,7 +11,7 @@ import { renderWithClient } from '../test-utils';
 // Mock hooks and contexts
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, string>) => {
+    t: (key: string, options?: Record<string, string | number>) => {
       if (
         key === 'foodDiary.waterIntake.perDrink' ||
         key === 'foodDiary.waterIntake.defaultPerDrink'
@@ -19,8 +19,18 @@ jest.mock('react-i18next', () => ({
         return `${options?.['volume']} ${options?.['unit']}`;
       }
       if (key === 'foodDiary.waterIntake.title') {
-        return 'Water Intake';
+        return 'شرب الماء';
       }
+      if (key === 'foodDiary.waterIntake.progress') {
+        return `${options?.['current']} من ${options?.['goal']} ${options?.['unit']}`;
+      }
+      if (key === 'units.milliliter') return 'مل';
+      if (key === 'foodDiary.waterIntake.decrease') return 'نقص مشروب';
+      if (key === 'foodDiary.waterIntake.increase') return 'إضافة مشروب';
+      if (key === 'foodDiary.waterIntake.previousContainer')
+        return 'العبوة السابقة';
+      if (key === 'foodDiary.waterIntake.nextContainer')
+        return 'العبوة التالية';
       return key;
     },
     i18n: {
@@ -126,7 +136,7 @@ describe('WaterIntake Component', () => {
 
     expect(screen.getByText(/WORK BOTTLE/i)).toBeInTheDocument();
     // The volume should be between the plus/minus buttons
-    expect(screen.getByText('500 ml')).toBeInTheDocument();
+    expect(screen.getByText('500 مل')).toBeInTheDocument();
     // Primary container should have a star
     expect(screen.getByTestId('star-icon')).toBeInTheDocument();
   });
@@ -134,11 +144,10 @@ describe('WaterIntake Component', () => {
   it('cycles to the next container and updates the volume display', () => {
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
-    const nextButton = screen.getByTestId('chevron-right').parentElement;
-    fireEvent.click(nextButton!);
+    fireEvent.click(screen.getByRole('button', { name: 'العبوة التالية' }));
 
     expect(screen.getByText(/HOME GLASS/i)).toBeInTheDocument();
-    expect(screen.getByText('250 ml')).toBeInTheDocument();
+    expect(screen.getByText('250 مل')).toBeInTheDocument();
     // Non-primary container should NOT have a star
     expect(screen.queryByTestId('star-icon')).not.toBeInTheDocument();
   });
@@ -146,11 +155,9 @@ describe('WaterIntake Component', () => {
   it('calls update mutation with the toggled container ID when clicking the Plus icon button', () => {
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
-    const nextButton = screen.getByTestId('chevron-right').parentElement;
-    fireEvent.click(nextButton!); // Switch to Home Glass (ID: 2, 250ml)
+    fireEvent.click(screen.getByRole('button', { name: 'العبوة التالية' }));
 
-    const plusButton = screen.getByTestId('plus-icon').parentElement;
-    fireEvent.click(plusButton!);
+    fireEvent.click(screen.getByRole('button', { name: 'إضافة مشروب' }));
 
     expect(mockMutate).toHaveBeenCalledWith({
       user_id: 'user-1',
@@ -166,7 +173,14 @@ describe('WaterIntake Component', () => {
 
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
-    const minusButton = screen.getByTestId('minus-icon').parentElement;
-    expect(minusButton).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'نقص مشروب' })).toBeDisabled();
+  });
+
+  it('exposes the water goal as an accessible progress indicator', () => {
+    renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
+
+    expect(
+      screen.getByRole('progressbar', { name: '500 من 2000 مل' })
+    ).toHaveAttribute('aria-valuenow', '25');
   });
 });

@@ -138,7 +138,7 @@ describe('FoodPhotoLogEntryScreen', () => {
   it('builds entry quantity from servings × serving_size at the default 1 serving', async () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('حفظ'));
 
     await waitFor(() => {
       expect(addEntryAsync).toHaveBeenCalledTimes(1);
@@ -164,12 +164,12 @@ describe('FoodPhotoLogEntryScreen', () => {
       buildSaveFoodPayload({ name: 'Edited name', calories: 400 }),
     );
     expect(screen.getByText('Edited name')).toBeTruthy();
-    expect(screen.getByText('400')).toBeTruthy();
+    expect(screen.getByText('٤٠٠')).toBeTruthy();
   });
 
   it('invalidates the daily summary cache for the entry date on success', async () => {
     const screen = renderScreen();
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('حفظ'));
 
     await waitFor(() => {
       expect(invalidateCache).toHaveBeenCalledWith('2026-05-18');

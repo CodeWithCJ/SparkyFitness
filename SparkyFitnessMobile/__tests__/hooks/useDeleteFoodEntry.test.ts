@@ -48,7 +48,7 @@ describe('useDeleteFoodEntry', () => {
 
     // Press "Delete" in the Alert
     const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
-    const deleteButton = alertCall[2].find((btn: any) => btn.text === 'Delete');
+    const deleteButton = alertCall[2].find((btn: any) => btn.text === 'حذف');
     await act(async () => {
       deleteButton.onPress();
     });
@@ -76,7 +76,7 @@ describe('useDeleteFoodEntry', () => {
     });
 
     const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
-    const deleteButton = alertCall[2].find((btn: any) => btn.text === 'Delete');
+    const deleteButton = alertCall[2].find((btn: any) => btn.text === 'حذف');
     await act(async () => {
       deleteButton.onPress();
     });
@@ -124,7 +124,7 @@ describe('useDeleteFoodEntry', () => {
     });
 
     const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
-    const deleteButton = alertCall[2].find((btn: any) => btn.text === 'Delete');
+    const deleteButton = alertCall[2].find((btn: any) => btn.text === 'حذف');
     await act(async () => {
       deleteButton.onPress();
     });
@@ -132,8 +132,8 @@ describe('useDeleteFoodEntry', () => {
     await waitFor(() => {
       expect(Toast.show).toHaveBeenCalledWith({
         type: 'error',
-        text1: 'Failed to delete',
-        text2: 'Please try again.',
+        text1: 'ما قدرنا نحذف',
+        text2: 'حاول مرة ثانية',
       });
     });
   });
@@ -152,11 +152,11 @@ describe('useDeleteFoodEntry', () => {
     });
 
     expect(Alert.alert).toHaveBeenCalledWith(
-      'Delete Entry',
-      'Are you sure you want to delete this food entry?',
+      'حذف التسجيل',
+      'متأكد تبي تحذف هالتسجيل الغذائي؟',
       expect.arrayContaining([
-        expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
-        expect.objectContaining({ text: 'Delete', style: 'destructive' }),
+        expect.objectContaining({ text: 'إلغاء', style: 'cancel' }),
+        expect.objectContaining({ text: 'حذف', style: 'destructive' }),
       ]),
     );
   });
@@ -175,7 +175,7 @@ describe('useDeleteFoodEntry', () => {
     });
 
     const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
-    const cancelButton = alertCall[2].find((btn: any) => btn.text === 'Cancel');
+    const cancelButton = alertCall[2].find((btn: any) => btn.text === 'إلغاء');
 
     // Cancel button has no onPress handler (style: 'cancel' auto-dismisses)
     expect(cancelButton.onPress).toBeUndefined();

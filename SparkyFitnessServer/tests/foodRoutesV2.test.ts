@@ -5,7 +5,6 @@ import request from 'supertest';
 import foodCoreService from '../services/foodCoreService.js';
 import customNutrientService from '../services/customNutrientService.js';
 import { searchProviderFoods } from '../services/externalFoodSearchService.js';
-// @ts-expect-error TS(2691): An import path cannot end with a '.ts' extension. ... Remove this comment to see the full error message
 import foodRoutesV2 from '../routes/v2/foodRoutes.js';
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

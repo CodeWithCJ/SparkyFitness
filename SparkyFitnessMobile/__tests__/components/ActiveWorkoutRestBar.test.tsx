@@ -49,15 +49,15 @@ function fillStyle(getByTestId: (id: string) => any) {
 
 describe('formatRestCountdown', () => {
   it('formats M:SS, rounding partial seconds up', () => {
-    expect(formatRestCountdown(0)).toBe('0:00');
-    expect(formatRestCountdown(1_000)).toBe('0:01');
-    expect(formatRestCountdown(59_001)).toBe('1:00');
-    expect(formatRestCountdown(65_500)).toBe('1:06');
-    expect(formatRestCountdown(90_000)).toBe('1:30');
+    expect(formatRestCountdown(0)).toBe('٠:٠٠');
+    expect(formatRestCountdown(1_000)).toBe('٠:٠١');
+    expect(formatRestCountdown(59_001)).toBe('١:٠٠');
+    expect(formatRestCountdown(65_500)).toBe('١:٠٦');
+    expect(formatRestCountdown(90_000)).toBe('١:٣٠');
   });
 
   it('clamps negative remaining time to zero', () => {
-    expect(formatRestCountdown(-5_000)).toBe('0:00');
+    expect(formatRestCountdown(-5_000)).toBe('٠:٠٠');
   });
 });
 
@@ -72,13 +72,13 @@ describe('ActiveWorkoutRestBar', () => {
 
   it('renders the countdown and the on-deck label', () => {
     const { getByText } = renderBar();
-    expect(getByText('0:45')).toBeTruthy();
+    expect(getByText('٠:٤٥')).toBeTruthy();
     expect(getByText('Incline DB Press · Set 3')).toBeTruthy();
   });
 
   it('renders the target line when a next-set target is provided', () => {
-    const { getByText } = renderBar({ nextSetText: '135 lbs × 8' });
-    expect(getByText('Target 135 lbs × 8')).toBeTruthy();
+    const { getByText } = renderBar({ nextSetText: '١٣٥ رطل × ٨' });
+    expect(getByText('الهدف ١٣٥ رطل × ٨')).toBeTruthy();
   });
 
   it('sets the progress fill width to the remaining fraction', () => {
@@ -97,41 +97,47 @@ describe('ActiveWorkoutRestBar', () => {
   it('uses the accent color while resting', () => {
     const { getByTestId, getByText } = renderBar({ paused: false });
     expect(fillStyle(getByTestId).backgroundColor).toBe(ACCENT);
-    expect(StyleSheet.flatten(getByText('0:45').props.style).color).toBe(ACCENT);
+    expect(StyleSheet.flatten(getByText('٠:٤٥').props.style).color).toBe(ACCENT);
   });
 
   it('renders muted colors while paused', () => {
     const { getByTestId, getByText } = renderBar({ paused: true });
     expect(fillStyle(getByTestId).backgroundColor).toBe(MUTED);
-    expect(StyleSheet.flatten(getByText('0:45').props.style).color).toBe(MUTED);
+    expect(StyleSheet.flatten(getByText('٠:٤٥').props.style).color).toBe(MUTED);
   });
 
   it('fires onAdjust with −15 and +15', () => {
     const { getByLabelText, props } = renderBar();
-    fireEvent.press(getByLabelText('Shorten rest by 15 seconds'));
+    fireEvent.press(getByLabelText('تقليل الراحة ١٥ ثانية'));
     expect(props.onAdjust).toHaveBeenCalledWith(-15);
-    fireEvent.press(getByLabelText('Extend rest by 15 seconds'));
+    fireEvent.press(getByLabelText('زيادة الراحة ١٥ ثانية'));
     expect(props.onAdjust).toHaveBeenCalledWith(15);
     expect(props.onAdjust).toHaveBeenCalledTimes(2);
   });
 
   it('fires onSkip from the skip button', () => {
     const { getByLabelText, props } = renderBar();
-    fireEvent.press(getByLabelText('Skip rest'));
+    fireEvent.press(getByLabelText('تخطي الراحة'));
     expect(props.onSkip).toHaveBeenCalledTimes(1);
   });
 
   it('fires onPause from the pause control while resting', () => {
     const { getByLabelText, props } = renderBar({ paused: false });
-    fireEvent.press(getByLabelText('Pause rest'));
+    fireEvent.press(getByLabelText('إيقاف الراحة مؤقتًا'));
     expect(props.onPause).toHaveBeenCalledTimes(1);
     expect(props.onResume).not.toHaveBeenCalled();
   });
 
   it('fires onResume from the pause control while paused', () => {
     const { getByLabelText, props } = renderBar({ paused: true });
-    fireEvent.press(getByLabelText('Resume rest'));
+    fireEvent.press(getByLabelText('استئناف الراحة'));
     expect(props.onResume).toHaveBeenCalledTimes(1);
     expect(props.onPause).not.toHaveBeenCalled();
+  });
+
+  it('localizes the adjustment button copy', () => {
+    const { getByText } = renderBar();
+    expect(getByText('−١٥ ث')).toBeTruthy();
+    expect(getByText('+١٥ ث')).toBeTruthy();
   });
 });

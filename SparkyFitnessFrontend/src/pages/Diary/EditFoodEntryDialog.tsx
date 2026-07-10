@@ -39,10 +39,12 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 import {
   CONFIDENCE_TONES,
-  OVERALL_CONFIDENCE_LABELS,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
+import { useTranslation } from 'react-i18next';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
+import { getLocalizedMealTypeName } from '@/utils/mealTypeLocalization';
 
 const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
   success: 'text-emerald-600 dark:text-emerald-400',
@@ -63,6 +65,7 @@ const EditFoodEntryDialog = ({
   onOpenChange,
   availableMealTypes,
 }: EditFoodEntryDialogProps) => {
+  const { t } = useTranslation();
   const {
     loggingLevel,
     energyUnit,
@@ -90,6 +93,10 @@ const EditFoodEntryDialog = ({
 
   const loading = isLoadingFood || isLoadingVariants;
   const isEditingAllowed = open && !!entry && !entry.meal_id;
+  const getAiEstimateLabel = (confidence: AiConfidence) =>
+    t('foodEntryEditor.aiEstimate', {
+      confidence: t(`foodEntryEditor.confidence.${confidence}`),
+    });
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -202,9 +209,7 @@ const EditFoodEntryDialog = ({
     if (isConverting) {
       const convertedVariant = buildConvertedVariant();
       if (!convertedVariant) {
-        setConversionError(
-          'Please enter a valid unit name and conversion factor.'
-        );
+        setConversionError(t('foodEntryEditor.invalidConversion'));
         return;
       }
       setConversionError('');
@@ -235,7 +240,7 @@ const EditFoodEntryDialog = ({
         onOpenChange(false);
       } catch (err) {
         error(loggingLevel, 'Error saving converted variant:', err);
-        setConversionError('Failed to save the new unit. Please try again.');
+        setConversionError(t('foodEntryEditor.saveUnitError'));
       }
       return;
     }
@@ -278,18 +283,25 @@ const EditFoodEntryDialog = ({
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <DialogHeader>
-          <DialogTitle>Edit Food Entry</DialogTitle>
+          <DialogTitle>{t('foodEntryEditor.title')}</DialogTitle>
           <DialogDescription>
-            Edit the quantity and serving unit for your food entry.
+            {t('foodEntryEditor.description')}
           </DialogDescription>
-          <p className="text-sm text-red-500 mt-2">
-            Note: Updating this entry will use the latest available variant
-            details for the food, not the original snapshot.
+          <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+            {t('foodEntryEditor.latestVariantNotice')}
           </p>
         </DialogHeader>
 
         {loading ? (
-          <div>Loading...</div>
+          <div
+            role="status"
+            aria-label={t('foodEntryEditor.loading')}
+            className="py-8 text-center text-sm text-muted-foreground"
+          >
+            <span className="animate-pulse">
+              {t('foodEntryEditor.loading')}
+            </span>
+          </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
@@ -304,9 +316,11 @@ const EditFoodEntryDialog = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
-                  <Label htmlFor="quantity">Quantity</Label>
+                  <Label htmlFor="quantity">
+                    {t('foodEntryEditor.quantity')}
+                  </Label>
                   <Input
                     id="quantity"
                     type="number"
@@ -319,13 +333,13 @@ const EditFoodEntryDialog = ({
                 </div>
 
                 <div>
-                  <Label htmlFor="unit">Unit</Label>
+                  <Label htmlFor="unit">{t('foodEntryEditor.unit')}</Label>
                   <div className="flex items-center gap-2">
                     <Select
                       value={dropdownValue}
                       onValueChange={handleUnitChange}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="unit">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -334,12 +348,17 @@ const EditFoodEntryDialog = ({
                             variant.id && (
                               <SelectItem key={variant.id} value={variant.id}>
                                 <span className="flex items-center gap-1.5">
-                                  {variant.serving_unit}
+                                  {getLocalizedUnitLabel(
+                                    variant.serving_unit,
+                                    t
+                                  )}
                                   {variant.source === 'ai_estimate' &&
                                     variant.ai_confidence && (
                                       <Sparkles
                                         className={`h-3 w-3 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}
-                                        aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[variant.ai_confidence as AiConfidence]} confidence)`}
+                                        aria-label={getAiEstimateLabel(
+                                          variant.ai_confidence as AiConfidence
+                                        )}
                                       />
                                     )}
                                 </span>
@@ -358,9 +377,12 @@ const EditFoodEntryDialog = ({
                               return (
                                 <SelectItem key={u} value={u}>
                                   <span className="flex items-center gap-1.5">
-                                    {u}
+                                    {getLocalizedUnitLabel(u, t)}
                                     {compatible && (
-                                      <Check className="h-3 w-3 text-green-500" />
+                                      <Check
+                                        className="h-3 w-3 text-green-500"
+                                        aria-hidden="true"
+                                      />
                                     )}
                                   </span>
                                 </SelectItem>
@@ -370,7 +392,7 @@ const EditFoodEntryDialog = ({
                         )}
                         <SelectSeparator />
                         <SelectItem value="__custom__">
-                          Custom unit...
+                          {t('foodEntryEditor.customUnit')}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -378,21 +400,23 @@ const EditFoodEntryDialog = ({
                       selectedVariant.ai_confidence && (
                         <Sparkles
                           className={`h-4 w-4 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[selectedVariant.ai_confidence as AiConfidence]]}`}
-                          aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[selectedVariant.ai_confidence as AiConfidence]} confidence)`}
+                          aria-label={getAiEstimateLabel(
+                            selectedVariant.ai_confidence as AiConfidence
+                          )}
                         />
                       )}
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="meal">Meal</Label>
+                  <Label htmlFor="meal">{t('foodEntryEditor.meal')}</Label>
                   <Select value={mealId} onValueChange={setMealId}>
-                    <SelectTrigger>
+                    <SelectTrigger id="meal">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {availableMealTypes.map((mealType) => (
                         <SelectItem key={mealType.id} value={mealType.id}>
-                          {mealType.name}
+                          {getLocalizedMealTypeName(mealType.name, t)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -404,11 +428,13 @@ const EditFoodEntryDialog = ({
               {pendingUnitIsCustom && (
                 <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
                   <div>
-                    <Label htmlFor="customUnitName">Unit name</Label>
+                    <Label htmlFor="customUnitName">
+                      {t('foodEntryEditor.unitName')}
+                    </Label>
                     <Input
                       id="customUnitName"
                       type="text"
-                      placeholder="e.g. slice, bar, scoop"
+                      placeholder={t('foodEntryEditor.unitNamePlaceholder')}
                       value={pendingUnit}
                       onChange={(e) => {
                         setPendingUnit(e.target.value);
@@ -419,15 +445,22 @@ const EditFoodEntryDialog = ({
                   {pendingUnit.trim() && (
                     <div>
                       <Label htmlFor="conversionFactor">
-                        1 {pendingUnit.trim()} ={' '}
-                        {conversionBaseVariant?.serving_unit}
+                        {t('foodEntryEditor.conversionEquation', {
+                          from: pendingUnit.trim(),
+                          to: getLocalizedUnitLabel(
+                            conversionBaseVariant?.serving_unit || '',
+                            t
+                          ),
+                        })}
                       </Label>
                       <Input
                         id="conversionFactor"
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 1"
+                        placeholder={t(
+                          'foodEntryEditor.conversionFactorPlaceholder'
+                        )}
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -448,7 +481,7 @@ const EditFoodEntryDialog = ({
                     size="sm"
                     onClick={cancelConversion}
                   >
-                    Cancel
+                    {t('foodEntryEditor.cancel')}
                   </Button>
                 </div>
               )}
@@ -459,22 +492,32 @@ const EditFoodEntryDialog = ({
                 autoConversionFactor === null && (
                   <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
                     <p className="text-sm text-muted-foreground">
-                      These units can&apos;t be converted automatically — enter
-                      how many{' '}
-                      <strong>{conversionBaseVariant?.serving_unit}</strong> are
-                      in 1 <strong>{pendingUnit}</strong>.
+                      {t('foodEntryEditor.manualConversionHelp', {
+                        from: getLocalizedUnitLabel(pendingUnit, t),
+                        to: getLocalizedUnitLabel(
+                          conversionBaseVariant?.serving_unit || '',
+                          t
+                        ),
+                      })}
                     </p>
                     <div>
                       <Label htmlFor="conversionFactor">
-                        1 {pendingUnit} = ?{' '}
-                        {conversionBaseVariant?.serving_unit}
+                        {t('foodEntryEditor.conversionEquation', {
+                          from: getLocalizedUnitLabel(pendingUnit, t),
+                          to: getLocalizedUnitLabel(
+                            conversionBaseVariant?.serving_unit || '',
+                            t
+                          ),
+                        })}
                       </Label>
                       <Input
                         id="conversionFactor"
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 1"
+                        placeholder={t(
+                          'foodEntryEditor.conversionFactorPlaceholder'
+                        )}
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -494,7 +537,7 @@ const EditFoodEntryDialog = ({
                       size="sm"
                       onClick={cancelConversion}
                     >
-                      Cancel
+                      {t('foodEntryEditor.cancel')}
                     </Button>
                   </div>
                 )}
@@ -512,13 +555,13 @@ const EditFoodEntryDialog = ({
                 </div>
               )}
 
-              <div className="flex justify-end space-x-2 mt-6">
+              <div className="flex justify-end gap-2 mt-6">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  Cancel
+                  {t('foodEntryEditor.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -531,8 +574,8 @@ const EditFoodEntryDialog = ({
                   }
                 >
                   {createFoodVariantMutation.isPending
-                    ? 'Saving...'
-                    : 'Save Changes'}
+                    ? t('foodEntryEditor.saving')
+                    : t('foodEntryEditor.save')}
                 </Button>
               </div>
             </div>

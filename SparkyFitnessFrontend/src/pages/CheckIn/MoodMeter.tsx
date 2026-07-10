@@ -150,6 +150,10 @@ const MoodMeter = ({
     (m) => !hidden.includes(m.name)
   );
   const visibleCustoms = custom.filter((cm) => !hidden.includes(cm.name));
+  const getBuiltInMoodLabel = (name: string, fallback: string) =>
+    t(`moodMeter.${name}`, fallback);
+  const getColorLabel = (color: string) =>
+    t(`moodMeter.colors.${color}`, color);
 
   const Chip = ({
     name,
@@ -209,13 +213,14 @@ const MoodMeter = ({
         <div className="mt-2 flex items-center justify-between px-0.5">
           {BANDED_MOODS.map((m) => {
             const active = currentBandName === m.name;
+            const moodLabel = getBuiltInMoodLabel(m.name, m.displayName);
             return (
               <button
                 key={m.name}
                 type="button"
                 onClick={() => onMoodChange(representativeMoodValue([m.name]))}
-                aria-label={m.displayName}
-                title={m.displayName}
+                aria-label={moodLabel}
+                title={moodLabel}
                 className={cn(
                   'text-lg leading-none transition',
                   active
@@ -237,11 +242,11 @@ const MoodMeter = ({
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
-                <Settings className="mr-1 h-3.5 w-3.5" />
+                <Settings className="me-1 h-3.5 w-3.5" />
                 {t('moodMeter.manage', 'Manage')}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {t('moodMeter.manageMoods', 'Manage moods')}
@@ -253,7 +258,11 @@ const MoodMeter = ({
                 <p className="text-xs font-medium text-muted-foreground">
                   {t('moodMeter.addCustom', 'Add a custom mood')}
                 </p>
+                <Label htmlFor="custom-mood-name" className="sr-only">
+                  {t('moodMeter.moodName', 'Mood name')}
+                </Label>
                 <Input
+                  id="custom-mood-name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder={t('moodMeter.moodName', 'Mood name')}
@@ -264,6 +273,12 @@ const MoodMeter = ({
                       key={e}
                       type="button"
                       onClick={() => setNewEmoji(e)}
+                      aria-label={t(
+                        'moodMeter.selectEmoji',
+                        'Select emoji {{emoji}}',
+                        { emoji: e }
+                      )}
+                      aria-pressed={newEmoji === e}
                       className={cn(
                         'flex h-8 w-8 items-center justify-center rounded-lg border text-lg',
                         newEmoji === e
@@ -281,7 +296,12 @@ const MoodMeter = ({
                       key={c}
                       type="button"
                       onClick={() => setNewColor(c)}
-                      aria-label={c}
+                      aria-label={t(
+                        'moodMeter.selectColor',
+                        'Select color {{color}}',
+                        { color: getColorLabel(c) }
+                      )}
+                      aria-pressed={newColor === c}
                       className={cn(
                         'h-7 w-7 rounded-full border-2',
                         newColor === c
@@ -307,19 +327,24 @@ const MoodMeter = ({
                 <p className="mb-1 text-xs font-medium text-muted-foreground">
                   {t('moodMeter.showHide', 'Show or hide moods')}
                 </p>
-                {BUILT_IN_MOODS.map((m) => (
-                  <ManageRow
-                    key={m.name}
-                    label={`${m.emoji} ${m.displayName}`}
-                    color={m.color}
-                    isHidden={hidden.includes(m.name)}
-                    onToggleHidden={() => toggleHidden(m.name)}
-                  />
-                ))}
+                {BUILT_IN_MOODS.map((m) => {
+                  const moodLabel = getBuiltInMoodLabel(m.name, m.displayName);
+                  return (
+                    <ManageRow
+                      key={m.name}
+                      label={`${m.emoji} ${moodLabel}`}
+                      accessibleLabel={moodLabel}
+                      color={m.color}
+                      isHidden={hidden.includes(m.name)}
+                      onToggleHidden={() => toggleHidden(m.name)}
+                    />
+                  );
+                })}
                 {custom.map((cm) => (
                   <ManageRow
                     key={cm.id}
                     label={`${cm.icon ?? '•'} ${cm.display_name ?? cm.name}`}
+                    accessibleLabel={cm.display_name ?? cm.name}
                     color={cm.color}
                     isHidden={hidden.includes(cm.name)}
                     onToggleHidden={() => toggleHidden(cm.name)}
@@ -338,7 +363,7 @@ const MoodMeter = ({
             <Chip
               key={m.name}
               name={m.name}
-              label={m.displayName}
+              label={getBuiltInMoodLabel(m.name, m.displayName)}
               emoji={m.emoji}
               color={m.color}
             />
@@ -377,12 +402,14 @@ const MoodMeter = ({
 
 function ManageRow({
   label,
+  accessibleLabel,
   color,
   isHidden,
   onToggleHidden,
   onDelete,
 }: {
   label: string;
+  accessibleLabel: string;
   color?: string | null;
   isHidden: boolean;
   onToggleHidden: () => void;
@@ -411,7 +438,15 @@ function ManageRow({
           size="icon"
           className="h-6 w-6"
           onClick={onToggleHidden}
-          aria-label={isHidden ? 'Show mood' : 'Hide mood'}
+          aria-label={
+            isHidden
+              ? t('moodMeter.showMood', 'Show {{mood}}', {
+                  mood: accessibleLabel,
+                })
+              : t('moodMeter.hideMood', 'Hide {{mood}}', {
+                  mood: accessibleLabel,
+                })
+          }
         >
           {isHidden ? (
             <EyeOff className="h-3.5 w-3.5" />
@@ -427,7 +462,9 @@ function ManageRow({
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                aria-label="Delete mood"
+                aria-label={t('moodMeter.deleteMood', 'Delete {{mood}}', {
+                  mood: accessibleLabel,
+                })}
               >
                 <Trash className="h-3.5 w-3.5" />
               </Button>

@@ -16,7 +16,6 @@ import { Mail, QrCode, KeyRound, Loader2 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { getErrorMessage } from '@/utils/api';
 import { BetterAuthUser } from '@/types/auth';
 
 export interface MfaChallengeProps {
@@ -32,7 +31,7 @@ export interface MfaChallengeProps {
 
 const MfaChallenge: React.FC<MfaChallengeProps> = ({
   email,
-  mfaTotpEnabled = true, // Defaulting to true as Better Auth usually starts with TOTP
+  mfaTotpEnabled = true,
   mfaEmailEnabled = false,
   needsMfaSetup = false,
   onMfaSuccess,
@@ -49,6 +48,13 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
   const [activeTab, setActiveTab] = useState(
     mfaTotpEnabled ? 'totp' : mfaEmailEnabled ? 'email' : 'recovery'
   );
+  const factorCount = Number(mfaTotpEnabled) + Number(mfaEmailEnabled) + 1;
+  const tabGridClass =
+    factorCount === 3
+      ? 'grid-cols-3'
+      : factorCount === 2
+        ? 'grid-cols-2'
+        : 'grid-cols-1';
 
   useEffect(() => {
     // Validation for missing critical info
@@ -88,15 +94,16 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
         );
         onMfaSuccess();
       }
-    } catch (err: unknown) {
-      const message = getErrorMessage(err);
+    } catch {
       toast({
         title: t(
           'mfaChallenge.error.verificationFailed',
           'Verification Failed'
         ),
-        description:
-          message || t('mfaChallenge.error.totpInvalid', 'Invalid TOTP code.'),
+        description: t(
+          'mfaChallenge.error.totpInvalid',
+          'That authenticator code is not valid. Try again.'
+        ),
         variant: 'destructive',
       });
     } finally {
@@ -112,14 +119,19 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
 
       setEmailCodeSent(true);
       toast({
-        title: 'Code Sent',
-        description: 'A verification code has been sent to your email.',
+        title: t('mfaChallenge.emailCodeSentTitle', 'Code sent'),
+        description: t(
+          'mfaChallenge.emailCodeSentDescription',
+          'Check your email for the verification code.'
+        ),
       });
-    } catch (err: unknown) {
-      const message = getErrorMessage(err);
+    } catch {
       toast({
-        title: 'Error',
-        description: message || 'Failed to send code.',
+        title: t('mfaChallenge.error.sendFailedTitle', 'Code not sent'),
+        description: t(
+          'mfaChallenge.error.sendFailedDescription',
+          'We could not send a code. Check your connection and try again.'
+        ),
         variant: 'destructive',
       });
     } finally {
@@ -151,11 +163,16 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
         );
         onMfaSuccess();
       }
-    } catch (err: unknown) {
-      const message = getErrorMessage(err);
+    } catch {
       toast({
-        title: 'Error',
-        description: message || 'Invalid email code.',
+        title: t(
+          'mfaChallenge.error.verificationFailed',
+          'Verification failed'
+        ),
+        description: t(
+          'mfaChallenge.error.emailCodeInvalid',
+          'That email code is not valid. Try again.'
+        ),
         variant: 'destructive',
       });
     } finally {
@@ -187,16 +204,16 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
         );
         onMfaSuccess();
       }
-    } catch (err: unknown) {
-      const message = getErrorMessage(err);
+    } catch {
       toast({
         title: t(
           'mfaChallenge.error.verificationFailed',
           'Verification Failed'
         ),
-        description:
-          message ||
-          t('mfaChallenge.error.recoveryCodeInvalid', 'Invalid recovery code.'),
+        description: t(
+          'mfaChallenge.error.recoveryCodeInvalid',
+          'That recovery code is not valid. Try again.'
+        ),
         variant: 'destructive',
       });
     } finally {
@@ -204,49 +221,48 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
     }
   };
 
-  // The entire card and its content are returned here
   return (
-    <Card className="w-[400px]">
+    <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle>
-          {t('mfaChallenge.challengeTitle', 'MFA Challenge')}
+          {t('mfaChallenge.challengeTitle', "Verify it's you")}
         </CardTitle>
         <CardDescription>
           {needsMfaSetup
             ? t(
                 'mfaChallenge.setupRequired',
-                'MFA setup is required for your account. Please complete the setup.'
+                'Finish setting up two-step verification to continue.'
               )
             : t(
                 'mfaChallenge.verifyLogin',
-                'Please verify your login using one of your Multi-Factor Authentication methods.'
+                'Use one of your verification methods to continue.'
               )}
         </CardDescription>
         <p className="text-sm text-muted-foreground mt-2">
-          {t('mfaChallenge.loggedInAs', 'Logged in as:')}{' '}
+          {t('mfaChallenge.loggedInAs', 'Signing in as')}{' '}
           <strong>{email}</strong>
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="h-10 grid w-full grid-cols-3">
+          <TabsList className={`grid min-h-10 w-full ${tabGridClass}`}>
             {mfaTotpEnabled && (
               <TabsTrigger value="totp" disabled={needsMfaSetup}>
-                <QrCode className="h-4 w-4 mr-2" />{' '}
-                {t('mfaChallenge.totpTab', 'App Code')}
+                <QrCode className="h-4 w-4 me-2" />{' '}
+                {t('mfaChallenge.totpTab', 'Authenticator')}
               </TabsTrigger>
             )}
             {mfaEmailEnabled && (
               <TabsTrigger value="email" disabled={needsMfaSetup}>
-                <Mail className="h-4 w-4 mr-2" />{' '}
-                {t('mfaChallenge.emailTab', 'Email Code')}
+                <Mail className="h-4 w-4 me-2" />{' '}
+                {t('mfaChallenge.emailTab', 'Email')}
               </TabsTrigger>
             )}
             <TabsTrigger
               value="recovery"
-              className={needsMfaSetup ? 'col-span-3' : ''}
+              className={needsMfaSetup ? 'col-span-full' : ''}
             >
-              <KeyRound className="h-4 w-4 mr-2" />{' '}
+              <KeyRound className="h-4 w-4 me-2" />{' '}
               {t('mfaChallenge.recoveryTab', 'Recovery Code')}
             </TabsTrigger>
           </TabsList>
@@ -260,7 +276,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                 className="space-y-4"
               >
                 <Label htmlFor="totp-code">
-                  {t('mfaChallenge.totpCodeLabel', 'Authenticator App Code')}
+                  {t('mfaChallenge.totpCodeLabel', 'Authenticator code')}
                 </Label>
                 <Input
                   id="totp-code"
@@ -271,7 +287,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                   onChange={(e) => setTotpCode(e.target.value)}
                   placeholder={t(
                     'mfaChallenge.enterAppCode',
-                    'Enter code from authenticator app'
+                    'Enter the 6-digit code'
                   )}
                   autoComplete="one-time-code"
                   data-lpignore="true"
@@ -287,7 +303,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                   className="w-full"
                 >
                   {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
                   ) : null}
                   {t('mfaChallenge.verify', 'Verify')}
                 </Button>
@@ -304,9 +320,9 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                 className="space-y-4"
               >
                 <Label htmlFor="email-code">
-                  {t('mfaChallenge.emailCodeLabel', 'Email Verification Code')}
+                  {t('mfaChallenge.emailCodeLabel', 'Email verification code')}
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     id="email-code"
                     type="text"
@@ -316,7 +332,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                     onChange={(e) => setEmailOtpCode(e.target.value)}
                     placeholder={t(
                       'mfaChallenge.enterEmailCode',
-                      'Enter code from email'
+                      'Enter the 6-digit code'
                     )}
                     autoComplete="one-time-code"
                     data-lpignore="true"
@@ -332,9 +348,9 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                     disabled={loading || emailCodeSent}
                   >
                     {loading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="me-2 h-4 w-4 animate-spin" />
                     ) : null}
-                    {t('mfaChallenge.sendCode', 'Send Code')}
+                    {t('mfaChallenge.sendCode', 'Send code')}
                   </Button>
                 </div>
                 <Button
@@ -343,7 +359,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                   className="w-full"
                 >
                   {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
                   ) : null}
                   {t('mfaChallenge.verify', 'Verify')}
                 </Button>
@@ -383,9 +399,9 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
                 className="w-full"
               >
                 {loading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 ) : null}
-                {t('mfaChallenge.verifyRecovery', 'Verify Recovery Code')}
+                {t('mfaChallenge.verifyRecovery', 'Verify recovery code')}
               </Button>
             </form>
           </TabsContent>

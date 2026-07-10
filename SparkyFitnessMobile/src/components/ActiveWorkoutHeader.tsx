@@ -9,6 +9,12 @@ import AnchoredMenu, {
   type AnchorRect,
   type AnchoredMenuItem,
 } from './AnchoredMenu';
+import {
+  formatMobileExerciseCount,
+  formatMobileNumber,
+  isMobileRtl,
+  mobileT,
+} from '../localization';
 
 /** Per-exercise completion used by the segmented progress bar. */
 export interface ExerciseProgress {
@@ -33,7 +39,12 @@ export function formatElapsed(startedAt: number | null, now: number): string {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  const pad = (n: number) => n.toString().padStart(2, '0');
+  const pad = (n: number) =>
+    formatMobileNumber(n, {
+      minimumIntegerDigits: 2,
+      maximumFractionDigits: 0,
+      useGrouping: false,
+    });
   // Drop the hours segment until the workout actually crosses an hour, so a
   // one-minute set reads "01:00" rather than "00:01:00".
   return hours > 0
@@ -106,7 +117,7 @@ function ActiveWorkoutHeader({
   if (onEndWorkout) {
     menuItems.push({
       key: 'end-workout',
-      label: 'End workout',
+      label: mobileT('activeWorkout.endWorkout'),
       icon: 'checkmark-circle',
       onPress: onEndWorkout,
     });
@@ -114,7 +125,7 @@ function ActiveWorkoutHeader({
   if (onRename) {
     menuItems.push({
       key: 'rename',
-      label: 'Rename workout',
+      label: mobileT('activeWorkout.renameWorkout'),
       icon: 'pencil',
       onPress: onRename,
     });
@@ -122,7 +133,7 @@ function ActiveWorkoutHeader({
   if (onAddExercise) {
     menuItems.push({
       key: 'add-exercise',
-      label: 'Add exercise',
+      label: mobileT('workoutForm.addExercise'),
       icon: 'add',
       onPress: onAddExercise,
     });
@@ -130,7 +141,7 @@ function ActiveWorkoutHeader({
   if (onReorder) {
     menuItems.push({
       key: 'reorder',
-      label: 'Reorder exercises',
+      label: mobileT('workoutDetail.reorderExercises'),
       icon: 'swap-vertical',
       onPress: onReorder,
     });
@@ -138,14 +149,14 @@ function ActiveWorkoutHeader({
   if (onClearAllSets) {
     menuItems.push({
       key: 'clear-sets',
-      label: 'Clear logged sets',
+      label: mobileT('activeWorkout.clearLoggedSets'),
       icon: 'arrow-undo',
       onPress: onClearAllSets,
     });
   }
   menuItems.push({
     key: 'discard',
-    label: 'Discard workout',
+    label: mobileT('activeWorkout.discardWorkout'),
     icon: 'trash',
     onPress: onDiscard,
   });
@@ -157,10 +168,14 @@ function ActiveWorkoutHeader({
           onPress={onBack}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={mobileT('common.back')}
           className="p-2"
         >
-          <Icon name="chevron-back" size={22} color={textPrimary} />
+          <Icon
+            name={isMobileRtl ? 'chevron-forward' : 'chevron-back'}
+            size={22}
+            color={textPrimary}
+          />
         </Pressable>
 
         <View className="flex-1 items-center">
@@ -171,7 +186,9 @@ function ActiveWorkoutHeader({
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            {formatElapsed(startedAt, now)} elapsed
+            {mobileT('activeWorkout.elapsed', {
+              duration: formatElapsed(startedAt, now),
+            })}
           </Text>
         </View>
 
@@ -180,7 +197,7 @@ function ActiveWorkoutHeader({
             onPress={openMenu}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
-            accessibilityLabel="Workout menu"
+            accessibilityLabel={mobileT('activeWorkout.menu')}
             className="p-2"
           >
             <Icon name="ellipsis-horizontal" size={22} color={textMuted} />
@@ -216,7 +233,10 @@ function ActiveWorkoutHeader({
           className="text-xs text-text-secondary"
           style={{ fontVariant: ['tabular-nums'] }}
         >
-          {doneCount} / {progress.length} exercises
+          {mobileT('activeWorkout.exerciseProgress', {
+            done: formatMobileNumber(doneCount),
+            total: formatMobileExerciseCount(progress.length),
+          })}
         </Text>
       </View>
 

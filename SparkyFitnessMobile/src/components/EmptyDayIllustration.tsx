@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useCSSVariable } from 'uniwind';
+import { mobileT } from '../localization';
 
 const buildSvg = (main: string, subtle: string, medium: string, accent: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 746.83 359.73" opacity=".9">
   <g opacity=".74">
@@ -35,7 +36,9 @@ const EmptyDayIllustration: React.FC = () => {
   return (
     <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center">
       <SvgXml xml={buildSvg(main, subtle, medium, accent)} width="80%" height={100} />
-      <Text className="text-sm text-text-secondary mt-2">No entries recorded for this day</Text>
+      <Text className="text-sm text-text-secondary mt-2">
+        {mobileT('diary.emptyDay')}
+      </Text>
     </View>
   );
 };

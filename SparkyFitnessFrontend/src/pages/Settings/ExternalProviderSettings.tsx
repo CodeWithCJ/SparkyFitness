@@ -15,6 +15,7 @@ import { Database } from 'lucide-react';
 import AddExternalProviderForm from './AddExternalProviderForm';
 import ExternalProviderList from './ExternalProviderList';
 import GarminConnectSettings from './GarminConnectSettings';
+import HuaweiHealthSettings from './HuaweiHealthSettings';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useExternalProviders } from '@/hooks/Settings/useExternalProviderSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -100,6 +101,7 @@ const ExternalProviderSettings = () => {
         Configured External Data Providers
       </h3>
       <div className="space-y-6">
+        <HuaweiHealthSettings />
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

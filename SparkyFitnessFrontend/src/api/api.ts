@@ -8,12 +8,23 @@ interface ApiCallOptions extends RequestInit {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: Record<string, any>;
   suppress404Toast?: boolean; // New option to suppress toast for 404 errors
+  suppressErrorToast?: boolean;
+  sensitive?: boolean;
   externalApi?: boolean;
   isFormData?: boolean; // New option to indicate if the body is FormData
   responseType?: 'json' | 'text' | 'blob'; // Add responseType option
 }
 
-class HttpApiError extends Error {}
+export class HttpApiError extends Error {
+  constructor(
+    message: string,
+    public readonly code?: string,
+    public readonly status?: number
+  ) {
+    super(message);
+    this.name = 'HttpApiError';
+  }
+}
 
 export const API_BASE_URL = '/api';
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
@@ -74,11 +85,13 @@ export async function apiCall(
   }
 
   if (options?.body) {
-    logging.debug(
-      userLoggingLevel,
-      `API Call: Request body for ${endpoint}:`,
-      options.body
-    );
+    if (!options.sensitive) {
+      logging.debug(
+        userLoggingLevel,
+        `API Call: Request body for ${endpoint}:`,
+        options.body
+      );
+    }
     if (!options.isFormData && typeof options.body === 'object') {
       config.body = JSON.stringify(options.body);
     } else {
@@ -87,11 +100,15 @@ export async function apiCall(
   }
 
   try {
-    logging.debug(
-      userLoggingLevel,
-      `API Call: Sending request to ${url} with config:`,
-      config
-    );
+    if (options?.sensitive) {
+      logging.debug(userLoggingLevel, `API Call: Sending request to ${url}.`);
+    } else {
+      logging.debug(
+        userLoggingLevel,
+        `API Call: Sending request to ${url} with config:`,
+        config
+      );
+    }
     const response = await fetch(url, config);
     logging.debug(
       userLoggingLevel,
@@ -112,9 +129,22 @@ export async function apiCall(
       } else {
         errorData = { message: await response.text() };
       }
+      const structuredError =
+        errorData.error && typeof errorData.error === 'object'
+          ? errorData.error
+          : null;
+      const errorCode =
+        (typeof structuredError?.code === 'string'
+          ? structuredError.code
+          : undefined) ||
+        (typeof errorData.code === 'string' ? errorData.code : undefined);
       const errorMessage =
-        (errorData.error ? String(errorData.error) : '') ||
+        (typeof structuredError?.message === 'string'
+          ? structuredError.message
+          : '') ||
+        (typeof errorData.error === 'string' ? errorData.error : '') ||
         (errorData.message ? String(errorData.message) : '') ||
+        errorCode ||
         `API call failed with status ${response.status}`;
       logging.error(userLoggingLevel, `API Call: Error response from ${url}:`, {
         status: response.status,
@@ -153,18 +183,20 @@ export async function apiCall(
         );
         return null; // Return null for 404 with suppression
       } else {
-        toast({
-          title: 'API Error',
-          description: errorMessage,
-          variant: 'destructive',
-        });
+        if (!options?.suppressErrorToast) {
+          toast({
+            title: 'API Error',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+        }
         if (
           errorMessage.includes('Authentication: Invalid or expired token.')
         ) {
           localStorage.removeItem('token');
           // window.location.reload(); // Removed aggressive reload, causing loops
         }
-        throw new HttpApiError(errorMessage);
+        throw new HttpApiError(errorMessage, errorCode, response.status);
       }
     }
 
@@ -180,11 +212,13 @@ export async function apiCall(
     // Handle cases where the response might be empty (e.g., DELETE requests)
     const text = await response.text();
     const jsonResponse = text ? JSON.parse(text) : {};
-    logging.debug(
-      userLoggingLevel,
-      `API Call: Received JSON response from ${url}:`,
-      jsonResponse
-    );
+    if (!options?.sensitive) {
+      logging.debug(
+        userLoggingLevel,
+        `API Call: Received JSON response from ${url}:`,
+        jsonResponse
+      );
+    }
     //console.log(`API Call: Returning JSON response for ${url}:`, jsonResponse); // Added console.log
     return jsonResponse;
   } catch (err: unknown) {
@@ -194,11 +228,13 @@ export async function apiCall(
 
     const errorMessage = err instanceof Error ? err.message : String(err);
     logging.error(userLoggingLevel, 'API call network error:', err); // Log the raw error object for better debugging
-    toast({
-      title: 'Network Error',
-      description: errorMessage || 'Could not connect to the server.',
-      variant: 'destructive',
-    });
+    if (!options?.suppressErrorToast) {
+      toast({
+        title: 'Network Error',
+        description: errorMessage || 'Could not connect to the server.',
+        variant: 'destructive',
+      });
+    }
     throw new Error(errorMessage, { cause: err });
   }
 }

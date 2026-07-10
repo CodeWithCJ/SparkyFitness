@@ -6,6 +6,7 @@ import { addLog } from '../services/LogService';
 import type { TimeRange } from '../services/storage';
 import { serverConnectionQueryKey } from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
+import { formatMobileNumber, mobileT } from '../localization';
 
 interface SyncHealthDataParams {
   timeRange: TimeRange;
@@ -34,13 +35,13 @@ export function useSyncHealthData(options?: {
           uploadErrors: result.uploadErrors ?? [],
         };
       }
-      throw new Error(result.error || 'Unknown sync error');
+      throw new Error(result.error || 'UNKNOWN_SYNC_ERROR');
     },
     onMutate: () => {
       if (showToasts) {
         Toast.show({
           type: 'info',
-          text1: 'Syncing health data…',
+          text1: mobileT('sync.syncing'),
           visibilityTime: 2000,
         });
       }
@@ -52,25 +53,29 @@ export function useSyncHealthData(options?: {
         if (data.syncErrors.length > 0 || data.uploadErrors.length > 0) {
           const details = [
             data.syncErrors.length > 0
-              ? `${data.syncErrors.length} metric(s) could not be read. They will retry next sync.`
+              ? mobileT('sync.readErrors', {
+                  count: formatMobileNumber(data.syncErrors.length),
+                })
               : null,
             data.uploadErrors.length > 0
-              ? `${data.uploadErrors.length} record(s) were rejected by the server. See logs.`
+              ? mobileT('sync.uploadErrors', {
+                  count: formatMobileNumber(data.uploadErrors.length),
+                })
               : null,
           ]
             .filter(Boolean)
             .join(' ');
           Toast.show({
             type: 'info',
-            text1: 'Sync incomplete',
+            text1: mobileT('sync.incomplete'),
             text2: details,
             visibilityTime: 4000,
           });
         } else {
           Toast.show({
             type: 'success',
-            text1: 'Sync complete',
-            text2: 'Health data synced successfully.',
+            text1: mobileT('sync.complete'),
+            text2: mobileT('sync.completeDescription'),
             visibilityTime: 3000,
           });
         }
@@ -84,8 +89,8 @@ export function useSyncHealthData(options?: {
       if (showToasts) {
         Toast.show({
           type: 'error',
-          text1: 'Sync Error',
-          text2: error.message,
+          text1: mobileT('sync.failed'),
+          text2: mobileT('sync.failedDescription'),
           visibilityTime: 4000,
         });
       }

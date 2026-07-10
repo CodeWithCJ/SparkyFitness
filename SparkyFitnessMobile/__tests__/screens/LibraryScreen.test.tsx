@@ -193,9 +193,9 @@ describe('LibraryScreen', () => {
 
     const screen = renderScreen({ fetchCounts: ['foods', 'exercises'] });
 
-    expect(screen.getByText('Meals')).toBeTruthy();
-    expect(screen.getByText('Foods')).toBeTruthy();
-    expect(screen.getByText('Exercises')).toBeTruthy();
+    expect(screen.getByText('الوجبات')).toBeTruthy();
+    expect(screen.getByText('الأصناف الغذائية')).toBeTruthy();
+    expect(screen.getByText('التمارين')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
     await waitFor(() => {
       expect(screen.getByText('448')).toBeTruthy();
@@ -205,13 +205,13 @@ describe('LibraryScreen', () => {
 
   it('navigates to MealsLibrary when the Meals row is pressed', () => {
     const screen = renderScreen();
-    fireEvent.press(screen.getByText('Meals'));
+    fireEvent.press(screen.getByText('الوجبات'));
     expect(navigation.navigate).toHaveBeenCalledWith('MealsLibrary');
   });
 
   it('navigates to FoodsLibrary when the Foods row is pressed', () => {
     const screen = renderScreen();
-    fireEvent.press(screen.getByText('Foods'));
+    fireEvent.press(screen.getByText('الأصناف الغذائية'));
     expect(navigation.navigate).toHaveBeenCalledWith('FoodsLibrary');
   });
 
@@ -241,7 +241,7 @@ describe('LibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('Recently Logged')).toBeTruthy();
+    expect(screen.getByText('المسجّل مؤخرًا')).toBeTruthy();
     // Interleaved: meal, food, meal, food → 4 items total.
     expect(screen.getByText('Breakfast Bowl')).toBeTruthy();
     expect(screen.getByText('Apple')).toBeTruthy();
@@ -293,26 +293,42 @@ describe('LibraryScreen', () => {
 
   it('shows the empty state when there are no recent items', () => {
     const screen = renderScreen();
-    expect(screen.getByText('No recent items yet')).toBeTruthy();
+    expect(screen.getByText('ما سجّلت شي للحين')).toBeTruthy();
+  });
+
+  it('guides disconnected users to server settings in Arabic', () => {
+    mockUseServerConnection.mockReturnValue({
+      isConnected: false,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen();
+
+    expect(screen.getByText('ما فيه خادم مربوط')).toBeTruthy();
+    fireEvent.press(screen.getByText('الذهاب للإعدادات'));
+    expect(navigation.navigate).toHaveBeenCalledWith('Settings');
   });
 
   it('navigates to ExercisesLibrary when the Exercises browse row is pressed', () => {
     const screen = renderScreen();
-    fireEvent.press(screen.getByText('Exercises'));
+    fireEvent.press(screen.getByText('التمارين'));
     expect(navigation.navigate).toHaveBeenCalledWith('ExercisesLibrary');
   });
 
   it('navigates to WorkoutPresetsLibrary when the Workout presets row is pressed', () => {
     const screen = renderScreen();
-    fireEvent.press(screen.getByText('Workout presets'));
+    fireEvent.press(screen.getByText('قوالب التمرين'));
     expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetsLibrary');
   });
 
   it('does not queue multiple create screens during the same navigation transition', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Meal'));
-    fireEvent.press(screen.getByText('Workout preset'));
+    fireEvent.press(screen.getByText('وجبة'));
+    fireEvent.press(screen.getByText('قالب تمرين'));
 
     expect(navigation.navigate).toHaveBeenCalledTimes(1);
     expect(navigation.navigate).toHaveBeenCalledWith('MealAdd');
@@ -351,8 +367,9 @@ describe('LibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('Recently Logged')).toBeTruthy();
+    expect(screen.getByText('المسجّل مؤخرًا')).toBeTruthy();
     expect(screen.getByText('Bench Press')).toBeTruthy();
+    expect(screen.getByText('قوة')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Bench Press'));
     expect(navigation.navigate).toHaveBeenCalledWith(
@@ -406,7 +423,7 @@ describe('LibraryScreen', () => {
   it('navigates to FoodForm in create-food mode when the Food create tile is pressed', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Food'));
+    fireEvent.press(screen.getByText('صنف غذائي'));
     expect(navigation.navigate).toHaveBeenCalledWith('FoodForm', {
       mode: 'create-food',
       pickerMode: 'library',
@@ -416,7 +433,7 @@ describe('LibraryScreen', () => {
   it('navigates to ExerciseForm in create-exercise mode when the Exercise create tile is pressed', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Exercise'));
+    fireEvent.press(screen.getByText('تمرين'));
     expect(navigation.navigate).toHaveBeenCalledWith('ExerciseForm', {
       mode: 'create-exercise',
     });

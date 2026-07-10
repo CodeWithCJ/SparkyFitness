@@ -31,6 +31,11 @@ import { foodItemToFoodInfo } from '../types/foodInfo';
 import type { FoodItem } from '../types/foods';
 import type { Meal } from '../types/meals';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
+import {
+  isMobileRtl,
+  localizeExerciseCategory,
+  mobileT,
+} from '../localization';
 
 type LibraryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Library'>,
@@ -162,9 +167,13 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your library."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
+          title={mobileT('library.noServerTitle')}
+          subtitle={mobileT('library.noServerDescription')}
+          action={{
+            label: mobileT('common.goToSettings'),
+            onPress: () => navigation.navigate('Settings'),
+            variant: 'primary',
+          }}
         />
       </View>
     );
@@ -173,7 +182,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   if (isConnectionLoading) {
     return (
       <View className="flex-1 bg-background" style={usesNativeTabs ? undefined : { paddingTop: insets.top }}>
-        <StatusView loading title="Loading library..." />
+        <StatusView loading title={mobileT('library.loading')} />
       </View>
     );
   }
@@ -200,19 +209,23 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
       >
         {!usesNativeTabs && (
           <View className="mb-6">
-            <Text className="text-2xl font-bold text-text-primary">Library</Text>
+            <Text className="text-2xl font-bold text-text-primary">
+              {mobileT('tabs.library')}
+            </Text>
           </View>
         )}
 
         <View className="mb-3">
-          <Text className="text-lg font-semibold text-text-primary">Create</Text>
+          <Text className="text-lg font-semibold text-text-primary">
+            {mobileT('library.create')}
+          </Text>
         </View>
 
         <View className="flex-row flex-wrap justify-between mb-6">
           <CreateTile
             icon="food"
-            title="Food"
-            subtitle="Manual entry"
+            title={mobileT('library.food')}
+            subtitle={mobileT('library.manualEntry')}
             disabled={isNavigationLocked}
             onPress={() =>
               runNavigationAction(() =>
@@ -223,16 +236,16 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           />
           <CreateTile
             icon="meal"
-            title="Meal"
-            subtitle="Group foods"
+            title={mobileT('library.meal')}
+            subtitle={mobileT('library.groupFoods')}
             disabled={isNavigationLocked}
             onPress={() => runNavigationAction(() => navigation.navigate('MealAdd'))}
             className="w-[48%] mb-3"
           />
           <CreateTile
             icon="exercise-weights"
-            title="Exercise"
-            subtitle="Manual entry"
+            title={mobileT('library.exercise')}
+            subtitle={mobileT('library.manualEntry')}
             disabled={isNavigationLocked}
             onPress={() =>
               runNavigationAction(() =>
@@ -243,8 +256,8 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           />
           <CreateTile
             icon="bookmark-filled"
-            title="Workout preset"
-            subtitle="Exercise routine"
+            title={mobileT('library.workoutPreset')}
+            subtitle={mobileT('library.exerciseRoutine')}
             disabled={isNavigationLocked}
             onPress={() =>
               runNavigationAction(() =>
@@ -256,7 +269,9 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
         </View>
 
         <View className="mb-3">
-          <Text className="text-lg font-semibold text-text-primary">Browse</Text>
+          <Text className="text-lg font-semibold text-text-primary">
+            {mobileT('library.browse')}
+          </Text>
         </View>
 
         <View className="bg-surface rounded-xl mb-6 shadow-sm overflow-hidden">
@@ -265,10 +280,21 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('FoodsLibrary')}
             style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
           >
-            <Text className="text-base font-semibold text-text-primary">Foods</Text>
+            <Text className="text-base font-semibold text-text-primary">
+              {mobileT('library.foods')}
+            </Text>
             <View className="flex-row items-center">
-              <Text className="text-text-secondary text-base mr-2">{foodsCount ?? '—'}</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
+              <Text
+                className="text-text-secondary text-base"
+                style={{ marginEnd: 8 }}
+              >
+                {foodsCount ?? '—'}
+              </Text>
+              <Icon
+                name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+                size={20}
+                color="#999"
+              />
             </View>
           </Pressable>
 
@@ -277,10 +303,21 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('MealsLibrary')}
             style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
           >
-            <Text className="text-base font-semibold text-text-primary">Meals</Text>
+            <Text className="text-base font-semibold text-text-primary">
+              {mobileT('library.meals')}
+            </Text>
             <View className="flex-row items-center">
-              <Text className="text-text-secondary text-base mr-2">{meals.length}</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
+              <Text
+                className="text-text-secondary text-base"
+                style={{ marginEnd: 8 }}
+              >
+                {meals.length}
+              </Text>
+              <Icon
+                name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+                size={20}
+                color="#999"
+              />
             </View>
           </Pressable>
           <Pressable
@@ -288,10 +325,21 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('ExercisesLibrary')}
             style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
           >
-            <Text className="text-base font-semibold text-text-primary">Exercises</Text>
+            <Text className="text-base font-semibold text-text-primary">
+              {mobileT('library.exercises')}
+            </Text>
             <View className="flex-row items-center">
-              <Text className="text-text-secondary text-base mr-2">{exercisesCount ?? '—'}</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
+              <Text
+                className="text-text-secondary text-base"
+                style={{ marginEnd: 8 }}
+              >
+                {exercisesCount ?? '—'}
+              </Text>
+              <Icon
+                name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+                size={20}
+                color="#999"
+              />
             </View>
           </Pressable>
           <Pressable
@@ -299,16 +347,29 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('WorkoutPresetsLibrary')}
             style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
           >
-            <Text className="text-base font-semibold text-text-primary">Workout presets</Text>
+            <Text className="text-base font-semibold text-text-primary">
+              {mobileT('library.workoutPresets')}
+            </Text>
             <View className="flex-row items-center">
-              <Text className="text-text-secondary text-base mr-2">{presetsCount ?? '—'}</Text>
-              <Icon name="chevron-forward" size={20} color="#999" />
+              <Text
+                className="text-text-secondary text-base"
+                style={{ marginEnd: 8 }}
+              >
+                {presetsCount ?? '—'}
+              </Text>
+              <Icon
+                name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+                size={20}
+                color="#999"
+              />
             </View>
           </Pressable>
         </View>
 
         <View className="mb-3">
-          <Text className="text-lg font-semibold text-text-primary">Recently Logged</Text>
+          <Text className="text-lg font-semibold text-text-primary">
+            {mobileT('library.recentlyLogged')}
+          </Text>
         </View>
 
         <View className="bg-surface rounded-xl overflow-hidden shadow-sm">
@@ -316,13 +377,13 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             <View className="px-4 py-8 items-center">
               <ActivityIndicator size="small" color="#6B7280" />
               <Text className="text-text-secondary text-sm mt-3">
-                Loading recent items...
+                {mobileT('library.loadingRecent')}
               </Text>
             </View>
           ) : showRecentError ? (
             <View className="px-4 py-6 items-start">
               <Text className="text-text-secondary text-sm">
-                Failed to load recent items.
+                {mobileT('library.recentError')}
               </Text>
               <Button
                 variant="link"
@@ -330,7 +391,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
                 textClassName="text-sm"
                 onPress={retryRecent}
               >
-                Retry
+                {mobileT('common.retry')}
               </Button>
             </View>
           ) : recentItems.length > 0 ? (
@@ -373,7 +434,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
                   <Text className="text-text-primary text-base font-medium">{item.data.name}</Text>
                   {item.data.category ? (
                     <Text className="text-text-secondary text-sm mt-0.5">
-                      {item.data.category}
+                      {localizeExerciseCategory(item.data.category)}
                     </Text>
                   ) : null}
                 </Pressable>
@@ -382,10 +443,10 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           ) : (
             <View className="px-4 py-6">
               <Text className="text-text-primary text-base font-medium">
-                No recent items yet
+                {mobileT('library.emptyTitle')}
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
-                Foods, meals, and exercises you log will appear here for quick access.
+                {mobileT('library.emptyDescription')}
               </Text>
             </View>
           )}

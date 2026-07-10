@@ -19,10 +19,18 @@ import Button from './ui/Button';
 import CollapsibleSection from './CollapsibleSection';
 import StepperInput from './StepperInput';
 import { formatRest } from './RestPeriodChip';
+import { formatMobileNumber, mobileT } from '../localization';
+import { INTEGER_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 export const MIN_REST_SEC = 15;
 export const MAX_REST_SEC = 900;
 const REST_PRESETS: number[] = [30, 45, 60, 90, 120, 180, 300];
+
+const formatRestInput = (seconds: number) =>
+  formatMobileNumber(seconds, {
+    maximumFractionDigits: 0,
+    useGrouping: false,
+  });
 
 /** Clamp to [MIN, MAX] and round to the nearest 5 seconds. */
 export function clampRestSeconds(seconds: number): number {
@@ -53,13 +61,13 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
 
     const [currentValue, setCurrentValue] = useState<number>(90);
     const [customOpen, setCustomOpen] = useState(false);
-    const [customText, setCustomText] = useState('90');
+    const [customText, setCustomText] = useState(() => formatRestInput(90));
 
     useImperativeHandle(ref, () => ({
       present: (sec) => {
         const initial = clampRestSeconds(sec ?? 90);
         setCurrentValue(initial);
-        setCustomText(String(initial));
+        setCustomText(formatRestInput(initial));
         setCustomOpen(!REST_PRESETS.includes(initial));
         bottomSheetRef.current?.present();
       },
@@ -75,30 +83,30 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
     );
 
     const parsedCustom = useMemo(() => {
-      const n = parseInt(customText, 10);
-      return Number.isNaN(n) ? NaN : n;
+      const value = parseDecimalInput(customText);
+      return Number.isNaN(value) ? NaN : Math.trunc(value);
     }, [customText]);
 
     const adjustCustom = (delta: number) => {
       const base = Number.isNaN(parsedCustom) ? currentValue : parsedCustom;
       const next = clampRestSeconds(base + delta);
-      setCustomText(String(next));
+      setCustomText(formatRestInput(next));
     };
 
     const handleCustomChange = (text: string) => {
       // Only allow positive integer digits while typing.
-      if (text === '' || /^\d+$/.test(text)) {
+      if (text === '' || INTEGER_INPUT_REGEX.test(text)) {
         setCustomText(text);
       }
     };
 
     const clampCustomOnBlur = () => {
       if (Number.isNaN(parsedCustom)) {
-        setCustomText(String(currentValue));
+        setCustomText(formatRestInput(currentValue));
         return;
       }
       const next = clampRestSeconds(parsedCustom);
-      setCustomText(String(next));
+      setCustomText(formatRestInput(next));
     };
 
     const handleCustomSave = () => {
@@ -133,7 +141,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
       >
         <BottomSheetView className="px-6 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-4">
-            Rest period
+            {mobileT('restPeriod.title')}
           </Text>
 
           <View className="flex-row flex-wrap justify-center" style={{ gap: 8 }}>
@@ -162,7 +170,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
           </View>
 
           <CollapsibleSection
-            title="Custom"
+            title={mobileT('restPeriod.custom')}
             expanded={customOpen}
             onToggle={() => setCustomOpen((v) => !v)}
             itemCount={1}
@@ -177,13 +185,16 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
                   onIncrement={() => adjustCustom(15)}
                   keyboardType="number-pad"
                   InputComponent={BottomSheetTextInput}
+                  inputAccessibilityLabel={mobileT('restPeriod.customSeconds')}
+                  decrementLabel={mobileT('restPeriod.decrease')}
+                  incrementLabel={mobileT('restPeriod.increase')}
                 />
-                <Text className="text-text-secondary text-base ml-3">
+                <Text className="text-text-secondary text-base ms-3">
                   {formatRest(Number.isNaN(parsedCustom) ? currentValue : parsedCustom)}
                 </Text>
               </View>
               <Button variant="primary" onPress={handleCustomSave}>
-                Save
+                {mobileT('common.save')}
               </Button>
             </View>
           </CollapsibleSection>

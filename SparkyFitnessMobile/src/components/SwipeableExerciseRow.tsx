@@ -22,6 +22,7 @@ import {
 } from '../utils/workoutSession';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import { useDeleteExerciseEntry, useDeleteWorkout } from '../hooks/useExerciseMutations';
+import { isMobileRtl, mobileT } from '../localization';
 
 interface SwipeableExerciseRowProps {
   session: ExerciseSessionResponse;
@@ -108,16 +109,18 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
     };
   });
 
-  const renderRightActions = () => (
+  const renderDeleteAction = () => (
     <TouchableOpacity
       className="bg-bg-danger justify-center items-center"
       style={{ width: DELETE_ACTION_WIDTH }}
       onPress={confirmAndDelete}
       activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel="Delete exercise"
+      accessibilityLabel={mobileT('diary.deleteExercise')}
     >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+      <Text className="text-text-danger font-semibold text-sm">
+        {mobileT('common.delete')}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -130,8 +133,12 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
 
   const handleLongPress = () => {
     Alert.alert(name, undefined, [
-      { text: 'Delete', style: 'destructive', onPress: deleteEntry },
-      { text: 'Cancel', style: 'cancel' },
+      {
+        text: mobileT('common.delete'),
+        style: 'destructive',
+        onPress: deleteEntry,
+      },
+      { text: mobileT('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -139,13 +146,19 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
     <Animated.View style={animatedStyle} onLayout={handleLayout}>
       <ReanimatedSwipeable
         ref={swipeableRef}
-        renderRightActions={renderRightActions}
+        renderLeftActions={isMobileRtl ? renderDeleteAction : undefined}
+        renderRightActions={isMobileRtl ? undefined : renderDeleteAction}
+        overshootLeft={false}
         overshootRight={false}
+        leftThreshold={40}
         rightThreshold={40}
       >
         <Pressable className="py-2.5 bg-surface" onPress={onPress} onLongPress={handleLongPress}>
           <View className="flex-row items-center">
-            <View className="mr-3 items-center justify-center" style={{ width: 36, height: 36 }}>
+            <View
+              className="items-center justify-center"
+              style={{ width: 36, height: 36, marginEnd: 12 }}
+            >
               <SafeImage
                 source={imageSource}
                 style={{ width: 36, height: 36, borderRadius: 8 }}
@@ -154,7 +167,11 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
             </View>
             <View className="flex-1">
               <View className="flex-row items-center justify-between">
-                <Text className="text-base font-semibold text-text-primary flex-1 mr-2" numberOfLines={1}>
+                <Text
+                  className="text-base font-semibold text-text-primary flex-1"
+                  style={{ marginEnd: 8 }}
+                  numberOfLines={1}
+                >
                   {name}
                 </Text>
                 <View className="flex-row items-center gap-2">
@@ -169,7 +186,11 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
                       {sourceLabel}
                     </Text>
                   </View>
-                  <Icon name="chevron-forward" size={14} color={textMuted} />
+                  <Icon
+                    name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+                    size={14}
+                    color={textMuted}
+                  />
                 </View>
               </View>
               <Text className="text-sm text-text-secondary mt-0.5" numberOfLines={1}>

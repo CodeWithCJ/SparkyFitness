@@ -1,3 +1,15 @@
+import { MOBILE_LOCALE } from '../localization';
+
+const SAUDI_GREGORIAN_LOCALE = `${MOBILE_LOCALE}-u-ca-gregory`;
+const relativeTimeFormatter = new Intl.RelativeTimeFormat(MOBILE_LOCALE, {
+  numeric: 'always',
+});
+
+function parseCalendarDay(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 /**
  * Converts a timestamp to a local date string (YYYY-MM-DD).
  * This ensures dates are assigned based on the user's local timezone,
@@ -49,22 +61,48 @@ export const normalizeDate = (dateString: string): string => dateString.split('T
 
 // Format a YYYY-MM-DD date for display ("Mon, Jan 6")
 export const formatDate = (dateString: string): string => {
-  const [year, month, day] = dateString.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return parseCalendarDay(dateString).toLocaleDateString(
+    SAUDI_GREGORIAN_LOCALE,
+    {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    },
+  );
 };
+
+export const formatWeekdayShort = (dateString: string): string =>
+  parseCalendarDay(dateString).toLocaleDateString(SAUDI_GREGORIAN_LOCALE, {
+    weekday: 'short',
+  });
+
+export const formatMonthDayShort = (dateString: string): string =>
+  parseCalendarDay(dateString).toLocaleDateString(SAUDI_GREGORIAN_LOCALE, {
+    month: 'short',
+    day: 'numeric',
+  });
+
+export const formatDateTime = (timestamp: Date): string =>
+  timestamp.toLocaleString(SAUDI_GREGORIAN_LOCALE, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 
 // Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
 export const formatDateLabel = (dateString: string): string => {
   const today = getTodayDate();
-  if (dateString === today) return 'Today';
-  if (dateString === addDays(today, -1)) return 'Yesterday';
+  if (dateString === today) return 'اليوم';
+  if (dateString === addDays(today, -1)) return 'أمس';
   return formatDate(dateString);
 };
 
 // Format a timestamp as a human-readable relative time ("Just now", "3 minutes ago", etc.)
 export const formatRelativeTime = (timestamp: Date | null): string => {
-  if (!timestamp) return 'Never synced';
+  if (!timestamp) return 'ما سبق زامنت';
 
   const now = new Date();
   const diffMs = now.getTime() - timestamp.getTime();
@@ -74,21 +112,21 @@ export const formatRelativeTime = (timestamp: Date | null): string => {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffSeconds < 60) {
-    return 'Just now';
+    return 'الحين';
   } else if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+    return relativeTimeFormatter.format(-diffMinutes, 'minute');
   } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    return relativeTimeFormatter.format(-diffHours, 'hour');
   } else if (diffDays === 1) {
-    return `Yesterday at ${timestamp.toLocaleTimeString([], {
+    return `أمس، ${timestamp.toLocaleTimeString(MOBILE_LOCALE, {
       hour: 'numeric',
       minute: '2-digit',
     })}`;
   } else {
-    return `${timestamp.toLocaleDateString([], {
-      month: 'short',
+    return `${timestamp.toLocaleDateString(SAUDI_GREGORIAN_LOCALE, {
+      month: 'long',
       day: 'numeric',
-    })} at ${timestamp.toLocaleTimeString([], {
+    })}، ${timestamp.toLocaleTimeString(MOBILE_LOCALE, {
       hour: 'numeric',
       minute: '2-digit',
     })}`;

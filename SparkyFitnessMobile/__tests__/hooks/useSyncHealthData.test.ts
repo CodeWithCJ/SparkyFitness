@@ -105,7 +105,7 @@ describe('useSyncHealthData', () => {
 
       expect(mockSaveLastSyncedTime).not.toHaveBeenCalled();
       expect(mockToastShow).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'info', text1: 'Sync incomplete' })
+        expect.objectContaining({ type: 'info', text1: 'اكتملت المزامنة جزئيًا' })
       );
       expect(onSuccess).not.toHaveBeenCalled();
     });
@@ -127,10 +127,10 @@ describe('useSyncHealthData', () => {
       });
 
       expect(mockToastShow).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'info', text1: 'Syncing health data…' })
+        expect.objectContaining({ type: 'info', text1: 'جاري مزامنة البيانات الصحية…' })
       );
       expect(mockToastShow).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'success', text1: 'Sync complete' })
+        expect.objectContaining({ type: 'success', text1: 'اكتملت المزامنة' })
       );
     });
 
@@ -234,8 +234,8 @@ describe('useSyncHealthData', () => {
         expect(mockToastShow).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'error',
-            text1: 'Sync Error',
-            text2: 'Server unavailable',
+            text1: 'ما تمت المزامنة',
+            text2: 'تأكد من الاتصال والصلاحيات وحاول مرة ثانية.',
           })
         );
       });
@@ -326,8 +326,8 @@ describe('useSyncHealthData', () => {
         expect(mockToastShow).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'error',
-            text1: 'Sync Error',
-            text2: 'Unknown sync error',
+            text1: 'ما تمت المزامنة',
+            text2: 'تأكد من الاتصال والصلاحيات وحاول مرة ثانية.',
           })
         );
       });

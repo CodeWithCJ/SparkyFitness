@@ -8,6 +8,7 @@ import { pipeline } from 'stream/promises';
 import { log } from '../config/logging.js';
 import backupSettingsRepository from '../models/backupSettingsRepository.js';
 import { endPool, resetPool } from '../db/poolManager.js';
+import { areServerBackupsEnabled } from '../utils/runtimeConfig.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,6 +61,13 @@ async function executeCommand(
   }
 }
 async function performBackup(isManual = false) {
+  if (!areServerBackupsEnabled()) {
+    return {
+      success: false,
+      message:
+        'Server-managed backups are disabled in this deployment. Use managed database provider backups instead.',
+    };
+  }
   await ensureBackupDirectory();
   const settings = await backupSettingsRepository.getBackupSettings();
   if (!isManual && !settings.backup_enabled) {
@@ -192,6 +200,13 @@ async function applyRetentionPolicy() {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function performRestore(backupFilePath: any) {
+  if (!areServerBackupsEnabled()) {
+    return {
+      success: false,
+      error:
+        'Server-managed backups are disabled in this deployment. Use managed database provider backups instead.',
+    };
+  }
   log('info', `Starting restore process from ${backupFilePath}`);
   let tempRestoreDir; // Declare tempRestoreDir outside the try block
   try {

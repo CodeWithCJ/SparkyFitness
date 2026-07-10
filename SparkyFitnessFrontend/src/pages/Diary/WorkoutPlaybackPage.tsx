@@ -506,7 +506,7 @@ const WorkoutPlaybackPage = () => {
           className="gap-2"
           onClick={() => navigate(returnPath)}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
           {t('common.back', 'Back')}
         </Button>
         <Card>
@@ -537,6 +537,7 @@ const WorkoutPlaybackPage = () => {
         draft={draft}
         elapsedSeconds={elapsedSeconds}
         totalVolume={totalVolume}
+        weightUnit={weightUnit}
         stats={stats}
         restRemaining={restRemaining}
         isRestActive={!!isRestActive}

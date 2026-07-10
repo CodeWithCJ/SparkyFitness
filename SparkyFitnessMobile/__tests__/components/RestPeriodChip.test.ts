@@ -2,32 +2,32 @@ import { formatRest } from '../../src/components/RestPeriodChip';
 import { clampRestSeconds, MIN_REST_SEC, MAX_REST_SEC } from '../../src/components/RestPeriodSheet';
 
 describe('formatRest', () => {
-  it('formats values under a minute as Ns', () => {
-    expect(formatRest(15)).toBe('15s');
-    expect(formatRest(45)).toBe('45s');
-    expect(formatRest(59)).toBe('59s');
+  it('formats values under a minute with Arabic numerals and a seconds unit', () => {
+    expect(formatRest(15)).toBe('١٥ ث');
+    expect(formatRest(45)).toBe('٤٥ ث');
+    expect(formatRest(59)).toBe('٥٩ ث');
   });
 
-  it('formats one minute as 1:00', () => {
-    expect(formatRest(60)).toBe('1:00');
+  it('formats one minute with Arabic numerals', () => {
+    expect(formatRest(60)).toBe('١:٠٠');
   });
 
-  it('formats 90 seconds as 1:30', () => {
-    expect(formatRest(90)).toBe('1:30');
+  it('formats 90 seconds with Arabic numerals', () => {
+    expect(formatRest(90)).toBe('١:٣٠');
   });
 
   it('zero-pads the seconds portion', () => {
-    expect(formatRest(65)).toBe('1:05');
-    expect(formatRest(120)).toBe('2:00');
-    expect(formatRest(305)).toBe('5:05');
+    expect(formatRest(65)).toBe('١:٠٥');
+    expect(formatRest(120)).toBe('٢:٠٠');
+    expect(formatRest(305)).toBe('٥:٠٥');
   });
 
-  it('falls back to 1:30 for null', () => {
-    expect(formatRest(null)).toBe('1:30');
+  it('falls back to the localized default for null', () => {
+    expect(formatRest(null)).toBe('١:٣٠');
   });
 
-  it('falls back to 1:30 for undefined', () => {
-    expect(formatRest(undefined)).toBe('1:30');
+  it('falls back to the localized default for undefined', () => {
+    expect(formatRest(undefined)).toBe('١:٣٠');
   });
 });
 

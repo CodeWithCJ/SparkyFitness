@@ -10,6 +10,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 
 - Apple Health (iOS)
 - Google Health Connect (Android)
+- HUAWEI Health (web/cloud linking)
 - Fitbit
 - Garmin Connect
 - Withings
@@ -23,6 +24,11 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Tandori
 - Strava (partially tested)
 
+HUAWEI Health users can link from the SparkyFitness web app. The browser does
+not connect to the watch over Bluetooth: the wearable first syncs with the
+HUAWEI Health phone app, Huawei cloud receives that data, and SparkyFitness
+imports the data authorized by the account owner. See the
+[HUAWEI Health setup and privacy guide](/features/settings/huawei-health).
 
 ---
 

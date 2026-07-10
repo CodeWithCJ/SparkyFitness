@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
  * Two layers are tested:
  * 1. Better Auth's built-in rate limiter — applies to endpoints handled by
  *    betterAuthHandler (sign-in, sign-up, etc.). Tested by calling
- *    onRequestRateLimit directly with a synthetic context.
+ *    onRequestRateLimit directly with a synthetic context. Better Auth 1.6
+ *    consumes the attempt atomically inside this hook.
  * 2. Inline Express middleware — applies to /mfa-factors, which bypasses
  *    betterAuthHandler. Tested by calling the middleware with mock req/res.
  *
@@ -49,8 +50,6 @@ function makeContext() {
 describe('Auth rate limit integration', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let onRequestRateLimit: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let onResponseRateLimit: any;
   beforeAll(async () => {
     const mod = await import(
       path.resolve(
@@ -59,7 +58,6 @@ describe('Auth rate limit integration', () => {
       )
     );
     onRequestRateLimit = mod.onRequestRateLimit;
-    onResponseRateLimit = mod.onResponseRateLimit;
   });
   /**
    * Helper: send `count` requests and return responses.
@@ -74,9 +72,6 @@ describe('Auth rate limit integration', () => {
       const req = makeRequest(endpoint, ip);
       const result = await onRequestRateLimit(req, ctx);
       results.push(result);
-      if (result === undefined) {
-        await onResponseRateLimit(req, ctx);
-      }
     }
     return results;
   }

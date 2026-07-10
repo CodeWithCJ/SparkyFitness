@@ -211,7 +211,7 @@ describe('FoodSearchScreen', () => {
         <FoodSearchScreen navigation={navigation} route={routeOverride} />
       </SafeAreaProvider>,
     );
-    fireEvent.changeText(screen.getByPlaceholderText('Search foods...'), term);
+    fireEvent.changeText(screen.getByPlaceholderText('ابحث عن صنف أو وجبة…'), term);
     return screen;
   }
 
@@ -236,13 +236,13 @@ describe('FoodSearchScreen', () => {
 
     const screen = renderSearching();
 
-    expect(screen.getByText('Your Foods')).toBeTruthy();
+    expect(screen.getByText('أصنافك')).toBeTruthy();
     expect(screen.getByText('Grilled Chicken')).toBeTruthy();
-    expect(screen.getByText('Your Meals')).toBeTruthy();
+    expect(screen.getByText('وجباتك')).toBeTruthy();
     expect(screen.getByText('Lunch Bowl')).toBeTruthy();
     // The single default provider's results stream in under the External
     // Results header, with the provider name shown as the switchable source.
-    expect(screen.getByText('Online Results')).toBeTruthy();
+    expect(screen.getByText('نتائج الإنترنت')).toBeTruthy();
     expect(screen.getByText('FatSecret')).toBeTruthy();
     expect(screen.getByText('Cheddar Cheese')).toBeTruthy();
   });
@@ -288,7 +288,7 @@ describe('FoodSearchScreen', () => {
     };
     const screen = renderSearching(builderRoute);
 
-    expect(screen.queryByText('Your Meals')).toBeNull();
+    expect(screen.queryByText('وجباتك')).toBeNull();
     expect(screen.queryByText('Lunch Bowl')).toBeNull();
   });
 
@@ -307,7 +307,11 @@ describe('FoodSearchScreen', () => {
 
     await waitFor(() => {
       expect(mockToastShow).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error', text2: 'FatSecret down' }),
+        expect.objectContaining({
+          type: 'error',
+          text1: 'التفاصيل غير متاحة',
+          text2: 'فتحنا البيانات المتاحة؛ راجعها قبل الحفظ.',
+        }),
       );
     });
     expect(navigation.navigate).toHaveBeenCalledWith(

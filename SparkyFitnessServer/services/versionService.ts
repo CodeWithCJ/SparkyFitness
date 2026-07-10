@@ -1,12 +1,7 @@
-import fs from 'fs';
-import path from 'path';
 import axios from 'axios';
 import https from 'https';
-import { fileURLToPath } from 'url';
 import { log } from '../config/logging.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import packageJson from '../package.json' with { type: 'json' };
 
 interface GitHubReleaseResponse {
   version: string;
@@ -84,14 +79,8 @@ function fetchDirect(url: string): Promise<GitHubRawRelease> {
 
 // Function to get the application version from package.json
 function getAppVersion(): string {
-  try {
-    const packageJsonPath = path.resolve(__dirname, '../package.json');
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    return packageJson.version;
-  } catch (error) {
-    log('error', 'Failed to read version from package.json:', error);
-    return 'unknown';
-  }
+  const injectedVersion = process.env.npm_package_version?.trim();
+  return injectedVersion || packageJson.version;
 }
 
 async function getLatestGitHubRelease(

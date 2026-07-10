@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { User, Camera } from 'lucide-react';
@@ -14,6 +13,11 @@ import {
   useUploadAvatarMutation,
 } from '@/hooks/Settings/useProfile';
 import { ProfileFormContent } from './ProfileFormContent';
+import {
+  areUploadsEnabled,
+  useDeploymentCapabilities,
+} from '@/hooks/useDeploymentCapabilities';
+import { useRef } from 'react';
 
 export const ProfileInformation = () => {
   const { t } = useTranslation();
@@ -22,6 +26,9 @@ export const ProfileInformation = () => {
   const { data: profile, isLoading: isProfileLoading } = useProfileQuery(
     user?.id
   );
+  const { data: capabilities } = useDeploymentCapabilities();
+  const uploadsEnabled = areUploadsEnabled(capabilities);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const { mutateAsync: uploadAvatar, isPending: uploadingImage } =
     useUploadAvatarMutation(user!.activeUserId);
@@ -89,33 +96,37 @@ export const ProfileInformation = () => {
             )}
           </Avatar>
           <div>
-            <Label htmlFor="avatar-upload" className="cursor-pointer">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={uploadingImage}
-                asChild
-              >
-                <span>
-                  <Camera className="h-4 w-4 mr-2" />
-                  {uploadingImage
-                    ? t('settings.profileInformation.uploading', 'Uploading...')
-                    : t(
-                        'settings.profileInformation.changePhoto',
-                        'Change Photo'
-                      )}
-                </span>
-              </Button>
-            </Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={uploadingImage || !uploadsEnabled}
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              <Camera className="h-4 w-4 me-2" />
+              {uploadingImage
+                ? t('settings.profileInformation.uploading', 'Uploading...')
+                : t('settings.profileInformation.changePhoto', 'Change Photo')}
+            </Button>
             <Input
+              ref={avatarInputRef}
               id="avatar-upload"
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
+              disabled={!uploadsEnabled}
               className="hidden"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              {t('settings.profileInformation.photoSize', 'PNG, JPG up to 5MB')}
+              {uploadsEnabled
+                ? t(
+                    'settings.profileInformation.photoSize',
+                    'PNG, JPG up to 5MB'
+                  )
+                : t(
+                    'settings.profileInformation.uploadsUnavailable',
+                    'Photo uploads are unavailable in this deployment.'
+                  )}
             </p>
           </div>
         </div>

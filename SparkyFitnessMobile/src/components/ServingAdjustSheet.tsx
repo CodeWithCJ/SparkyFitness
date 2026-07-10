@@ -14,6 +14,12 @@ import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
 import { formatServingUnit } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import {
+  formatMobileCalories,
+  formatMobileNumber,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 export interface ServingAdjustSheetRef {
   present: (entry: FoodEntry) => void;
@@ -127,10 +133,12 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
             {/* Header */}
             <View className="items-center mb-5">
               <Text className="text-text-primary text-lg font-semibold text-center" numberOfLines={2}>
-                {entry.food_name || 'Unknown food'}
+                {entry.food_name || mobileT('diary.unknownFood')}
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
-                {entry.serving_size} {formatServingUnit(entry.unit)} = {entry.calories} Cal
+                {formatMobileNumber(entry.serving_size)}{' '}
+                {localizeServingUnit(formatServingUnit(entry.unit))} ={' '}
+                {formatMobileCalories(entry.calories)}
               </Text>
             </View>
 
@@ -145,30 +153,34 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
                   onIncrement={() => adjustQuantity(1)}
                   InputComponent={BottomSheetTextInput}
                 />
-                <Text className="text-text-secondary text-lg ml-3">{formatServingUnit(entry.unit)}</Text>
+                <Text
+                  className="text-text-secondary text-lg"
+                  style={{ marginStart: 12 }}
+                >
+                  {localizeServingUnit(formatServingUnit(entry.unit))}
+                </Text>
               </View>
             </View>
 
             {/* Calories */}
             <View className="items-center mb-6">
               <Text className="text-text-primary text-2xl font-semibold">
-                {totalCalories} Cal
+                {formatMobileCalories(totalCalories)}
               </Text>
             </View>
 
-            {/* More link */}
-            {/* {onViewEntry && (
-              <TouchableOpacity
+            {onViewEntry && (
+              <Button
+                variant="ghost"
+                className="mb-3"
                 onPress={() => {
                   bottomSheetRef.current?.dismiss();
                   onViewEntry(entry);
                 }}
-                className="items-center mb-4"
-                activeOpacity={0.7}
               >
-                <Text className="text-accent-primary text-sm font-medium">More</Text>
-              </TouchableOpacity>
-            )} */}
+                {mobileT('diary.viewDetails')}
+              </Button>
+            )}
 
             {/* Done button */}
             <Button
@@ -176,7 +188,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
               onPress={handleDone}
               disabled={isPending || quantity <= 0}
             >
-              {isPending ? 'Saving...' : 'Done'}
+              {isPending ? mobileT('diary.saving') : mobileT('common.done')}
             </Button>
           </>
         )}

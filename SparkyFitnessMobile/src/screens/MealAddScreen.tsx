@@ -25,15 +25,17 @@ import { mealIngredientDraftToFoodInfo } from '../types/foodInfo';
 import type { MealFoodPayload, MealIngredientDraft } from '../types/meals';
 import type { FoodUnitVariant } from '../types/foodUnitVariants';
 import type { RootStackScreenProps } from '../types/navigation';
-import {
-  formatCaloriesDisplay,
-  formatMacroDisplay,
-  formatServingSizeDisplay,
-} from '../utils/foodDetails';
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
+import {
+  formatMobileNumber,
+  formatMobilePreciseCalories,
+  localizeNutrient,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
@@ -41,7 +43,7 @@ const MEAL_SERVING_PRECISION = 6;
 
 const SERVING_UNIT_OPTIONS = [
   'serving', 'g', 'ml', 'oz', 'cup', 'tbsp', 'tsp', 'piece',
-].map((unit) => ({ label: unit, value: unit }));
+].map((unit) => ({ label: localizeServingUnit(unit), value: unit }));
 
 interface MealTotals {
   calories: number;
@@ -73,11 +75,25 @@ const MacroStat: React.FC<MacroStatProps> = ({ color, value, label }) => (
       style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color, marginTop: 6 }}
     />
     <Text className="flex-1 text-text-primary text-base">
-      {value}
+      {value}{' '}
       {label}
     </Text>
   </View>
 );
+
+function formatMealInputNumber(value: number): string {
+  return formatMobileNumber(value, {
+    maximumFractionDigits: MEAL_SERVING_PRECISION,
+    useGrouping: false,
+  });
+}
+
+function formatMealMacro(value: number): string {
+  const safeValue = Number.isFinite(value) ? value : 0;
+  return formatMobileNumber(safeValue, {
+    maximumFractionDigits: Math.abs(safeValue) >= 1 ? 1 : 4,
+  });
+}
 
 function toMealTotals(ingredients: MealIngredientDraft[]): MealTotals {
   return ingredients.reduce<MealTotals>(
@@ -120,12 +136,18 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const [description, setDescription] = useState('');
   // serving_size = quantity of ONE serving in serving_unit (e.g. 250 for 250 ml,
   // or 1 when unit is 'serving'). total_servings = yield count.
-  const [servingSizeText, setServingSizeText] = useState('1');
+  const [servingSizeText, setServingSizeText] = useState(() =>
+    formatMealInputNumber(1),
+  );
   const [servingUnit, setServingUnit] = useState('serving');
-  const [totalServingsText, setTotalServingsText] = useState('1');
+  const [totalServingsText, setTotalServingsText] = useState(() =>
+    formatMealInputNumber(1),
+  );
   // For non-serving units we ask the user for the BATCH amount and derive
   // total_servings = totalAmount / servingSize on save.
-  const [totalAmountText, setTotalAmountText] = useState('1');
+  const [totalAmountText, setTotalAmountText] = useState(() =>
+    formatMealInputNumber(1),
+  );
   const [ingredients, setIngredients] = useState<MealIngredientDraft[]>([]);
   const [initializedMealId, setInitializedMealId] = useState<string | null>(null);
 
@@ -146,15 +168,15 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     setDescription(editMeal.description ?? '');
     const loadedServingSize = editMeal.serving_size ?? 1;
     const loadedTotalServings = editMeal.total_servings ?? 1;
-    setServingSizeText(String(loadedServingSize));
+    setServingSizeText(formatMealInputNumber(loadedServingSize));
     setServingUnit(editMeal.serving_unit);
-    setTotalServingsText(String(loadedTotalServings));
+    setTotalServingsText(formatMealInputNumber(loadedTotalServings));
     // toPrecision(15) strips IEEE 754 artifacts (e.g. 1000 * 4.015 →
     // 4014.99999…) without losing real precision.
     setTotalAmountText(
-      String(
-        Number((loadedServingSize * loadedTotalServings).toPrecision(15))
-      )
+      formatMealInputNumber(
+        Number((loadedServingSize * loadedTotalServings).toPrecision(15)),
+      ),
     );
     setIngredients(editMeal.foods.map(buildMealIngredientDraftFromMealFood));
     setInitializedMealId(editMeal.id);
@@ -221,14 +243,14 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           parsedAmount > 0 &&
           parsedSize > 0
         ) {
-          setTotalServingsText(String(parsedAmount / parsedSize));
+          setTotalServingsText(formatMealInputNumber(parsedAmount / parsedSize));
         }
       }
-      setServingSizeText('1');
+      setServingSizeText(formatMealInputNumber(1));
     } else if (previousUnit === 'serving') {
       // Switching OUT of serving-unit: seed Total Amount from total_servings × 1.
-      setServingSizeText('1');
-      setTotalAmountText(totalServingsText || '1');
+      setServingSizeText(formatMealInputNumber(1));
+      setTotalAmountText(totalServingsText || formatMealInputNumber(1));
     }
   };
 
@@ -249,8 +271,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (ingredient.item_type === 'meal') {
       Toast.show({
         type: 'info',
-        text1: 'Linked meal',
-        text2: 'Edit this sub-meal ingredient in the web app.',
+        text1: mobileT('mealAdd.linkedMeal'),
+        text2: mobileT('mealAdd.editLinkedMealWeb'),
       });
       return;
     }
@@ -287,16 +309,16 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const showIngredientMenu = (ingredient: MealIngredientDraft, ingredientIndex: number) => {
     Alert.alert(
-      ingredient.food_name || 'Food',
+      ingredient.food_name || mobileT('mealAdd.foodFallback'),
       undefined,
       [
-        { text: 'Edit', onPress: () => editIngredient(ingredient, ingredientIndex) },
+        { text: mobileT('common.edit'), onPress: () => editIngredient(ingredient, ingredientIndex) },
         {
-          text: 'Delete',
+          text: mobileT('common.delete'),
           style: 'destructive',
           onPress: () => removeIngredient(ingredientIndex),
         },
-        { text: 'Cancel', style: 'cancel' },
+        { text: mobileT('common.cancel'), style: 'cancel' },
       ],
     );
   };
@@ -329,8 +351,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (!trimmedMealName) {
       Toast.show({
         type: 'error',
-        text1: 'Missing meal name',
-        text2: 'Please enter a name for your meal.',
+        text1: mobileT('mealAdd.missingMealName'),
+        text2: mobileT('mealAdd.enterMealName'),
       });
       return;
     }
@@ -338,8 +360,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (!parsedServingSize || parsedServingSize <= 0) {
       Toast.show({
         type: 'error',
-        text1: 'Invalid serving size',
-        text2: 'Default serving size must be greater than zero.',
+        text1: mobileT('mealAdd.invalidServingSize'),
+        text2: mobileT('mealAdd.servingSizePositive'),
       });
       return;
     }
@@ -349,12 +371,12 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         type: 'error',
         text1:
           servingUnit === 'serving'
-            ? 'Invalid total servings'
-            : 'Invalid total amount',
+            ? mobileT('mealAdd.invalidTotalServings')
+            : mobileT('mealAdd.invalidTotalAmount'),
         text2:
           servingUnit === 'serving'
-            ? 'Total servings must be greater than zero.'
-            : 'Total amount must be greater than zero.',
+            ? mobileT('mealAdd.totalServingsPositive')
+            : mobileT('mealAdd.totalAmountPositive'),
       });
       return;
     }
@@ -362,8 +384,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (!ingredients.length) {
       Toast.show({
         type: 'error',
-        text1: 'No ingredients yet',
-        text2: 'Add at least one food before saving this meal.',
+        text1: mobileT('mealAdd.noIngredients'),
+        text2: mobileT('mealAdd.addIngredientFirst'),
       });
       return;
     }
@@ -371,8 +393,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (ingredients.some((ingredient) => !ingredient.variant_id)) {
       Toast.show({
         type: 'error',
-        text1: 'Missing ingredient data',
-        text2: 'One of the selected foods is missing a serving variant. Please re-add it.',
+        text1: mobileT('mealAdd.missingIngredientData'),
+        text2: mobileT('mealAdd.readdIngredient'),
       });
       return;
     }
@@ -404,7 +426,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const isSaving = isPending || isUpdatePending;
 
   const header = useScreenHeader({
-    title: isEditMode ? 'Edit Meal' : 'Create Meal',
+    title: isEditMode
+      ? mobileT('mealAdd.editMeal')
+      : mobileT('mealAdd.createMeal'),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -413,8 +437,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
+      label: mobileT('common.save'),
+      busyLabel: mobileT('common.saving'),
       busy: isSaving,
       disabled: isSaving,
       placement: 'native-only',
@@ -430,7 +454,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
       >
         {header}
-        <StatusView loading title="Loading meal..." />
+        <StatusView loading title={mobileT('mealDetail.loading')} />
       </View>
     );
   }
@@ -446,9 +470,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title="Failed to load meal"
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => void refetch(), variant: 'primary' }}
+          title={mobileT('mealDetail.loadFailed')}
+          subtitle={mobileT('mealDetail.loadFailedDescription')}
+          action={{
+            label: mobileT('common.retry'),
+            onPress: () => void refetch(),
+            variant: 'primary',
+          }}
         />
       </View>
     );
@@ -468,9 +496,11 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       >
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
           <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Meal Name *</Text>
+            <Text className="text-text-secondary text-sm font-medium">
+              {mobileT('mealAdd.mealName')}
+            </Text>
             <FormInput
-              placeholder="e.g. Chicken Rice Bowl"
+              placeholder={mobileT('mealAdd.mealNamePlaceholder')}
               value={mealName}
               onChangeText={setMealName}
               returnKeyType="done"
@@ -478,9 +508,11 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Description (optional)</Text>
+            <Text className="text-text-secondary text-sm font-medium">
+              {mobileT('mealAdd.description')}
+            </Text>
             <FormInput
-              placeholder="Notes about this meal"
+              placeholder={mobileT('mealAdd.descriptionPlaceholder')}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -493,10 +525,10 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               {servingUnit === 'serving' ? (
                 <>
                   <Text className="text-text-secondary text-sm font-medium">
-                    Total Servings *
+                    {mobileT('mealAdd.totalServings')}
                   </Text>
                   <FormInput
-                    placeholder="1"
+                    placeholder={formatMealInputNumber(1)}
                     value={totalServingsText}
                     onChangeText={updateTotalServings}
                     keyboardType="decimal-pad"
@@ -506,10 +538,12 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               ) : (
                 <>
                   <Text className="text-text-secondary text-sm font-medium">
-                    {`Total Amount (${servingUnit}) *`}
+                    {mobileT('mealAdd.totalAmount', {
+                      unit: localizeServingUnit(servingUnit),
+                    })}
                   </Text>
                   <FormInput
-                    placeholder="1"
+                    placeholder={formatMealInputNumber(1)}
                     value={totalAmountText}
                     onChangeText={updateTotalAmount}
                     keyboardType="decimal-pad"
@@ -520,13 +554,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             </View>
             <View className="flex-1 gap-1.5">
               <Text className="text-text-secondary text-sm font-medium">
-                Unit
+                {mobileT('mealAdd.unit')}
               </Text>
               <BottomSheetPicker
                 value={servingUnit}
                 options={SERVING_UNIT_OPTIONS}
                 onSelect={handleServingUnitChange}
-                title="Select Unit"
+                title={mobileT('mealAdd.selectUnit')}
                 renderTrigger={({ onPress, selectedOption }) => (
                   <TouchableOpacity
                     onPress={onPress}
@@ -535,7 +569,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                     style={{ minHeight: 44 }}
                   >
                     <Text className="text-text-primary" style={{ fontSize: 16 }}>
-                      {selectedOption?.label ?? servingUnit}
+                      {selectedOption?.label ?? localizeServingUnit(servingUnit)}
                     </Text>
                     <Icon name="chevron-down" size={12} color={textMuted} weight="medium" />
                   </TouchableOpacity>
@@ -551,10 +585,12 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             <View className="flex-row gap-3">
               <View className="flex-1 gap-1.5">
                 <Text className="text-text-secondary text-sm font-medium">
-                  {`Serving Size (${servingUnit}) *`}
+                  {mobileT('mealAdd.servingSize', {
+                    unit: localizeServingUnit(servingUnit),
+                  })}
                 </Text>
                 <FormInput
-                  placeholder="1"
+                  placeholder={formatMealInputNumber(1)}
                   value={servingSizeText}
                   onChangeText={updateServingSize}
                   keyboardType="decimal-pad"
@@ -567,7 +603,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         </View>
 
         <View className="bg-surface rounded-xl p-4 gap-3 shadow-sm">
-          <Text className="text-text-primary text-lg font-semibold">Foods in Meal</Text>
+          <Text className="text-text-primary text-lg font-semibold">
+            {mobileT('mealAdd.foods')}
+          </Text>
 
           {ingredients.length > 0 ? (
             <View>
@@ -575,16 +613,16 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                 const servingSize = toFiniteNumber(ingredient.serving_size);
                 const quantity = toFiniteNumber(ingredient.quantity);
                 const scale = servingSize > 0 ? quantity / servingSize : 0;
-                const ingredientCalories = formatCaloriesDisplay(
+                const ingredientCalories = formatMobilePreciseCalories(
                   toFiniteNumber(ingredient.calories) * scale,
                 );
-                const ingredientProtein = formatMacroDisplay(
+                const ingredientProtein = formatMealMacro(
                   toFiniteNumber(ingredient.protein) * scale,
                 );
-                const ingredientCarbs = formatMacroDisplay(
+                const ingredientCarbs = formatMealMacro(
                   toFiniteNumber(ingredient.carbs) * scale,
                 );
-                const ingredientFat = formatMacroDisplay(
+                const ingredientFat = formatMealMacro(
                   toFiniteNumber(ingredient.fat) * scale,
                 );
                 const isFirst = index === 0;
@@ -601,10 +639,16 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                           className="bg-bg-danger rounded-lg flex-1 justify-center items-center"
                           onPress={() => removeIngredient(index)}
                           activeOpacity={0.7}
-                          accessibilityLabel={`Remove ${ingredient.food_name || 'ingredient'}`}
+                          accessibilityLabel={mobileT('mealAdd.removeIngredient', {
+                            name:
+                              ingredient.food_name ||
+                              mobileT('mealAdd.foodFallback'),
+                          })}
                           accessibilityRole="button"
                         >
-                          <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+                          <Text className="text-text-danger font-semibold text-sm">
+                            {mobileT('common.delete')}
+                          </Text>
                         </TouchableOpacity>
                       </View>
                     )}
@@ -613,7 +657,10 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                       activeOpacity={0.7}
                       onPress={() => editIngredient(ingredient, index)}
                       onLongPress={() => showIngredientMenu(ingredient, index)}
-                      accessibilityLabel={`Edit ${ingredient.food_name || 'ingredient'}`}
+                      accessibilityLabel={mobileT('mealAdd.editIngredient', {
+                        name:
+                          ingredient.food_name || mobileT('mealAdd.foodFallback'),
+                      })}
                       accessibilityRole="button"
                       className="bg-surface"
                     >
@@ -628,7 +675,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                             ellipsizeMode="tail"
                             className="text-text-primary text-base font-semibold"
                           >
-                            {ingredient.food_name || 'Food'}
+                            {ingredient.food_name || mobileT('mealAdd.foodFallback')}
                             {ingredient.brand ? (
                               <Text className="text-text-secondary font-normal">
                                 {' \u00b7 '}
@@ -642,21 +689,31 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                               style={{ backgroundColor: `${textMuted}1A` }}
                             >
                               <Text className="text-xs font-medium" style={{ color: textMuted }}>
-                                Linked meal
+                                {mobileT('mealAdd.linkedMeal')}
                               </Text>
                             </View>
                           ) : null}
                           <Text className="text-text-muted text-sm mt-1">
-                            {ingredientProtein}g protein{' \u00b7 '}{ingredientCarbs}g carbs{' \u00b7 '}{ingredientFat}g fat
+                            {mobileT('mealAdd.macros', {
+                              protein: `${ingredientProtein} ${mobileT('units.g')}`,
+                              carbs: `${ingredientCarbs} ${mobileT('units.g')}`,
+                              fat: `${ingredientFat} ${mobileT('units.g')}`,
+                            })}
                           </Text>
                         </View>
                         <View className="items-end">
                           <Text className="text-text-primary text-base font-semibold">
-                            {ingredientCalories} cal
+                            {ingredientCalories}
                           </Text>
                           <Text className="text-text-muted text-sm mt-1">
-                            {formatServingSizeDisplay(quantity)}{' '}
-                            {ingredient.unit || ingredient.serving_unit || 'serving'}
+                            {formatMobileNumber(quantity, {
+                              maximumFractionDigits: 4,
+                            })}{' '}
+                            {localizeServingUnit(
+                              ingredient.unit ||
+                                ingredient.serving_unit ||
+                                'serving',
+                            )}
                           </Text>
                         </View>
                       </View>
@@ -672,10 +729,12 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               variant="ghost"
               onPress={openIngredientPicker}
               className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
-              accessibilityLabel="Add Food"
+              accessibilityLabel={mobileT('mealAdd.addFood')}
             >
               <Icon name="add" size={16} color={accentColor} />
-              <Text className="text-accent-primary text-sm font-semibold">Add Food</Text>
+              <Text className="text-accent-primary text-sm font-semibold">
+                {mobileT('mealAdd.addFood')}
+              </Text>
             </Button>
           </View>
 
@@ -683,40 +742,58 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             <View className="bg-raised rounded-lg p-4 gap-4">
               <View className="gap-2">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-text-secondary text-base font-medium">Meal total</Text>
+                  <Text className="text-text-secondary text-base font-medium">
+                    {mobileT('mealAdd.mealTotal')}
+                  </Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                    {formatCaloriesDisplay(totals.calories)} cal
+                    {formatMobilePreciseCalories(totals.calories)}
                   </Text>
                 </View>
                 <View className="flex-row items-start gap-2 mt-1">
-                  <MacroStat color={proteinColor} value={formatMacroDisplay(totals.protein)} label="g protein" />
-                  <MacroStat color={carbsColor} value={formatMacroDisplay(totals.carbs)} label="g carbs" />
-                  <MacroStat color={fatColor} value={formatMacroDisplay(totals.fat)} label="g fat" />
+                  <MacroStat
+                    color={proteinColor}
+                    value={formatMealMacro(totals.protein)}
+                    label={`${mobileT('units.g')} ${localizeNutrient('protein')}`}
+                  />
+                  <MacroStat
+                    color={carbsColor}
+                    value={formatMealMacro(totals.carbs)}
+                    label={`${mobileT('units.g')} ${localizeNutrient('carbs')}`}
+                  />
+                  <MacroStat
+                    color={fatColor}
+                    value={formatMealMacro(totals.fat)}
+                    label={`${mobileT('units.g')} ${localizeNutrient('fat')}`}
+                  />
                 </View>
               </View>
               {showPerServing ? (
                 <View className="gap-2">
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-text-secondary text-base font-medium">Per serving</Text>
+                    <Text className="text-text-secondary text-base font-medium">
+                      {mobileT('mealDetail.perServing')}
+                    </Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                      {formatCaloriesDisplay(totals.calories / totalServingsCount)} cal
+                      {formatMobilePreciseCalories(
+                        totals.calories / totalServingsCount,
+                      )}
                     </Text>
                   </View>
                   <View className="flex-row items-start gap-2 mt-1">
                     <MacroStat
                       color={proteinColor}
-                      value={formatMacroDisplay(totals.protein / totalServingsCount)}
-                      label="g protein"
+                      value={formatMealMacro(totals.protein / totalServingsCount)}
+                      label={`${mobileT('units.g')} ${localizeNutrient('protein')}`}
                     />
                     <MacroStat
                       color={carbsColor}
-                      value={formatMacroDisplay(totals.carbs / totalServingsCount)}
-                      label="g carbs"
+                      value={formatMealMacro(totals.carbs / totalServingsCount)}
+                      label={`${mobileT('units.g')} ${localizeNutrient('carbs')}`}
                     />
                     <MacroStat
                       color={fatColor}
-                      value={formatMacroDisplay(totals.fat / totalServingsCount)}
-                      label="g fat"
+                      value={formatMealMacro(totals.fat / totalServingsCount)}
+                      label={`${mobileT('units.g')} ${localizeNutrient('fat')}`}
                     />
                   </View>
                 </View>
@@ -748,7 +825,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <Text className="text-white text-base font-semibold">
-                {SAVE_LABEL}
+                {mobileT('common.save')}
               </Text>
             )}
           </Button>

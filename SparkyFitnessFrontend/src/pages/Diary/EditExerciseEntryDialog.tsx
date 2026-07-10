@@ -300,10 +300,14 @@ const EditExerciseEntryDialog = ({
               )}
             </AlertDescription>
             <button
+              type="button"
               onClick={() => setShowCaloriesWarning(false)}
-              className="absolute top-1/2 right-2 -translate-y-1/2"
+              className="absolute top-1/2 end-2 -translate-y-1/2"
+              aria-label={t(
+                'exercise.editExerciseEntryDialog.dismissCaloriesWarning'
+              )}
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </Alert>
         )}
@@ -386,7 +390,7 @@ const EditExerciseEntryDialog = ({
                 onClick={handleAddSet}
                 className="mt-1"
               >
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                <Plus className="h-3.5 w-3.5 me-1.5" aria-hidden="true" />
                 {t('exercise.editExerciseEntryDialog.addSetButton', 'Add Set')}
               </Button>
             </div>
@@ -417,6 +421,7 @@ const EditExerciseEntryDialog = ({
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
             <CollapsibleTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 className="w-full justify-start text-muted-foreground hover:text-foreground px-2"
@@ -426,6 +431,7 @@ const EditExerciseEntryDialog = ({
                     'h-3.5 w-3.5 transition-transform duration-200',
                     advancedOpen && 'rotate-180'
                   )}
+                  aria-hidden="true"
                 />
                 <span className="text-xs font-medium uppercase tracking-wide">
                   {t('common.advanced', 'Advanced')}
@@ -457,19 +463,23 @@ const EditExerciseEntryDialog = ({
                         'exercise.editExerciseEntryDialog.caloriesBurnedPlaceholder',
                         'Auto-calculated if left blank'
                       )}
-                      className="pr-8"
+                      className="pe-8"
                     />
                     {caloriesBurnedInput !== '' && (
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         onClick={() => {
                           setCaloriesBurnedInput('');
                           setShowCaloriesWarning(true);
                         }}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                        className="absolute end-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                        aria-label={t(
+                          'exercise.editExerciseEntryDialog.useAutomaticCalories'
+                        )}
                       >
-                        <XCircle className="h-4 w-4" />
+                        <XCircle className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     )}
                   </div>
@@ -532,16 +542,22 @@ const EditExerciseEntryDialog = ({
                           ? URL.createObjectURL(imageFile)
                           : imageUrl || ''
                       }
-                      alt="Exercise"
+                      alt={t(
+                        'exercise.editExerciseEntryDialog.imagePreviewAlt'
+                      )}
                       className="h-full w-full object-cover rounded-md"
                     />
                     <Button
+                      type="button"
                       variant="destructive"
                       size="icon"
                       onClick={handleClearImage}
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      className="absolute -top-2 -end-2 h-6 w-6 rounded-full"
+                      aria-label={t(
+                        'exercise.editExerciseEntryDialog.clearImage'
+                      )}
                     >
-                      <XCircle className="h-4 w-4" />
+                      <XCircle className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </div>
                 )}
@@ -550,11 +566,15 @@ const EditExerciseEntryDialog = ({
           </Collapsible>
         </div>
 
-        <div className="flex justify-end space-x-2 mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button onClick={handleSave} disabled={loading}>
+          <Button type="button" onClick={handleSave} disabled={loading}>
             {loading
               ? t('common.saving', 'Saving...')
               : t('common.saveChanges', 'Save Changes')}

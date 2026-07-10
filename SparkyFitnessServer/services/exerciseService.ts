@@ -1149,10 +1149,13 @@ async function addExternalExerciseToUserExercises(
         wgerExerciseDetails.images.map(async (img) => {
           try {
             if (img.image) {
-              const fullPath = (await downloadImage(
+              const fullPath = await downloadImage(
                 img.image,
                 exerciseFolderName
-              )) as string;
+              );
+              if (!fullPath) {
+                return null;
+              }
               return fullPath.replace('/uploads/exercises/', '');
             }
           } catch (imgError) {
@@ -1531,7 +1534,7 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
                 imageUrl,
                 exerciseFolderName
               );
-              localImagePaths.push(localPath);
+              if (localPath) localImagePaths.push(localPath);
             } catch (imgError) {
               log(
                 'error',
@@ -2231,7 +2234,7 @@ async function importExercisesFromJson(
         for (const imageUrl of imageUrls) {
           try {
             const localPath = await downloadImage(imageUrl, exerciseFolderName);
-            localImagePaths.push(localPath);
+            if (localPath) localImagePaths.push(localPath);
           } catch (imgError) {
             log(
               'error',

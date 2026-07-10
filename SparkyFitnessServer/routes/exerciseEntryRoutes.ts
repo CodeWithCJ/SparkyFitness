@@ -9,6 +9,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { createUploadMiddleware } from '../middleware/uploadMiddleware.js';
+import { requireMultipartUploadsEnabled } from '../middleware/deploymentModeMiddleware.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -267,6 +268,7 @@ router.get('/by-date', authenticate, async (req, res, next) => {
 router.post(
   '/',
   authenticate,
+  requireMultipartUploadsEnabled,
   upload.single('image'),
   async (req, res, next) => {
     try {
@@ -677,9 +679,10 @@ router.get('/:id', authenticate, async (req, res, next) => {
 router.put(
   '/:id',
   authenticate,
+  requireMultipartUploadsEnabled,
   upload.single('image'),
   async (req, res, next) => {
-    const { id } = req.params;
+    const id = String(req.params.id ?? '');
     let updateData;
     if (req.is('multipart/form-data')) {
       updateData = { ...req.body };

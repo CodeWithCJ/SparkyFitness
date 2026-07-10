@@ -2,6 +2,8 @@ export const FASTING_PRESETS = [
   {
     id: '16-8',
     name: '16:8 Leangains',
+    labelKey: 'fasting.presets.sixteenEight.name',
+    descriptionKey: 'fasting.presets.sixteenEight.description',
     fastingHours: 16,
     eatingHours: 8,
     description: 'Skip breakfast and eat during an 8-hour window.',
@@ -9,6 +11,8 @@ export const FASTING_PRESETS = [
   {
     id: '18-6',
     name: '18:6 Warrior',
+    labelKey: 'fasting.presets.eighteenSix.name',
+    descriptionKey: 'fasting.presets.eighteenSix.description',
     fastingHours: 18,
     eatingHours: 6,
     description: 'More aggressive fast with a 6-hour eating window.',
@@ -16,6 +20,8 @@ export const FASTING_PRESETS = [
   {
     id: '20-4',
     name: '20:4 Warrior',
+    labelKey: 'fasting.presets.twentyFour.name',
+    descriptionKey: 'fasting.presets.twentyFour.description',
     fastingHours: 20,
     eatingHours: 4,
     description: 'Eat one large meal or spread calories over 4 hours.',
@@ -23,6 +29,8 @@ export const FASTING_PRESETS = [
   {
     id: 'circumadian',
     name: 'Circadian Rhythm',
+    labelKey: 'fasting.presets.circadian.name',
+    descriptionKey: 'fasting.presets.circadian.description',
     fastingHours: 13,
     eatingHours: 11,
     description: 'Fast from sunset to morning.',
@@ -30,6 +38,8 @@ export const FASTING_PRESETS = [
   {
     id: 'custom',
     name: 'Custom Fast',
+    labelKey: 'fasting.presets.twelveTwelve.name',
+    descriptionKey: 'fasting.presets.twelveTwelve.description',
     fastingHours: 12,
     eatingHours: 12,
     description: 'Set your own fasting duration.', // Placeholder for custom logic

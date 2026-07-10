@@ -9,6 +9,8 @@ import {
 import { rescheduleBackups } from '../services/backupScheduler.js';
 import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
 import backupSettingsRepository from '../models/backupSettingsRepository.js';
+import { requireServerBackupsEnabled } from '../middleware/deploymentModeMiddleware.js';
+import { areServerBackupsEnabled } from '../utils/runtimeConfig.js';
 
 const backupSettingsBodySchema = z.object({
   backupEnabled: z.boolean(),
@@ -28,6 +30,7 @@ const backupSettingsBodySchema = z.object({
 });
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'mult... Remove this comment to see the full error message
 import multer from 'multer';
+import os from 'os';
 import path from 'path';
 import { promises } from 'fs';
 import { randomUUID } from 'crypto';
@@ -40,9 +43,13 @@ const fs = { promises }.promises;
 // Temporary directory for uploaded backup files. Resolved from an env var so
 // the path can live on writable storage (the application directory may be
 // read-only, e.g. when installed into the Nix store).
+const useRuntimeTempDirectory =
+  process.env.VERCEL === '1' || !areServerBackupsEnabled();
 const TEMP_UPLOAD_DIR = process.env.SPARKY_FITNESS_CUSTOM_TEMP_DIRECTORY
   ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_TEMP_DIRECTORY)
-  : path.join(__dirname, '../temp_uploads/');
+  : useRuntimeTempDirectory
+    ? path.join(os.tmpdir(), 'sparkyfitness-temp-uploads')
+    : path.join(__dirname, '../temp_uploads/');
 // Configure multer for file uploads (for restore)
 const upload = multer({
   dest: TEMP_UPLOAD_DIR,
@@ -63,7 +70,9 @@ async function ensureTempUploadDirectory() {
     throw error;
   }
 }
-ensureTempUploadDirectory(); // Call once on startup
+if (areServerBackupsEnabled()) {
+  ensureTempUploadDirectory(); // Call once on startup
+}
 /**
  * @swagger
  * tags:
@@ -95,34 +104,42 @@ ensureTempUploadDirectory(); // Call once on startup
  *       500:
  *         description: Server error during backup.
  */
-router.post('/manual', authenticate, isAdmin, async (req, res) => {
-  log('info', 'Manual backup initiated by admin.');
-  try {
-    const result = await performBackup(true); // Pass true for manual backup
-    if (result.success) {
-      res.status(200).json({
-        message: result.message || 'Backup completed successfully.',
-        path: result.path,
-        fileName: result.fileName,
+router.post(
+  '/manual',
+  authenticate,
+  isAdmin,
+  requireServerBackupsEnabled,
+  async (req, res) => {
+    log('info', 'Manual backup initiated by admin.');
+    try {
+      const result = await performBackup(true); // Pass true for manual backup
+      if (result.success) {
+        res.status(200).json({
+          message: result.message || 'Backup completed successfully.',
+          path: result.path,
+          fileName: result.fileName,
+        });
+      } else {
+        const errorMessage = result.error
+          ? result.error.message || result.error
+          : 'Unknown backup error.';
+        res
+          .status(500)
+          .json({ message: 'Backup failed.', error: errorMessage });
+      }
+    } catch (error) {
+      log('error', 'Error during manual backup:', error);
+      const errorMessage = error
+        ? // @ts-expect-error TS(2571): Object is of type 'unknown'.
+          error.message || error
+        : 'Unknown internal server error.';
+      res.status(500).json({
+        message: 'Internal server error during backup.',
+        error: errorMessage,
       });
-    } else {
-      const errorMessage = result.error
-        ? result.error.message || result.error
-        : 'Unknown backup error.';
-      res.status(500).json({ message: 'Backup failed.', error: errorMessage });
     }
-  } catch (error) {
-    log('error', 'Error during manual backup:', error);
-    const errorMessage = error
-      ? // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error.message || error
-      : 'Unknown internal server error.';
-    res.status(500).json({
-      message: 'Internal server error during backup.',
-      error: errorMessage,
-    });
   }
-});
+);
 /**
  * @swagger
  * /admin/backup/restore:
@@ -161,6 +178,7 @@ router.post(
   '/restore',
   authenticate,
   isAdmin,
+  requireServerBackupsEnabled,
   upload.single('backupFile'),
   async (req, res) => {
     log('info', 'Restore initiated by admin.');
@@ -260,27 +278,33 @@ router.post(
  *       500:
  *         description: Server error.
  */
-router.get('/settings', authenticate, isAdmin, async (req, res) => {
-  try {
-    const backupSettings = await backupSettingsRepository.getBackupSettings();
-    res.status(200).json({
-      backupEnabled: backupSettings.backup_enabled,
-      backupDays: backupSettings.backup_days,
-      backupTime: backupSettings.backup_time,
-      retentionDays: backupSettings.retention_days,
-      lastBackupStatus: backupSettings.last_backup_status,
-      lastBackupTimestamp: backupSettings.last_backup_timestamp,
-      backupLocation: BACKUP_DIR, // From backupService
-    });
-  } catch (error) {
-    log('error', 'Error fetching backup settings:', error);
-    res.status(500).json({
-      message: 'Internal server error fetching backup settings.',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
-    });
+router.get(
+  '/settings',
+  authenticate,
+  isAdmin,
+  requireServerBackupsEnabled,
+  async (req, res) => {
+    try {
+      const backupSettings = await backupSettingsRepository.getBackupSettings();
+      res.status(200).json({
+        backupEnabled: backupSettings.backup_enabled,
+        backupDays: backupSettings.backup_days,
+        backupTime: backupSettings.backup_time,
+        retentionDays: backupSettings.retention_days,
+        lastBackupStatus: backupSettings.last_backup_status,
+        lastBackupTimestamp: backupSettings.last_backup_timestamp,
+        backupLocation: BACKUP_DIR, // From backupService
+      });
+    } catch (error) {
+      log('error', 'Error fetching backup settings:', error);
+      res.status(500).json({
+        message: 'Internal server error fetching backup settings.',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 /**
  * @swagger
  * /admin/backup/settings:
@@ -321,50 +345,56 @@ router.get('/settings', authenticate, isAdmin, async (req, res) => {
  *       500:
  *         description: Server error.
  */
-router.post('/settings', authenticate, isAdmin, async (req, res) => {
-  const parsed = backupSettingsBodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({
-      message: 'Invalid backup settings.',
-      errors: parsed.error.flatten(),
-    });
-    return;
-  }
-  const { backupEnabled, backupDays, backupTime, retentionDays } = parsed.data;
-  try {
-    const updatedSettings = await backupSettingsRepository.updateBackupSettings(
-      {
-        backup_enabled: backupEnabled,
-        backup_days: backupDays,
-        backup_time: backupTime,
-        retention_days: retentionDays,
-      }
-    );
-
-    let schedulerFailed = false;
-    try {
-      await rescheduleBackups();
-    } catch (schedErr) {
-      log(
-        'error',
-        '[CRON] Settings saved but live reschedule failed:',
-        schedErr
-      );
-      schedulerFailed = true;
+router.post(
+  '/settings',
+  authenticate,
+  isAdmin,
+  requireServerBackupsEnabled,
+  async (req, res) => {
+    const parsed = backupSettingsBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        message: 'Invalid backup settings.',
+        errors: parsed.error.flatten(),
+      });
+      return;
     }
+    const { backupEnabled, backupDays, backupTime, retentionDays } =
+      parsed.data;
+    try {
+      const updatedSettings =
+        await backupSettingsRepository.updateBackupSettings({
+          backup_enabled: backupEnabled,
+          backup_days: backupDays,
+          backup_time: backupTime,
+          retention_days: retentionDays,
+        });
 
-    res.status(200).json({
-      message: 'Backup settings saved successfully.',
-      settings: updatedSettings,
-      ...(schedulerFailed ? { schedulerFailed: true } : {}),
-    });
-  } catch (error) {
-    log('error', 'Error saving backup settings:', error);
-    res.status(500).json({
-      message: 'Internal server error saving backup settings.',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
-    });
+      let schedulerFailed = false;
+      try {
+        await rescheduleBackups();
+      } catch (schedErr) {
+        log(
+          'error',
+          '[CRON] Settings saved but live reschedule failed:',
+          schedErr
+        );
+        schedulerFailed = true;
+      }
+
+      res.status(200).json({
+        message: 'Backup settings saved successfully.',
+        settings: updatedSettings,
+        ...(schedulerFailed ? { schedulerFailed: true } : {}),
+      });
+    } catch (error) {
+      log('error', 'Error saving backup settings:', error);
+      res.status(500).json({
+        message: 'Internal server error saving backup settings.',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 export default router;

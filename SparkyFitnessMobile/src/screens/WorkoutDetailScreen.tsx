@@ -48,8 +48,14 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { ensureNotificationPermission } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
+import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
+import {
+  formatMobileNumber,
+  isMobileRtl,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { UpdatePresetSessionRequest } from '@workspace/shared';
 
@@ -60,7 +66,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
-  const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  const weightUnit: 'kg' | 'lbs' =
+    preferences?.default_weight_unit === 'lbs' ? 'lbs' : 'kg';
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
   const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
@@ -238,7 +245,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   // Seed the store from this saved session and enter the live screen. `atSetId`
-  // starts the cursor on a specific set (the "Start workout here" long-press).
+  // starts the cursor on the set selected from the long-press action.
   const enterLiveWorkout = useCallback(
     (atSetId?: string) => {
       void ensureNotificationPermission();
@@ -250,20 +257,19 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     [session, navigation],
   );
 
-  // Start this workout, first offering to clear any other in-progress session
-  // (mirrors useStartLiveWorkout's "Replace current workout?" prompt). The
-  // Start button and "Start workout here" long-press are both gated on
+  // Start this workout, first offering to clear any other in-progress session.
+  // The start button and its set-level long-press counterpart are both gated on
   // !isWorkoutActive, so a non-null sessionId here means a *different* workout.
   const beginWorkout = useCallback(
     (atSetId?: string) => {
       if (useActiveWorkoutStore.getState().sessionId !== null) {
         Alert.alert(
-          'Replace current workout?',
-          'You already have a workout in progress. Starting this one clears it here — any sets already saved stay in your diary.',
+          mobileT('workoutDetail.replaceTitle'),
+          mobileT('workoutDetail.replaceDescription'),
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: mobileT('common.cancel'), style: 'cancel' },
             {
-              text: 'Clear & Start',
+              text: mobileT('workoutDetail.clearAndStart'),
               style: 'destructive',
               onPress: () => {
                 void (async () => {
@@ -295,7 +301,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       }[] = [];
 
       if (isSparky) {
-        buttons.push({ text: 'Edit', onPress: startEditing });
+        buttons.push({ text: mobileT('common.edit'), onPress: startEditing });
       }
 
       // Gated on isSparky like the Start button: a live workout autosaves via
@@ -303,14 +309,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       // synced (non-manual/sparky) sessions.
       if (!isWorkoutActive && isSparky) {
         buttons.push({
-          text: 'Start workout here',
+          text: mobileT('workoutDetail.startHere'),
           onPress: () => beginWorkout(setId),
         });
       }
 
       if (buttons.length === 0) return;
 
-      buttons.push({ text: 'Cancel', style: 'cancel' });
+      buttons.push({ text: mobileT('common.cancel'), style: 'cancel' });
       Alert.alert(name, undefined, buttons);
     },
     [isSparky, isWorkoutActive, name, startEditing, beginWorkout],
@@ -345,8 +351,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       if (exercisesModifiedRef.current && !submission.canSave) {
         Toast.show({
           type: 'error',
-          text1: 'Workout needs an exercise',
-          text2: 'Add at least one exercise with a set or delete the workout.',
+          text1: mobileT('workoutDetail.needsExercise'),
+          text2: mobileT('workoutDetail.needsExerciseDescription'),
         });
         return;
       }
@@ -366,8 +372,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setEditNotes('');
       deactivateSet();
     } catch (error) {
-      addLog(`Failed to save workout: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
+      addLog(`${mobileT('workoutDetail.saveFailed')}: ${error}`, 'ERROR');
+      Toast.show({
+        type: 'error',
+        text1: mobileT('workoutDetail.saveFailed'),
+        text2: mobileT('common.retry'),
+      });
     }
   }, [submission, normalizedDate, editNotes, updateSession, session, invalidateSessionCache, deactivateSet, exercisesModifiedRef]);
 
@@ -438,7 +448,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     return (
       <View className="bg-surface rounded-xl p-4 mt-4">
-        <Text className="text-base font-semibold text-text-primary mb-2">Details</Text>
+        <Text className="text-base font-semibold text-text-primary mb-2">
+          {mobileT('workoutDetail.details')}
+        </Text>
         {items.map((item, i) => (
           <View
             key={`${item.label}-${i}`}
@@ -461,22 +473,30 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const totalVolume = isEditing
       ? formState.exercises.reduce((sum, ex) => ex.sets.reduce((s, set) => {
           const w = parseDecimalInput(set.weight);
-          const r = parseInt(set.reps, 10);
+          const r = Math.trunc(parseDecimalInput(set.reps));
           return s + (isNaN(w) || isNaN(r) ? 0 : w * r);
         }, sum), 0)
       : session.exercises.reduce((sum, ex) => sum + getExerciseVolumeKg(ex), 0);
 
     const summaryItems: { value: string; label: string }[] = [];
     summaryItems.push({
-      value: String(exerciseCount),
-      label: exerciseCount === 1 ? 'Exercise' : 'Exercises',
+      value: formatMobileNumber(exerciseCount),
+      label: mobileT('workoutDetail.exercises'),
     });
-    if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: 'Sets' });
+    if (totalSets > 0) {
+      summaryItems.push({
+        value: formatMobileNumber(totalSets),
+        label: mobileT('workoutDetail.sets'),
+      });
+    }
     if (totalVolume > 0) {
       const volumeLabel = isEditing
-        ? `${Math.round(totalVolume).toLocaleString()} ${weightUnit}`
+        ? `${formatMobileNumber(Math.round(totalVolume))} ${localizeServingUnit(weightUnit)}`
         : formatVolume(totalVolume, weightUnit);
-      summaryItems.push({ value: volumeLabel, label: 'Volume' });
+      summaryItems.push({
+        value: volumeLabel,
+        label: mobileT('workoutDetail.volume'),
+      });
     }
     if (summaryItems.length === 0) return null;
 
@@ -504,12 +524,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const canReorderEdit = canReorderDraftExercises(formState.exercises);
   const saveHeaderItem: HeaderItem = {
     kind: 'primary',
-    label: SAVE_LABEL,
-    busyLabel: SAVING_LABEL,
+    label: mobileT('common.save'),
+    busyLabel: mobileT('common.saving'),
     busy: isSaving,
     disabled: isSaving || !hasEditedExercisesWithSets,
     onPress: handleSave,
-    accessibilityLabel: 'Save',
+    accessibilityLabel: mobileT('common.save'),
     identifier: 'workout-detail-save',
   };
   const reorderHeaderItem: HeaderItem = {
@@ -518,18 +538,18 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     ionicon: 'swap-vertical',
     role: 'secondary',
     onPress: () => exerciseListRef.current?.openReorder(),
-    accessibilityLabel: 'Reorder exercises',
+    accessibilityLabel: mobileT('workoutDetail.reorderExercises'),
     identifier: 'workout-detail-reorder',
   };
 
   // Small inline native title (set in App.tsx as a small title so re-applying it
   // for the edit-mode swap updates in place rather than flying in a large one).
-  // View mode: name + owner-only Edit (the in-body name is suppressed since it
-  // lives in the bar). Edit mode: "Edit Workout" title, X-dismiss owning the
+  // View mode: name + owner-only edit (the in-body name is suppressed since it
+  // lives in the bar). Edit mode: localized title, X-dismiss owning the
   // left slot with swipe-back disabled, Save (+ reorder) on the right; name
   // edited in-body.
   const header = useScreenHeader({
-    nativeTitle: isEditing ? 'Edit Workout' : name,
+    nativeTitle: isEditing ? mobileT('workoutDetail.editTitle') : name,
     animateKey: isEditing ? 'edit' : 'view',
     borderless: true,
     nativeOptions: { gestureEnabled: !isEditing, headerBackVisible: !isEditing },
@@ -538,7 +558,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           kind: 'dismiss',
           onPress: cancelEditing,
           disabled: isSaving,
-          accessibilityLabel: 'Cancel',
+          accessibilityLabel: mobileT('common.cancel'),
           identifier: 'workout-detail-cancel',
         }
       : { kind: 'back' },
@@ -549,10 +569,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       : isSparky
         ? {
             kind: 'text',
-            label: 'Edit',
+            label: mobileT('common.edit'),
             role: 'secondary',
             onPress: startEditing,
-            accessibilityLabel: 'Edit workout',
+            accessibilityLabel: mobileT('workoutDetail.editWorkout'),
             identifier: 'workout-detail-edit',
           }
         : null,
@@ -576,11 +596,13 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View className="mb-4">
           {isEditing ? (
             <FadeView key="edit-title">
-              <Text className="text-sm font-medium text-text-secondary mb-1">Name</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1">
+                {mobileT('workoutDetail.name')}
+              </Text>
               <FormInput
                 value={formState.name}
                 onChangeText={setFormName}
-                placeholder="Workout Name"
+                placeholder={mobileT('workoutDetail.namePlaceholder')}
                 className="mb-2"
               />
             </FadeView>
@@ -597,11 +619,18 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 className="flex-row items-center"
                 onPress={() => calendarSheetRef.current?.present()}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={mobileT('workoutDetail.chooseDate')}
               >
                 <Text className="text-sm" style={{ color: accentPrimary }}>
                   {formatDateLabel(formState.entryDate)}
                 </Text>
-                <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
+                <Icon
+                  name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+                  size={14}
+                  color={accentPrimary}
+                  style={{ marginStart: 2 }}
+                />
               </TouchableOpacity>
             ) : entryDate ? (
               <Text className="text-sm text-text-muted">{formatDate(entryDate)}</Text>
@@ -612,10 +641,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Summary card */}
         {renderSummaryCard()}
 
-        {/* Start Workout button */}
+        {/* Start-workout action */}
         {!isEditing && isSparky && !isWorkoutActive && (
           <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
-            Start Workout
+            {mobileT('workoutDetail.startWorkout')}
           </Button>
         )}
 
@@ -653,11 +682,13 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing && (
           <FadeView>
             <View className="mt-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1">
+                {mobileT('workoutDetail.notes')}
+              </Text>
               <FormInput
                 value={editNotes}
                 onChangeText={setEditNotes}
-                placeholder="Add notes..."
+                placeholder={mobileT('workoutDetail.notesPlaceholder')}
                 multiline
                 style={{ minHeight: 60 }}
               />
@@ -665,11 +696,13 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </FadeView>
         )}
 
-        {/* Notes (view mode) */}
+        {/* Read-only notes */}
         {!isEditing && session.notes && (
           <FadeView>
             <View className="mt-4 px-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1">
+                {mobileT('workoutDetail.notes')}
+              </Text>
               <Text className="text-sm text-text-primary">{session.notes}</Text>
             </View>
           </FadeView>
@@ -687,7 +720,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               className="mt-6"
             >
               <Text className="text-bg-danger text-base font-medium">
-                {isDeleting ? 'Deleting...' : 'Delete Workout'}
+                {isDeleting
+                  ? mobileT('workoutDetail.deleting')
+                  : mobileT('workoutDetail.deleteWorkout')}
               </Text>
             </Button>
           </FadeView>

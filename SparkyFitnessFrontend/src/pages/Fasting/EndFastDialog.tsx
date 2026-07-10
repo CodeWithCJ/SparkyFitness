@@ -8,6 +8,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useTranslation } from 'react-i18next';
 
 interface EndFastDialogProps {
   isOpen: boolean;
@@ -32,6 +35,8 @@ const EndFastDialog: React.FC<EndFastDialogProps> = ({
   initialStartISO = null,
   initialEndISO = null,
 }) => {
+  const { t } = useTranslation();
+  const [timeError, setTimeError] = React.useState('');
   const formatForLocalInput = (d: Date) => {
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -59,6 +64,7 @@ const EndFastDialog: React.FC<EndFastDialogProps> = ({
         setStartLocal(formatForLocalInput(new Date(initialStartISO)));
       if (initialEndISO)
         setEndLocal(formatForLocalInput(new Date(initialEndISO)));
+      setTimeError('');
     } catch (e) {
       // ignore
     }
@@ -68,49 +74,87 @@ const EndFastDialog: React.FC<EndFastDialogProps> = ({
     // Convert local datetime-local value back to a Date object in user's local timezone
     const start = startLocal ? new Date(startLocal) : new Date();
     const end = endLocal ? new Date(endLocal) : new Date();
+    if (end <= start) {
+      setTimeError(
+        t(
+          'fasting.invalidTimeRange',
+          'The end time must be after the start time.'
+        )
+      );
+      return;
+    }
     onEnd(start, end);
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Fast Completed! 🎉</DialogTitle>
+          <DialogTitle>
+            {t('fasting.endDialogTitle', 'Fast complete')}
+          </DialogTitle>
           <DialogDescription>
-            You fasted for{' '}
-            <span className="font-bold text-primary">{durationFormatted}</span>.
+            {t('fasting.endDialogDescription', 'You fasted for {{duration}}.', {
+              duration: durationFormatted,
+            })}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 space-y-4">
-          <p className="text-muted-foreground text-center">
-            Great job! You can edit the start/end times below if you missed
-            pressing the buttons.
+        <div className="space-y-4 py-4">
+          <p className="text-center text-muted-foreground">
+            {t(
+              'fasting.endDialogHelp',
+              'If you started or stopped the timer late, adjust the times before saving.'
+            )}
           </p>
           <div className="grid grid-cols-1 gap-2">
-            <label className="text-sm">Start Time</label>
-            <input
+            <Label htmlFor="fast-end-start-time">
+              {t('fasting.startTime', 'Start time')}
+            </Label>
+            <Input
+              id="fast-end-start-time"
               type="datetime-local"
+              dir="ltr"
               value={startLocal}
-              onChange={(e) => setStartLocal(e.target.value)}
-              className="w-full p-2 border rounded"
+              onChange={(e) => {
+                setStartLocal(e.target.value);
+                setTimeError('');
+              }}
             />
-            <label className="text-sm">End Time</label>
-            <input
+            <Label htmlFor="fast-end-time">
+              {t('fasting.endTime', 'End time')}
+            </Label>
+            <Input
+              id="fast-end-time"
               type="datetime-local"
+              dir="ltr"
               value={endLocal}
-              onChange={(e) => setEndLocal(e.target.value)}
-              className="w-full p-2 border rounded"
+              onChange={(e) => {
+                setEndLocal(e.target.value);
+                setTimeError('');
+              }}
             />
           </div>
+          {timeError && (
+            <p role="alert" className="text-sm text-destructive">
+              {timeError}
+            </p>
+          )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
+          <Button type="button" variant="outline" onClick={onClose}>
+            {t('fasting.cancel', 'Cancel')}
           </Button>
-          <Button onClick={handleConfirm}>End Fast</Button>
+          <Button type="button" onClick={handleConfirm}>
+            {t('fasting.confirmEnd', 'End and save')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -3,6 +3,11 @@ import type { ActivityDraft } from '../../src/types/drafts';
 import type { Exercise } from '../../src/types/exercise';
 
 jest.mock('../../src/utils/dateUtils', () => ({
+  formatMonthDayShort: (date: string) =>
+    ({
+      '2026-03-12': '١٢ مارس',
+      '2026-04-01': '١ أبريل',
+    })[date] ?? date,
   getTodayDate: () => '2026-03-12',
   normalizeDate: (value: string) => value.split('T')[0],
 }));
@@ -58,7 +63,7 @@ describe('activityFormReducer', () => {
       const result = activityFormReducer(state, { type: 'SET_EXERCISE', exercise });
 
       // 600 cal/hr * (30/60) = 300
-      expect(result.calories).toBe('300');
+      expect(result.calories).toBe('٣٠٠');
     });
 
     it('does not overwrite calories when caloriesManuallySet is true', () => {
@@ -90,7 +95,7 @@ describe('activityFormReducer', () => {
 
       const result = activityFormReducer(state, { type: 'SET_EXERCISE', exercise });
 
-      expect(result.name).toBe('Running - Mar 12');
+      expect(result.name).toBe('Running · ١٢ مارس');
     });
 
     it('preserves name when nameManuallySet is true', () => {
@@ -119,7 +124,7 @@ describe('activityFormReducer', () => {
       const result = activityFormReducer(state, { type: 'SET_DURATION', value: '45' });
 
       // 600 * (45/60) = 450
-      expect(result.calories).toBe('450');
+      expect(result.calories).toBe('٤٥٠');
     });
 
     it('does not overwrite calories when caloriesManuallySet is true', () => {
@@ -207,7 +212,7 @@ describe('activityFormReducer', () => {
       const state: ActivityDraft = { ...makeEmptyDraft(), exerciseName: 'Running' };
       const result = activityFormReducer(state, { type: 'SET_DATE', value: '2026-04-01' });
 
-      expect(result.name).toBe('Running - Apr 1');
+      expect(result.name).toBe('Running · ١ أبريل');
     });
 
     it('preserves name when manually set', () => {
@@ -301,12 +306,12 @@ describe('activityFormReducer', () => {
       expect(result.exerciseId).toBe('ex-1');
       expect(result.exerciseName).toBe('Running');
       expect(result.exerciseCategory).toBe('Cardio');
-      expect(result.duration).toBe('30');
-      expect(result.calories).toBe('300');
+      expect(result.duration).toBe('٣٠');
+      expect(result.calories).toBe('٣٠٠');
       expect(result.caloriesManuallySet).toBe(true);
       expect(result.entryDate).toBe('2026-03-10');
       expect(result.notes).toBe('Great session');
-      expect(result.distance).toBe('10');
+      expect(result.distance).toBe('١٠');
     });
 
     it('falls back to exercise_snapshot name when entry name is null', () => {
@@ -324,7 +329,7 @@ describe('activityFormReducer', () => {
 
       const result = activityFormReducer(state, { type: 'POPULATE', entry, distanceUnit: 'km' });
 
-      expect(result.avgHeartRate).toBe('155');
+      expect(result.avgHeartRate).toBe('١٥٥');
     });
 
     it('converts distance from km to miles when distanceUnit is miles', () => {
@@ -334,7 +339,7 @@ describe('activityFormReducer', () => {
       const result = activityFormReducer(state, { type: 'POPULATE', entry, distanceUnit: 'miles' });
 
       // 10 km * 0.621371 = 6.21371 -> toFixed(2) = "6.21" -> parseFloat = 6.21
-      expect(result.distance).toBe('6.21');
+      expect(result.distance).toBe('٦٫٢١');
     });
 
     it('sets distance to empty string when distance is null', () => {
@@ -437,6 +442,31 @@ describe('activityFormReducer', () => {
   });
 
   describe('getActivityDraftSubmission', () => {
+    it('parses Arabic-Indic numeric fields', () => {
+      const result = getActivityDraftSubmission(
+        {
+          ...makeEmptyDraft(),
+          exerciseId: 'ex-1',
+          exerciseName: 'Running',
+          duration: '٤٥',
+          distance: '١٠',
+          calories: '٤٥٠',
+          avgHeartRate: '١٥٥',
+        },
+        'km',
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          durationMinutes: 45,
+          distanceKm: 10,
+          caloriesBurned: 450,
+          avgHeartRate: 155,
+          canSave: true,
+        }),
+      );
+    });
+
     it('builds parsed submission values and marks add-mode saves as valid', () => {
       const state: ActivityDraft = {
         ...makeEmptyDraft(),

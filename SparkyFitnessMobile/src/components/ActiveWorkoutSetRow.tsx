@@ -37,6 +37,7 @@ import {
 } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
+import { formatMobileNumber, mobileT } from '../localization';
 
 export type SetRowState = 'done' | 'current' | 'upcoming';
 
@@ -49,17 +50,21 @@ const RPE_TONE_VARS: Record<RpeTone, string> = {
 
 function formatDisplayWeight(weightKg: number | null, unit: 'kg' | 'lbs'): string {
   if (weightKg == null) return '';
-  return String(parseFloat(weightFromKg(weightKg, unit).toFixed(1)));
+  return formatMobileNumber(parseFloat(weightFromKg(weightKg, unit).toFixed(1)), {
+    useGrouping: false,
+  });
 }
 
 function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
   if (valueKg <= 0) return '–';
-  return Math.round(weightFromKg(valueKg, unit)).toLocaleString();
+  return formatMobileNumber(Math.round(weightFromKg(valueKg, unit)), {
+    maximumFractionDigits: 0,
+  });
 }
 
 function formatRpe(rpe: number | null): string {
   if (rpe == null) return '–';
-  return Number.isInteger(rpe) ? String(rpe) : rpe.toFixed(1);
+  return formatMobileNumber(rpe);
 }
 
 /** Clamp a typed RPE to 1–10 in 0.5 steps; empty/invalid → null. */
@@ -275,13 +280,23 @@ function ActiveWorkoutSetRow({
 
   const setId = String(set.id);
   const isWarmup = set.set_type === 'warmup';
+  const setNumber = formatMobileNumber(set.set_number, {
+    maximumFractionDigits: 0,
+  });
 
   // Local drafts while the row is current — committed on blur/step/log so the
   // store (kg) isn't rewritten on every keystroke of a decimal in progress.
   const [weightDraft, setWeightDraft] = useState(() =>
     formatDisplayWeight(set.weight, weightUnit),
   );
-  const [repsDraft, setRepsDraft] = useState(() => (set.reps != null ? String(set.reps) : ''));
+  const [repsDraft, setRepsDraft] = useState(() =>
+    set.reps != null
+      ? formatMobileNumber(set.reps, {
+          maximumFractionDigits: 0,
+          useGrouping: false,
+        })
+      : '',
+  );
   const [rpeDraft, setRpeDraft] = useState(() => (set.rpe != null ? formatRpe(set.rpe) : ''));
 
   // Re-seed drafts when the underlying set changes (id churn after a recreate
@@ -293,7 +308,14 @@ function ActiveWorkoutSetRow({
   if (signature !== prevSignature) {
     setPrevSignature(signature);
     setWeightDraft(formatDisplayWeight(set.weight, weightUnit));
-    setRepsDraft(set.reps != null ? String(set.reps) : '');
+    setRepsDraft(
+      set.reps != null
+        ? formatMobileNumber(set.reps, {
+            maximumFractionDigits: 0,
+            useGrouping: false,
+          })
+        : '',
+    );
     // RPE alone commits per keystroke in edit mode, so a re-seed can arrive
     // mid-typing: leave the draft alone while its parse already matches the
     // committed value (e.g. "0" clamps to 1 — rewriting would jump the text
@@ -381,9 +403,18 @@ function ActiveWorkoutSetRow({
   const commitReps = useCallback(
     (text: string) => {
       // Unchanged reps need no re-commit — skip the spurious store write.
-      if (text === (set.reps != null ? String(set.reps) : '')) return;
-      const value = parseInt(text, 10);
-      onCommitField?.(setId, { reps: Number.isNaN(value) ? null : value });
+      const storedDisplay =
+        set.reps != null
+          ? formatMobileNumber(set.reps, {
+              maximumFractionDigits: 0,
+              useGrouping: false,
+            })
+          : '';
+      if (text === storedDisplay) return;
+      const value = parseDecimalInput(text);
+      onCommitField?.(setId, {
+        reps: Number.isNaN(value) ? null : Math.trunc(value),
+      });
     },
     [onCommitField, setId, set.reps],
   );
@@ -490,7 +521,9 @@ function ActiveWorkoutSetRow({
 
   const setIndicator = isWarmup ? (
     <View className="h-5 w-5 rounded-md bg-raised items-center justify-center">
-      <Text className="text-[11px] font-bold text-text-muted">W</Text>
+      <Text className="text-[11px] font-bold text-text-muted">
+        {mobileT('workoutSet.warmupShort')}
+      </Text>
     </View>
   ) : (
     <Text
@@ -500,7 +533,7 @@ function ActiveWorkoutSetRow({
         state === 'current' ? { color: accentPrimary, fontWeight: '700' } : null,
       ]}
     >
-      {displayNumber}
+      {formatMobileNumber(displayNumber, { maximumFractionDigits: 0 })}
     </Text>
   );
 
@@ -529,7 +562,7 @@ function ActiveWorkoutSetRow({
           onPress={openSetTypeMenu}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={`Change type for set ${set.set_number}`}
+          accessibilityLabel={mobileT('workoutSet.changeType', { set: setNumber })}
         >
           {setIndicator}
         </Pressable>
@@ -549,7 +582,7 @@ function ActiveWorkoutSetRow({
           onPress={() => onUncomplete?.(setId)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={`Un-complete set ${set.set_number}`}
+          accessibilityLabel={mobileT('workoutSet.uncomplete', { set: setNumber })}
         >
           <CompletionCheck size={28} />
         </Pressable>
@@ -561,7 +594,7 @@ function ActiveWorkoutSetRow({
           onPress={handleLog}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={`Log set ${set.set_number}`}
+          accessibilityLabel={mobileT('workoutSet.log', { set: setNumber })}
         >
           <LogCircle color={accentPrimary} />
         </Pressable>
@@ -577,7 +610,7 @@ function ActiveWorkoutSetRow({
         onPress={handleLog}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
-        accessibilityLabel={`Log set ${set.set_number}`}
+        accessibilityLabel={mobileT('workoutSet.log', { set: setNumber })}
       >
         <View
           className="h-7 w-7 rounded-full border-2 items-center justify-center"
@@ -598,7 +631,9 @@ function ActiveWorkoutSetRow({
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       accessibilityRole="button"
       accessibilityLabel={
-        completedBadge ? `Un-complete set ${set.set_number}` : `Mark set ${set.set_number} complete`
+        completedBadge
+          ? mobileT('workoutSet.uncomplete', { set: setNumber })
+          : mobileT('workoutSet.markComplete', { set: setNumber })
       }
     >
       {completedBadge ? (
@@ -633,16 +668,26 @@ function ActiveWorkoutSetRow({
         ? [
             {
               key: 'advance',
-              label: activeField === 'weight' ? 'Next' : 'Next Set',
+              label:
+                activeField === 'weight'
+                  ? mobileT('workoutSet.next')
+                  : mobileT('workoutSet.nextSet'),
               onPress: handleAdvance,
             },
           ]
         : []),
       ...(isLive && liveHasNextField
-        ? [{ key: 'next', label: 'Next', onPress: handleLiveNext }]
+        ? [{ key: 'next', label: mobileT('workoutSet.next'), onPress: handleLiveNext }]
         : []),
       ...(isLive && state === 'current'
-        ? [{ key: 'log', label: 'Log', onPress: handleLog, bold: true }]
+        ? [
+            {
+              key: 'log',
+              label: mobileT('workoutSet.log', { set: setNumber }),
+              onPress: handleLog,
+              bold: true,
+            },
+          ]
         : []),
     ];
     const renderAccessoryBar = () => (
@@ -677,7 +722,7 @@ function ActiveWorkoutSetRow({
                 isEdit ? () => onActivateSet?.(setId, 'weight') : () => setLiveField('weight')
               }
               keyboardType="decimal-pad"
-              accessibilityLabel="Weight"
+              accessibilityLabel={mobileT('workoutSet.weight')}
               accessoryId={weightAccessoryId}
               className="w-16"
             />
@@ -694,7 +739,7 @@ function ActiveWorkoutSetRow({
                 isEdit ? () => onActivateSet?.(setId, 'reps') : () => setLiveField('reps')
               }
               keyboardType="number-pad"
-              accessibilityLabel="Reps"
+              accessibilityLabel={mobileT('workoutSet.reps')}
               accessoryId={repsAccessoryId}
               className="w-16"
             />
@@ -708,7 +753,7 @@ function ActiveWorkoutSetRow({
                 onBlur={() => commitRpe(rpeDraft)}
                 onFocus={isLive ? () => setLiveField('rpe') : undefined}
                 keyboardType="decimal-pad"
-                accessibilityLabel="RPE"
+                accessibilityLabel={mobileT('workoutSet.rpe')}
                 accessoryId={rpeAccessoryId}
                 className="w-11"
               />
@@ -753,7 +798,11 @@ function ActiveWorkoutSetRow({
       : set.weight != null
         ? formatDisplayWeight(set.weight, weightUnit)
         : '–';
-  const displayReps = isEdit ? editRepsText || '–' : set.reps != null ? String(set.reps) : '–';
+  const displayReps = isEdit
+    ? editRepsText || '–'
+    : set.reps != null
+      ? formatMobileNumber(set.reps, { maximumFractionDigits: 0 })
+      : '–';
 
   // live + edit render tap-to-activate display cells (tap → the input variant
   // above focuses that field); view keeps flat text.
@@ -802,7 +851,7 @@ function ActiveWorkoutSetRow({
             onPress={() => onActivateSet?.(setId, 'weight')}
             onLongPress={longPress}
             accessibilityRole="button"
-            accessibilityLabel={`Edit weight for set ${set.set_number}`}
+            accessibilityLabel={mobileT('workoutSet.editWeight', { set: setNumber })}
           >
             {weightCellText}
           </Pressable>
@@ -815,7 +864,7 @@ function ActiveWorkoutSetRow({
             onPress={() => onActivateSet?.(setId, 'reps')}
             onLongPress={longPress}
             accessibilityRole="button"
-            accessibilityLabel={`Edit reps for set ${set.set_number}`}
+            accessibilityLabel={mobileT('workoutSet.editReps', { set: setNumber })}
           >
             {repsCellText}
           </Pressable>
@@ -828,7 +877,7 @@ function ActiveWorkoutSetRow({
             onPress={() => onActivateRpe?.(setId)}
             onLongPress={longPress}
             accessibilityRole="button"
-            accessibilityLabel={`Edit RPE for set ${set.set_number}`}
+            accessibilityLabel={mobileT('workoutSet.editRpe', { set: setNumber })}
           >
             <Text
               className="text-center text-sm"
@@ -863,7 +912,7 @@ function ActiveWorkoutSetRow({
       renderRightActions={() => (
         <SetSwipeDeleteAction
           onPress={() => onDelete?.(setId)}
-          accessibilityLabel={`Delete set ${set.set_number}`}
+          accessibilityLabel={mobileT('workoutSet.delete', { set: setNumber })}
         />
       )}
       overshootRight={false}

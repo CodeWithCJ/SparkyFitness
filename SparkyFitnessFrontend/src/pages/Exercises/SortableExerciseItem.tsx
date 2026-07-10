@@ -38,6 +38,7 @@ import type {
 import { PresetSessionResponse } from '@workspace/shared';
 import { SetColumnHeaders } from './SetHeader';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useTranslation } from 'react-i18next';
 
 type PresetMetadata = WorkoutPreset | PresetSessionResponse;
 
@@ -81,6 +82,7 @@ export const SortableExerciseItem = ({
 }: SortableExerciseItemProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const { distanceUnit } = usePreferences();
+  const { t } = useTranslation();
 
   const sortableId = ex.id?.toString() || `ex-${exerciseIndex}`;
 
@@ -99,7 +101,7 @@ export const SortableExerciseItem = ({
     ('exercise_name' in ex && ex.exercise_name) ||
     ('workout_preset_name' in ex && ex.workout_preset_name) ||
     ('exercise_snapshot' in ex && ex.exercise_snapshot?.name) ||
-    'Workout';
+    t('workout.exerciseItem.fallbackName', 'Workout');
 
   const isWorkoutPreset =
     'workout_preset_id' in ex && !!ex.workout_preset_id && !ex.exercise_id;
@@ -179,22 +181,37 @@ export const SortableExerciseItem = ({
     <div
       ref={setNodeRef}
       style={style}
-      className="border p-3 rounded-md space-y-3 bg-card"
-      {...attributes}
+      className="space-y-3 rounded-md border bg-card p-3"
     >
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <div {...listeners}>
-            <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
-          </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="cursor-grab touch-none rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={t(
+              'workout.exerciseItem.dragExercise',
+              'Move {{exerciseName}}',
+              { exerciseName: displayName }
+            )}
+          >
+            <GripVertical className="h-5 w-5" aria-hidden="true" />
+          </button>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               {isWorkoutPreset ? (
-                <Book className="h-4 w-4 text-primary" />
+                <Book className="h-4 w-4 text-primary" aria-hidden="true" />
               ) : isCardio ? (
-                <HeartPulse className="h-4 w-4 text-red-500" />
+                <HeartPulse
+                  className="h-4 w-4 text-red-500"
+                  aria-hidden="true"
+                />
               ) : (
-                <Dumbbell className="h-4 w-4 text-muted-foreground" />
+                <Dumbbell
+                  className="h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
               )}
               <h4 className="font-bold text-sm leading-tight">{displayName}</h4>
             </div>
@@ -205,18 +222,28 @@ export const SortableExerciseItem = ({
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center gap-1">
           {(hasSets || isCardio) && (
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8"
+              type="button"
+              aria-label={t(
+                isExpanded
+                  ? 'workout.exerciseItem.collapseExercise'
+                  : 'workout.exerciseItem.expandExercise',
+                isExpanded
+                  ? 'Collapse {{exerciseName}}'
+                  : 'Expand {{exerciseName}}',
+                { exerciseName: displayName }
+              )}
               onClick={() => setIsExpanded(!isExpanded)}
             >
               {isExpanded ? (
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="h-4 w-4" aria-hidden="true" />
               ) : (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
               )}
             </Button>
           )}
@@ -225,18 +252,30 @@ export const SortableExerciseItem = ({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
+              type="button"
+              aria-label={t(
+                'workout.exerciseItem.copyExercise',
+                'Copy {{exerciseName}}',
+                { exerciseName: displayName }
+              )}
               onClick={() => onCopyExercise(ex)}
             >
-              <Copy className="h-4 w-4" />
+              <Copy className="h-4 w-4" aria-hidden="true" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-destructive"
+            type="button"
+            aria-label={t(
+              'workout.exerciseItem.removeExercise',
+              'Remove {{exerciseName}}',
+              { exerciseName: displayName }
+            )}
             onClick={() => onRemoveExercise(exerciseIndex)}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -278,7 +317,7 @@ export const SortableExerciseItem = ({
       )}
 
       {isExpanded && !isCardio && hasSets && (
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-x-auto pb-1">
           <SetColumnHeaders category={ex?.category} />
           <DndContext
             sensors={sensors}
@@ -326,7 +365,7 @@ export const SortableExerciseItem = ({
             </SortableContext>
           </DndContext>
 
-          <div className="flex justify-between items-center mt-2 border-t pt-2">
+          <div className="mt-2 flex items-center justify-between border-t pt-2">
             {onAddSet && !isWorkoutPreset ? (
               <Button
                 type="button"
@@ -335,7 +374,8 @@ export const SortableExerciseItem = ({
                 className="h-8 text-xs font-semibold"
                 onClick={() => onAddSet(exerciseIndex)}
               >
-                <Plus className="h-3 w-3 mr-2" /> Add Set
+                <Plus className="h-3 w-3" aria-hidden="true" />
+                {t('workout.exerciseItem.addSet', 'Add set')}
               </Button>
             ) : (
               <div />
@@ -349,8 +389,10 @@ export const SortableExerciseItem = ({
 
       {isWorkoutPreset && (
         <p className="text-[11px] text-muted-foreground italic px-7">
-          Workout Preset block: Edit individual exercises within the preset
-          manager.
+          {t(
+            'workout.exerciseItem.presetNotice',
+            'This is a workout preset. Edit its exercises from the workout preset manager.'
+          )}
         </p>
       )}
     </div>

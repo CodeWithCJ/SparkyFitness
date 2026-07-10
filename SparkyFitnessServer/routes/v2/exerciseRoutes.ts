@@ -211,4 +211,4 @@ router.get(
   statsHandler
 );
 
-module.exports = router;
+export default router;

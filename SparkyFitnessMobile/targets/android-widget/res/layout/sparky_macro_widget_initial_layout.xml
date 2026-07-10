@@ -3,6 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:layoutDirection="rtl"
+    android:textDirection="rtl"
     android:gravity="center_vertical"
     android:background="#FFFFFFFF"
     android:padding="14dp">
@@ -10,7 +12,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="1,024 kcal left"
+        android:text="١٬٠٢٤ سعرة باقية"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="#FF1F1F1F"
@@ -42,7 +44,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Protein"
+            android:text="البروتين"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -50,7 +52,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="51 g"
+            android:text="٥١ غ"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -95,7 +97,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Carbs"
+            android:text="الكربوهيدرات"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -103,7 +105,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="136 g"
+            android:text="١٣٦ غ"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -148,7 +150,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Fat"
+            android:text="الدهون"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -156,7 +158,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="32 g"
+            android:text="٣٢ غ"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -192,7 +194,7 @@
             android:layout_weight="1"
             android:src="@drawable/ic_widget_search"
             android:tint="#FF3B82F6"
-            android:contentDescription="Search food" />
+            android:contentDescription="البحث عن صنف غذائي" />
 
         <TextView
             android:layout_width="1dp"
@@ -206,6 +208,6 @@
             android:layout_weight="1"
             android:src="@drawable/ic_widget_scan"
             android:tint="#FF3B82F6"
-            android:contentDescription="Scan barcode" />
+            android:contentDescription="مسح باركود منتج" />
     </LinearLayout>
 </LinearLayout>

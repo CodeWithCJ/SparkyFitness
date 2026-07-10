@@ -4,6 +4,48 @@ import '@testing-library/jest-dom';
 import { VariantCard } from '@/components/FoodSearch/VariantCard';
 import type { FoodVariant } from '@/types/food';
 
+const mockTranslations: Record<string, string> = {
+  'foodVariant.servingSize': 'حجم الحصة',
+  'foodVariant.unitType': 'نوع الوحدة',
+  'foodVariant.defaultUnit': 'الوحدة الافتراضية',
+  'foodVariant.autoScale': 'تحجيم تلقائي',
+  'foodVariant.nutritionPer': 'القيم الغذائية لكل {{size}} {{unit}}',
+  'foodVariant.aiEstimate': 'تقدير بثقة {{confidence}}',
+  'foodUnitSelector.confidence.high': 'عالية',
+  'foodUnitSelector.confidence.medium': 'متوسطة',
+  'foodUnitSelector.confidence.low': 'منخفضة',
+  'units.gram': 'غ',
+  'units.kilogram': 'كجم',
+  'units.milligram': 'ملغ',
+  'units.ounce': 'أونصة',
+  'units.pound': 'رطل',
+  'units.milliliter': 'مل',
+  'units.liter': 'لتر',
+  'units.cup': 'كوب',
+  'units.tablespoon': 'ملعقة كبيرة',
+  'units.teaspoon': 'ملعقة صغيرة',
+  'units.piece': 'حبة',
+};
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, fallbackOrOptions?: string | Record<string, unknown>) => {
+      const fallback =
+        typeof fallbackOrOptions === 'string'
+          ? fallbackOrOptions
+          : typeof fallbackOrOptions?.['defaultValue'] === 'string'
+            ? fallbackOrOptions['defaultValue']
+            : key;
+      const options =
+        typeof fallbackOrOptions === 'object' ? fallbackOrOptions : {};
+      return (mockTranslations[key] ?? fallback).replace(
+        /{{(\w+)}}/g,
+        (_, token: string) => String(options[token] ?? '')
+      );
+    },
+  }),
+}));
+
 jest.mock('@/components/FoodSearch/NutrientFormGrid', () => ({
   NutrientGrid: () => <div data-testid="nutrient-grid" />,
 }));
@@ -201,7 +243,7 @@ describe('VariantCard', () => {
 
     render(<StatefulVariantCard />);
 
-    const servingSizeInput = screen.getByLabelText('Serving Size');
+    const servingSizeInput = screen.getByLabelText('حجم الحصة');
 
     fireEvent.change(servingSizeInput, { target: { value: '12' } });
     expect(servingSizeInput).toHaveValue(12);
@@ -344,7 +386,7 @@ describe('VariantCard', () => {
       },
       aiEstimatedUnit: 'g',
     });
-    expect(screenHigh.getByText(/Good estimate/)).toBeInTheDocument();
+    expect(screenHigh.getByText('تقدير بثقة عالية')).toBeInTheDocument();
     expect(screenHigh.queryByText(/AI ·/)).not.toBeInTheDocument();
     screenHigh.unmount();
 
@@ -355,7 +397,7 @@ describe('VariantCard', () => {
       },
       aiEstimatedUnit: 'g',
     });
-    expect(screenMedium.getByText(/Fair estimate/)).toBeInTheDocument();
+    expect(screenMedium.getByText('تقدير بثقة متوسطة')).toBeInTheDocument();
     screenMedium.unmount();
 
     const screenLow = renderVariantCard({
@@ -365,7 +407,7 @@ describe('VariantCard', () => {
       },
       aiEstimatedUnit: 'g',
     });
-    expect(screenLow.getByText(/Rough estimate/)).toBeInTheDocument();
+    expect(screenLow.getByText('تقدير بثقة منخفضة')).toBeInTheDocument();
   });
 
   it('does not render the AI sparkle when there are no saved AI units', () => {
@@ -384,7 +426,7 @@ describe('VariantCard', () => {
       variantOverrides: { source: 'manual', ai_confidence: null },
     });
 
-    expect(screen.queryByText(/estimate/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/تقدير/)).not.toBeInTheDocument();
   });
 
   it('hides the row badge when the row still carries AI provenance but the current unit is not the estimated one', () => {
@@ -397,6 +439,6 @@ describe('VariantCard', () => {
       aiEstimatedUnit: 'cup',
     });
 
-    expect(screen.queryByText(/Fair estimate/)).not.toBeInTheDocument();
+    expect(screen.queryByText('تقدير بثقة متوسطة')).not.toBeInTheDocument();
   });
 });

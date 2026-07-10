@@ -3,21 +3,30 @@ import { authenticate } from '../../middleware/authMiddleware.js';
 import authService from '../../services/authService.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'mult... Remove this comment to see the full error message
 import multer from 'multer';
+import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { log } from '../../config/logging.js';
+import { requireUploadsEnabled } from '../../middleware/deploymentModeMiddleware.js';
+import { getStorageMode } from '../../utils/runtimeConfig.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+const useRuntimeUploadsDir =
+  process.env.VERCEL === '1' || getStorageMode() === 'disabled';
 const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
   ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
-  : path.join(__dirname, '../../uploads');
+  : useRuntimeUploadsDir
+    ? path.join(os.tmpdir(), 'sparkyfitness-uploads')
+    : path.join(__dirname, '../../uploads');
 const UPLOADS_DIR = path.join(baseUploadsDir, 'avatars');
 log('info', 'UserProfileRoutes UPLOADS_DIR:', UPLOADS_DIR);
 // Ensure the uploads directory exists
-fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+if (getStorageMode() !== 'disabled') {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
 const storage = multer.diskStorage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   destination: (req: any, file: any, cb: any) => {
@@ -438,6 +447,7 @@ router.post('/update-email', authenticate, async (req, res, next) => {
 router.post(
   '/profiles/avatar',
   authenticate,
+  requireUploadsEnabled,
   upload.single('avatar'),
   async (req, res, next) => {
     try {

@@ -10,6 +10,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
+import { mobileT } from '../../localization';
 
 const DOT_COUNT = 3;
 const DOT_DURATION = 400;
@@ -55,7 +56,7 @@ export default function TypingIndicator() {
     <View
       className="flex-row items-center gap-1"
       style={{ height: 20 }}
-      accessibilityLabel="Sparky is typing"
+      accessibilityLabel={mobileT('chat.typing')}
     >
       {Array.from({ length: DOT_COUNT }).map((_, i) => (
         <Dot key={i} color={muted} delay={i * DOT_STAGGER} />
