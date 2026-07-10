@@ -13,6 +13,14 @@ const servingUnitAliases: Readonly<Record<string, string>> = {
   g: 'g',
   gram: 'g',
   grams: 'g',
+  mg: 'mg',
+  milligram: 'mg',
+  milligrams: 'mg',
+  mcg: 'mcg',
+  ug: 'mcg',
+  'µg': 'mcg',
+  microgram: 'mcg',
+  micrograms: 'mcg',
   kg: 'kg',
   kilogram: 'kg',
   kilograms: 'kg',
@@ -49,6 +57,9 @@ const servingUnitAliases: Readonly<Record<string, string>> = {
   oz: 'oz',
   ounce: 'oz',
   ounces: 'oz',
+  'fl oz': 'flOz',
+  'fluid ounce': 'flOz',
+  'fluid ounces': 'flOz',
   serving: 'serving',
   servings: 'serving',
   portion: 'portion',
@@ -78,7 +89,22 @@ const servingUnitAliases: Readonly<Record<string, string>> = {
   stick: 'stick',
   sticks: 'stick',
   whole: 'whole',
+  small: 'small',
+  medium: 'medium',
+  large: 'large',
+  'extra large': 'extraLarge',
+  'extra-large': 'extraLarge',
+  unit: 'unit',
+  units: 'unit',
 };
+
+const servingDescriptionAliasPattern = new RegExp(
+  `\\b(${Object.keys(servingUnitAliases)
+    .sort((left, right) => right.length - left.length)
+    .map(alias => alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')})\\b`,
+  'gi',
+);
 
 type TranslationParams = Readonly<Record<string, string | number>>;
 
@@ -100,11 +126,7 @@ export function mobileT(
 export function localizeExerciseCategory(category: string): string {
   const normalizedCategory = category.trim().toLowerCase();
 
-  return mobileT(
-    `exerciseCategory.${normalizedCategory}`,
-    undefined,
-    category,
-  );
+  return mobileT(`exerciseCategory.${normalizedCategory}`, undefined, category);
 }
 
 export function localizeMealType(name: string): string {
@@ -119,6 +141,19 @@ export function localizeServingUnit(unit: string): string {
   const key = servingUnitAliases[normalizedUnit];
 
   return key ? mobileT(`units.${key}`, undefined, unit) : unit;
+}
+
+export function localizeServingDescription(description: string): string {
+  const normalizedDescription = description
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return normalizedDescription
+    .replace(servingDescriptionAliasPattern, unit => localizeServingUnit(unit))
+    .replace(/\d+(?:\.\d+)?/g, amount =>
+      formatMobileNumber(Number(amount), { maximumFractionDigits: 4 }),
+    );
 }
 
 export function localizeNutrient(
@@ -148,6 +183,32 @@ export function formatMobileCalories(calories: number): string {
   return `${formatMobileNumber(Math.round(calories), {
     maximumFractionDigits: 0,
   })} ${mobileT('units.calorie')}`;
+}
+
+export function formatMobileFoodVariantLabel(values: {
+  servingSize: number;
+  servingUnit: string;
+  calories: number;
+}): string {
+  return `${formatMobileNumber(values.servingSize, {
+    maximumFractionDigits: 4,
+  })} ${localizeServingUnit(values.servingUnit)} (${formatMobileCalories(
+    values.calories,
+  )})`;
+}
+
+export function formatMobileServingCount(count: number): string {
+  const category = arabicPluralRules.select(count);
+  const form =
+    category === 'one' || category === 'two' || category === 'few'
+      ? category
+      : 'other';
+
+  return mobileT(`foodEntry.serving.${form}`, {
+    count: formatMobileNumber(count, {
+      maximumFractionDigits: Number.isInteger(count) ? 0 : 1,
+    }),
+  });
 }
 
 function formatArabicCount(

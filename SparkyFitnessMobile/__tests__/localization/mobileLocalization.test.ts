@@ -5,11 +5,14 @@ import {
   formatMobileCalories,
   formatMobileDuration,
   formatMobileExerciseCount,
+  formatMobileFoodVariantLabel,
   formatMobileNumber,
   formatMobileRepCount,
+  formatMobileServingCount,
   formatMobileSetCount,
   localizeExerciseCategory,
   localizeMealType,
+  localizeServingDescription,
   localizeServingUnit,
   mobileT,
 } from '../../src/localization';
@@ -45,6 +48,24 @@ describe('mobile localization', () => {
     expect(localizeServingUnit('cups')).toBe('كوب');
     expect(formatMobileNumber(1234.5)).toBe('١٬٢٣٤٫٥');
     expect(formatMobileCalories(350)).toBe('٣٥٠ سعرة');
+    expect(localizeServingDescription('1 cup (250 ml)')).toBe('١ كوب (٢٥٠ مل)');
+    expect(localizeServingDescription('1.5 fl oz')).toBe(
+      '١٫٥ أونصة سائلة',
+    );
+    expect(
+      formatMobileFoodVariantLabel({
+        servingSize: 1,
+        servingUnit: 'oz',
+        calories: 120,
+      }),
+    ).toBe('١ أونصة (١٢٠ سعرة)');
+  });
+
+  it('uses natural Arabic serving counts', () => {
+    expect(formatMobileServingCount(1)).toBe('حصة واحدة');
+    expect(formatMobileServingCount(2)).toBe('حصتين');
+    expect(formatMobileServingCount(5)).toBe('٥ حصص');
+    expect(formatMobileServingCount(1.5)).toBe('١٫٥ حصة');
   });
 
   it('uses Arabic singular, dual, and plural workout summaries', () => {

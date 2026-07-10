@@ -81,11 +81,9 @@ export const ar = {
   'appSettings.liquidGlassDescription':
     'استخدم شريط التبويب ورؤوس الشاشات بتصميم iOS 26.',
   'appSettings.notifications': 'التنبيهات',
-  'appSettings.notificationsDescription':
-    'تنبيهات راحة التمرين وأهداف الصيام.',
+  'appSettings.notificationsDescription': 'تنبيهات راحة التمرين وأهداف الصيام.',
   'appSettings.haptics': 'الاستجابة اللمسية',
-  'appSettings.hapticsDescription':
-    'اهتزازات خفيفة للمؤقتات وتأكيد الإجراءات.',
+  'appSettings.hapticsDescription': 'اهتزازات خفيفة للمؤقتات وتأكيد الإجراءات.',
   'appSettings.cameraSound': 'صوت الكاميرا',
   'appSettings.cameraSoundDescription': 'شغّل صوتًا عند التقاط الصور.',
 
@@ -96,8 +94,7 @@ export const ar = {
   'dashboardSettings.hydrationDescription':
     'إظهار بطاقة شرب الماء في الرئيسية.',
   'dashboardSettings.fasting': 'الصيام',
-  'dashboardSettings.fastingDescription':
-    'إظهار بطاقة الصيام في الرئيسية.',
+  'dashboardSettings.fastingDescription': 'إظهار بطاقة الصيام في الرئيسية.',
   'dashboardSettings.customNutrients': 'العناصر الغذائية المخصصة',
   'dashboardSettings.noCustomNutrients': 'ما عندك عناصر غذائية مخصصة',
   'dashboardSettings.noCustomNutrientsDescription':
@@ -168,8 +165,7 @@ export const ar = {
   'library.searchFoods': 'ابحث في الأصناف الغذائية…',
   'library.noFoods': 'ما عندك أصناف غذائية للحين',
   'library.noMatchingFoods': 'ما لقينا أصناف تطابق بحثك',
-  'library.savedFoodsAppear':
-    'الأصناف اللي تحفظها أو تسجلها بتظهر هنا.',
+  'library.savedFoodsAppear': 'الأصناف اللي تحفظها أو تسجلها بتظهر هنا.',
   'library.loadingFoods': 'جاري تحميل الأصناف الغذائية…',
   'library.loadFoodsFailed': 'ما قدرنا نحمّل الأصناف الغذائية',
   'library.loadMoreFoodsFailed': 'ما قدرنا نحمّل أصناف أكثر.',
@@ -183,16 +179,14 @@ export const ar = {
   'library.searchExercises': 'ابحث في التمارين…',
   'library.noExercises': 'ما عندك تمارين للحين',
   'library.noMatchingExercises': 'ما لقينا تمارين تطابق بحثك',
-  'library.savedExercisesAppear':
-    'التمارين اللي تحفظها أو تسجلها بتظهر هنا.',
+  'library.savedExercisesAppear': 'التمارين اللي تحفظها أو تسجلها بتظهر هنا.',
   'library.loadingExercises': 'جاري تحميل التمارين…',
   'library.loadExercisesFailed': 'ما قدرنا نحمّل التمارين',
   'library.loadMoreExercisesFailed': 'ما قدرنا نحمّل تمارين أكثر.',
   'library.searchWorkoutPresets': 'ابحث في قوالب التمرين…',
   'library.noWorkoutPresets': 'ما عندك قوالب تمرين للحين',
   'library.noMatchingWorkoutPresets': 'ما لقينا قوالب تطابق بحثك',
-  'library.savedWorkoutPresetsAppear':
-    'قوالب التمرين اللي تنشئها بتظهر هنا.',
+  'library.savedWorkoutPresetsAppear': 'قوالب التمرين اللي تنشئها بتظهر هنا.',
   'library.loadingWorkoutPresets': 'جاري تحميل قوالب التمرين…',
   'library.loadWorkoutPresetsFailed': 'ما قدرنا نحمّل قوالب التمرين',
   'library.loadMoreWorkoutPresetsFailed': 'ما قدرنا نحمّل قوالب أكثر.',
@@ -212,8 +206,7 @@ export const ar = {
   'exerciseSearch.connectOnline':
     'اربط خادمك عشان تبحث عن تمارين عبر الإنترنت.',
   'exerciseSearch.providersFailed': 'ما قدرنا نحمّل مصادر التمارين',
-  'exerciseSearch.noProviders':
-    'ما فيه مصادر تمارين عبر الإنترنت مضافة',
+  'exerciseSearch.noProviders': 'ما فيه مصادر تمارين عبر الإنترنت مضافة',
   'exerciseSearch.searchProvider': 'ابحث في {{provider}} عن تمرين',
   'exerciseSearch.clearSearch': 'مسح البحث',
   'exerciseSearch.selectProvider': 'اختيار مصدر {{provider}}',
@@ -231,8 +224,7 @@ export const ar = {
 
   'foodSearch.allSources': 'جميع المصادر',
   'foodSearch.detailsUnavailable': 'التفاصيل غير متاحة',
-  'foodSearch.partialDetails':
-    'فتحنا البيانات المتاحة؛ راجعها قبل الحفظ.',
+  'foodSearch.partialDetails': 'فتحنا البيانات المتاحة؛ راجعها قبل الحفظ.',
   'foodSearch.recentlyLogged': 'المسجّل مؤخرًا',
   'foodSearch.topFoods': 'الأكثر تسجيلًا',
   'foodSearch.yourFoods': 'أصنافك',
@@ -259,8 +251,7 @@ export const ar = {
   'foodSearch.showAllProvider': 'عرض كل نتائج {{provider}} ({{count}})',
   'foodSearch.showAllFoods': 'عرض كل الأصناف ({{count}})',
   'foodSearch.showAllMeals': 'عرض كل الوجبات ({{count}})',
-  'foodSearch.loadMoreFailed':
-    'ما قدرنا نحمّل المزيد. اضغط للمحاولة مرة ثانية',
+  'foodSearch.loadMoreFailed': 'ما قدرنا نحمّل المزيد. اضغط للمحاولة مرة ثانية',
   'foodSearch.loadMore': 'تحميل المزيد',
   'foodSearch.noOnlineResults': 'ما فيه نتائج من {{provider}}',
   'foodSearch.searchPlaceholder': 'ابحث عن صنف أو وجبة…',
@@ -279,6 +270,33 @@ export const ar = {
   'foodSearch.sourceTitle': 'اختر المصدر',
   'foodSearch.sourceDescription':
     'من هنا تبدّل المصدر أو تبحث في جميع المصادر.',
+
+  'foodEntry.adjustNutrition': 'تعديل القيم الغذائية',
+  'foodEntry.saveFood': 'حفظ الصنف',
+  'foodEntry.selectServing': 'اختيار الحصة',
+  'foodEntry.date': 'التاريخ',
+  'foodEntry.useToday': 'استخدم اليوم',
+  'foodEntry.meal': 'الوجبة',
+  'foodEntry.selectMeal': 'اختيار الوجبة',
+  'foodEntry.addFood': 'إضافة الصنف',
+  'foodEntry.addMeal': 'إضافة الوجبة',
+  'foodEntry.equivalentUnitsSaveFailed': 'ما قدرنا نحفظ بعض الوحدات المكافئة',
+  'foodEntry.invalidAmount': 'الكمية غير صحيحة',
+  'foodEntry.amountPositive': 'لازم تكون الكمية أكبر من صفر.',
+  'foodEntry.addFoodFailed': 'ما قدرنا نضيف الصنف',
+  'foodEntry.saveFoodFailed': 'ما قدرنا نحفظ الصنف',
+  'foodEntry.addMealFailed': 'ما قدرنا نضيف الوجبة',
+  'foodEntry.mealBuilderUnsupported': 'ما تقدر تضيف وجبة هنا',
+  'foodEntry.selectFoodInstead': 'اختر صنفًا غذائيًا بدل وجبة ثانية.',
+  'foodEntry.savedWithoutUnit': 'حفظنا الصنف بدون الوحدة الجديدة',
+  'foodEntry.savedWithoutUnitDescription':
+    'تقدر تضيف الصنف الآن، وبعدها جرّب تحفظ الوحدة مرة ثانية.',
+  'foodEntry.perServing': '{{amount}} لكل حصة',
+  'foodEntry.mealYield': 'تكفي {{servings}}',
+  'foodEntry.serving.one': 'حصة واحدة',
+  'foodEntry.serving.two': 'حصتين',
+  'foodEntry.serving.few': '{{count}} حصص',
+  'foodEntry.serving.other': '{{count}} حصة',
 
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
@@ -423,6 +441,8 @@ export const ar = {
   'units.calorie': 'سعرة',
   'units.minute': 'دقيقة',
   'units.g': 'غ',
+  'units.mg': 'ملجم',
+  'units.mcg': 'ميكروغرام',
   'units.kg': 'كجم',
   'units.lb': 'رطل',
   'units.stone': 'ستون',
@@ -437,6 +457,7 @@ export const ar = {
   'units.tbsp': 'ملعقة كبيرة',
   'units.tsp': 'ملعقة صغيرة',
   'units.oz': 'أونصة',
+  'units.flOz': 'أونصة سائلة',
   'units.serving': 'حصة',
   'units.portion': 'كمية',
   'units.piece': 'قطعة',
@@ -452,6 +473,11 @@ export const ar = {
   'units.bar': 'لوح',
   'units.stick': 'عود',
   'units.whole': 'كامل',
+  'units.small': 'صغير',
+  'units.medium': 'متوسط',
+  'units.large': 'كبير',
+  'units.extraLarge': 'كبير جدًا',
+  'units.unit': 'وحدة',
 
   'screens.dashboard': 'الرئيسية',
   'screens.diary': 'اليوميات',

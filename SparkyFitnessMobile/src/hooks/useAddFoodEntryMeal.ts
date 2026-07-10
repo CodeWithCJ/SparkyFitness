@@ -5,7 +5,12 @@ import type {
   FoodEntryMeal,
   FoodEntryMealCreateData,
 } from '../types/foodEntryMeals';
-import { dailySummaryQueryKey, foodsQueryKey, recentMealsQueryKeyRoot } from './queryKeys';
+import {
+  dailySummaryQueryKey,
+  foodsQueryKey,
+  recentMealsQueryKeyRoot,
+} from './queryKeys';
+import { mobileT } from '../localization';
 
 interface UseAddFoodEntryMealOptions {
   onSuccess?: (meal: FoodEntryMeal) => void;
@@ -15,13 +20,21 @@ export function useAddFoodEntryMeal(options?: UseAddFoodEntryMealOptions) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (payload: FoodEntryMealCreateData) => createFoodEntryMeal(payload),
-    onSuccess: (meal) => {
-      queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
+    mutationFn: (payload: FoodEntryMealCreateData) =>
+      createFoodEntryMeal(payload),
+    onSuccess: meal => {
+      queryClient.invalidateQueries({
+        queryKey: recentMealsQueryKeyRoot,
+        refetchType: 'all',
+      });
       options?.onSuccess?.(meal);
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: 'Failed to add meal', text2: 'Please try again.' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('foodEntry.addMealFailed'),
+        text2: mobileT('common.retry'),
+      });
     },
   });
 
