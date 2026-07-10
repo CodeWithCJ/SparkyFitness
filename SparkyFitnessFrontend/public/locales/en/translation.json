@@ -1596,6 +1596,17 @@
   },
   "workout": {
     "notesPlaceholder": "Add a note for this set…",
+    "type": "Type",
+    "hold_s": "Hold (s)",
+    "reps": "Reps",
+    "weight": "Weight",
+    "rpe": "Perceived exertion",
+    "durationMin": "Duration (min)",
+    "restSec": "Rest (s)",
+    "distance": "Distance",
+    "calories": "Calories burned",
+    "caloriesAuto": "Auto",
+    "avgHr": "Average heart rate",
     "exerciseItem": {
       "fallbackName": "Workout",
       "dragExercise": "Move {{exerciseName}}",
@@ -1605,6 +1616,19 @@
       "removeExercise": "Remove {{exerciseName}}",
       "addSet": "Add set",
       "presetNotice": "This is a workout preset. Edit its exercises from the workout preset manager."
+    },
+    "setItem": {
+      "dragSet": "Move set {{setNumber}}",
+      "typeSet": "Set type for set {{setNumber}}",
+      "repsSet": "Repetitions for set {{setNumber}}",
+      "weightSet": "Weight for set {{setNumber}}",
+      "rpeSet": "Perceived exertion for set {{setNumber}}",
+      "durationSet": "Duration in minutes for set {{setNumber}}",
+      "restSet": "Rest in seconds for set {{setNumber}}",
+      "toggleNotes": "Show or hide notes for set {{setNumber}}",
+      "duplicateSet": "Duplicate set {{setNumber}}",
+      "removeSet": "Remove set {{setNumber}}",
+      "notesSet": "Notes for set {{setNumber}}"
     },
     "setType": {
       "Normal": "Normal",
@@ -1635,6 +1659,7 @@
     "hourMinuteValue": "{{hours}} hr {{minutes}} min",
     "centimeter": "cm",
     "kilometer": "km",
+    "mile": "mi",
     "pound": "lb",
     "inch": "in",
     "percent": "%"

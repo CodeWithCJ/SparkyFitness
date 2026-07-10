@@ -12,32 +12,32 @@ export const SetColumnHeaders = ({ category }: SetColumnHeadersProps) => {
   const isIsometric = category === 'isometric';
 
   return (
-    <div className="flex items-center gap-2 px-1 mb-0.5">
+    <div className="mb-0.5 flex min-w-[760px] items-center gap-2 px-1">
       {/* spacer for grip handle */}
       <div className="w-4 shrink-0" />
       <div className="grid grid-cols-[20px_140px_1fr_1fr_1fr_1fr_1fr_72px] gap-1.5 grow">
         <div className={cell}>#</div>
         <div className={cell}>{t('workout.type', 'Type')}</div>
         <div className={cell}>
-          <Repeat className="h-3 w-3 mr-1 text-blue-500" />
+          <Repeat className="h-3 w-3 text-blue-500" aria-hidden="true" />
           {isIsometric
             ? t('workout.hold_s', 'Hold (s)')
             : t('workout.reps', 'Reps')}
         </div>
         <div className={cell}>
-          <Dumbbell className="h-3 w-3 text-red-500" />
+          <Dumbbell className="h-3 w-3 text-red-500" aria-hidden="true" />
           {t('workout.weight', 'weight')}
         </div>
         <div className={cell}>
-          <Activity className="h-3 w-3 text-emerald-500" />
+          <Activity className="h-3 w-3 text-emerald-500" aria-hidden="true" />
           {t('workout.rpe', 'RPE')}
         </div>
         <div className={cell}>
-          <Hourglass className="h-3 w-3 text-orange-500" />
+          <Hourglass className="h-3 w-3 text-orange-500" aria-hidden="true" />
           {t('workout.durationMin', 'Duration (min)')}
         </div>
         <div className={cell}>
-          <Timer className="h-3 w-3 text-purple-500" />
+          <Timer className="h-3 w-3 text-purple-500" aria-hidden="true" />
           {t('workout.restSec', 'Rest (s)')}
         </div>
         {/* spacer for actions column */}

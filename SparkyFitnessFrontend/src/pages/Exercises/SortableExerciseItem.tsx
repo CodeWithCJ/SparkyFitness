@@ -317,7 +317,7 @@ export const SortableExerciseItem = ({
       )}
 
       {isExpanded && !isCardio && hasSets && (
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-x-auto pb-1">
           <SetColumnHeaders category={ex?.category} />
           <DndContext
             sensors={sensors}

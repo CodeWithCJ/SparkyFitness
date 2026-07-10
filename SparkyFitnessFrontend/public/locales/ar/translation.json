@@ -131,6 +131,17 @@
   },
   "workout": {
     "notesPlaceholder": "أضف ملاحظة لهالمجموعة…",
+    "type": "النوع",
+    "hold_s": "الثبات (ثانية)",
+    "reps": "التكرارات",
+    "weight": "الوزن",
+    "rpe": "درجة الجهد",
+    "durationMin": "المدة (دقيقة)",
+    "restSec": "الراحة (ثانية)",
+    "distance": "المسافة",
+    "calories": "السعرات المحروقة",
+    "caloriesAuto": "تلقائي",
+    "avgHr": "متوسط النبض",
     "exerciseItem": {
       "fallbackName": "تمرين",
       "dragExercise": "تحريك تمرين {{exerciseName}}",
@@ -140,6 +151,19 @@
       "removeExercise": "حذف تمرين {{exerciseName}}",
       "addSet": "إضافة مجموعة",
       "presetNotice": "هذي خطة تمرين جاهزة. عدّل تمارينها من قسم الخطط الجاهزة."
+    },
+    "setItem": {
+      "dragSet": "تحريك المجموعة {{setNumber}}",
+      "typeSet": "نوع المجموعة {{setNumber}}",
+      "repsSet": "تكرارات المجموعة {{setNumber}}",
+      "weightSet": "وزن المجموعة {{setNumber}}",
+      "rpeSet": "درجة جهد المجموعة {{setNumber}}",
+      "durationSet": "مدة المجموعة {{setNumber}} بالدقائق",
+      "restSet": "راحة المجموعة {{setNumber}} بالثواني",
+      "toggleNotes": "إظهار أو إخفاء ملاحظات المجموعة {{setNumber}}",
+      "duplicateSet": "نسخ المجموعة {{setNumber}}",
+      "removeSet": "حذف المجموعة {{setNumber}}",
+      "notesSet": "نص ملاحظات المجموعة {{setNumber}}"
     },
     "setType": {
       "Normal": "عادية",
@@ -170,6 +194,7 @@
     "hourMinuteValue": "{{hours}} س {{minutes}} د",
     "centimeter": "سم",
     "kilometer": "كم",
+    "mile": "ميل",
     "pound": "رطل",
     "inch": "بوصة",
     "percent": "٪"
