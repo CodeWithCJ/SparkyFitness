@@ -113,6 +113,7 @@ import ActiveWorkoutBar, {
 import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWorkoutTransitionProbe';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
+import { mobileT } from './src/localization';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -392,10 +393,10 @@ function AppContent() {
   const checkServerConnected = useCallback((message: string): boolean => {
     const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
     if (!isConnected) {
-      Alert.alert('No Server Connected', message, [
-        { text: 'Cancel', style: 'cancel' },
+      Alert.alert(mobileT('alerts.noServerTitle'), message, [
+        { text: mobileT('common.cancel'), style: 'cancel' },
         {
-          text: 'Go to Settings',
+          text: mobileT('common.goToSettings'),
           onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
         },
       ]);
@@ -406,7 +407,7 @@ function AppContent() {
 
   const handleStartExerciseForm = useCallback(
     async (screen: 'WorkoutAdd' | 'ActivityAdd') => {
-      if (!checkServerConnected('Configure your server connection in Settings to add an exercise.')) {
+      if (!checkServerConnected(mobileT('alerts.addExerciseNeedsServer'))) {
         return;
       }
 
@@ -414,12 +415,18 @@ function AppContent() {
       const draft = await loadActiveDraft();
       if (draft) {
         Alert.alert(
-          'Draft in Progress',
-          `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+          mobileT('alerts.draftTitle'),
+          mobileT('alerts.unsavedDraft', {
+            activityType: mobileT(
+              draft.type === 'workout'
+                ? 'alerts.workout'
+                : 'alerts.activity',
+            ),
+          }),
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: mobileT('common.cancel'), style: 'cancel' },
             {
-              text: 'Resume Draft',
+              text: mobileT('alerts.resumeDraft'),
               onPress: () => {
                 if (draft.type === 'workout') {
                   navigateFromSheet('WorkoutAdd');
@@ -429,7 +436,7 @@ function AppContent() {
               },
             },
             {
-              text: 'Discard & Continue',
+              text: mobileT('alerts.discardAndContinue'),
               style: 'destructive',
               onPress: async () => {
                 await clearDraft();
@@ -450,7 +457,7 @@ function AppContent() {
   // no diary date (a live workout is logged to today). Tapping while a workout
   // is already running resumes it instead of opening the start surface.
   const handleStartWorkout = useCallback(() => {
-    if (!checkServerConnected('Configure your server connection in Settings to start a workout.')) {
+    if (!checkServerConnected(mobileT('alerts.startWorkoutNeedsServer'))) {
       return;
     }
     if (useActiveWorkoutStore.getState().sessionId !== null) {
@@ -479,7 +486,10 @@ function AppContent() {
 
     const initialized = await initHealthConnect();
     if (!initialized) {
-      Alert.alert('Health Data Unavailable', 'Could not initialize health data access. Check your permissions in Settings.');
+      Alert.alert(
+        mobileT('alerts.healthUnavailableTitle'),
+        mobileT('alerts.healthUnavailableDescription'),
+      );
       return;
     }
 
@@ -839,47 +849,47 @@ function AppContent() {
           <Stack.Screen
             name="FoodsLibrary"
             component={SafeFoodsLibrary}
-            options={createStackScreenOptions('Foods', { headerBackTitle: 'Library' })}
+            options={createStackScreenOptions(mobileT('screens.foodsLibrary'), { headerBackTitle: mobileT('tabs.library') })}
           />
           <Stack.Screen
             name="MealsLibrary"
             component={SafeMealsLibrary}
-            options={createStackScreenOptions('Meals', { headerBackTitle: 'Library' })}
+            options={createStackScreenOptions(mobileT('screens.mealsLibrary'), { headerBackTitle: mobileT('tabs.library') })}
           />
           <Stack.Screen
             name="ExercisesLibrary"
             component={SafeExercisesLibrary}
-            options={createStackScreenOptions('Exercises', { headerBackTitle: 'Library' })}
+            options={createStackScreenOptions(mobileT('screens.exercisesLibrary'), { headerBackTitle: mobileT('tabs.library') })}
           />
           <Stack.Screen
             name="WorkoutPresetsLibrary"
             component={SafeWorkoutPresetsLibrary}
-            options={createStackScreenOptions('Workout Presets', { headerBackTitle: 'Library' })}
+            options={createStackScreenOptions(mobileT('screens.workoutPresetsLibrary'), { headerBackTitle: mobileT('tabs.library') })}
           />
           <Stack.Screen
             name="WorkoutPresetDetail"
             component={SafeWorkoutPresetDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedPreset?.name ?? route.params.preset.name, { headerBackTitle: 'Presets' })}
+            options={({ route }) => createStackScreenOptions(route.params.updatedPreset?.name ?? route.params.preset.name, { headerBackTitle: mobileT('screens.workoutPresetsLibrary') })}
           />
           <Stack.Screen
             name="FoodDetail"
             component={SafeFoodDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: 'Foods' })}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: mobileT('screens.foodsLibrary') })}
           />
           <Stack.Screen
             name="MealDetail"
             component={SafeMealDetail}
-            options={createStackScreenOptions('', { headerBackTitle: 'Meals' })}
+            options={createStackScreenOptions('', { headerBackTitle: mobileT('screens.mealsLibrary') })}
           />
           <Stack.Screen
             name="ExerciseDetail"
             component={SafeExerciseDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: 'Exercises' })}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: mobileT('screens.exercisesLibrary') })}
           />
           <Stack.Screen
             name="FoodSearch"
             component={SafeFoodSearch}
-            options={createStackScreenOptions('Add Food', {
+            options={createStackScreenOptions(mobileT('screens.foodSearch'), {
               headerBackVisible: false,
               // 'modal' (not 'fullScreenModal') so iOS keeps the swipe-down
               // dismiss gesture — UIModalPresentationFullScreen has no
@@ -901,10 +911,10 @@ function AppContent() {
             component={SafeFoodForm}
             options={({ route }) => createStackScreenOptions(
               route.params.mode === 'create-food'
-                ? 'New Food'
+                ? mobileT('screens.addFood')
                 : route.params.mode === 'edit-food'
-                  ? 'Edit Food'
-                  : 'Adjust Nutrition',
+                  ? mobileT('screens.editFood')
+                  : mobileT('screens.adjustNutrition'),
               {
               presentation: 'modal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
@@ -914,13 +924,15 @@ function AppContent() {
           <Stack.Screen
             name="EditBarcode"
             component={SafeEditBarcode}
-            options={createStackScreenOptions('Barcodes', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.editBarcodes'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="ExerciseForm"
             component={SafeExerciseForm}
             options={({ route }) => createStackScreenOptions(
-              route.params.mode === 'edit-exercise' ? 'Edit Exercise' : 'New Exercise',
+              route.params.mode === 'edit-exercise'
+                ? mobileT('screens.editExercise')
+                : mobileT('screens.addExercise'),
               {
               presentation: 'modal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
@@ -931,7 +943,9 @@ function AppContent() {
             name="WorkoutPresetForm"
             component={SafeWorkoutPresetForm}
             options={({ route }) => createStackScreenOptions(
-              route.params.mode === 'edit-preset' ? 'Edit Preset' : 'New Preset',
+              route.params.mode === 'edit-preset'
+                ? mobileT('screens.editWorkoutPreset')
+                : mobileT('screens.addWorkoutPreset'),
               {
               presentation: 'modal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
@@ -941,7 +955,7 @@ function AppContent() {
           <Stack.Screen
             name="FoodScan"
             component={SafeFoodScan}
-            options={createStackScreenOptions('Scan Food', {
+            options={createStackScreenOptions(mobileT('screens.scanFood'), {
               presentation: 'modal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
             })}
@@ -949,7 +963,7 @@ function AppContent() {
           <Stack.Screen
             name="FoodPhotoIntro"
             component={SafeFoodPhotoIntro}
-            options={createStackScreenOptions('Photo Food', {
+            options={createStackScreenOptions(mobileT('screens.foodPhoto'), {
               presentation: 'modal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
             })}
@@ -967,13 +981,15 @@ function AppContent() {
           <Stack.Screen
             name="Chat"
             component={SafeChat}
-            options={createStackScreenOptions('Sparky', { headerBackButtonDisplayMode: 'minimal' })}
+            options={createStackScreenOptions(mobileT('screens.chat'), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
             name="MealAdd"
             component={SafeMealAdd}
             options={({ route }) => createStackScreenOptions(
-              route.params?.mode === 'edit' ? 'Edit Meal' : 'Create Meal',
+              route.params?.mode === 'edit'
+                ? mobileT('screens.editMeal')
+                : mobileT('screens.createMeal'),
               {
               presentation: 'modal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
@@ -983,46 +999,54 @@ function AppContent() {
           <Stack.Screen
             name="FoodEntryView"
             component={SafeFoodEntryView}
-            options={({ route }) => createStackScreenOptions(route.params.entry.food_name ?? 'Food Entry', { headerBackTitle: 'Diary' })}
+            options={({ route }) => createStackScreenOptions(route.params.entry.food_name ?? mobileT('screens.foodEntry'), { headerBackTitle: mobileT('tabs.diary') })}
           />
           <Stack.Screen
             name="EditLoggedMeal"
             component={SafeEditLoggedMeal}
-            options={createStackScreenOptions('Edit Meal', { headerBackTitle: 'Diary' })}
+            options={createStackScreenOptions(mobileT('screens.editLoggedMeal'), { headerBackTitle: mobileT('tabs.diary') })}
           />
           <Stack.Screen
             name="MealTypeDetail"
             component={SafeMealTypeDetail}
-            options={({ route }) => createStackScreenOptions(route.params.mealLabel ?? 'Meal', { headerBackTitle: 'Diary' })}
+            options={({ route }) => createStackScreenOptions(route.params.mealLabel ?? mobileT('screens.meal'), { headerBackTitle: mobileT('tabs.diary') })}
           />
           <Stack.Screen
             name="ExerciseSearch"
             component={SafeExerciseSearch}
-            options={createStackScreenOptions('Select Exercise', {
+            options={createStackScreenOptions(mobileT('screens.selectExercise'), {
               presentation: 'modal',
             })}
           />
           <Stack.Screen
             name="PresetSearch"
             component={SafePresetSearch}
-            options={createStackScreenOptions('Start Workout')}
+            options={createStackScreenOptions(mobileT('screens.startWorkout'))}
           />
           <Stack.Screen
             name="WorkoutAdd"
             component={SafeWorkoutAdd}
-            options={({ route }) => createStackScreenOptions(route.params?.session ? 'Edit Workout' : 'New Workout')}
+            options={({ route }) => createStackScreenOptions(
+              route.params?.session
+                ? mobileT('screens.editWorkout')
+                : mobileT('screens.newWorkout'),
+            )}
           />
           <Stack.Screen
             name="ActivityAdd"
             component={SafeActivityAdd}
-            options={({ route }) => createStackScreenOptions(route.params?.entry ? 'Edit Activity' : 'New Activity')}
+            options={({ route }) => createStackScreenOptions(
+              route.params?.entry
+                ? mobileT('screens.editActivity')
+                : mobileT('screens.newActivity'),
+            )}
           />
           <Stack.Screen
             name="WorkoutDetail"
             component={SafeWorkoutDetail}
             options={({ route }) =>
-              createStackScreenOptions(route.params?.session?.name ?? 'Workout', {
-                headerBackTitle: 'Diary',
+              createStackScreenOptions(route.params?.session?.name ?? mobileT('screens.workout'), {
+                headerBackTitle: mobileT('tabs.diary'),
               })
             }
           />
@@ -1037,7 +1061,7 @@ function AppContent() {
           <Stack.Screen
             name="ActivityDetail"
             component={SafeActivityDetail}
-            options={({ route }) => createStackScreenOptions(route.params.session.name ?? 'Activity', { headerBackTitle: 'Diary' })}
+            options={({ route }) => createStackScreenOptions(route.params.session.name ?? mobileT('screens.activity'), { headerBackTitle: mobileT('tabs.diary') })}
           />
           <Stack.Screen
             name="FastingDetail"
@@ -1050,17 +1074,17 @@ function AppContent() {
           <Stack.Screen
             name="Logs"
             component={SafeLogs}
-            options={createStackScreenOptions('Logs', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.logs'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="Sync"
             component={SafeSync}
-            options={createStackScreenOptions('Health Sync', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.sync'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="MeasurementsAdd"
             component={SafeMeasurementsAdd}
-            options={createStackScreenOptions('Measurements', {
+            options={createStackScreenOptions(mobileT('screens.measurements'), {
               presentation: 'modal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
             })}
@@ -1068,42 +1092,42 @@ function AppContent() {
           <Stack.Screen
             name="CalorieSettings"
             component={SafeCalorieSettings}
-            options={createStackScreenOptions('Calorie Settings', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.calorieSettings'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="FoodSettings"
             component={SafeFoodSettings}
-            options={createStackScreenOptions('Food Settings', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.foodSettings'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="DashboardSettings"
             component={SafeDashboardSettings}
-            options={createStackScreenOptions('Dashboard Settings', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.dashboardSettings'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="ServerSettings"
             component={SafeServerSettings}
-            options={createStackScreenOptions('Server Settings', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.serverSettings'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="PasskeySettings"
             component={SafePasskeySettings}
-            options={createStackScreenOptions('Passkeys', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.passkeySettings'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="AppSettings"
             component={SafeAppSettings}
-            options={createStackScreenOptions('App Settings', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.appSettings'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="About"
             component={SafeAbout}
-            options={createStackScreenOptions('About', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.about'), { headerBackTitle: mobileT('tabs.settings') })}
           />
           <Stack.Screen
             name="WhatsNew"
             component={SafeWhatsNew}
-            options={createStackScreenOptions("What's New", { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(mobileT('screens.whatsNew'), { headerBackTitle: mobileT('tabs.settings') })}
           />
         </Stack.Navigator>
         <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onStartWorkout={handleStartWorkout} onAddActivity={handleAddActivity} onLogWorkout={handleLogWorkout} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onAskSparky={handleAskSparky} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
