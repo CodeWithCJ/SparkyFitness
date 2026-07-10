@@ -7,6 +7,9 @@ const STANDARD_UNIT_KEYS: Readonly<Record<string, string>> = {
   μg: 'units.microgram',
   mcg: 'units.microgram',
   kg: 'units.kilogram',
+  st: 'units.stone',
+  stone: 'units.stone',
+  stones: 'units.stone',
   ml: 'units.milliliter',
   l: 'units.liter',
   liter: 'units.liter',
@@ -28,6 +31,9 @@ const STANDARD_UNIT_KEYS: Readonly<Record<string, string>> = {
   in: 'units.inch',
   inch: 'units.inch',
   inches: 'units.inch',
+  ft: 'units.foot',
+  foot: 'units.foot',
+  feet: 'units.foot',
   '%': 'units.percent',
 };
 

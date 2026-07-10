@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type, dir, ...props }, ref) => {
     const innerRef = React.useRef<HTMLInputElement>(null);
 
     React.useImperativeHandle(ref, () => innerRef.current!);
@@ -30,11 +30,12 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
             '[appearance:textfield]',
             '[&::-webkit-outer-spin-button]:appearance-none',
             '[&::-webkit-inner-spin-button]:appearance-none',
-            'pr-6',
+            'pe-6',
           ],
           className
         )}
         ref={innerRef}
+        dir={dir ?? (type === 'number' ? 'ltr' : undefined)}
         {...props}
       />
     );
@@ -42,26 +43,28 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
     if (type !== 'number') return inputElement;
 
     return (
-      <div className="relative group/input w-full">
+      <div className="group/input relative w-full">
         {inputElement}
-        <div className="absolute right-0 top-0 flex flex-col w-5 h-full border-l bg-muted/5 opacity-0 group-hover/input:opacity-100 transition-opacity z-10">
+        <div className="absolute end-0 top-0 z-10 flex h-full w-5 flex-col border-s bg-muted/5 opacity-0 transition-opacity group-hover/input:opacity-100">
           <button
             type="button"
             tabIndex={-1}
+            aria-label="+"
             disabled={props.disabled || props.readOnly}
-            className="flex flex-1 items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors border-b"
+            className="flex flex-1 items-center justify-center border-b transition-colors hover:bg-accent hover:text-accent-foreground"
             onClick={() => handleStep('up')}
           >
-            <ChevronUp className="h-2.5 w-2.5" />
+            <ChevronUp className="h-2.5 w-2.5" aria-hidden="true" />
           </button>
           <button
             type="button"
             tabIndex={-1}
+            aria-label="−"
             disabled={props.disabled || props.readOnly}
-            className="flex flex-1 items-center justify-center hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="flex flex-1 items-center justify-center transition-colors hover:bg-accent hover:text-accent-foreground"
             onClick={() => handleStep('down')}
           >
-            <ChevronDown className="h-2.5 w-2.5" />
+            <ChevronDown className="h-2.5 w-2.5" aria-hidden="true" />
           </button>
         </div>
       </div>

@@ -183,6 +183,7 @@
     "milligram": "ملغ",
     "microgram": "مكغ",
     "kilogram": "كجم",
+    "stone": "ستون",
     "milliliter": "مل",
     "liter": "لتر",
     "fluidOunce": "أونصة سائلة",
@@ -197,7 +198,11 @@
     "mile": "ميل",
     "pound": "رطل",
     "inch": "بوصة",
+    "foot": "قدم",
     "percent": "٪"
+  },
+  "unitInput": {
+    "valueInUnit": "{{label}}: {{unit}}"
   },
   "mfaChallenge": {
     "challengeTitle": "تحقق من هويتك",

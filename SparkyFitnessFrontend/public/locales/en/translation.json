@@ -1648,6 +1648,7 @@
     "milligram": "mg",
     "microgram": "µg",
     "kilogram": "kg",
+    "stone": "st",
     "milliliter": "ml",
     "liter": "L",
     "fluidOunce": "fl oz",
@@ -1662,7 +1663,11 @@
     "mile": "mi",
     "pound": "lb",
     "inch": "in",
+    "foot": "ft",
     "percent": "%"
+  },
+  "unitInput": {
+    "valueInUnit": "{{label}}: {{unit}}"
   },
   "diary": {
     "loading": "Preparing your diary…",

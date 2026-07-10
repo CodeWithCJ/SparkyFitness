@@ -11,6 +11,8 @@ import {
   feetInchesToCm,
 } from '@/utils/unitConversions';
 import { getPrecision } from '@workspace/shared';
+import { useTranslation } from 'react-i18next';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface UnitInputProps {
   id?: string;
@@ -35,6 +37,9 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   inputClassName = '',
   'aria-label': ariaLabel,
 }) => {
+  const { t } = useTranslation();
+  const generatedId = React.useId();
+  const inputId = id ?? generatedId;
   const metricValue =
     value === null || value === undefined || value === ''
       ? null
@@ -138,30 +143,43 @@ export const UnitInput: React.FC<UnitInputProps> = ({
 
   // Render two inputs for st_lbs or ft_in
   if (unit === 'st_lbs' || unit === 'ft_in') {
-    const label1 = unit === 'st_lbs' ? 'st' : 'ft';
-    const label2 = unit === 'st_lbs' ? 'lb' : 'in';
+    const label1 = getLocalizedUnitLabel(unit === 'st_lbs' ? 'st' : 'ft', t);
+    const label2 = getLocalizedUnitLabel(unit === 'st_lbs' ? 'lb' : 'in', t);
+    const accessibleLabel = (unitLabel: string) =>
+      ariaLabel
+        ? t('unitInput.valueInUnit', '{{label}}: {{unit}}', {
+            label: ariaLabel,
+            unit: unitLabel,
+          })
+        : unitLabel;
 
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
+      <div className={`flex items-center gap-2 ${className ?? ''}`}>
         <div className="relative flex-1">
           <Input
-            id={`${id}-1`}
+            id={`${inputId}-1`}
             type="number"
+            inputMode="numeric"
             step="1"
             value={val1}
             onChange={(e) => handleSplitChange(e.target.value, val2)}
             onBlur={handleSplitBlur}
-            className={`pr-8 ${inputClassName}`}
+            className={`pe-16 ${inputClassName}`}
             placeholder="0"
+            aria-label={accessibleLabel(label1)}
           />
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+          <span
+            className="absolute end-6 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
+            aria-hidden="true"
+          >
             {label1}
           </span>
         </div>
         <div className="relative flex-1">
           <Input
-            id={`${id}-2`}
+            id={`${inputId}-2`}
             type="number"
+            inputMode="decimal"
             step={
               getPrecision(type, unit) > 0
                 ? (1 / Math.pow(10, getPrecision(type, unit))).toString()
@@ -170,10 +188,14 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             value={val2}
             onChange={(e) => handleSplitChange(val1, e.target.value)}
             onBlur={handleSplitBlur}
-            className={`pr-8 ${inputClassName}`}
+            className={`pe-16 ${inputClassName}`}
             placeholder="0"
+            aria-label={accessibleLabel(label2)}
           />
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+          <span
+            className="absolute end-6 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
+            aria-hidden="true"
+          >
             {label2}
           </span>
         </div>
@@ -184,22 +206,27 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   // Render standard single input
   const precision = getPrecision(type, unit);
   const step = precision > 0 ? (1 / Math.pow(10, precision)).toString() : '1';
+  const localizedUnit = getLocalizedUnitLabel(unit, t);
 
   return (
     <div className={`relative ${className}`}>
       <Input
-        id={id}
+        id={inputId}
         type="number"
+        inputMode="decimal"
         step={step}
         value={val1}
         onChange={handleSingleChange}
         onBlur={handleSingleBlur}
         placeholder={placeholder}
-        className={`pr-9 ${inputClassName}`}
+        className={`pe-16 ${inputClassName}`}
         aria-label={ariaLabel}
       />
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-        {unit}
+      <span
+        className="absolute end-6 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+        aria-hidden="true"
+      >
+        {localizedUnit}
       </span>
     </div>
   );
