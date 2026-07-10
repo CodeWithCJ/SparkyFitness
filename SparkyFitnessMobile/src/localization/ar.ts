@@ -303,6 +303,21 @@ export const ar = {
   'foodEntry.serving.few': '{{count}} حصص',
   'foodEntry.serving.other': '{{count}} حصة',
 
+  'foodDetail.noServerTitle': 'ما فيه خادم مربوط',
+  'foodDetail.noServerDescription':
+    'اربط خادمك من الإعدادات عشان تشوف تفاصيل الصنف.',
+  'foodDetail.editFood': 'تعديل الصنف الغذائي',
+  'foodDetail.serving': 'الحصة',
+  'foodDetail.servingOptions': 'خيارات الحصة',
+  'foodDetail.loadingServingOptions': 'جاري تحميل خيارات الحصة…',
+  'foodDetail.servingOptionsPartial':
+    'ما قدرنا نحمّل بعض خيارات الحصة الحين.',
+  'foodDetail.barcode': 'الباركود',
+  'foodDetail.notSet': 'غير مضاف',
+  'foodDetail.logFood': 'تسجيل الصنف',
+  'foodDetail.deleting': 'جاري الحذف…',
+  'foodDetail.deleteFood': 'حذف الصنف',
+
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
   'exerciseCategory.flexibility': 'مرونة',
