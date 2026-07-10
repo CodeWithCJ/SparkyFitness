@@ -149,3 +149,21 @@ export const createCustomCategory = async (body: {
     body,
   });
 };
+
+// Per-record outcome contract returned by processHealthData. A 200 with a
+// non-empty `errors` array means the remaining rows were still saved.
+export interface HealthDataImportResult {
+  message: string;
+  processed: Array<{ type?: string; status: string; data?: unknown }>;
+  errors: Array<{ error: string; entry?: unknown }>;
+  skipped: Array<{ reason: string; entry?: unknown }>;
+}
+
+export const importHealthDataCsv = async (
+  items: Array<Record<string, unknown>>
+): Promise<HealthDataImportResult> => {
+  return apiCall('/measurements/import-health-data', {
+    method: 'POST',
+    body: { items },
+  });
+};

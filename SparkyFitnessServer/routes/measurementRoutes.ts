@@ -15,6 +15,7 @@ import {
   UuidParamSchema,
   DateRangeParamSchema,
   CustomMeasurementsRangeParamSchema,
+  ImportHealthDataBodySchema,
 } from '../schemas/measurementSchemas.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
@@ -157,6 +158,74 @@ router.post(
         req.userId,
 
         req.originalUserId || req.userId
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /measurements/import-health-data:
+ *   post:
+ *     summary: Import health data from a CSV (session authenticated)
+ *     tags: [Wellness & Metrics]
+ *     description: >
+ *       Bulk-imports client-parsed health data rows (body measurements, sleep,
+ *       vitals, daily activity totals, hydration) through the same
+ *       processHealthData pipeline used by mobile sync. Rows without a `source`
+ *       default to `CSV_Import` so re-imports dedup on the same natural keys.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [items]
+ *             properties:
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   description: Flat health data object (type + value/date + optional unit/source).
+ *     responses:
+ *       200:
+ *         description: >
+ *           Request processed. Per-record outcomes are reported in the body:
+ *           `processed`, `errors`, and `skipped`. A 200 with a non-empty
+ *           `errors` array means the remaining rows were still saved.
+ *       400:
+ *         description: Malformed request body (fails schema validation).
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden (lacks checkin permission).
+ */
+router.post(
+  '/import-health-data',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const parsed = ImportHealthDataBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: parsed.error.issues.map((i) => i.message).join(', '),
+      });
+    }
+    // Default the source per row so re-imports dedup on the same natural key
+    // that mobile sync relies on. Keep processHealthData itself untouched.
+    const items = parsed.data.items.map((item) => ({
+      ...item,
+      source: item.source || 'CSV_Import',
+    }));
+    try {
+      const result = await measurementService.processHealthData(
+        items,
+        req.userId,
+        req.authenticatedUserId || req.userId
       );
       res.status(200).json(result);
     } catch (error) {
