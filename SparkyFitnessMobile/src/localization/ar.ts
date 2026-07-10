@@ -342,6 +342,32 @@ export const ar = {
   'mealDetail.ingredient.few': '{{count}} مكوّنات',
   'mealDetail.ingredient.other': '{{count}} مكوّن',
 
+  'mealTypeDetail.noServerTitle': 'ما فيه خادم مربوط',
+  'mealTypeDetail.noServerDescription':
+    'اربط خادمك من الإعدادات عشان تشوف تغذية وجبتك.',
+  'mealTypeDetail.loading': 'جاري تحميل الوجبة…',
+  'mealTypeDetail.loadFailed': 'ما قدرنا نحمّل الوجبة',
+  'mealTypeDetail.loadFailedDescription':
+    'تأكد من اتصالك وحاول مرة ثانية.',
+  'mealTypeDetail.emptyTitle': 'ما فيه أصناف في {{meal}}',
+  'mealTypeDetail.emptyDescription':
+    'ما سجلت أصناف في هالوجبة يوم {{date}}.',
+  'mealTypeDetail.foods': 'الأصناف',
+  'mealTypeDetail.copyMeal': 'نسخ الوجبة ليوم ثاني',
+  'mealTypeDetail.food.one': 'صنف واحد',
+  'mealTypeDetail.food.two': 'صنفين',
+  'mealTypeDetail.food.few': '{{count}} أصناف',
+  'mealTypeDetail.food.other': '{{count}} صنف',
+
+  'copyMeal.title': 'نسخ {{meal}}',
+  'copyMeal.from': 'من {{date}}',
+  'copyMeal.targetDate': 'التاريخ الجديد',
+  'copyMeal.targetMeal': 'الوجبة الجديدة',
+  'copyMeal.copying': 'جاري النسخ…',
+  'copyMeal.copy': 'نسخ الوجبة',
+  'copyMeal.copied': 'تم نسخ الوجبة',
+  'copyMeal.failed': 'ما قدرنا ننسخ الوجبة',
+
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
   'exerciseCategory.flexibility': 'مرونة',

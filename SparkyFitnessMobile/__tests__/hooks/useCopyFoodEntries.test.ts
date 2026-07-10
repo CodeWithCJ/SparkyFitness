@@ -2,6 +2,7 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useCopyFoodEntries } from '../../src/hooks/useCopyFoodEntries';
 import { copyFoodEntries } from '../../src/services/api/foodEntriesApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import Toast from 'react-native-toast-message';
 
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   copyFoodEntries: jest.fn(),
@@ -12,6 +13,7 @@ jest.mock('react-native-toast-message', () => ({
 }));
 
 const mockCopyFoodEntries = copyFoodEntries as jest.MockedFunction<typeof copyFoodEntries>;
+const mockToast = Toast as unknown as { show: jest.Mock };
 
 const payload = {
   sourceDate: '2026-05-15',
@@ -68,6 +70,10 @@ describe('useCopyFoodEntries', () => {
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith(payload);
     });
+    expect(mockToast.show).toHaveBeenCalledWith({
+      type: 'success',
+      text1: 'تم نسخ الوجبة',
+    });
   });
 
   test('does not call onSuccess when the copy fails', async () => {
@@ -86,5 +92,10 @@ describe('useCopyFoodEntries', () => {
       expect(result.current.isPending).toBe(false);
     });
     expect(onSuccess).not.toHaveBeenCalled();
+    expect(mockToast.show).toHaveBeenCalledWith({
+      type: 'error',
+      text1: 'ما قدرنا ننسخ الوجبة',
+      text2: 'حاول مرة ثانية',
+    });
   });
 });

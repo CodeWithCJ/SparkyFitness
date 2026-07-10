@@ -239,7 +239,8 @@ function formatArabicCount(
     | 'workout.rep'
     | 'workout.minute'
     | 'workout.hour'
-    | 'mealDetail.ingredient',
+    | 'mealDetail.ingredient'
+    | 'mealTypeDetail.food',
 ): string {
   const category = arabicPluralRules.select(count);
   const form =
@@ -266,6 +267,10 @@ export function formatMobileRepCount(count: number): string {
 
 export function formatMobileIngredientCount(count: number): string {
   return formatArabicCount(count, 'mealDetail.ingredient');
+}
+
+export function formatMobileFoodCount(count: number): string {
+  return formatArabicCount(count, 'mealTypeDetail.food');
 }
 
 export function formatMobileDuration(minutes: number): string {

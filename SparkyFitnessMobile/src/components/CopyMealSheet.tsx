@@ -19,10 +19,14 @@ import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import Button from './ui/Button';
 import Icon from './Icon';
 import { useMealTypes } from '../hooks/useMealTypes';
-import { getMealTypeLabel } from '../constants/meals';
 import { formatDateLabel } from '../utils/dateUtils';
 import { dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
+import {
+  isMobileRtl,
+  localizeMealType,
+  mobileT,
+} from '../localization';
 
 // Render the sheet inside an iOS UIWindow so it sits above any native modal
 // presentation. No-op on Android.
@@ -138,24 +142,43 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
             <View className="px-5">
               <View className="items-center mb-4">
                 <Text className="text-text-primary text-lg font-semibold text-center">
-                  Copy {getMealTypeLabel(source.mealType)}
+                  {mobileT('copyMeal.title', {
+                    meal: localizeMealType(source.mealType),
+                  })}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-1 text-center">
-                  From {formatDateLabel(source.date)}
+                  {mobileT('copyMeal.from', {
+                    date: formatDateLabel(source.date),
+                  })}
                 </Text>
               </View>
 
               {/* Target date */}
               <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
-                Target date
+                {mobileT('copyMeal.targetDate')}
               </Text>
               <DateTimePicker
                 mode="single"
+                locale="ar"
+                numerals="arab"
+                firstDayOfWeek={0}
                 date={dateValue}
                 onChange={handleDateChange}
                 components={{
-                  IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
-                  IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,
+                  IconPrev: (
+                    <Icon
+                      name={isMobileRtl ? 'chevron-forward' : 'chevron-back'}
+                      size={18}
+                      color={textPrimary}
+                    />
+                  ),
+                  IconNext: (
+                    <Icon
+                      name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+                      size={18}
+                      color={textPrimary}
+                    />
+                  ),
                 }}
                 styles={{
                   selected: { backgroundColor: accentPrimary },
@@ -177,7 +200,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
 
               {/* Target meal type */}
               <Text className="text-xs font-semibold uppercase text-text-muted mt-4 mb-2">
-                Target meal
+                {mobileT('copyMeal.targetMeal')}
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-6">
                 {mealTypes.map((mt) => {
@@ -198,7 +221,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                           isSelected ? 'text-white font-semibold' : 'text-text-primary'
                         }`}
                       >
-                        {getMealTypeLabel(mt.name)}
+                        {localizeMealType(mt.name)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -216,7 +239,9 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                     source.mealType.toLowerCase() === targetMealType.toLowerCase())
                 }
               >
-                {isPending ? 'Copying...' : 'Copy'}
+                {isPending
+                  ? mobileT('copyMeal.copying')
+                  : mobileT('copyMeal.copy')}
               </Button>
             </View>
           )}

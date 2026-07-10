@@ -5,6 +5,7 @@ import {
   type CopyFoodEntriesPayload,
 } from '../services/api/foodEntriesApi';
 import { dailySummaryQueryKey } from './queryKeys';
+import { mobileT } from '../localization';
 
 interface UseCopyFoodEntriesOptions {
   onSuccess?: (payload: CopyFoodEntriesPayload) => void;
@@ -18,11 +19,18 @@ export function useCopyFoodEntries(options?: UseCopyFoodEntriesOptions) {
     onSuccess: (_data, payload) => {
       // Only the target day changes; the source day is left untouched.
       queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(payload.targetDate) });
-      Toast.show({ type: 'success', text1: 'Meal copied' });
+      Toast.show({
+        type: 'success',
+        text1: mobileT('copyMeal.copied'),
+      });
       options?.onSuccess?.(payload);
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: 'Failed to copy meal', text2: 'Please try again.' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('copyMeal.failed'),
+        text2: mobileT('common.retry'),
+      });
     },
   });
 
