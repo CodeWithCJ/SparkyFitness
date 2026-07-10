@@ -56,6 +56,22 @@ export const ar = {
   'fasting.ended': 'تم إنهاء الصيام',
   'fasting.endFailed': 'ما قدرنا ننهي الصيام',
 
+  'errors.unexpectedTitle': 'صار خطأ',
+  'errors.unexpectedDescription':
+    'صار خطأ غير متوقع. جرّب مرة ثانية، وإذا استمر تأكد إن التطبيق والخادم محدثين.',
+  'errors.sectionFailed': 'ما قدرنا نحمّل هالقسم.',
+
+  'notifications.workoutChannel': 'مؤقت التمرين',
+  'notifications.fastingChannel': 'الصيام',
+  'notifications.offTitle': 'التنبيهات مقفلة',
+  'notifications.offDescription': 'المؤقت بيظل ينبهك داخل التطبيق.',
+  'notifications.restComplete': 'خلص وقت الراحة',
+  'notifications.restNextSet': 'خلصت الراحة — جهّز للمجموعة الجاية',
+  'notifications.restBody': '{{exercise}} · المجموعة {{set}} من {{total}}',
+  'notifications.restTarget': '{{body}} · الهدف {{reps}}',
+  'notifications.fastingGoalTitle': 'وصلت لهدف الصيام',
+  'notifications.fastingGoalBody': 'أكملت هدفك، عساك على القوة!',
+
   'tabs.dashboard': 'الرئيسية',
   'tabs.diary': 'اليوميات',
   'tabs.add': 'إضافة',
@@ -176,6 +192,10 @@ export const ar = {
   'workout.set.two': 'مجموعتين',
   'workout.set.few': '{{count}} مجموعات',
   'workout.set.other': '{{count}} مجموعة',
+  'workout.rep.one': 'تكرار واحد',
+  'workout.rep.two': 'تكرارين',
+  'workout.rep.few': '{{count}} تكرارات',
+  'workout.rep.other': '{{count}} تكرار',
   'workout.minute.one': 'دقيقة واحدة',
   'workout.minute.two': 'دقيقتين',
   'workout.minute.few': '{{count}} دقائق',

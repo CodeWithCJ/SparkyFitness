@@ -152,7 +152,12 @@ export function formatMobileCalories(calories: number): string {
 
 function formatArabicCount(
   count: number,
-  keyPrefix: 'workout.exercise' | 'workout.set' | 'workout.minute' | 'workout.hour',
+  keyPrefix:
+    | 'workout.exercise'
+    | 'workout.set'
+    | 'workout.rep'
+    | 'workout.minute'
+    | 'workout.hour',
 ): string {
   const category = arabicPluralRules.select(count);
   const form =
@@ -171,6 +176,10 @@ export function formatMobileExerciseCount(count: number): string {
 
 export function formatMobileSetCount(count: number): string {
   return formatArabicCount(count, 'workout.set');
+}
+
+export function formatMobileRepCount(count: number): string {
+  return formatArabicCount(count, 'workout.rep');
 }
 
 export function formatMobileDuration(minutes: number): string {

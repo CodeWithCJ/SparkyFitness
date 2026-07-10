@@ -6,6 +6,7 @@ import {
   formatMobileDuration,
   formatMobileExerciseCount,
   formatMobileNumber,
+  formatMobileRepCount,
   formatMobileSetCount,
   localizeExerciseCategory,
   localizeMealType,
@@ -51,6 +52,8 @@ describe('mobile localization', () => {
     expect(formatMobileExerciseCount(2)).toBe('تمرينين');
     expect(formatMobileExerciseCount(5)).toBe('٥ تمارين');
     expect(formatMobileSetCount(2)).toBe('مجموعتين');
+    expect(formatMobileRepCount(1)).toBe('تكرار واحد');
+    expect(formatMobileRepCount(8)).toBe('٨ تكرارات');
     expect(formatMobileDuration(90)).toBe('ساعة و٣٠ دقيقة');
   });
 });

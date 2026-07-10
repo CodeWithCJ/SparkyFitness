@@ -1980,8 +1980,8 @@ describe('activeWorkoutStore', () => {
           'Bench Press',
           60,
           expect.objectContaining({
-            title: expect.stringContaining('Rest complete'),
-            body: expect.stringContaining('Set'),
+            title: expect.stringContaining('خلصت الراحة'),
+            body: expect.stringContaining('المجموعة'),
           }),
         );
       });
