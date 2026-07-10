@@ -503,6 +503,11 @@ async function updateExerciseEntry(
           updateData.superset_group === undefined
             ? (existingEntry.superset_group ?? null)
             : updateData.superset_group,
+        // Preserve when omitted; explicit null clears the time of day.
+        entry_time:
+          updateData.entry_time === undefined
+            ? (existingEntry.entry_time ?? null)
+            : updateData.entry_time,
       }
     );
     if (!updatedEntry) {
@@ -1702,6 +1707,7 @@ async function createGroupedExerciseEntriesWithClient(
       workout_plan_assignment_id: workoutPlanAssignmentId,
       distance: exercise.distance,
       avg_heart_rate: exercise.avg_heart_rate,
+      entry_time: exercise.entry_time ?? null,
     });
     const createdEntry = await exerciseEntryDb._createExerciseEntryWithClient(
       client,

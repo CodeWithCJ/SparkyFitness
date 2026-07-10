@@ -43,7 +43,7 @@ import {
   useFoodEntries,
   useFoodEntryMeals,
 } from '@/hooks/Diary/useFoodEntries';
-import { todayInZone } from '@workspace/shared';
+import { todayInZone, prefillEntryTime } from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
 
 const Diary = () => {
@@ -231,7 +231,8 @@ const Diary = () => {
     food: Food,
     quantity: number,
     unit: string,
-    selectedVariant: FoodVariant
+    selectedVariant: FoodVariant,
+    entryTime?: string | null
   ) => {
     if (!currentUserId) {
       return;
@@ -241,6 +242,7 @@ const Diary = () => {
       quantity,
       unit,
       selectedVariant,
+      entryTime,
     });
     try {
       await createFoodEntry({
@@ -252,6 +254,7 @@ const Diary = () => {
         unit: unit,
         variant_id: selectedVariant.id,
         entry_date: selectedDate,
+        entry_time: entryTime || null,
       });
       info(loggingLevel, 'Food entry added successfully.');
     } catch (err) {
@@ -450,6 +453,19 @@ const Diary = () => {
           onOpenChange={setIsUnitSelectorOpen}
           onSelect={handleFoodUnitSelect}
           showUnitSelector={true}
+          showTimeInput={true}
+          defaultMealTime={
+            availableMealTypes?.find(
+              (t) => t.name.toLowerCase() === selectedMealType.toLowerCase()
+            )?.default_time
+          }
+          initialTime={prefillEntryTime({
+            defaultTime: availableMealTypes?.find(
+              (t) => t.name.toLowerCase() === selectedMealType.toLowerCase()
+            )?.default_time,
+            isToday: selectedDate === todayInZone(timezone),
+            tz: timezone,
+          })}
         />
       )}
 
@@ -489,6 +505,13 @@ const Diary = () => {
         onOpenChange={setIsLogMealDialogOpen}
         date={selectedDate}
         mealType={selectedMealType}
+        initialEntryTime={prefillEntryTime({
+          defaultTime: availableMealTypes?.find(
+            (t) => t.name.toLowerCase() === selectedMealType.toLowerCase()
+          )?.default_time,
+          isToday: selectedDate === todayInZone(timezone),
+          tz: timezone,
+        })}
       />
 
       {/* Convert to Meal Dialog */}

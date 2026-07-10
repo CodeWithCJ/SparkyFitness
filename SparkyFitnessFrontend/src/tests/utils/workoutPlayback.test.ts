@@ -142,7 +142,7 @@ describe('workoutPlayback utils', () => {
       setIndex: 0,
     });
 
-    const payload = buildPresetSessionCreateRequestFromDraft(nextDraft);
+    const payload = buildPresetSessionCreateRequestFromDraft(nextDraft, 'UTC');
 
     expect(payload.name).toBe('Upper Body');
     expect(payload.source).toBe('sparky');
@@ -198,7 +198,7 @@ describe('workoutPlayback utils', () => {
     });
     const stamped = nextDraft.exercises[0]?.sets[0]?.completed_at;
 
-    const payload = buildPresetSessionCreateRequestFromDraft(nextDraft);
+    const payload = buildPresetSessionCreateRequestFromDraft(nextDraft, 'UTC');
     expect(payload.exercises?.[0]?.sets?.[0]?.completed_at).toBe(stamped);
   });
 
@@ -219,7 +219,10 @@ describe('workoutPlayback utils', () => {
       })),
     };
 
-    const payload = buildPresetSessionCreateRequestFromDraft(legacyDraft);
+    const payload = buildPresetSessionCreateRequestFromDraft(
+      legacyDraft,
+      'UTC'
+    );
     expect(payload.exercises?.[0]?.sets?.[0]?.completed_at).toBeNull();
   });
 
@@ -263,7 +266,10 @@ describe('workoutPlayback utils', () => {
       ),
     };
 
-    const payload = buildPresetSessionCreateRequestFromDraft(completedDraft);
+    const payload = buildPresetSessionCreateRequestFromDraft(
+      completedDraft,
+      'UTC'
+    );
 
     expect(payload.exercises?.[0]?.duration_minutes).toBeCloseTo(3.5, 5);
   });

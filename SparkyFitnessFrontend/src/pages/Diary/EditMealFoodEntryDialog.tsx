@@ -46,6 +46,7 @@ const EditMealFoodEntryDialog = ({
           foodEntryId={foodEntry.id}
           foodEntryDate={foodEntry.entry_date}
           foodEntryMealType={foodEntry.meal_type}
+          initialEntryTime={foodEntry.entry_time}
         />
       </DialogContent>
     </Dialog>

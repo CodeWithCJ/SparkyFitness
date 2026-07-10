@@ -1,4 +1,5 @@
 import type { CreatePresetSessionRequest } from '@workspace/shared';
+import { instantHourMinute } from '@workspace/shared';
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 
 export const DEFAULT_REST_SECONDS = 90;
@@ -707,7 +708,8 @@ function deriveExerciseDurationMinutes(
 }
 
 export function buildPresetSessionCreateRequestFromDraft(
-  draft: WorkoutPlaybackDraft
+  draft: WorkoutPlaybackDraft,
+  timezone: string
 ): CreatePresetSessionRequest {
   const exercises = draft.exercises
     .map((exercise, exerciseIndex) => {
@@ -716,11 +718,23 @@ export function buildPresetSessionCreateRequestFromDraft(
         return null;
       }
 
+      let entryTime: string | null = null;
+      const startTimestamp = draft.started_at;
+      if (startTimestamp) {
+        try {
+          const hm = instantHourMinute(startTimestamp, timezone);
+          entryTime = `${String(hm.hour).padStart(2, '0')}:${String(hm.minute).padStart(2, '0')}`;
+        } catch (e) {
+          console.error('Failed to parse draft started_at:', e);
+        }
+      }
+
       return {
         exercise_id: exercise.exercise_id,
         sort_order: exerciseIndex,
         duration_minutes: deriveExerciseDurationMinutes(exercise),
         notes: exercise.notes ?? null,
+        entry_time: entryTime,
         sets: completedSets.map((set, setIndex) => ({
           set_number: setIndex + 1,
           set_type: set.set_type ?? null,

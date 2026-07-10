@@ -115,6 +115,7 @@ const FoodDatabaseManager = () => {
     handleAddFoodToMeal,
     handleDeleteRequest,
     deleteFood,
+    mealTypes,
   } = useFoodDatabaseManager();
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -656,6 +657,9 @@ const FoodDatabaseManager = () => {
           open={showFoodUnitSelectorDialog}
           onOpenChange={setShowFoodUnitSelectorDialog}
           onSelect={handleAddFoodToMeal}
+          showTimeInput={true}
+          showMealTypeSelect={true}
+          availableMealTypes={mealTypes}
         />
       )}
 

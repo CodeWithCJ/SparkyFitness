@@ -107,6 +107,7 @@ function _buildExerciseEntryWithSnapshot(
     duration_minutes: (entryData.duration_minutes as number) ?? 0,
     calories_burned: (entryData.calories_burned as number) ?? 0,
     entry_date: _dateToString(entryData.entry_date),
+    entry_time: (entryData.entry_time as string) ?? null,
     notes: (entryData.notes as string) ?? null,
     distance: (entryData.distance as number) ?? null,
     avg_heart_rate: (entryData.avg_heart_rate as number) ?? null,
@@ -472,6 +473,7 @@ async function _getExerciseEntriesByDateWithClient(
 
   // Track created_at for chronological ordering of standalone entries
   const individualCreatedAt = new Map<string, Date>();
+  const individualEntryTime = new Map<string, string | null>();
 
   for (const id of presetRows.map((r) => r.id as string)) {
     presetChildrenMap.set(id, []);
@@ -490,6 +492,7 @@ async function _getExerciseEntriesByDateWithClient(
         name: (row.exercise_name as string) ?? null,
       });
       individualCreatedAt.set(entry.id, new Date(row.created_at as string));
+      individualEntryTime.set(entry.id, row.entry_time as string | null);
     }
   }
 
@@ -567,26 +570,51 @@ async function _getExerciseEntriesByDateWithClient(
     );
   }
 
+  const getPresetEarliestTime = (presetId: string) => {
+    const children = presetChildrenMap.get(presetId) || [];
+    const times = children
+      .map((ch) => ch.entry_time)
+      .filter((t): t is string => typeof t === 'string' && t !== '');
+    if (times.length === 0) return null;
+    times.sort();
+    return times[0];
+  };
+
   // Build a unified stub list for chronological ordering
   const stubs: Array<{
     sessionType: 'preset' | 'individual';
     id: string;
     createdAt: Date;
+    entryTime: string | null;
   }> = [];
 
   for (const presetRow of presetRows) {
+    const pid = presetRow.id as string;
     stubs.push({
       sessionType: 'preset',
-      id: presetRow.id as string,
+      id: pid,
       createdAt: new Date(presetRow.created_at as string),
+      entryTime: getPresetEarliestTime(pid),
     });
   }
 
   for (const [id, createdAt] of individualCreatedAt) {
-    stubs.push({ sessionType: 'individual', id, createdAt });
+    stubs.push({
+      sessionType: 'individual',
+      id,
+      createdAt,
+      entryTime: individualEntryTime.get(id) || null,
+    });
   }
 
-  stubs.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  stubs.sort((a, b) => {
+    if (a.entryTime && b.entryTime) {
+      return a.entryTime.localeCompare(b.entryTime);
+    }
+    if (a.entryTime) return -1;
+    if (b.entryTime) return 1;
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
 
   // Assemble sessions in chronological order
   const sessions: ExerciseSessionResponse[] = [];

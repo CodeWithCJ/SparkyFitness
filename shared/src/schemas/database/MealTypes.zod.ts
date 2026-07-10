@@ -17,6 +17,7 @@ export const mealTypesSchema = z.object({
   created_at: z.date().nullable(),
   is_visible: z.boolean(),
   show_in_quick_log: z.boolean().nullable(),
+  default_time: z.string().nullable(),
 });
 
 export const mealTypesInitializerSchema = z.object({
@@ -27,6 +28,7 @@ export const mealTypesInitializerSchema = z.object({
   created_at: z.date().optional().nullable(),
   is_visible: z.boolean().optional(),
   show_in_quick_log: z.boolean().optional().nullable(),
+  default_time: z.string().optional().nullable(),
 });
 
 export const mealTypesMutatorSchema = z.object({
@@ -37,6 +39,7 @@ export const mealTypesMutatorSchema = z.object({
   created_at: z.date().optional().nullable(),
   is_visible: z.boolean().optional(),
   show_in_quick_log: z.boolean().optional().nullable(),
+  default_time: z.string().optional().nullable(),
 });
 
 export type MealTypes = z.infer<typeof mealTypesSchema>;

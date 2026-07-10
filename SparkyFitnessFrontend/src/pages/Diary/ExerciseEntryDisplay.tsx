@@ -24,6 +24,7 @@ import {
   ExerciseCategory,
 } from '@/constants/exercises';
 import { useState } from 'react';
+import { toHourMinute } from '@workspace/shared';
 
 interface ExerciseEntryDisplayProps {
   exerciseEntry: ExerciseEntry;
@@ -166,6 +167,11 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           <span className="font-semibold text-sm text-gray-800 dark:text-gray-100 leading-tight">
             {snapshot?.name || 'Unknown Exercise'}
           </span>
+          {exerciseEntry.entry_time && (
+            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
+              {toHourMinute(exerciseEntry.entry_time)}
+            </span>
+          )}
           {sourceBadge && (
             <span
               className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${sourceBadge.className}`}

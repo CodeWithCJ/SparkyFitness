@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Sparkles, Clock, CalendarDays } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,8 @@ import {
   CONFIDENCE_TONES,
   OVERALL_CONFIDENCE_LABELS,
   shouldOfferAiConversion,
+  userHourMinute,
+  defaultMealTypeForTime,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
@@ -63,12 +65,23 @@ interface FoodUnitSelectorProps {
     food: Food,
     quantity: number,
     unit: string,
-    selectedVariant: FoodVariant
+    selectedVariant: FoodVariant,
+    entryTime?: string | null,
+    mealType?: string | null
   ) => void;
   showUnitSelector?: boolean;
   initialQuantity?: number;
   initialUnit?: string;
   initialVariantId?: string;
+  showTimeInput?: boolean;
+  initialTime?: string;
+  defaultMealTime?: string | null;
+  showMealTypeSelect?: boolean;
+  availableMealTypes?: Array<{
+    id: string;
+    name: string;
+    default_time?: string | null;
+  }>;
 }
 
 const FoodUnitSelector = ({
@@ -80,9 +93,19 @@ const FoodUnitSelector = ({
   initialQuantity,
   initialUnit,
   initialVariantId,
+  showTimeInput,
+  initialTime,
+  defaultMealTime,
+  showMealTypeSelect,
+  availableMealTypes,
 }: FoodUnitSelectorProps) => {
-  const { loggingLevel, energyUnit, convertEnergy, aiAssistedConversions } =
-    usePreferences();
+  const {
+    loggingLevel,
+    energyUnit,
+    convertEnergy,
+    aiAssistedConversions,
+    timezone,
+  } = usePreferences();
   debug(loggingLevel, 'FoodUnitSelector component rendered.', { food, open });
 
   // AI gate re-checked each render so toggling preferences mid-dialog takes effect live.
@@ -103,7 +126,56 @@ const FoodUnitSelector = ({
     null
   );
   const [quantity, setQuantity] = useState(1);
+  const [entryTime, setEntryTime] = useState('');
+  const [mealType, setMealType] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      if (initialTime !== undefined) {
+        setEntryTime(initialTime || '');
+      } else {
+        const { hour, minute } = userHourMinute(timezone);
+        setEntryTime(
+          `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+        );
+      }
+
+      if (
+        showMealTypeSelect &&
+        availableMealTypes &&
+        availableMealTypes.length > 0
+      ) {
+        const nowTime = userHourMinute(timezone);
+        const matched = defaultMealTypeForTime(availableMealTypes, nowTime);
+        setMealType(matched);
+      }
+    }
+  }, [open, initialTime, showMealTypeSelect, availableMealTypes, timezone]);
+
+  const resolvedDefaultMealTime = (() => {
+    if (showMealTypeSelect && availableMealTypes) {
+      return (
+        availableMealTypes.find(
+          (t) => t.name.toLowerCase() === mealType.toLowerCase()
+        )?.default_time || null
+      );
+    }
+    return defaultMealTime;
+  })();
+
+  const handleSetCurrentTime = () => {
+    const { hour, minute } = userHourMinute(timezone);
+    setEntryTime(
+      `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+    );
+  };
+
+  const handleSetDefaultTime = () => {
+    if (resolvedDefaultMealTime) {
+      setEntryTime(resolvedDefaultMealTime.substring(0, 5));
+    }
+  };
 
   const queryClient = useQueryClient();
   const createFoodVariantMutation = useCreateFoodVariantMutation();
@@ -269,6 +341,7 @@ const FoodUnitSelector = ({
           ? initialQuantity
           : food.default_variant?.serving_size || 1
       );
+      setEntryTime(initialTime ?? '');
       resetConversionState();
     }
   }, [
@@ -277,6 +350,7 @@ const FoodUnitSelector = ({
     initialQuantity,
     initialUnit,
     initialVariantId,
+    initialTime,
     loadVariantsData,
     loggingLevel,
     resetConversionState,
@@ -305,7 +379,14 @@ const FoodUnitSelector = ({
           ...convertedVariant,
           ...savedVariant,
         };
-        onSelect(food, quantity, variantWithId.serving_unit, variantWithId);
+        onSelect(
+          food,
+          quantity,
+          variantWithId.serving_unit,
+          variantWithId,
+          entryTime || null,
+          showMealTypeSelect ? mealType : null
+        );
         onOpenChange(false);
         setQuantity(1);
       } catch (err) {
@@ -322,7 +403,14 @@ const FoodUnitSelector = ({
         unit: selectedVariant.serving_unit,
         variantId: selectedVariant.id || undefined,
       });
-      onSelect(food, quantity, selectedVariant.serving_unit, selectedVariant);
+      onSelect(
+        food,
+        quantity,
+        selectedVariant.serving_unit,
+        selectedVariant,
+        entryTime || null,
+        showMealTypeSelect ? mealType : null
+      );
       onOpenChange(false);
       setQuantity(1);
     } else {
@@ -469,6 +557,67 @@ const FoodUnitSelector = ({
                   </div>
                 </div>
               </div>
+
+              {showMealTypeSelect &&
+                availableMealTypes &&
+                availableMealTypes.length > 0 && (
+                  <div className="space-y-1">
+                    <Label htmlFor="mealType">Meal</Label>
+                    <Select value={mealType} onValueChange={setMealType}>
+                      <SelectTrigger id="mealType" className="w-full text-sm">
+                        <SelectValue placeholder="Select meal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableMealTypes.map((t) => (
+                          <SelectItem key={t.id} value={t.name}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+              {showTimeInput && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="entryTime">Time (optional)</Label>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleSetCurrentTime}
+                        className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 font-medium flex items-center gap-0.5"
+                        title="Set to current local time"
+                      >
+                        <Clock className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        Now
+                      </button>
+                      {resolvedDefaultMealTime && (
+                        <>
+                          <span className="text-gray-300 dark:text-gray-700 text-[10px]">
+                            |
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleSetDefaultTime}
+                            className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 font-medium flex items-center gap-0.5"
+                            title={`Set to meal default (${resolvedDefaultMealTime.substring(0, 5)})`}
+                          >
+                            <CalendarDays className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                            Default
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <Input
+                    id="entryTime"
+                    type="time"
+                    value={entryTime}
+                    onChange={(e) => setEntryTime(e.target.value)}
+                  />
+                </div>
+              )}
 
               {/* Custom unit name input */}
               {pendingUnitIsCustom && (

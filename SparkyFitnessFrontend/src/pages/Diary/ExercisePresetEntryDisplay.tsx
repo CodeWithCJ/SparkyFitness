@@ -20,6 +20,7 @@ import {
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
 import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
+import { toHourMinute } from '@workspace/shared';
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: PresetSessionEntry;
@@ -89,6 +90,19 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
       : 0;
   })();
 
+  const earliestTime = (() => {
+    if (!presetEntry.exercises || presetEntry.exercises.length === 0)
+      return null;
+    const times = presetEntry.exercises
+      .map((ex) => ex.entry_time)
+      .filter(
+        (time): time is string => typeof time === 'string' && time !== ''
+      );
+    if (times.length === 0) return null;
+    times.sort();
+    return times[0];
+  })();
+
   const totalCalories = Math.round(
     convertEnergy(
       presetEntry.exercises?.reduce(
@@ -139,6 +153,11 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                     {presetEntry.name ||
                       t('exerciseCard.workoutPreset', 'Workout Preset')}
                   </span>
+                  {earliestTime && (
+                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
+                      {toHourMinute(earliestTime)}
+                    </span>
+                  )}
                   {exerciseCount > 0 && (
                     <span className="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
                       {exerciseCount}{' '}

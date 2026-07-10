@@ -80,6 +80,7 @@ export * from "./constants/measurements.ts";
 export * from "./constants/calorieConstants.ts";
 export * from "./constants/foodVariantNutrients.ts";
 export * from "./utils/timezone.ts";
+export * from "./utils/entryTime.ts";
 export * from "./utils/calorieCalculations.ts";
 export * from "./utils/servingSizeConversions.ts";
 export * from "./utils/nutrientMatching.ts";

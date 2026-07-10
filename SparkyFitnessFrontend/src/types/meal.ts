@@ -130,6 +130,7 @@ export interface FoodEntryMeal {
   meal_template_id?: string;
   meal_type: string;
   entry_date: string;
+  entry_time?: string | null;
   name: string;
   description?: string;
   quantity?: number;

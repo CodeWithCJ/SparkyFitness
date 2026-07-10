@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createUploadMiddleware } from '../middleware/uploadMiddleware.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { fileURLToPath } from 'url';
+import { isEntryTimeString } from '@workspace/shared';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -81,6 +82,9 @@ router.use(checkPermissionMiddleware('diary'));
  *           type: string
  *           format: date
  *           description: The date of the exercise entry (YYYY-MM-DD).
+ *         entry_time:
+ *           type: string
+ *           description: The wall-clock local start time of the exercise session (e.g., HH:MM). Nullable.
  *         notes:
  *           type: string
  *           description: Any additional notes for the exercise entry.
@@ -301,6 +305,18 @@ router.post(
         avg_heart_rate,
         activity_details,
       } = entryData;
+      // FormData submits cleared inputs as empty strings; treat as "no time"
+      const entry_time =
+        entryData.entry_time === '' ? null : entryData.entry_time;
+      if (
+        entry_time !== null &&
+        entry_time !== undefined &&
+        !isEntryTimeString(entry_time)
+      ) {
+        return res.status(400).json({
+          error: 'entry_time must be in HH:MM (24h) format.',
+        });
+      }
       if (activity_details && typeof activity_details === 'string') {
         try {
           entryData.activity_details = JSON.parse(activity_details);
@@ -348,6 +364,7 @@ router.post(
           duration_minutes,
           calories_burned,
           entry_date,
+          entry_time,
           notes,
           sets,
           reps,
@@ -709,6 +726,19 @@ router.put(
     }
     // Extract new fields from updateData
     const { distance, avg_heart_rate } = updateData;
+    if (updateData.entry_time === '') {
+      // FormData submits cleared inputs as empty strings; treat as "clear time"
+      updateData.entry_time = null;
+    }
+    if (
+      updateData.entry_time !== null &&
+      updateData.entry_time !== undefined &&
+      !isEntryTimeString(updateData.entry_time)
+    ) {
+      return res.status(400).json({
+        error: 'entry_time must be in HH:MM (24h) format.',
+      });
+    }
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (!id || !uuidRegex.test(id)) {

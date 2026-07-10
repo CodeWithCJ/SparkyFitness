@@ -48,6 +48,9 @@ import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
  *           type: string
  *           format: date
  *           description: The date the food was consumed.
+ *         entry_time:
+ *           type: string
+ *           description: The wall-clock local time of day the food was eaten (e.g., HH:MM). Nullable.
  *         variant_id:
  *           type: string
  *           format: uuid
@@ -231,10 +234,10 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
-         source, source_id
+         source, source_id, entry_time
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -274,7 +277,8 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
            custom_nutrients = EXCLUDED.custom_nutrients,
            allergens = EXCLUDED.allergens,
            traces = EXCLUDED.traces,
-           updated_by_user_id = EXCLUDED.updated_by_user_id
+           updated_by_user_id = EXCLUDED.updated_by_user_id,
+           entry_time = EXCLUDED.entry_time
        RETURNING *`,
       [
         entryData.user_id,
@@ -316,6 +320,7 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
         createdByUserId, // updated_by_user_id
         entryData.source ?? null,
         entryData.source_id ?? null,
+        entryData.entry_time ?? null,
       ]
     );
     await client.query('COMMIT');
@@ -338,10 +343,11 @@ async function getFoodEntryById(entryId: any, userId: any) {
         fe.food_id, 
         fe.meal_id, 
         mt.name as meal_type, fe.meal_type_id,
-        fe.quantity, 
-        fe.unit, 
-        fe.variant_id, 
-        fe.entry_date, 
+        fe.quantity,
+        fe.unit,
+        fe.variant_id,
+        fe.entry_date,
+        fe.entry_time,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id, 
         fe.food_name, 
@@ -461,7 +467,8 @@ async function updateFoodEntry(
         glycemic_index = $28,
         custom_nutrients = $29,
         allergens = $32,
-        traces = $33
+        traces = $33,
+        entry_time = $34
       WHERE id = $30
       RETURNING *`,
       [
@@ -498,6 +505,7 @@ async function updateFoodEntry(
         mealTypeId,
         snapshotData.allergens ?? null,
         snapshotData.traces ?? null,
+        entryData.entry_time ?? null,
       ]
     );
     return result.rows[0];
@@ -520,6 +528,7 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
         fe.unit,
         fe.variant_id,
         fe.entry_date,
+        fe.entry_time,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
         fe.food_name,
@@ -553,7 +562,7 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        LEFT JOIN food_variants fv ON fe.variant_id = fv.id
        WHERE fe.user_id = $1 AND fe.entry_date = $2
-       ORDER BY mt.sort_order ASC, fe.created_at`,
+       ORDER BY mt.sort_order ASC, fe.entry_time ASC NULLS LAST, fe.created_at`,
       [userId, selectedDate]
     );
     return result.rows;
@@ -579,39 +588,40 @@ async function getFoodEntriesByDateAndMealType(
         fe.meal_id,
         mt.name as meal_type, fe.meal_type_id,
         fe.quantity, -- Note: quantity is already scaled when created for meal components
-        fe.unit, 
-        fe.variant_id, 
-        fe.entry_date, 
+        fe.unit,
+        fe.variant_id,
+        fe.entry_date,
+        fe.entry_time,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
-        fe.food_name, 
-        fe.brand_name, 
-        fe.serving_size, 
-        fe.serving_unit, 
-        fe.calories, 
-        fe.protein, 
-        fe.carbs, 
+        fe.food_name,
+        fe.brand_name,
+        fe.serving_size,
+        fe.serving_unit,
+        fe.calories,
+        fe.protein,
+        fe.carbs,
         fe.fat,
-        fe.saturated_fat, 
-        fe.polyunsaturated_fat, 
-        fe.monounsaturated_fat, 
-        fe.trans_fat, 
-        fe.cholesterol, 
+        fe.saturated_fat,
+        fe.polyunsaturated_fat,
+        fe.monounsaturated_fat,
+        fe.trans_fat,
+        fe.cholesterol,
         fe.sodium,
-        fe.potassium, 
-        fe.dietary_fiber, 
-        fe.sugars, 
-        fe.vitamin_a, 
-        fe.vitamin_c, 
-        fe.calcium, 
-        fe.iron, 
-        fe.glycemic_index, 
+        fe.potassium,
+        fe.dietary_fiber,
+        fe.sugars,
+        fe.vitamin_a,
+        fe.vitamin_c,
+        fe.calcium,
+        fe.iron,
+        fe.glycemic_index,
         fe.custom_nutrients
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
-       WHERE fe.user_id = $1 
-          AND fe.entry_date = $2 
+       WHERE fe.user_id = $1
+          AND fe.entry_date = $2
           AND (LOWER(mt.name) = LOWER($3) OR fe.meal_type_id::text = $3)`,
       [userId, date, mealType]
     );
@@ -642,27 +652,28 @@ async function getFoodEntriesByDateRange(
         fe.meal_id, 
         mt.name as meal_type, fe.meal_type_id,
         fe.quantity, -- Note: quantity is already scaled when created for meal components
-        fe.unit, 
-        fe.variant_id, 
-        fe.entry_date, 
+        fe.unit,
+        fe.variant_id,
+        fe.entry_date,
+        fe.entry_time,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
-        fe.food_name, 
-        fe.brand_name, 
-        fe.serving_size, 
-        fe.serving_unit, 
-        fe.calories, 
-        fe.protein, 
-        fe.carbs, 
+        fe.food_name,
+        fe.brand_name,
+        fe.serving_size,
+        fe.serving_unit,
+        fe.calories,
+        fe.protein,
+        fe.carbs,
         fe.fat,
-        fe.saturated_fat, 
-        fe.polyunsaturated_fat, 
-        fe.monounsaturated_fat, 
+        fe.saturated_fat,
+        fe.polyunsaturated_fat,
+        fe.monounsaturated_fat,
         fe.trans_fat,
-        fe.cholesterol, 
-        fe.sodium, 
-        fe.potassium, 
-        fe.dietary_fiber, 
+        fe.cholesterol,
+        fe.sodium,
+        fe.potassium,
+        fe.dietary_fiber,
         fe.sugars,
         fe.vitamin_a, 
         fe.vitamin_c, 
@@ -738,9 +749,10 @@ async function bulkCreateFoodEntries(
         food_id, 
         meal_type_id, 
         quantity, 
-        unit, 
-        entry_date, 
-        variant_id, 
+        unit,
+        entry_date,
+        entry_time,
+        variant_id,
         meal_plan_template_id,
         food_entry_meal_id, -- New column
         created_by_user_id, 
@@ -778,6 +790,7 @@ async function bulkCreateFoodEntries(
       entry.quantity,
       entry.unit,
       entry.entry_date,
+      entry.entry_time ?? null,
       entry.variant_id,
       entry.meal_plan_template_id || null, // meal_plan_template_id can be null
       entry.food_entry_meal_id || null, // New column value
@@ -833,10 +846,11 @@ async function getFoodEntryComponentsByFoodEntryMealId(
         fe.food_id, 
         mt.name as meal_type, fe.meal_type_id,
         fe.quantity, 
-        fe.unit, 
-        fe.variant_id, 
+        fe.unit,
+        fe.variant_id,
         fe.entry_date,
-        fe.food_entry_meal_id, 
+        fe.entry_time,
+        fe.food_entry_meal_id,
         fe.food_name, 
         fe.brand_name, 
         fe.serving_size, 
@@ -905,10 +919,11 @@ async function getFoodEntriesBatch(
         mt.name as meal_type,
         fe.food_entry_meal_id,
         fem.name as meal_name,
-        fe.quantity, 
-        fe.unit, 
-        fe.entry_date, 
-        fe.food_name, 
+        fe.quantity,
+        fe.unit,
+        fe.entry_date,
+        fe.entry_time,
+        fe.food_name,
         fe.brand_name, 
         fe.serving_size, 
         fe.serving_unit, 

@@ -13,6 +13,7 @@ export interface FoodEntryCreateData {
   quantity: number;
   unit: string;
   entry_date: string;
+  entry_time?: string | null;
   variant_id?: string | null;
 }
 export const updateFoodEntry = async (
@@ -154,6 +155,7 @@ export interface FoodEntryMealCreateData {
   meal_template_id?: string | null;
   meal_type: string;
   entry_date: string;
+  entry_time?: string | null;
   name: string;
   description?: string;
   quantity: number;
@@ -166,6 +168,7 @@ export interface FoodEntryMealUpdateData {
   description?: string;
   meal_type?: string;
   entry_date?: string;
+  entry_time?: string | null;
   quantity?: number;
   unit?: string;
   foods: MealFood[]; // Foods must be provided for update

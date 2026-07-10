@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict eqDVJlMjiQ0IikLedcCSjOKXfCdfuh8lhykDkalaxQ1gRRwoVJ6UZmK9HfaT5lS
+\restrict 44eQlT10iDrmsmDVhovuOda81iGeJkzS04UKKv8q9Hs26m3yTXW76b6ezSgNE36
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1505,7 +1505,8 @@ CREATE TABLE public.exercise_entries (
     sort_order integer DEFAULT 0,
     steps integer,
     water_estimated integer,
-    superset_group integer
+    superset_group integer,
+    entry_time time without time zone
 );
 
 
@@ -1521,6 +1522,13 @@ COMMENT ON COLUMN public.exercise_entries.steps IS 'Number of steps recorded dur
 --
 
 COMMENT ON COLUMN public.exercise_entries.superset_group IS 'Client-assigned superset group key, scoped to the parent exercise_preset_entry. NULL = not in a superset. Members share the value and are kept adjacent via sort_order.';
+
+
+--
+-- Name: COLUMN exercise_entries.entry_time; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entries.entry_time IS 'Optional wall-clock local start time of the exercise session (no timezone). NULL = not recorded.';
 
 
 --
@@ -1811,6 +1819,7 @@ CREATE TABLE public.food_entries (
     traces text[],
     source character varying(50),
     source_id character varying(255),
+    entry_time time without time zone,
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL))))
 );
 
@@ -1827,6 +1836,13 @@ COMMENT ON COLUMN public.food_entries.source IS 'Provider that produced this ent
 --
 
 COMMENT ON COLUMN public.food_entries.source_id IS 'Provider-stable record id for idempotent re-sync. NULL for manual/web entries.';
+
+
+--
+-- Name: COLUMN food_entries.entry_time; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.entry_time IS 'Optional wall-clock local time of day the food was eaten (no timezone). NULL = not recorded.';
 
 
 --
@@ -1847,7 +1863,8 @@ CREATE TABLE public.food_entry_meals (
     quantity numeric DEFAULT 1.0 NOT NULL,
     unit text DEFAULT 'serving'::text,
     meal_type_id uuid NOT NULL,
-    legacy_serving_unit_math boolean DEFAULT false NOT NULL
+    legacy_serving_unit_math boolean DEFAULT false NOT NULL,
+    entry_time time without time zone
 );
 
 
@@ -1870,6 +1887,13 @@ COMMENT ON COLUMN public.food_entry_meals.unit IS 'Unit of measurement for the c
 --
 
 COMMENT ON COLUMN public.food_entry_meals.legacy_serving_unit_math IS 'TRUE for diary entries logged before the serving-model migration where unit=''serving'' had special-case multiplier semantics. Read by foodEntryService recompute/unscale paths.';
+
+
+--
+-- Name: COLUMN food_entry_meals.entry_time; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entry_meals.entry_time IS 'Optional wall-clock local time of day the logged meal was eaten (no timezone). NULL = not recorded.';
 
 
 --
@@ -2141,8 +2165,16 @@ CREATE TABLE public.meal_types (
     sort_order integer DEFAULT 0,
     created_at timestamp with time zone DEFAULT now(),
     is_visible boolean DEFAULT true NOT NULL,
-    show_in_quick_log boolean DEFAULT true
+    show_in_quick_log boolean DEFAULT true,
+    default_time time without time zone
 );
+
+
+--
+-- Name: COLUMN meal_types.default_time; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meal_types.default_time IS 'Base default time of day for this meal slot, used to prefill diary entry times. For system meal types this is a global base; per-user values live in user_meal_visibilities.default_time.';
 
 
 --
@@ -3080,8 +3112,16 @@ CREATE TABLE public.user_meal_visibilities (
     meal_type_id uuid NOT NULL,
     is_visible boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT now(),
-    show_in_quick_log boolean DEFAULT true
+    show_in_quick_log boolean DEFAULT true,
+    default_time time without time zone
 );
+
+
+--
+-- Name: COLUMN user_meal_visibilities.default_time; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_meal_visibilities.default_time IS 'Per-user override of meal_types.default_time (same pattern as is_visible/show_in_quick_log).';
 
 
 --
@@ -3632,6 +3672,13 @@ CREATE TABLE public.workout_preset_exercises (
     sort_order integer DEFAULT 0,
     superset_group integer
 );
+
+
+--
+-- Name: COLUMN workout_preset_exercises.superset_group; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.workout_preset_exercises.superset_group IS 'Client-assigned superset group key, scoped to the parent workout preset. NULL = not in a superset. Members share the value and are kept adjacent via sort_order.';
 
 
 --
@@ -10099,5 +10146,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict eqDVJlMjiQ0IikLedcCSjOKXfCdfuh8lhykDkalaxQ1gRRwoVJ6UZmK9HfaT5lS
+\unrestrict 44eQlT10iDrmsmDVhovuOda81iGeJkzS04UKKv8q9Hs26m3yTXW76b6ezSgNE36
 

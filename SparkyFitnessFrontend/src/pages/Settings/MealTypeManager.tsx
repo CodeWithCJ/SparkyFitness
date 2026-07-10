@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toHourMinute } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,7 @@ const MealTypeManager = () => {
 
   const [newName, setNewName] = useState('');
   const [newSortOrder, setNewSortOrder] = useState(100);
+  const [newDefaultTime, setNewDefaultTime] = useState<string>('');
 
   const { data: mealTypes = [] } = useMealTypes();
   const { mutateAsync: createMealType } = useCreateMealTypeMutation();
@@ -54,9 +56,11 @@ const MealTypeManager = () => {
     await createMealType({
       name: newName.trim(),
       sort_order: Number(newSortOrder),
+      default_time: newDefaultTime || null,
     });
     setNewName('');
     setNewSortOrder(100);
+    setNewDefaultTime('');
     setIsAddDialogOpen(false);
   };
 
@@ -68,6 +72,7 @@ const MealTypeManager = () => {
       data: {
         name: newName.trim(),
         sort_order: Number(newSortOrder),
+        default_time: newDefaultTime || null,
       },
     });
 
@@ -97,6 +102,7 @@ const MealTypeManager = () => {
     setEditingMealType(item);
     setNewName(item.name);
     setNewSortOrder(item.sort_order);
+    setNewDefaultTime(toHourMinute(item.default_time) || '');
     setIsEditDialogOpen(true);
   };
 
@@ -161,6 +167,14 @@ const MealTypeManager = () => {
                   )}
                 </p>
               </div>
+              <div className="space-y-2">
+                <Label>Default Time (optional)</Label>
+                <Input
+                  type="time"
+                  value={newDefaultTime}
+                  onChange={(e) => setNewDefaultTime(e.target.value)}
+                />
+              </div>
               <Button onClick={handleAdd} className="w-full">
                 {t('common.save', 'Save')}
               </Button>
@@ -201,6 +215,23 @@ const MealTypeManager = () => {
                 <span className="text-xs text-muted-foreground">
                   Order: {item.sort_order}
                 </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">
+                    Default Time:
+                  </span>
+                  <Input
+                    type="time"
+                    className="w-[100px] h-8 text-xs p-1"
+                    value={toHourMinute(item.default_time) || ''}
+                    onChange={async (e) => {
+                      const val = e.target.value;
+                      await updateMealType({
+                        id: item.id,
+                        data: { default_time: val || null },
+                      });
+                    }}
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
                     variant="ghost"
@@ -288,6 +319,14 @@ const MealTypeManager = () => {
                 type="number"
                 value={newSortOrder}
                 onChange={(e) => setNewSortOrder(Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Default Time (optional)</Label>
+              <Input
+                type="time"
+                value={newDefaultTime}
+                onChange={(e) => setNewDefaultTime(e.target.value)}
               />
             </div>
             <DialogFooter>

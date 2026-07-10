@@ -44,6 +44,7 @@ import { SetColumnHeaders } from '../Exercises/SetHeader';
 import { cn } from '@/lib/utils';
 import { CardioLog } from '../Exercises/CardioLog';
 import { v4 as uuidv4 } from 'uuid';
+import { todayInZone, prefillEntryTime } from '@workspace/shared';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -77,7 +78,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
-  const { loggingLevel, weightUnit, distanceUnit, convertDistance } =
+  const { loggingLevel, weightUnit, distanceUnit, convertDistance, timezone } =
     usePreferences();
 
   const isCardio = exercise?.category === 'cardio';
@@ -98,6 +99,10 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
       return '';
     }
   );
+  const [entryTime, setEntryTime] = useState<string>(() => {
+    const isToday = selectedDate === todayInZone(timezone);
+    return isToday ? prefillEntryTime({ isToday: true, tz: timezone }) : '';
+  });
   const [activityDetails, setActivityDetails] = useState<
     ActivityDetailKeyValuePair[]
   >([]);
@@ -249,6 +254,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         })),
         notes,
         entry_date: selectedDate,
+        entry_time: entryTime || null,
         calories_burned: Number(caloriesBurnedInput),
         duration_minutes: totalDuration,
         imageFile,
@@ -355,6 +361,20 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
               </Button>
             </div>
           )}
+
+          {/* Start Time (optional) */}
+          <div className="space-y-1.5 max-w-[200px]">
+            <Label htmlFor="entryTime" className="text-sm">
+              Start Time (optional)
+            </Label>
+            <Input
+              id="entryTime"
+              type="time"
+              value={entryTime}
+              onChange={(e) => setEntryTime(e.target.value)}
+              className="text-sm h-9"
+            />
+          </div>
 
           {/* ── Notes ── */}
           <div className="space-y-1.5">

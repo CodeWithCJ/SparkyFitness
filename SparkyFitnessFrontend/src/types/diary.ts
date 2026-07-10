@@ -6,6 +6,7 @@ export interface ExerciseEntry {
   duration_minutes: number;
   calories_burned: number;
   entry_date: string;
+  entry_time?: string | null;
   notes?: string;
   sets?: WorkoutPresetSet[]; // Add sets property
   image_url?: string;
@@ -34,6 +35,7 @@ export interface MealTypeDefinition {
   user_id: string | null;
   is_visible?: boolean;
   show_in_quick_log?: boolean;
+  default_time?: string | null;
 }
 
 export interface FoodEntryUpdateData {
@@ -41,4 +43,5 @@ export interface FoodEntryUpdateData {
   unit?: string;
   variant_id?: string | null;
   meal_type_id?: string;
+  entry_time?: string | null;
 }
