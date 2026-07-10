@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getDeploymentCapabilities } from '@/api/general';
 import {
+  areUploadsEnabled,
   deploymentCapabilitiesQueryKey,
   useDeploymentCapabilities,
 } from '@/hooks/useDeploymentCapabilities';
@@ -30,6 +31,12 @@ const createWrapper = () => {
 describe('useDeploymentCapabilities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('keeps uploads disabled until capabilities explicitly enable them', () => {
+    expect(areUploadsEnabled(undefined)).toBe(false);
+    expect(areUploadsEnabled({ uploadsEnabled: false })).toBe(false);
+    expect(areUploadsEnabled({ uploadsEnabled: true })).toBe(true);
   });
 
   it('fetches and caches the deployment capability contract', async () => {

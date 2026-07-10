@@ -296,7 +296,7 @@ export function DataTable<TData, TValue>({
           <>
             {isLoading && (
               <div className="absolute inset-x-0 -top-2 h-1 bg-blue-500/30 overflow-hidden rounded-full z-10">
-                <div className="h-full bg-blue-500 animate-progress origin-left" />
+                <div className="h-full bg-blue-500 animate-progress origin-left rtl:origin-right" />
               </div>
             )}
             {table.getRowModel().rows.map((row) => (

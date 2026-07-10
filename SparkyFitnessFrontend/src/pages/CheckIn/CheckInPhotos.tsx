@@ -13,7 +13,10 @@ import {
   type PhotoType,
   type CheckInPhoto,
 } from '@/hooks/CheckIn/useCheckInPhotos';
-import { useDeploymentCapabilities } from '@/hooks/useDeploymentCapabilities';
+import {
+  areUploadsEnabled,
+  useDeploymentCapabilities,
+} from '@/hooks/useDeploymentCapabilities';
 
 interface PhotoSlotProps {
   type: PhotoType;
@@ -129,7 +132,7 @@ const PhotoSlot = ({
           disabled={uploadDisabled}
           onClick={() => fileInputRef.current?.click()}
         >
-          <Upload className="h-3 w-3 mr-1" />
+          <Upload className="h-3 w-3 me-1" />
           {photo
             ? t('checkIn.photos.replace', 'Replace')
             : t('checkIn.photos.upload', 'Upload')}
@@ -177,7 +180,7 @@ export const CheckInPhotos = ({ selectedDate }: CheckInPhotosProps) => {
     isDeleting,
   } = useCheckInPhotos(selectedDate);
   const { data: capabilities } = useDeploymentCapabilities();
-  const uploadsEnabled = capabilities?.uploadsEnabled ?? true;
+  const uploadsEnabled = areUploadsEnabled(capabilities);
 
   const photoMap = useMemo(
     () => new Map(photos.map((p) => [p.photo_type, p])),

@@ -13,7 +13,10 @@ import {
   useUploadAvatarMutation,
 } from '@/hooks/Settings/useProfile';
 import { ProfileFormContent } from './ProfileFormContent';
-import { useDeploymentCapabilities } from '@/hooks/useDeploymentCapabilities';
+import {
+  areUploadsEnabled,
+  useDeploymentCapabilities,
+} from '@/hooks/useDeploymentCapabilities';
 import { useRef } from 'react';
 
 export const ProfileInformation = () => {
@@ -24,7 +27,7 @@ export const ProfileInformation = () => {
     user?.id
   );
   const { data: capabilities } = useDeploymentCapabilities();
-  const uploadsEnabled = capabilities?.uploadsEnabled ?? true;
+  const uploadsEnabled = areUploadsEnabled(capabilities);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const { mutateAsync: uploadAvatar, isPending: uploadingImage } =
@@ -100,7 +103,7 @@ export const ProfileInformation = () => {
               disabled={uploadingImage || !uploadsEnabled}
               onClick={() => avatarInputRef.current?.click()}
             >
-              <Camera className="h-4 w-4 mr-2" />
+              <Camera className="h-4 w-4 me-2" />
               {uploadingImage
                 ? t('settings.profileInformation.uploading', 'Uploading...')
                 : t('settings.profileInformation.changePhoto', 'Change Photo')}
