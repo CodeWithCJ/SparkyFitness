@@ -177,6 +177,9 @@ jobs:
       - name: Run validation (Type Check, Lint, Format)
         run: pnpm run validate
 
+      - name: Build Vercel backend bundle
+        run: pnpm run build:vercel
+
       - name: Run tests with coverage
         run: pnpm run test:ci
         env:
