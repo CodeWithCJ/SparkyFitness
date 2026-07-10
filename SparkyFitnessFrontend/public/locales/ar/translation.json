@@ -446,6 +446,33 @@
       "copyButton": "نسخ"
     }
   },
+  "mealCard": {
+    "addFoodToMeal": "إضافة طعام إلى {{mealName}}",
+    "searchFoodsForMeal": "ابحث عن أطعمة لإضافتها إلى {{mealName}}.",
+    "addFoodTo": "إضافة طعام إلى",
+    "searchFoodsToYour": "ابحث عن أطعمة لإضافتها إلى",
+    "addFoodAction": "إضافة طعام",
+    "copyToDateAction": "نسخ لتاريخ آخر",
+    "copyWithFamilyAction": "نسخ لأحد أفراد العائلة",
+    "copyYesterdayAction": "نسخ وجبة أمس",
+    "saveAsMealAction": "حفظها كوجبة قابلة لإعادة الاستخدام",
+    "empty": "ما سجلت طعامًا لهالوجبة للحين.",
+    "fromPlan": "من الخطة",
+    "glycemicIndex": "المؤشر السكري: {{value}}",
+    "glycemic": {
+      "veryLow": "منخفض جدًا",
+      "low": "منخفض",
+      "medium": "متوسط",
+      "high": "مرتفع",
+      "veryHigh": "مرتفع جدًا"
+    },
+    "editEntry": "تعديل السجل",
+    "removeEntry": "حذف السجل",
+    "mealTotal": "إجمالي {{mealName}}",
+    "editDatabaseTitle": "تعديل بيانات الطعام",
+    "editDatabaseDescription": "عدّل القيم الغذائية لهذا الطعام في قاعدة بياناتك.",
+    "editDatabaseUnavailable": "تعديل تفاصيل الطعام غير متاح مؤقتًا بسبب تحديث بنية البيانات."
+  },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",
     "applicationVersion": "نسخة التطبيق: ",

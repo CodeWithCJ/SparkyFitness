@@ -1531,7 +1531,28 @@
     "addFoodToMeal": "Add Food to {{mealName}}",
     "searchFoodsForMeal": "Search for foods to add to your {{mealName}}.",
     "addFoodTo": "Add Food to",
-    "searchFoodsToYour": "Search for foods to add to your"
+    "searchFoodsToYour": "Search for foods to add to your",
+    "addFoodAction": "Add food",
+    "copyToDateAction": "Copy to another date",
+    "copyWithFamilyAction": "Copy for a family member",
+    "copyYesterdayAction": "Copy yesterday's meal",
+    "saveAsMealAction": "Save as a reusable meal",
+    "empty": "No food logged for this meal yet.",
+    "fromPlan": "From plan",
+    "glycemicIndex": "GI: {{value}}",
+    "glycemic": {
+      "veryLow": "Very low",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "veryHigh": "Very high"
+    },
+    "editEntry": "Edit entry",
+    "removeEntry": "Remove entry",
+    "mealTotal": "{{mealName}} total",
+    "editDatabaseTitle": "Edit food data",
+    "editDatabaseDescription": "Edit this food's nutrition information in your database.",
+    "editDatabaseUnavailable": "Food detail editing is temporarily unavailable while the data structure is being updated."
   },
   "checkIn": {
     "howAreYouFeelingToday": "How are you feeling today?",
