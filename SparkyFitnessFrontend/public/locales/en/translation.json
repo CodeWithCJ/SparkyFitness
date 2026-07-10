@@ -1487,6 +1487,23 @@
     "notApplicable": "N/A",
     "totalSets": "Total Sets"
   },
+  "units": {
+    "gram": "g",
+    "milligram": "mg",
+    "microgram": "µg",
+    "kilogram": "kg",
+    "milliliter": "ml",
+    "liter": "L",
+    "fluidOunce": "fl oz",
+    "kcal": "kcal",
+    "kJ": "kJ",
+    "minuteShort": "min",
+    "centimeter": "cm",
+    "kilometer": "km",
+    "pound": "lb",
+    "inch": "in",
+    "percent": "%"
+  },
   "diary": {
     "loading": "Preparing your diary…",
     "nutritionSummary": "Nutrition Summary",

@@ -113,6 +113,23 @@
     "wednesday": "الأربعاء",
     "yes": "نعم"
   },
+  "units": {
+    "gram": "غ",
+    "milligram": "ملغ",
+    "microgram": "مكغ",
+    "kilogram": "كجم",
+    "milliliter": "مل",
+    "liter": "لتر",
+    "fluidOunce": "أونصة سائلة",
+    "kcal": "سعرة حرارية",
+    "kJ": "كيلوجول",
+    "minuteShort": "د",
+    "centimeter": "سم",
+    "kilometer": "كم",
+    "pound": "رطل",
+    "inch": "بوصة",
+    "percent": "٪"
+  },
   "mfaChallenge": {
     "challengeTitle": "تحقق من هويتك",
     "setupRequired": "أكمل إعداد التحقق بخطوتين للمتابعة.",
