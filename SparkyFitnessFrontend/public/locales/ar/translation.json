@@ -428,6 +428,12 @@
     "copyFamilyFromSuccess": "تم نسخ السجلات من فرد العائلة.",
     "copyFamilyToSuccess": "تم نسخ السجلات إلى فرد العائلة.",
     "copyFamilyError": "تعذر نسخ السجلات. حاول مرة ثانية.",
+    "trends": {
+      "loading": "جارٍ تجهيز رسوم التغذية…",
+      "empty": "ما عندك بيانات كافية لآخر 14 يوم للحين.",
+      "title": "اتجاهات التغذية خلال 14 يوم",
+      "chartLabel": "{{nutrient}}: {{value}} {{unit}}"
+    },
     "widgets": {
       "layout": "ترتيب البطاقات",
       "done": "تم",

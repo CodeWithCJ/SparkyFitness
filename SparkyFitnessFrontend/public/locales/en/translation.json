@@ -1582,6 +1582,12 @@
     "copyFamilyFromSuccess": "The entries were copied from your family member.",
     "copyFamilyToSuccess": "The entries were copied to your family member.",
     "copyFamilyError": "We could not copy these entries. Try again.",
+    "trends": {
+      "loading": "Preparing nutrition charts…",
+      "empty": "There is not enough data for the past 14 days yet.",
+      "title": "14-day nutrition trends",
+      "chartLabel": "{{nutrient}}: {{value}} {{unit}}"
+    },
     "widgets": {
       "layout": "Customize layout",
       "done": "Done",

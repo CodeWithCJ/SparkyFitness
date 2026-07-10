@@ -19,9 +19,9 @@ import {
   formatNutrientValue,
   getNetCarbsValue,
 } from '@/utils/nutrientUtils';
-import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { useMiniNutritionTrendData } from '@/hooks/Foods/useFoods';
 import { DayData } from '@/types/diary';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface MiniNutritionTrendsProps {
   selectedDate: string;
@@ -64,6 +64,8 @@ const CustomTooltip = ({
   formatDate,
   getDisplayLabel,
 }: CustomTooltipProps) => {
+  const { t } = useTranslation();
+
   if (active && payload && payload.length) {
     const firstPaylod = payload[0];
     if (!firstPaylod) {
@@ -74,8 +76,11 @@ const CustomTooltip = ({
 
     const unitString =
       nutrientName === 'calories'
-        ? getEnergyUnitString(energyUnit)
-        : getNutrientMetadata(nutrientName, customNutrients).unit;
+        ? getLocalizedUnitLabel(energyUnit, t)
+        : getLocalizedUnitLabel(
+            getNutrientMetadata(nutrientName, customNutrients).unit,
+            t
+          );
 
     const displayValue =
       nutrientName === 'calories'
@@ -124,6 +129,7 @@ const MiniTrendChart = memo(
     formatDate,
     getDisplayLabel,
   }: MiniTrendChartProps) => {
+    const { t } = useTranslation();
     const lastValue =
       (data[data.length - 1]?.[nutrient as keyof DayData] as number) || 0;
 
@@ -133,7 +139,14 @@ const MiniTrendChart = memo(
         : formatNutrientValue(nutrient, lastValue, customNutrients);
 
     const unitDisplay =
-      nutrient === 'calories' ? getEnergyUnitString(energyUnit) : details.unit;
+      nutrient === 'calories'
+        ? getLocalizedUnitLabel(energyUnit, t)
+        : getLocalizedUnitLabel(details.unit, t);
+    const chartLabel = t('diary.trends.chartLabel', {
+      nutrient: details.label,
+      value: displayValue,
+      unit: unitDisplay,
+    });
 
     return (
       <div className="space-y-1">
@@ -148,7 +161,11 @@ const MiniTrendChart = memo(
             {displayValue} {unitDisplay}
           </span>
         </div>
-        <div className="h-6 w-full bg-gray-100 dark:bg-gray-800 rounded min-w-0">
+        <div
+          className="h-6 w-full bg-gray-100 dark:bg-gray-800 rounded min-w-0"
+          role="img"
+          aria-label={chartLabel}
+        >
           <ResponsiveContainer width="100%" height={24} debounce={100}>
             <LineChart data={data}>
               <XAxis dataKey="date" hide />
@@ -215,9 +232,15 @@ const MiniNutritionTrends = ({
   );
 
   if (isLoading) {
+    const loadingLabel = t('diary.trends.loading');
+
     return (
-      <div className="mt-4 p-3 text-center text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        Loading charts...
+      <div
+        role="status"
+        aria-label={loadingLabel}
+        className="mt-4 p-3 text-center text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg"
+      >
+        <span className="animate-pulse">{loadingLabel}</span>
       </div>
     );
   }
@@ -225,7 +248,7 @@ const MiniNutritionTrends = ({
   if (chartData.length === 0) {
     return (
       <div className="mt-4 p-3 text-center text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        No trend data available for the past 14 days
+        {t('diary.trends.empty')}
       </div>
     );
   }
@@ -255,9 +278,9 @@ const MiniNutritionTrends = ({
 
   return (
     <div className="mt-4 space-y-3">
-      <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        14-Day Nutrition Trends
-      </div>
+      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {t('diary.trends.title')}
+      </h4>
 
       {visibleNutrients.map((nutrient) => {
         const metadata = getNutrientMetadata(nutrient, customNutrients);
