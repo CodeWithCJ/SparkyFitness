@@ -393,6 +393,20 @@ export const ar = {
     'هذا آخر مكوّن. أضف مكوّنًا ثانيًا قبل الحفظ، أو احذف الوجبة كاملة.',
   'ingredientRow.editIngredient': 'تعديل {{name}}',
 
+  'foodPhoto.introTitle': 'قدّر القيم الغذائية من صورة',
+  'foodPhoto.introDescription':
+    'حوّل صورة وجبتك إلى تقدير غذائي تقدر تراجعه وتعدّله.',
+  'foodPhoto.weightTitle': 'تعرف وزن الوجبة؟ أضفه',
+  'foodPhoto.weightDescription':
+    'الوزن الإجمالي يساعد على تقدير الحصص والسعرات والماكروز بدقة أفضل.',
+  'foodPhoto.descriptionTitle': 'اكتب وصفًا بسيطًا',
+  'foodPhoto.descriptionDescription':
+    'اذكر الصوص والزيت والإضافات واسم المطعم، وأي مكوّن ما يبان بالصورة.',
+  'foodPhoto.reviewTitle': 'راجع قبل الحفظ',
+  'foodPhoto.reviewDescription':
+    'التقدير نقطة بداية؛ تقدر تعدّل كل التفاصيل قبل ما تسجّل الوجبة.',
+  'foodPhoto.logManually': 'أفضّل التسجيل اليدوي',
+
   'mealTypeDetail.noServerTitle': 'ما فيه خادم مربوط',
   'mealTypeDetail.noServerDescription':
     'اربط خادمك من الإعدادات عشان تشوف تغذية وجبتك.',
