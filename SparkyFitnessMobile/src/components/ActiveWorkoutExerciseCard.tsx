@@ -377,7 +377,7 @@ function ActiveWorkoutExerciseCard({
   // done-badge is suppressed in edit mode, where per-set badges convey state.
   const thumb = (
     <View>
-      <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
+      <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={42} />
       {isDone && !isEdit && (
         <View className="absolute" style={{ right: -3, top: -3 }}>
           <CompletionCheck size={15} iconSize={9} />
