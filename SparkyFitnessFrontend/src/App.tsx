@@ -41,6 +41,7 @@ import {
 import { error as logError } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences.ts';
 import { lazyWithChunkRecovery } from '@/utils/chunkRecovery';
+import { AppLoadingScreen } from '@/components/AppLoadingScreen';
 const Auth = lazyWithChunkRecovery(() => import('@/pages/Auth/Auth'));
 const ForgotPassword = lazyWithChunkRecovery(
   () => import('@/pages/Auth/ForgotPassword')
@@ -101,11 +102,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
-      </div>
-    );
+    return <AppLoadingScreen messageKey="common.loadingAccount" />;
   }
 
   return user ? <>{children}</> : <Navigate to="/login" />;
@@ -166,13 +163,7 @@ const Root = () => {
                   setLatestRelease={setLatestRelease}
                   setShowNewReleaseDialog={setShowNewReleaseDialog}
                 />
-                <Suspense
-                  fallback={
-                    <div className="min-h-screen flex items-center justify-center">
-                      Loading Site...
-                    </div>
-                  }
-                >
+                <Suspense fallback={<AppLoadingScreen />}>
                   <Outlet
                     context={{
                       setShowAboutDialog,
