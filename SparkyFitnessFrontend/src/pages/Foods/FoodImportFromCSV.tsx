@@ -13,10 +13,13 @@ import { Plus, Download, Upload, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { useTranslation } from 'react-i18next';
 import { FoodDataForBackend } from '@/types/food';
 
 interface ImportFromCSVProps {
-  onSave: (foodData: FoodDataForBackend[]) => Promise<void>;
+  onSave: (foodData: FoodDataForBackend[], overwrite: boolean) => Promise<void>;
 }
 
 export interface CSVData {
@@ -25,7 +28,6 @@ export interface CSVData {
   brand: string;
   is_custom: boolean;
   shared_with_public: boolean;
-  is_quick_food: boolean;
   serving_size: number;
   serving_unit: string;
   calories: number;
@@ -80,18 +82,19 @@ const servingUnitOptions = [
 ];
 
 const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
+  const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
 
   const [loading, setLoading] = useState(false);
   const [csvData, setCsvData] = useState<CSVData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [csvText, setCsvText] = useState<string>('');
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const textFields = new Set(['name', 'brand']);
   const booleanFields = new Set([
     'shared_with_public',
-    'is_quick_food',
     'is_default',
     'is_custom',
   ]);
@@ -101,7 +104,6 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     'brand',
     'is_custom',
     'shared_with_public',
-    'is_quick_food',
     'serving_size',
     'serving_unit',
     'calories', // Assumed to be in kcal
@@ -157,8 +159,11 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const handleTextImport = () => {
     if (!csvText || csvText.trim() === '') {
       toast({
-        title: 'Import Error',
-        description: 'Please paste some CSV data first.',
+        title: t('foodCsvImport.importErrorTitle', 'Import Error'),
+        description: t(
+          'foodCsvImport.pasteFirst',
+          'Please paste some CSV data first.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -173,9 +178,11 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
       if (!areHeadersValid) {
         toast({
-          title: 'Invalid CSV Format',
-          description:
-            'Headers do not match required format. Use the template.',
+          title: t('foodCsvImport.invalidFormatTitle', 'Invalid CSV Format'),
+          description: t(
+            'foodCsvImport.headersMismatchText',
+            'Headers do not match required format. Use the template.'
+          ),
           variant: 'destructive',
         });
         return;
@@ -189,8 +196,11 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       setCsvData(parsedData);
       setCsvText(''); // Feld leeren nach Erfolg
       toast({
-        title: 'Success',
-        description: `Loaded ${parsedData.length} rows from text.`,
+        title: t('foodCsvImport.successTitle', 'Success'),
+        description: t('foodCsvImport.loadedRowsFromText', {
+          count: parsedData.length,
+          defaultValue: `Loaded ${parsedData.length} rows from text.`,
+        }),
       });
     }
   };
@@ -205,8 +215,11 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
       if (!text || text.trim() === '') {
         toast({
-          title: 'Import Error',
-          description: 'The selected file is empty.',
+          title: t('foodCsvImport.importErrorTitle', 'Import Error'),
+          description: t(
+            'foodCsvImport.emptyFile',
+            'The selected file is empty.'
+          ),
           variant: 'destructive',
         });
         return;
@@ -220,9 +233,11 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
       if (!areHeadersValid) {
         toast({
-          title: 'Invalid CSV Format',
-          description:
-            'The CSV headers do not match the required format or order. Please download the template.',
+          title: t('foodCsvImport.invalidFormatTitle', 'Invalid CSV Format'),
+          description: t(
+            'foodCsvImport.headersMismatchFile',
+            'The CSV headers do not match the required format or order. Please download the template.'
+          ),
           variant: 'destructive',
         });
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -236,8 +251,11 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         setCsvData(parsedData);
       } else {
         toast({
-          title: 'No Data Found',
-          description: 'The CSV file contains headers but no data rows.',
+          title: t('foodCsvImport.noDataTitle', 'No Data Found'),
+          description: t(
+            'foodCsvImport.noDataText',
+            'The CSV file contains headers but no data rows.'
+          ),
           variant: 'destructive',
         });
       }
@@ -252,7 +270,6 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         brand: 'Sparky Sample Brand',
         is_custom: 'TRUE',
         shared_with_public: '',
-        is_quick_food: 'FALSE',
         serving_size: 231,
         serving_unit: 'slice',
         calories: 431, // kcal
@@ -318,7 +335,6 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       brand: '',
       is_custom: true,
       shared_with_public: false,
-      is_quick_food: false,
       serving_size: 100,
       serving_unit: 'g',
       calories: 0, // kcal
@@ -359,17 +375,24 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     );
     if (invalidRow) {
       toast({
-        title: 'Validation Error',
-        description: "The 'name' field cannot be empty.",
+        title: t('foodCsvImport.validationErrorTitle', 'Validation Error'),
+        description: t(
+          'foodCsvImport.nameRequired',
+          "The 'name' field cannot be empty."
+        ),
         variant: 'destructive',
       });
       return;
     }
     setLoading(true);
-    const dataForBackend = csvData.map(({ id, ...rest }) => rest);
+    // CSV import never creates quick foods; that is a separate workflow.
+    const dataForBackend = csvData.map(({ id, ...rest }) => ({
+      ...rest,
+      is_quick_food: false,
+    }));
     // console.log(dataForBackend);
     try {
-      await onSave(dataForBackend);
+      await onSave(dataForBackend, overwriteExisting);
     } catch (error) {
       console.error(
         'An error occurred while the parent was handling the save operation:',
@@ -383,7 +406,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Import Food Data</CardTitle>
+        <CardTitle>{t('foodCsvImport.title', 'Import Food Data')}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -395,7 +418,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                 variant="outline"
                 className="flex items-center justify-center gap-2"
               >
-                <Plus size={16} /> Add Row
+                <Plus size={16} /> {t('foodCsvImport.addRow', 'Add Row')}
               </Button>
               <Button
                 type="button"
@@ -403,7 +426,8 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                 variant="outline"
                 className="flex items-center justify-center gap-2"
               >
-                <Upload size={16} /> Upload CSV
+                <Upload size={16} />{' '}
+                {t('foodCsvImport.uploadCsv', 'Upload CSV')}
               </Button>
               <Button
                 type="button"
@@ -411,7 +435,8 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                 variant="outline"
                 className="flex items-center justify-center gap-2"
               >
-                <Download size={16} /> Download Template
+                <Download size={16} />{' '}
+                {t('foodCsvImport.downloadTemplate', 'Download Template')}
               </Button>
               {csvData.length > 0 && (
                 <Button
@@ -420,13 +445,17 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                   variant="destructive"
                   className="flex items-center justify-center gap-2"
                 >
-                  <Trash2 size={16} /> Clear Data
+                  <Trash2 size={16} />{' '}
+                  {t('foodCsvImport.clearData', 'Clear Data')}
                 </Button>
               )}
             </div>
             <div className="flex gap-2 items-center">
               <Textarea
-                placeholder="Or paste CSV content here..."
+                placeholder={t(
+                  'foodCsvImport.pastePlaceholder',
+                  'Or paste CSV content here...'
+                )}
                 value={csvText}
                 onChange={(e) => setCsvText(e.target.value)}
                 className="min-h-[80px]"
@@ -437,7 +466,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                 variant="secondary"
                 className="whitespace-nowrap h-[40px]"
               >
-                Parse Text
+                {t('foodCsvImport.parseText', 'Parse Text')}
               </Button>
             </div>
             <input
@@ -449,7 +478,10 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
             />
             {csvData.length > 0 && (
               <div className="text-sm text-green-600">
-                Successfully loaded {csvData.length} records.
+                {t('foodCsvImport.recordsLoaded', {
+                  count: csvData.length,
+                  defaultValue: `Successfully loaded ${csvData.length} records.`,
+                })}
               </div>
             )}
           </div>
@@ -469,7 +501,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                         </th>
                       ))}
                       <th className="px-4 py-2 text-left bg-background font-medium whitespace-nowrap">
-                        Actions
+                        {t('foodCsvImport.actions', 'Actions')}
                       </th>
                     </tr>
                   </thead>
@@ -521,8 +553,12 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="true">True</SelectItem>
-                                  <SelectItem value="false">False</SelectItem>
+                                  <SelectItem value="true">
+                                    {t('foodCsvImport.booleanTrue', 'True')}
+                                  </SelectItem>
+                                  <SelectItem value="false">
+                                    {t('foodCsvImport.booleanFalse', 'False')}
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                             ) : textFields.has(header) ? (
@@ -574,7 +610,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                         ))}
                         <td className="block md:table-cell px-4 py-3 md:py-2">
                           <span className="font-medium capitalize text-muted-foreground md:hidden mb-1 block">
-                            Actions
+                            {t('foodCsvImport.actions', 'Actions')}
                           </span>
                           <Button
                             type="button"
@@ -584,7 +620,9 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                             className="w-full md:w-auto"
                           >
                             <Trash2 size={14} className="md:mr-0" />
-                            <span className="ml-2 md:hidden">Delete Row</span>
+                            <span className="ml-2 md:hidden">
+                              {t('foodCsvImport.deleteRow', 'Delete Row')}
+                            </span>
                           </Button>
                         </td>
                       </tr>
@@ -595,6 +633,31 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
             </div>
           )}
 
+          <div className="flex items-start gap-2 rounded-md border p-3">
+            <Checkbox
+              id="overwrite-existing"
+              checked={overwriteExisting}
+              onCheckedChange={(checked) =>
+                setOverwriteExisting(checked === true)
+              }
+              className="mt-0.5"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="overwrite-existing" className="cursor-pointer">
+                {t(
+                  'foodCsvImport.overrideLabel',
+                  'Override existing food details'
+                )}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  'foodCsvImport.overrideDescription',
+                  'If a food with the same name and brand already exists, update its nutrition instead of failing the import. Leave unchecked to skip and error on duplicates.'
+                )}
+              </p>
+            </div>
+          </div>
+
           <Button
             type="submit"
             disabled={loading || csvData.length === 0}
@@ -603,14 +666,21 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Importing...
+                {t('foodCsvImport.importing', 'Importing...')}
+              </>
+            ) : csvData.length > 0 ? (
+              <>
+                <Upload size={16} />{' '}
+                {t('foodCsvImport.importRecords', {
+                  count: csvData.length,
+                  defaultValue_one: `Import ${csvData.length} Record`,
+                  defaultValue_other: `Import ${csvData.length} Records`,
+                })}
               </>
             ) : (
               <>
-                <Upload size={16} /> Import
-                {csvData.length > 0
-                  ? ` ${csvData.length}  ${csvData.length === 1 ? 'Record' : 'Records'} `
-                  : ' Data'}
+                <Upload size={16} />{' '}
+                {t('foodCsvImport.importData', 'Import Data')}
               </>
             )}
           </Button>

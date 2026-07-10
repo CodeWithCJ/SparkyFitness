@@ -688,51 +688,118 @@ async function deleteFoodAndDependencies(foodId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createFoodsInBulk(userId: any, foodDataArray: any) {
+// CSV/bulk import values arrive loosely typed (numbers may still be strings),
+// so nutrient fields accept the raw shapes the sanitize* helpers normalize.
+type NumericInput = number | string | null | undefined;
+type BooleanInput = boolean | string | null | undefined;
+
+interface BulkImportFoodData {
+  name: string;
+  brand?: string | null;
+  is_custom?: BooleanInput;
+  user_id?: string;
+  shared_with_public?: BooleanInput;
+  is_quick_food?: BooleanInput;
+  barcode?: string | null;
+  provider_external_id?: string | null;
+  provider_type?: string | null;
+  serving_size?: NumericInput;
+  serving_unit?: string | null;
+  is_default?: BooleanInput;
+  calories?: NumericInput;
+  protein?: NumericInput;
+  carbs?: NumericInput;
+  fat?: NumericInput;
+  saturated_fat?: NumericInput;
+  polyunsaturated_fat?: NumericInput;
+  monounsaturated_fat?: NumericInput;
+  trans_fat?: NumericInput;
+  cholesterol?: NumericInput;
+  sodium?: NumericInput;
+  potassium?: NumericInput;
+  dietary_fiber?: NumericInput;
+  sugars?: NumericInput;
+  vitamin_a?: NumericInput;
+  vitamin_c?: NumericInput;
+  calcium?: NumericInput;
+  iron?: NumericInput;
+  glycemic_index?: string | null;
+  custom_nutrients?: Record<string, unknown> | null;
+  source?: string | null;
+  ai_confidence?: number | null;
+  allergens?: string[] | null;
+  traces?: string[] | null;
+}
+
+interface GroupedImportFood {
+  name: string;
+  brand?: string | null;
+  is_custom: boolean;
+  user_id: string;
+  shared_with_public: BooleanInput;
+  is_quick_food: BooleanInput;
+  barcode?: string | null;
+  provider_external_id?: string | null;
+  provider_type?: string | null;
+  variants: BulkImportFoodData[];
+}
+
+interface DuplicateFoodRow {
+  id: string;
+  name: string;
+  brand: string | null;
+}
+
+async function createFoodsInBulk(
+  userId: string,
+  foodDataArray: BulkImportFoodData[],
+  overwrite = false
+) {
   class DuplicateFoodError extends Error {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    duplicates: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(message: any, duplicates: any) {
+    duplicates: DuplicateFoodRow[];
+    constructor(message: string, duplicates: DuplicateFoodRow[]) {
       super(message);
       this.name = 'DuplicateFoodError';
       this.duplicates = duplicates;
     }
   }
   // 1. --- Grouping incoming Variants by Food (name + brand)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const groupedFoods = foodDataArray.reduce((acc: any, variant: any) => {
-    const key = `${variant.name}|${variant.brand}`;
-    if (!acc[key]) {
-      acc[key] = {
-        name: variant.name,
-        brand: variant.brand,
-        is_custom: true,
-        user_id: userId,
-        shared_with_public: variant.shared_with_public || false,
-        is_quick_food: variant.is_quick_food || false,
-        variants: [],
-      };
-    }
-    acc[key].variants.push(variant);
-    return acc;
-  }, {});
+  // brand is nullable; normalize null/undefined/'' to '' so blank-brand foods
+  // group together and match the COALESCE(brand, '') lookup below.
+  const brandKey = (brand: string | null | undefined) => brand || '';
+  const groupedFoods = foodDataArray.reduce(
+    (acc: Record<string, GroupedImportFood>, variant: BulkImportFoodData) => {
+      const key = `${variant.name}|${brandKey(variant.brand)}`;
+      if (!acc[key]) {
+        acc[key] = {
+          name: variant.name,
+          brand: variant.brand || null,
+          is_custom: true,
+          user_id: userId,
+          shared_with_public: variant.shared_with_public || false,
+          is_quick_food: variant.is_quick_food || false,
+          variants: [],
+        };
+      }
+      acc[key].variants.push(variant);
+      return acc;
+    },
+    {}
+  );
   const foodsToCreate = Object.values(groupedFoods);
   if (foodsToCreate.length === 0) {
     return {
       message: 'No food data provided to import.',
       createdFoods: 0,
+      updatedFoods: 0,
       createdVariants: 0,
     };
   }
   // 2. Pre-flight Duplicate Check before starting the db transaction
   const potentialDuplicates = foodsToCreate.map((food) => [
     userId,
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
     food.name,
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    food.brand,
+    brandKey(food.brand),
   ]);
   const flatValues = potentialDuplicates.flat();
   let placeholderIndex = 1;
@@ -743,23 +810,27 @@ async function createFoodsInBulk(userId: any, foodDataArray: any) {
     )
     .join(', ');
   const duplicateCheckQuery = `
-    SELECT name, brand FROM foods
-    WHERE (user_id, name, brand) IN (VALUES ${placeholderString})
+    SELECT id, name, brand FROM foods
+    WHERE (user_id, name, COALESCE(brand, '')) IN (VALUES ${placeholderString})
   `;
   const clientForDuplicateCheck = await getClient(userId);
-  let existingFoods;
+  let existingFoods: DuplicateFoodRow[];
   try {
     const { rows } = await clientForDuplicateCheck.query(
       // User-specific check for duplicates
       duplicateCheckQuery,
       flatValues
     );
-    existingFoods = rows;
+    existingFoods = rows as DuplicateFoodRow[];
   } finally {
     clientForDuplicateCheck.release();
   }
-  if (existingFoods.length > 0) {
-    // If duplicates are found, throw an error.
+  // Map existing (name|brand) -> food id so we can overwrite in place when requested.
+  const existingFoodIdByKey = new Map<string, string>(
+    existingFoods.map((f) => [`${f.name}|${brandKey(f.brand)}`, f.id])
+  );
+  if (!overwrite && existingFoods.length > 0) {
+    // Duplicates found and the user did not opt into overwriting: abort.
     throw new DuplicateFoodError(
       'The import was terminated because duplicate entries were found in your food list.',
       existingFoods
@@ -770,39 +841,112 @@ async function createFoodsInBulk(userId: any, foodDataArray: any) {
   try {
     await client.query('BEGIN');
     let totalFoodsCreated = 0;
+    let totalFoodsUpdated = 0;
     let totalVariantsCreated = 0;
     for (const food of foodsToCreate) {
-      const foodResult = await client.query(
-        `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type, created_at, updated_at)
+      const existingFoodId = existingFoodIdByKey.get(
+        `${food.name}|${brandKey(food.brand)}`
+      );
+      let foodId: string;
+      if (existingFoodId) {
+        // Overwrite path: update the existing food record in place.
+        await client.query(
+          `UPDATE foods SET
+             is_custom = $2,
+             shared_with_public = $3,
+             is_quick_food = $4,
+             updated_at = now()
+           WHERE id = $1`,
+          [
+            existingFoodId,
+            sanitizeBoolean(food.is_custom) ?? true,
+            sanitizeBoolean(food.shared_with_public) ?? false,
+            sanitizeBoolean(food.is_quick_food) ?? false,
+          ]
+        );
+        foodId = existingFoodId;
+        totalFoodsUpdated++;
+      } else {
+        const foodResult = await client.query(
+          `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
            RETURNING id`,
-        [
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          food.name,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          food.brand,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          sanitizeBoolean(food.is_custom) ?? true,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          food.user_id,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          sanitizeBoolean(food.shared_with_public) ?? false,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          sanitizeBoolean(food.is_quick_food) ?? false,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          (food.barcode && normalizeBarcode(food.barcode)) || null,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          food.provider_external_id || null,
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          food.provider_type || null,
-        ]
-      );
-      const newFoodId = foodResult.rows[0].id;
-      totalFoodsCreated++;
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+          [
+            food.name,
+            food.brand,
+            sanitizeBoolean(food.is_custom) ?? true,
+            food.user_id,
+            sanitizeBoolean(food.shared_with_public) ?? false,
+            sanitizeBoolean(food.is_quick_food) ?? false,
+            (food.barcode && normalizeBarcode(food.barcode)) || null,
+            food.provider_external_id || null,
+            food.provider_type || null,
+          ]
+        );
+        foodId = foodResult.rows[0].id;
+        totalFoodsCreated++;
+      }
       for (const variant of food.variants) {
-        await client.query(
-          `INSERT INTO food_variants (
+        const variantIsDefault = sanitizeBoolean(variant.is_default) ?? true;
+        // When overwriting, reuse a variant with the same serving so existing
+        // diary entries (which reference the variant id) keep their nutrition.
+        const existingVariant = existingFoodId
+          ? (
+              await client.query(
+                `SELECT id FROM food_variants
+                 WHERE food_id = $1 AND serving_size = $2 AND serving_unit = $3
+                 LIMIT 1`,
+                [
+                  foodId,
+                  sanitizeNumeric(variant.serving_size),
+                  variant.serving_unit,
+                ]
+              )
+            ).rows[0]
+          : null;
+        if (variantIsDefault) {
+          // Keep a single default variant per food.
+          await client.query(
+            'UPDATE food_variants SET is_default = FALSE WHERE food_id = $1',
+            [foodId]
+          );
+        }
+        if (existingVariant) {
+          await client.query(
+            `UPDATE food_variants SET
+                is_default = $2, calories = $3, protein = $4, carbs = $5, fat = $6,
+                saturated_fat = $7, polyunsaturated_fat = $8, monounsaturated_fat = $9, trans_fat = $10,
+                cholesterol = $11, sodium = $12, potassium = $13, dietary_fiber = $14, sugars = $15,
+                vitamin_a = $16, vitamin_c = $17, calcium = $18, iron = $19,
+                glycemic_index = $20, custom_nutrients = $21, updated_at = now()
+              WHERE id = $1`,
+            [
+              existingVariant.id,
+              variantIsDefault,
+              sanitizeNumeric(variant.calories),
+              sanitizeNumeric(variant.protein),
+              sanitizeNumeric(variant.carbs),
+              sanitizeNumeric(variant.fat),
+              sanitizeNumeric(variant.saturated_fat),
+              sanitizeNumeric(variant.polyunsaturated_fat),
+              sanitizeNumeric(variant.monounsaturated_fat),
+              sanitizeNumeric(variant.trans_fat),
+              sanitizeNumeric(variant.cholesterol),
+              sanitizeNumeric(variant.sodium),
+              sanitizeNumeric(variant.potassium),
+              sanitizeNumeric(variant.dietary_fiber),
+              sanitizeNumeric(variant.sugars),
+              sanitizeNumeric(variant.vitamin_a),
+              sanitizeNumeric(variant.vitamin_c),
+              sanitizeNumeric(variant.calcium),
+              sanitizeNumeric(variant.iron),
+              sanitizeGlycemicIndex(variant.glycemic_index),
+              variant.custom_nutrients ?? {},
+            ]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO food_variants (
               food_id, serving_size, serving_unit, is_default, calories, protein, carbs, fat,
               saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
               cholesterol, sodium, potassium, dietary_fiber, sugars,
@@ -812,36 +956,37 @@ async function createFoodsInBulk(userId: any, foodDataArray: any) {
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
               $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, now(), now()
             )`,
-          [
-            newFoodId,
-            sanitizeNumeric(variant.serving_size),
-            variant.serving_unit,
-            sanitizeBoolean(variant.is_default) ?? true,
-            sanitizeNumeric(variant.calories),
-            sanitizeNumeric(variant.protein),
-            sanitizeNumeric(variant.carbs),
-            sanitizeNumeric(variant.fat),
-            sanitizeNumeric(variant.saturated_fat),
-            sanitizeNumeric(variant.polyunsaturated_fat),
-            sanitizeNumeric(variant.monounsaturated_fat),
-            sanitizeNumeric(variant.trans_fat),
-            sanitizeNumeric(variant.cholesterol),
-            sanitizeNumeric(variant.sodium),
-            sanitizeNumeric(variant.potassium),
-            sanitizeNumeric(variant.dietary_fiber),
-            sanitizeNumeric(variant.sugars),
-            sanitizeNumeric(variant.vitamin_a),
-            sanitizeNumeric(variant.vitamin_c),
-            sanitizeNumeric(variant.calcium),
-            sanitizeNumeric(variant.iron),
-            sanitizeGlycemicIndex(variant.glycemic_index),
-            variant.custom_nutrients ?? {},
-            variant.source ?? 'manual',
-            variant.ai_confidence ?? null,
-            variant.allergens ?? null,
-            variant.traces ?? null,
-          ]
-        );
+            [
+              foodId,
+              sanitizeNumeric(variant.serving_size),
+              variant.serving_unit,
+              variantIsDefault,
+              sanitizeNumeric(variant.calories),
+              sanitizeNumeric(variant.protein),
+              sanitizeNumeric(variant.carbs),
+              sanitizeNumeric(variant.fat),
+              sanitizeNumeric(variant.saturated_fat),
+              sanitizeNumeric(variant.polyunsaturated_fat),
+              sanitizeNumeric(variant.monounsaturated_fat),
+              sanitizeNumeric(variant.trans_fat),
+              sanitizeNumeric(variant.cholesterol),
+              sanitizeNumeric(variant.sodium),
+              sanitizeNumeric(variant.potassium),
+              sanitizeNumeric(variant.dietary_fiber),
+              sanitizeNumeric(variant.sugars),
+              sanitizeNumeric(variant.vitamin_a),
+              sanitizeNumeric(variant.vitamin_c),
+              sanitizeNumeric(variant.calcium),
+              sanitizeNumeric(variant.iron),
+              sanitizeGlycemicIndex(variant.glycemic_index),
+              variant.custom_nutrients ?? {},
+              variant.source ?? 'manual',
+              variant.ai_confidence ?? null,
+              variant.allergens ?? null,
+              variant.traces ?? null,
+            ]
+          );
+        }
         totalVariantsCreated++;
       }
     }
@@ -849,6 +994,7 @@ async function createFoodsInBulk(userId: any, foodDataArray: any) {
     return {
       message: 'Food data imported successfully.',
       createdFoods: totalFoodsCreated,
+      updatedFoods: totalFoodsUpdated,
       createdVariants: totalVariantsCreated,
     };
   } catch (error) {
@@ -1005,6 +1151,7 @@ export { getFoodsWithPagination };
 export { countFoods };
 export { getFoodDeletionImpact };
 export { createFoodsInBulk };
+export type { BulkImportFoodData };
 export { getFoodsNeedingReview };
 export { clearUserIgnoredUpdate };
 export { deleteFoodAndDependencies };

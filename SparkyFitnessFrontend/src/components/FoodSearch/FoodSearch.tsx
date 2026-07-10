@@ -775,8 +775,11 @@ const EnhancedFoodSearch = ({
     }
   };
 
-  const handleImportFromCSV = async (foodDataArray: FoodDataForBackend[]) => {
-    await importCsvMutation(foodDataArray);
+  const handleImportFromCSV = async (
+    foodDataArray: FoodDataForBackend[],
+    overwrite: boolean
+  ) => {
+    await importCsvMutation({ foods: foodDataArray, overwrite });
     setShowImportFromCsvDialog(false);
   };
 

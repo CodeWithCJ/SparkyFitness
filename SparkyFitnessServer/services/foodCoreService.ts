@@ -19,6 +19,7 @@ import {
   mapFatSecretFood,
 } from '../integrations/fatsecret/fatsecretService.js';
 import { searchYazioByBarcode } from '../integrations/yazio/yazioService.js';
+import type { BulkImportFoodData } from '../models/food.js';
 async function searchFoods(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -630,8 +631,11 @@ async function getFoodDeletionImpact(authenticatedUserId: any, foodId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function importFoodsInBulk(authenticatedUserId: any, foodDataArray: any) {
+async function importFoodsInBulk(
+  authenticatedUserId: string,
+  foodDataArray: BulkImportFoodData[],
+  overwrite = false
+) {
   try {
     if (!foodDataArray) {
       log('error', 'importFoodsInBulk: No food data provided.');
@@ -639,12 +643,12 @@ async function importFoodsInBulk(authenticatedUserId: any, foodDataArray: any) {
     }
     return await foodRepository.createFoodsInBulk(
       authenticatedUserId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      foodDataArray.map((food: any) => ({
+      foodDataArray.map((food) => ({
         ...food,
         glycemic_index: food.glycemic_index || null,
         custom_nutrients: sanitizeCustomNutrients(food.custom_nutrients),
-      }))
+      })),
+      overwrite
     );
   } catch (error) {
     log(

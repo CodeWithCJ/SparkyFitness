@@ -9,6 +9,18 @@ import { CheckInTopRow } from './CheckInTopRow';
 import { useCheckInLogic } from '@/hooks/CheckIn/useCheckInLogic';
 import { useSearchParams } from 'react-router-dom';
 import { CheckInPhotos } from './CheckInPhotos';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import HealthDataImportCSV from './HealthDataImportCSV';
 
 const CheckIn = () => {
   const { user } = useAuth();
@@ -56,16 +68,36 @@ const CheckIn = () => {
   } = useCheckInLogic(currentUserId);
 
   const [, setSearchParams] = useSearchParams();
+  const { t } = useTranslation();
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <div className="container mx-auto space-y-6">
-      <DayNavigator
-        selectedDate={selectedDate}
-        onDateChange={(dateString) => {
-          setSelectedDate(dateString);
-          setSearchParams({ date: dateString });
-        }}
-      />
+      <div className="flex items-center justify-between gap-2">
+        <DayNavigator
+          selectedDate={selectedDate}
+          onDateChange={(dateString) => {
+            setSelectedDate(dateString);
+            setSearchParams({ date: dateString });
+          }}
+        />
+        <Dialog open={importOpen} onOpenChange={setImportOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Upload size={16} />
+              {t('healthDataImport.importCSV', 'Import CSV')}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {t('healthDataImport.title', 'Import Health Data')}
+              </DialogTitle>
+            </DialogHeader>
+            <HealthDataImportCSV />
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <CheckInTopRow
         mood={mood}

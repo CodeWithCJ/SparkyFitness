@@ -76,6 +76,27 @@ describe('processHealthData per-record error contract', () => {
     ]);
   });
 
+  it('routes neck/waist/hips body measurements to their check_in_measurements columns', async () => {
+    const result = await measurementService.processHealthData(
+      [
+        { type: 'waist', value: 82, date: '2025-02-01', source: 'CSV_Import' },
+        { type: 'neck', value: 38, date: '2025-02-01', source: 'CSV_Import' },
+        { type: 'hips', value: 95, date: '2025-02-01', source: 'CSV_Import' },
+      ],
+      userId,
+      actingUserId
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(
+      measurementRepository.bulkUpsertCheckInMeasurements
+    ).toHaveBeenCalledWith(userId, actingUserId, [
+      { entryDate: '2025-02-01', measurements: { waist: 82 } },
+      { entryDate: '2025-02-01', measurements: { neck: 38 } },
+      { entryDate: '2025-02-01', measurements: { hips: 95 } },
+    ]);
+  });
+
   it('always includes errors and skipped arrays, even on full success', async () => {
     const result = await measurementService.processHealthData(
       [{ type: 'step', value: 5000, date: '2025-02-01', source: 'HealthKit' }],

@@ -63,5 +63,12 @@ describe('foodPhotoEstimate', () => {
       expect(copy.title).toBe('مزود الذكاء الاصطناعي تأخر بالرد');
       expect(copy.message).toContain('وقتًا أطول من المتوقع');
     });
+
+    test('PRIVATE_NETWORK_FORBIDDEN invalidates AI settings', () => {
+      const copy = mapEstimateError('PRIVATE_NETWORK_FORBIDDEN');
+      expect(copy.stayOnForm).toBe(false);
+      expect(copy.invalidateAiSettings).toBe(true);
+      expect(copy.title.toLowerCase()).toContain('not allowed');
+    });
   });
 });
