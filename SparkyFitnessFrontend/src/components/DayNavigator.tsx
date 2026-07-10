@@ -11,17 +11,36 @@ import { debug, info, warn } from '@/utils/logging';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { addDays, localDateToDay, todayInZone } from '@workspace/shared';
+import { useMemo } from 'react';
+
+// Class applied to calendar days that carry a marker (e.g. days with progress
+// photos). It renders a small dot at the bottom of the cell. The dot sits at
+// z-20 so it stays visible above the z-10 day button even when the day is
+// selected, and switches to the foreground color on the selected day for
+// contrast against its filled background.
+const MARKED_DAY_CLASS =
+  "after:content-[''] after:pointer-events-none after:absolute after:bottom-1 " +
+  'after:left-1/2 after:z-20 after:h-1.5 after:w-1.5 after:-translate-x-1/2 ' +
+  'after:rounded-full after:bg-blue-500 ' +
+  'data-[selected=true]:after:bg-primary-foreground';
 
 interface DayNavigatorProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   className?: string;
+  // Optional YYYY-MM-DD strings to mark with a dot in the calendar (e.g. days
+  // that have progress photos). Omitted by callers that don't need markers.
+  markedDates?: string[];
+  // Legend label shown under the calendar when markedDates is provided.
+  markedDatesLabel?: string;
 }
 
 const DayNavigator = ({
   selectedDate,
   onDateChange,
   className,
+  markedDates,
+  markedDatesLabel,
 }: DayNavigatorProps) => {
   const { t } = useTranslation();
   const {
@@ -34,6 +53,16 @@ const DayNavigator = ({
 
   const selectedPickerDate = parseDateInUserTimezone(selectedDate);
   const selectedDateRelation = getDateRelationToToday(selectedDate);
+
+  // Convert marked day strings to Date objects the same way the selected date
+  // is parsed, so a marker lands on exactly the cell that date would select.
+  const markedDateObjects = useMemo(
+    () =>
+      (markedDates ?? [])
+        .map((d) => parseDateInUserTimezone(d))
+        .filter((d): d is Date => d instanceof Date && !isNaN(d.getTime())),
+    [markedDates, parseDateInUserTimezone]
+  );
 
   const handleDateSelect = (newDate: Date | undefined) => {
     debug(loggingLevel, 'Handling date select from calendar:', newDate);
@@ -133,6 +162,20 @@ const DayNavigator = ({
               selected={selectedPickerDate}
               onSelect={handleDateSelect}
               yearsRange={10}
+              modifiers={
+                markedDateObjects.length > 0
+                  ? { hasMarker: markedDateObjects }
+                  : undefined
+              }
+              modifiersClassNames={{ hasMarker: MARKED_DAY_CLASS }}
+              footer={
+                markedDateObjects.length > 0 && markedDatesLabel ? (
+                  <div className="flex items-center justify-center gap-2 pt-2 text-xs text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                    {markedDatesLabel}
+                  </div>
+                ) : undefined
+              }
             />
           </PopoverContent>
         </Popover>

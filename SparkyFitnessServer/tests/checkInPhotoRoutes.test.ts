@@ -68,6 +68,39 @@ const MOCK_PHOTO = {
   created_at: '2026-06-14T10:00:00.000Z',
 };
 
+describe('GET /dates', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns the list of dates that have photos', async () => {
+    // @ts-expect-error mock
+    checkInPhotoService.getPhotoDates.mockResolvedValue([
+      '2026-06-14',
+      '2026-06-10',
+    ]);
+    const res = await request(app).get('/dates');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(['2026-06-14', '2026-06-10']);
+    expect(checkInPhotoService.getPhotoDates).toHaveBeenCalledWith(
+      'test-user-id'
+    );
+  });
+
+  it('is not shadowed by the /:date route (no date-format 400)', async () => {
+    // @ts-expect-error mock
+    checkInPhotoService.getPhotoDates.mockResolvedValue([]);
+    const res = await request(app).get('/dates');
+    expect(res.status).toBe(200);
+    expect(checkInPhotoService.getPhotosByDate).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 when the service throws', async () => {
+    // @ts-expect-error mock
+    checkInPhotoService.getPhotoDates.mockRejectedValue(new Error('DB error'));
+    const res = await request(app).get('/dates');
+    expect(res.status).toBe(500);
+  });
+});
+
 describe('GET /:date', () => {
   beforeEach(() => vi.clearAllMocks());
 
