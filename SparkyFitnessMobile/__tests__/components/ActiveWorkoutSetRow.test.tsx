@@ -378,6 +378,24 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
     });
 
+    it('offers Log in the keyboard accessory while uncompleted', () => {
+      // Out-of-order logging: a focused upcoming row must be loggable from the
+      // accessory too, or the RPE field (last in the Next chain) dead-ends on
+      // Done. One bar per input, so the button appears once per accessory.
+      const { getAllByText, callbacks } = renderRow({
+        state: 'upcoming',
+        isFocused: true,
+        metricColumn: 'rpe',
+      });
+      fireEvent.press(getAllByText('Log')[0]);
+      expect(callbacks.onComplete).toHaveBeenCalledWith('101');
+    });
+
+    it('omits Log from the accessory once the set is completed', () => {
+      const { queryByText } = renderRow({ state: 'done', isFocused: true });
+      expect(queryByText('Log')).toBeNull();
+    });
+
     it('is not dimmed', () => {
       const { getByTestId } = renderRow({ state: 'upcoming' });
       expect(StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity).toBeUndefined();

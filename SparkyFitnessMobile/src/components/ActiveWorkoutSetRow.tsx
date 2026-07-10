@@ -716,7 +716,9 @@ function ActiveWorkoutSetRow({
       ...(isLive && liveHasNextField
         ? [{ key: 'next', label: 'Next', onPress: handleLiveNext }]
         : []),
-      ...(isLive && state === 'current'
+      // Any uncompleted set is loggable (matching its ring), so a focused
+      // upcoming row doesn't dead-end on the last field with only Done.
+      ...(isLive && state !== 'done'
         ? [{ key: 'log', label: 'Log', onPress: handleLog, bold: true }]
         : []),
     ];
