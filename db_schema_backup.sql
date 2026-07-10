@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict eqDVJlMjiQ0IikLedcCSjOKXfCdfuh8lhykDkalaxQ1gRRwoVJ6UZmK9HfaT5lS
+\restrict AwOd2xXqjkU4pMIWZzPdU5wmrIh5fgVlqToWVio2bchk0DSmyzbigXPEQMTF0Wg
 
 -- Dumped from database version 18.3
--- Dumped by pg_dump version 18.4 (Homebrew)
+-- Dumped by pg_dump version 18.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -31,17 +31,6 @@ CREATE SCHEMA auth;
 --
 
 CREATE SCHEMA system;
-
-
---
--- Name: acting_user_id(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.acting_user_id() RETURNS uuid
-    LANGUAGE sql STABLE
-    AS $$
-  SELECT NULLIF(current_setting('app.acting_user_id', true), '')::uuid;
-$$;
 
 
 --
@@ -1140,7 +1129,7 @@ CREATE TABLE public.ai_service_settings (
     encrypted_api_key text,
     api_key_iv text,
     api_key_tag text,
-    is_public boolean DEFAULT false NOT NULL,
+    is_public boolean DEFAULT false CONSTRAINT ai_service_settings_is_global_not_null NOT NULL,
     chat_tool_profile text DEFAULT 'full'::text NOT NULL,
     CONSTRAINT ai_service_settings_chat_tool_profile_check CHECK ((chat_tool_profile = ANY (ARRAY['full'::text, 'core'::text]))),
     CONSTRAINT check_public_settings_user_id_null CHECK ((((is_public = true) AND (user_id IS NULL)) OR ((is_public = false) AND (user_id IS NOT NULL))))
@@ -1155,7 +1144,7 @@ CREATE TABLE public.api_key (
     id text NOT NULL,
     name text,
     key text NOT NULL,
-    reference_id uuid NOT NULL,
+    reference_id uuid CONSTRAINT api_key_user_id_not_null NOT NULL,
     metadata text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -1328,19 +1317,19 @@ CREATE TABLE public.custom_measurements (
 --
 
 CREATE TABLE public.cycle_daily_entries (
-    id uuid DEFAULT gen_random_uuid() CONSTRAINT cycle_daily_logs_id_not_null NOT NULL,
-    user_id uuid CONSTRAINT cycle_daily_logs_user_id_not_null NOT NULL,
-    entry_date date CONSTRAINT cycle_daily_logs_entry_date_not_null NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
     flow_level character varying(20),
-    product_usage jsonb DEFAULT '{}'::jsonb CONSTRAINT cycle_daily_logs_product_usage_not_null NOT NULL,
+    product_usage jsonb DEFAULT '{}'::jsonb NOT NULL,
     cervical_mucus character varying(20),
-    unusual_discharge text[] DEFAULT '{}'::text[] CONSTRAINT cycle_daily_logs_unusual_discharge_not_null NOT NULL,
+    unusual_discharge text[] DEFAULT '{}'::text[] NOT NULL,
     energy smallint,
     libido smallint,
     notes text,
-    custom_fields jsonb DEFAULT '{}'::jsonb CONSTRAINT cycle_daily_logs_custom_fields_not_null NOT NULL,
-    created_at timestamp with time zone DEFAULT now() CONSTRAINT cycle_daily_logs_created_at_not_null NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() CONSTRAINT cycle_daily_logs_updated_at_not_null NOT NULL,
+    custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
     intercourse boolean,
     intercourse_protected boolean,
     cervical_position character varying(30)
@@ -1449,7 +1438,7 @@ CREATE TABLE public.day_classification_cache (
     variance_minutes numeric(6,2),
     sample_count integer,
     last_updated timestamp with time zone DEFAULT now(),
-    CONSTRAINT day_classification_cache_classified_as_check CHECK (((classified_as)::text = ANY (ARRAY[('workday'::character varying)::text, ('freeday'::character varying)::text]))),
+    CONSTRAINT day_classification_cache_classified_as_check CHECK (((classified_as)::text = ANY ((ARRAY['workday'::character varying, 'freeday'::character varying])::text[]))),
     CONSTRAINT day_classification_cache_day_of_week_check CHECK (((day_of_week >= 0) AND (day_of_week <= 6)))
 );
 
@@ -1659,10 +1648,10 @@ CREATE TABLE public.exercises (
 --
 
 CREATE TABLE public.external_data_providers (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid,
-    provider_name text NOT NULL,
-    provider_type text NOT NULL,
+    id uuid DEFAULT gen_random_uuid() CONSTRAINT food_data_providers_id_not_null NOT NULL,
+    user_id uuid CONSTRAINT food_data_providers_user_id_not_null NOT NULL,
+    provider_name text CONSTRAINT food_data_providers_provider_name_not_null NOT NULL,
+    provider_type text CONSTRAINT food_data_providers_provider_type_not_null NOT NULL,
     app_id text,
     app_key text,
     is_active boolean DEFAULT false,
@@ -1761,7 +1750,7 @@ CREATE TABLE public.fasting_logs (
     status character varying(20),
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT fasting_logs_status_check CHECK (((status)::text = ANY (ARRAY[('ACTIVE'::character varying)::text, ('COMPLETED'::character varying)::text, ('CANCELLED'::character varying)::text])))
+    CONSTRAINT fasting_logs_status_check CHECK (((status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'COMPLETED'::character varying, 'CANCELLED'::character varying])::text[])))
 );
 
 
@@ -3199,7 +3188,7 @@ CREATE TABLE public.user_preferences (
     logging_level text DEFAULT 'ERROR'::text,
     timezone text,
     default_food_data_provider_id uuid,
-    item_display_limit integer DEFAULT 10 NOT NULL,
+    item_display_limit integer DEFAULT 10 CONSTRAINT user_preferences_food_display_limit_not_null NOT NULL,
     water_display_unit character varying(50) DEFAULT 'ml'::character varying,
     bmr_algorithm text DEFAULT 'Mifflin-St Jeor'::text NOT NULL,
     body_fat_algorithm text DEFAULT 'U.S. Navy'::text NOT NULL,
@@ -3222,15 +3211,15 @@ CREATE TABLE public.user_preferences (
     barcode_fallback_open_food_facts boolean DEFAULT true,
     show_net_carbs boolean DEFAULT false NOT NULL,
     ai_assisted_conversions boolean DEFAULT true NOT NULL,
+    use_external_bmr boolean DEFAULT false NOT NULL,
     goal_mode character varying(50) DEFAULT 'maintain'::character varying NOT NULL,
     goal_mode_calculation_method character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     goal_mode_custom_percentage integer DEFAULT 0 NOT NULL,
-    use_external_bmr boolean DEFAULT false NOT NULL,
     active_ai_service_id uuid,
     add_exercise_water_to_goal boolean DEFAULT false NOT NULL,
     measurement_decimal_places integer DEFAULT 0 NOT NULL,
     active_vision_ai_service_id uuid,
-    CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
+    CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
 );
@@ -3632,6 +3621,13 @@ CREATE TABLE public.workout_preset_exercises (
     sort_order integer DEFAULT 0,
     superset_group integer
 );
+
+
+--
+-- Name: COLUMN workout_preset_exercises.superset_group; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.workout_preset_exercises.superset_group IS 'Client-assigned superset group key, scoped to the parent workout preset. NULL = not in a superset. Members share the value and are kept adjacent via sort_order.';
 
 
 --
@@ -5442,13 +5438,6 @@ CREATE UNIQUE INDEX unique_backup_settings_row ON public.backup_settings USING b
 
 
 --
--- Name: unique_global_provider_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX unique_global_provider_type ON public.external_data_providers USING btree (provider_type) WHERE (is_public = true);
-
-
---
 -- Name: user ensure_first_user_is_admin; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5874,11 +5863,11 @@ ALTER TABLE ONLY public.custom_measurements
 
 
 --
--- Name: cycle_daily_entries cycle_daily_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: cycle_daily_entries cycle_daily_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cycle_daily_entries
-    ADD CONSTRAINT cycle_daily_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT cycle_daily_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -8632,1472 +8621,1139 @@ ALTER TABLE public.workout_presets ENABLE ROW LEVEL SECURITY;
 -- Name: SCHEMA auth; Type: ACL; Schema: -; Owner: -
 --
 
-GRANT USAGE ON SCHEMA auth TO sparky_uat;
-GRANT USAGE ON SCHEMA auth TO "sparky-uat";
-GRANT USAGE ON SCHEMA auth TO "sparky uat";
+GRANT USAGE ON SCHEMA auth TO sparky_app;
 
 
 --
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: -
 --
 
-GRANT USAGE ON SCHEMA public TO sparky_uat;
-GRANT USAGE ON SCHEMA public TO "sparky-uat";
-GRANT USAGE ON SCHEMA public TO "sparky uat";
+GRANT USAGE ON SCHEMA public TO sparky_app;
 
 
 --
 -- Name: SCHEMA system; Type: ACL; Schema: -; Owner: -
 --
 
-GRANT USAGE ON SCHEMA system TO sparky_uat;
-GRANT USAGE ON SCHEMA system TO "sparky-uat";
-GRANT USAGE ON SCHEMA system TO "sparky uat";
-
-
---
--- Name: FUNCTION acting_user_id(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.acting_user_id() TO "sparky uat";
-GRANT ALL ON FUNCTION public.acting_user_id() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.acting_user_id() TO sparky_uat;
+GRANT USAGE ON SCHEMA system TO sparky_app;
 
 
 --
 -- Name: FUNCTION authenticated_user_id(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.authenticated_user_id() TO "sparky uat";
-GRANT ALL ON FUNCTION public.authenticated_user_id() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.authenticated_user_id() TO sparky_uat;
+GRANT ALL ON FUNCTION public.authenticated_user_id() TO sparky_app;
 
 
 --
 -- Name: FUNCTION calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO sparky_uat;
-GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO "sparky uat";
+GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO sparky_app;
 
 
 --
 -- Name: FUNCTION can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION clear_old_chat_history(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.clear_old_chat_history() TO sparky_uat;
-GRANT ALL ON FUNCTION public.clear_old_chat_history() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.clear_old_chat_history() TO "sparky uat";
+GRANT ALL ON FUNCTION public.clear_old_chat_history() TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_checkin_policy(table_name text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO "sparky uat";
-GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_default_external_data_providers(p_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_diary_policy(table_name text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_global_default_providers(p_admin_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_library_policy(table_name text, shared_column text, permissions text[]); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_medication_policy(table_name text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_medication_policy(table_name text) TO "sparky uat";
-GRANT ALL ON FUNCTION public.create_medication_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_medication_policy(table_name text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_medication_policy(table_name text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_owner_centric_all_policy(table_name text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_owner_centric_id_policy(table_name text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_owner_policy(table_name text, id_column text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_shared_owner_policy(table_name text, id_column text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO "sparky uat";
-GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_user_centric_policy(table_name text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION create_user_preferences(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_user_preferences() TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_user_preferences() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_user_preferences() TO "sparky uat";
+GRANT ALL ON FUNCTION public.create_user_preferences() TO sparky_app;
 
 
 --
 -- Name: FUNCTION current_user_id(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.current_user_id() TO sparky_uat;
-GRANT ALL ON FUNCTION public.current_user_id() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.current_user_id() TO "sparky uat";
+GRANT ALL ON FUNCTION public.current_user_id() TO sparky_app;
 
 
 --
 -- Name: FUNCTION find_user_by_email(p_email text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION fn_sync_mfa_totp_flag(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO "sparky uat";
-GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO sparky_uat;
+GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO sparky_app;
 
 
 --
 -- Name: FUNCTION fn_sync_user_mfa_global(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO "sparky uat";
-GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO sparky_uat;
+GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO sparky_app;
 
 
 --
 -- Name: FUNCTION get_accessible_users(p_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO sparky_uat;
-GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO "sparky uat";
+GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION get_goals_for_date(p_user_id uuid, p_date date); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO sparky_uat;
-GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO "sparky uat";
+GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO sparky_app;
 
 
 --
 -- Name: FUNCTION handle_new_user(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.handle_new_user() TO sparky_uat;
-GRANT ALL ON FUNCTION public.handle_new_user() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.handle_new_user() TO "sparky uat";
+GRANT ALL ON FUNCTION public.handle_new_user() TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_any_meaningful_permission(perms jsonb); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_checkin_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_diary_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO sparky_uat;
-GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO "sparky uat";
+GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_diary_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_family_access(owner_uuid uuid, perm text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO "sparky uat";
+GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_family_access_or(owner_uuid uuid, perms text[]); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO sparky_uat;
-GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO "sparky uat";
+GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO sparky_uat;
-GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO "sparky uat";
+GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_medication_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_medication_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_medication_access(owner_uuid uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_medication_access(owner_uuid uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_medication_access(owner_uuid uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_medication_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_medication_read_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_medication_read_access(owner_uuid uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_medication_read_access(owner_uuid uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_medication_read_access(owner_uuid uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION has_profile_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION is_admin(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.is_admin() TO sparky_uat;
-GRANT ALL ON FUNCTION public.is_admin() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.is_admin() TO "sparky uat";
+GRANT ALL ON FUNCTION public.is_admin() TO sparky_app;
 
 
 --
 -- Name: FUNCTION manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO sparky_uat;
-GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky uat";
+GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO sparky_app;
 
 
 --
 -- Name: FUNCTION seed_global_providers_for_first_admin(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO "sparky uat";
-GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO sparky_uat;
+GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO sparky_app;
 
 
 --
 -- Name: FUNCTION set_app_context(p_user_id uuid, p_authenticated_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION set_first_user_as_admin(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO sparky_uat;
-GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO "sparky uat";
+GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO sparky_app;
 
 
 --
 -- Name: FUNCTION set_updated_at_timestamp(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO sparky_uat;
-GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO "sparky uat";
+GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO sparky_app;
 
 
 --
 -- Name: FUNCTION set_user_id(user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_uat;
-GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO "sparky uat";
+GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_app;
 
 
 --
 -- Name: FUNCTION trigger_set_timestamp(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO sparky_uat;
-GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO "sparky uat";
+GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO sparky_app;
 
 
 --
 -- Name: FUNCTION update_external_data_providers_updated_at(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO sparky_uat;
-GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO "sparky uat";
+GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO sparky_app;
 
 
 --
 -- Name: FUNCTION update_timestamp(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.update_timestamp() TO sparky_uat;
-GRANT ALL ON FUNCTION public.update_timestamp() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.update_timestamp() TO "sparky uat";
+GRANT ALL ON FUNCTION public.update_timestamp() TO sparky_app;
 
 
 --
 -- Name: FUNCTION update_updated_at_column(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.update_updated_at_column() TO sparky_uat;
-GRANT ALL ON FUNCTION public.update_updated_at_column() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.update_updated_at_column() TO "sparky uat";
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO sparky_app;
 
 
 --
 -- Name: TABLE users; Type: ACL; Schema: auth; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_app;
 
 
 --
 -- Name: TABLE account; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_app;
 
 
 --
 -- Name: TABLE admin_activity_logs; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_app;
 
 
 --
 -- Name: TABLE ai_service_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_app;
 
 
 --
 -- Name: TABLE api_key; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO sparky_app;
 
 
 --
 -- Name: TABLE backup_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_app;
 
 
 --
 -- Name: SEQUENCE backup_settings_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE check_in_measurements; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_app;
 
 
 --
 -- Name: TABLE check_in_photos; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO sparky_app;
 
 
 --
 -- Name: TABLE custom_categories; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_app;
 
 
 --
 -- Name: TABLE custom_measurements; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_app;
 
 
 --
 -- Name: TABLE cycle_daily_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO sparky_app;
 
 
 --
 -- Name: TABLE cycle_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO sparky_app;
 
 
 --
 -- Name: TABLE cycle_test_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO sparky_app;
 
 
 --
 -- Name: TABLE cycles; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO sparky_app;
 
 
 --
 -- Name: TABLE daily_sleep_need; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO sparky_app;
 
 
 --
 -- Name: TABLE day_classification_cache; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO sparky_app;
 
 
 --
 -- Name: TABLE exercise_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_app;
 
 
 --
 -- Name: TABLE exercise_entry_activity_details; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_app;
 
 
 --
 -- Name: TABLE exercise_entry_sets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_app;
 
 
 --
 -- Name: SEQUENCE exercise_entry_sets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE exercise_preset_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_app;
 
 
 --
 -- Name: TABLE exercises; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_app;
 
 
 --
 -- Name: TABLE external_data_providers; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_app;
 
 
 --
 -- Name: TABLE external_provider_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_app;
 
 
 --
 -- Name: TABLE family_access; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_app;
 
 
 --
 -- Name: TABLE fasting_logs; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_app;
 
 
 --
 -- Name: TABLE food_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_app;
 
 
 --
 -- Name: TABLE food_entry_meals; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_app;
 
 
 --
 -- Name: TABLE food_variants; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_app;
 
 
 --
 -- Name: TABLE foods; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_app;
 
 
 --
 -- Name: TABLE global_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_app;
 
 
 --
 -- Name: TABLE goal_presets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_app;
 
 
 --
 -- Name: TABLE health_appointments; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO sparky_app;
 
 
 --
 -- Name: TABLE injection_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO sparky_app;
 
 
 --
 -- Name: TABLE meal_foods; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_app;
 
 
 --
 -- Name: TABLE meal_plan_template_assignments; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_app;
 
 
 --
 -- Name: TABLE meal_plan_templates; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_app;
 
 
 --
 -- Name: TABLE meal_plans; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_app;
 
 
 --
 -- Name: TABLE meal_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_app;
 
 
 --
 -- Name: TABLE meals; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_app;
 
 
 --
 -- Name: TABLE medication_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO sparky_app;
 
 
 --
 -- Name: TABLE medication_pens; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO sparky_app;
 
 
 --
 -- Name: TABLE medication_route_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO sparky_app;
 
 
 --
 -- Name: TABLE medication_schedule_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO sparky_app;
 
 
 --
 -- Name: TABLE medication_schedules; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO sparky_app;
 
 
 --
 -- Name: TABLE medication_titration_steps; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO sparky_app;
 
 
 --
 -- Name: TABLE medication_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO sparky_app;
 
 
 --
 -- Name: TABLE medications; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO sparky_app;
 
 
 --
 -- Name: TABLE mood_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_app;
 
 
 --
 -- Name: TABLE oidc_providers; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_app;
 
 
 --
 -- Name: SEQUENCE oidc_providers_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE onboarding_data; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_app;
 
 
 --
 -- Name: TABLE onboarding_status; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_app;
 
 
 --
 -- Name: TABLE passkey; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_app;
 
 
 --
 -- Name: TABLE passkey_registration_tickets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO sparky_app;
 
 
 --
 -- Name: TABLE pregnancies; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO sparky_app;
 
 
 --
 -- Name: TABLE pregnancy_checklist_state; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO sparky_app;
 
 
 --
 -- Name: TABLE pregnancy_contractions; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO sparky_app;
 
 
 --
 -- Name: TABLE pregnancy_kick_sessions; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO sparky_app;
 
 
 --
 -- Name: TABLE pregnancy_photos; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO sparky_app;
 
 
 --
 -- Name: TABLE profiles; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_app;
 
 
 --
 -- Name: TABLE session; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_app;
 
 
 --
 -- Name: TABLE sleep_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_app;
 
 
 --
 -- Name: TABLE sleep_entry_stages; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_app;
 
 
 --
 -- Name: TABLE sleep_need_calculations; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO sparky_app;
 
 
 --
 -- Name: TABLE sparky_chat_history; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_app;
 
 
 --
 -- Name: TABLE sso_provider; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_app;
 
 
 --
 -- Name: TABLE symptom_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO sparky_app;
 
 
 --
 -- Name: TABLE two_factor; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_app;
 
 
 --
 -- Name: TABLE "user"; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO sparky_app;
 
 
 --
 -- Name: TABLE user_allergen_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO sparky_app;
 
 
 --
 -- Name: TABLE user_custom_moods; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO sparky_app;
 
 
 --
 -- Name: TABLE user_custom_nutrients; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_app;
 
 
 --
 -- Name: TABLE user_custom_symptom_locations; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO sparky_app;
 
 
 --
 -- Name: TABLE user_custom_symptoms; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO sparky_app;
 
 
 --
 -- Name: TABLE user_cycle_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO sparky_app;
 
 
 --
 -- Name: TABLE user_dashboard_layouts; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO sparky_app;
 
 
 --
 -- Name: TABLE user_goals; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_app;
 
 
 --
 -- Name: TABLE user_ignored_updates; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_app;
 
 
 --
 -- Name: TABLE user_meal_visibilities; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO sparky_app;
 
 
 --
 -- Name: TABLE user_medication_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO sparky_app;
 
 
 --
 -- Name: TABLE user_mood_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO sparky_app;
 
 
 --
 -- Name: TABLE user_nutrient_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_app;
 
 
 --
 -- Name: SEQUENCE user_nutrient_display_preferences_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE user_oidc_links; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_app;
 
 
 --
 -- Name: SEQUENCE user_oidc_links_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE user_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_app;
 
 
 --
 -- Name: TABLE user_water_containers; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_app;
 
 
 --
 -- Name: SEQUENCE user_water_containers_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE v_mctq_analysis; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO sparky_app;
 
 
 --
 -- Name: TABLE v_mctq_stats; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO sparky_app;
 
 
 --
 -- Name: TABLE verification; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_app;
 
 
 --
 -- Name: TABLE water_intake; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_app;
 
 
 --
 -- Name: TABLE water_intake_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO sparky_app;
 
 
 --
 -- Name: TABLE weekly_goal_plans; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_app;
 
 
 --
 -- Name: TABLE workout_plan_assignment_sets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_app;
 
 
 --
 -- Name: SEQUENCE workout_plan_assignment_sets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE workout_plan_template_assignments; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_app;
 
 
 --
 -- Name: SEQUENCE workout_plan_template_assignments_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE workout_plan_templates; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_app;
 
 
 --
 -- Name: SEQUENCE workout_plan_templates_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE workout_preset_exercise_sets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_app;
 
 
 --
 -- Name: SEQUENCE workout_preset_exercise_sets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE workout_preset_exercises; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_app;
 
 
 --
 -- Name: SEQUENCE workout_preset_exercises_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE workout_presets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_app;
 
 
 --
 -- Name: SEQUENCE workout_presets_id_seq; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO "sparky uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_app;
 
 
 --
 -- Name: TABLE schema_migrations; Type: ACL; Schema: system; Owner: -
 --
 
-GRANT SELECT ON TABLE system.schema_migrations TO sparky_uat;
-GRANT SELECT ON TABLE system.schema_migrations TO "sparky-uat";
-GRANT SELECT ON TABLE system.schema_migrations TO "sparky uat";
+GRANT SELECT ON TABLE system.schema_migrations TO sparky_app;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO "sparky-uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO sparky_app;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO "sparky-uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_app;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO "sparky-uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO sparky_app;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_app;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict eqDVJlMjiQ0IikLedcCSjOKXfCdfuh8lhykDkalaxQ1gRRwoVJ6UZmK9HfaT5lS
+\unrestrict AwOd2xXqjkU4pMIWZzPdU5wmrIh5fgVlqToWVio2bchk0DSmyzbigXPEQMTF0Wg
 
