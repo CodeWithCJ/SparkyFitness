@@ -3,6 +3,11 @@ import { View, Text } from 'react-native';
 import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
+import {
+  formatMobileNumber,
+  isMobileRtl,
+  localizeServingUnit,
+} from '../localization';
 
 interface MacroCardProps {
   label: string;
@@ -19,6 +24,7 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
   const progress = hasGoal ? consumed / (goal as number) : 0;
   const barHeight = 8;
   const borderRadius = 4;
+  const displayUnit = localizeServingUnit(unit);
   const [trackColor] = useCSSVariable([
     '--color-progress-track',
   ]) as [string];
@@ -63,7 +69,9 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
   }));
 
   const overflowStyle = useAnimatedStyle(() => ({
-    left: overflowX.value,
+    ...(isMobileRtl
+      ? { right: overflowX.value }
+      : { left: overflowX.value }),
     width: overflowWidth.value,
   }));
 
@@ -73,8 +81,14 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
         <Text className="text-sm font-medium text-text-primary">{label}</Text>
         <Text className="text-xs text-text-secondary">
           {goal && goal > 0
-            ? `${Math.round(consumed)}${unit} / ${Math.round(goal)}${unit}`
-            : `${Math.round(consumed)}${unit}`}
+            ? `${formatMobileNumber(Math.round(consumed), {
+                maximumFractionDigits: 0,
+              })} ${displayUnit} / ${formatMobileNumber(Math.round(goal), {
+                maximumFractionDigits: 0,
+              })} ${displayUnit}`
+            : `${formatMobileNumber(Math.round(consumed), {
+                maximumFractionDigits: 0,
+              })} ${displayUnit}`}
         </Text>
       </View>
       {hasGoal && (
@@ -94,7 +108,13 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
             >
               <Animated.View
                 style={[
-                  { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
+                  {
+                    position: 'absolute',
+                    ...(isMobileRtl ? { right: 0 } : { left: 0 }),
+                    top: 0,
+                    height: barHeight,
+                    backgroundColor: color,
+                  },
                   fillStyle,
                 ]}
               />

@@ -45,11 +45,16 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { NUTRIENT_META } from '../constants/nutrients';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import {
+  localizeNutrient,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 const RANGE_SEGMENTS: Segment<StepsRange>[] = [
-  { key: '7d', label: '7d' },
-  { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
+  { key: '7d', label: mobileT('dashboard.range7d') },
+  { key: '30d', label: mobileT('dashboard.range30d') },
+  { key: '90d', label: mobileT('dashboard.range90d') },
 ];
 
 type DashboardScreenProps = CompositeScreenProps<
@@ -105,7 +110,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         onDatePress: openCalendar,
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
-        accessibilityLabel: 'Choose dashboard date',
+        accessibilityLabel: mobileT('dashboard.chooseDate'),
       },
     );
   }, [
@@ -204,16 +209,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <View className="flex-1">
           {!usesNativeTabs && (
             <View className="px-4 pt-4 pb-5">
-              <Text className="text-2xl font-bold text-text-primary">Dashboard</Text>
+              <Text className="text-2xl font-bold text-text-primary">
+                {mobileT('tabs.dashboard')}
+              </Text>
             </View>
           )}
           <StatusView
             icon="cloud-offline"
             iconColor="#9CA3AF"
             iconSize={64}
-            title="No server configured"
-            subtitle="Configure your server connection in Settings to view your daily summary."
-            action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
+            title={mobileT('dashboard.noServerTitle')}
+            subtitle={mobileT('dashboard.noServerDescription')}
+            action={{
+              label: mobileT('common.goToSettings'),
+              onPress: () => navigation.navigate('Settings'),
+              variant: 'primary',
+            }}
           />
         </View>
       );
@@ -224,7 +235,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       return (
         <View className="flex-1 items-center justify-center p-8 shadow-sm">
           <ActivityIndicator size="large" color="#3B82F6" />
-          <Text className="text-text-muted text-base mt-4">Loading summary...</Text>
+          <Text className="text-text-muted text-base mt-4">
+            {mobileT('dashboard.loading')}
+          </Text>
         </View>
       );
     }
@@ -235,17 +248,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <View className="flex-1 items-center justify-center p-8 shadow-sm">
           <Icon name="alert-circle" size={64} color="#EF4444" />
           <Text className="text-text-muted text-lg text-center mt-4">
-            Failed to load summary
+            {mobileT('dashboard.loadError')}
           </Text>
           <Text className="text-text-muted text-sm text-center mt-2">
-            Please check your connection and try again.
+            {mobileT('dashboard.loadErrorDescription')}
           </Text>
           <Button
             variant="primary"
             className="px-6 mt-6"
             onPress={() => refetch()}
           >
-            Retry
+            {mobileT('common.retry')}
           </Button>
         </View>
       );
@@ -297,7 +310,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             className="flex-row items-center bg-surface rounded-lg  px-4 py-3 mb-3 shadow-sm"
           >
             <Icon name="sparkles" size={18} color={accentColor} />
-            <Text className="text-text-muted text-base ml-3">Ask Sparky…</Text>
+            <Text
+              className="text-text-muted text-base"
+              style={{ marginStart: 12 }}
+            >
+              {mobileT('dashboard.askSparky')}
+            </Text>
           </Pressable>
         )}
 
@@ -314,7 +332,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           if (dashboardNutrients.length === 0) return null;
           return (
             <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
-              <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
+              <Text className="text-md font-bold text-text-secondary mb-2 px-1">
+                {mobileT('dashboard.macronutrients')}
+              </Text>
               <View className="flex-row flex-wrap justify-between">
                 {dashboardNutrients.map((nutrientKey) => {
                   // Resolve display label and unit.
@@ -322,7 +342,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   const customDef = !meta
                     ? customNutrients.find((cn) => cn.name === nutrientKey)
                     : undefined;
-                  const label = meta?.label ?? customDef?.name ?? nutrientKey;
+                  const label = localizeNutrient(
+                    nutrientKey,
+                    meta?.label ?? customDef?.name ?? nutrientKey,
+                  );
                   const unit = meta?.unit ?? customDef?.unit ?? 'g';
 
                   // Use theme-aware CSS variable colors for the 4 core macros;
@@ -361,7 +384,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   else if (nutrientKey === 'dietary_fiber') goal = summary.fiber.goal || undefined;
                   else goal = summary.customNutrientGoals[nutrientKey] || undefined;
 
-                  const displayLabel = nutrientKey === 'carbs' && showNetCarbs ? 'Net Carbs' : label;
+                  const displayLabel =
+                    nutrientKey === 'carbs' && showNetCarbs
+                      ? localizeNutrient('netCarbs')
+                      : label;
 
                   return (
                     <MacroCard
@@ -371,7 +397,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                       goal={goal}
                       color={color}
                       overfillColor={progressTrackOverfillColor}
-                      unit={unit}
+                      unit={localizeServingUnit(unit)}
                     />
                   );
                 })}
@@ -385,8 +411,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
             onPress={() => navigation.navigate('FoodSearch', { date: selectedDate })}
           >
-            <Text className="text-md font-bold text-text-primary mb-4">Food</Text>
-            <Text className="text-text-muted text-sm text-center mb-4">Tap to add food</Text>
+            <Text className="text-md font-bold text-text-primary mb-4">
+              {mobileT('dashboard.food')}
+            </Text>
+            <Text className="text-text-muted text-sm text-center mb-4">
+              {mobileT('dashboard.tapToAddFood')}
+            </Text>
           </Pressable>
         )}
 
@@ -426,7 +456,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <FastingGoalReconciler />
         {fastingCardVisible && <FastingCard navigation={navigation} />}
 
-        <Text className="text-text-primary text-xl font-bold mb-2">Health Trends</Text>
+        <Text className="text-text-primary text-xl font-bold mb-2">
+          {mobileT('dashboard.healthTrends')}
+        </Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
 
         <HealthTrendsPager
@@ -458,7 +490,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     <View className="flex-1 bg-background">
       {!isConnectionLoading && isConnected ? (
         <DateNavigator
-          title="Dashboard"
+          title={mobileT('tabs.dashboard')}
           selectedDate={selectedDate}
           onPreviousDay={goToPreviousDay}
           onNextDay={goToNextDay}

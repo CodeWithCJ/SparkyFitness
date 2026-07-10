@@ -121,6 +121,13 @@ export function localizeServingUnit(unit: string): string {
   return key ? mobileT(`units.${key}`, undefined, unit) : unit;
 }
 
+export function localizeNutrient(
+  nutrientKey: string,
+  fallback?: string,
+): string {
+  return mobileT(`nutrient.${nutrientKey}`, undefined, fallback ?? nutrientKey);
+}
+
 export function formatMobileNumber(
   value: number,
   options?: Intl.NumberFormatOptions,
