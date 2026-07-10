@@ -708,6 +708,22 @@ export const ar = {
     'تم الحفظ وتحديث {{count}} من الأحجام المكافئة',
   'foodFormScreen.updateFoodFailed': 'ما قدرنا نحدّث الصنف',
 
+  'editBarcode.forFood': 'للصنف: {{foodName}}',
+  'editBarcode.anotherFood': 'صنف ثاني',
+  'editBarcode.inUseTitle': 'الباركود مستخدم',
+  'editBarcode.inUseDescription':
+    'هالباركود مرتبط من قبل بـ «{{otherName}}». تبي تربطه بـ «{{foodName}}» على أي حال؟',
+  'editBarcode.attach': 'ربط',
+  'editBarcode.saved': 'تم حفظ الباركود',
+  'editBarcode.saveFailed': 'ما قدرنا نحفظ الباركود',
+  'editBarcode.tryAgain': 'جرّب مرة ثانية.',
+  'editBarcode.removeTitle': 'حذف الباركود',
+  'editBarcode.removeDescription': 'تبي تحذف الباركود من «{{foodName}}»؟',
+  'editBarcode.remove': 'حذف',
+  'editBarcode.removed': 'تم حذف الباركود',
+  'editBarcode.removeFailed': 'ما قدرنا نحذف الباركود',
+  'editBarcode.saveAccessibility': 'حفظ الباركود',
+
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
   'exerciseCategory.flexibility': 'مرونة',
