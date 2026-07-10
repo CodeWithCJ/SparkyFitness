@@ -27,6 +27,7 @@ import {
   useDeleteWaterIntakeLogMutation,
   useUpdateWaterIntakeLogTimeMutation,
 } from '@/hooks/Diary/useWaterIntake';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface WaterIntakeProps {
   selectedDate: string;
@@ -118,7 +119,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
 
       return t('foodDiary.waterIntake.perDrink', {
         volume: displayVolume,
-        unit: currentContainer.unit,
+        unit: getLocalizedUnitLabel(currentContainer.unit, t),
       });
     }
 
@@ -128,7 +129,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     ).toFixed(water_display_unit === 'ml' ? 0 : 2);
     return t('foodDiary.waterIntake.defaultPerDrink', {
       volume: displayVolume,
-      unit: water_display_unit,
+      unit: getLocalizedUnitLabel(water_display_unit, t),
     });
   };
 
@@ -186,39 +187,47 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     return null;
   }
 
-  const fillPercentage = Math.min((waterMl / waterGoalMl) * 100, 100);
+  const fillPercentage =
+    waterGoalMl > 0 ? Math.min((waterMl / waterGoalMl) * 100, 100) : 0;
   const displayUnit = currentContainer?.unit || water_display_unit;
+  const localizedDisplayUnit = getLocalizedUnitLabel(displayUnit, t);
+  const displayedWater = convertMlToSelectedUnit(waterMl, displayUnit).toFixed(
+    displayUnit === 'ml' ? 0 : 2
+  );
+  const displayedGoal = convertMlToSelectedUnit(
+    waterGoalMl,
+    displayUnit
+  ).toFixed(displayUnit === 'ml' ? 0 : 2);
+  const progressLabel = t('foodDiary.waterIntake.progress', {
+    current: displayedWater,
+    goal: displayedGoal,
+    unit: localizedDisplayUnit,
+  });
 
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center text-base dark:text-slate-300">
-          <Droplet className="w-4 h-4 mr-2" />
+          <Droplet className="h-4 w-4 me-2" aria-hidden="true" />
           {t('foodDiary.waterIntake.title', 'Water Intake')}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col justify-between p-3 dark:text-slate-300">
         {/* Water count display */}
         <div className="text-center mb-3">
-          <div className="text-xl font-bold">
-            {convertMlToSelectedUnit(
-              waterMl,
-              currentContainer?.unit || water_display_unit
-            ).toFixed(currentContainer?.unit === 'ml' ? 0 : 2)}{' '}
-            /{' '}
-            {convertMlToSelectedUnit(
-              waterGoalMl,
-              currentContainer?.unit || water_display_unit
-            ).toFixed(currentContainer?.unit === 'ml' ? 0 : 2)}
-          </div>
-          <div className="text-gray-500 text-xs">
-            {currentContainer?.unit || water_display_unit}
-          </div>
+          <div className="text-xl font-bold">{progressLabel}</div>
         </div>
 
         {/* Water Bottle Visualization - takes up most space */}
         <div className="flex-1 flex flex-col items-center justify-center mb-3">
-          <div className="relative flex flex-col items-center">
+          <div
+            className="relative flex flex-col items-center"
+            role="progressbar"
+            aria-label={progressLabel}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(fillPercentage)}
+          >
             {/* Bottle Cap */}
             <div className="w-5 h-1.5 bg-blue-400 rounded-t-sm mb-0.5"></div>
 
@@ -239,7 +248,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
               </div>
 
               {/* Bottle Highlight */}
-              <div className="absolute top-3 left-2 w-2.5 h-10 bg-white opacity-30 rounded-full"></div>
+              <div className="absolute top-3 start-2 w-2.5 h-10 bg-white opacity-30 rounded-full"></div>
 
               {/* Water Level Lines */}
               <div className="absolute inset-0 flex flex-col justify-between p-0.5">
@@ -260,15 +269,17 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         </div>
 
         {/* Intuitive Water Controls: [ - ] VOLUME [ + ] */}
-        <div className="flex items-center justify-center space-x-3">
+        <div className="flex items-center justify-center gap-3">
           <Button
+            type="button"
             variant="outline"
             onClick={() => adjustWater(-1)}
             disabled={waterMl === 0 || loading}
             size="icon"
             className="h-8 w-8 rounded-full"
+            aria-label={t('foodDiary.waterIntake.decrease')}
           >
-            <Minus className="h-4 w-4" />
+            <Minus className="h-4 w-4" aria-hidden="true" />
           </Button>
 
           <div className="text-center min-w-[70px]">
@@ -278,45 +289,65 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
           </div>
 
           <Button
+            type="button"
             onClick={() => adjustWater(1)}
             disabled={loading}
             size="icon"
             className="h-8 w-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+            aria-label={t('foodDiary.waterIntake.increase')}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
 
         {/* Container Toggle (Source) */}
-        <div className="flex items-center justify-center mt-3 pt-2 border-t border-gray-100 dark:border-slate-800 space-x-1">
+        <div className="flex items-center justify-center mt-3 pt-2 border-t border-gray-100 dark:border-slate-800 gap-1">
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             onClick={() => cycleContainer('prev')}
             disabled={containers.length <= 1}
             className="h-6 w-6 text-gray-400 hover:text-gray-600"
+            aria-label={t('foodDiary.waterIntake.previousContainer')}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft
+              className="h-4 w-4 rtl:rotate-180"
+              aria-hidden="true"
+            />
           </Button>
 
-          <div className="flex items-center justify-center space-x-1 px-1">
+          <div className="flex items-center justify-center gap-1 px-1">
             <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate max-w-[110px]">
               {currentContainer?.name ||
                 t('foodDiary.waterIntake.defaultContainer', 'Container')}
             </div>
             {currentContainer?.is_primary && (
-              <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
+              <>
+                <Star
+                  className="w-2.5 h-2.5 text-amber-500 fill-amber-500"
+                  aria-hidden="true"
+                />
+                <span className="sr-only">
+                  {t('foodDiary.waterIntake.primaryContainer')}
+                </span>
+              </>
             )}
           </div>
 
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             onClick={() => cycleContainer('next')}
             disabled={containers.length <= 1}
             className="h-6 w-6 text-gray-400 hover:text-gray-600"
+            aria-label={t('foodDiary.waterIntake.nextContainer')}
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight
+              className="h-4 w-4 rtl:rotate-180"
+              aria-hidden="true"
+            />
           </Button>
         </div>
 
@@ -324,8 +355,16 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         {logEntries.length > 0 && (
           <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-800">
             <button
+              type="button"
               onClick={() => setShowLog(!showLog)}
               className="flex items-center justify-between w-full text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              aria-expanded={showLog}
+              aria-controls="water-intake-log"
+              aria-label={t(
+                showLog
+                  ? 'foodDiary.waterIntake.hideLog'
+                  : 'foodDiary.waterIntake.showLog'
+              )}
             >
               <span>
                 {t('foodDiary.waterIntake.logTitle', "Today's drinks")} (
@@ -339,7 +378,10 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
             </button>
 
             {showLog && (
-              <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
+              <div
+                id="water-intake-log"
+                className="mt-2 max-h-40 overflow-y-auto space-y-1"
+              >
                 {logEntries.map((entry) => (
                   <div
                     key={entry.id}
@@ -349,6 +391,11 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                       {editingTimeId === entry.id ? (
                         <input
                           type="time"
+                          aria-label={t('foodDiary.waterIntake.editTimeFor', {
+                            container:
+                              entry.container_name ||
+                              t('foodDiary.waterIntake.defaultContainer'),
+                          })}
                           className="text-xs tabular-nums bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-600 rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 w-[72px]"
                           defaultValue={getTimeInputValue(
                             entry.logged_at || entry.created_at
@@ -375,6 +422,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                         />
                       ) : (
                         <button
+                          type="button"
                           onClick={() => setEditingTimeId(entry.id)}
                           className="text-gray-400 dark:text-gray-500 tabular-nums shrink-0 hover:text-blue-500 dark:hover:text-blue-400 hover:underline cursor-pointer transition-colors"
                           title={t(
@@ -399,20 +447,21 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                           Number(entry.water_ml),
                           displayUnit
                         ).toFixed(displayUnit === 'ml' ? 0 : 1)}{' '}
-                        {displayUnit}
+                        {localizedDisplayUnit}
                       </span>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="h-5 w-5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                         onClick={() => deleteLogEntry(entry.id)}
                         disabled={deleting}
+                        aria-label={t('foodDiary.waterIntake.deleteEntry')}
                         title={t(
                           'foodDiary.waterIntake.deleteEntry',
                           'Delete this drink'
                         )}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-3 w-3" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
