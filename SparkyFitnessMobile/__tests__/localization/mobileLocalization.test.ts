@@ -12,6 +12,7 @@ import {
   formatMobileSetCount,
   localizeExerciseCategory,
   localizeMealType,
+  localizeNutrientDisplayLabel,
   localizeServingDescription,
   localizeServingUnit,
   mobileT,
@@ -66,6 +67,11 @@ describe('mobile localization', () => {
     expect(formatMobileServingCount(2)).toBe('حصتين');
     expect(formatMobileServingCount(5)).toBe('٥ حصص');
     expect(formatMobileServingCount(1.5)).toBe('١٫٥ حصة');
+    expect(formatMobileServingCount(1.25)).toBe('١٫٢٥ حصة');
+    expect(localizeNutrientDisplayLabel('Total Carbs')).toBe(
+      'إجمالي الكربوهيدرات',
+    );
+    expect(localizeNutrientDisplayLabel('عنصر خاص')).toBe('عنصر خاص');
   });
 
   it('uses Arabic singular, dual, and plural workout summaries', () => {

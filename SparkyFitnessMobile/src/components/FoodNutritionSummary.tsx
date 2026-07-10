@@ -10,25 +10,10 @@ import NutritionMacroCard, { type NutritionGoalPercentages } from './NutritionMa
 import { useCustomNutrients, useServerConnection } from '../hooks';
 import {
   formatMobileNumber,
-  localizeNutrient,
+  localizeNutrientDisplayLabel,
   localizeServingUnit,
   mobileT,
 } from '../localization';
-
-const nutrientKeysByLabel: Readonly<Record<string, string>> = {
-  Fiber: 'dietary_fiber',
-  Sugars: 'sugars',
-  'Saturated Fat': 'saturatedFat',
-  'Trans Fat': 'transFat',
-  Cholesterol: 'cholesterol',
-  Sodium: 'sodium',
-  Potassium: 'potassium',
-  Calcium: 'calcium',
-  Iron: 'iron',
-  'Vitamin A': 'vitaminA',
-  'Vitamin C': 'vitaminC',
-  'Total Carbs': 'totalCarbs',
-};
 
 interface FoodNutritionSummaryProps {
   name: string;
@@ -116,12 +101,7 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
       className={`flex-row justify-between py-1 ${showBorder ? 'border-b border-border-subtle' : ''}`}
     >
       <Text className="text-text-secondary text-sm">
-        {nutrientKeysByLabel[nutrient.label]
-          ? localizeNutrient(
-              nutrientKeysByLabel[nutrient.label],
-              nutrient.label,
-            )
-          : nutrient.label}
+        {localizeNutrientDisplayLabel(nutrient.label)}
       </Text>
       <Text className="text-text-primary text-sm">
         {formatMobileNumber(Math.round(scale(nutrient.value)), {

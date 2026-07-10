@@ -106,6 +106,21 @@ const servingDescriptionAliasPattern = new RegExp(
   'gi',
 );
 
+const nutrientKeysByDisplayLabel: Readonly<Record<string, string>> = {
+  Fiber: 'dietary_fiber',
+  Sugars: 'sugars',
+  'Saturated Fat': 'saturatedFat',
+  'Trans Fat': 'transFat',
+  Cholesterol: 'cholesterol',
+  Sodium: 'sodium',
+  Potassium: 'potassium',
+  Calcium: 'calcium',
+  Iron: 'iron',
+  'Vitamin A': 'vitaminA',
+  'Vitamin C': 'vitaminC',
+  'Total Carbs': 'totalCarbs',
+};
+
 type TranslationParams = Readonly<Record<string, string | number>>;
 
 export function mobileT(
@@ -163,6 +178,11 @@ export function localizeNutrient(
   return mobileT(`nutrient.${nutrientKey}`, undefined, fallback ?? nutrientKey);
 }
 
+export function localizeNutrientDisplayLabel(label: string): string {
+  const nutrientKey = nutrientKeysByDisplayLabel[label];
+  return nutrientKey ? localizeNutrient(nutrientKey, label) : label;
+}
+
 export function formatMobileNumber(
   value: number,
   options?: Intl.NumberFormatOptions,
@@ -206,7 +226,7 @@ export function formatMobileServingCount(count: number): string {
 
   return mobileT(`foodEntry.serving.${form}`, {
     count: formatMobileNumber(count, {
-      maximumFractionDigits: Number.isInteger(count) ? 0 : 1,
+      maximumFractionDigits: Number.isInteger(count) ? 0 : 2,
     }),
   });
 }
