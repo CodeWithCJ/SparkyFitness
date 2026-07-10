@@ -54,4 +54,26 @@ describe('dashboard localization contract', () => {
       expect(sources).not.toContain(englishCopy);
     }
   });
+
+  it('keeps health trend charts Arabic', () => {
+    const sources = [
+      'src/components/StepsBarChart.tsx',
+      'src/components/WeightLineChart.tsx',
+    ]
+      .map(read)
+      .join('\n');
+
+    expect(sources).toContain("mobileT('charts.steps')");
+    expect(sources).toContain("mobileT('charts.weight')");
+    expect(sources).toContain('formatMobileNumber');
+
+    for (const englishCopy of [
+      'Press a bar for details',
+      'Failed to load step data',
+      'Press the line for details',
+      'Failed to load weight data',
+    ]) {
+      expect(sources).not.toContain(englishCopy);
+    }
+  });
 });

@@ -13,6 +13,16 @@ import ChartTouchOverlay, {
   createChartTouchLayoutSignature,
   type ChartTouchLayout,
 } from './ChartTouchOverlay';
+import {
+  formatDate,
+  formatMonthDayShort,
+  formatWeekdayShort,
+} from '../utils/dateUtils';
+import {
+  formatMobileNumber,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 type WeightLineChartProps = {
   data: WeightDataPoint[];
@@ -33,31 +43,25 @@ const font = matchFont({ fontFamily, fontSize: 11 });
 
 const formatXLabel7d = (day: string): string => {
   if (typeof day !== 'string') return '';
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'short' });
+  return formatWeekdayShort(day);
 };
 
 const formatXLabel30d90d = (day: string): string => {
   if (typeof day !== 'string') return '';
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return formatMonthDayShort(day);
 };
 
 const formatTooltipDate = (day: string): string => {
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatDate(day);
 };
 
-const formatTooltipWeight = (weight: number): string => weight.toFixed(2);
+const formatTooltipWeight = (weight: number): string =>
+  formatMobileNumber(weight, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
-const DEFAULT_TOOLTIP = 'Press the line for details';
+const DEFAULT_TOOLTIP = mobileT('charts.pressWeight');
 
 const WeightTooltip: React.FC<{ text: string }> = ({ text }) => (
   <View className="h-6 justify-center mt-3 mb-1">
@@ -123,9 +127,12 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
       }
 
       setTooltipText(
-        `${formatTooltipWeight(point.weight)} ${unit} — ${formatTooltipDate(
-          point.day,
-        )}`,
+        mobileT('charts.weightTooltip', {
+          weight: `${formatTooltipWeight(point.weight)} ${localizeServingUnit(
+            unit,
+          )}`,
+          date: formatTooltipDate(point.day),
+        }),
       );
     },
     [data, unit],
@@ -142,19 +149,21 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <Text className="text-text-primary text-lg font-semibold mb-2">
-        Weight
+        {mobileT('charts.weight')}
       </Text>
 
       <WeightTooltip text={tooltipText} />
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Loading...</Text>
+          <Text className="text-text-muted text-sm">
+            {mobileT('charts.loading')}
+          </Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            Failed to load weight data
+            {mobileT('charts.weightError')}
           </Text>
         </View>
       ) : (
@@ -175,6 +184,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
                 font,
                 tickCount: 5,
                 labelColor: textMuted,
+                formatYLabel: value => formatMobileNumber(value),
               },
             ]}
           >

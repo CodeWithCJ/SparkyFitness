@@ -137,6 +137,13 @@ export function formatMobileNumber(
   return new Intl.NumberFormat(MOBILE_LOCALE, options).format(value);
 }
 
+export function formatMobileCompactNumber(value: number): string {
+  return new Intl.NumberFormat(MOBILE_LOCALE, {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
 export function formatMobileCalories(calories: number): string {
   return `${formatMobileNumber(Math.round(calories), {
     maximumFractionDigits: 0,

@@ -1,7 +1,9 @@
 import {
   formatDate,
   formatDateLabel,
+  formatMonthDayShort,
   formatRelativeTime,
+  formatWeekdayShort,
   getTodayDate,
 } from '../../src/utils/dateUtils';
 
@@ -12,6 +14,8 @@ describe('Saudi Arabic date formatting', () => {
 
   it('formats calendar days in Arabic with the Gregorian calendar', () => {
     expect(formatDate('2026-07-10')).toBe('الجمعة، ١٠ يوليو');
+    expect(formatWeekdayShort('2026-07-10')).toBe('الجمعة');
+    expect(formatMonthDayShort('2026-07-10')).toBe('١٠ يوليو');
   });
 
   it('uses natural Arabic labels for today and yesterday', () => {

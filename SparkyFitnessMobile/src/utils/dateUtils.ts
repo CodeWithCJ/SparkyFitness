@@ -5,6 +5,11 @@ const relativeTimeFormatter = new Intl.RelativeTimeFormat(MOBILE_LOCALE, {
   numeric: 'always',
 });
 
+function parseCalendarDay(dateString: string): Date {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 /**
  * Converts a timestamp to a local date string (YYYY-MM-DD).
  * This ensures dates are assigned based on the user's local timezone,
@@ -56,14 +61,26 @@ export const normalizeDate = (dateString: string): string => dateString.split('T
 
 // Format a YYYY-MM-DD date for display ("Mon, Jan 6")
 export const formatDate = (dateString: string): string => {
-  const [year, month, day] = dateString.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString(SAUDI_GREGORIAN_LOCALE, {
+  return parseCalendarDay(dateString).toLocaleDateString(
+    SAUDI_GREGORIAN_LOCALE,
+    {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
-  });
+    },
+  );
 };
+
+export const formatWeekdayShort = (dateString: string): string =>
+  parseCalendarDay(dateString).toLocaleDateString(SAUDI_GREGORIAN_LOCALE, {
+    weekday: 'short',
+  });
+
+export const formatMonthDayShort = (dateString: string): string =>
+  parseCalendarDay(dateString).toLocaleDateString(SAUDI_GREGORIAN_LOCALE, {
+    month: 'short',
+    day: 'numeric',
+  });
 
 // Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
 export const formatDateLabel = (dateString: string): string => {

@@ -185,6 +185,17 @@ export const ar = {
   'nutrient.fat': 'الدهون',
   'nutrient.dietary_fiber': 'الألياف',
 
+  'charts.steps': 'الخطوات',
+  'charts.pressSteps': 'اضغط على عمود عشان تشوف التفاصيل',
+  'charts.stepsTooltip': '{{steps}} خطوة — {{date}}',
+  'charts.loading': 'جاري التحميل…',
+  'charts.stepsError': 'ما قدرنا نحمّل بيانات الخطوات',
+  'charts.stepsEmpty': 'ما فيه بيانات خطوات لهالفترة',
+  'charts.weight': 'الوزن',
+  'charts.pressWeight': 'اضغط على الخط عشان تشوف التفاصيل',
+  'charts.weightTooltip': '{{weight}} — {{date}}',
+  'charts.weightError': 'ما قدرنا نحمّل بيانات الوزن',
+
   'measurement.weight': 'الوزن',
   'measurement.bodyFat': 'دهون الجسم',
   'measurement.height': 'الطول',
