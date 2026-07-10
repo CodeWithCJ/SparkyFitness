@@ -72,6 +72,42 @@ export const ar = {
   'notifications.fastingGoalTitle': 'وصلت لهدف الصيام',
   'notifications.fastingGoalBody': 'أكملت هدفك، عساك على القوة!',
 
+  'appSettings.theme': 'المظهر',
+  'appSettings.themeLight': 'فاتح',
+  'appSettings.themeDark': 'داكن',
+  'appSettings.themeAmoled': 'أسود AMOLED',
+  'appSettings.themeSystem': 'حسب الجهاز',
+  'appSettings.liquidGlass': 'التنقل بالزجاج السائل',
+  'appSettings.liquidGlassDescription':
+    'استخدم شريط التبويب ورؤوس الشاشات بتصميم iOS 26.',
+  'appSettings.notifications': 'التنبيهات',
+  'appSettings.notificationsDescription':
+    'تنبيهات راحة التمرين وأهداف الصيام.',
+  'appSettings.haptics': 'الاستجابة اللمسية',
+  'appSettings.hapticsDescription':
+    'اهتزازات خفيفة للمؤقتات وتأكيد الإجراءات.',
+  'appSettings.cameraSound': 'صوت الكاميرا',
+  'appSettings.cameraSoundDescription': 'شغّل صوتًا عند التقاط الصور.',
+
+  'dashboardSettings.askSparky': 'اسأل سباركي',
+  'dashboardSettings.askSparkyDescription':
+    'إظهار اختصار اسأل سباركي في الرئيسية.',
+  'dashboardSettings.hydration': 'شرب الماء',
+  'dashboardSettings.hydrationDescription':
+    'إظهار بطاقة شرب الماء في الرئيسية.',
+  'dashboardSettings.fasting': 'الصيام',
+  'dashboardSettings.fastingDescription':
+    'إظهار بطاقة الصيام في الرئيسية.',
+  'dashboardSettings.customNutrients': 'العناصر الغذائية المخصصة',
+  'dashboardSettings.noCustomNutrients': 'ما عندك عناصر غذائية مخصصة',
+  'dashboardSettings.noCustomNutrientsDescription':
+    'أنشئ عناصر غذائية مخصصة من نسخة الويب، وبعدها اختر هنا وش يظهر في الرئيسية.',
+  'dashboardSettings.noServerTitle': 'ما فيه خادم مربوط',
+  'dashboardSettings.noServerDescription':
+    'اربط خادمك من الإعدادات عشان تختار العناصر الغذائية المخصصة.',
+  'dashboardSettings.updateFailed': 'ما قدرنا نحدّث الإعداد.',
+  'dashboardSettings.showCustomNutrient': 'إظهار {{nutrient}} في الرئيسية',
+
   'tabs.dashboard': 'الرئيسية',
   'tabs.diary': 'اليوميات',
   'tabs.add': 'إضافة',
