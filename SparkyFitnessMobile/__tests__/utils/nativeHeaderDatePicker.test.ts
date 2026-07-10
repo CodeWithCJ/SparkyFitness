@@ -30,7 +30,7 @@ describe('nativeHeaderDatePicker', () => {
       'date-picker-next',
     ]);
     expect(items.every((item) => item.tintColor === '#0A84FF')).toBe(true);
-    expect(items[1]?.label).toContain('Jan 15');
+    expect(items[1]?.label).toContain('١٥ يناير');
 
     items[0]?.onPress();
     items[1]?.onPress();

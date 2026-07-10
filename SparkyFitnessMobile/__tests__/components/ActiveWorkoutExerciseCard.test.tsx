@@ -285,7 +285,7 @@ describe('ActiveWorkoutExerciseCard', () => {
         completedSetIds: {},
       });
       expect(queryByText('1 sets planned')).toBeNull();
-      expect(getByText('1 sets · 600 kg')).toBeTruthy();
+      expect(getByText('1 sets · ٦٠٠ كجم')).toBeTruthy();
     });
 
     it('drives done/upcoming row states from completedSetIds and marks rows read-only', () => {
@@ -370,7 +370,7 @@ describe('ActiveWorkoutExerciseCard', () => {
     it('never labels a collapsed draft as planned', () => {
       const { getByText, queryByText } = renderCard(false, { mode: 'edit' });
       expect(queryByText('1 sets planned')).toBeNull();
-      expect(getByText('1 sets · 600 kg')).toBeTruthy();
+      expect(getByText('1 sets · ٦٠٠ كجم')).toBeTruthy();
     });
 
     describe('prefill', () => {
