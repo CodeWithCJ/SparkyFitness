@@ -27,7 +27,7 @@ import { formatDateLabel } from '../utils/dateUtils';
 import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { canReorderDraftExercises } from '../utils/workoutSession';
 import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -36,6 +36,7 @@ import type {
   CreatePresetSessionRequest,
   UpdatePresetSessionRequest,
 } from '@workspace/shared';
+import { formatMobileExerciseCount, mobileT } from '../localization';
 
 type Props = RootStackScreenProps<'WorkoutAdd'>;
 
@@ -203,7 +204,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
           ionicon: 'swap-vertical',
           role: 'secondary',
           onPress: () => exerciseListRef.current?.openReorder(),
-          accessibilityLabel: 'Reorder exercises',
+          accessibilityLabel: mobileT('workoutDetail.reorderExercises'),
           identifier: 'workout-add-reorder',
         }
       : null,
@@ -211,17 +212,26 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleFinish = useCallback(() => {
     if (!submission.canSave) {
-      Toast.show({ type: 'error', text1: 'Add an Exercise', text2: 'Add at least one exercise with a set before saving.' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('workoutDetail.needsExercise'),
+        text2: mobileT('workoutDetail.needsExerciseDescription'),
+      });
       return;
     }
 
-    const alertTitle = isEditMode ? 'Save Changes?' : 'Save Workout?';
-    const alertMessage = `Save "${submission.name}" with ${submission.exerciseCount} exercise(s)?`;
+    const alertTitle = isEditMode
+      ? mobileT('workoutAdd.saveChangesTitle')
+      : mobileT('workoutAdd.saveWorkoutTitle');
+    const alertMessage = mobileT('workoutAdd.saveConfirmation', {
+      name: submission.name,
+      exercises: formatMobileExerciseCount(submission.exerciseCount),
+    });
 
     Alert.alert(alertTitle, alertMessage, [
-      { text: 'Cancel', style: 'cancel' },
+      { text: mobileT('common.cancel'), style: 'cancel' },
       {
-        text: 'Save',
+        text: mobileT('common.save'),
         onPress: async () => {
           try {
             if (isEditMode && session) {
@@ -248,8 +258,12 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
               navigation.pop(popCount);
             }
           } catch (error) {
-            addLog(`Failed to save workout: ${error}`, 'ERROR');
-            Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
+            addLog(`${mobileT('workoutDetail.saveFailed')}: ${error}`, 'ERROR');
+            Toast.show({
+              type: 'error',
+              text1: mobileT('workoutDetail.saveFailed'),
+              text2: mobileT('common.retry'),
+            });
           }
         },
       },
@@ -292,7 +306,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         className="text-xl font-bold text-text-primary rounded-lg"
                         value={state.name}
                         onChangeText={setName}
-                        placeholder="Workout"
+                        placeholder={mobileT('workoutAdd.defaultName')}
                         returnKeyType="done"
                         autoFocus
                         selectTextOnFocus
@@ -306,9 +320,11 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         className="flex-row items-center self-start gap-2"
                         onPress={() => setIsNameEditing(true)}
                         activeOpacity={0.6}
+                        accessibilityRole="button"
+                        accessibilityLabel={mobileT('workoutAdd.editName')}
                       >
                         <Text className="text-xl font-bold text-text-primary">
-                          {state.name || 'Workout'}
+                          {state.name || mobileT('workoutAdd.defaultName')}
                         </Text>
                         <Icon name="pencil" size={20} color={textMuted} />
                       </TouchableOpacity>
@@ -321,8 +337,12 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   onPress={() => calendarSheetRef.current?.present()}
                   activeOpacity={0.7}
                   className="flex-row items-center mb-4"
+                  accessibilityRole="button"
+                  accessibilityLabel={mobileT('workoutDetail.chooseDate')}
                 >
-                  <Text className="text-text-secondary text-base">Date</Text>
+                  <Text className="text-text-secondary text-base">
+                    {mobileT('workoutAdd.date')}
+                  </Text>
                   <Text className="text-text-primary text-base font-medium mx-1.5">
                     {formatDateLabel(state.entryDate)}
                   </Text>
@@ -377,12 +397,13 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
               onPress={handleFinish}
               disabled={isPending || !hasDraftData}
               className="py-3"
+              accessibilityLabel={mobileT('common.save')}
             >
               {isPending ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
-                  {SAVE_LABEL}
+                  {mobileT('common.save')}
                 </Text>
               )}
             </Button>
