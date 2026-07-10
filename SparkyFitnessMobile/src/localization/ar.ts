@@ -341,6 +341,43 @@ export const ar = {
   'mealDetail.ingredient.few': '{{count}} مكوّنات',
   'mealDetail.ingredient.other': '{{count}} مكوّن',
 
+  'mealAdd.createMeal': 'إنشاء وجبة',
+  'mealAdd.editMeal': 'تعديل الوجبة',
+  'mealAdd.linkedMeal': 'وجبة مرتبطة',
+  'mealAdd.editLinkedMealWeb':
+    'تعديل مكوّنات الوجبة المرتبطة متاح حاليًا من نسخة الويب.',
+  'mealAdd.foodFallback': 'صنف غذائي',
+  'mealAdd.editIngredient': 'تعديل {{name}}',
+  'mealAdd.removeIngredient': 'حذف {{name}}',
+  'mealAdd.missingMealName': 'اسم الوجبة ناقص',
+  'mealAdd.enterMealName': 'اكتب اسمًا للوجبة.',
+  'mealAdd.invalidServingSize': 'حجم الحصة غير صحيح',
+  'mealAdd.servingSizePositive': 'لازم يكون حجم الحصة أكبر من صفر.',
+  'mealAdd.invalidTotalServings': 'عدد الحصص غير صحيح',
+  'mealAdd.totalServingsPositive': 'لازم يكون عدد الحصص أكبر من صفر.',
+  'mealAdd.invalidTotalAmount': 'الكمية الإجمالية غير صحيحة',
+  'mealAdd.totalAmountPositive': 'لازم تكون الكمية الإجمالية أكبر من صفر.',
+  'mealAdd.noIngredients': 'الوجبة بدون مكوّنات',
+  'mealAdd.addIngredientFirst':
+    'أضف صنفًا غذائيًا واحدًا على الأقل قبل الحفظ.',
+  'mealAdd.missingIngredientData': 'بيانات أحد المكوّنات ناقصة',
+  'mealAdd.readdIngredient':
+    'أحد الأصناف ما له حصة محفوظة. احذفه وأضفه من جديد.',
+  'mealAdd.mealName': 'اسم الوجبة *',
+  'mealAdd.mealNamePlaceholder': 'مثال: كبسة دجاج',
+  'mealAdd.description': 'الوصف (اختياري)',
+  'mealAdd.descriptionPlaceholder': 'ملاحظات عن الوجبة',
+  'mealAdd.totalServings': 'عدد الحصص *',
+  'mealAdd.totalAmount': 'الكمية الإجمالية ({{unit}}) *',
+  'mealAdd.unit': 'الوحدة',
+  'mealAdd.selectUnit': 'اختيار الوحدة',
+  'mealAdd.servingSize': 'حجم الحصة ({{unit}}) *',
+  'mealAdd.foods': 'مكوّنات الوجبة',
+  'mealAdd.addFood': 'إضافة صنف غذائي',
+  'mealAdd.mealTotal': 'إجمالي الوجبة',
+  'mealAdd.macros':
+    '{{protein}} بروتين · {{carbs}} كربوهيدرات · {{fat}} دهون',
+
   'mealTypeDetail.noServerTitle': 'ما فيه خادم مربوط',
   'mealTypeDetail.noServerDescription':
     'اربط خادمك من الإعدادات عشان تشوف تغذية وجبتك.',
