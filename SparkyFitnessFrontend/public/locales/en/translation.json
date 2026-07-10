@@ -1723,6 +1723,32 @@
   "foodNutrition": {
     "baseValues": "Base values per {{size}} {{unit}}"
   },
+  "foodEntryEditor": {
+    "title": "Edit food record",
+    "description": "Update the quantity, serving unit, or meal.",
+    "latestVariantNotice": "This record will use the latest available serving details for the food, which may differ from when it was logged.",
+    "loading": "Loading food details…",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "meal": "Meal",
+    "customUnit": "Custom unit…",
+    "unitName": "Unit name",
+    "unitNamePlaceholder": "For example: slice, piece, or scoop",
+    "conversionEquation": "1 {{from}} equals how many {{to}}?",
+    "manualConversionHelp": "{{from}} and {{to}} cannot be converted automatically. Enter the relationship between them.",
+    "conversionFactorPlaceholder": "For example: 1",
+    "invalidConversion": "Enter a valid unit name and conversion factor.",
+    "saveUnitError": "The new unit could not be saved. Try again.",
+    "aiEstimate": "Automated estimate ({{confidence}} confidence)",
+    "confidence": {
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    },
+    "cancel": "Cancel",
+    "save": "Save changes",
+    "saving": "Saving…"
+  },
   "checkIn": {
     "howAreYouFeelingToday": "How are you feeling today?",
     "neutral": "Neutral",

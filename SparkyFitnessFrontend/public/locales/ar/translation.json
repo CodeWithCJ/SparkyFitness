@@ -568,6 +568,32 @@
   "foodNutrition": {
     "baseValues": "القيم الأساسية لكل {{size}} {{unit}}"
   },
+  "foodEntryEditor": {
+    "title": "تعديل سجل الطعام",
+    "description": "عدّل الكمية أو وحدة الحصة أو الوجبة.",
+    "latestVariantNotice": "بنحدّث هذا السجل باستخدام أحدث بيانات الحصة المتاحة للطعام؛ وقد تختلف عن البيانات وقت تسجيله.",
+    "loading": "جارٍ تحميل بيانات الطعام…",
+    "quantity": "الكمية",
+    "unit": "الوحدة",
+    "meal": "الوجبة",
+    "customUnit": "وحدة مخصصة…",
+    "unitName": "اسم الوحدة",
+    "unitNamePlaceholder": "مثل: شريحة، حبة، مغرفة",
+    "conversionEquation": "1 {{from}} = كم {{to}}؟",
+    "manualConversionHelp": "ما قدرنا نحول تلقائيًا بين {{from}} و{{to}}. أدخل العلاقة الصحيحة بين الوحدتين.",
+    "conversionFactorPlaceholder": "مثل: 1",
+    "invalidConversion": "أدخل اسم وحدة ومعامل تحويل صحيحين.",
+    "saveUnitError": "تعذر حفظ الوحدة الجديدة. حاول مرة ثانية.",
+    "aiEstimate": "تقدير آلي (ثقة {{confidence}})",
+    "confidence": {
+      "high": "عالية",
+      "medium": "متوسطة",
+      "low": "منخفضة"
+    },
+    "cancel": "إلغاء",
+    "save": "حفظ التغييرات",
+    "saving": "جارٍ الحفظ…"
+  },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",
     "applicationVersion": "نسخة التطبيق: ",
