@@ -797,7 +797,10 @@ const prepareRuntimeForRequests = async () => {
 };
 
 export const ensureRuntimeReady = async () => {
-  runtimeReadyPromise ??= prepareRuntimeForRequests();
+  runtimeReadyPromise ??= prepareRuntimeForRequests().catch((error) => {
+    runtimeReadyPromise = null;
+    throw error;
+  });
   await runtimeReadyPromise;
 };
 
