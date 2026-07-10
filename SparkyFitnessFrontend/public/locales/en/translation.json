@@ -1716,6 +1716,9 @@
     "title": "Log meal “{{name}}”",
     "description": "Review the portion and ingredients before adding this meal to your diary."
   },
+  "foodNutrition": {
+    "baseValues": "Base values per {{size}} {{unit}}"
+  },
   "checkIn": {
     "howAreYouFeelingToday": "How are you feeling today?",
     "neutral": "Neutral",
