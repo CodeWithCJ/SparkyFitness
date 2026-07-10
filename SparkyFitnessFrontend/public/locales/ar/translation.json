@@ -75,6 +75,7 @@
   },
   "common": {
     "active": "فعّال",
+    "advanced": "خيارات إضافية",
     "add": "إضافة",
     "breakfast": "الفطور",
     "cancel": "إلغاء",
@@ -676,6 +677,23 @@
       "imageLabel": "صورة",
       "updateSuccess": "تم تحديث سجل التمرين بنجاح.",
       "updateError": "فشل تحديث سجل التمرين."
+    },
+    "logExerciseEntryDialog": {
+      "logExercise": "تسجيل تمرين: {{exerciseName}}",
+      "enterDetails": "أدخل تفاصيل تمرينك ليوم {{selectedDate}}.",
+      "addSet": "إضافة مجموعة",
+      "sessionNotes": "ملاحظات التمرين",
+      "notesPlaceholder": "اكتب ملاحظاتك عن هالتمرين…",
+      "caloriesBurnedOptional": "السعرات المحروقة ({{unit}}، اختياري)",
+      "caloriesAutoHint": "نحسبها تلقائيًا إذا تركتها فاضية",
+      "avgHeartRateLabel": "متوسط النبض (نبضة/دقيقة)",
+      "customActivityDetails": "تفاصيل إضافية للنشاط",
+      "uploadImage": "صورة التمرين",
+      "imagePreviewAlt": "معاينة صورة التمرين",
+      "clearImage": "إزالة صورة التمرين",
+      "cancel": "إلغاء",
+      "saveEntry": "حفظ التمرين",
+      "saving": "جارٍ حفظ التمرين…"
     },
     "activityDetailsEditor": {
       "fieldNameLabel": "إسم الحقل",

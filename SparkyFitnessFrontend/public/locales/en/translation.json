@@ -553,6 +553,23 @@
       "updateSuccess": "Exercise entry updated successfully.",
       "updateError": "Failed to update exercise entry."
     },
+    "logExerciseEntryDialog": {
+      "logExercise": "Log exercise: {{exerciseName}}",
+      "enterDetails": "Enter your exercise details for {{selectedDate}}.",
+      "addSet": "Add set",
+      "sessionNotes": "Exercise notes",
+      "notesPlaceholder": "Add notes about this exercise…",
+      "caloriesBurnedOptional": "Calories burned ({{unit}}, optional)",
+      "caloriesAutoHint": "Calculated automatically when left blank",
+      "avgHeartRateLabel": "Average heart rate (bpm)",
+      "customActivityDetails": "Additional activity details",
+      "uploadImage": "Exercise photo",
+      "imagePreviewAlt": "Exercise photo preview",
+      "clearImage": "Remove exercise photo",
+      "cancel": "Cancel",
+      "saveEntry": "Save exercise",
+      "saving": "Saving exercise…"
+    },
     "activityDetailsEditor": {
       "fieldNameLabel": "Field Name",
       "fieldNamePlaceholder": "e.g., 'Weather', 'Mood'",
@@ -1471,6 +1488,7 @@
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
     "active": "Active",
+    "advanced": "Advanced options",
     "pickADate": "Pick a date",
     "today": "Today",
     "previousDay": "Previous day",
