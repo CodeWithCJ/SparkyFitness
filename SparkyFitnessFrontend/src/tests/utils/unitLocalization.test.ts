@@ -9,7 +9,11 @@ describe('getLocalizedUnitLabel', () => {
     ['µg', '[units.microgram]'],
     ['mcg', '[units.microgram]'],
     ['kcal', '[units.kcal]'],
+    ['oz', '[units.ounce]'],
     ['fl oz', '[units.fluidOunce]'],
+    ['serving', '[units.serving]'],
+    ['tbsp', '[units.tablespoon]'],
+    ['piece', '[units.piece]'],
   ])('localizes the standard unit %s', (unit, expected) => {
     expect(getLocalizedUnitLabel(unit, t)).toBe(expected);
   });

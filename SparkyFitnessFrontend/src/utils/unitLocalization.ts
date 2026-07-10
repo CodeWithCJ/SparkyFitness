@@ -14,7 +14,7 @@ const STANDARD_UNIT_KEYS: Readonly<Record<string, string>> = {
   l: 'units.liter',
   liter: 'units.liter',
   litre: 'units.liter',
-  oz: 'units.fluidOunce',
+  oz: 'units.ounce',
   'fl oz': 'units.fluidOunce',
   kcal: 'units.kcal',
   kj: 'units.kJ',
@@ -40,6 +40,18 @@ const STANDARD_UNIT_KEYS: Readonly<Record<string, string>> = {
   years: 'units.year',
   bpm: 'units.bpm',
   '%': 'units.percent',
+  serving: 'units.serving',
+  servings: 'units.serving',
+  cup: 'units.cup',
+  cups: 'units.cup',
+  tbsp: 'units.tablespoon',
+  tablespoon: 'units.tablespoon',
+  tablespoons: 'units.tablespoon',
+  tsp: 'units.teaspoon',
+  teaspoon: 'units.teaspoon',
+  teaspoons: 'units.teaspoon',
+  piece: 'units.piece',
+  pieces: 'units.piece',
 };
 
 export const getLocalizedUnitLabel = (unit: string, t: TFunction): string => {
