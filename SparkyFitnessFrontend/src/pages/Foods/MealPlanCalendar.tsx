@@ -46,7 +46,7 @@ import { Badge } from '@/components/ui/badge';
 const MealPlanCalendar: React.FC = () => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
-  const { loggingLevel } = usePreferences();
+  const { loggingLevel, formatDate } = usePreferences();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<
     MealPlanTemplate | undefined
@@ -208,14 +208,17 @@ const MealPlanCalendar: React.FC = () => {
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
-            aria-label="Select all"
+            aria-label={t('mealPlanCalendar.selectAll', 'Select all plans')}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label={t('mealPlanCalendar.selectPlan', {
+              planName: row.original.plan_name,
+              defaultValue: 'Select {{planName}}',
+            })}
           />
         ),
         enableSorting: false,
@@ -246,10 +249,22 @@ const MealPlanCalendar: React.FC = () => {
           return (
             <Badge
               variant={template.is_active ? 'default' : 'secondary'}
-              className="font-normal text-[10px] cursor-pointer hover:opacity-80 transition-opacity"
+              className="cursor-pointer text-[10px] font-normal transition-opacity hover:opacity-80"
+              role="button"
+              tabIndex={0}
+              aria-label={t('mealPlanCalendar.togglePlanStatus', {
+                planName: template.plan_name,
+                defaultValue: 'Change status for {{planName}}',
+              })}
               onClick={(e) => {
                 e.stopPropagation();
                 handleTogglePlanActive(template.id!, !template.is_active);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  handleTogglePlanActive(template.id!, !template.is_active);
+                }
               }}
             >
               {template.is_active
@@ -267,11 +282,11 @@ const MealPlanCalendar: React.FC = () => {
           return (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarDays className="h-3 w-3" />
-              <span>{new Date(template.start_date).toLocaleDateString()}</span>
+              <span>{formatDate(template.start_date)}</span>
               <span>-</span>
               <span>
                 {template.end_date
-                  ? new Date(template.end_date).toLocaleDateString()
+                  ? formatDate(template.end_date)
                   : t('mealPlanCalendar.ongoingStatus', 'Indefinite')}
               </span>
             </div>
@@ -299,8 +314,13 @@ const MealPlanCalendar: React.FC = () => {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
+                <Button type="button" variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">
+                    {t('mealPlanCalendar.openPlanActions', {
+                      planName: template.plan_name,
+                      defaultValue: 'Open actions for {{planName}}',
+                    })}
+                  </span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -308,30 +328,34 @@ const MealPlanCalendar: React.FC = () => {
                 <DropdownMenuLabel>
                   {t('common.actions', 'Actions')}
                 </DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => handleEdit(template)}>
-                  <Edit className="mr-2 h-4 w-4" />
+                <DropdownMenuItem
+                  className="gap-2"
+                  onClick={() => handleEdit(template)}
+                >
+                  <Edit className="h-4 w-4" />
                   {t('common.edit', 'Edit')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  className="gap-2"
                   onClick={() =>
                     handleTogglePlanActive(template.id!, !template.is_active)
                   }
                 >
                   {template.is_active ? (
                     <>
-                      <X className="mr-2 h-4 w-4" />
+                      <X className="h-4 w-4" />
                       {t('mealPlanCalendar.deactivate', 'Deactivate')}
                     </>
                   ) : (
                     <>
-                      <CheckSquare className="mr-2 h-4 w-4" />
+                      <CheckSquare className="h-4 w-4" />
                       {t('mealPlanCalendar.activate', 'Activate')}
                     </>
                   )}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
+                  className="gap-2 text-destructive focus:text-destructive"
                   onClick={() => {
                     if (
                       window.confirm(
@@ -342,7 +366,7 @@ const MealPlanCalendar: React.FC = () => {
                     }
                   }}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="h-4 w-4" />
                   {t('common.delete', 'Delete')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -351,7 +375,7 @@ const MealPlanCalendar: React.FC = () => {
         },
       },
     ],
-    [t, handleTogglePlanActive, handleEdit, handleDelete]
+    [t, formatDate, handleTogglePlanActive, handleEdit, handleDelete]
   );
 
   return (
@@ -363,6 +387,7 @@ const MealPlanCalendar: React.FC = () => {
           </CardTitle>
           <div className="flex gap-2">
             <Button
+              type="button"
               variant="outline"
               size={isMobile ? 'icon' : 'default'}
               onClick={toggleEditMode}
@@ -390,12 +415,13 @@ const MealPlanCalendar: React.FC = () => {
               )}
             </Button>
             <Button
+              type="button"
               onClick={handleCreate}
               size={isMobile ? 'icon' : 'default'}
               className="shrink-0"
               title={t('mealPlanCalendar.createNewPlan')}
             >
-              <Plus className={isMobile ? 'h-5 w-5' : 'h-4 w-4 mr-2'} />
+              <Plus className={isMobile ? 'h-5 w-5' : 'h-4 w-4'} />
               {!isMobile && <span>{t('mealPlanCalendar.createNewPlan')}</span>}
             </Button>
           </div>
