@@ -788,12 +788,22 @@
     },
     "workoutPresetSelector": {
       "searchPlaceholder": "ابحث في قوالب التمرين…",
-      "recentPresetsTitle": "القوالب الأخيرة",
-      "noRecentPresets": "ما عندك قوالب مستخدمة مؤخرًا.",
-      "topPresetsTitle": "الأكثر استخدامًا",
+      "searchLabel": "البحث في قوالب التمرين",
+      "recentPresetsTitle": "أحدث القوالب",
+      "noRecentPresets": "ما عندك قوالب تمرين للحين.",
+      "topPresetsTitle": "قوالب إضافية",
       "noTopPresets": "ما عندك قوالب إضافية للحين.",
       "searchResultsTitle": "نتائج البحث",
-      "noMatchingPresets": "ما لقينا قالبًا يطابق بحثك."
+      "noMatchingPresets": "ما لقينا قالبًا يطابق بحثك.",
+      "exerciseCount": "{{count}} تمرين",
+      "exerciseCount_zero": "{{count}} تمارين",
+      "exerciseCount_one": "{{count}} تمرين",
+      "exerciseCount_two": "{{count}} تمرينين",
+      "exerciseCount_few": "{{count}} تمارين",
+      "exerciseCount_many": "{{count}} تمرينًا",
+      "exerciseCount_other": "{{count}} تمرين",
+      "templateBadge": "قالب تمرين",
+      "selectTemplate": "اختيار قالب {{templateName}}"
     },
     "editExerciseEntryDialog": {
       "setLabel": "المجموعة",

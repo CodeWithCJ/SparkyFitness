@@ -463,12 +463,22 @@
     },
     "workoutPresetSelector": {
       "searchPlaceholder": "Search your workout presets...",
+      "searchLabel": "Search workout templates",
       "recentPresetsTitle": "Recent Presets",
       "noRecentPresets": "No recent presets.",
-      "topPresetsTitle": "Top Presets",
+      "topPresetsTitle": "More templates",
       "noTopPresets": "No top presets.",
       "searchResultsTitle": "Search Results",
-      "noMatchingPresets": "No presets found matching your search."
+      "noMatchingPresets": "No presets found matching your search.",
+      "exerciseCount": "{{count}} exercises",
+      "exerciseCount_zero": "{{count}} exercises",
+      "exerciseCount_one": "{{count}} exercise",
+      "exerciseCount_two": "{{count}} exercises",
+      "exerciseCount_few": "{{count}} exercises",
+      "exerciseCount_many": "{{count}} exercises",
+      "exerciseCount_other": "{{count}} exercises",
+      "templateBadge": "Workout template",
+      "selectTemplate": "Select {{templateName}}"
     },
     "dailyProgress": {
       "dailyCalorieGoal": "Daily Calorie Goal",

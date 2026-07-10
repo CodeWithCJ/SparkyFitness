@@ -38,17 +38,24 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
   const topPresets = searchTerm === '' ? allPresets.slice(3, 6) : [];
 
   return (
-    <div className="flex flex-col h-full py-4 space-y-6">
+    <div className="flex h-full flex-col space-y-6 py-4">
       <div className="relative px-1">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search
+          className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+          aria-hidden="true"
+        />
         <Input
+          aria-label={t(
+            'exercise.workoutPresetSelector.searchLabel',
+            'Search workout templates'
+          )}
           placeholder={t(
             'exercise.workoutPresetSelector.searchPlaceholder',
             'Search your workout presets...'
           )}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-11 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 focus:ring-blue-500 rounded-xl h-11"
+          className="h-11 rounded-xl border-gray-200 bg-gray-50 ps-11 focus:ring-blue-500 dark:border-gray-800 dark:bg-gray-900"
         />
       </div>
 
@@ -67,18 +74,17 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
                 'No recent presets.'
               )}
             />
-            <PresetSection
-              title={t(
-                'exercise.workoutPresetSelector.topPresetsTitle',
-                'Top Presets'
-              )}
-              presets={topPresets}
-              onSelect={onPresetSelected}
-              emptyMessage={t(
-                'exercise.workoutPresetSelector.noTopPresets',
-                'No top presets.'
-              )}
-            />
+            {topPresets.length > 0 && (
+              <PresetSection
+                title={t(
+                  'exercise.workoutPresetSelector.topPresetsTitle',
+                  'More templates'
+                )}
+                presets={topPresets}
+                onSelect={onPresetSelected}
+                emptyMessage=""
+              />
+            )}
           </>
         ) : (
           <PresetSection
@@ -131,51 +137,69 @@ const PresetSelectionCard: React.FC<{
   preset: WorkoutPreset;
   onClick: () => void;
 }> = ({ preset, onClick }) => {
+  const { t } = useTranslation();
   const exerciseCount = preset.exercises?.length ?? 0;
 
   return (
-    <Card
+    <button
+      type="button"
       onClick={onClick}
-      className="group overflow-hidden border-0 shadow-sm bg-white dark:bg-gray-900 rounded-xl cursor-pointer hover:shadow-md hover:ring-1 hover:ring-blue-500/30 transition-all duration-200"
+      aria-label={t(
+        'exercise.workoutPresetSelector.selectTemplate',
+        'Select {{templateName}}',
+        { templateName: preset.name }
+      )}
+      className="group w-full rounded-xl text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
     >
-      <div className="flex">
-        <div className="w-1 flex-shrink-0 bg-gradient-to-b from-blue-500 to-indigo-600" />
+      <Card className="overflow-hidden rounded-xl border-0 bg-white shadow-sm transition-all duration-200 group-hover:shadow-md group-hover:ring-1 group-hover:ring-blue-500/30 dark:bg-gray-900">
+        <div className="flex">
+          <div className="w-1 flex-shrink-0 bg-gradient-to-b from-blue-500 to-indigo-600" />
 
-        <div className="flex-1 flex items-center justify-between p-4 gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-gray-900 dark:text-gray-50 text-sm leading-tight truncate">
-                {preset.name}
-              </span>
-              {exerciseCount > 0 && (
-                <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
-                  {exerciseCount}{' '}
-                  {exerciseCount === 1 ? 'Exercise' : 'Exercises'}
+          <div className="flex flex-1 items-center justify-between gap-4 p-4">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="truncate text-sm font-semibold leading-tight text-gray-900 dark:text-gray-50">
+                  {preset.name}
                 </span>
+                {exerciseCount > 0 && (
+                  <span className="flex-shrink-0 rounded-full border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-600 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    {t(
+                      'exercise.workoutPresetSelector.exerciseCount',
+                      '{{count}} exercise',
+                      { count: exerciseCount }
+                    )}
+                  </span>
+                )}
+              </div>
+
+              {preset.description && (
+                <p className="line-clamp-1 text-xs text-gray-500 dark:text-gray-400">
+                  {preset.description}
+                </p>
               )}
             </div>
 
-            {preset.description && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
-                {preset.description}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex flex-col items-end text-right">
-              <div className="flex items-center gap-1 text-gray-300 dark:text-gray-700">
-                <Layers className="w-3 h-3" />
-                <span className="text-[10px] font-medium uppercase tracking-wider">
-                  Preset
-                </span>
+            <div className="flex items-center gap-3">
+              <div className="hidden flex-col items-end text-end sm:flex">
+                <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500">
+                  <Layers className="h-3 w-3" aria-hidden="true" />
+                  <span className="text-[10px] font-medium uppercase tracking-wider">
+                    {t(
+                      'exercise.workoutPresetSelector.templateBadge',
+                      'Workout template'
+                    )}
+                  </span>
+                </div>
               </div>
+              <ChevronRight
+                className="h-4 w-4 text-gray-300 transition-colors group-hover:text-blue-500 rtl:rotate-180"
+                aria-hidden="true"
+              />
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </button>
   );
 };
 
