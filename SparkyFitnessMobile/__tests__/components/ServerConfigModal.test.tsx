@@ -57,8 +57,8 @@ const mockVerifyEmailOtp = verifyEmailOtp as jest.MockedFunction<typeof verifyEm
 const mockFetchAuthSettings = fetchAuthSettings as jest.MockedFunction<typeof fetchAuthSettings>;
 const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<typeof saveServerConfig>;
 
-const URL_PLACEHOLDER = 'https://your-server-url.com';
-const EMAIL_PLACEHOLDER = 'email@example.com';
+const URL_PLACEHOLDER = 'https://sparky.example.com';
+const EMAIL_PLACEHOLDER = 'name@example.com';
 
 /** Default settings: email sign-in enabled, no OIDC. */
 const emailAuthSettings: AuthSettings = {
@@ -87,11 +87,11 @@ async function waitForForm(result: ReturnType<typeof renderModal>) {
 
 /**
  * The auth options (tabs, email/password, Connect) are only rendered after the
- * server's auth settings are fetched. `Sign In` is the sign-in segment label,
+ * server's auth settings are fetched. The Arabic sign-in segment label
  * which renders exactly once whenever email auth is enabled.
  */
 async function waitForAuthReady(result: ReturnType<typeof renderModal>) {
-  await waitFor(() => expect(result.getByText('Sign In')).toBeTruthy(), {
+  await waitFor(() => expect(result.getByText('تسجيل الدخول')).toBeTruthy(), {
     timeout: 3000,
   });
 }
@@ -106,7 +106,7 @@ async function enterUrl(
 }
 
 function pressConnectButton(result: ReturnType<typeof renderModal>) {
-  fireEvent.press(result.getByText('Connect'));
+  fireEvent.press(result.getByText('اتصال'));
 }
 
 describe('ServerConfigModal', () => {
@@ -125,11 +125,11 @@ describe('ServerConfigModal', () => {
 
       expect(result.getByPlaceholderText(URL_PLACEHOLDER)).toBeTruthy();
       expect(result.getByPlaceholderText(EMAIL_PLACEHOLDER)).toBeTruthy();
-      expect(result.getByPlaceholderText('Password')).toBeTruthy();
-      expect(result.getByText('Sign In')).toBeTruthy();
-      expect(result.getByText('API Key')).toBeTruthy();
-      expect(result.getByText('Connect')).toBeTruthy();
-      expect(result.getByText('Cancel')).toBeTruthy();
+      expect(result.getByPlaceholderText('كلمة المرور')).toBeTruthy();
+      expect(result.getByText('تسجيل الدخول')).toBeTruthy();
+      expect(result.getByText('مفتاح API')).toBeTruthy();
+      expect(result.getByText('اتصال')).toBeTruthy();
+      expect(result.getByText('إلغاء')).toBeTruthy();
     });
 
     it('shows API key field when API Key tab is selected', async () => {
@@ -137,18 +137,18 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.press(result.getByText('API Key'));
+      fireEvent.press(result.getByText('مفتاح API'));
 
       expect(result.getByPlaceholderText('Uds3d8i...')).toBeTruthy();
       expect(result.queryByPlaceholderText(EMAIL_PLACEHOLDER)).toBeNull();
-      expect(result.queryByPlaceholderText('Password')).toBeNull();
+      expect(result.queryByPlaceholderText('كلمة المرور')).toBeNull();
     });
 
     it('shows Add Server title when no editing config', async () => {
       const result = renderModal();
       await waitForForm(result);
 
-      expect(result.getByText('Add Server')).toBeTruthy();
+      expect(result.getByText('إضافة خادم')).toBeTruthy();
     });
 
     it('shows Edit Server title when editing config', async () => {
@@ -162,7 +162,7 @@ describe('ServerConfigModal', () => {
       });
       await waitForForm(result);
 
-      expect(result.getByText('Edit Server')).toBeTruthy();
+      expect(result.getByText('تعديل الخادم')).toBeTruthy();
     });
 
     it('pre-fills URL and defaults to API Key tab when editing an API key config', async () => {
@@ -213,7 +213,7 @@ describe('ServerConfigModal', () => {
       const result = renderModal();
       await waitForForm(result);
 
-      expect(result.queryByText('Connect')).toBeNull();
+      expect(result.queryByText('اتصال')).toBeNull();
       expect(result.queryByPlaceholderText(EMAIL_PLACEHOLDER)).toBeNull();
       expect(mockLogin).not.toHaveBeenCalled();
     });
@@ -227,7 +227,7 @@ describe('ServerConfigModal', () => {
         pressConnectButton(result);
       });
 
-      expect(result.getByText('Please enter your email.')).toBeTruthy();
+      expect(result.getByText('اكتب بريدك الإلكتروني.')).toBeTruthy();
       expect(mockLogin).not.toHaveBeenCalled();
     });
 
@@ -245,7 +245,7 @@ describe('ServerConfigModal', () => {
         pressConnectButton(result);
       });
 
-      expect(result.getByText('Please enter your password.')).toBeTruthy();
+      expect(result.getByText('اكتب كلمة المرور.')).toBeTruthy();
       expect(mockLogin).not.toHaveBeenCalled();
     });
   });
@@ -267,7 +267,7 @@ describe('ServerConfigModal', () => {
         result.getByPlaceholderText(EMAIL_PLACEHOLDER),
         'user@example.com',
       );
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'password123');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'password123');
 
       await act(async () => {
         pressConnectButton(result);
@@ -300,7 +300,7 @@ describe('ServerConfigModal', () => {
       await enterUrl(result, 'https://my-server.com/');
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'pass');
 
       await act(async () => {
         pressConnectButton(result);
@@ -333,7 +333,7 @@ describe('ServerConfigModal', () => {
       await waitForAuthReady(result);
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'user@example.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'pass');
 
       await act(async () => {
         pressConnectButton(result);
@@ -360,13 +360,13 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'wrong');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'wrong');
 
       await act(async () => {
         pressConnectButton(result);
       });
 
-      expect(result.getByText('Invalid credentials')).toBeTruthy();
+      expect(result.getByText('البريد الإلكتروني أو كلمة المرور غير صحيحة.')).toBeTruthy();
     });
 
     it('displays generic error for non-LoginError exceptions', async () => {
@@ -377,14 +377,14 @@ describe('ServerConfigModal', () => {
       await enterUrl(result, 'https://server.com');
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'pass');
 
       await act(async () => {
         pressConnectButton(result);
       });
 
       expect(
-        result.getByText('Could not connect to server. Check the URL and try again.'),
+        result.getByText('ما قدرنا نتصل بالخادم. تأكد من الرابط وحاول مرة ثانية.'),
       ).toBeTruthy();
     });
   });
@@ -395,13 +395,13 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.press(result.getByText('API Key'));
+      fireEvent.press(result.getByText('مفتاح API'));
 
       await act(async () => {
         pressConnectButton(result);
       });
 
-      expect(result.getByText('Please enter an API key.')).toBeTruthy();
+      expect(result.getByText('اكتب مفتاح API.')).toBeTruthy();
     });
 
     it('tests connection and saves on success', async () => {
@@ -415,7 +415,7 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.press(result.getByText('API Key'));
+      fireEvent.press(result.getByText('مفتاح API'));
       fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'my-api-key');
 
       await act(async () => {
@@ -451,14 +451,14 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.press(result.getByText('API Key'));
+      fireEvent.press(result.getByText('مفتاح API'));
       fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'bad-key');
 
       await act(async () => {
         pressConnectButton(result);
       });
 
-      expect(result.getByText('Invalid API key. Please check and try again.')).toBeTruthy();
+      expect(result.getByText('مفتاح API غير صحيح. تأكد منه وحاول مرة ثانية.')).toBeTruthy();
       expect(mockSaveServerConfig).not.toHaveBeenCalled();
     });
 
@@ -469,7 +469,7 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.press(result.getByText('API Key'));
+      fireEvent.press(result.getByText('مفتاح API'));
       fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'my-key');
 
       await act(async () => {
@@ -477,7 +477,7 @@ describe('ServerConfigModal', () => {
       });
 
       expect(
-        result.getByText('Could not connect to server: Network error'),
+        result.getByText('ما قدرنا نتصل بالخادم باستخدام مفتاح API.'),
       ).toBeTruthy();
       expect(mockSaveServerConfig).not.toHaveBeenCalled();
     });
@@ -495,7 +495,7 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'user@test.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'pass');
 
       await act(async () => {
         pressConnectButton(result);
@@ -506,9 +506,9 @@ describe('ServerConfigModal', () => {
       const result = renderModal();
       await navigateToMfa(result);
 
-      expect(result.getByText('Two-Factor Authentication')).toBeTruthy();
+      expect(result.getByText('التحقق بخطوتين')).toBeTruthy();
       expect(
-        result.getByText('Enter the code from your authenticator app.'),
+        result.getByText('اكتب الرمز الظاهر في تطبيق المصادقة.'),
       ).toBeTruthy();
     });
 
@@ -522,10 +522,10 @@ describe('ServerConfigModal', () => {
       const result = renderModal({ onSuccess });
       await navigateToMfa(result);
 
-      fireEvent.changeText(result.getByPlaceholderText('000000'), '123456');
+      fireEvent.changeText(result.getByPlaceholderText('٠٠٠٠٠٠'), '١٢٣٤٥٦');
 
       await act(async () => {
-        fireEvent.press(result.getByText('Verify'));
+        fireEvent.press(result.getByText('تحقق'));
       });
 
       expect(mockVerifyTotp).toHaveBeenCalledWith('https://my-server.com', '123456');
@@ -545,8 +545,8 @@ describe('ServerConfigModal', () => {
         mfaEmailEnabled: true,
       });
 
-      expect(result.getByText('Authenticator App')).toBeTruthy();
-      expect(result.getByText('Email Code')).toBeTruthy();
+      expect(result.getByText('تطبيق المصادقة')).toBeTruthy();
+      expect(result.getByText('رمز البريد')).toBeTruthy();
     });
 
     it('handles email OTP flow: send code then verify', async () => {
@@ -564,27 +564,27 @@ describe('ServerConfigModal', () => {
       });
 
       await act(async () => {
-        fireEvent.press(result.getByText('Email Code'));
+        fireEvent.press(result.getByText('رمز البريد'));
       });
 
       expect(
         result.getByText(
-          'Tap the button below to receive a verification code by email.',
+          'اضغط الزر تحت عشان نرسل رمز التحقق لبريدك.',
         ),
       ).toBeTruthy();
 
       await act(async () => {
-        fireEvent.press(result.getByText('Send Code'));
+        fireEvent.press(result.getByText('إرسال الرمز'));
       });
 
       expect(mockSendEmailOtp).toHaveBeenCalled();
-      expect(result.getByText('Enter the code sent to your email.')).toBeTruthy();
-      expect(result.getByText('Resend Code')).toBeTruthy();
+      expect(result.getByText('اكتب الرمز اللي أرسلناه لبريدك.')).toBeTruthy();
+      expect(result.getByText('إعادة إرسال الرمز')).toBeTruthy();
 
-      fireEvent.changeText(result.getByPlaceholderText('000000'), '654321');
+      fireEvent.changeText(result.getByPlaceholderText('٠٠٠٠٠٠'), '٦٥٤٣٢١');
 
       await act(async () => {
-        fireEvent.press(result.getByText('Verify'));
+        fireEvent.press(result.getByText('تحقق'));
       });
 
       expect(mockVerifyEmailOtp).toHaveBeenCalledWith(
@@ -598,14 +598,14 @@ describe('ServerConfigModal', () => {
       const result = renderModal();
       await navigateToMfa(result);
 
-      expect(result.getByText('Two-Factor Authentication')).toBeTruthy();
+      expect(result.getByText('التحقق بخطوتين')).toBeTruthy();
 
       await act(async () => {
-        fireEvent.press(result.getByText('Back'));
+        fireEvent.press(result.getByText('رجوع'));
       });
 
       expect(mockClearAuthCookies).toHaveBeenCalled();
-      expect(result.getByText('Add Server')).toBeTruthy();
+      expect(result.getByText('إضافة خادم')).toBeTruthy();
     });
   });
 
@@ -621,7 +621,7 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'pass');
 
       await act(async () => {
         pressConnectButton(result);
@@ -636,14 +636,14 @@ describe('ServerConfigModal', () => {
       const result = renderModal();
       await setupMfaForm(result);
 
-      fireEvent.changeText(result.getByPlaceholderText('000000'), '000000');
+      fireEvent.changeText(result.getByPlaceholderText('٠٠٠٠٠٠'), '٠٠٠٠٠٠');
 
       await act(async () => {
-        fireEvent.press(result.getByText('Verify'));
+        fireEvent.press(result.getByText('تحقق'));
       });
 
       expect(
-        result.getByText('Invalid verification code. Please try again.'),
+        result.getByText('رمز التحقق غير صحيح. حاول مرة ثانية.'),
       ).toBeTruthy();
     });
 
@@ -653,14 +653,14 @@ describe('ServerConfigModal', () => {
       const result = renderModal();
       await setupMfaForm(result);
 
-      fireEvent.changeText(result.getByPlaceholderText('000000'), '111111');
+      fireEvent.changeText(result.getByPlaceholderText('٠٠٠٠٠٠'), '١١١١١١');
 
       await act(async () => {
-        fireEvent.press(result.getByText('Verify'));
+        fireEvent.press(result.getByText('تحقق'));
       });
 
       expect(
-        result.getByText('Too many attempts. Please wait a moment and try again.'),
+        result.getByText('المحاولات كثيرة. انتظر شوي وحاول مرة ثانية.'),
       ).toBeTruthy();
     });
 
@@ -672,10 +672,10 @@ describe('ServerConfigModal', () => {
       const result = renderModal();
       await setupMfaForm(result);
 
-      fireEvent.changeText(result.getByPlaceholderText('000000'), '222222');
+      fireEvent.changeText(result.getByPlaceholderText('٠٠٠٠٠٠'), '٢٢٢٢٢٢');
 
       await act(async () => {
-        fireEvent.press(result.getByText('Verify'));
+        fireEvent.press(result.getByText('تحقق'));
       });
 
       await waitFor(() => {
@@ -689,14 +689,14 @@ describe('ServerConfigModal', () => {
       const result = renderModal();
       await setupMfaForm(result);
 
-      fireEvent.changeText(result.getByPlaceholderText('000000'), '333333');
+      fireEvent.changeText(result.getByPlaceholderText('٠٠٠٠٠٠'), '٣٣٣٣٣٣');
 
       await act(async () => {
-        fireEvent.press(result.getByText('Verify'));
+        fireEvent.press(result.getByText('تحقق'));
       });
 
       expect(
-        result.getByText('Verification failed. Please try again.'),
+        result.getByText('ما قدرنا نتحقق من الرمز. حاول مرة ثانية.'),
       ).toBeTruthy();
     });
 
@@ -715,17 +715,17 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'pass');
 
       await act(async () => {
         pressConnectButton(result);
       });
 
       await act(async () => {
-        fireEvent.press(result.getByText('Send Code'));
+        fireEvent.press(result.getByText('إرسال الرمز'));
       });
 
-      expect(result.getByText('Email send failed')).toBeTruthy();
+      expect(result.getByText('ما قدرنا نرسل رمز البريد. حاول مرة ثانية.')).toBeTruthy();
     });
   });
 
@@ -735,7 +735,7 @@ describe('ServerConfigModal', () => {
       const result = renderModal({ onDismiss });
       await waitForForm(result);
 
-      fireEvent.press(result.getByText('Cancel'));
+      fireEvent.press(result.getByText('إلغاء'));
 
       expect(onDismiss).toHaveBeenCalled();
     });
@@ -750,13 +750,13 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'wrong');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'wrong');
 
       await act(async () => {
         pressConnectButton(result);
       });
 
-      expect(result.getByText('Bad')).toBeTruthy();
+      expect(result.getByText('البريد الإلكتروني أو كلمة المرور غير صحيحة.')).toBeTruthy();
 
       // Hide and re-show modal
       result.rerender(<ServerConfigModal {...defaultProps} visible={false} />);
@@ -785,8 +785,8 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await waitForAuthReady(result);
 
-      expect(result.getByText('Save')).toBeTruthy();
-      expect(result.getByText('Connect')).toBeTruthy();
+      expect(result.getByText('حفظ')).toBeTruthy();
+      expect(result.getByText('اتصال')).toBeTruthy();
     });
 
     it('does not show Save button when adding a new config', async () => {
@@ -794,8 +794,8 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      expect(result.queryByText('Save')).toBeNull();
-      expect(result.getByText('Connect')).toBeTruthy();
+      expect(result.queryByText('حفظ')).toBeNull();
+      expect(result.getByText('اتصال')).toBeTruthy();
     });
 
     it('saves URL and proxy header changes without auth validation', async () => {
@@ -810,7 +810,7 @@ describe('ServerConfigModal', () => {
       );
 
       await act(async () => {
-        fireEvent.press(result.getByText('Save'));
+        fireEvent.press(result.getByText('حفظ'));
       });
 
       expect(mockLogin).not.toHaveBeenCalled();
@@ -836,10 +836,10 @@ describe('ServerConfigModal', () => {
       );
 
       await act(async () => {
-        fireEvent.press(result.getByText('Save'));
+        fireEvent.press(result.getByText('حفظ'));
       });
 
-      expect(result.getByText('Enter a valid Frontend URL')).toBeTruthy();
+      expect(result.getByText('أدخل رابطًا صحيحًا لسباركي فتنس.')).toBeTruthy();
       expect(mockSaveServerConfig).not.toHaveBeenCalled();
     });
 
@@ -850,11 +850,11 @@ describe('ServerConfigModal', () => {
       await waitForAuthReady(result);
 
       // Switch to API Key tab and enter a key
-      fireEvent.press(result.getByText('API Key'));
+      fireEvent.press(result.getByText('مفتاح API'));
       fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'new-api-key');
 
       await act(async () => {
-        fireEvent.press(result.getByText('Save'));
+        fireEvent.press(result.getByText('حفظ'));
       });
 
       expect(mockSaveServerConfig).toHaveBeenCalledWith(
@@ -875,10 +875,10 @@ describe('ServerConfigModal', () => {
       await waitForAuthReady(result);
 
       // Switch to API Key tab but leave key empty
-      fireEvent.press(result.getByText('API Key'));
+      fireEvent.press(result.getByText('مفتاح API'));
 
       await act(async () => {
-        fireEvent.press(result.getByText('Save'));
+        fireEvent.press(result.getByText('حفظ'));
       });
 
       expect(mockSaveServerConfig).toHaveBeenCalledWith(
@@ -914,7 +914,7 @@ describe('ServerConfigModal', () => {
       await waitForAuthReady(result);
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'user@example.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'pass');
 
       await act(async () => {
         pressConnectButton(result);
@@ -941,14 +941,14 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+      fireEvent.changeText(result.getByPlaceholderText('كلمة المرور'), 'pass');
 
       await act(async () => {
         pressConnectButton(result);
       });
 
       expect(
-        result.getByText('Enter the code from your authenticator app.'),
+        result.getByText('اكتب الرمز الظاهر في تطبيق المصادقة.'),
       ).toBeTruthy();
     });
   });

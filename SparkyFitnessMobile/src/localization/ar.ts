@@ -756,6 +756,26 @@ export const ar = {
   'serverSettings.openWebFailed': 'ما قدرنا نفتح لوحة الويب',
   'serverSettings.tryAgain': 'جرّب مرة ثانية.',
 
+  'serverConfig.editServer': 'تعديل الخادم',
+  'serverConfig.hidePassword': 'إخفاء كلمة المرور',
+  'serverConfig.showPassword': 'إظهار كلمة المرور',
+  'serverConfig.hideApiKey': 'إخفاء مفتاح API',
+  'serverConfig.showApiKey': 'إظهار مفتاح API',
+  'serverConfig.advancedOptions': 'خيارات متقدمة',
+  'serverConfig.proxyHeaders': 'ترويسات الوكيل',
+  'serverConfig.proxyHeadersHelp':
+    'تحتاجها بعض إعدادات الوكيل العكسي قبل الوصول للخادم.',
+  'serverConfig.addHeader': 'إضافة ترويسة',
+  'serverConfig.removeHeader': 'حذف الترويسة رقم {{number}}',
+  'serverConfig.headerNamePlaceholder': 'الاسم، مثل X-Access-Token',
+  'serverConfig.headerValuePlaceholder': 'القيمة',
+  'serverConfig.hideHeaderValue': 'إخفاء قيمة الترويسة',
+  'serverConfig.showHeaderValue': 'إظهار قيمة الترويسة',
+  'serverConfig.reservedHeaderTitle': 'ترويسة محجوزة',
+  'serverConfig.reservedHeaderDescription':
+    'قد تتعارض «{{name}}» مع ترويسة يضيفها التطبيق. تبي تكمل؟',
+  'serverConfig.saveFailed': 'ما قدرنا نحفظ إعدادات الخادم. حاول مرة ثانية.',
+
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
   'exerciseCategory.flexibility': 'مرونة',
