@@ -16,7 +16,11 @@ jest.mock('react-i18next', () => ({
       defaultValue?: string,
       options?: Record<string, string | number>
     ) => {
-      const template = defaultValue || key;
+      const translations: Record<string, string> = {
+        'units.kilogram': 'kg',
+        'units.pound': 'lb',
+      };
+      const template = translations[key] ?? defaultValue ?? key;
       return Object.entries(options ?? {}).reduce(
         (value, [name, replacement]) =>
           value.replaceAll(`{{${name}}}`, String(replacement)),
@@ -122,10 +126,10 @@ describe('WorkoutPlaybackPage', () => {
     fireEvent.click(screen.getAllByLabelText('Complete set 1')[0]!);
 
     expect(
-      screen.getAllByRole('button', { name: 'Pause' }).length
+      screen.getAllByRole('button', { name: 'Pause rest' }).length
     ).toBeGreaterThan(0);
-    expect(screen.getByLabelText('Pause')).toBeInTheDocument();
-    expect(screen.getByText('640')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pause rest')).toBeInTheDocument();
+    expect(screen.getByText('640 kg')).toBeInTheDocument();
   });
 
   it('allows editing set values and adding/removing sets', () => {
@@ -220,12 +224,12 @@ describe('WorkoutPlaybackPage', () => {
     render(<WorkoutPlaybackPage />);
 
     fireEvent.click(screen.getAllByLabelText('Complete set 1')[0]!);
-    expect(screen.getByLabelText('Pause')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pause rest')).toBeInTheDocument();
 
     fireEvent.click(
       screen.getAllByLabelText('Select set 2 for Bench Press')[0]!
     );
 
-    expect(screen.getByLabelText('Pause')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pause rest')).toBeInTheDocument();
   });
 });
