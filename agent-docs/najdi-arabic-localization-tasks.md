@@ -53,13 +53,15 @@ _Branch: `feature/najdi-arabic`_
   - Acceptance: each domain reaches complete reviewed coverage before moving to the next.
   - Verify: domain tests, catalog audit, and Arabic browser walkthrough.
   - Files: maximum five per commit.
-  - Progress: the diary shell, standard meal names, meal cards, nutrition/energy summaries, hydration, day navigation, exercise summaries, live workout playback, workout templates, weekly workout plans, and exercise add/edit flows are localized and source-synced. Remaining diary child flows and live browser review stay open.
+  - Progress: the diary shell, standard meal names, meal cards, nutrition/energy summaries, hydration, day navigation, exercise summaries, live workout playback, workout templates, weekly workout plans, exercise add/edit flows, measurement check-in, mood, sleep, recent health activity, and fasting are localized and source-synced. Check-in photos remain open because that file has unrelated in-progress edits; remaining diary child flows and live browser review also stay open.
 
 ### Checkpoint B
 
 - [x] Web validation and the 18-test auth/onboarding regression pack pass (40 tests).
 - [x] Diary checkpoint passes full validation plus 12 focused suites (26 tests); Arabic coverage is 984/2819 messages (34.9%) with no interpolation mismatch reported.
 - [x] Workout checkpoint passes full validation and the focused playback/template/plan regression packs; Arabic coverage is 1270/3046 messages (41.7%) with no interpolation mismatch reported.
+- [x] Check-in and fasting checkpoint passes 10 focused suites (27 tests), targeted lint, typecheck, and catalog checks; Arabic coverage is 1549/3217 messages (48.2%) with no interpolation mismatch reported.
+- [x] Fasting guidance uses neutral time ranges and Saudi Ministry of Health safety guidance instead of unsupported metabolic-state claims: [diabetes and Ramadan](https://www.moh.gov.sa/healthawareness/educationalcontent/diseases/diabetic/pages/diabetes-and-ramadan-.aspx), [fasting and dehydration](https://www.moh.gov.sa/awarenessplateform/SeasonalAndFestivalHealth/Educational-Content/Pages/Dehydration.aspx).
 - [ ] Arabic catalog has full key and placeholder parity with English.
 - [ ] No raw keys, unwanted English, or forced slang in critical web journeys.
 - [ ] Browser QA passes at 320, 768, 1024, and 1440 px.
@@ -70,7 +72,7 @@ _Branch: `feature/najdi-arabic`_
   - Acceptance: dialogs, selects, inputs, toasts, tables, pagination, and navigation work in both directions.
   - Verify: primitive tests and visual browser checks.
   - Files: maximum five primitives per slice.
-  - Progress: dialog primitives, numeric/unit inputs, diary hydration controls, day navigation, meal actions, live workout controls, workout-template pickers, and exercise record controls use logical positioning; the remaining shared primitives and visual check are open.
+  - Progress: dialog primitives, numeric/unit inputs, diary hydration controls, day navigation, meal actions, live workout controls, workout-template pickers, exercise record controls, check-in forms/actions, sleep timelines, and fasting widgets use logical positioning; the remaining shared primitives and visual check are open.
 
 - [ ] Task 10: Audit directional icons, charts, timelines, and media/exercise playback.
   - Acceptance: only semantically directional controls mirror; data meaning is unchanged.
@@ -84,7 +86,7 @@ _Branch: `feature/najdi-arabic`_
 - [ ] Task 12: Polish weak empty, loading, error, and confirmation states encountered in localized journeys.
   - Acceptance: each state explains status and next action in the correct register without adding unrelated features.
   - Verify: component tests and five-axis review.
-  - Progress: auth, onboarding, app loading, diary loading/empty states, hydration controls, workout playback, template creation/selection/management, weekly plans, and exercise loading/add/edit states have been refined with accessible names and tested Arabic copy.
+  - Progress: auth, onboarding, app loading, diary loading/empty states, hydration controls, workout playback, template creation/selection/management, weekly plans, exercise loading/add/edit states, check-in measurements, mood controls, recent activity, sleep entry deletion, and fasting safety/time validation have been refined with accessible names and tested Arabic copy.
 
 ## Phase 4: Mobile Localization and RTL
 
