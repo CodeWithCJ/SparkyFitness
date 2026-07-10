@@ -6,6 +6,7 @@ import {
   HeartPulse,
   Link2Off,
   LoaderCircle,
+  Info,
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
@@ -35,10 +36,12 @@ import {
 import { HUAWEI_HEALTH_DATA_SCOPES } from '@/constants/integrationConstants';
 import SyncRangeDialog from './SyncRangeDialog';
 import { formatIntegrationDateTime } from '@/utils/integrationSync';
+import { useDeploymentCapabilities } from '@/hooks/useDeploymentCapabilities';
 
 const HuaweiHealthSettings = () => {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const { data: deploymentCapabilities } = useDeploymentCapabilities();
   const isOwnerProfile = Boolean(user && user.id === user.activeUserId);
   const statusQuery = useHuaweiHealthStatus(isOwnerProfile);
   const connectMutation = useConnectHuaweiHealthMutation();
@@ -87,7 +90,7 @@ const HuaweiHealthSettings = () => {
               <p className="max-w-2xl text-sm text-muted-foreground">
                 {t(
                   'huaweiHealth.subtitle',
-                  'Link your health account and keep SparkyFitness updated automatically.'
+                  'Link your health account and sync the data you approve into SparkyFitness.'
                 )}
               </p>
             </div>
@@ -182,6 +185,24 @@ const HuaweiHealthSettings = () => {
                 )}
               </p>
             </div>
+
+            {deploymentCapabilities?.backgroundJobsEnabled === false && (
+              <Alert className="border-blue-500/40 bg-blue-500/5">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertTitle>
+                  {t(
+                    'huaweiHealth.manualOnlyTitle',
+                    'Manual sync on this deployment'
+                  )}
+                </AlertTitle>
+                <AlertDescription>
+                  {t(
+                    'huaweiHealth.manualOnlyDescription',
+                    'Background jobs are disabled here. After connecting, use Sync now whenever you want to import the latest approved data.'
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
 
             {statusQuery.isLoading && (
               <div

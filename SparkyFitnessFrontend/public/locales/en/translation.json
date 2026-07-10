@@ -392,7 +392,7 @@
   },
   "huaweiHealth": {
     "title": "HUAWEI Health",
-    "subtitle": "Link your health account and keep SparkyFitness updated automatically.",
+    "subtitle": "Link your health account and sync the data you approve into SparkyFitness.",
     "cloudExplanation": "Linking happens in your browser through Huawei cloud. Your watch first syncs with the HUAWEI Health app on your phone, then SparkyFitness securely imports the data you approve.",
     "status": {
       "loading": "Checking the connection status...",
@@ -408,6 +408,8 @@
     "flowTitle": "How web linking works",
     "dataTitle": "What data can be imported?",
     "dataDescription": "Steps, calories burned, distance, heart rate, oxygen saturation, weight, sleep, and workouts that you approve for sharing.",
+    "manualOnlyTitle": "Manual sync on this deployment",
+    "manualOnlyDescription": "Background jobs are disabled here. After connecting, use Sync now whenever you want to import the latest approved data.",
     "privacyTitle": "Your privacy stays in your control",
     "privacyDescription": "Imported data is used only for your SparkyFitness health history and reports. Access tokens are encrypted, and you can cancel authorization at any time without deleting the original data in Huawei.",
     "connect": "Connect account",

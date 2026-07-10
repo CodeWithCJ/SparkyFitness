@@ -29,6 +29,7 @@ let mockStatus: {
   isError: false,
 };
 let mockSyncResult: unknown;
+let mockBackgroundJobsEnabled = false;
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -56,6 +57,12 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: mockUser }),
+}));
+
+jest.mock('@/hooks/useDeploymentCapabilities', () => ({
+  useDeploymentCapabilities: () => ({
+    data: { backgroundJobsEnabled: mockBackgroundJobsEnabled },
+  }),
 }));
 
 jest.mock('@/hooks/Integrations/useHuaweiHealth', () => ({
@@ -99,6 +106,7 @@ describe('HuaweiHealthSettings', () => {
       isError: false,
     };
     mockSyncResult = undefined;
+    mockBackgroundJobsEnabled = false;
   });
 
   it('explains the cloud flow and lets the profile owner connect', () => {
@@ -114,6 +122,9 @@ describe('HuaweiHealthSettings', () => {
     expect(
       screen.getByRole('button', { name: 'Connect account' })
     ).toBeEnabled();
+    expect(
+      screen.getByText('Manual sync on this deployment')
+    ).toBeInTheDocument();
   });
 
   it('keeps health linking owner-only while a family profile is active', () => {
