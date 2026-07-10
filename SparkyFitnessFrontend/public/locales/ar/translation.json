@@ -131,6 +131,16 @@
   },
   "workout": {
     "notesPlaceholder": "أضف ملاحظة لهالمجموعة…",
+    "exerciseItem": {
+      "fallbackName": "تمرين",
+      "dragExercise": "تحريك تمرين {{exerciseName}}",
+      "collapseExercise": "طي تمرين {{exerciseName}}",
+      "expandExercise": "عرض تمرين {{exerciseName}}",
+      "copyExercise": "نسخ تمرين {{exerciseName}}",
+      "removeExercise": "حذف تمرين {{exerciseName}}",
+      "addSet": "إضافة مجموعة",
+      "presetNotice": "هذي خطة تمرين جاهزة. عدّل تمارينها من قسم الخطط الجاهزة."
+    },
     "setType": {
       "Normal": "عادية",
       "Working Set": "مجموعة عمل",

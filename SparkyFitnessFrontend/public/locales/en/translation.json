@@ -1596,6 +1596,16 @@
   },
   "workout": {
     "notesPlaceholder": "Add a note for this set…",
+    "exerciseItem": {
+      "fallbackName": "Workout",
+      "dragExercise": "Move {{exerciseName}}",
+      "collapseExercise": "Collapse {{exerciseName}}",
+      "expandExercise": "Expand {{exerciseName}}",
+      "copyExercise": "Copy {{exerciseName}}",
+      "removeExercise": "Remove {{exerciseName}}",
+      "addSet": "Add set",
+      "presetNotice": "This is a workout preset. Edit its exercises from the workout preset manager."
+    },
     "setType": {
       "Normal": "Normal",
       "Working Set": "Working set",
