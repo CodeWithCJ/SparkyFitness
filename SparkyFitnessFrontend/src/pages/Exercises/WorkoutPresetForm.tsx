@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,17 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
               ? t('workoutPresetForm.editTitle', 'Edit Workout Preset')
               : t('workoutPresetForm.createTitle', 'Create Workout Preset')}
           </DialogTitle>
+          <DialogDescription>
+            {initialPreset
+              ? t(
+                  'workoutPresetForm.editDescription',
+                  'Update this workout template and its exercises.'
+                )
+              : t(
+                  'workoutPresetForm.createDescription',
+                  'Save a reusable group of exercises and sets for quick workouts.'
+                )}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6 py-2 px-2">
@@ -86,18 +98,38 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  placeholder={t(
+                    'workoutPresetForm.namePlaceholder',
+                    'For example: Upper-body workout'
+                  )}
                   required
                 />
               </div>
-              <div className="flex items-center gap-2 pt-0 md:pt-5">
+              <div className="flex items-start gap-2 pt-0 md:pt-5">
                 <Switch
                   id="isPublic"
+                  className="mt-0.5"
                   checked={isPublic}
                   onCheckedChange={setIsPublic}
+                  aria-describedby="workout-preset-public-help"
                 />
-                <Label htmlFor="isPublic" className="text-sm font-medium">
-                  {t('workoutPresetForm.shareWithPublicLabel', 'Public Preset')}
-                </Label>
+                <div className="space-y-0.5">
+                  <Label htmlFor="isPublic" className="text-sm font-medium">
+                    {t(
+                      'workoutPresetForm.shareWithPublicLabel',
+                      'Share template with the community'
+                    )}
+                  </Label>
+                  <p
+                    id="workout-preset-public-help"
+                    className="max-w-md text-xs text-muted-foreground"
+                  >
+                    {t(
+                      'workoutPresetForm.publicSharingHelp',
+                      'Other people can view and use it without changing your copy.'
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
             <div className="space-y-1">
@@ -109,12 +141,16 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                 className="resize-none h-16"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder={t(
+                  'workoutPresetForm.descriptionPlaceholder',
+                  'What does this template include?'
+                )}
               />
             </div>
           </div>
 
           <div>
-            <div className="flex justify-between items-center mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-lg font-semibold">
                 {t('workoutPresetForm.exercisesLabel', 'Exercises')}
               </h3>
@@ -123,7 +159,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                 size="sm"
                 onClick={() => setIsAddExerciseDialogOpen(true)}
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" aria-hidden="true" />
                 {t('workoutPresetForm.addExerciseButton', 'Add Exercise')}
               </Button>
             </div>
@@ -134,6 +170,15 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
               onExerciseAdded={handleAddExercise}
               mode="preset"
             />
+
+            {exercises.length === 0 && (
+              <p className="rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+                {t(
+                  'workoutPresetForm.emptyExercises',
+                  'Add the first exercise to this template.'
+                )}
+              </p>
+            )}
 
             <DndContext
               sensors={sensors}
@@ -182,10 +227,10 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button onClick={handleSubmit}>
+          <Button type="button" onClick={handleSubmit}>
             {initialPreset
               ? t('common.saveChanges', 'Save Changes')
               : t('workoutPresetForm.createPresetButton', 'Create Preset')}
