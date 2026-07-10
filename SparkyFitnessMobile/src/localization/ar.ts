@@ -79,6 +79,20 @@ export const ar = {
   'exerciseCategory.sports': 'رياضة',
   'exerciseCategory.other': 'أخرى',
 
+  'settings.server': 'الخادم',
+  'settings.addServer': 'اضغط لإضافة خادم',
+  'settings.lastSynced': 'آخر مزامنة {{time}}',
+  'settings.serverAccessibilityConnected':
+    'إعدادات الخادم. الاتصال شغال.',
+  'settings.serverAccessibilityFailed':
+    'إعدادات الخادم. تعذر الاتصال.',
+  'settings.serverAccessibilityMissing':
+    'إعدادات الخادم. ما فيه خادم مربوط.',
+  'settings.shareDiagnostic': 'مشاركة تقرير التشخيص',
+  'settings.diagnosticDescription':
+    'يصدّر تقريرًا محليًا عن إصدار التطبيق وحالة المزامنة والسجل التقني. ما يشمل بياناتك الصحية أو أصنافك الغذائية، ولا يرسل أي شيء تلقائيًا.',
+  'settings.shareFailed': 'ما قدرنا نجهّز التقرير. حاول مرة ثانية.',
+
   'screens.dashboard': 'الرئيسية',
   'screens.diary': 'اليوميات',
   'screens.library': 'المكتبة',
