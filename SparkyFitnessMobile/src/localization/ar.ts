@@ -9,6 +9,7 @@ export const ar = {
   'common.error': 'صار خطأ',
   'common.goToSettings': 'الذهاب للإعدادات',
   'common.loading': 'جاري التحميل…',
+  'common.later': 'لاحقًا',
   'common.next': 'التالي',
   'common.notAvailable': 'غير متاح',
   'common.retry': 'حاول مرة ثانية',
@@ -532,6 +533,73 @@ export const ar = {
   'foodScan.flashlightOff': 'تشغيل الفلاش',
   'foodScan.captureLabel': 'التقاط صورة الملصق الغذائي',
   'foodScan.captureMeal': 'التقاط صورة الوجبة',
+
+  'onboarding.appName': 'سباركي فتنس',
+  'onboarding.tagline': 'تابع صحتك ولياقتك على خادمك الخاص',
+  'onboarding.serverUrl': 'رابط سباركي فتنس',
+  'onboarding.serverUrlPlaceholder': 'https://sparky.example.com',
+  'onboarding.pasteUrl': 'لصق الرابط من الحافظة',
+  'onboarding.enterValidUrl': 'أدخل رابطًا صحيحًا لسباركي فتنس.',
+  'onboarding.serverUnreachable':
+    'ما قدرنا نوصل للخادم. تأكد من الرابط وحاول مرة ثانية.',
+  'onboarding.learnMore': 'وش يقدم سباركي فتنس؟',
+  'onboarding.learnMoreTracking':
+    'يجمع لك سباركي فتنس تسجيل الأكل والتمارين والبيانات الصحية في مكان واحد.',
+  'onboarding.learnMorePrivacy':
+    'ويشتغل على خادمك الخاص عشان تبقى بياناتك تحت تحكمك.',
+  'onboarding.signIn': 'تسجيل الدخول',
+  'onboarding.sso': 'دخول موحّد',
+  'onboarding.passkey': 'مفتاح مرور',
+  'onboarding.apiKey': 'مفتاح API',
+  'onboarding.connectTitle': 'الاتصال بسباركي فتنس',
+  'onboarding.email': 'البريد الإلكتروني',
+  'onboarding.password': 'كلمة المرور',
+  'onboarding.orSignInWith': 'أو سجّل عن طريق',
+  'onboarding.signInWithProvider': 'الدخول عن طريق {{provider}}',
+  'onboarding.signInWithPasskey': 'الدخول بمفتاح المرور',
+  'onboarding.noSignInMethods':
+    'ما فيه طريقة دخول عادية مفعّلة على هالخادم. استخدم مفتاح API أو تواصل مع مسؤول الخادم.',
+  'onboarding.pasteApiKey': 'لصق مفتاح API من الحافظة',
+  'onboarding.connect': 'اتصال',
+  'onboarding.mfaTitle': 'التحقق بخطوتين',
+  'onboarding.emailRequired': 'اكتب بريدك الإلكتروني.',
+  'onboarding.passwordRequired': 'اكتب كلمة المرور.',
+  'onboarding.apiKeyRequired': 'اكتب مفتاح API.',
+  'onboarding.invalidCredentials':
+    'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+  'onboarding.signInFailed':
+    'ما قدرنا نتصل بالخادم. تأكد من الرابط وحاول مرة ثانية.',
+  'onboarding.oidcFailed': 'ما قدرنا نسجّل دخولك عن طريق مزود الهوية.',
+  'onboarding.passkeyFailed': 'ما قدرنا نسجّل دخولك بمفتاح المرور.',
+  'onboarding.invalidApiKey': 'مفتاح API غير صحيح. تأكد منه وحاول مرة ثانية.',
+  'onboarding.connectionFailedStatus': 'الخادم رفض الاتصال (الرمز {{status}}).',
+  'onboarding.apiConnectionFailed':
+    'ما قدرنا نتصل بالخادم باستخدام مفتاح API.',
+  'onboarding.verificationCodeRequired': 'اكتب رمز التحقق.',
+  'onboarding.tooManyAttempts':
+    'المحاولات كثيرة. انتظر شوي وحاول مرة ثانية.',
+  'onboarding.invalidVerificationCode':
+    'رمز التحقق غير صحيح. حاول مرة ثانية.',
+  'onboarding.sessionExpired':
+    'انتهت جلسة الدخول. سجّل دخولك من جديد.',
+  'onboarding.verificationFailed': 'ما قدرنا نتحقق من الرمز. حاول مرة ثانية.',
+  'onboarding.sendEmailCodeFailed':
+    'ما قدرنا نرسل رمز البريد. حاول مرة ثانية.',
+
+  'mfa.authenticatorApp': 'تطبيق المصادقة',
+  'mfa.emailCode': 'رمز البريد',
+  'mfa.authenticatorInstructions': 'اكتب الرمز الظاهر في تطبيق المصادقة.',
+  'mfa.emailSentInstructions': 'اكتب الرمز اللي أرسلناه لبريدك.',
+  'mfa.emailSendInstructions':
+    'اضغط الزر تحت عشان نرسل رمز التحقق لبريدك.',
+  'mfa.sendCode': 'إرسال الرمز',
+  'mfa.codePlaceholder': '٠٠٠٠٠٠',
+  'mfa.verify': 'تحقق',
+  'mfa.resendCode': 'إعادة إرسال الرمز',
+  'mfa.useApiKey': 'استخدام مفتاح API بدلًا منه',
+
+  'server.httpsRequired':
+    'لازم تستخدم HTTPS عشان نحمي مفاتيح المرور والكاميرا ومزامنة البيانات الصحية وفق متطلبات {{healthPolicy}}.',
 
   'mealTypeDetail.noServerTitle': 'ما فيه خادم مربوط',
   'mealTypeDetail.noServerDescription':

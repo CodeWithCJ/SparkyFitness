@@ -69,24 +69,24 @@ describe('OnboardingScreen', () => {
     test('renders welcome content and URL input', () => {
       const { getByText, getByPlaceholderText } = renderScreen();
 
-      expect(getByText('SparkyFitness')).toBeTruthy();
-      expect(getByText('Your self-hosted fitness tracker')).toBeTruthy();
-      expect(getByPlaceholderText('https://your-sparky-app.com')).toBeTruthy();
-      expect(getByText('Next')).toBeTruthy();
-      expect(getByText('Later')).toBeTruthy();
+      expect(getByText('سباركي فتنس')).toBeTruthy();
+      expect(getByText('تابع صحتك ولياقتك على خادمك الخاص')).toBeTruthy();
+      expect(getByPlaceholderText('https://sparky.example.com')).toBeTruthy();
+      expect(getByText('التالي')).toBeTruthy();
+      expect(getByText('لاحقًا')).toBeTruthy();
     });
 
     test('learn more section toggles on press', () => {
       const { getByText, queryByText } = renderScreen();
 
       expect(
-        queryByText(/SparkyFitness helps you track/),
+        queryByText(/يجمع لك سباركي فتنس/),
       ).toBeNull();
 
-      fireEvent.press(getByText('Learn more about SparkyFitness'));
+      fireEvent.press(getByText('وش يقدم سباركي فتنس؟'));
 
       expect(
-        getByText(/SparkyFitness helps you track/),
+        getByText(/يجمع لك سباركي فتنس/),
       ).toBeTruthy();
     });
 
@@ -94,10 +94,10 @@ describe('OnboardingScreen', () => {
       const { getByText } = renderScreen();
 
       await act(async () => {
-        fireEvent.press(getByText('Next'));
+        fireEvent.press(getByText('التالي'));
       });
 
-      expect(getByText(/Enter a valid Frontend URL/)).toBeTruthy();
+      expect(getByText(/أدخل رابطًا صحيحًا لسباركي فتنس/)).toBeTruthy();
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
@@ -107,17 +107,17 @@ describe('OnboardingScreen', () => {
       const { getByText, getByPlaceholderText } = renderScreen();
 
       fireEvent.changeText(
-        getByPlaceholderText('https://your-sparky-app.com'),
+        getByPlaceholderText('https://sparky.example.com'),
         'https://example.com',
       );
 
       await act(async () => {
-        fireEvent.press(getByText('Next'));
+        fireEvent.press(getByText('التالي'));
       });
 
       await waitFor(() => {
         expect(
-          getByText('Could not reach server. Check the URL and try again.'),
+          getByText('ما قدرنا نوصل للخادم. تأكد من الرابط وحاول مرة ثانية.'),
         ).toBeTruthy();
       });
     });
@@ -128,16 +128,16 @@ describe('OnboardingScreen', () => {
       const { getByText, getByPlaceholderText } = renderScreen();
 
       fireEvent.changeText(
-        getByPlaceholderText('https://your-sparky-app.com'),
+        getByPlaceholderText('https://sparky.example.com'),
         'https://example.com',
       );
 
       await act(async () => {
-        fireEvent.press(getByText('Next'));
+        fireEvent.press(getByText('التالي'));
       });
 
       await waitFor(() => {
-        expect(getByText('Connect to SparkyFitness')).toBeTruthy();
+        expect(getByText('الاتصال بسباركي فتنس')).toBeTruthy();
         expect(getByText('https://example.com')).toBeTruthy();
       });
     });
@@ -146,7 +146,7 @@ describe('OnboardingScreen', () => {
       const { getByText } = renderScreen();
 
       await act(async () => {
-        fireEvent.press(getByText('Later'));
+        fireEvent.press(getByText('لاحقًا'));
       });
 
       expect(mockReplace).toHaveBeenCalledWith('Tabs', { screen: 'Settings' });
@@ -160,16 +160,16 @@ describe('OnboardingScreen', () => {
       mockFetch.mockResolvedValueOnce({ ok: true });
 
       fireEvent.changeText(
-        result.getByPlaceholderText('https://your-sparky-app.com'),
+        result.getByPlaceholderText('https://sparky.example.com'),
         'https://example.com',
       );
 
       await act(async () => {
-        fireEvent.press(result.getByText('Next'));
+        fireEvent.press(result.getByText('التالي'));
       });
 
       await waitFor(() => {
-        expect(result.getByText('Connect to SparkyFitness')).toBeTruthy();
+        expect(result.getByText('الاتصال بسباركي فتنس')).toBeTruthy();
       });
     };
 
@@ -177,10 +177,10 @@ describe('OnboardingScreen', () => {
       const result = renderScreen();
       await goToPage2(result);
 
-      expect(result.getByText('Sign In')).toBeTruthy();
-      expect(result.getByText('API Key')).toBeTruthy();
-      expect(result.getByText('Connect')).toBeTruthy();
-      expect(result.getByText('Back')).toBeTruthy();
+      expect(result.getByText('تسجيل الدخول')).toBeTruthy();
+      expect(result.getByText('مفتاح API')).toBeTruthy();
+      expect(result.getByText('اتصال')).toBeTruthy();
+      expect(result.getByText('رجوع')).toBeTruthy();
     });
 
     test('Back returns to page 1 with URL preserved', async () => {
@@ -188,12 +188,12 @@ describe('OnboardingScreen', () => {
       await goToPage2(result);
 
       await act(async () => {
-        fireEvent.press(result.getByText('Back'));
+        fireEvent.press(result.getByText('رجوع'));
       });
 
       // Should be back on page 1 with URL preserved
       expect(
-        result.getByPlaceholderText('https://your-sparky-app.com').props.value,
+        result.getByPlaceholderText('https://sparky.example.com').props.value,
       ).toBe('https://example.com');
     });
 
@@ -202,7 +202,7 @@ describe('OnboardingScreen', () => {
       await goToPage2(result);
 
       await act(async () => {
-        fireEvent.press(result.getByText('Later'));
+        fireEvent.press(result.getByText('لاحقًا'));
       });
 
       expect(mockReplace).toHaveBeenCalledWith('Tabs', { screen: 'Settings' });
@@ -219,7 +219,7 @@ describe('OnboardingScreen', () => {
       await goToPage2(result);
 
       // Switch to API Key tab
-      fireEvent.press(result.getByText('API Key'));
+      fireEvent.press(result.getByText('مفتاح API'));
 
       // Enter API key
       fireEvent.changeText(
@@ -234,7 +234,7 @@ describe('OnboardingScreen', () => {
       });
 
       await act(async () => {
-        fireEvent.press(result.getByText('Connect'));
+        fireEvent.press(result.getByText('اتصال'));
       });
 
       await waitFor(() => {
@@ -265,12 +265,12 @@ describe('OnboardingScreen', () => {
         'user@example.com',
       );
       fireEvent.changeText(
-        result.getByPlaceholderText('Password'),
+        result.getByPlaceholderText('كلمة المرور'),
         'password123',
       );
 
       await act(async () => {
-        fireEvent.press(result.getByText('Connect'));
+        fireEvent.press(result.getByText('اتصال'));
       });
 
       await waitFor(() => {
@@ -301,18 +301,18 @@ describe('OnboardingScreen', () => {
         'user@example.com',
       );
       fireEvent.changeText(
-        result.getByPlaceholderText('Password'),
+        result.getByPlaceholderText('كلمة المرور'),
         'wrong-password',
       );
 
       await act(async () => {
-        fireEvent.press(result.getByText('Connect'));
+        fireEvent.press(result.getByText('اتصال'));
       });
 
       await waitFor(() => {
         expect(
           result.getByText(
-            'Could not connect to server. Check the URL and try again.',
+            'ما قدرنا نتصل بالخادم. تأكد من الرابط وحاول مرة ثانية.',
           ),
         ).toBeTruthy();
       });
@@ -327,10 +327,10 @@ describe('OnboardingScreen', () => {
 
       // Try connecting with empty fields
       await act(async () => {
-        fireEvent.press(result.getByText('Connect'));
+        fireEvent.press(result.getByText('اتصال'));
       });
 
-      expect(result.getByText('Please enter your email.')).toBeTruthy();
+      expect(result.getByText('اكتب بريدك الإلكتروني.')).toBeTruthy();
     });
   });
 });
