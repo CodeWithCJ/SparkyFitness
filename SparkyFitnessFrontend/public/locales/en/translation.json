@@ -1489,6 +1489,8 @@
     "loadingAccount": "Checking your account…",
     "loadingPage": "Opening your page…",
     "calculating": "Calculating…",
+    "create": "Create",
+    "creating": "Creating…",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
     "active": "Active",
@@ -1669,6 +1671,17 @@
     "editDatabaseTitle": "Edit food data",
     "editDatabaseDescription": "Edit this food's nutrition information in your database.",
     "editDatabaseUnavailable": "Food detail editing is temporarily unavailable while the data structure is being updated."
+  },
+  "mealCreation": {
+    "convertToMeal": "Save as a meal",
+    "enterDetails": "Name the meal and add a description so it is easy to find later.",
+    "defaultMealName": "{{mealType}} — {{date}}",
+    "mealName": "Meal name",
+    "mealNamePlaceholder": "For example: Workday breakfast",
+    "description": "Description",
+    "descriptionPlaceholder": "A short description (optional)",
+    "makePublic": "Share this meal publicly",
+    "publicHelp": "When enabled, other app users can discover this meal."
   },
   "checkIn": {
     "howAreYouFeelingToday": "How are you feeling today?",

@@ -110,6 +110,8 @@
     "loadingAccount": "نتحقق من حسابك…",
     "loadingPage": "نفتح صفحتك…",
     "calculating": "جارٍ الحساب…",
+    "create": "إنشاء",
+    "creating": "جارٍ الإنشاء…",
     "snacks": "الوجبات الخفيفة",
     "sunday": "الأحد",
     "thursday": "الخميس",
@@ -515,6 +517,17 @@
     "editDatabaseTitle": "تعديل بيانات الطعام",
     "editDatabaseDescription": "عدّل القيم الغذائية لهذا الطعام في قاعدة بياناتك.",
     "editDatabaseUnavailable": "تعديل تفاصيل الطعام غير متاح مؤقتًا بسبب تحديث بنية البيانات."
+  },
+  "mealCreation": {
+    "convertToMeal": "حفظها كوجبة",
+    "enterDetails": "سمّ الوجبة، وأضف وصفًا يساعدك تلقاها بعدين.",
+    "defaultMealName": "{{mealType}} — {{date}}",
+    "mealName": "اسم الوجبة",
+    "mealNamePlaceholder": "مثل: فطور الدوام",
+    "description": "الوصف",
+    "descriptionPlaceholder": "وصف مختصر للوجبة (اختياري)",
+    "makePublic": "مشاركة الوجبة علنًا",
+    "publicHelp": "إذا فعلتها، يقدر مستخدمو التطبيق يشوفون الوجبة."
   },
   "aboutDialog": {
     "description1": "SparkyFitness: مبني للعائلات، مدعوم بالذكاء الإصطناعي، تابع الأكلات، والرياضة، والماء، والصحة — مع بعض.",
