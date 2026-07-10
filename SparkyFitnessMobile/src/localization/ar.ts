@@ -485,6 +485,11 @@ export const ar = {
   'foodPhoto.itemConfidence.high': 'مرجّح',
   'foodPhoto.itemConfidence.medium': 'محتمل',
   'foodPhoto.itemConfidence.low': 'غير مؤكّد',
+  'foodPhoto.logEntry': 'تسجيل الصنف',
+  'foodPhoto.estimateSaved': 'تم حفظ التقدير',
+  'foodPhoto.selectMealType': 'اختر نوع الوجبة',
+  'foodPhoto.invalidServings': 'عدد الحصص غير صحيح',
+  'foodPhoto.servingsPositive': 'لازم يكون عدد الحصص رقمًا أكبر من صفر.',
 
   'mealTypeDetail.noServerTitle': 'ما فيه خادم مربوط',
   'mealTypeDetail.noServerDescription':
