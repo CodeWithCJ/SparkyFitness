@@ -65,7 +65,15 @@ const queryClient = new QueryClient({
       // friendly message. Previously the meta string would always win,
       // hiding 401/429/500 detail from the user (e.g. Garmin auth, MFA,
       // rate-limit reasons all collapsed to "Failed to connect to Garmin.").
-      const errDetail = err instanceof Error && err.message ? err.message : '';
+      const errDetail =
+        err instanceof Error &&
+        err.message &&
+        !(
+          'code' in err &&
+          typeof (err as Error & { code?: unknown }).code === 'string'
+        )
+          ? err.message
+          : '';
       const description =
         resolvedErrorMessage && errDetail && errDetail !== resolvedErrorMessage
           ? `${resolvedErrorMessage} — ${errDetail}`

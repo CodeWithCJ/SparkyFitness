@@ -91,6 +91,9 @@ const FitbitCallback = lazyWithChunkRecovery(
 const GoogleHealthCallback = lazyWithChunkRecovery(
   () => import('@/pages/Integrations/GoogleHealthCallback')
 );
+const HuaweiHealthCallback = lazyWithChunkRecovery(
+  () => import('@/pages/Integrations/HuaweiHealthCallback')
+);
 const PolarCallback = lazyWithChunkRecovery(
   () => import('@/pages/Integrations/PolarCallback')
 );
@@ -300,6 +303,11 @@ const router = createBrowserRouter([
       {
         path: '/googlehealth/callback',
         Component: GoogleHealthCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/huaweihealth/callback',
+        Component: HuaweiHealthCallback,
         ErrorBoundary: RootErrorBoundary,
       },
       {
