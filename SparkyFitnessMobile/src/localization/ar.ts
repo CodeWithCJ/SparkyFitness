@@ -1,4 +1,5 @@
 export const ar = {
+  'common.back': 'رجوع',
   'common.cancel': 'إلغاء',
   'common.close': 'إغلاق',
   'common.continue': 'متابعة',
