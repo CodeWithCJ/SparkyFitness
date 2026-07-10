@@ -114,7 +114,7 @@ describe('WorkoutPresetDetailScreen', () => {
     mockUseStartLiveWorkout.mockReturnValue({ startLiveWorkout, isStarting: false });
   });
 
-  it('starts a live workout with the preset-built payload on Start workout', () => {
+  it('starts a live workout with the preset-built payload', () => {
     const preset = buildPreset({
       exercises: [
         {
@@ -128,7 +128,7 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    fireEvent.press(screen.getByText('Start workout'));
+    fireEvent.press(screen.getByText('ابدأ التمرين'));
 
     expect(startLiveWorkout).toHaveBeenCalledWith({
       name: 'Push Day',
@@ -137,11 +137,11 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(navigation.navigate).not.toHaveBeenCalled();
   });
 
-  it('navigates to WorkoutAdd with the preset and popCount=2 on Log past workout', async () => {
+  it('navigates to WorkoutAdd with the preset and popCount=2 when logging a past workout', async () => {
     const preset = buildPreset();
     const screen = renderScreen(preset);
 
-    fireEvent.press(screen.getByText('Log past workout'));
+    fireEvent.press(screen.getByText('تسجيل تمرين سابق'));
     await waitFor(() => {
       expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd', {
         preset,
@@ -178,18 +178,18 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(buildPreset());
 
-    fireEvent.press(screen.getByText('Log past workout'));
+    fireEvent.press(screen.getByText('تسجيل تمرين سابق'));
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(
-        'Draft in Progress',
+        'عندك مسودة',
         expect.any(String),
         expect.any(Array),
       );
     });
 
     const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
-    buttons.find((button) => button.text === 'Resume Draft')?.onPress?.();
+    buttons.find((button) => button.text === 'متابعة المسودة')?.onPress?.();
     expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd');
   });
 
@@ -213,7 +213,7 @@ describe('WorkoutPresetDetailScreen', () => {
       expect.objectContaining({ title: 'Push Day' }),
     );
     expect(screen.getByText('Chest, shoulders, triceps')).toBeTruthy();
-    expect(screen.getByText('1 exercise')).toBeTruthy();
+    expect(screen.getByText('تمرين واحد')).toBeTruthy();
     expect(screen.getByText('Bench Press')).toBeTruthy();
   });
 
