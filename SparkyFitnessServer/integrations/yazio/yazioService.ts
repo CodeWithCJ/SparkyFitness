@@ -584,8 +584,8 @@ async function searchRawYazioProducts(
   const params = new URLSearchParams({
     query,
     sex: 'male',
-    countries: (options.countries ?? ['DE', 'AT', 'CH', 'US']).join(','),
-    locales: (options.locales ?? ['de_DE', 'en_US']).join(','),
+    countries: (options.countries ?? ['DE', 'AT', 'CH', 'US', "FR"]).join(','),
+    locales: (options.locales ?? ['de_DE', 'en_US', "fr_FR"]).join(','),
   });
 
   const data = await yazioFetch<YazioProductSearchResult[]>(
