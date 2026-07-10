@@ -62,13 +62,10 @@ const HuaweiHealthSettings = () => {
     syncMutation.isPending ||
     disconnectMutation.isPending;
 
-  const connect = async () => {
-    const { authUrl } = await connectMutation.mutateAsync();
-    window.location.assign(authUrl);
-  };
-
-  const sync = async (startDate: string, endDate: string) => {
-    await syncMutation.mutateAsync({ startDate, endDate });
+  const connect = () => {
+    connectMutation.mutate(undefined, {
+      onSuccess: ({ authUrl }) => window.location.assign(authUrl),
+    });
   };
 
   const lastSyncLabel = status?.lastSyncAt
@@ -306,7 +303,7 @@ const HuaweiHealthSettings = () => {
                   <>
                     <Button
                       onClick={() => setIsSyncDialogOpen(true)}
-                      disabled={isBusy}
+                      disabled={isBusy || !status.available}
                     >
                       <RefreshCw
                         className={`me-2 h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`}
@@ -343,8 +340,7 @@ const HuaweiHealthSettings = () => {
                             {t('huaweiHealth.cancel', 'Cancel')}
                           </AlertDialogCancel>
                           <AlertDialogAction
-                            aria-label="Confirm disconnect"
-                            onClick={() => disconnectMutation.mutateAsync()}
+                            onClick={() => disconnectMutation.mutate()}
                           >
                             {t('huaweiHealth.disconnectConfirm', 'Disconnect')}
                           </AlertDialogAction>
@@ -354,7 +350,7 @@ const HuaweiHealthSettings = () => {
                   </>
                 ) : (
                   <Button
-                    onClick={() => void connect()}
+                    onClick={connect}
                     disabled={isBusy || !status?.available}
                   >
                     {connectMutation.isPending && (
@@ -374,7 +370,9 @@ const HuaweiHealthSettings = () => {
       <SyncRangeDialog
         isOpen={isSyncDialogOpen}
         onClose={() => setIsSyncDialogOpen(false)}
-        onSync={(startDate, endDate) => void sync(startDate, endDate)}
+        onSync={(startDate, endDate) =>
+          syncMutation.mutate({ startDate, endDate })
+        }
         providerType="huaweihealth"
         maxDays={31}
       />

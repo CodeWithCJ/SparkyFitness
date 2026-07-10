@@ -17,14 +17,31 @@ async function updateOAuthState(
 ): Promise<boolean> {
   const client = await getClient(userId, authenticatedUserId);
   try {
-    const result = await client.query(
-      `UPDATE external_data_providers
-       SET oauth_state = $3, updated_at = NOW()
-       WHERE user_id = $1 AND provider_type = $2 AND is_public = FALSE
-       RETURNING id`,
-      [userId, PROVIDER_TYPE, stateRecord]
-    );
-    return (result.rowCount ?? 0) > 0;
+    try {
+      const result = await client.query(
+        `UPDATE external_data_providers
+         SET oauth_state = $3, provider_name = $4, updated_at = NOW()
+         WHERE user_id = $1 AND provider_type = $2 AND is_public = FALSE
+         RETURNING id`,
+        [userId, PROVIDER_TYPE, stateRecord, PROVIDER_NAME]
+      );
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === '23505'
+      ) {
+        throw new HuaweiHealthError(
+          'HUAWEI_PROVIDER_CONFLICT',
+          409,
+          'A different provider already uses the reserved HUAWEI Health name.',
+          { cause: error }
+        );
+      }
+      throw error;
+    }
   } finally {
     client.release();
   }
@@ -45,7 +62,7 @@ async function storeOAuthState(
          oauth_state, created_at, updated_at
        )
        VALUES ($1, $2, $3, FALSE, FALSE, $4, NOW(), NOW())
-       ON CONFLICT (user_id, provider_name) DO NOTHING
+       ON CONFLICT DO NOTHING
        RETURNING id`,
       [userId, PROVIDER_NAME, PROVIDER_TYPE, stateRecord]
     );

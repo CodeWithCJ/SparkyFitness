@@ -66,6 +66,7 @@ function createDependencies() {
     ),
     loadUserTimezone: vi.fn(async () => 'Asia/Riyadh'),
     updateLastSync: vi.fn(async () => undefined),
+    updateGrantedScopes: vi.fn(async () => undefined),
     deleteWorkoutsByRange: vi.fn(async () => undefined),
     now: vi.fn(() => new Date('2026-07-10T12:00:00.000Z')),
   };
@@ -95,7 +96,7 @@ describe('Huawei Health sync service', () => {
     expect(dependencies.client.fetchDailySummary).toHaveBeenCalledWith(
       'access-token',
       {
-        dataTypes: ['com.huawei.continuous.steps.total'],
+        dataTypes: ['com.huawei.continuous.steps.delta'],
         startDay: '20260704',
         endDay: '20260710',
         timeZone: '+0300',
@@ -119,6 +120,11 @@ describe('Huawei Health sync service', () => {
       'user-1',
       'user-1',
       new Date('2026-07-10T12:00:00.000Z')
+    );
+    expect(dependencies.updateGrantedScopes).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ['https://www.huawei.com/healthkit/step.read']
     );
   });
 

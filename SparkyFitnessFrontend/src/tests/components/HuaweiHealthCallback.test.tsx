@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -18,8 +19,8 @@ jest.mock('@/hooks/Integrations/useHuaweiHealth', () => ({
   }),
 }));
 
-function renderCallback(entry: string) {
-  return renderWithClient(
+function renderCallback(entry: string, strict = false) {
+  const routes = (
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route
@@ -30,6 +31,7 @@ function renderCallback(entry: string) {
       </Routes>
     </MemoryRouter>
   );
+  return renderWithClient(strict ? <StrictMode>{routes}</StrictMode> : routes);
 }
 
 describe('HuaweiHealthCallback', () => {
@@ -59,6 +61,7 @@ describe('HuaweiHealthCallback', () => {
   });
 
   it('exchanges a valid code and state and reports success', async () => {
+    const replaceState = jest.spyOn(window.history, 'replaceState');
     mockCompleteAuthorization.mockResolvedValue({ connected: true });
     const state = 'a'.repeat(64);
 
@@ -75,5 +78,26 @@ describe('HuaweiHealthCallback', () => {
     expect(
       await screen.findByText('Connected — everything is ready')
     ).toBeInTheDocument();
+    expect(replaceState).toHaveBeenCalledWith(
+      window.history.state,
+      '',
+      '/huaweihealth/callback'
+    );
+    replaceState.mockRestore();
+  });
+
+  it('exchanges a valid callback only once under React Strict Mode', async () => {
+    mockCompleteAuthorization.mockResolvedValue({ connected: true });
+    const state = 'b'.repeat(64);
+
+    renderCallback(
+      `/huaweihealth/callback?code=authorization-code&state=${state}`,
+      true
+    );
+
+    expect(
+      await screen.findByText('Connected — everything is ready')
+    ).toBeInTheDocument();
+    expect(mockCompleteAuthorization).toHaveBeenCalledTimes(1);
   });
 });

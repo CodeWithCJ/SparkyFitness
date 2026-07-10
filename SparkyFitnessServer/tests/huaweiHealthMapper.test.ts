@@ -11,6 +11,35 @@ const value = (fieldName: string, numericValue: number) => ({
 });
 
 describe('Huawei Health response mapping', () => {
+  it('anchors a daily group to the requested local day instead of the UTC day', () => {
+    const entries = mapHuaweiDailySummary(
+      {
+        group: [
+          {
+            // Midnight on July 9 in Riyadh is still July 8 in UTC.
+            startTime: Date.parse('2026-07-08T21:00:00.000Z'),
+            sampleSet: [
+              {
+                samplePoints: [
+                  {
+                    dataTypeName: 'com.huawei.continuous.steps.total',
+                    value: [{ fieldName: 'steps', integerValue: 1234 }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      180
+    );
+
+    expect(entries[0]).toMatchObject({
+      date: '2026-07-09',
+      record_utc_offset_minutes: 180,
+    });
+  });
+
   it('maps official daily-polymerize fields into existing health ingest types', () => {
     const entries = mapHuaweiDailySummary(
       {

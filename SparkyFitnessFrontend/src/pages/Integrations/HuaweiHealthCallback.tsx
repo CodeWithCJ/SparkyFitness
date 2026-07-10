@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -51,20 +51,49 @@ const HuaweiHealthCallback = () => {
   );
   const [exchangeState, setExchangeState] =
     useState<CallbackState>('processing');
+  const exchangeRef = useRef<{
+    key: string;
+    promise: Promise<{ connected: true }>;
+  } | null>(null);
   const state = 'state' in callback ? callback.state : exchangeState;
 
   useEffect(() => {
+    if (!location.search) return;
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${location.pathname}${location.hash}`
+    );
+  }, [location.hash, location.pathname, location.search]);
+
+  useEffect(() => {
     let redirectTimer: ReturnType<typeof setTimeout> | undefined;
+    let active = true;
     if (!('payload' in callback)) return;
 
-    completeAuthorization(callback.payload)
+    const exchangeKey = `${callback.payload.state}.${callback.payload.code}`;
+    if (exchangeRef.current?.key !== exchangeKey) {
+      exchangeRef.current = {
+        key: exchangeKey,
+        promise: completeAuthorization(callback.payload),
+      };
+    }
+
+    exchangeRef.current.promise
       .then(() => {
+        if (!active) return;
         setExchangeState('success');
-        redirectTimer = setTimeout(() => navigate('/settings'), 1800);
+        redirectTimer = setTimeout(
+          () => navigate('/settings', { replace: true }),
+          1800
+        );
       })
-      .catch(() => setExchangeState('failed'));
+      .catch(() => {
+        if (active) setExchangeState('failed');
+      });
 
     return () => {
+      active = false;
       if (redirectTimer) clearTimeout(redirectTimer);
     };
   }, [callback, completeAuthorization, navigate]);
@@ -146,7 +175,7 @@ const HuaweiHealthCallback = () => {
             )}
           </div>
           {state !== 'processing' && state !== 'success' && (
-            <Button onClick={() => navigate('/settings')}>
+            <Button onClick={() => navigate('/settings', { replace: true })}>
               {t('huaweiHealth.callback.backToSettings', 'Back to settings')}
             </Button>
           )}

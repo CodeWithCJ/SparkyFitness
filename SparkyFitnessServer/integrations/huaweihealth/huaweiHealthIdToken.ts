@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { z } from 'zod/v4';
 import {
   HUAWEI_OPENID_CONFIGURATION_URL,
+  HUAWEI_HTTP_TIMEOUT_MS,
   type HuaweiHealthConfig,
 } from './huaweiHealthConfig.js';
 import { HuaweiHealthError } from './huaweiHealthErrors.js';
@@ -35,7 +36,9 @@ export async function verifyHuaweiIdToken(
   expectedNonce: string
 ): Promise<{ sub: string }> {
   try {
-    const discoveryResponse = await axios.get(HUAWEI_OPENID_CONFIGURATION_URL);
+    const discoveryResponse = await axios.get(HUAWEI_OPENID_CONFIGURATION_URL, {
+      timeout: HUAWEI_HTTP_TIMEOUT_MS,
+    });
     const discovery = openIdConfigurationSchema.parse(discoveryResponse.data);
     assertHuaweiHttpsUrl(discovery.issuer);
     const jwksUrl = assertHuaweiHttpsUrl(discovery.jwks_uri);

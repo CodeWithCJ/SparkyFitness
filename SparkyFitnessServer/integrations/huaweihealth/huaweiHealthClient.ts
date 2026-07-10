@@ -13,6 +13,7 @@ import {
 import {
   getHuaweiHealthConfig,
   HUAWEI_HEALTH_API_BASE_URL,
+  HUAWEI_HTTP_TIMEOUT_MS,
 } from './huaweiHealthConfig.js';
 import { HuaweiHealthError } from './huaweiHealthErrors.js';
 
@@ -25,13 +26,14 @@ interface HuaweiHealthHttpClient {
   post(
     url: string,
     body: unknown,
-    config: { headers: Record<string, string> }
+    config: { headers: Record<string, string>; timeout: number }
   ): Promise<HuaweiHttpResponse>;
   get(
     url: string,
     config: {
       headers: Record<string, string>;
       params: Record<string, unknown>;
+      timeout: number;
     }
   ): Promise<HuaweiHttpResponse>;
 }
@@ -77,6 +79,7 @@ function readHeader(headers: unknown, name: string): string | null {
 
 function assertPrivacyState(headers: unknown): void {
   const privacy = readHeader(headers, 'x-health-app-privacy');
+  if (privacy === '1') return;
   if (privacy === '2') {
     throw new HuaweiHealthError(
       'HUAWEI_PRIVACY_DISABLED',
@@ -91,6 +94,20 @@ function assertPrivacyState(headers: unknown): void {
       'The HUAWEI Health app is required for cloud health data.'
     );
   }
+  throw new HuaweiHealthError(
+    'HUAWEI_API_RESPONSE_INVALID',
+    502,
+    'Huawei omitted or returned an invalid health privacy state.'
+  );
+}
+
+function assertPrivacyStateFromError(error: unknown): void {
+  if (!error || typeof error !== 'object') return;
+  const response = (error as { response?: unknown }).response;
+  if (!response || typeof response !== 'object') return;
+  const headers = (response as { headers?: unknown }).headers;
+  if (readHeader(headers, 'x-health-app-privacy') === null) return;
+  assertPrivacyState(headers);
 }
 
 function parseProviderResponse<T>(
@@ -132,10 +149,12 @@ export function createHuaweiHealthClient(
           {
             headers: headers(accessToken),
             params: { lang: 'en' },
+            timeout: HUAWEI_HTTP_TIMEOUT_MS,
           }
         );
       } catch (error) {
         if (error instanceof HuaweiHealthError) throw error;
+        assertPrivacyStateFromError(error);
         throw new HuaweiHealthError(
           'HUAWEI_API_REQUEST_FAILED',
           502,
@@ -159,10 +178,14 @@ export function createHuaweiHealthClient(
         response = await httpClient.post(
           `${HUAWEI_HEALTH_API_BASE_URL}/sampleSet:dailyPolymerize`,
           request,
-          { headers: headers(accessToken) }
+          {
+            headers: headers(accessToken),
+            timeout: HUAWEI_HTTP_TIMEOUT_MS,
+          }
         );
       } catch (error) {
         if (error instanceof HuaweiHealthError) throw error;
+        assertPrivacyStateFromError(error);
         throw new HuaweiHealthError(
           'HUAWEI_API_REQUEST_FAILED',
           502,
@@ -195,10 +218,12 @@ export function createHuaweiHealthClient(
               endTime: endNs,
               dataType: 'com.huawei.health.record.sleep',
             },
+            timeout: HUAWEI_HTTP_TIMEOUT_MS,
           }
         );
       } catch (error) {
         if (error instanceof HuaweiHealthError) throw error;
+        assertPrivacyStateFromError(error);
         throw new HuaweiHealthError(
           'HUAWEI_API_REQUEST_FAILED',
           502,
@@ -226,10 +251,15 @@ export function createHuaweiHealthClient(
         try {
           response = await httpClient.get(
             `${HUAWEI_HEALTH_API_BASE_URL}/activityRecords`,
-            { headers: headers(accessToken), params }
+            {
+              headers: headers(accessToken),
+              params,
+              timeout: HUAWEI_HTTP_TIMEOUT_MS,
+            }
           );
         } catch (error) {
           if (error instanceof HuaweiHealthError) throw error;
+          assertPrivacyStateFromError(error);
           throw new HuaweiHealthError(
             'HUAWEI_API_REQUEST_FAILED',
             502,

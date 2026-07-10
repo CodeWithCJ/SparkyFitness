@@ -64,7 +64,7 @@ function baseDailyEntry(
   if (Number.isNaN(timestamp.getTime())) return null;
   return {
     source: SOURCE,
-    date: instantToDayWithOffset(timestamp, 0),
+    date: instantToDayWithOffset(timestamp, utcOffsetMinutes),
     timestamp: timestamp.toISOString(),
     record_utc_offset_minutes: utcOffsetMinutes,
   };

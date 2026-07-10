@@ -118,11 +118,11 @@ router.post(
   authMiddleware.authenticate,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await huaweiHealthOAuthService.disconnect(
+      const result = await huaweiHealthOAuthService.disconnect(
         req.userId,
         req.authenticatedUserId
       );
-      res.status(200).json({ connected: false });
+      res.status(200).json({ connected: false, ...result });
     } catch (error) {
       handleHuaweiError(error, res, next);
     }

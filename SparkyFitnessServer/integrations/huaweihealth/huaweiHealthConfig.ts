@@ -8,6 +8,7 @@ const HUAWEI_HEALTH_API_BASE_URL =
   'https://health-api.cloud.huawei.com/healthkit/v2';
 const HUAWEI_OPENID_CONFIGURATION_URL =
   'https://oauth-login.cloud.huawei.com/.well-known/openid-configuration';
+const HUAWEI_HTTP_TIMEOUT_MS = 15_000;
 
 // Huawei history access is intentionally limited to one week for the MVP.
 // The remaining scopes map one-to-one to data that SparkyFitness imports.
@@ -46,6 +47,19 @@ function parseHttpUrl(value: string, envName: string): string {
       `${envName} must be a valid HTTP(S) URL.`
     );
   }
+  const url = new URL(parsed.data);
+  const isLoopback =
+    url.hostname === 'localhost' ||
+    url.hostname.endsWith('.localhost') ||
+    /^127\./.test(url.hostname) ||
+    url.hostname === '[::1]';
+  if (url.protocol !== 'https:' && !isLoopback) {
+    throw new HuaweiHealthError(
+      'HUAWEI_CONFIGURATION_INVALID',
+      503,
+      `${envName} must use HTTPS outside local loopback development.`
+    );
+  }
   return parsed.data;
 }
 
@@ -82,6 +96,7 @@ export {
   HUAWEI_AUTHORIZATION_URL,
   HUAWEI_HEALTH_API_BASE_URL,
   HUAWEI_HEALTH_READ_SCOPES,
+  HUAWEI_HTTP_TIMEOUT_MS,
   HUAWEI_OPENID_CONFIGURATION_URL,
   HUAWEI_TOKEN_URL,
 };

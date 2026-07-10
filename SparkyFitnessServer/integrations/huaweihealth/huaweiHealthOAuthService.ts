@@ -7,6 +7,7 @@ import {
   HUAWEI_AUTHORIZATION_URL,
   HUAWEI_HEALTH_API_BASE_URL,
   HUAWEI_HEALTH_READ_SCOPES,
+  HUAWEI_HTTP_TIMEOUT_MS,
   HUAWEI_TOKEN_URL,
   type HuaweiHealthConfig,
 } from './huaweiHealthConfig.js';
@@ -104,13 +105,14 @@ interface HuaweiHealthHttpClient {
   post(
     url: string,
     body: URLSearchParams,
-    config: { headers: Record<string, string> }
+    config: { headers: Record<string, string>; timeout: number }
   ): Promise<{ data: unknown }>;
   delete(
     url: string,
     config: {
       params: { deleteData: boolean };
       headers: Record<string, string>;
+      timeout: number;
     }
   ): Promise<{ data: unknown }>;
 }
@@ -185,7 +187,7 @@ export function createHuaweiHealthOAuthService(
     now,
   } = dependencies;
 
-  return {
+  const service = {
     async createAuthorizationRequest(
       userId: string,
       authenticatedUserId: string
@@ -266,6 +268,7 @@ export function createHuaweiHealthOAuthService(
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
+            timeout: HUAWEI_HTTP_TIMEOUT_MS,
           })
         ).data;
       } catch (error) {
@@ -322,23 +325,23 @@ export function createHuaweiHealthOAuthService(
 
     async getStatus(userId: string, authenticatedUserId: string) {
       assertOwner(userId, authenticatedUserId);
-      const config = getHuaweiHealthConfig();
-      if (!config) {
-        return {
-          available: false,
-          connected: false,
-          isActive: false,
-          lastSyncAt: null,
-          tokenExpiresAt: null,
-          grantedScopes: [] as string[],
-          reason: 'HUAWEI_NOT_CONFIGURED' as const,
-        };
-      }
-
       const connection = await repository.getConnection(
         userId,
         authenticatedUserId
       );
+      const config = getHuaweiHealthConfig();
+      if (!config) {
+        return {
+          available: false,
+          connected: Boolean(connection?.isActive && connection.externalUserId),
+          isActive: connection?.isActive ?? false,
+          lastSyncAt: connection?.lastSyncAt ?? null,
+          tokenExpiresAt: connection?.tokenExpiresAt ?? null,
+          grantedScopes: connection?.scope?.split(/\s+/).filter(Boolean) ?? [],
+          reason: 'HUAWEI_NOT_CONFIGURED' as const,
+        };
+      }
+
       return {
         available: true,
         connected: Boolean(connection?.isActive && connection.externalUserId),
@@ -419,6 +422,7 @@ export function createHuaweiHealthOAuthService(
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
+            timeout: HUAWEI_HTTP_TIMEOUT_MS,
           })
         ).data;
       } catch (error) {
@@ -455,25 +459,34 @@ export function createHuaweiHealthOAuthService(
     async disconnect(
       userId: string,
       authenticatedUserId: string
-    ): Promise<void> {
+    ): Promise<{ remoteAuthorizationCancelled: boolean }> {
       assertOwner(userId, authenticatedUserId);
-      const config = requireConfig();
+      const config = getHuaweiHealthConfig();
       const connection = await repository.getConnection(
         userId,
         authenticatedUserId
       );
-      if (!connection) return;
+      if (!connection) return { remoteAuthorizationCancelled: false };
+
+      let remoteAuthorizationCancelled = false;
 
       if (
+        config &&
         connection.encryptedAccessToken &&
         connection.accessTokenIv &&
         connection.accessTokenTag
       ) {
-        const accessToken = await decryptValue(
-          connection.encryptedAccessToken,
-          connection.accessTokenIv,
-          connection.accessTokenTag
+        const tokenNeedsRefresh = Boolean(
+          connection.tokenExpiresAt &&
+          connection.tokenExpiresAt.getTime() <= now().getTime() + 5 * 60 * 1000
         );
+        const accessToken = tokenNeedsRefresh
+          ? await service.getValidAccessToken(userId, authenticatedUserId)
+          : await decryptValue(
+              connection.encryptedAccessToken,
+              connection.accessTokenIv,
+              connection.accessTokenTag
+            );
         if (accessToken) {
           try {
             await httpClient.delete(
@@ -481,6 +494,7 @@ export function createHuaweiHealthOAuthService(
               {
                 params: { deleteData: false },
                 headers: { Authorization: `Bearer ${accessToken}` },
+                timeout: HUAWEI_HTTP_TIMEOUT_MS,
               }
             );
           } catch (error) {
@@ -491,12 +505,16 @@ export function createHuaweiHealthOAuthService(
               { cause: error }
             );
           }
+          remoteAuthorizationCancelled = true;
         }
       }
 
       await repository.clearConnection(userId, authenticatedUserId);
+      return { remoteAuthorizationCancelled };
     },
   };
+
+  return service;
 }
 
 const huaweiHealthOAuthService = createHuaweiHealthOAuthService({

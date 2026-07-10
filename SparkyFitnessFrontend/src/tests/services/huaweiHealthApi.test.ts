@@ -38,7 +38,7 @@ describe('HUAWEI Health API', () => {
     });
     expect(mockedApiCall).toHaveBeenCalledWith(
       '/integrations/huaweihealth/authorize',
-      { method: 'GET', suppressErrorToast: true }
+      { method: 'GET', suppressErrorToast: true, sensitive: true }
     );
     expect(isTrustedHuaweiAuthorizationUrl(authUrl)).toBe(true);
     expect(
@@ -70,13 +70,17 @@ describe('HUAWEI Health API', () => {
           state: 'a'.repeat(64),
         },
         suppressErrorToast: true,
+        sensitive: true,
       }
     );
   });
 
   it('starts a bounded manual sync and disconnects through server routes', async () => {
     mockedApiCall.mockResolvedValueOnce({ status: 'completed' });
-    mockedApiCall.mockResolvedValueOnce({ connected: false });
+    mockedApiCall.mockResolvedValueOnce({
+      connected: false,
+      remoteAuthorizationCancelled: true,
+    });
 
     await syncHuaweiHealth({
       startDate: '2026-07-01',

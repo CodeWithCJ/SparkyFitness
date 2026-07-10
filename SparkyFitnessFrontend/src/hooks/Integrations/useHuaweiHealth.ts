@@ -120,10 +120,17 @@ export const useDisconnectHuaweiHealthMutation = () => {
       queryClient.invalidateQueries({ queryKey: externalProviderKeys.all });
     },
     meta: {
-      successMessage: t(
-        'huaweiHealth.disconnectSuccess',
-        'Authorization was cancelled and access tokens were removed from this server.'
-      ),
+      successMessage: (data: unknown) =>
+        (data as { remoteAuthorizationCancelled?: boolean })
+          .remoteAuthorizationCancelled
+          ? t(
+              'huaweiHealth.disconnectSuccess',
+              'Authorization was cancelled and access tokens were removed from this server.'
+            )
+          : t(
+              'huaweiHealth.disconnectLocalOnlySuccess',
+              'Access tokens were removed from this server. Because Huawei was unavailable, also remove SparkyFitness in your HUAWEI Health privacy settings.'
+            ),
       errorMessage: (error: unknown) =>
         translateHuaweiHealthError(
           t,

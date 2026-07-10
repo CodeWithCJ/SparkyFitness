@@ -64,6 +64,7 @@ export async function beginHuaweiHealthAuthorization(): Promise<HuaweiHealthAuth
   const result = await apiCall(`${HUAWEI_INTEGRATION_PATH}/authorize`, {
     method: 'GET',
     suppressErrorToast: true,
+    sensitive: true,
   });
   if (
     !result ||
@@ -82,6 +83,7 @@ export async function completeHuaweiHealthAuthorization(
     method: 'POST',
     body: payload,
     suppressErrorToast: true,
+    sensitive: true,
   });
 }
 
@@ -97,6 +99,7 @@ export async function syncHuaweiHealth(
 
 export async function disconnectHuaweiHealth(): Promise<{
   connected: false;
+  remoteAuthorizationCancelled: boolean;
 }> {
   return apiCall(`${HUAWEI_INTEGRATION_PATH}/disconnect`, {
     method: 'POST',

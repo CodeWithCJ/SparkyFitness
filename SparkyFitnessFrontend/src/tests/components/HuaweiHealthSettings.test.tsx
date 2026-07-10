@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { renderWithClient } from '../test-utils';
 import HuaweiHealthSettings from '@/pages/Settings/HuaweiHealthSettings';
@@ -71,16 +71,16 @@ jest.mock('@/hooks/Integrations/useHuaweiHealth', () => ({
     enabled,
   }),
   useConnectHuaweiHealthMutation: () => ({
-    mutateAsync: mockConnect,
+    mutate: mockConnect,
     isPending: false,
   }),
   useSyncHuaweiHealthMutation: () => ({
-    mutateAsync: mockSync,
+    mutate: mockSync,
     isPending: false,
     data: mockSyncResult,
   }),
   useDisconnectHuaweiHealthMutation: () => ({
-    mutateAsync: mockDisconnect,
+    mutate: mockDisconnect,
     isPending: false,
   }),
 }));
@@ -125,6 +125,12 @@ describe('HuaweiHealthSettings', () => {
     expect(
       screen.getByText('Manual sync on this deployment')
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Connect account' }));
+    expect(mockConnect).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ onSuccess: expect.any(Function) })
+    );
   });
 
   it('keeps health linking owner-only while a family profile is active', () => {
@@ -175,6 +181,23 @@ describe('HuaweiHealthSettings', () => {
     expect(screen.getByRole('button', { name: 'Disconnect' })).toBeEnabled();
   });
 
+  it('keeps disconnect available if credentials disappear from a stored connection', () => {
+    mockStatus.data = {
+      available: false,
+      connected: true,
+      isActive: true,
+      lastSyncAt: null,
+      tokenExpiresAt: null,
+      grantedScopes: ['openid'],
+      reason: 'HUAWEI_NOT_CONFIGURED',
+    };
+
+    renderWithClient(<HuaweiHealthSettings />);
+
+    expect(screen.getByRole('button', { name: 'Sync now' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Disconnect' })).toBeEnabled();
+  });
+
   it('requires explicit confirmation before disconnecting', async () => {
     mockStatus.data.connected = true;
     mockStatus.data.isActive = true;
@@ -182,7 +205,11 @@ describe('HuaweiHealthSettings', () => {
 
     renderWithClient(<HuaweiHealthSettings />);
     fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm disconnect' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Disconnect',
+      })
+    );
 
     await waitFor(() => expect(mockDisconnect).toHaveBeenCalledTimes(1));
   });

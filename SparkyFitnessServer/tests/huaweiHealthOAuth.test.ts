@@ -127,6 +127,19 @@ describe('Huawei Health OAuth service', () => {
     );
   });
 
+  it('rejects an insecure non-loopback OAuth redirect URI', async () => {
+    process.env.SPARKY_FITNESS_HUAWEI_HEALTH_REDIRECT_URI =
+      'http://fitness.example.com/huaweihealth/callback';
+    const service = createHuaweiHealthOAuthService(createDependencies());
+
+    await expect(
+      service.createAuthorizationRequest('user-1', 'user-1')
+    ).rejects.toMatchObject({
+      code: 'HUAWEI_CONFIGURATION_INVALID',
+      statusCode: 503,
+    });
+  });
+
   it('fails closed without instance credentials and for delegated profiles', async () => {
     const service = createHuaweiHealthOAuthService(createDependencies());
     await expect(
@@ -272,8 +285,78 @@ describe('Huawei Health OAuth service', () => {
       {
         params: { deleteData: false },
         headers: { Authorization: 'Bearer access-token' },
+        timeout: 15_000,
       }
     );
+    expect(repository.clearConnection).toHaveBeenCalledWith('user-1', 'user-1');
+  });
+
+  it('refreshes an expiring token before cancelling Huawei consent', async () => {
+    process.env.SPARKY_FITNESS_HUAWEI_HEALTH_APP_ID = 'health-app-id';
+    const repository = createRepository();
+    vi.mocked(repository.getConnection).mockResolvedValue({
+      isActive: true,
+      externalUserId: 'huawei-user-123',
+      lastSyncAt: null,
+      tokenExpiresAt: new Date('2026-07-10T12:04:00.000Z'),
+      scope: 'openid',
+      encryptedAccessToken: 'encrypted-access',
+      accessTokenIv: 'aiv',
+      accessTokenTag: 'atag',
+      encryptedRefreshToken: 'encrypted-refresh',
+      refreshTokenIv: 'riv',
+      refreshTokenTag: 'rtag',
+    });
+    const dependencies = createDependencies(repository);
+    vi.mocked(dependencies.httpClient.post).mockResolvedValue({
+      data: {
+        access_token: 'fresh-access-token',
+        expires_in: 3600,
+        scope: 'openid',
+      },
+    });
+    const service = createHuaweiHealthOAuthService(dependencies);
+
+    await service.disconnect('user-1', 'user-1');
+
+    expect(dependencies.httpClient.post).toHaveBeenCalledTimes(1);
+    expect(dependencies.httpClient.delete).toHaveBeenCalledWith(
+      'https://health-api.cloud.huawei.com/healthkit/v2/consents/health-app-id',
+      {
+        params: { deleteData: false },
+        headers: { Authorization: 'Bearer fresh-access-token' },
+        timeout: 15_000,
+      }
+    );
+    expect(repository.clearConnection).toHaveBeenCalledWith('user-1', 'user-1');
+  });
+
+  it('keeps a stored connection visible and removes local tokens if instance credentials disappear', async () => {
+    delete process.env.SPARKY_FITNESS_HUAWEI_HEALTH_CLIENT_ID;
+    delete process.env.SPARKY_FITNESS_HUAWEI_HEALTH_CLIENT_SECRET;
+    const repository = createRepository();
+    vi.mocked(repository.getConnection).mockResolvedValue({
+      isActive: true,
+      externalUserId: 'huawei-user-123',
+      lastSyncAt: new Date('2026-07-10T11:00:00.000Z'),
+      tokenExpiresAt: new Date('2026-07-10T13:00:00.000Z'),
+      scope: 'openid',
+      encryptedAccessToken: 'encrypted-access',
+      accessTokenIv: 'aiv',
+      accessTokenTag: 'atag',
+    });
+    const dependencies = createDependencies(repository);
+    const service = createHuaweiHealthOAuthService(dependencies);
+
+    await expect(service.getStatus('user-1', 'user-1')).resolves.toMatchObject({
+      available: false,
+      connected: true,
+      reason: 'HUAWEI_NOT_CONFIGURED',
+    });
+    await expect(service.disconnect('user-1', 'user-1')).resolves.toEqual({
+      remoteAuthorizationCancelled: false,
+    });
+    expect(dependencies.httpClient.delete).not.toHaveBeenCalled();
     expect(repository.clearConnection).toHaveBeenCalledWith('user-1', 'user-1');
   });
 

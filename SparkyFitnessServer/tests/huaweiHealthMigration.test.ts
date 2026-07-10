@@ -12,6 +12,7 @@ describe('HUAWEI Health provider migration', () => {
 
     expect(sql).toContain("'huaweihealth'");
     expect(sql).toContain("'HUAWEI Health'");
+    expect(sql).toContain('external_data_providers_huaweihealth_user_unique');
     expect(sql).toMatch(/is_strictly_private[\s\S]*TRUE/i);
     expect(sql).toMatch(/required_fields[\s\S]*ARRAY\[\]::VARCHAR\[\]/i);
     expect(sql).toMatch(/categories[\s\S]*ARRAY\['other'\]/i);

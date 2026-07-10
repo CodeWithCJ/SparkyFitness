@@ -17,7 +17,10 @@ import {
   type HuaweiNormalizedHealthEntry,
 } from './huaweiHealthMapper.js';
 import huaweiHealthOAuthService from './huaweiHealthOAuthService.js';
-import { updateHuaweiLastSync } from './huaweiHealthSyncRepository.js';
+import {
+  updateHuaweiGrantedScopes,
+  updateHuaweiLastSync,
+} from './huaweiHealthSyncRepository.js';
 
 const HUAWEI_DATA_SCOPES = [
   'https://www.huawei.com/healthkit/step.read',
@@ -32,23 +35,23 @@ const HUAWEI_DATA_SCOPES = [
 
 const dailyTypesByScope: Readonly<Record<string, readonly string[]>> = {
   'https://www.huawei.com/healthkit/step.read': [
-    'com.huawei.continuous.steps.total',
+    'com.huawei.continuous.steps.delta',
   ],
   'https://www.huawei.com/healthkit/calories.read': [
-    'com.huawei.continuous.calories.burnt.total',
+    'com.huawei.continuous.calories.burnt',
   ],
   'https://www.huawei.com/healthkit/distance.read': [
-    'com.huawei.continuous.distance.total',
+    'com.huawei.continuous.distance.delta',
   ],
   'https://www.huawei.com/healthkit/heartrate.read': [
-    'com.huawei.continuous.heart_rate.statistics',
-    'com.huawei.continuous.resting_heart_rate.statistics',
+    'com.huawei.instantaneous.heart_rate',
+    'com.huawei.instantaneous.resting_heart_rate',
   ],
   'https://www.huawei.com/healthkit/oxygensaturation.read': [
-    'com.huawei.continuous.spo2.statistics',
+    'com.huawei.instantaneous.spo2',
   ],
   'https://www.huawei.com/healthkit/heightweight.read': [
-    'com.huawei.continuous.body_weight.statistics',
+    'com.huawei.instantaneous.body_weight',
   ],
 };
 
@@ -161,6 +164,11 @@ interface HuaweiHealthSyncDependencies {
     authenticatedUserId: string,
     lastSyncAt: Date
   ): Promise<void>;
+  updateGrantedScopes(
+    userId: string,
+    authenticatedUserId: string,
+    grantedScopes: string[]
+  ): Promise<void>;
   deleteWorkoutsByRange(
     userId: string,
     startDate: string,
@@ -184,6 +192,7 @@ export function createHuaweiHealthSyncService(
     processHealthData,
     loadUserTimezone: loadTimezone,
     updateLastSync,
+    updateGrantedScopes,
     deleteWorkoutsByRange,
     now,
   } = dependencies;
@@ -223,6 +232,11 @@ export function createHuaweiHealthSyncService(
       // scope revocation are honored without relying on stale token metadata.
       const grantedScopes = new Set(
         await client.fetchGrantedScopes(accessToken)
+      );
+      await updateGrantedScopes(
+        userId,
+        authenticatedUserId,
+        [...grantedScopes].sort()
       );
       const missingScopes = HUAWEI_DATA_SCOPES.filter(
         (scope) => !grantedScopes.has(scope)
@@ -324,6 +338,7 @@ const huaweiHealthSyncService = createHuaweiHealthSyncService({
     measurementService.processHealthData(entries, userId, authenticatedUserId),
   loadUserTimezone,
   updateLastSync: updateHuaweiLastSync,
+  updateGrantedScopes: updateHuaweiGrantedScopes,
   deleteWorkoutsByRange:
     exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate,
   now: () => new Date(),

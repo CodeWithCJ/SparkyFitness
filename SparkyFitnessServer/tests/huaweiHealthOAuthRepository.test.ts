@@ -13,7 +13,10 @@ const { query, release, getClient } = vi.hoisted(() => {
 vi.mock('../db/poolManager.js', () => ({ getClient }));
 
 import huaweiHealthOAuthRepository from '../integrations/huaweihealth/huaweiHealthOAuthRepository.js';
-import { updateHuaweiLastSync } from '../integrations/huaweihealth/huaweiHealthSyncRepository.js';
+import {
+  updateHuaweiGrantedScopes,
+  updateHuaweiLastSync,
+} from '../integrations/huaweihealth/huaweiHealthSyncRepository.js';
 
 describe('Huawei Health OAuth repository', () => {
   beforeEach(() => {
@@ -32,8 +35,9 @@ describe('Huawei Health OAuth repository', () => {
     expect(getClient).toHaveBeenCalledWith('user-1', 'user-1');
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('provider_type = $2 AND is_public = FALSE'),
-      ['user-1', 'huaweihealth', 'state.nonce.123']
+      ['user-1', 'huaweihealth', 'state.nonce.123', 'HUAWEI Health']
     );
+    expect(query.mock.calls[0][0]).toContain('provider_name = $4');
     expect(release).toHaveBeenCalledOnce();
   });
 
@@ -57,6 +61,23 @@ describe('Huawei Health OAuth repository', () => {
       'huaweihealth',
       'state.nonce.123',
     ]);
+  });
+
+  it('returns a stable conflict when the reserved provider name is already in use', async () => {
+    query.mockRejectedValueOnce(
+      Object.assign(new Error('unique violation'), { code: '23505' })
+    );
+
+    await expect(
+      huaweiHealthOAuthRepository.storeOAuthState(
+        'user-1',
+        'user-1',
+        'state.nonce.123'
+      )
+    ).rejects.toMatchObject({
+      code: 'HUAWEI_PROVIDER_CONFLICT',
+      statusCode: 409,
+    });
   });
 
   it('consumes matching state atomically under a row lock', async () => {
@@ -101,6 +122,18 @@ describe('Huawei Health OAuth repository', () => {
     expect(query).toHaveBeenCalledWith(
       expect.stringMatching(/provider_type = 'huaweihealth'/),
       ['user-1', completedAt]
+    );
+  });
+
+  it('persists the live granted scope list through the owner RLS context', async () => {
+    query.mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    await updateHuaweiGrantedScopes('user-1', 'user-1', ['scope-a', 'scope-b']);
+
+    expect(getClient).toHaveBeenCalledWith('user-1', 'user-1');
+    expect(query).toHaveBeenCalledWith(
+      expect.stringMatching(/SET scope = \$2/),
+      ['user-1', 'scope-a scope-b']
     );
   });
 });

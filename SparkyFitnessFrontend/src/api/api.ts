@@ -9,6 +9,7 @@ interface ApiCallOptions extends RequestInit {
   params?: Record<string, any>;
   suppress404Toast?: boolean; // New option to suppress toast for 404 errors
   suppressErrorToast?: boolean;
+  sensitive?: boolean;
   externalApi?: boolean;
   isFormData?: boolean; // New option to indicate if the body is FormData
   responseType?: 'json' | 'text' | 'blob'; // Add responseType option
@@ -84,11 +85,13 @@ export async function apiCall(
   }
 
   if (options?.body) {
-    logging.debug(
-      userLoggingLevel,
-      `API Call: Request body for ${endpoint}:`,
-      options.body
-    );
+    if (!options.sensitive) {
+      logging.debug(
+        userLoggingLevel,
+        `API Call: Request body for ${endpoint}:`,
+        options.body
+      );
+    }
     if (!options.isFormData && typeof options.body === 'object') {
       config.body = JSON.stringify(options.body);
     } else {
@@ -97,11 +100,15 @@ export async function apiCall(
   }
 
   try {
-    logging.debug(
-      userLoggingLevel,
-      `API Call: Sending request to ${url} with config:`,
-      config
-    );
+    if (options?.sensitive) {
+      logging.debug(userLoggingLevel, `API Call: Sending request to ${url}.`);
+    } else {
+      logging.debug(
+        userLoggingLevel,
+        `API Call: Sending request to ${url} with config:`,
+        config
+      );
+    }
     const response = await fetch(url, config);
     logging.debug(
       userLoggingLevel,
@@ -205,11 +212,13 @@ export async function apiCall(
     // Handle cases where the response might be empty (e.g., DELETE requests)
     const text = await response.text();
     const jsonResponse = text ? JSON.parse(text) : {};
-    logging.debug(
-      userLoggingLevel,
-      `API Call: Received JSON response from ${url}:`,
-      jsonResponse
-    );
+    if (!options?.sensitive) {
+      logging.debug(
+        userLoggingLevel,
+        `API Call: Received JSON response from ${url}:`,
+        jsonResponse
+      );
+    }
     //console.log(`API Call: Returning JSON response for ${url}:`, jsonResponse); // Added console.log
     return jsonResponse;
   } catch (err: unknown) {
@@ -219,11 +228,13 @@ export async function apiCall(
 
     const errorMessage = err instanceof Error ? err.message : String(err);
     logging.error(userLoggingLevel, 'API call network error:', err); // Log the raw error object for better debugging
-    toast({
-      title: 'Network Error',
-      description: errorMessage || 'Could not connect to the server.',
-      variant: 'destructive',
-    });
+    if (!options?.suppressErrorToast) {
+      toast({
+        title: 'Network Error',
+        description: errorMessage || 'Could not connect to the server.',
+        variant: 'destructive',
+      });
+    }
     throw new Error(errorMessage, { cause: err });
   }
 }

@@ -123,7 +123,9 @@ describe('Huawei Health routes', () => {
       tokenExpiresAt: null,
       grantedScopes: [],
     });
-    vi.mocked(huaweiHealthOAuthService.disconnect).mockResolvedValue(undefined);
+    vi.mocked(huaweiHealthOAuthService.disconnect).mockResolvedValue({
+      remoteAuthorizationCancelled: true,
+    });
 
     const statusResponse = await request(app).get(
       '/api/integrations/huaweihealth/status'
@@ -138,7 +140,10 @@ describe('Huawei Health routes', () => {
       connected: false,
     });
     expect(disconnectResponse.statusCode).toBe(200);
-    expect(disconnectResponse.body).toEqual({ connected: false });
+    expect(disconnectResponse.body).toEqual({
+      connected: false,
+      remoteAuthorizationCancelled: true,
+    });
     expect(huaweiHealthOAuthService.getStatus).toHaveBeenCalledWith(
       'user-1',
       'user-1'

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict AwOd2xXqjkU4pMIWZzPdU5wmrIh5fgVlqToWVio2bchk0DSmyzbigXPEQMTF0Wg
+\restrict H3NsBqoDrCbzFGIokCK7OQN62cB4bqZ6xZ0fd7JGuf7GC32nvmDWcCu96OK1mQ0
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
@@ -3194,7 +3194,7 @@ CREATE TABLE public.user_preferences (
     body_fat_algorithm text DEFAULT 'U.S. Navy'::text NOT NULL,
     include_bmr_in_net_calories boolean DEFAULT false NOT NULL,
     default_distance_unit character varying(20) DEFAULT 'km'::character varying NOT NULL,
-    language character varying(10) DEFAULT 'en'::character varying,
+    language character varying(10) DEFAULT 'ar'::character varying,
     calorie_goal_adjustment_mode text DEFAULT 'dynamic'::text,
     energy_unit character varying(4) DEFAULT 'kcal'::character varying NOT NULL,
     fat_breakdown_algorithm text DEFAULT 'AHA_GUIDELINES'::text NOT NULL,
@@ -4763,6 +4763,13 @@ CREATE INDEX idx_magic_link_token ON auth.users USING btree (magic_link_token);
 --
 
 CREATE UNIQUE INDEX check_in_measurements_user_date_unique ON public.check_in_measurements USING btree (user_id, entry_date);
+
+
+--
+-- Name: external_data_providers_huaweihealth_user_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX external_data_providers_huaweihealth_user_unique ON public.external_data_providers USING btree (user_id) WHERE (provider_type = 'huaweihealth'::text);
 
 
 --
@@ -9755,5 +9762,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict AwOd2xXqjkU4pMIWZzPdU5wmrIh5fgVlqToWVio2bchk0DSmyzbigXPEQMTF0Wg
+\unrestrict H3NsBqoDrCbzFGIokCK7OQN62cB4bqZ6xZ0fd7JGuf7GC32nvmDWcCu96OK1mQ0
 

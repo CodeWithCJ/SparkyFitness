@@ -65,6 +65,9 @@ work after returning a response.
 - **Disconnect** first asks Huawei to cancel SparkyFitness authorization, then
   removes the locally stored tokens. It does not delete original data from
   Huawei.
+- If an administrator has already removed the Huawei app credentials,
+  SparkyFitness still removes the local encrypted tokens and tells the user to
+  remove SparkyFitness from HUAWEI Health privacy settings manually.
 - Previously imported SparkyFitness records remain subject to the server's
   retention policy and can be deleted from that server separately.
 
@@ -85,7 +88,8 @@ SPARKY_FITNESS_HUAWEI_HEALTH_APP_ID=...
 SPARKY_FITNESS_HUAWEI_HEALTH_REDIRECT_URI=https://fitness.example.com/huaweihealth/callback
 ```
 
-The redirect URI registered with Huawei must match exactly. Keep the client
+The redirect URI registered with Huawei must match exactly and use HTTPS;
+plain HTTP is accepted only for local loopback development. Keep the client
 secret server-side and retain a stable `SPARKY_FITNESS_API_ENCRYPTION_KEY`; a
 key rotation needs a token migration or user reconnection plan.
 
@@ -103,4 +107,5 @@ Official references:
 - [Huawei Health Service verification](https://developer.huawei.com/consumer/en/doc/HMSCore-Guides/verification-0000001211587947)
 
 When credentials are absent, SparkyFitness keeps the card visible in a safe
-disabled state and does not expose a broken authorization button.
+disabled state and does not expose a broken authorization button. An existing
+connection remains visible so its locally stored tokens can still be removed.

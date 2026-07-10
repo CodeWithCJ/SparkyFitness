@@ -8,7 +8,10 @@ function createHttpClient() {
         _url: string,
         _body: unknown,
         _config: { headers: Record<string, string> }
-      ) => ({ data: {}, headers: { 'x-health-app-privacy': '1' } })
+      ): Promise<{ data: unknown; headers: Record<string, string> }> => ({
+        data: {},
+        headers: { 'x-health-app-privacy': '1' },
+      })
     ),
     get: vi.fn(
       async (
@@ -17,7 +20,10 @@ function createHttpClient() {
           headers: Record<string, string>;
           params: Record<string, unknown>;
         }
-      ) => ({ data: {}, headers: { 'x-health-app-privacy': '1' } })
+      ): Promise<{ data: unknown; headers: Record<string, string> }> => ({
+        data: {},
+        headers: { 'x-health-app-privacy': '1' },
+      })
     ),
   };
 }
@@ -68,6 +74,7 @@ describe('Huawei Health REST client', () => {
         timeZone: '+0300',
       },
       {
+        timeout: 15_000,
         headers: {
           Authorization: 'Bearer access-token',
           'Content-Type': 'application/json; charset=UTF-8',
@@ -186,6 +193,53 @@ describe('Huawei Health REST client', () => {
     });
   });
 
+  it('fails closed when a successful health response omits the mandatory privacy header', async () => {
+    const httpClient = createHttpClient();
+    httpClient.post.mockResolvedValue({
+      data: { group: [] },
+      headers: {} as Record<string, string>,
+    });
+    const client = createHuaweiHealthClient({
+      httpClient,
+      randomUUID: () => 'trace-id',
+    });
+
+    await expect(
+      client.fetchDailySummary('access-token', {
+        dataTypes: ['com.huawei.continuous.steps.delta'],
+        startDay: '20260701',
+        endDay: '20260707',
+        timeZone: '+0300',
+      })
+    ).rejects.toMatchObject({
+      code: 'HUAWEI_API_RESPONSE_INVALID',
+      statusCode: 502,
+    });
+  });
+
+  it('honors the Huawei privacy header on rejected HTTP responses', async () => {
+    const httpClient = createHttpClient();
+    httpClient.post.mockRejectedValue({
+      response: { headers: { 'x-health-app-privacy': '2' } },
+    });
+    const client = createHuaweiHealthClient({
+      httpClient,
+      randomUUID: () => 'trace-id',
+    });
+
+    await expect(
+      client.fetchDailySummary('access-token', {
+        dataTypes: ['com.huawei.continuous.steps.delta'],
+        startDay: '20260701',
+        endDay: '20260707',
+        timeZone: '+0300',
+      })
+    ).rejects.toMatchObject({
+      code: 'HUAWEI_PRIVACY_DISABLED',
+      statusCode: 403,
+    });
+  });
+
   it('reads the live granted-scope list used for partial authorization', async () => {
     process.env.SPARKY_FITNESS_HUAWEI_HEALTH_APP_ID = 'health-app-id';
     const httpClient = createHttpClient();
@@ -212,6 +266,7 @@ describe('Huawei Health REST client', () => {
     expect(httpClient.get).toHaveBeenCalledWith(
       'https://health-api.cloud.huawei.com/healthkit/v2/consents/health-app-id',
       {
+        timeout: 15_000,
         headers: expect.objectContaining({
           Authorization: 'Bearer access-token',
         }),

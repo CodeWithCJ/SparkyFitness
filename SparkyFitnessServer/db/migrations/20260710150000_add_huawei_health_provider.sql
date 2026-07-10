@@ -41,4 +41,10 @@ SET is_public = FALSE,
 WHERE provider_type = 'huaweihealth'
   AND is_public IS DISTINCT FROM FALSE;
 
+-- One managed cloud connection per user. Generic provider endpoints also
+-- reserve this type, while the index protects direct SQL and older clients.
+CREATE UNIQUE INDEX IF NOT EXISTS external_data_providers_huaweihealth_user_unique
+  ON public.external_data_providers (user_id)
+  WHERE provider_type = 'huaweihealth';
+
 COMMIT;

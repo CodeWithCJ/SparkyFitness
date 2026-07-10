@@ -1,5 +1,6 @@
 import { apiCall, HttpApiError } from '@/api/api';
 import { toast } from '@/hooks/use-toast';
+import * as logging from '@/utils/logging';
 
 jest.mock('@/hooks/use-toast', () => ({
   toast: jest.fn(),
@@ -41,5 +42,39 @@ describe('apiCall structured errors', () => {
       status: 409,
     } satisfies Partial<HttpApiError>);
     expect(mockedToast).not.toHaveBeenCalled();
+  });
+
+  it('suppresses the low-level network toast when a caller provides a friendly mutation error', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error('socket reset'));
+
+    await expect(
+      apiCall('/integrations/huaweihealth/status', {
+        method: 'GET',
+        suppressErrorToast: true,
+      })
+    ).rejects.toThrow('socket reset');
+
+    expect(mockedToast).not.toHaveBeenCalled();
+  });
+
+  it('does not log sensitive OAuth request or response payloads', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ connected: true }),
+    } as unknown as Response);
+
+    await apiCall('/integrations/huaweihealth/callback', {
+      method: 'POST',
+      body: { code: 'secret-code', state: 'secret-state' },
+      sensitive: true,
+    });
+
+    expect(JSON.stringify(jest.mocked(logging.debug).mock.calls)).not.toContain(
+      'secret-code'
+    );
+    expect(JSON.stringify(jest.mocked(logging.debug).mock.calls)).not.toContain(
+      'connected'
+    );
   });
 });
