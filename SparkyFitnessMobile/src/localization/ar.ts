@@ -197,6 +197,38 @@ export const ar = {
   'library.loadWorkoutPresetsFailed': 'ما قدرنا نحمّل قوالب التمرين',
   'library.loadMoreWorkoutPresetsFailed': 'ما قدرنا نحمّل قوالب أكثر.',
 
+  'exerciseSearch.saved': 'المحفوظة',
+  'exerciseSearch.online': 'عبر الإنترنت',
+  'exerciseSearch.addFailed': 'ما قدرنا نضيف التمرين',
+  'exerciseSearch.searchFailed': 'ما قدرنا نبحث في التمارين',
+  'exerciseSearch.recent': 'المستخدمة مؤخرًا',
+  'exerciseSearch.popular': 'الأكثر استخدامًا',
+  'exerciseSearch.connectToView': 'اربط خادمك عشان تشوف تمارينك.',
+  'exerciseSearch.startPrompt': 'ابحث عن تمرين عشان تبدأ.',
+  'exerciseSearch.loadMoreFailed':
+    'ما قدرنا نحمّل المزيد. اضغط للمحاولة مرة ثانية',
+  'exerciseSearch.loadMore': 'تحميل المزيد',
+  'exerciseSearch.providerSearchFailed': 'ما قدرنا نبحث في {{provider}}',
+  'exerciseSearch.connectOnline':
+    'اربط خادمك عشان تبحث عن تمارين عبر الإنترنت.',
+  'exerciseSearch.providersFailed': 'ما قدرنا نحمّل مصادر التمارين',
+  'exerciseSearch.noProviders':
+    'ما فيه مصادر تمارين عبر الإنترنت مضافة',
+  'exerciseSearch.searchProvider': 'ابحث في {{provider}} عن تمرين',
+  'exerciseSearch.clearSearch': 'مسح البحث',
+  'exerciseSearch.selectProvider': 'اختيار مصدر {{provider}}',
+  'exerciseSearch.addExercise': 'إضافة {{exercise}}',
+
+  'presetSearch.searchFailed': 'ما قدرنا نبحث في قوالب التمرين',
+  'presetSearch.noMatches': 'ما لقينا قوالب تطابق بحثك',
+  'presetSearch.loadFailed': 'ما قدرنا نحمّل قوالب التمرين',
+  'presetSearch.noPresets': 'ما عندك قوالب تمرين للحين',
+  'presetSearch.noPresetsDescription':
+    'ابدأ من الصفر، أو احفظ تمرينك كقالب وبيظهر هنا.',
+  'presetSearch.searchPlaceholder': 'ابحث في القوالب…',
+  'presetSearch.startFromScratch': 'ابدأ من الصفر',
+  'presetSearch.pickFirstExercise': 'اختر أول تمرين',
+
   'exerciseCategory.strength': 'قوة',
   'exerciseCategory.cardio': 'لياقة قلبية',
   'exerciseCategory.flexibility': 'مرونة',

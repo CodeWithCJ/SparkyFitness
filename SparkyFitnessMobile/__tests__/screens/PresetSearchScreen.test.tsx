@@ -120,14 +120,14 @@ describe('PresetSearchScreen', () => {
     mockUseStartLiveWorkout.mockReturnValue({ startLiveWorkout, isStarting: false });
   });
 
-  it('titles the header "Start Workout" and renders the pinned empty-workout row', () => {
+  it('uses an Arabic header and renders the pinned start-from-scratch row', () => {
     const screen = renderScreen();
 
     expect(mockUseScreenHeader).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Start Workout' }),
+      expect.objectContaining({ title: 'بدء تمرين' }),
     );
-    expect(screen.getByText('Empty workout')).toBeTruthy();
-    expect(screen.getByText('Pick your first exercise')).toBeTruthy();
+    expect(screen.getByText('ابدأ من الصفر')).toBeTruthy();
+    expect(screen.getByText('اختر أول تمرين')).toBeTruthy();
   });
 
   it('starts a live workout from a tapped preset with the preset-built payload', () => {
@@ -146,7 +146,7 @@ describe('PresetSearchScreen', () => {
   it('routes the empty-workout row to ExerciseSearch with this screen as return target', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Empty workout'));
+    fireEvent.press(screen.getByText('ابدأ من الصفر'));
 
     expect(navigation.navigate).toHaveBeenCalledWith('ExerciseSearch', {
       returnKey: 'PresetSearch-key',
@@ -196,7 +196,7 @@ describe('PresetSearchScreen', () => {
     const screen = renderScreen();
 
     fireEvent.press(screen.getByText('Push Day'));
-    fireEvent.press(screen.getByText('Empty workout'));
+    fireEvent.press(screen.getByText('ابدأ من الصفر'));
 
     expect(startLiveWorkout).not.toHaveBeenCalled();
     expect(navigation.navigate).not.toHaveBeenCalled();
