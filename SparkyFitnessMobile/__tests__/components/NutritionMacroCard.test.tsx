@@ -21,17 +21,17 @@ describe('NutritionMacroCard', () => {
   describe('default behavior (showNetCarbs not set or false)', () => {
     it('renders the Carbs label with total carbs value', () => {
       const { getByText } = render(<NutritionMacroCard {...baseProps} />);
-      expect(getByText('Carbs')).toBeTruthy();
-      expect(getByText('50g')).toBeTruthy();
+      expect(getByText('الكربوهيدرات')).toBeTruthy();
+      expect(getByText('٥٠ غ')).toBeTruthy();
     });
 
     it('ignores fiber when showNetCarbs is false', () => {
       const { getByText, queryByText } = render(
         <NutritionMacroCard {...baseProps} fiber={15} showNetCarbs={false} />,
       );
-      expect(getByText('Carbs')).toBeTruthy();
-      expect(getByText('50g')).toBeTruthy();
-      expect(queryByText('Net Carbs')).toBeNull();
+      expect(getByText('الكربوهيدرات')).toBeTruthy();
+      expect(getByText('٥٠ غ')).toBeTruthy();
+      expect(queryByText('صافي الكربوهيدرات')).toBeNull();
     });
   });
 
@@ -40,9 +40,9 @@ describe('NutritionMacroCard', () => {
       const { getByText, queryByText } = render(
         <NutritionMacroCard {...baseProps} fiber={15} showNetCarbs />,
       );
-      expect(getByText('Net Carbs')).toBeTruthy();
-      expect(getByText('35g')).toBeTruthy();
-      expect(queryByText('Carbs')).toBeNull();
+      expect(getByText('صافي الكربوهيدرات')).toBeTruthy();
+      expect(getByText('٣٥ غ')).toBeTruthy();
+      expect(queryByText('الكربوهيدرات')).toBeNull();
     });
 
     it('floors at zero when fiber exceeds carbs', () => {
@@ -56,8 +56,8 @@ describe('NutritionMacroCard', () => {
           showNetCarbs
         />,
       );
-      expect(getByText('Net Carbs')).toBeTruthy();
-      expect(getByText('0g')).toBeTruthy();
+      expect(getByText('صافي الكربوهيدرات')).toBeTruthy();
+      expect(getByText('٠ غ')).toBeTruthy();
     });
 
     it('falls back to total carbs when fiber prop is omitted', () => {
@@ -66,9 +66,9 @@ describe('NutritionMacroCard', () => {
       const { getByText, queryByText } = render(
         <NutritionMacroCard {...baseProps} showNetCarbs />,
       );
-      expect(getByText('Carbs')).toBeTruthy();
-      expect(getByText('50g')).toBeTruthy();
-      expect(queryByText('Net Carbs')).toBeNull();
+      expect(getByText('الكربوهيدرات')).toBeTruthy();
+      expect(getByText('٥٠ غ')).toBeTruthy();
+      expect(queryByText('صافي الكربوهيدرات')).toBeNull();
     });
   });
 
@@ -82,8 +82,11 @@ describe('NutritionMacroCard', () => {
           goalPercentages={{ calories: 30, protein: 60, carbs: 35, fat: 50 }}
         />,
       );
-      expect(getByText('Net Carbs')).toBeTruthy();
-      expect(getByText('35g')).toBeTruthy();
+      expect(getByText('صافي الكربوهيدرات')).toBeTruthy();
+      expect(getByText('٣٥ غ')).toBeTruthy();
+      expect(getByText('٣٥٪ من الهدف')).toBeTruthy();
+      expect(getByText('٦٠٠')).toBeTruthy();
+      expect(getByText('سعرة')).toBeTruthy();
     });
   });
 });

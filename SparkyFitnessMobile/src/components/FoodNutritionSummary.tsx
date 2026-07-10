@@ -8,6 +8,27 @@ import { buildNutrientDisplayList, type NutrientDisplayItem } from '../types/foo
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import NutritionMacroCard, { type NutritionGoalPercentages } from './NutritionMacroCard';
 import { useCustomNutrients, useServerConnection } from '../hooks';
+import {
+  formatMobileNumber,
+  localizeNutrient,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
+
+const nutrientKeysByLabel: Readonly<Record<string, string>> = {
+  Fiber: 'dietary_fiber',
+  Sugars: 'sugars',
+  'Saturated Fat': 'saturatedFat',
+  'Trans Fat': 'transFat',
+  Cholesterol: 'cholesterol',
+  Sodium: 'sodium',
+  Potassium: 'potassium',
+  Calcium: 'calcium',
+  Iron: 'iron',
+  'Vitamin A': 'vitaminA',
+  'Vitamin C': 'vitaminC',
+  'Total Carbs': 'totalCarbs',
+};
 
 interface FoodNutritionSummaryProps {
   name: string;
@@ -94,10 +115,19 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
       key={nutrient.label}
       className={`flex-row justify-between py-1 ${showBorder ? 'border-b border-border-subtle' : ''}`}
     >
-      <Text className="text-text-secondary text-sm">{nutrient.label}</Text>
+      <Text className="text-text-secondary text-sm">
+        {nutrientKeysByLabel[nutrient.label]
+          ? localizeNutrient(
+              nutrientKeysByLabel[nutrient.label],
+              nutrient.label,
+            )
+          : nutrient.label}
+      </Text>
       <Text className="text-text-primary text-sm">
-        {Math.round(scale(nutrient.value))}
-        {nutrient.unit}
+        {formatMobileNumber(Math.round(scale(nutrient.value)), {
+          maximumFractionDigits: 0,
+        })}
+        {nutrient.unit ? ` ${localizeServingUnit(nutrient.unit)}` : ''}
       </Text>
     </View>
   );
@@ -112,7 +142,13 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
         <View className="flex-row items-center gap-1">
           <Text className="text-text-primary text-3xl font-bold">{name}</Text>
           {provider_verified ? (
-            <Icon name="checkmark" size={16} color={iconSuccess} />
+            <View
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel={mobileT('nutrition.verifiedSource')}
+            >
+              <Icon name="checkmark" size={16} color={iconSuccess} />
+            </View>
           ) : null}
         </View>
         {brand ? (
@@ -160,11 +196,19 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
           <Button
             variant="ghost"
             onPress={() => setShowMoreNutrients((prev) => !prev)}
+            accessibilityLabel={
+              showMoreNutrients
+                ? mobileT('nutrition.showLessAccessibility')
+                : mobileT('nutrition.showMoreAccessibility')
+            }
+            accessibilityState={{ expanded: showMoreNutrients }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="self-start py-0 px-0"
           >
             <Text style={{ color: accentColor }} className="text-sm font-medium">
-              {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}
+              {showMoreNutrients
+                ? mobileT('nutrition.showLess')
+                : mobileT('nutrition.showMore')}
             </Text>
           </Button>
         </Animated.View>
