@@ -23,6 +23,9 @@ import { dailyProgressKeys } from '@/api/keys/diary';
 // Rows are POSTed in chunks so a large historical import stays within the
 // server's 5000-row cap and body-size limits.
 const CHUNK_SIZE = 1000;
+// Guard against reading a pathologically large file fully into memory (which
+// can freeze the tab). 25MB of CSV is well beyond any realistic export.
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
 const chunk = <T>(arr: T[], size: number): T[][] => {
   const out: T[][] = [];
@@ -66,6 +69,18 @@ export function useHealthDataImport() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: t('healthDataImport.importError', 'Import Error'),
+        description: t(
+          'healthDataImport.fileTooLarge',
+          'The selected file is too large. Please upload a file smaller than 25MB.'
+        ),
+        variant: 'destructive',
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -194,11 +209,24 @@ export function useHealthDataImport() {
         errors: [...clientErrors],
         skipped: [],
       };
+      // A failed batch (network/server) must not discard the progress of
+      // batches that already succeeded: record it and stop, then still show
+      // the aggregate so the user knows exactly what was imported.
       for (const batch of chunk(items, CHUNK_SIZE)) {
-        const res = await importHealthDataCsv(batch);
-        aggregate.processed.push(...(res.processed ?? []));
-        aggregate.errors.push(...(res.errors ?? []));
-        aggregate.skipped.push(...(res.skipped ?? []));
+        try {
+          const res = await importHealthDataCsv(batch);
+          aggregate.processed.push(...(res.processed ?? []));
+          aggregate.errors.push(...(res.errors ?? []));
+          aggregate.skipped.push(...(res.skipped ?? []));
+        } catch (err) {
+          const message =
+            err instanceof Error ? err.message : 'Network or server error';
+          aggregate.errors.push({
+            error: `Batch of ${batch.length} rows failed and remaining rows were not sent: ${message}`,
+            entry: { rows: batch.length },
+          });
+          break;
+        }
       }
       setResult(aggregate);
       queryClient.invalidateQueries({ queryKey: checkInKeys.all });

@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { localDateToDay, addDays } from '@workspace/shared';
 
 // CSV import of historical health data (body measurements, sleep, vitals, daily
 // activity totals, hydration). Rows are parsed client-side and mapped into the
@@ -48,8 +48,8 @@ export const WEIGHT_UNITS = ['kg', 'lb'];
 export const LENGTH_UNITS = ['cm', 'in', 'm'];
 export const VOLUME_UNITS = ['ml', 'L', 'oz'];
 
-const today = format(new Date(), 'yyyy-MM-dd');
-const yesterday = format(new Date(Date.now() - 86400000), 'yyyy-MM-dd');
+const today = localDateToDay(new Date());
+const yesterday = addDays(today, -1);
 
 // Accepted `type` values for the tall templates. These mirror the type names
 // processHealthData already understands (dedicated handlers) plus anything that
