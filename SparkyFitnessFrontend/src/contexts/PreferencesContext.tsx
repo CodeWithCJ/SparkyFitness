@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
-import { format, parseISO, startOfDay } from 'date-fns';
+import { parseISO, startOfDay } from 'date-fns';
 import {
   FatBreakdownAlgorithm,
   MineralCalculationAlgorithm,
@@ -50,6 +50,7 @@ import {
 } from '@/utils/unitConversions';
 import { DayOfWeek } from '@/types/settings';
 import { todayInZone } from '@workspace/shared';
+import { formatLocalizedDate } from '@/utils/dateLocalization';
 
 // Function to fetch user preferences from the backend
 
@@ -532,9 +533,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const formatString = formatStr || 'yyyy-MM-dd';
-      return format(dateToFormat, formatString);
+      return formatLocalizedDate(dateToFormat, formatString, language);
     },
-    [loggingLevel, toUserTimezone]
+    [language, loggingLevel, toUserTimezone]
   );
 
   const formatDate = useCallback(
