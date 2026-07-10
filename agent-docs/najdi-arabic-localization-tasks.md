@@ -53,10 +53,12 @@ _Branch: `feature/najdi-arabic`_
   - Acceptance: each domain reaches complete reviewed coverage before moving to the next.
   - Verify: domain tests, catalog audit, and Arabic browser walkthrough.
   - Files: maximum five per commit.
+  - Progress: the diary shell, standard meal names, meal cards, nutrition/energy summaries, hydration, day navigation, exercise summaries, workout-plan entries, and exercise add/edit flows are localized and source-synced. Remaining diary child flows and live browser review stay open.
 
 ### Checkpoint B
 
 - [x] Web validation and the 18-test auth/onboarding regression pack pass (40 tests).
+- [x] Diary checkpoint passes full validation plus 12 focused suites (26 tests); Arabic coverage is 984/2819 messages (34.9%) with no interpolation mismatch reported.
 - [ ] Arabic catalog has full key and placeholder parity with English.
 - [ ] No raw keys, unwanted English, or forced slang in critical web journeys.
 - [ ] Browser QA passes at 320, 768, 1024, and 1440 px.
@@ -67,6 +69,7 @@ _Branch: `feature/najdi-arabic`_
   - Acceptance: dialogs, selects, inputs, toasts, tables, pagination, and navigation work in both directions.
   - Verify: primitive tests and visual browser checks.
   - Files: maximum five primitives per slice.
+  - Progress: dialog primitives, diary hydration controls, day navigation, meal actions, and exercise record controls use logical positioning; the remaining shared primitives and visual check are open.
 
 - [ ] Task 10: Audit directional icons, charts, timelines, and media/exercise playback.
   - Acceptance: only semantically directional controls mirror; data meaning is unchanged.
@@ -75,10 +78,12 @@ _Branch: `feature/najdi-arabic`_
 - [ ] Task 11: Replace visible `en-US` web formatting and speech behavior.
   - Acceptance: dates, day names, and exercise speech use active locale policy; stored values do not change.
   - Verify: unit tests and browser speech/date checks where supported.
+  - Progress: shared web date formatting now uses the Saudi Arabic date-fns locale and Gregorian calendar-day behavior; exercise speech and browser verification remain open.
 
 - [ ] Task 12: Polish weak empty, loading, error, and confirmation states encountered in localized journeys.
   - Acceptance: each state explains status and next action in the correct register without adding unrelated features.
   - Verify: component tests and five-axis review.
+  - Progress: auth, onboarding, app loading, diary loading/empty states, hydration controls, and exercise loading/add/edit states have been refined with accessible names and tested Arabic copy.
 
 ## Phase 4: Mobile Localization and RTL
 
