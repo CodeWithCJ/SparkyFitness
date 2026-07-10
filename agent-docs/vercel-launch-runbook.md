@@ -160,6 +160,23 @@ Optional first-admin env:
 SPARKY_FITNESS_ADMIN_EMAIL=admin@example.com
 ```
 
+Optional HUAWEI Health env (only after Huawei Web/Health Service verification):
+
+```bash
+SPARKY_FITNESS_HUAWEI_HEALTH_CLIENT_ID=...
+SPARKY_FITNESS_HUAWEI_HEALTH_CLIENT_SECRET=...
+SPARKY_FITNESS_HUAWEI_HEALTH_APP_ID=...
+SPARKY_FITNESS_HUAWEI_HEALTH_REDIRECT_URI=https://fitness.hala-apps.com/huaweihealth/callback
+```
+
+Register that exact HTTPS callback in Huawei Developer Console. If the values
+are absent, production deliberately shows HUAWEI Health as unavailable rather
+than starting a broken OAuth flow. Because this Vercel launch keeps
+`SPARKY_FITNESS_DISABLE_BACKGROUND_JOBS=true`, HUAWEI Health works through
+**Sync now** only; its in-process hourly scheduler is for deployments with
+background jobs enabled. A controlled worker or scheduled invocation is
+required before promising automatic hosted sync.
+
 Set secrets through the Vercel dashboard or CLI. For CLI usage, prefer stdin or
 interactive prompts so secrets do not land in shell history.
 
@@ -268,6 +285,9 @@ Browser smoke test:
 - Confirm `/api/api-docs` is not public unless deliberately enabled.
 - Check Vercel runtime logs for auth, migration, RLS, and database connection
   errors.
+- Confirm the HUAWEI Health card is safely unavailable when credentials are not
+  configured, or complete a link/manual-sync/disconnect smoke test with a
+  Huawei test user after credentials and verified scopes are present.
 
 ## Production Launch
 

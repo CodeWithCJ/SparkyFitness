@@ -1,10 +1,11 @@
 # AGENTS.md
 
-*Last updated: 2026-07-08*
+_Last updated: 2026-07-10_
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
 **For AI Tools & Developers:** Start with `agent-docs/README.md` (in this repo) for quick navigation to:
+
 - `file-and-domain-reference.md` — Find any code by feature in seconds
 - `testing-patterns.md` — Concrete test examples for each layer
 - `architecture-permissions.md` — Permission types and RLS patterns
@@ -47,6 +48,7 @@ For `docs/` and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md`. `
 - Only `SparkyFitnessFrontend/` exists on disk right now; treat `frontend` as a legacy workspace entry unless the task is specifically about workspace cleanup.
 - `shared/` is a library package, not an app. Validate shared changes from the consuming package(s), not in isolation.
 - `SparkyFitnessGarmin/` is outside the current workspace. Inspect its own manifest and scripts before working there.
+- HUAWEI Health is an owner-only cross-package integration: web linking lives in `SparkyFitnessFrontend/src/pages/Settings/HuaweiHealthSettings.tsx`, the callback in `src/pages/Integrations/HuaweiHealthCallback.tsx`, and OAuth/API/sync logic in `SparkyFitnessServer/integrations/huaweihealth/`.
 
 ## Agent Efficiency (read this before searching)
 
@@ -81,7 +83,7 @@ Cheap ways to learn things:
 - Auth or API contract changes usually need a quick check in both web and mobile because they share the same backend.
 - Frontend local dev proxies `/api`, `/health-data`, and `/uploads` to the server on `3010`. The `/health-data` proxy is rewritten to `/api/health-data`, while server APIs remain rooted at `/api`.
 - Server runtime secrets are usually sourced from repo-root `.env`, commonly created from `docker/.env.example`. The server can also load secret files via `SparkyFitnessServer/utils/secretLoader.ts`.
-- Extract shared logic on the **second** duplication ("rule of two"), not the third - duplicated logic drifts as different sessions edit each copy. Extract *behavior*, not coincidental shape. See `agent-docs/anti-patterns.md`.
+- Extract shared logic on the **second** duplication ("rule of two"), not the third - duplicated logic drifts as different sessions edit each copy. Extract _behavior_, not coincidental shape. See `agent-docs/anti-patterns.md`.
 
 ## Architecture Docs (Reduce Scanning, Prevent Bugs)
 
@@ -136,4 +138,3 @@ npx expo prebuild -c
 pnpm dev
 pnpm run build
 ```
-
