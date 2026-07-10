@@ -51,6 +51,7 @@ import fitbitRoutes from './routes/fitbitRoutes.js';
 import googleHealthRoutes from './routes/googleHealthRoutes.js';
 import polarRoutes from './routes/polarRoutes.js';
 import stravaRoutes from './routes/stravaRoutes.js';
+import intervalsIcuRoutes from './routes/intervalsicuRoutes.js';
 import hevyRoutes from './routes/hevyRoutes.js';
 import moodRoutes from './routes/moodRoutes.js';
 import fastingRoutes from './routes/fastingRoutes.js';
@@ -82,6 +83,7 @@ import fitbitService from './services/fitbitService.js';
 import googleHealthService from './services/googleHealthService.js';
 import polarService from './services/polarService.js';
 import stravaService from './services/stravaService.js';
+import intervalsIcuService from './services/intervalsicuService.js';
 // @ts-expect-error TS1192
 import dailySummaryRoutes from './routes/dailySummaryRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
@@ -494,6 +496,7 @@ app.use('/api/integrations/fitbit', fitbitRoutes);
 app.use('/api/integrations/googlehealth', googleHealthRoutes);
 app.use('/api/integrations/polar', polarRoutes);
 app.use('/api/integrations/strava', stravaRoutes);
+app.use('/api/integrations/intervalsicu', intervalsIcuRoutes);
 app.use('/api/integrations/hevy', hevyRoutes);
 app.use('/api/mood', moodRoutes);
 app.use('/api/fasting', fastingRoutes);
@@ -646,6 +649,29 @@ const scheduleStravaSyncs = async () => {
     }
   });
 };
+// Intervals.ICU sync
+const scheduleIntervalsIcuSyncs = async () => {
+  cron.schedule('0 * * * *', async () => {
+    const intervalsIcuProviders =
+      await externalProviderRepository.getProvidersByType('intervalsicu');
+    for (const provider of intervalsIcuProviders) {
+      if (provider.is_active && provider.sync_frequency !== 'manual') {
+        try {
+          await intervalsIcuService.syncIntervalsIcuData(provider.user_id, 'scheduled');
+          await externalProviderRepository.updateProviderLastSync(
+            provider.id,
+            new Date()
+          );
+        } catch (error) {
+          console.error(
+            `[CRON] Intervals.ICU sync failed for user ${provider.user_id}:`,
+            error
+          );
+        }
+      }
+    }
+  });
+};
 // Polar sync
 const schedulePolarSyncs = async () => {
   cron.schedule('0 * * * *', async () => {
@@ -723,6 +749,7 @@ applyMigrations()
     scheduleFitbitSyncs();
     schedulePolarSyncs();
     scheduleStravaSyncs();
+    scheduleIntervalsIcuSyncs();
     scheduleGoogleHealthSyncs();
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const adminUser = await userRepository.findUserByEmail(
