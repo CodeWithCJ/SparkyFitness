@@ -8,12 +8,15 @@ import {
   formatMobileExerciseCount,
   formatMobileFoodVariantLabel,
   formatMobileFoodCount,
+  formatMobileHealthRecordCount,
   formatMobileIngredientCount,
+  formatMobileItemCount,
   formatMobileNumber,
   formatMobileRepCount,
   formatMobileServingCount,
   formatMobileSetCount,
   localizeExerciseCategory,
+  localizeHealthCategory,
   localizeHealthMetricLabel,
   localizeMealType,
   localizeNutrientDisplayLabel,
@@ -54,6 +57,9 @@ describe('mobile localization', () => {
     expect(localizeHealthMetricLabel('customMetric', 'مؤشر مخصص')).toBe(
       'مؤشر مخصص',
     );
+    expect(localizeHealthCategory('Vitals')).toBe('المؤشرات الحيوية');
+    expect(formatMobileItemCount(2)).toBe('عنصرين');
+    expect(formatMobileHealthRecordCount(4)).toBe('٤ سجلات');
   });
 
   it('localizes diary meal types, serving units, and numbers', () => {

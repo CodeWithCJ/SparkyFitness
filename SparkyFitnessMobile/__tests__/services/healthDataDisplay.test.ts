@@ -88,29 +88,29 @@ describe('fetchHealthDisplayData', () => {
   describe('aggregated formatters', () => {
     it('formats steps as a localized total', async () => {
       mockSteps.mockResolvedValue([{ value: 5000 }, { value: 432 }]);
-      expect(await displayFor('Steps')).toBe((5432).toLocaleString());
+      expect(await displayFor('Steps')).toBe('٥٬٤٣٢');
       // Aggregated metrics never read raw records.
       expect(mockReadHealthRecords).not.toHaveBeenCalled();
     });
 
     it('formats active calories as a localized total', async () => {
       mockActiveCals.mockResolvedValue([{ value: 300 }, { value: 200 }]);
-      expect(await displayFor('ActiveCaloriesBurned')).toBe((500).toLocaleString());
+      expect(await displayFor('ActiveCaloriesBurned')).toBe('٥٠٠');
     });
 
     it('formats total calories as a localized total', async () => {
       mockTotalCals.mockResolvedValue([{ value: 1500 }, { value: 500 }]);
-      expect(await displayFor('TotalCaloriesBurned')).toBe((2000).toLocaleString());
+      expect(await displayFor('TotalCaloriesBurned')).toBe('٢٬٠٠٠');
     });
 
     it('converts distance from metres to kilometres', async () => {
       mockDistance.mockResolvedValue([{ value: 3500 }, { value: 1500 }]);
-      expect(await displayFor('Distance')).toBe('5.00 km');
+      expect(await displayFor('Distance')).toBe('٥ كم');
     });
 
     it('rounds floors climbed before localizing', async () => {
       mockFloors.mockResolvedValue([{ value: 10.4 }, { value: 2.4 }]);
-      expect(await displayFor('FloorsClimbed')).toBe((13).toLocaleString());
+      expect(await displayFor('FloorsClimbed')).toBe('١٣');
     });
 
     it('passes the resolved start/end window to the fetcher', async () => {
@@ -126,14 +126,14 @@ describe('fetchHealthDisplayData', () => {
       // Unlike raw formatters, aggregated metrics skip the no-records short-circuit,
       // so an empty result sums to 0 and is localized.
       mockSteps.mockResolvedValue([]);
-      expect(await displayFor('Steps')).toBe((0).toLocaleString());
+      expect(await displayFor('Steps')).toBe('٠');
     });
   });
 
   describe('basal metabolic rate', () => {
     it('averages the aggregated resting-energy values when present', async () => {
       mockBasalEnergy.mockResolvedValue([{ value: 1500 }, { value: 1600 }]);
-      expect(await displayFor('BasalMetabolicRate')).toBe('1550 kcal');
+      expect(await displayFor('BasalMetabolicRate')).toBe('١٬٥٥٠ سعرة');
       expect(mockReadHealthRecords).not.toHaveBeenCalled();
     });
 
@@ -147,7 +147,7 @@ describe('fetchHealthDisplayData', () => {
         { time: '2026-06-02T10:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 1700 } },
       ] as unknown[]);
       // Bucket avgs = [1550, 1700], overall avg = 1625.
-      expect(await displayFor('BasalMetabolicRate')).toBe('1625 kcal');
+      expect(await displayFor('BasalMetabolicRate')).toBe('١٬٦٢٥ سعرة');
     });
 
     it('shows no-data when neither aggregate nor raw records exist', async () => {
@@ -167,7 +167,7 @@ describe('fetchHealthDisplayData', () => {
     ])('extracts a raw BMR value from a $label payload', async ({ record }) => {
       mockBasalEnergy.mockResolvedValue([]);
       mockReadHealthRecords.mockResolvedValue([record] as unknown[]);
-      expect(await displayFor('BasalMetabolicRate')).toBe('1500 kcal');
+      expect(await displayFor('BasalMetabolicRate')).toBe('١٬٥٠٠ سعرة');
     });
   });
 
@@ -176,7 +176,7 @@ describe('fetchHealthDisplayData', () => {
       {
         recordType: 'HeartRate',
         records: [{ samples: [{ beatsPerMinute: 60 }, { beatsPerMinute: 80 }] }],
-        expected: '70 bpm',
+        expected: '٧٠ نبضة/د',
       },
       {
         recordType: 'Weight',
@@ -184,7 +184,7 @@ describe('fetchHealthDisplayData', () => {
           { time: '2026-06-01T00:00:00Z', weight: { inKilograms: 70.2 } },
           { time: '2026-06-02T00:00:00Z', weight: { inKilograms: 80.5 } },
         ],
-        expected: '80.5 kg',
+        expected: '٨٠٫٥ كجم',
       },
       {
         recordType: 'BodyFat',
@@ -192,7 +192,7 @@ describe('fetchHealthDisplayData', () => {
           { time: '2026-06-01T00:00:00Z', percentage: { inPercent: 18 } },
           { time: '2026-06-02T00:00:00Z', percentage: { inPercent: 21.4 } },
         ],
-        expected: '21.4%',
+        expected: '٢١٫٤٪',
       },
       {
         recordType: 'BloodPressure',
@@ -203,37 +203,37 @@ describe('fetchHealthDisplayData', () => {
             diastolic: { inMillimetersOfMercury: 80 },
           },
         ],
-        expected: '120/80 mmHg',
+        expected: '١٢٠/٨٠ ملم زئبق',
       },
       {
         recordType: 'SleepSession',
         records: [{ startTime: '2026-06-01T22:00:00Z', endTime: '2026-06-02T05:30:00Z' }],
-        expected: '7h 30m',
+        expected: '٧ ساعات و٣٠ دقيقة',
       },
       {
         recordType: 'Hydration',
         records: [{ volume: { inLiters: 1.5 } }, { volume: { inLiters: 0.5 } }],
-        expected: '2.00 L',
+        expected: '٢ لتر',
       },
       {
         recordType: 'Height',
         records: [{ time: '2026-06-01T00:00:00Z', height: { inMeters: 1.8 } }],
-        expected: '180.0 cm',
+        expected: '١٨٠ سم',
       },
       {
         recordType: 'BodyTemperature',
         records: [{ time: '2026-06-01T00:00:00Z', temperature: { inCelsius: 36.6 } }],
-        expected: '36.6°C',
+        expected: '٣٦٫٦°م',
       },
       {
         recordType: 'BloodGlucose',
         records: [{ time: '2026-06-01T00:00:00Z', level: { inMillimolesPerLiter: 5.4 } }],
-        expected: '5.4 mmol/L',
+        expected: '٥٫٤ مليمول/لتر',
       },
       {
         recordType: 'BloodGlucose',
         records: [{ time: '2026-06-01T00:00:00Z', level: { inMilligramsPerDeciliter: 90 } }],
-        expected: '5.0 mmol/L',
+        expected: '٥ مليمول/لتر',
       },
       {
         recordType: 'OxygenSaturation',
@@ -241,12 +241,12 @@ describe('fetchHealthDisplayData', () => {
           { time: '2026-06-01T00:00:00Z', percentage: { inPercent: 95 } },
           { time: '2026-06-02T00:00:00Z', percentage: { inPercent: 97 } },
         ],
-        expected: '97.0%',
+        expected: '٩٧٪',
       },
       {
         recordType: 'RestingHeartRate',
         records: [{ beatsPerMinute: 58 }, { beatsPerMinute: 62 }],
-        expected: '60 bpm',
+        expected: '٦٠ نبضة/د',
       },
       {
         recordType: 'HeartRateVariabilitySDNN',
@@ -254,7 +254,7 @@ describe('fetchHealthDisplayData', () => {
           { time: '2026-06-01T08:00:00Z', value: 30 },
           { time: '2026-06-02T08:00:00Z', value: 48 },
         ],
-        expected: '48 ms',
+        expected: '٤٨ ملث',
       },
       {
         recordType: 'HeartRateVariabilityRmssd',
@@ -262,57 +262,57 @@ describe('fetchHealthDisplayData', () => {
           { time: '2026-06-01T08:00:00Z', heartRateVariabilityMillis: 30 },
           { time: '2026-06-02T08:00:00Z', heartRateVariabilityMillis: 48 },
         ],
-        expected: '48 ms',
+        expected: '٤٨ ملث',
       },
       {
         recordType: 'Vo2Max',
         records: [{ time: '2026-06-01T00:00:00Z', vo2Max: 42 }],
-        expected: '42.0 ml/min/kg',
+        expected: '٤٢ مل/د/كجم',
       },
       {
         recordType: 'LeanBodyMass',
         records: [{ time: '2026-06-01T00:00:00Z', mass: { inKilograms: 65 } }],
-        expected: '65.0 kg',
+        expected: '٦٥ كجم',
       },
       {
         recordType: 'WheelchairPushes',
         records: [{ count: 1200 }, { count: 300 }],
-        expected: (1500).toLocaleString(),
+        expected: '١٬٥٠٠',
       },
       {
         recordType: 'ExerciseSession',
         records: [{ startTime: '2026-06-01T10:00:00Z', endTime: '2026-06-01T10:45:00Z' }],
-        expected: '45 min',
+        expected: '٤٥ دقيقة',
       },
       {
         recordType: 'ElevationGained',
         records: [{ elevation: { inMeters: 10 } }, { elevation: { inMeters: 5 } }],
-        expected: '15 m',
+        expected: '١٥ م',
       },
       {
         recordType: 'Power',
         records: [{ power: { inWatts: 200 } }, { power: { inWatts: 100 } }],
-        expected: '150 W',
+        expected: '١٥٠ واط',
       },
       {
         recordType: 'Speed',
         records: [{ speed: { inMetersPerSecond: 2 } }, { speed: { inMetersPerSecond: 3 } }],
-        expected: '2.50 m/s',
+        expected: '٢٫٥ م/ث',
       },
       {
         recordType: 'RespiratoryRate',
         records: [{ rate: 14 }, { rate: 16 }],
-        expected: '15 br/min',
+        expected: '١٥ نفس/د',
       },
       {
         recordType: 'Nutrition',
         records: [{ energy: { inCalories: 1500000 } }, { energy: { inCalories: 500000 } }],
-        expected: '2000 kcal',
+        expected: '٢٬٠٠٠ سعرة',
       },
       {
         recordType: 'Workout',
         records: [{}, {}, {}],
-        expected: '3 workouts',
+        expected: '٣ تمارين',
       },
     ];
 
@@ -327,7 +327,7 @@ describe('fetchHealthDisplayData', () => {
         { time: '2026-06-01T00:00:00Z', percentage: { inPercent: 96 } },
         { time: '2026-06-02T00:00:00Z', percentage: { inPercent: 0 } },
       ]);
-      expect(await displayFor('OxygenSaturation')).toBe('96.0%');
+      expect(await displayFor('OxygenSaturation')).toBe('٩٦٪');
     });
 
     // Body-fat readings arrive in several shapes across platforms.
@@ -339,7 +339,7 @@ describe('fetchHealthDisplayData', () => {
       { label: 'bodyFat', record: { time: 't', bodyFat: 22 } },
     ])('formats body fat from a $label payload', async ({ record }) => {
       mockReadHealthRecords.mockResolvedValue([record] as unknown[]);
-      expect(await displayFor('BodyFat')).toBe('22.0%');
+      expect(await displayFor('BodyFat')).toBe('٢٢٪');
     });
 
     it.each([
@@ -349,14 +349,14 @@ describe('fetchHealthDisplayData', () => {
       { label: 'spo2', record: { time: 't', spo2: 98 } },
     ])('formats oxygen saturation from a $label payload', async ({ record }) => {
       mockReadHealthRecords.mockResolvedValue([record] as unknown[]);
-      expect(await displayFor('OxygenSaturation')).toBe('98.0%');
+      expect(await displayFor('OxygenSaturation')).toBe('٩٨٪');
     });
 
     it('reads blood glucose from the bloodGlucose.* field path', async () => {
       mockReadHealthRecords.mockResolvedValue([
         { time: 't', bloodGlucose: { inMillimolesPerLiter: 6.1 } },
       ]);
-      expect(await displayFor('BloodGlucose')).toBe('6.1 mmol/L');
+      expect(await displayFor('BloodGlucose')).toBe('٦٫١ مليمول/لتر');
     });
 
     it('converts blood glucose from mg/dL on the bloodGlucose.* field path', async () => {
@@ -364,7 +364,7 @@ describe('fetchHealthDisplayData', () => {
         { time: 't', bloodGlucose: { inMilligramsPerDeciliter: 108 } },
       ]);
       // 108 / 18.018 ≈ 5.99 → 6.0 mmol/L
-      expect(await displayFor('BloodGlucose')).toBe('6.0 mmol/L');
+      expect(await displayFor('BloodGlucose')).toBe('٦ مليمول/لتر');
     });
 
     it('drops Vo2Max readings at or above the 100 upper bound', async () => {
@@ -381,17 +381,17 @@ describe('fetchHealthDisplayData', () => {
 
     it('uses a generic record count for record types with no dedicated formatter', async () => {
       mockReadHealthRecords.mockResolvedValue([{}, {}]);
-      expect(await displayFor('Stress')).toBe('2 records');
+      expect(await displayFor('Stress')).toBe('سجلين');
     });
 
     it('uses the singular form for a single generic record', async () => {
       mockReadHealthRecords.mockResolvedValue([{}]);
-      expect(await displayFor('Stress')).toBe('1 record');
+      expect(await displayFor('Stress')).toBe('سجل واحد');
     });
 
-    it('returns "Error" and logs when a metric fetch throws', async () => {
+    it('returns a localized error and logs when a metric fetch throws', async () => {
       mockReadHealthRecords.mockRejectedValue(new Error('HealthKit unavailable'));
-      expect(await displayFor('Weight')).toBe('Error');
+      expect(await displayFor('Weight')).toBe('تعذرت القراءة');
       expect(mockAddLog).toHaveBeenCalledWith(
         expect.stringContaining('HealthKit unavailable'),
         'ERROR',
@@ -410,8 +410,8 @@ describe('fetchHealthDisplayData', () => {
       });
 
       const result = await fetchHealthDisplayData(TIME_RANGE);
-      expect(result.good).toBe('75.0 kg');
-      expect(result.bad).toBe('Error');
+      expect(result.good).toBe('٧٥ كجم');
+      expect(result.bad).toBe('تعذرت القراءة');
     });
   });
 });

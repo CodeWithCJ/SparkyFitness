@@ -9,6 +9,11 @@ import {
   WRITEBACK_CATEGORY_ORDER,
   type WritebackMetric,
 } from '../WritebackMetrics';
+import {
+  localizeHealthCategory,
+  localizeHealthMetricLabel,
+  mobileT,
+} from '../localization';
 
 interface HealthDataWritebackProps {
   writebackStates: Record<string, boolean>;
@@ -52,7 +57,8 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
     return null;
   }
 
-  const storeName = Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
+  const storeName =
+    Platform.OS === 'ios' ? mobileT('sync.appleHealthName') : 'Health Connect';
   const grouped = groupByCategory(WRITEBACK_METRICS);
 
   const toggleCategory = (category: string) => {
@@ -67,28 +73,37 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
     });
   };
 
-  const renderMetricItem = (metric: WritebackMetric) => (
-    <View key={metric.id} className="flex-row justify-between items-center mb-2">
-      <View className="flex-row items-center flex-1 mr-2">
-        <Image source={metric.icon} className="w-6 h-6" />
-        <Text className="ml-2 text-base text-text-primary flex-shrink" numberOfLines={1}>
-          {metric.label}
-        </Text>
+  const renderMetricItem = (metric: WritebackMetric) => {
+    const metricLabel = localizeHealthMetricLabel(metric.id, metric.label);
+
+    return (
+      <View key={metric.id} className="flex-row justify-between items-center mb-2">
+        <View className="flex-row items-center flex-1 me-2">
+          <Image source={metric.icon} className="w-6 h-6" />
+          <Text className="ms-2 text-base text-text-primary flex-shrink" numberOfLines={1}>
+            {metricLabel}
+          </Text>
+        </View>
+        <Switch
+          onValueChange={(newValue) => handleToggleWriteback(metric, newValue)}
+          value={!!writebackStates[metric.id]}
+          trackColor={{ false: formDisabled, true: formEnabled }}
+          thumbColor="#FFFFFF"
+          accessibilityLabel={mobileT('healthWriteback.metricAccessibility', {
+            metric: metricLabel,
+          })}
+        />
       </View>
-      <Switch
-        onValueChange={(newValue) => handleToggleWriteback(metric, newValue)}
-        value={!!writebackStates[metric.id]}
-        trackColor={{ false: formDisabled, true: formEnabled }}
-        thumbColor="#FFFFFF"
-      />
-    </View>
-  );
+    );
+  };
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold mb-1 text-text-primary">Write to {storeName}</Text>
+      <Text className="text-lg font-bold mb-1 text-text-primary">
+        {mobileT('healthWriteback.title', { store: storeName })}
+      </Text>
       <Text className="text-sm text-text-muted mb-3">
-        Syncs the data you log in SparkyFitness out to {storeName}, keeping the two in sync.
+        {mobileT('healthWriteback.description', { store: storeName })}
       </Text>
       {WRITEBACK_CATEGORY_ORDER.map((category) => {
         const metricsInCategory = grouped[category];
@@ -98,7 +113,7 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
         return (
           <CollapsibleSection
             key={category}
-            title={category}
+            title={localizeHealthCategory(category)}
             expanded={!collapsedCategories.has(category)}
             onToggle={() => toggleCategory(category)}
             itemCount={metricsInCategory.length}
@@ -109,16 +124,16 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
       })}
       <BottomSheetPicker<RemoveScope>
         value={'' as RemoveScope}
-        title={`Remove from ${storeName}`}
+        title={mobileT('healthWriteback.removeTitle', { store: storeName })}
         options={[
-          { label: 'All time', value: 'all' },
-          { label: 'Pick a date range…', value: 'range' },
+          { label: mobileT('healthWriteback.allTime'), value: 'all' },
+          { label: mobileT('healthWriteback.dateRange'), value: 'range' },
         ]}
         onSelect={(scope) => (scope === 'all' ? onRemoveAllData() : onRemoveDateRange())}
         renderTrigger={({ onPress }) => (
           <Button variant="ghost" onPress={onPress} className="mt-2 py-1 px-0 self-start">
             <Text className="text-sm font-medium text-text-danger-subtle">
-              Remove SparkyFitness data from {storeName}
+              {mobileT('healthWriteback.removeAction', { store: storeName })}
             </Text>
           </Button>
         )}

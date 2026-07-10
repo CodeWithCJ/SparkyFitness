@@ -187,6 +187,10 @@ export function localizeHealthMetricLabel(id: string, fallback: string): string 
   return mobileT(`healthMetric.${id}`, undefined, fallback);
 }
 
+export function localizeHealthCategory(category: string): string {
+  return mobileT(`healthCategory.${category}`, undefined, category);
+}
+
 export function formatMobileNumber(
   value: number,
   options?: Intl.NumberFormatOptions,
@@ -254,7 +258,10 @@ function formatArabicCount(
     | 'workout.minute'
     | 'workout.hour'
     | 'mealDetail.ingredient'
-    | 'mealTypeDetail.food',
+    | 'mealTypeDetail.food'
+    | 'section.item'
+    | 'healthSync.record'
+    | 'healthSync.workoutRecord',
 ): string {
   const category = arabicPluralRules.select(count);
   const form =
@@ -285,6 +292,18 @@ export function formatMobileIngredientCount(count: number): string {
 
 export function formatMobileFoodCount(count: number): string {
   return formatArabicCount(count, 'mealTypeDetail.food');
+}
+
+export function formatMobileItemCount(count: number): string {
+  return formatArabicCount(count, 'section.item');
+}
+
+export function formatMobileHealthRecordCount(count: number): string {
+  return formatArabicCount(count, 'healthSync.record');
+}
+
+export function formatMobileWorkoutRecordCount(count: number): string {
+  return formatArabicCount(count, 'healthSync.workoutRecord');
 }
 
 export function formatMobileDuration(minutes: number): string {
