@@ -4,6 +4,7 @@ import request from 'supertest';
 import express from 'express';
 import huaweiHealthRoutes from '../routes/huaweiHealthRoutes.js';
 import huaweiHealthOAuthService from '../integrations/huaweihealth/huaweiHealthOAuthService.js';
+import huaweiHealthSyncService from '../integrations/huaweihealth/huaweiHealthSyncService.js';
 import { HuaweiHealthError } from '../integrations/huaweihealth/huaweiHealthErrors.js';
 
 vi.mock('../integrations/huaweihealth/huaweiHealthOAuthService.js', () => ({
@@ -13,6 +14,10 @@ vi.mock('../integrations/huaweihealth/huaweiHealthOAuthService.js', () => ({
     getStatus: vi.fn(),
     disconnect: vi.fn(),
   },
+}));
+
+vi.mock('../integrations/huaweihealth/huaweiHealthSyncService.js', () => ({
+  default: { sync: vi.fn() },
 }));
 
 vi.mock('../middleware/authMiddleware.js', () => ({
@@ -142,5 +147,51 @@ describe('Huawei Health routes', () => {
       'user-1',
       'user-1'
     );
+  });
+
+  it('runs a bounded manual sync and returns its partial-scope summary', async () => {
+    vi.mocked(huaweiHealthSyncService.sync).mockResolvedValue({
+      status: 'completed',
+      startDate: '2026-07-01',
+      endDate: '2026-07-07',
+      processed: 12,
+      errors: 0,
+      skipped: 1,
+      missingScopes: ['https://www.huawei.com/healthkit/sleep.read'],
+      completedAt: new Date('2026-07-10T12:00:00.000Z'),
+    });
+
+    const response = await request(app)
+      .post('/api/integrations/huaweihealth/sync')
+      .send({ startDate: '2026-07-01', endDate: '2026-07-07' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      status: 'completed',
+      processed: 12,
+      missingScopes: ['https://www.huawei.com/healthkit/sleep.read'],
+    });
+    expect(huaweiHealthSyncService.sync).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      { startDate: '2026-07-01', endDate: '2026-07-07' }
+    );
+  });
+
+  it('rejects incomplete, reversed, and over-31-day manual ranges', async () => {
+    for (const body of [
+      { startDate: '2026-07-01' },
+      { startDate: '2026-07-08', endDate: '2026-07-01' },
+      { startDate: '2026-05-01', endDate: '2026-07-01' },
+    ]) {
+      const response = await request(app)
+        .post('/api/integrations/huaweihealth/sync')
+        .send(body);
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toEqual({
+        error: { code: 'HUAWEI_SYNC_INVALID' },
+      });
+    }
+    expect(huaweiHealthSyncService.sync).not.toHaveBeenCalled();
   });
 });

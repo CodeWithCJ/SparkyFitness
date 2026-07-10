@@ -5,8 +5,12 @@ import express, {
 } from 'express';
 import authMiddleware from '../middleware/authMiddleware.js';
 import huaweiHealthOAuthService from '../integrations/huaweihealth/huaweiHealthOAuthService.js';
+import huaweiHealthSyncService from '../integrations/huaweihealth/huaweiHealthSyncService.js';
 import { HuaweiHealthError } from '../integrations/huaweihealth/huaweiHealthErrors.js';
-import { HuaweiHealthCallbackBodySchema } from '../schemas/huaweiHealthSchemas.js';
+import {
+  HuaweiHealthCallbackBodySchema,
+  HuaweiHealthSyncBodySchema,
+} from '../schemas/huaweiHealthSchemas.js';
 import { log } from '../config/logging.js';
 
 const router = express.Router();
@@ -80,6 +84,29 @@ router.get(
         req.authenticatedUserId
       );
       res.status(200).json(status);
+    } catch (error) {
+      handleHuaweiError(error, res, next);
+    }
+  }
+);
+
+router.post(
+  '/sync',
+  authMiddleware.authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const parsed = HuaweiHealthSyncBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: { code: 'HUAWEI_SYNC_INVALID' } });
+      return;
+    }
+
+    try {
+      const result = await huaweiHealthSyncService.sync(
+        req.userId,
+        req.authenticatedUserId,
+        parsed.data
+      );
+      res.status(200).json(result);
     } catch (error) {
       handleHuaweiError(error, res, next);
     }

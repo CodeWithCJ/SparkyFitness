@@ -13,6 +13,7 @@ const { query, release, getClient } = vi.hoisted(() => {
 vi.mock('../db/poolManager.js', () => ({ getClient }));
 
 import huaweiHealthOAuthRepository from '../integrations/huaweihealth/huaweiHealthOAuthRepository.js';
+import { updateHuaweiLastSync } from '../integrations/huaweihealth/huaweiHealthSyncRepository.js';
 
 describe('Huawei Health OAuth repository', () => {
   beforeEach(() => {
@@ -88,5 +89,18 @@ describe('Huawei Health OAuth repository', () => {
     expect(sql).toContain('encrypted_refresh_token = $6');
     expect(sql).toContain('is_public = FALSE');
     expect(query.mock.calls[0][1]).not.toContain('client-secret');
+  });
+
+  it('updates sync completion through the same owner RLS context', async () => {
+    query.mockResolvedValueOnce({ rowCount: 1, rows: [] });
+    const completedAt = new Date('2026-07-10T12:00:00.000Z');
+
+    await updateHuaweiLastSync('user-1', 'user-1', completedAt);
+
+    expect(getClient).toHaveBeenCalledWith('user-1', 'user-1');
+    expect(query).toHaveBeenCalledWith(
+      expect.stringMatching(/provider_type = 'huaweihealth'/),
+      ['user-1', completedAt]
+    );
   });
 });

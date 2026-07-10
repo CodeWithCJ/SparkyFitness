@@ -79,6 +79,7 @@ import garminService from './services/garminService.js';
 import { getGarminSyncPhaseErrors } from './services/garminSyncResult.js';
 import fitbitService from './services/fitbitService.js';
 import googleHealthService from './services/googleHealthService.js';
+import { scheduleHuaweiHealthSyncs } from './services/huaweiHealthScheduler.js';
 import polarService from './services/polarService.js';
 import stravaService from './services/stravaService.js';
 import dailySummaryRoutes from './routes/dailySummaryRoutes.js';
@@ -789,6 +790,7 @@ const prepareRuntimeForRequests = async () => {
     schedulePolarSyncs();
     scheduleStravaSyncs();
     scheduleGoogleHealthSyncs();
+    scheduleHuaweiHealthSyncs();
   }
   if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
     const adminUser = await userRepository.findUserByEmail(

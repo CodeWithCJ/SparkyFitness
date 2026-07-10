@@ -42,4 +42,3 @@ WHERE provider_type = 'huaweihealth'
   AND is_public IS DISTINCT FROM FALSE;
 
 COMMIT;
-
