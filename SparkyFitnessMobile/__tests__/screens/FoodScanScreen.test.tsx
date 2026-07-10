@@ -2,6 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import Toast from 'react-native-toast-message';
 import FoodScanScreen from '../../src/screens/FoodScanScreen';
 import { lookupBarcodeV2, scanNutritionLabel } from '../../src/services/api/externalFoodSearchApi';
 import { ApiError } from '../../src/services/api/errors';
@@ -28,6 +29,7 @@ jest.mock('../../src/services/foodPhotoIntro', () => ({
 }));
 
 describe('FoodScanScreen', () => {
+  const mockToast = Toast as unknown as { show: jest.Mock };
   const mockLookupBarcodeV2 = lookupBarcodeV2 as jest.MockedFunction<typeof lookupBarcodeV2>;
   const mockScanNutritionLabel = scanNutritionLabel as jest.MockedFunction<typeof scanNutritionLabel>;
   const mockFireSuccessHaptic = fireSuccessHaptic as jest.MockedFunction<
@@ -143,7 +145,7 @@ describe('FoodScanScreen', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('No match for barcode')).toBeTruthy();
+      expect(screen.getByText('ما لقينا منتج بهالباركود')).toBeTruthy();
     });
     expect(mockFireSuccessHaptic).not.toHaveBeenCalled();
     expect(mockNavigation.replace).not.toHaveBeenCalled();
@@ -164,16 +166,17 @@ describe('FoodScanScreen', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Lookup failed')).toBeTruthy();
+      expect(screen.getByText('ما قدرنا نبحث عن الباركود')).toBeTruthy();
     });
+    expect(screen.queryByText(/FatSecret API error/)).toBeNull();
     expect(
-      screen.getByText('FatSecret API error (code 21): Invalid IP address detected'),
+      screen.getByText('ما قدرنا نبحث عن هالباركود. حاول مرة ثانية.'),
     ).toBeTruthy();
     // The misleading not-found copy is not shown for a real failure.
-    expect(screen.queryByText('No match for barcode')).toBeNull();
+    expect(screen.queryByText('ما لقينا منتج بهالباركود')).toBeNull();
     // The flow stays recoverable.
-    expect(screen.getByText('Scan Nutrition Label')).toBeTruthy();
-    expect(screen.getByText('Add Food Manually')).toBeTruthy();
+    expect(screen.getByText('مسح الملصق الغذائي')).toBeTruthy();
+    expect(screen.getByText('إضافة صنف يدويًا')).toBeTruthy();
     expect(mockFireSuccessHaptic).not.toHaveBeenCalled();
   });
 
@@ -186,10 +189,10 @@ describe('FoodScanScreen', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Lookup failed')).toBeTruthy();
+      expect(screen.getByText('ما قدرنا نبحث عن الباركود')).toBeTruthy();
     });
     expect(
-      screen.getByText("Couldn't look up this barcode. Please try again."),
+      screen.getByText('ما قدرنا نبحث عن هالباركود. حاول مرة ثانية.'),
     ).toBeTruthy();
   });
 
@@ -226,9 +229,9 @@ describe('FoodScanScreen', () => {
     mockLookupBarcodeV2.mockResolvedValue(existingFoodResult);
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Type Barcode Instead'));
-    fireEvent.changeText(screen.getByPlaceholderText('Barcode number'), '012345678905');
-    fireEvent.press(screen.getByText('Look Up'));
+    fireEvent.press(screen.getByText('كتابة الباركود بدل المسح'));
+    fireEvent.changeText(screen.getByPlaceholderText('رقم الباركود'), '٠١٢٣٤٥٦٧٨٩٠٥');
+    fireEvent.press(screen.getByText('بحث'));
 
     await waitFor(() => {
       expect(mockNavigation.replace).toHaveBeenCalledWith(
@@ -239,6 +242,22 @@ describe('FoodScanScreen', () => {
       );
     });
     expect(mockFireSuccessHaptic).not.toHaveBeenCalled();
+    expect(mockLookupBarcodeV2).toHaveBeenCalledWith('012345678905', undefined);
+  });
+
+  it('blocks a manual barcode outside the standard 8-14 digit range', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('كتابة الباركود بدل المسح'));
+    fireEvent.changeText(screen.getByPlaceholderText('رقم الباركود'), '١٢٣٤٥');
+    fireEvent.press(screen.getByText('بحث'));
+
+    expect(mockLookupBarcodeV2).not.toHaveBeenCalled();
+    expect(mockToast.show).toHaveBeenCalledWith({
+      type: 'error',
+      text1: 'الباركود غير صحيح',
+      text2: 'الباركود لازم يكون من ٨ إلى ١٤ رقمًا.',
+    });
   });
 
   describe('Photo segment gating', () => {
@@ -249,11 +268,11 @@ describe('FoodScanScreen', () => {
       } as any);
       const screen = renderScreen();
 
-      fireEvent.press(screen.getByText('Photo'));
+      fireEvent.press(screen.getByText('الصورة'));
 
       await waitFor(() => {
         expect(
-          screen.getByText(/AI photo estimates aren.t set up/),
+          screen.getByText(/تقدير الصور بالذكاء الاصطناعي غير مهيأ/),
         ).toBeTruthy();
       });
     });
@@ -267,7 +286,7 @@ describe('FoodScanScreen', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/AI photo estimates aren.t set up/),
+          screen.getByText(/تقدير الصور بالذكاء الاصطناعي غير مهيأ/),
         ).toBeTruthy();
       });
     });
@@ -287,10 +306,10 @@ describe('FoodScanScreen', () => {
       const screen = renderScreenWithRoute({ initialMode: 'photo' });
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+        expect(screen.getByLabelText('اختيار صورة من المكتبة')).toBeTruthy();
       });
       expect(
-        screen.queryByText(/AI photo estimates aren.t set up/),
+        screen.queryByText(/تقدير الصور بالذكاء الاصطناعي غير مهيأ/),
       ).toBeNull();
     });
 
@@ -298,7 +317,7 @@ describe('FoodScanScreen', () => {
       mockHasSeenFoodPhotoIntro.mockResolvedValue(false);
       const screen = renderScreen();
 
-      fireEvent.press(screen.getByText('Photo'));
+      fireEvent.press(screen.getByText('الصورة'));
 
       await waitFor(() => {
         expect(mockNavigation.navigate).toHaveBeenCalledWith('FoodPhotoIntro', {
@@ -311,7 +330,7 @@ describe('FoodScanScreen', () => {
       mockHasSeenFoodPhotoIntro.mockResolvedValue(true);
       const screen = renderScreen();
 
-      fireEvent.press(screen.getByText('Photo'));
+      fireEvent.press(screen.getByText('الصورة'));
 
       // Give the effect a tick to resolve.
       await act(async () => {
@@ -327,9 +346,9 @@ describe('FoodScanScreen', () => {
       const screen = renderScreenWithRoute({ pickerMode: 'meal-builder' });
       // Barcode + Label remain available; Photo is removed so meal-builder
       // scans can't accidentally drop into the diary-logging flow.
-      expect(screen.getByText('Barcode')).toBeTruthy();
-      expect(screen.getByText('Label')).toBeTruthy();
-      expect(screen.queryByText('Photo')).toBeNull();
+      expect(screen.getByText('الباركود')).toBeTruthy();
+      expect(screen.getByText('الملصق')).toBeTruthy();
+      expect(screen.queryByText('الصورة')).toBeNull();
     });
 
     it('coerces initialMode=photo to barcode in meal-builder mode', () => {
@@ -338,9 +357,9 @@ describe('FoodScanScreen', () => {
         initialMode: 'photo',
       });
       // No Photo segment, no AI gate — the scan opens on barcode instead.
-      expect(screen.queryByText('Photo')).toBeNull();
+      expect(screen.queryByText('الصورة')).toBeNull();
       expect(
-        screen.queryByText(/AI photo estimates aren.t set up/),
+        screen.queryByText(/تقدير الصور بالذكاء الاصطناعي غير مهيأ/),
       ).toBeNull();
     });
   });
@@ -394,17 +413,17 @@ describe('FoodScanScreen', () => {
 
     it('hides the Label and Photo segments', () => {
       const screen = renderCapture();
-      expect(screen.getByText('Barcode')).toBeTruthy();
-      expect(screen.queryByText('Label')).toBeNull();
-      expect(screen.queryByText('Photo')).toBeNull();
+      expect(screen.getByText('الباركود')).toBeTruthy();
+      expect(screen.queryByText('الملصق')).toBeNull();
+      expect(screen.queryByText('الصورة')).toBeNull();
     });
 
     it('manual submit dispatches to returnKey without lookup', async () => {
       const screen = renderCapture();
 
-      fireEvent.press(screen.getByText('Type Barcode Instead'));
-      fireEvent.changeText(screen.getByPlaceholderText('Barcode number'), '012345678905');
-      fireEvent.press(screen.getByText('Use Barcode'));
+      fireEvent.press(screen.getByText('كتابة الباركود بدل المسح'));
+      fireEvent.changeText(screen.getByPlaceholderText('رقم الباركود'), '012345678905');
+      fireEvent.press(screen.getByText('استخدام الباركود'));
 
       await waitFor(() => {
         expect(mockDispatch).toHaveBeenCalledTimes(1);
@@ -424,15 +443,15 @@ describe('FoodScanScreen', () => {
       const screen = renderScreen();
 
       // Switch to Photo — gate appears.
-      fireEvent.press(screen.getByText('Photo'));
+      fireEvent.press(screen.getByText('الصورة'));
       await waitFor(() => {
         expect(
-          screen.getByText(/AI photo estimates aren.t set up/),
+          screen.getByText(/تقدير الصور بالذكاء الاصطناعي غير مهيأ/),
         ).toBeTruthy();
       });
 
       // Re-tap Photo while still on Photo — should refetch.
-      fireEvent.press(screen.getByText('Photo'));
+      fireEvent.press(screen.getByText('الصورة'));
       expect(refetch).toHaveBeenCalled();
     });
   });
@@ -452,11 +471,11 @@ describe('FoodScanScreen', () => {
     it('exposes the library button only in photo mode when AI is configured', async () => {
       const screen = renderScreen();
       // Not visible on barcode mode.
-      expect(screen.queryByLabelText('Choose photo from library')).toBeNull();
+      expect(screen.queryByLabelText('اختيار صورة من المكتبة')).toBeNull();
 
-      fireEvent.press(screen.getByText('Photo'));
+      fireEvent.press(screen.getByText('الصورة'));
       await waitFor(() => {
-        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+        expect(screen.getByLabelText('اختيار صورة من المكتبة')).toBeTruthy();
       });
     });
 
@@ -469,10 +488,10 @@ describe('FoodScanScreen', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/AI photo estimates aren.t set up/),
+          screen.getByText(/تقدير الصور بالذكاء الاصطناعي غير مهيأ/),
         ).toBeTruthy();
       });
-      expect(screen.queryByLabelText('Choose photo from library')).toBeNull();
+      expect(screen.queryByLabelText('اختيار صورة من المكتبة')).toBeNull();
     });
 
     it('routes a picked photo into the FoodPhotoFlow > Improve screen', async () => {
@@ -483,11 +502,11 @@ describe('FoodScanScreen', () => {
 
       const screen = renderScreenWithRoute({ initialMode: 'photo' });
       await waitFor(() => {
-        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+        expect(screen.getByLabelText('اختيار صورة من المكتبة')).toBeTruthy();
       });
 
       await act(async () => {
-        fireEvent.press(screen.getByLabelText('Choose photo from library'));
+        fireEvent.press(screen.getByLabelText('اختيار صورة من المكتبة'));
       });
 
       await waitFor(() => {
@@ -505,11 +524,11 @@ describe('FoodScanScreen', () => {
 
       const screen = renderScreenWithRoute({ initialMode: 'photo' });
       await waitFor(() => {
-        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+        expect(screen.getByLabelText('اختيار صورة من المكتبة')).toBeTruthy();
       });
 
       await act(async () => {
-        fireEvent.press(screen.getByLabelText('Choose photo from library'));
+        fireEvent.press(screen.getByLabelText('اختيار صورة من المكتبة'));
       });
 
       await waitFor(() => {
@@ -526,10 +545,10 @@ describe('FoodScanScreen', () => {
 
       const screen = renderScreenWithRoute({ initialMode: 'photo' });
       await waitFor(() => {
-        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+        expect(screen.getByLabelText('اختيار صورة من المكتبة')).toBeTruthy();
       });
 
-      const button = screen.getByLabelText('Choose photo from library');
+      const button = screen.getByLabelText('اختيار صورة من المكتبة');
       await act(async () => {
         fireEvent.press(button);
         fireEvent.press(button);

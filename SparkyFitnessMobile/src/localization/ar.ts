@@ -491,6 +491,48 @@ export const ar = {
   'foodPhoto.invalidServings': 'عدد الحصص غير صحيح',
   'foodPhoto.servingsPositive': 'لازم يكون عدد الحصص رقمًا أكبر من صفر.',
 
+  'foodScan.barcode': 'الباركود',
+  'foodScan.label': 'الملصق',
+  'foodScan.photo': 'الصورة',
+  'foodScan.cameraPermission': 'نحتاج إذنك عشان نشغّل الكاميرا',
+  'foodScan.grantPermission': 'السماح بالكاميرا',
+  'foodScan.capturePhotoFailed': 'ما قدرنا نلتقط الصورة.',
+  'foodScan.analyzeLabelFailed':
+    'ما قدرنا نحلل الملصق الغذائي. حاول مرة ثانية.',
+  'foodScan.analyzingLabel': 'جاري تحليل الملصق…',
+  'foodScan.retake': 'إعادة التصوير',
+  'foodScan.usePhoto': 'استخدام الصورة',
+  'foodScan.lookupFailed': 'ما قدرنا نبحث عن الباركود',
+  'foodScan.lookupFailedDescription':
+    'ما قدرنا نبحث عن هالباركود. حاول مرة ثانية.',
+  'foodScan.noBarcodeMatch': 'ما لقينا منتج بهالباركود',
+  'foodScan.noBarcodeMatchDescription':
+    'تقدر تمسح الملصق الغذائي أو تضيف الصنف يدويًا.',
+  'foodScan.scanNutritionLabel': 'مسح الملصق الغذائي',
+  'foodScan.addFoodManually': 'إضافة صنف يدويًا',
+  'foodScan.frameWholeMeal': 'خل الوجبة كاملة داخل الإطار',
+  'foodScan.aiNotConfigured':
+    'تقدير الصور بالذكاء الاصطناعي غير مهيأ',
+  'foodScan.aiNotConfiguredDescription':
+    'افتح سباركي فتنس من المتصفح، ومن الإعدادات ثم الذكاء الاصطناعي أضف مزودًا للخدمة، وبعدها ارجع هنا.',
+  'foodScan.logManually': 'تسجيل يدوي',
+  'foodScan.notNow': 'مو الحين',
+  'foodScan.typeBarcodeInstead': 'كتابة الباركود بدل المسح',
+  'foodScan.choosePhotoLibrary': 'اختيار صورة من المكتبة',
+  'foodScan.photoHelp': 'شرح تقدير الوجبة من صورة',
+  'foodScan.enterBarcode': 'أدخل الباركود',
+  'foodScan.barcodePlaceholder': 'رقم الباركود',
+  'foodScan.useBarcode': 'استخدام الباركود',
+  'foodScan.lookup': 'بحث',
+  'foodScan.invalidBarcode': 'الباركود غير صحيح',
+  'foodScan.invalidBarcodeDescription':
+    'الباركود لازم يكون من ٨ إلى ١٤ رقمًا.',
+  'foodScan.noPhotoReturned': 'ما رجعت لنا صورة من مكتبة الصور.',
+  'foodScan.flashlightOn': 'إطفاء الفلاش',
+  'foodScan.flashlightOff': 'تشغيل الفلاش',
+  'foodScan.captureLabel': 'التقاط صورة الملصق الغذائي',
+  'foodScan.captureMeal': 'التقاط صورة الوجبة',
+
   'mealTypeDetail.noServerTitle': 'ما فيه خادم مربوط',
   'mealTypeDetail.noServerDescription':
     'اربط خادمك من الإعدادات عشان تشوف تغذية وجبتك.',
