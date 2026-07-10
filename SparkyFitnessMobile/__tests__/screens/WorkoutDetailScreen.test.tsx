@@ -222,7 +222,7 @@ describe('WorkoutDetailScreen', () => {
     fireEvent.press(screen.getByLabelText('توسيع Bench Press'));
 
     fireEvent.press(screen.getByLabelText('تغيير عمود القياس'));
-    fireEvent.press(screen.getByLabelText('Volume'));
+    fireEvent.press(screen.getByLabelText('الحجم التدريبي'));
 
     expect(useAppPreferencesStore.getState().activeWorkoutMetricColumn).toBe('volume');
   });
@@ -252,7 +252,7 @@ describe('WorkoutDetailScreen', () => {
 
       // Tap the set number → set-type menu → Warmup.
       fireEvent.press(screen.getByLabelText('تغيير نوع المجموعة ١'));
-      fireEvent.press(screen.getByLabelText('Warmup'));
+      fireEvent.press(screen.getByLabelText('إحماء'));
 
       // Activate the row, type an RPE, blur to snap it to 0.5 steps.
       fireEvent.press(screen.getByLabelText('تعديل وزن المجموعة ١'));

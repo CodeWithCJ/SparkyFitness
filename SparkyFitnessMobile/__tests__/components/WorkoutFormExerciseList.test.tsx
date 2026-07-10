@@ -39,7 +39,12 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
   return {
     __esModule: true,
     METRIC_OPTIONS: ['rpe', 'volume', 'e1rm', 'tenrm'],
-    METRIC_MENU_LABELS: { rpe: 'RPE', volume: 'Volume', e1rm: 'Est. 1RM', tenrm: 'Est. 10RM' },
+    METRIC_MENU_LABELS: {
+      rpe: 'مقياس الجهد (RPE)',
+      volume: 'الحجم التدريبي',
+      e1rm: 'الوزن التقديري لتكرار واحد',
+      tenrm: 'الوزن التقديري لـ ١٠ تكرارات',
+    },
     default: (props: any) => {
       const id = props.exercise.id;
       const firstSetId = String(props.exercise.sets[0]?.id);
@@ -400,7 +405,7 @@ describe('WorkoutFormExerciseList', () => {
 
     // Every set type (current one check-marked) plus a Delete item.
     expect(utils.getByTestId('menu-item-warmup')).toBeTruthy();
-    expect(utils.getByText('✓ Normal')).toBeTruthy();
+    expect(utils.getByText('✓ عادية')).toBeTruthy();
     expect(utils.getByTestId('menu-item-drop')).toBeTruthy();
     expect(utils.getByTestId('menu-item-failure')).toBeTruthy();
     expect(utils.getByTestId('menu-item-delete')).toBeTruthy();
