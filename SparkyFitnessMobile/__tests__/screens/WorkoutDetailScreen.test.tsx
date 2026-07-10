@@ -213,8 +213,8 @@ describe('WorkoutDetailScreen', () => {
     // One static checkmark for the completed set; the pending set renders
     // an empty slot, and neither exposes complete/un-complete controls.
     expect(screen.getAllByTestId('icon-checkmark')).toHaveLength(1);
-    expect(screen.queryByLabelText('Un-complete set 1')).toBeNull();
-    expect(screen.queryByLabelText('Mark set 2 complete')).toBeNull();
+    expect(screen.queryByLabelText('إلغاء إكمال المجموعة ١')).toBeNull();
+    expect(screen.queryByLabelText('تحديد المجموعة ٢ كمكتملة')).toBeNull();
   });
 
   it('opens the metric menu from the column header and updates the shared store', () => {
@@ -251,12 +251,12 @@ describe('WorkoutDetailScreen', () => {
       expect(screen.getByLabelText('خيارات إضافية لـ Bench Press')).toBeTruthy();
 
       // Tap the set number → set-type menu → Warmup.
-      fireEvent.press(screen.getByLabelText('Change type for set 1'));
+      fireEvent.press(screen.getByLabelText('تغيير نوع المجموعة ١'));
       fireEvent.press(screen.getByLabelText('Warmup'));
 
       // Activate the row, type an RPE, blur to snap it to 0.5 steps.
-      fireEvent.press(screen.getByLabelText('Edit weight for set 1'));
-      const rpeInput = screen.getByLabelText('RPE');
+      fireEvent.press(screen.getByLabelText('تعديل وزن المجموعة ١'));
+      const rpeInput = screen.getByLabelText('مقياس الجهد');
       fireEvent.changeText(rpeInput, '8.6');
       fireEvent(rpeInput, 'blur');
 
@@ -283,10 +283,10 @@ describe('WorkoutDetailScreen', () => {
 
       // The completed set shows a green check that now toggles completion.
       expect(screen.getByTestId('completed-badge')).toBeTruthy();
-      expect(screen.getByLabelText('Un-complete set 1')).toBeTruthy();
+      expect(screen.getByLabelText('إلغاء إكمال المجموعة ١')).toBeTruthy();
       // The value cell still activates for editing.
-      fireEvent.press(screen.getByLabelText('Edit weight for set 1'));
-      expect(screen.getByLabelText('RPE')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText('تعديل وزن المجموعة ١'));
+      expect(screen.getByLabelText('مقياس الجهد')).toBeTruthy();
     });
 
     it('persists a completion toggle through the save payload', async () => {
@@ -302,7 +302,7 @@ describe('WorkoutDetailScreen', () => {
       );
 
       fireEvent.press(screen.getByLabelText('Edit workout'));
-      fireEvent.press(screen.getByLabelText('Un-complete set 1'));
+      fireEvent.press(screen.getByLabelText('إلغاء إكمال المجموعة ١'));
       fireEvent.press(screen.getByLabelText('Save'));
 
       await waitFor(() => expect(mockUpdateSession).toHaveBeenCalled());

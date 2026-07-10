@@ -153,19 +153,19 @@ describe('ActiveWorkoutSetRow', () => {
       // The completion check sits outside the dimmed content so its green
       // matches the card/rail badges instead of fading with the row.
       expect(
-        StyleSheet.flatten(getByLabelText('Un-complete set 1').props.style)?.opacity,
+        StyleSheet.flatten(getByLabelText('إلغاء إكمال المجموعة ١').props.style)?.opacity,
       ).toBeUndefined();
     });
 
     it('un-completes on check press', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'done' });
-      fireEvent.press(getByLabelText('Un-complete set 1'));
+      fireEvent.press(getByLabelText('إلغاء إكمال المجموعة ١'));
       expect(callbacks.onUncomplete).toHaveBeenCalledWith('101');
     });
 
     it('exposes swipe delete', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'done' });
-      fireEvent.press(getByLabelText('Delete set 1'));
+      fireEvent.press(getByLabelText('حذف المجموعة ١'));
       expect(callbacks.onDelete).toHaveBeenCalledWith('101');
     });
   });
@@ -181,17 +181,17 @@ describe('ActiveWorkoutSetRow', () => {
         state: 'current',
         weightUnit: 'lbs',
       });
-      fireEvent.press(getByLabelText('Log set 1'));
+      fireEvent.press(getByLabelText('تسجيل المجموعة ١'));
       expect(callbacks.onCommitField).not.toHaveBeenCalled();
       expect(callbacks.onComplete).toHaveBeenCalledWith('101');
     });
 
     it('activates the tapped cell instead of showing inputs inline', () => {
       const { getByLabelText, queryByLabelText, callbacks } = renderRow({ state: 'current' });
-      expect(queryByLabelText('Weight')).toBeNull();
-      fireEvent.press(getByLabelText('Edit weight for set 1'));
+      expect(queryByLabelText('الوزن')).toBeNull();
+      fireEvent.press(getByLabelText('تعديل وزن المجموعة ١'));
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
-      fireEvent.press(getByLabelText('Edit reps for set 1'));
+      fireEvent.press(getByLabelText('تعديل تكرارات المجموعة ١'));
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'reps');
     });
 
@@ -200,13 +200,13 @@ describe('ActiveWorkoutSetRow', () => {
         state: 'current',
         metricColumn: 'rpe',
       });
-      fireEvent.press(getByLabelText('Edit RPE for set 1'));
+      fireEvent.press(getByLabelText('تعديل جهد المجموعة ١'));
       expect(callbacks.onActivateRpe).toHaveBeenCalledWith('101');
     });
 
     it('does not make a non-RPE metric column tappable', () => {
       const { queryByLabelText } = renderRow({ state: 'current', metricColumn: 'volume' });
-      expect(queryByLabelText('Edit RPE for set 1')).toBeNull();
+      expect(queryByLabelText('تعديل جهد المجموعة ١')).toBeNull();
     });
   });
 
@@ -217,8 +217,8 @@ describe('ActiveWorkoutSetRow', () => {
         isFocused: true,
         weightUnit: 'kg',
       });
-      const input = getByLabelText('Weight');
-      expect(input.props.value).toBe('60');
+      const input = getByLabelText('الوزن');
+      expect(input.props.value).toBe('٦٠');
       fireEvent.changeText(input, '105');
       fireEvent(input, 'blur');
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 105 });
@@ -230,8 +230,8 @@ describe('ActiveWorkoutSetRow', () => {
         isFocused: true,
         weightUnit: 'lbs',
       });
-      const input = getByLabelText('Weight');
-      expect(input.props.value).toBe('132.3');
+      const input = getByLabelText('الوزن');
+      expect(input.props.value).toBe('١٣٢٫٣');
       fireEvent.changeText(input, '135');
       fireEvent(input, 'blur');
       const patch = callbacks.onCommitField.mock.calls[0][1];
@@ -240,7 +240,7 @@ describe('ActiveWorkoutSetRow', () => {
 
     it('commits a cleared weight as null', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true });
-      const input = getByLabelText('Weight');
+      const input = getByLabelText('الوزن');
       fireEvent.changeText(input, '');
       fireEvent(input, 'blur');
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: null });
@@ -254,8 +254,8 @@ describe('ActiveWorkoutSetRow', () => {
         isFocused: true,
         weightUnit: 'lbs',
       });
-      const input = getByLabelText('Weight');
-      expect(input.props.value).toBe('132.3'); // 60 kg shown in lbs
+      const input = getByLabelText('الوزن');
+      expect(input.props.value).toBe('١٣٢٫٣'); // 60 kg shown in lbs
       fireEvent(input, 'blur');
       const weightCommits = callbacks.onCommitField.mock.calls.filter(
         ([, patch]) => 'weight' in patch,
@@ -263,11 +263,27 @@ describe('ActiveWorkoutSetRow', () => {
       expect(weightCommits).toHaveLength(0);
     });
 
-    it('commits reps on blur', () => {
+    it('keeps localized thousand-value input seeds ungrouped and parseable', () => {
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+        set: { weight: 1000, reps: 1000 },
+      });
+      const weightInput = getByLabelText('الوزن');
+      const repsInput = getByLabelText('التكرارات');
+
+      expect(weightInput.props.value).toBe('١٠٠٠');
+      expect(repsInput.props.value).toBe('١٠٠٠');
+      fireEvent(weightInput, 'blur');
+      fireEvent(repsInput, 'blur');
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+    });
+
+    it('commits Arabic-Indic reps on blur', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true });
-      const input = getByLabelText('Reps');
-      expect(input.props.value).toBe('10');
-      fireEvent.changeText(input, '12');
+      const input = getByLabelText('التكرارات');
+      expect(input.props.value).toBe('١٠');
+      fireEvent.changeText(input, '١٢');
       fireEvent(input, 'blur');
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 12 });
     });
@@ -278,11 +294,11 @@ describe('ActiveWorkoutSetRow', () => {
         isFocused: true,
         metricColumn: 'rpe',
       });
-      fireEvent.changeText(getByLabelText('Weight'), '80');
-      fireEvent.changeText(getByLabelText('Reps'), '8');
-      fireEvent.changeText(getByLabelText('RPE'), '8.2');
+      fireEvent.changeText(getByLabelText('الوزن'), '80');
+      fireEvent.changeText(getByLabelText('التكرارات'), '8');
+      fireEvent.changeText(getByLabelText('مقياس الجهد'), '8.2');
 
-      fireEvent.press(getByLabelText('Log set 1'));
+      fireEvent.press(getByLabelText('تسجيل المجموعة ١'));
 
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 80 });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 8 });
@@ -305,9 +321,9 @@ describe('ActiveWorkoutSetRow', () => {
         ...base,
         isFocused: true,
       });
-      fireEvent.changeText(getByLabelText('Weight'), '80');
-      fireEvent.changeText(getByLabelText('Reps'), '8');
-      fireEvent.changeText(getByLabelText('RPE'), '8');
+      fireEvent.changeText(getByLabelText('الوزن'), '80');
+      fireEvent.changeText(getByLabelText('التكرارات'), '8');
+      fireEvent.changeText(getByLabelText('مقياس الجهد'), '8');
       expect(callbacks.onCommitField).not.toHaveBeenCalled();
 
       rerenderRow({ ...base, isFocused: false });
@@ -329,8 +345,8 @@ describe('ActiveWorkoutSetRow', () => {
         isFocused: true,
         metricColumn: 'volume',
       });
-      expect(queryByLabelText('RPE')).toBeNull();
-      expect(getByText('600')).toBeTruthy();
+      expect(queryByLabelText('مقياس الجهد')).toBeNull();
+      expect(getByText('٦٠٠')).toBeTruthy();
     });
 
     it('does not wrap the actively-edited row in a swipeable', () => {
@@ -347,9 +363,9 @@ describe('ActiveWorkoutSetRow', () => {
         metricColumn: 'rpe',
       });
       const ids = [
-        getByLabelText('Weight').props.inputAccessoryViewID,
-        getByLabelText('Reps').props.inputAccessoryViewID,
-        getByLabelText('RPE').props.inputAccessoryViewID,
+        getByLabelText('الوزن').props.inputAccessoryViewID,
+        getByLabelText('التكرارات').props.inputAccessoryViewID,
+        getByLabelText('مقياس الجهد').props.inputAccessoryViewID,
       ];
       expect(ids.every(Boolean)).toBe(true);
       expect(new Set(ids).size).toBe(3);
@@ -362,14 +378,14 @@ describe('ActiveWorkoutSetRow', () => {
       // can complete it without finishing the sets before it. An unedited row
       // logs its stored values as-is (no lossy re-commit).
       const { getByLabelText, callbacks } = renderRow({ state: 'upcoming' });
-      fireEvent.press(getByLabelText('Log set 1'));
+      fireEvent.press(getByLabelText('تسجيل المجموعة ١'));
       expect(callbacks.onCommitField).not.toHaveBeenCalled();
       expect(callbacks.onComplete).toHaveBeenCalledWith('101');
     });
 
     it('still lets an upcoming cell be tapped to edit (pre-fill)', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'upcoming' });
-      fireEvent.press(getByLabelText('Edit weight for set 1'));
+      fireEvent.press(getByLabelText('تعديل وزن المجموعة ١'));
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
     });
 
@@ -383,7 +399,7 @@ describe('ActiveWorkoutSetRow', () => {
     it('renders a static checkmark on done rows with no un-complete control', () => {
       const { getByTestId, queryByLabelText } = renderRow({ state: 'done', readOnly: true });
       expect(getByTestId('icon-checkmark')).toBeTruthy();
-      expect(queryByLabelText('Un-complete set 1')).toBeNull();
+      expect(queryByLabelText('إلغاء إكمال المجموعة ١')).toBeNull();
     });
 
     it('does not dim done rows', () => {
@@ -394,12 +410,12 @@ describe('ActiveWorkoutSetRow', () => {
     it('offers no swipe-delete and no completion control', () => {
       const done = renderRow({ state: 'done', readOnly: true });
       expect(done.queryByTestId('reanimated-swipeable')).toBeNull();
-      expect(done.queryByLabelText('Delete set 1')).toBeNull();
+      expect(done.queryByLabelText('حذف المجموعة ١')).toBeNull();
 
       const upcoming = renderRow({ state: 'upcoming', readOnly: true });
-      expect(upcoming.queryByLabelText('Mark set 1 complete')).toBeNull();
+      expect(upcoming.queryByLabelText('تحديد المجموعة ١ كمكتملة')).toBeNull();
       // View mode has no logging, so upcoming rows keep a blank last column.
-      expect(upcoming.queryByLabelText('Log set 1')).toBeNull();
+      expect(upcoming.queryByLabelText('تسجيل المجموعة ١')).toBeNull();
     });
 
     it('coerces a current state to a plain row with no editing chrome', () => {
@@ -407,13 +423,13 @@ describe('ActiveWorkoutSetRow', () => {
         state: 'current',
         readOnly: true,
       });
-      expect(queryByLabelText('Weight')).toBeNull();
-      expect(queryByLabelText('Reps')).toBeNull();
-      expect(queryByLabelText('Log set 1')).toBeNull();
-      expect(queryByLabelText('RPE')).toBeNull();
+      expect(queryByLabelText('الوزن')).toBeNull();
+      expect(queryByLabelText('التكرارات')).toBeNull();
+      expect(queryByLabelText('تسجيل المجموعة ١')).toBeNull();
+      expect(queryByLabelText('مقياس الجهد')).toBeNull();
       // Read-only cells are flat text, not tap-to-activate.
-      expect(queryByLabelText('Edit weight for set 1')).toBeNull();
-      expect(getByText('60')).toBeTruthy();
+      expect(queryByLabelText('تعديل وزن المجموعة ١')).toBeNull();
+      expect(getByText('٦٠')).toBeTruthy();
     });
 
     it('still fires onLongPress with the set id', () => {
@@ -428,7 +444,7 @@ describe('ActiveWorkoutSetRow', () => {
         readOnly: true,
         metricColumn: 'volume',
       });
-      expect(getByText('600')).toBeTruthy();
+      expect(getByText('٦٠٠')).toBeTruthy();
     });
 
     it('renders without the mutating callbacks', () => {
@@ -467,7 +483,7 @@ describe('ActiveWorkoutSetRow', () => {
         readOnly: true,
         set: { weight: null, reps: null, duration: 90 },
       });
-      expect(getByText('1:30')).toBeTruthy();
+      expect(getByText('١:٣٠')).toBeTruthy();
     });
   });
 
@@ -485,7 +501,7 @@ describe('ActiveWorkoutSetRow', () => {
           state: 'current',
           set: editSet({ editWeightText: '102.55' }),
         });
-        const weightInput = getByLabelText('Weight');
+        const weightInput = getByLabelText('الوزن');
         expect(weightInput.props.value).toBe('102.55');
 
         fireEvent.changeText(weightInput, '102.556');
@@ -493,7 +509,7 @@ describe('ActiveWorkoutSetRow', () => {
         // No commit path on typing — the reducer is the single source.
         expect(callbacks.onCommitField).not.toHaveBeenCalled();
 
-        fireEvent.changeText(getByLabelText('Reps'), '6');
+        fireEvent.changeText(getByLabelText('التكرارات'), '6');
         expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'reps', '6');
       });
 
@@ -503,9 +519,9 @@ describe('ActiveWorkoutSetRow', () => {
           state: 'current',
           set: editSet(),
         });
-        expect(queryByLabelText('Log set 1')).toBeNull();
+        expect(queryByLabelText('تسجيل المجموعة ١')).toBeNull();
         // The last column no longer hosts a delete button on the active row.
-        expect(queryByLabelText('Delete set 1')).toBeNull();
+        expect(queryByLabelText('حذف المجموعة ١')).toBeNull();
       });
 
       it('toggles completion from the last-column check when enabled', () => {
@@ -515,7 +531,7 @@ describe('ActiveWorkoutSetRow', () => {
           enableToggle: true,
           set: editSet(),
         });
-        fireEvent.press(getByLabelText('Mark set 1 complete'));
+        fireEvent.press(getByLabelText('تحديد المجموعة ١ كمكتملة'));
         expect(callbacks.onToggleComplete).toHaveBeenCalledWith('101');
       });
 
@@ -531,7 +547,7 @@ describe('ActiveWorkoutSetRow', () => {
           entryId: 'entry-1',
           set: editSet(),
         });
-        fireEvent.press(withNext.getAllByText('Next Set')[0]);
+        fireEvent.press(withNext.getAllByText('المجموعة التالية')[0]);
         expect(withNext.callbacks.onActivateSet).toHaveBeenCalledWith('202', 'weight');
         expect(withNext.callbacks.onAddSet).not.toHaveBeenCalled();
       });
@@ -545,7 +561,7 @@ describe('ActiveWorkoutSetRow', () => {
           entryId: 'entry-1',
           set: editSet(),
         });
-        fireEvent.press(getAllByText('Next Set')[0]);
+        fireEvent.press(getAllByText('المجموعة التالية')[0]);
         expect(callbacks.onAddSet).toHaveBeenCalledWith('entry-1');
       });
 
@@ -555,7 +571,7 @@ describe('ActiveWorkoutSetRow', () => {
           state: 'current',
           set: editSet(),
         });
-        fireEvent.press(getAllByText('Done')[0]);
+        fireEvent.press(getAllByText('تم')[0]);
         expect(callbacks.onDeactivate).toHaveBeenCalledTimes(1);
       });
 
@@ -569,7 +585,7 @@ describe('ActiveWorkoutSetRow', () => {
           metricColumn: 'rpe',
           set: editSet(),
         });
-        const rpe = getByLabelText('RPE');
+        const rpe = getByLabelText('مقياس الجهد');
         fireEvent.changeText(rpe, '8.');
         expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 8 });
         // Snaps to 0.5 steps live (8.3 → 8.5), not just on blur.
@@ -586,7 +602,7 @@ describe('ActiveWorkoutSetRow', () => {
           metricColumn: 'rpe',
           set: editSet({ rpe: 8 }),
         });
-        fireEvent.changeText(getByLabelText('RPE'), '');
+        fireEvent.changeText(getByLabelText('مقياس الجهد'), '');
         expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: null });
       });
 
@@ -597,7 +613,7 @@ describe('ActiveWorkoutSetRow', () => {
           metricColumn: 'rpe',
           set: editSet(),
         });
-        fireEvent.changeText(getByLabelText('RPE'), '11');
+        fireEvent.changeText(getByLabelText('مقياس الجهد'), '11');
         expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 10 });
       });
 
@@ -607,16 +623,16 @@ describe('ActiveWorkoutSetRow', () => {
           ...base,
           set: editSet(),
         });
-        const rpe = getByLabelText('RPE');
+        const rpe = getByLabelText('مقياس الجهد');
         fireEvent.changeText(rpe, '0');
         expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 1 });
         // The committed (clamped) value flows back into the row; the visible
         // text must stay what the user typed, not jump "0" → "1".
         rerenderRow({ ...base, set: editSet({ rpe: 1 }) });
-        expect(getByLabelText('RPE').props.value).toBe('0');
+        expect(getByLabelText('مقياس الجهد').props.value).toBe('0');
         // Blur still snaps the display to the committed form.
-        fireEvent(getByLabelText('RPE'), 'blur');
-        expect(getByLabelText('RPE').props.value).toBe('1');
+        fireEvent(getByLabelText('مقياس الجهد'), 'blur');
+        expect(getByLabelText('مقياس الجهد').props.value).toBe('١');
       });
 
       it('hides the RPE input when rpeEditable is false', () => {
@@ -627,7 +643,7 @@ describe('ActiveWorkoutSetRow', () => {
           rpeEditable: false,
           set: editSet(),
         });
-        expect(queryByLabelText('RPE')).toBeNull();
+        expect(queryByLabelText('مقياس الجهد')).toBeNull();
       });
     });
 
@@ -639,9 +655,9 @@ describe('ActiveWorkoutSetRow', () => {
           set: editSet({ editWeightText: '102.55', editRepsText: '8' }),
         });
         expect(getByText('102.55')).toBeTruthy();
-        fireEvent.press(getByLabelText('Edit weight for set 1'));
+        fireEvent.press(getByLabelText('تعديل وزن المجموعة ١'));
         expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
-        fireEvent.press(getByLabelText('Edit reps for set 1'));
+        fireEvent.press(getByLabelText('تعديل تكرارات المجموعة ١'));
         expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'reps');
       });
 
@@ -653,7 +669,7 @@ describe('ActiveWorkoutSetRow', () => {
           rpeEditable: true,
           set: editSet(),
         });
-        fireEvent.press(getByLabelText('Edit RPE for set 1'));
+        fireEvent.press(getByLabelText('تعديل جهد المجموعة ١'));
         expect(callbacks.onActivateRpe).toHaveBeenCalledWith('101');
       });
 
@@ -665,7 +681,7 @@ describe('ActiveWorkoutSetRow', () => {
           rpeEditable: false,
           set: editSet(),
         });
-        expect(queryByLabelText('Edit RPE for set 1')).toBeNull();
+        expect(queryByLabelText('تعديل جهد المجموعة ١')).toBeNull();
       });
 
       it('renders a static completed badge when the toggle is disabled', () => {
@@ -676,8 +692,8 @@ describe('ActiveWorkoutSetRow', () => {
           set: editSet(),
         });
         expect(getByTestId('completed-badge')).toBeTruthy();
-        expect(queryByLabelText('Un-complete set 1')).toBeNull();
-        expect(queryByLabelText('Mark set 1 complete')).toBeNull();
+        expect(queryByLabelText('إلغاء إكمال المجموعة ١')).toBeNull();
+        expect(queryByLabelText('تحديد المجموعة ١ كمكتملة')).toBeNull();
       });
 
       it('un-completes a completed set via the toggle when enabled', () => {
@@ -688,7 +704,7 @@ describe('ActiveWorkoutSetRow', () => {
           enableToggle: true,
           set: editSet(),
         });
-        fireEvent.press(getByLabelText('Un-complete set 1'));
+        fireEvent.press(getByLabelText('إلغاء إكمال المجموعة ١'));
         expect(callbacks.onToggleComplete).toHaveBeenCalledWith('101');
       });
 
@@ -701,7 +717,7 @@ describe('ActiveWorkoutSetRow', () => {
         expect(
           StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity,
         ).toBeUndefined();
-        fireEvent.press(getByLabelText('Delete set 1'));
+        fireEvent.press(getByLabelText('حذف المجموعة ١'));
         expect(callbacks.onDelete).toHaveBeenCalledWith('101');
       });
 
@@ -711,7 +727,7 @@ describe('ActiveWorkoutSetRow', () => {
           state: 'upcoming',
           set: editSet(),
         });
-        fireEvent(getByLabelText('Edit weight for set 1'), 'longPress');
+        fireEvent(getByLabelText('تعديل وزن المجموعة ١'), 'longPress');
         expect(callbacks.onLongPress).toHaveBeenCalledWith('101');
       });
 
@@ -727,7 +743,7 @@ describe('ActiveWorkoutSetRow', () => {
             editRepsText: '',
           },
         });
-        expect(getByText('45s')).toBeTruthy();
+        expect(getByText('٤٥ ث')).toBeTruthy();
       });
     });
   });
@@ -744,7 +760,7 @@ describe('ActiveWorkoutSetRow', () => {
         state: 'upcoming',
         enableSetType: true,
       });
-      fireEvent.press(getByLabelText('Change type for set 1'));
+      fireEvent.press(getByLabelText('تغيير نوع المجموعة ١'));
       expect(callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
     });
 
@@ -760,7 +776,7 @@ describe('ActiveWorkoutSetRow', () => {
 
     it('leaves the set number inert without a set-type handler', () => {
       const { queryByLabelText } = renderRow({ state: 'upcoming' });
-      expect(queryByLabelText('Change type for set 1')).toBeNull();
+      expect(queryByLabelText('تغيير نوع المجموعة ١')).toBeNull();
     });
   });
 
@@ -770,8 +786,8 @@ describe('ActiveWorkoutSetRow', () => {
       set: { set_type: 'warmup', reps: 15, weight: 20 },
       displayNumber: 3,
     });
-    expect(getByText('W')).toBeTruthy();
-    expect(queryByText('3')).toBeNull();
+    expect(getByText('إ')).toBeTruthy();
+    expect(queryByText('٣')).toBeNull();
   });
 
   describe('metric column display', () => {
@@ -792,16 +808,18 @@ describe('ActiveWorkoutSetRow', () => {
         // reps 3 so the reps cell can't collide with any RPE label.
         set: { rpe: rpe as number, reps: 3 },
       });
-      const label = Number.isInteger(rpe) ? String(rpe) : (rpe as number).toFixed(1);
+      const label = new Intl.NumberFormat('ar-SA', {
+        maximumFractionDigits: 1,
+      }).format(rpe as number);
       expect(textColor(getByText(label))).toBe(expectedColor);
     });
 
     it('formats volume per weight unit', () => {
       const kg = renderRow({ state: 'upcoming', metricColumn: 'volume', weightUnit: 'kg' });
-      expect(kg.getByText('600')).toBeTruthy();
+      expect(kg.getByText('٦٠٠')).toBeTruthy();
 
       const lbs = renderRow({ state: 'upcoming', metricColumn: 'volume', weightUnit: 'lbs' });
-      expect(lbs.getByText('1,323')).toBeTruthy();
+      expect(lbs.getByText('١٬٣٢٣')).toBeTruthy();
     });
 
     it('formats estimated 1RM and 10RM', () => {
@@ -809,10 +827,10 @@ describe('ActiveWorkoutSetRow', () => {
       // can't collide with the weight/reps cells.
       const set = { weight: 90, reps: 6 };
       const e1rm = renderRow({ state: 'upcoming', metricColumn: 'e1rm', set });
-      expect(e1rm.getByText('108')).toBeTruthy();
+      expect(e1rm.getByText('١٠٨')).toBeTruthy();
 
       const tenrm = renderRow({ state: 'upcoming', metricColumn: 'tenrm', set });
-      expect(tenrm.getByText('81')).toBeTruthy();
+      expect(tenrm.getByText('٨١')).toBeTruthy();
     });
 
     it('shows an en-dash when a metric cannot be computed', () => {

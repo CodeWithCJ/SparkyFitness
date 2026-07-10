@@ -233,8 +233,8 @@ describe('WorkoutPresetDetailScreen', () => {
 
     // No expand tap needed — preset cards default expanded.
     expect(screen.getByText('كجم')).toBeTruthy();
-    expect(screen.getByText('100')).toBeTruthy();
-    expect(screen.getByText('5')).toBeTruthy();
+    expect(screen.getByText('١٠٠')).toBeTruthy();
+    expect(screen.getByText('٥')).toBeTruthy();
   });
 
   it('converts kg to lbs when the user prefers lbs', () => {
@@ -259,7 +259,7 @@ describe('WorkoutPresetDetailScreen', () => {
 
     // 100kg → ~220.5 lbs
     expect(screen.getByText('رطل')).toBeTruthy();
-    expect(screen.getByText('220.5')).toBeTruthy();
+    expect(screen.getByText('٢٢٠٫٥')).toBeTruthy();
   });
 
   it('coerces st_lbs to lbs for display rather than passing it to weightFromKg', () => {
@@ -282,7 +282,7 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('220.5')).toBeTruthy();
+    expect(screen.getByText('٢٢٠٫٥')).toBeTruthy();
   });
 
   it('shows one exercise-level rest chip from the first set (mixed rest degrades to it)', () => {

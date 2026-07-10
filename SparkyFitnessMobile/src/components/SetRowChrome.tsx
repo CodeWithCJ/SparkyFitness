@@ -1,5 +1,6 @@
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { mobileT } from '../localization';
 
 /**
  * Presentation shared by the set rows (ActiveWorkoutSetRow and the activity
@@ -48,7 +49,9 @@ export function SetInputAccessoryBar({
       }}
     >
       <TouchableOpacity onPress={onDone} hitSlop={HIT_SLOP}>
-        <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>Done</Text>
+        <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
+          {mobileT('common.done')}
+        </Text>
       </TouchableOpacity>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
         {actions.map((action) => (
@@ -85,7 +88,9 @@ export function SetSwipeDeleteAction({
       activeOpacity={0.7}
       accessibilityLabel={accessibilityLabel}
     >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+      <Text className="text-text-danger font-semibold text-sm">
+        {mobileT('common.delete')}
+      </Text>
     </TouchableOpacity>
   );
 }
