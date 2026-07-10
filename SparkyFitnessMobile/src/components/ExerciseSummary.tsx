@@ -5,6 +5,7 @@ import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SwipeableExerciseRow from './SwipeableExerciseRow';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
+import { mobileT } from '../localization';
 
 interface ExerciseSummaryProps {
   exerciseEntries: ExerciseSessionResponse[];
@@ -29,14 +30,16 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
 
   if (exerciseEntries.length === 0) {
     const emptyContent = (
-      <Text className="text-text-muted text-base">Tap to add exercise</Text>
+      <Text className="text-text-muted text-base">
+        {mobileT('diary.tapToAddExercise')}
+      </Text>
     );
     if (onAddExercise) {
       return (
         <Pressable
           onPress={onAddExercise}
           accessibilityRole="button"
-          accessibilityLabel="Add exercise"
+          accessibilityLabel={mobileT('diary.addExercise')}
           className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
         >
           {emptyContent}
@@ -54,7 +57,9 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
     <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm overflow-hidden">
       <View className="flex-row items-center gap-2 mb-2">
         <Icon name="exercise" size={18} color={accentPrimary} />
-        <Text className="text-base font-bold text-text-secondary">Exercise</Text>
+        <Text className="text-base font-bold text-text-secondary">
+          {mobileT('diary.exercise')}
+        </Text>
       </View>
       {exerciseEntries.map((session, index) => (
         <SwipeableExerciseRow

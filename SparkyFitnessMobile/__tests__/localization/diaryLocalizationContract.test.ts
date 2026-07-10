@@ -35,4 +35,34 @@ describe('diary localization contract', () => {
     expect(calendarSource).toContain('locale="ar"');
     expect(calendarSource).toContain('numerals="arab"');
   });
+
+  it('keeps diary nutrition, exercise, measurement, and serving cards Arabic', () => {
+    const sources = [
+      'src/components/FoodSummary.tsx',
+      'src/components/ExerciseSummary.tsx',
+      'src/components/MeasurementsSummary.tsx',
+      'src/components/ServingAdjustSheet.tsx',
+    ]
+      .map(read)
+      .join('\n');
+
+    for (const key of [
+      'diary.tapToAddFood',
+      'diary.tapToAddExercise',
+      'diary.measurements',
+      'diary.unknownFood',
+    ]) {
+      expect(sources).toContain(`mobileT('${key}')`);
+    }
+
+    for (const englishCopy of [
+      'Tap to add food',
+      'Tap to add exercise',
+      'Edit measurements',
+      'Unknown food',
+      'Saving...',
+    ]) {
+      expect(sources).not.toContain(englishCopy);
+    }
+  });
 });

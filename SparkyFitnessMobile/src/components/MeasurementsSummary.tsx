@@ -10,6 +10,11 @@ import {
   kgToStonesLbs,
 } from '../utils/unitConversions';
 import type { CheckInMeasurement } from '../types/measurements';
+import {
+  formatMobileNumber,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 interface MeasurementsSummaryProps {
   measurements: CheckInMeasurement | undefined;
@@ -19,28 +24,28 @@ interface MeasurementsSummaryProps {
   onPress?: () => void;
 }
 
-const formatNumber = (value: number): string => String(Math.round(value * 10) / 10);
+const formatNumber = (value: number): string => formatMobileNumber(value);
 
 const formatWeight = (kg: number, mode: 'kg' | 'lbs' | 'st_lbs'): string => {
   if (mode === 'st_lbs') {
     const { stones, lbs } = kgToStonesLbs(kg);
-    return `${stones}st ${formatNumber(lbs)}lb`;
+    return `${formatMobileNumber(stones)} ${mobileT('units.stone')} ${formatNumber(lbs)} ${mobileT('units.lb')}`;
   }
-  return `${formatNumber(weightFromKg(kg, mode))} ${mode}`;
+  return `${formatNumber(weightFromKg(kg, mode))} ${localizeServingUnit(mode)}`;
 };
 
 const formatHeight = (cm: number, mode: 'cm' | 'inches' | 'ft_in'): string => {
   if (mode === 'ft_in') {
     const { feet, inches } = cmToFeetInches(cm);
-    return `${feet}'${formatNumber(inches)}"`;
+    return `${formatMobileNumber(feet)} ${mobileT('units.ft')} ${formatNumber(inches)} ${mobileT('units.in')}`;
   }
   const unit = mode === 'cm' ? 'cm' : 'in';
-  return `${formatNumber(lengthFromCm(cm, mode))} ${unit}`;
+  return `${formatNumber(lengthFromCm(cm, mode))} ${localizeServingUnit(unit)}`;
 };
 
 const formatBodyLength = (cm: number, unit: 'cm' | 'inches'): string => {
   const suffix = unit === 'cm' ? 'cm' : 'in';
-  return `${formatNumber(lengthFromCm(cm, unit))} ${suffix}`;
+  return `${formatNumber(lengthFromCm(cm, unit))} ${localizeServingUnit(suffix)}`;
 };
 
 const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
@@ -59,36 +64,64 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
 
   const rows: { kind: MeasurementKind; label: string; value: string }[] = [];
   if (measurements.weight != null) {
-    rows.push({ kind: 'weight', label: 'Weight', value: formatWeight(measurements.weight, weightMode) });
+    rows.push({
+      kind: 'weight',
+      label: mobileT('measurement.weight'),
+      value: formatWeight(measurements.weight, weightMode),
+    });
   }
   if (measurements.body_fat_percentage != null) {
     rows.push({
       kind: 'body_fat_percentage',
-      label: 'Body fat',
-      value: `${formatNumber(measurements.body_fat_percentage)}%`,
+      label: mobileT('measurement.bodyFat'),
+      value: `${formatNumber(measurements.body_fat_percentage)}٪`,
     });
   }
   if (measurements.height != null) {
-    rows.push({ kind: 'height', label: 'Height', value: formatHeight(measurements.height, heightMode) });
+    rows.push({
+      kind: 'height',
+      label: mobileT('measurement.height'),
+      value: formatHeight(measurements.height, heightMode),
+    });
   }
   if (measurements.neck != null) {
-    rows.push({ kind: 'neck', label: 'Neck', value: formatBodyLength(measurements.neck, bodyUnit) });
+    rows.push({
+      kind: 'neck',
+      label: mobileT('measurement.neck'),
+      value: formatBodyLength(measurements.neck, bodyUnit),
+    });
   }
   if (measurements.waist != null) {
-    rows.push({ kind: 'waist', label: 'Waist', value: formatBodyLength(measurements.waist, bodyUnit) });
+    rows.push({
+      kind: 'waist',
+      label: mobileT('measurement.waist'),
+      value: formatBodyLength(measurements.waist, bodyUnit),
+    });
   }
   if (measurements.hips != null) {
-    rows.push({ kind: 'hips', label: 'Hips', value: formatBodyLength(measurements.hips, bodyUnit) });
+    rows.push({
+      kind: 'hips',
+      label: mobileT('measurement.hips'),
+      value: formatBodyLength(measurements.hips, bodyUnit),
+    });
   }
   if (measurements.steps != null) {
-    rows.push({ kind: 'steps', label: 'Steps', value: String(measurements.steps) });
+    rows.push({
+      kind: 'steps',
+      label: mobileT('measurement.steps'),
+      value: formatMobileNumber(measurements.steps, {
+        maximumFractionDigits: 0,
+      }),
+    });
   }
 
   if (rows.length === 0) return null;
 
   const header = (
     <View className="flex-row items-center gap-2 mb-2 px-1">
-      <Text className="text-base font-bold text-text-secondary flex-1">Measurements</Text>
+      <Text className="text-base font-bold text-text-secondary flex-1">
+        {mobileT('diary.measurements')}
+      </Text>
       {onPress && <Icon name="add" size={14} color={accentPrimary} />}
     </View>
   );
@@ -99,7 +132,7 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
       <View key={row.kind} className="w-[48%] mb-2">
         <View className="bg-surface rounded-xl py-3 px-3 shadow-sm flex-row items-center">
           <IconComponent size={56} color={iconColor} accentColor={accentPrimary} />
-          <View className="flex-1 ml-2 items-center">
+          <View className="flex-1 items-center" style={{ marginStart: 8 }}>
             <Text className="text-lg font-bold text-text-primary" numberOfLines={1}>
               {row.value}
             </Text>
@@ -125,7 +158,7 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
         <Pressable
           onPress={onPress}
           accessibilityRole="button"
-          accessibilityLabel="Edit measurements"
+          accessibilityLabel={mobileT('diary.editMeasurements')}
         >
           {content}
         </Pressable>
