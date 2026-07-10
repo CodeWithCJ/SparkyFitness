@@ -18,7 +18,7 @@ import {
   Layers,
 } from 'lucide-react';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
-import { formatMinutesToHHMM } from '@/utils/timeFormatters';
+import { formatLocalizedMinutes } from '@/utils/timeFormatters';
 import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
 
 interface ExercisePresetEntryDisplayProps {
@@ -203,7 +203,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
               />
               <StatCell
                 icon={<Clock className="w-3 h-3" />}
-                value={formatMinutesToHHMM(totalMinutes)}
+                value={formatLocalizedMinutes(totalMinutes, t)}
                 label={t('common.minutesUnit', 'Time')}
                 color="text-indigo-600 dark:text-indigo-400"
               />

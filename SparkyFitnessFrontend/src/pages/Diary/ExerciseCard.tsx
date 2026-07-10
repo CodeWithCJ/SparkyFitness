@@ -22,7 +22,7 @@ import type {
   PresetExercise,
   ExerciseToLog,
 } from '@/types/workout';
-import { formatMinutesToHHMM } from '@/utils/timeFormatters';
+import { formatLocalizedMinutes } from '@/utils/timeFormatters';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import ExercisePresetEntryDisplay from './ExercisePresetEntryDisplay';
 import EditExerciseDatabaseDialog from './EditExerciseDatabaseDialog';
@@ -528,7 +528,7 @@ const ExerciseCard = ({
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
-                    {formatMinutesToHHMM(stats.totalDuration)}
+                    {formatLocalizedMinutes(stats.totalDuration, t)}
                   </div>
                   <div className="text-xs text-gray-500">
                     {t('exerciseCard.duration')}
