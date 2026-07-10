@@ -14,7 +14,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type SleepStageEvent, SLEEP_STAGE_COLORS } from '@/types';
-import { formatSecondsToHHMM } from '@/utils/timeFormatters';
+import { formatLocalizedSeconds } from '@/utils/timeFormatters';
+import { usePreferences } from '@/contexts/PreferencesContext';
+
+const SLEEP_SOURCE_KEYS: Readonly<Record<string, string>> = {
+  manual: 'sleepTimelineEditor.sources.manual',
+  garmin: 'sleepTimelineEditor.sources.garmin',
+  garmin_connect: 'sleepTimelineEditor.sources.garmin',
+  apple_health: 'sleepTimelineEditor.sources.appleHealth',
+  health_connect: 'sleepTimelineEditor.sources.healthConnect',
+};
 
 interface SleepTimelineEditorProps {
   bedtime: string;
@@ -60,6 +69,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   onTimeChange,
 }) => {
   const { t } = useTranslation();
+  const { formatDateInUserTimezone } = usePreferences();
   const parsedBedtime = useMemo(() => parseISO(bedtime), [bedtime]);
   const parsedWakeTime = useMemo(() => parseISO(wakeTime), [wakeTime]);
   const totalDurationMinutes = useMemo(
@@ -97,6 +107,14 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   const [editableWakeTime, setEditableWakeTime] = useState(() =>
     format(parseISO(wakeTime), 'HH:mm')
   );
+  const displayedBedtime =
+    entryDetails?.bedtime ?? formatDateInUserTimezone(bedtime, 'p');
+  const displayedWakeTime =
+    entryDetails?.wakeTime ?? formatDateInUserTimezone(wakeTime, 'p');
+  const localizeSource = (source: string) => {
+    const key = SLEEP_SOURCE_KEYS[source.toLowerCase()];
+    return key ? t(key, source) : source;
+  };
 
   const getNearest15MinuteInterval = useCallback((date: Date) => {
     const minutes = date.getMinutes();
@@ -302,9 +320,9 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   }, [isDragging, handleMouseUp]);
 
   return (
-    <div className="sleep-timeline-editor border p-4 rounded-lg my-4">
+    <div className="sleep-timeline-editor my-4 rounded-lg border p-4">
       {entryDetails && (
-        <div className="mb-4 text-sm text-gray-600 grid grid-cols-2 gap-x-4 gap-y-1 md:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground md:grid-cols-4">
           {isEditing ? (
             <>
               <div>
@@ -314,6 +332,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                 <Input
                   id="edit-bedtime"
                   type="time"
+                  dir="ltr"
                   value={editableBedtime}
                   onChange={(e) => {
                     setEditableBedtime(e.target.value);
@@ -329,6 +348,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                 <Input
                   id="edit-wakeTime"
                   type="time"
+                  dir="ltr"
                   value={editableWakeTime}
                   onChange={(e) => {
                     setEditableWakeTime(e.target.value);
@@ -369,7 +389,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
           {entryDetails.source && (
             <p>
               <b>{t('sleepTimelineEditor.source', 'Source')}:</b>{' '}
-              {entryDetails.source}
+              {localizeSource(entryDetails.source)}
             </p>
           )}
           {/* Stage breakdown */}
@@ -377,28 +397,28 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
             entryDetails.deepSleepSeconds !== null && (
               <p>
                 <b>{t('sleepEntrySection.deepSleep', 'Deep')}:</b>{' '}
-                {formatSecondsToHHMM(entryDetails.deepSleepSeconds)}
+                {formatLocalizedSeconds(entryDetails.deepSleepSeconds, t)}
               </p>
             )}
           {entryDetails.lightSleepSeconds !== undefined &&
             entryDetails.lightSleepSeconds !== null && (
               <p>
                 <b>{t('sleepEntrySection.lightSleep', 'Light')}:</b>{' '}
-                {formatSecondsToHHMM(entryDetails.lightSleepSeconds)}
+                {formatLocalizedSeconds(entryDetails.lightSleepSeconds, t)}
               </p>
             )}
           {entryDetails.remSleepSeconds !== undefined &&
             entryDetails.remSleepSeconds !== null && (
               <p>
                 <b>{t('sleepEntrySection.remSleep', 'REM')}:</b>{' '}
-                {formatSecondsToHHMM(entryDetails.remSleepSeconds)}
+                {formatLocalizedSeconds(entryDetails.remSleepSeconds, t)}
               </p>
             )}
           {entryDetails.awakeSleepSeconds !== undefined &&
             entryDetails.awakeSleepSeconds !== null && (
               <p>
                 <b>{t('sleepEntrySection.awake', 'Awake')}:</b>{' '}
-                {formatSecondsToHHMM(entryDetails.awakeSleepSeconds)}
+                {formatLocalizedSeconds(entryDetails.awakeSleepSeconds, t)}
               </p>
             )}
 
@@ -407,14 +427,16 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
             entryDetails.averageSpo2Value !== null && (
               <p>
                 <b>{t('sleepEntrySection.avgSpO2', 'Avg SpO2')}:</b>{' '}
-                {entryDetails.averageSpo2Value.toFixed(1)}%
+                {entryDetails.averageSpo2Value.toFixed(1)}{' '}
+                {t('units.percent', '%')}
               </p>
             )}
           {entryDetails.avgOvernightHrv !== undefined &&
             entryDetails.avgOvernightHrv !== null && (
               <p>
                 <b>{t('sleepEntrySection.avgOvernightHrv', 'Avg HRV')}:</b>{' '}
-                {entryDetails.avgOvernightHrv.toFixed(1)} ms
+                {entryDetails.avgOvernightHrv.toFixed(1)}{' '}
+                {t('units.millisecondShort', 'ms')}
               </p>
             )}
           {entryDetails.avgSleepStress !== undefined &&
@@ -428,18 +450,18 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
             entryDetails.restingHeartRate !== null && (
               <p>
                 <b>{t('sleepEntrySection.restingHR', 'Resting HR')}:</b>{' '}
-                {entryDetails.restingHeartRate} bpm
+                {entryDetails.restingHeartRate} {t('units.bpm', 'bpm')}
               </p>
             )}
         </div>
       )}
 
-      <h4 className="text-md font-semibold mb-2">
+      <h4 className="text-md mb-2 font-semibold">
         {t('sleepTimelineEditor.sleepTimeline', 'Sleep Timeline')}
       </h4>
 
       {isEditing && ( // Conditionally render buttons for editing mode
-        <div className="flex space-x-2 mb-4">
+        <div className="mb-4 flex flex-wrap gap-2">
           {['awake', 'rem', 'light', 'deep'].map((stageType) => (
             <Button
               key={stageType}
@@ -449,6 +471,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                   stageType as 'awake' | 'rem' | 'light' | 'deep'
                 )
               }
+              aria-pressed={selectedStageType === stageType}
               style={{
                 backgroundColor:
                   selectedStageType === stageType
@@ -482,11 +505,11 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
       )}
 
       {/* Sleep Stage Color Legend */}
-      <div className="flex flex-wrap gap-2 mb-4 text-sm">
+      <div className="mb-4 flex flex-wrap gap-2 text-sm">
         {Object.entries(SLEEP_STAGE_COLORS).map(([stage, color]) => (
           <div key={stage} className="flex items-center">
             <span
-              className="w-4 h-4 rounded-full mr-1"
+              className="me-1 h-4 w-4 rounded-full"
               style={{ backgroundColor: color }}
             ></span>
             <span>
@@ -501,14 +524,20 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
 
       <div
         ref={timelineRef}
-        className={`relative h-12 bg-muted rounded-md ${isEditing ? 'cursor-crosshair' : ''}`}
+        dir="ltr"
+        aria-label={t(
+          'sleepTimelineEditor.timelineLabel',
+          'Sleep stages from {{bedtime}} to {{wakeTime}}',
+          { bedtime: displayedBedtime, wakeTime: displayedWakeTime }
+        )}
+        className={`relative h-12 rounded-md bg-muted ${isEditing ? 'cursor-crosshair' : ''}`}
         onMouseDown={isEditing ? handleMouseDown : undefined}
         onMouseMove={isEditing ? handleMouseMove : undefined}
         onMouseUp={isEditing ? handleMouseUp : undefined}
         onMouseLeave={isEditing ? handleMouseUp : undefined}
       >
         {/* Time Axis - hourly markers */}
-        <div className="absolute inset-0 flex text-xs ">
+        <div className="absolute inset-0 flex text-xs">
           {Array.from({ length: totalDurationMinutes / 60 + 1 }).map((_, i) => {
             const hourTime = addMinutes(parsedBedtime, i * 60);
             const left = ((i * 60) / (totalDurationMinutes || 1)) * 100;
@@ -534,6 +563,19 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
             event.start_time,
             event.end_time
           );
+          const stageLabel = t(
+            `sleepTimelineEditor.${event.stage_type}`,
+            event.stage_type
+          );
+          const intervalLabel = t(
+            'sleepTimelineEditor.stageInterval',
+            '{{stage}}: {{start}}–{{end}}',
+            {
+              stage: stageLabel,
+              start: formatDateInUserTimezone(event.start_time, 'p'),
+              end: formatDateInUserTimezone(event.end_time, 'p'),
+            }
+          );
           return (
             <div
               key={event.id || index}
@@ -543,7 +585,8 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                 width: `${width}%`,
                 backgroundColor: SLEEP_STAGE_COLORS[event.stage_type],
               }}
-              title={`${event.stage_type}: ${format(parseISO(event.start_time), 'p')} - ${format(parseISO(event.end_time), 'p')}`}
+              title={intervalLabel}
+              aria-label={intervalLabel}
             />
           );
         })}

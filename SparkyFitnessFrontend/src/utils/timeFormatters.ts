@@ -35,6 +35,11 @@ export const formatLocalizedMinutes = (
   });
 };
 
+export const formatLocalizedSeconds = (
+  totalSeconds: number,
+  t: TFunction
+): string => formatLocalizedMinutes(Math.round(totalSeconds / 60), t);
+
 export const formatSecondsToHHMM = (totalSeconds: number): string => {
   const isNegative = totalSeconds < 0;
   const absSeconds = Math.abs(totalSeconds);

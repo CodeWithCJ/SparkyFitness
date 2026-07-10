@@ -1,5 +1,8 @@
 import type { TFunction } from 'i18next';
-import { formatLocalizedMinutes } from '@/utils/timeFormatters';
+import {
+  formatLocalizedMinutes,
+  formatLocalizedSeconds,
+} from '@/utils/timeFormatters';
 
 const t = ((key: string, options?: Record<string, number | string>) => {
   if (key === 'units.minuteValue') return `${options?.['value']} د`;
@@ -16,5 +19,9 @@ describe('formatLocalizedMinutes', () => {
 
   it('formats hours and minutes with localized short units', () => {
     expect(formatLocalizedMinutes(90, t)).toBe('1 س 30 د');
+  });
+
+  it('formats seconds as a localized rounded duration', () => {
+    expect(formatLocalizedSeconds(5430, t)).toBe('1 س 31 د');
   });
 });

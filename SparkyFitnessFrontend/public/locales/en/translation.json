@@ -1706,6 +1706,7 @@
     "step": "steps",
     "year": "years",
     "bpm": "bpm",
+    "millisecondShort": "ms",
     "minuteValue": "{{value}} min",
     "hourMinuteValue": "{{hours}} hr {{minutes}} min",
     "centimeter": "cm",
@@ -2062,8 +2063,17 @@
     "bedtime": "Bedtime",
     "wakeTime": "Wake Time",
     "duration": "Duration",
+    "timeAsleep": "Time Asleep",
     "sleepScore": "Sleep Score",
-    "source": "Source"
+    "source": "Source",
+    "timelineLabel": "Sleep stages from {{bedtime}} to {{wakeTime}}",
+    "stageInterval": "{{stage}}: {{start}}–{{end}}",
+    "sources": {
+      "manual": "Manual",
+      "garmin": "Garmin Connect",
+      "appleHealth": "Apple Health",
+      "healthConnect": "Health Connect"
+    }
   },
   "moodMeter": {
     "howAreYouFeelingToday": "How are you feeling today?",
@@ -2108,6 +2118,7 @@
     "deleteAllHistory": "Also remove it from all past entries"
   },
   "sleepEntrySection": {
+    "loading": "Loading sleep data…",
     "sleepTracking": "Sleep Tracking",
     "sleepSession": "Sleep Session {{sessionNumber}}",
     "bedtime": "Bedtime",
@@ -2115,7 +2126,7 @@
     "addAnotherSleepSession": "Add Another Sleep Session",
     "savingSleep": "Saving Sleep...",
     "saveSleep": "Save Sleep",
-    "sleepEntryFor": "Sleep Entry for",
+    "sleepEntryFor": "Sleep entry for {{date}}",
     "cancel": "Cancel",
     "save": "Save",
     "edit": "Edit",
@@ -2129,7 +2140,15 @@
     "stagesUpdatedSuccessfully": "Sleep stages and times updated successfully!",
     "failedToUpdateSleepStages": "Failed to update sleep stages and times",
     "sleepEntryDeletedSuccessfully": "Sleep entry deleted successfully!",
-    "failedToDeleteSleepEntry": "Failed to delete sleep entry"
+    "failedToDeleteSleepEntry": "Failed to delete sleep entry",
+    "deepSleep": "Deep sleep",
+    "lightSleep": "Light sleep",
+    "remSleep": "REM sleep",
+    "awake": "Awake",
+    "avgSpO2": "Average SpO2",
+    "avgOvernightHrv": "Average overnight HRV",
+    "avgSleepStress": "Average sleep stress",
+    "restingHR": "Resting heart rate"
   },
   "foodDatabaseManager": {
     "foodSharedWithPublic": "Food shared with public",
