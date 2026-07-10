@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { formatDateLabel, formatDate } from '../utils/dateUtils';
+import { isMobileRtl, mobileT } from '../localization';
 
 interface DateNavigatorProps {
   title: string;
@@ -46,21 +47,49 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
       <Text className="text-2xl font-bold text-text-primary">{title}</Text>
       <View className="flex-row items-center">
         {!hideChevrons && (
-          <TouchableOpacity onPress={onPreviousDay} className="p-2">
-            <Icon name="chevron-back" size={18} color={secondaryTextColor} />
+          <TouchableOpacity
+            onPress={onPreviousDay}
+            className="p-2"
+            accessibilityRole="button"
+            accessibilityLabel={mobileT('diary.previousDay')}
+          >
+            <Icon
+              name={isMobileRtl ? 'chevron-forward' : 'chevron-back'}
+              size={18}
+              color={secondaryTextColor}
+            />
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={onDatePress ?? onToday} className="flex-row items-center px-2">
+        <TouchableOpacity
+          onPress={onDatePress ?? onToday}
+          className="flex-row items-center px-2"
+          accessibilityRole="button"
+          accessibilityLabel={mobileT('diary.openCalendar')}
+        >
           <Text className="text-text-primary text-lg font-medium">
             {dateLabel}
           </Text>
           {onDatePress && (
-            <Icon name="chevron-down" size={14} color={primaryTextColor} style={{ marginLeft: 4 }} />
+            <Icon
+              name="chevron-down"
+              size={14}
+              color={primaryTextColor}
+              style={{ marginStart: 4 }}
+            />
           )}
         </TouchableOpacity>
         {!hideChevrons && (
-          <TouchableOpacity onPress={onNextDay} className="p-2">
-            <Icon name="chevron-forward" size={18} color={secondaryTextColor} />
+          <TouchableOpacity
+            onPress={onNextDay}
+            className="p-2"
+            accessibilityRole="button"
+            accessibilityLabel={mobileT('diary.nextDay')}
+          >
+            <Icon
+              name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+              size={18}
+              color={secondaryTextColor}
+            />
           </TouchableOpacity>
         )}
       </View>

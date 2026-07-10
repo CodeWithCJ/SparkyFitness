@@ -93,6 +93,19 @@ export const ar = {
     'يصدّر تقريرًا محليًا عن إصدار التطبيق وحالة المزامنة والسجل التقني. ما يشمل بياناتك الصحية أو أصنافك الغذائية، ولا يرسل أي شيء تلقائيًا.',
   'settings.shareFailed': 'ما قدرنا نجهّز التقرير. حاول مرة ثانية.',
 
+  'diary.chooseDate': 'اختيار تاريخ اليوميات',
+  'diary.previousDay': 'اليوم السابق',
+  'diary.nextDay': 'اليوم التالي',
+  'diary.openCalendar': 'اختيار التاريخ',
+  'diary.noServerTitle': 'ما فيه خادم مربوط',
+  'diary.noServerDescription':
+    'اربط خادمك من الإعدادات عشان تشوف يومياتك.',
+  'diary.loading': 'جاري تحميل يومياتك…',
+  'diary.loadError': 'ما قدرنا نحمّل يومياتك',
+  'diary.loadErrorDescription': 'تأكد من اتصالك وحاول مرة ثانية.',
+  'diary.emptyDay': 'ما فيه تسجيلات لهاليوم',
+  'diary.addFood': 'إضافة صنف غذائي',
+
   'screens.dashboard': 'الرئيسية',
   'screens.diary': 'اليوميات',
   'screens.library': 'المكتبة',
