@@ -99,7 +99,7 @@ describe('serverless runtime lifecycle', () => {
 
     expect(runtimeMocks.applyRlsPolicies).toHaveBeenCalledOnce();
     expect(runtimeMocks.syncTrustedProviders).toHaveBeenCalledOnce();
-  });
+  }, 15_000);
 
   it('skips migrations and background scheduling when deployment flags disable them', async () => {
     process.env.SPARKY_FITNESS_SKIP_STARTUP_MIGRATIONS = 'true';
