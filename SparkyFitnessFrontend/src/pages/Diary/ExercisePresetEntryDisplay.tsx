@@ -20,6 +20,7 @@ import {
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { formatLocalizedMinutes } from '@/utils/timeFormatters';
 import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: PresetSessionEntry;
@@ -103,22 +104,33 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   const hasExercises =
     presetEntry.exercises && presetEntry.exercises.length > 0;
   const exerciseCount = presetEntry.exercises?.length ?? 0;
+  const presetName =
+    presetEntry.name || t('exerciseCard.workoutPreset', 'Workout Preset');
+  const exerciseListId = `preset-exercises-${presetEntry.id}`;
 
   return (
     <Card className="overflow-hidden border-0 shadow-md bg-white dark:bg-gray-900 rounded-xl">
       {/* Accent bar + header */}
       <div className="flex">
         {/* Left accent stripe */}
-        <div className="w-1 flex-shrink-0 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-l-xl" />
+        <div className="w-1 flex-shrink-0 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-s-xl" />
 
         <div className="flex-1 min-w-0">
           {/* Header row */}
           <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-3">
             {/* Left: toggle + name */}
             <button
+              type="button"
               onClick={toggleExpansion}
-              className="flex items-center gap-3 min-w-0 flex-1 text-left group"
+              className="flex items-center gap-3 min-w-0 flex-1 text-start group"
               aria-expanded={isExpanded}
+              aria-controls={exerciseListId}
+              aria-label={t(
+                isExpanded
+                  ? 'exerciseCard.collapsePreset'
+                  : 'exerciseCard.expandPreset',
+                { name: presetName }
+              )}
             >
               <span
                 className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full border-2 transition-all duration-200
@@ -130,19 +142,20 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
               >
                 <ChevronDown
                   className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
                 />
               </span>
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-gray-900 dark:text-gray-50 text-base leading-tight truncate">
-                    {presetEntry.name ||
-                      t('exerciseCard.workoutPreset', 'Workout Preset')}
+                    {presetName}
                   </span>
                   {exerciseCount > 0 && (
                     <span className="flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                      {exerciseCount}{' '}
-                      {exerciseCount === 1 ? 'exercise' : 'exercises'}
+                      {t('exerciseCard.exerciseCount', {
+                        count: exerciseCount,
+                      })}
                     </span>
                   )}
                 </div>
@@ -159,12 +172,14 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(presetEntry.id)}
                     className="flex-shrink-0 h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
+                    aria-label={t('exerciseCard.deletePresetEntry')}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -204,19 +219,19 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
               <StatCell
                 icon={<Clock className="w-3 h-3" />}
                 value={formatLocalizedMinutes(totalMinutes, t)}
-                label={t('common.minutesUnit', 'Time')}
+                label={t('exerciseCard.duration')}
                 color="text-indigo-600 dark:text-indigo-400"
               />
               <StatCell
                 icon={<Activity className="w-3 h-3" />}
                 value={avgHR > 0 ? String(avgHR) : '—'}
-                label={t('common.avgHrUnit', 'Avg HR')}
+                label={t('exerciseCard.averageHeartRate')}
                 color="text-rose-500 dark:text-rose-400"
               />
               <StatCell
                 icon={<Flame className="w-3 h-3" />}
                 value={String(totalCalories)}
-                label={getEnergyUnitString(energyUnit)}
+                label={getLocalizedUnitLabel(energyUnit, t)}
                 color="text-orange-500 dark:text-orange-400"
               />
             </div>
@@ -226,7 +241,10 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
 
       {/* Expanded exercise list */}
       {isExpanded && (
-        <CardContent className="px-4 pb-4 pt-0 space-y-2 border-t border-gray-100 dark:border-gray-800">
+        <CardContent
+          id={exerciseListId}
+          className="px-4 pb-4 pt-0 space-y-2 border-t border-gray-100 dark:border-gray-800"
+        >
           <div className="pt-3 space-y-2">
             {hasExercises ? (
               presetEntry.exercises!.map((exerciseEntry) => (
