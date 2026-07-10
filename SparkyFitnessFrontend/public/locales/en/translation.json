@@ -1632,9 +1632,13 @@
     "copyFoodEntryDialog": {
       "title": "Copy Food Entries",
       "description": "Select the target date and meal type to copy the food entries.",
+      "titleAll": "Copy entire day",
+      "descriptionAll": "Select the date where you want to copy all food entries from this day.",
       "targetDate": "Target Date",
       "mealType": "Meal Type",
       "selectMealTypePlaceholder": "Select meal type",
+      "loadingMealTypes": "Loading meal types…",
+      "noMealTypes": "No meal types available",
       "copyButton": "Copy"
     }
   },

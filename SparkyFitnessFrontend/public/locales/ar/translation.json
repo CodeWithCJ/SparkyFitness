@@ -478,9 +478,13 @@
     "copyFoodEntryDialog": {
       "title": "نسخ سجلات الطعام",
       "description": "اختر التاريخ والوجبة اللي تبي تنسخ السجلات إليها.",
+      "titleAll": "نسخ يوم كامل",
+      "descriptionAll": "اختر التاريخ اللي تبي تنسخ له كل سجلات هاليوم.",
       "targetDate": "التاريخ المطلوب",
       "mealType": "نوع الوجبة",
       "selectMealTypePlaceholder": "اختر نوع الوجبة",
+      "loadingMealTypes": "جارٍ تحميل أنواع الوجبات…",
+      "noMealTypes": "ما فيه أنواع وجبات متاحة",
       "copyButton": "نسخ"
     }
   },
