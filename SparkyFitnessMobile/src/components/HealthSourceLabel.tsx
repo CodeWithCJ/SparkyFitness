@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, Text } from 'react-native';
+import { mobileT } from '../localization';
 
 /**
  * Displays the platform's health data source ("Apple Health" on iOS, "Health Connect"
@@ -16,7 +17,7 @@ interface HealthSourceLabelProps {
 
 const HealthSourceLabel: React.FC<HealthSourceLabelProps> = ({ className }) => (
   <Text className={`text-text-muted text-xs ${className ?? ''}`}>
-    <Text className="font-bold">Source:</Text> {healthSourceName}
+    <Text className="font-bold">{mobileT('sync.source')}</Text> {healthSourceName}
   </Text>
 );
 

@@ -14,6 +14,7 @@ import {
   formatMobileServingCount,
   formatMobileSetCount,
   localizeExerciseCategory,
+  localizeHealthMetricLabel,
   localizeMealType,
   localizeNutrientDisplayLabel,
   localizeServingDescription,
@@ -44,6 +45,15 @@ describe('mobile localization', () => {
   it('localizes known exercise categories without changing custom categories', () => {
     expect(localizeExerciseCategory('strength')).toBe('قوة');
     expect(localizeExerciseCategory('CrossFit')).toBe('CrossFit');
+  });
+
+  it('uses reviewed Arabic health metric names with a safe fallback', () => {
+    expect(localizeHealthMetricLabel('bloodPressure', 'Blood Pressure')).toBe(
+      'ضغط الدم',
+    );
+    expect(localizeHealthMetricLabel('customMetric', 'مؤشر مخصص')).toBe(
+      'مؤشر مخصص',
+    );
   });
 
   it('localizes diary meal types, serving units, and numbers', () => {

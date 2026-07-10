@@ -183,6 +183,10 @@ export function localizeNutrientDisplayLabel(label: string): string {
   return nutrientKey ? localizeNutrient(nutrientKey, label) : label;
 }
 
+export function localizeHealthMetricLabel(id: string, fallback: string): string {
+  return mobileT(`healthMetric.${id}`, undefined, fallback);
+}
+
 export function formatMobileNumber(
   value: number,
   options?: Intl.NumberFormatOptions,
