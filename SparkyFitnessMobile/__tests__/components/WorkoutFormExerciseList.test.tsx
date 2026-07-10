@@ -53,6 +53,7 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
               metricColumn: props.metricColumn,
               rpeEditable: props.rpeEditable,
               eligibleForPrefill: props.eligibleForPrefill,
+              excludePresetEntryId: props.excludePresetEntryId ?? null,
               editWeight0: props.exercise.sets[0]?.editWeightText ?? null,
               weightKg0: props.exercise.sets[0]?.weight ?? null,
               completed: props.completedSetIds,
@@ -262,6 +263,19 @@ describe('WorkoutFormExerciseList', () => {
       }),
     ]);
     expect(cardInfo(utils, 'a').completed).toEqual({ 'a-s1': Date.parse(completedAt) });
+  });
+
+  it('forwards excludePresetEntryId to every card when editing a saved workout', () => {
+    const utils = renderList([makeExercise('a'), makeExercise('b')], {
+      excludePresetEntryId: 'session-1',
+    });
+    expect(cardInfo(utils, 'a').excludePresetEntryId).toBe('session-1');
+    expect(cardInfo(utils, 'b').excludePresetEntryId).toBe('session-1');
+  });
+
+  it('passes no excludePresetEntryId in create mode', () => {
+    const utils = renderList([makeExercise('a')]);
+    expect(cardInfo(utils, 'a').excludePresetEntryId).toBeNull();
   });
 
   describe('superset rails', () => {

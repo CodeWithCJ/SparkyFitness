@@ -37,6 +37,7 @@ import {
 } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
+import type { ExerciseRecentSessionSet } from '@workspace/shared';
 
 export type SetRowState = 'done' | 'current' | 'upcoming';
 
@@ -70,6 +71,18 @@ export function parseRpeInput(text: string): number | null {
   return Math.min(10, Math.max(1, snapped));
 }
 
+/** PREVIOUS column text, e.g. `W 60 × 8`, `100 × 5`, or `12 reps`. */
+function formatPreviousSet(set: ExerciseRecentSessionSet, weightUnit: 'kg' | 'lbs'): string {
+  const w =
+    set.weight != null
+      ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
+      : null;
+  const prefix = set.setType === 'warmup' ? 'W ' : '';
+  if (w != null && set.reps != null) return `${prefix}${w} × ${set.reps}`;
+  if (w != null) return `${prefix}${w}`; // weight-only
+  return `${prefix}${set.reps} reps`; // reps-only set in a mixed history
+}
+
 export type SetRowMode = 'live' | 'view' | 'edit';
 
 interface ActiveWorkoutSetRowProps {
@@ -86,6 +99,14 @@ interface ActiveWorkoutSetRowProps {
   state: SetRowState;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
+  /**
+   * Hevy-style PREVIOUS column: this set's counterpart (by position) in the
+   * exercise's most recent prior session. `null` renders a dash (no history
+   * or fewer sets last time); leave it `undefined` to omit the column
+   * entirely (view mode). Tapping the value copies its weight/reps into the
+   * row, replacing anything already entered.
+   */
+  previousSet?: ExerciseRecentSessionSet | null;
   /**
    * 'view' renders without logging affordances: static check on done rows, no
    * un-complete control, no swipe-delete, no done-row dim.
@@ -221,6 +242,7 @@ function ActiveWorkoutSetRow({
   state: stateProp,
   metricColumn,
   weightUnit,
+  previousSet,
   mode = 'live',
   onComplete,
   onUncomplete,
@@ -342,6 +364,18 @@ function ActiveWorkoutSetRow({
   // raw keystrokes like "102.55" survive to save without a kg round-trip.
   const editWeightText = set.editWeightText ?? '';
   const editRepsText = set.editRepsText ?? '';
+
+  // Fill-from-previous replaces whatever the row holds with last time's
+  // values. A field the previous set lacks (e.g. a weight-only set) is left
+  // alone rather than cleared.
+  const canFillFromPrevious = previousSet != null;
+  const handleFillFromPrevious = useCallback(() => {
+    if (previousSet == null) return;
+    const patch: ActiveSetPatch = {};
+    if (previousSet.weight != null) patch.weight = previousSet.weight;
+    if (previousSet.reps != null) patch.reps = previousSet.reps;
+    if (Object.keys(patch).length > 0) onCommitField?.(setId, patch);
+  }, [previousSet, onCommitField, setId]);
 
   // Commit the parsed+clamped value on every keystroke — including empty → null
   // — so WorkoutDetailScreen's header Save, which reads the reducer synchronously
@@ -628,6 +662,32 @@ function ActiveWorkoutSetRow({
 
   const showRpeInput = metricColumn === 'rpe' && (!isEdit || rpeEditable);
 
+  // PREVIOUS column (only when the consumer passes the prop). The value is a
+  // tap target while it can still fill something; otherwise inert gray text.
+  const previousCell =
+    previousSet !== undefined ? (
+      <Pressable
+        className="w-20 items-center py-1"
+        onPress={handleFillFromPrevious}
+        onLongPress={longPress}
+        disabled={!canFillFromPrevious}
+        accessibilityRole={canFillFromPrevious ? 'button' : undefined}
+        accessibilityLabel={
+          canFillFromPrevious ? `Fill set ${set.set_number} from previous` : undefined
+        }
+      >
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+          className="text-center text-xs text-text-muted"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {previousSet != null ? formatPreviousSet(previousSet, weightUnit) : '—'}
+        </Text>
+      </Pressable>
+    ) : null;
+
   // Each input gets its OWN InputAccessoryView (unique nativeID). iOS attaches a
   // shared accessory to only the first-registered input, so reps/RPE would come
   // up with a bare keyboard if all three pointed at one id. The ids derive from
@@ -676,10 +736,11 @@ function ActiveWorkoutSetRow({
         <Pressable
           testID="set-row"
           onLongPress={longPress}
-          className={`flex-row items-center py-2 px-3 rounded-xl ${state === 'current' ? '' : 'bg-background'}`}
+          className={`flex-row items-center py-2 px-1 rounded-xl ${state === 'current' ? '' : 'bg-background'}`}
           style={state === 'current' ? { backgroundColor: withAlpha(accentPrimary, 0.12) } : undefined}
         >
           {setNumberControl}
+          {previousCell}
           <View className="flex-1 items-center">
             <SetCellInput
               inputRef={weightInputRef}
@@ -800,7 +861,7 @@ function ActiveWorkoutSetRow({
     <Pressable
       testID="set-row"
       onLongPress={longPress}
-      className={`flex-row items-center py-2.5 px-3 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
+      className={`flex-row items-center py-2.5 px-1 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
       style={isCursor ? { backgroundColor: withAlpha(accentPrimary, 0.12) } : undefined}
     >
       {/* Done rows recede (opacity 0.62), but the completion check lives outside
@@ -811,6 +872,7 @@ function ActiveWorkoutSetRow({
         style={doneDim ? { opacity: 0.62 } : undefined}
       >
         {setNumberControl}
+        {previousCell}
         {editable ? (
           <Pressable
             className="flex-1 py-1"

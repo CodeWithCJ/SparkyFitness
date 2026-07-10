@@ -35,16 +35,35 @@ jest.mock('../../src/components/SafeImage', () => {
 });
 
 // Surface state/mode/badge on the stub so tests can assert what the card
-// derived for each row.
+// derived for each row. accessibilityValue carries the PREVIOUS-column prop:
+// 'hidden' = column omitted (undefined), 'dash' = no previous (null).
 jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ set, state, mode, completedBadge, isFocused, nextSetId, entryId }: any) => (
+    default: ({
+      set,
+      state,
+      mode,
+      completedBadge,
+      isFocused,
+      nextSetId,
+      entryId,
+      previousSet,
+    }: any) => (
       <View
         testID={`set-row-${set.id}`}
         accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}${isFocused ? ' focused' : ''}`}
         accessibilityHint={`next:${nextSetId ?? 'none'} entry:${entryId ?? 'none'}`}
+        accessibilityValue={{
+          text: `prev:${
+            previousSet === undefined
+              ? 'hidden'
+              : previousSet === null
+                ? 'dash'
+                : `${previousSet.weight}x${previousSet.reps}`
+          }`,
+        }}
       />
     ),
   };
@@ -550,6 +569,93 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
       expect(mockCapturePrBaseline).not.toHaveBeenCalled();
       expect(queryByText('Best')).toBeNull();
+    });
+  });
+
+  describe('previous column', () => {
+    const STATS_WITH_HISTORY = {
+      data: {
+        bestSet: null,
+        lastSet: { entryDate: '2026-01-05', weight: 100, reps: 5, setNumber: 2 },
+        recentSessions: [
+          {
+            entryDate: '2026-01-05',
+            sets: [
+              { setNumber: 1, setType: 'warmup', weight: 60, reps: 8 },
+              { setNumber: 2, setType: null, weight: 100, reps: 5 },
+            ],
+          },
+          {
+            entryDate: '2026-01-03',
+            sets: [{ setNumber: 1, setType: null, weight: 90, reps: 5 }],
+          },
+        ],
+      },
+    };
+    /** Bench Press with three sets (ids 101–103) to exercise positional matching. */
+    const threeSets = () =>
+      makeExercise({
+        sets: [
+          ...makeExercise().sets,
+          { ...makeExercise().sets[0], id: 102, set_number: 2 },
+          { ...makeExercise().sets[0], id: 103, set_number: 3 },
+        ],
+      });
+    const prevOf = (utils: ReturnType<typeof renderCard>, id: number) =>
+      utils.getByTestId(`set-row-${id}`).props.accessibilityValue.text;
+
+    it('shows the PREVIOUS header in live and edit modes but not view', () => {
+      const live = renderCard(true, { mode: 'live' });
+      expect(live.getByText('Previous')).toBeTruthy();
+
+      const edit = renderCard(true, { mode: 'edit' });
+      expect(edit.getByText('Previous')).toBeTruthy();
+
+      const view = renderCard(true, { mode: 'view' });
+      expect(view.queryByText('Previous')).toBeNull();
+    });
+
+    it('matches the most recent session to rows by position, dashing the overflow', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      const utils = renderCard(true, { mode: 'live', exercise: threeSets() });
+
+      // recentSessions[0] has two sets; the third current row has no previous.
+      expect(prevOf(utils, 101)).toBe('prev:60x8');
+      expect(prevOf(utils, 102)).toBe('prev:100x5');
+      expect(prevOf(utils, 103)).toBe('prev:dash');
+    });
+
+    it('dashes every row against an old server without recentSessions', () => {
+      mockUseExerciseStats.mockReturnValue({
+        data: {
+          bestSet: null,
+          lastSet: { entryDate: '2026-01-05', weight: 100, reps: 5, setNumber: 2 },
+        },
+      });
+      const utils = renderCard(true, { mode: 'live' });
+      expect(prevOf(utils, 101)).toBe('prev:dash');
+    });
+
+    it('omits the column entirely in view mode', () => {
+      const utils = renderCard(true, { mode: 'view' });
+      expect(prevOf(utils, 101)).toBe('prev:hidden');
+    });
+
+    it('renders no Last stat line (superseded by the column)', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      const { queryByText } = renderCard(true, { mode: 'live' });
+      expect(queryByText('Last')).toBeNull();
+    });
+
+    it('feeds the column in edit mode with the edited session excluded', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      const utils = renderCard(true, {
+        mode: 'edit',
+        excludePresetEntryId: 'session-9',
+      });
+
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-9');
+      expect(prevOf(utils, 101)).toBe('prev:60x8');
     });
   });
 

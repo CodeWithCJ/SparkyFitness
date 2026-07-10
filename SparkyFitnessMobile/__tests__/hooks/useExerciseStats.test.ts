@@ -25,6 +25,7 @@ describe('useExerciseStats', () => {
     const data = {
       bestSet: { entryDate: '2026-04-01', weight: 100, reps: 5, setNumber: 1 },
       lastSet: { entryDate: '2026-04-10', weight: 95, reps: 5, setNumber: 1 },
+      recentSessions: [],
     };
     mockFetchStats.mockResolvedValue(data);
 
@@ -38,8 +39,37 @@ describe('useExerciseStats', () => {
     expect(mockFetchStats).toHaveBeenCalledWith('ex-1', undefined);
   });
 
+  it('passes populated recentSessions through untouched', async () => {
+    const data = {
+      bestSet: null,
+      lastSet: { entryDate: '2026-04-10', weight: 95, reps: 5, setNumber: 1 },
+      recentSessions: [
+        {
+          entryDate: '2026-04-10',
+          sets: [
+            { setNumber: 1, setType: 'warmup', weight: 60, reps: 8 },
+            { setNumber: 2, setType: null, weight: 95, reps: 5 },
+          ],
+        },
+      ],
+    };
+    mockFetchStats.mockResolvedValue(data);
+
+    const { result } = renderHook(() => useExerciseStats('ex-1'), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(data);
+    });
+  });
+
   it('forwards excludePresetEntryId to the fetch and query key', async () => {
-    mockFetchStats.mockResolvedValue({ bestSet: null, lastSet: null });
+    mockFetchStats.mockResolvedValue({
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [],
+    });
 
     const { result } = renderHook(
       () => useExerciseStats('ex-1', 'session-1'),

@@ -2,7 +2,10 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { useCSSVariable } from 'uniwind';
-import type { ExerciseEntrySetResponse } from '@workspace/shared';
+import type {
+  ExerciseEntrySetResponse,
+  ExerciseRecentSessionSet,
+} from '@workspace/shared';
 import ActiveWorkoutSetRow, {
   parseRpeInput,
   type SetRowMode,
@@ -64,6 +67,7 @@ interface RenderOverrides {
   entryId?: string;
   rpeEditable?: boolean;
   completedBadge?: boolean;
+  previousSet?: ExerciseRecentSessionSet | null;
   /** Wire the edit-mode completion toggle (otherwise the check is static). */
   enableToggle?: boolean;
   /** Wire the set-type handler (makes the set number a menu trigger). */
@@ -103,6 +107,7 @@ function renderRow(overrides?: RenderOverrides) {
       entryId={current?.entryId}
       rpeEditable={current?.rpeEditable}
       completedBadge={current?.completedBadge}
+      previousSet={current?.previousSet}
       {...spreadCallbacks}
       onToggleComplete={current?.enableToggle ? onToggleComplete : undefined}
       onPressSetType={current?.enableSetType ? onPressSetType : undefined}
@@ -843,6 +848,121 @@ describe('ActiveWorkoutSetRow', () => {
         set: { weight: 0, reps: 10 },
       });
       expect(getByText('–')).toBeTruthy();
+    });
+  });
+
+  describe('previous column', () => {
+    const prev = (o?: Partial<ExerciseRecentSessionSet>): ExerciseRecentSessionSet => ({
+      setNumber: 1,
+      setType: null,
+      weight: 100,
+      reps: 5,
+      ...o,
+    });
+
+    it('renders weight × reps in the display unit', () => {
+      const kg = renderRow({ state: 'upcoming', previousSet: prev() });
+      expect(kg.getByText('100 × 5')).toBeTruthy();
+
+      const lbs = renderRow({ state: 'upcoming', previousSet: prev(), weightUnit: 'lbs' });
+      expect(lbs.getByText('220.5 × 5')).toBeTruthy();
+    });
+
+    it('prefixes warmup sets and handles one-sided values', () => {
+      const warm = renderRow({
+        state: 'upcoming',
+        previousSet: prev({ setType: 'warmup', weight: 50, reps: 8 }),
+      });
+      expect(warm.getByText('W 50 × 8')).toBeTruthy();
+
+      const weightOnly = renderRow({ state: 'upcoming', previousSet: prev({ reps: null }) });
+      expect(weightOnly.getByText('100')).toBeTruthy();
+
+      const repsOnly = renderRow({
+        state: 'upcoming',
+        previousSet: prev({ weight: null, reps: 8 }),
+      });
+      expect(repsOnly.getByText('8 reps')).toBeTruthy();
+    });
+
+    it('renders an em-dash when this row has no previous counterpart', () => {
+      const { getByText } = renderRow({ state: 'upcoming', previousSet: null });
+      expect(getByText('—')).toBeTruthy();
+    });
+
+    it('omits the column when the prop is not passed', () => {
+      const { queryByText } = renderRow({ state: 'upcoming' });
+      expect(queryByText('—')).toBeNull();
+    });
+
+    describe('tap-to-fill', () => {
+      it('replaces already-entered values with the previous ones', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          state: 'upcoming',
+          set: { weight: 60, reps: 10 },
+          previousSet: prev(),
+        });
+
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          weight: 100,
+          reps: 5,
+        });
+      });
+
+      it('fills an empty set in kg regardless of display unit', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          state: 'upcoming',
+          weightUnit: 'lbs',
+          set: { weight: null, reps: null },
+          previousSet: prev(),
+        });
+
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          weight: 100,
+          reps: 5,
+        });
+      });
+
+      it('leaves a field alone when the previous set lacks it', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          state: 'upcoming',
+          set: { weight: 60, reps: 10 },
+          previousSet: prev({ reps: null }),
+        });
+
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+
+        // Weight replaced; reps untouched rather than cleared to null.
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 100 });
+      });
+
+      it('replaces in edit mode through the same kg commit path', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          set: { weight: 70, reps: 3, editWeightText: '70', editRepsText: '3' },
+          previousSet: prev(),
+        });
+
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          weight: 100,
+          reps: 5,
+        });
+      });
+
+      it('offers no fill target on a dash row', () => {
+        const { queryByLabelText } = renderRow({
+          state: 'upcoming',
+          previousSet: null,
+        });
+        expect(queryByLabelText('Fill set 1 from previous')).toBeNull();
+      });
     });
   });
 

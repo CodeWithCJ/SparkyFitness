@@ -64,9 +64,9 @@ interface ActiveWorkoutExerciseCardProps {
    */
   mode?: 'live' | 'view' | 'edit';
   /**
-   * Live only: the active session's preset-entry id, forwarded to the stats
-   * query so today's in-progress/planned sets are excluded from the historical
-   * best/last baseline. View/edit modes pass nothing.
+   * Live/edit: the active (or edited) session's preset-entry id, forwarded to
+   * the stats query so that session's own sets are excluded from the
+   * historical best/last/recent-sessions baseline. View mode passes nothing.
    */
   excludePresetEntryId?: string;
   /**
@@ -222,14 +222,21 @@ function ActiveWorkoutExerciseCard({
 
   const name = exercise.exercise_snapshot?.name ?? 'Exercise';
   // "Last time" / "Best" only make sense while performing or planning — skip
-  // the fetch in view mode (the hook gates on a null id). In live mode the
-  // active session is excluded so today's sets don't pollute the baseline.
+  // the fetch in view mode (the hook gates on a null id). In live and edit
+  // modes the active/edited session is excluded so its own sets don't pollute
+  // the historical baseline.
   const { data: stats } = useExerciseStats(
     readOnly ? null : exercise.exercise_id,
-    isLive ? excludePresetEntryId : undefined,
+    readOnly ? undefined : excludePresetEntryId,
   );
   const lastSet = stats?.lastSet ?? null;
   const bestSet = stats?.bestSet ?? null;
+
+  // PREVIOUS column source: the most recent prior session's sets, matched to
+  // the current rows by position (Hevy-style). Older servers omit
+  // recentSessions; `?? []` covers deploy skew (mobile never Zod-parses), so
+  // the column just shows dashes there.
+  const previousSessionSets = (stats?.recentSessions ?? [])[0]?.sets;
 
   // Capture the historical PR baseline once per exercise. The store no-ops
   // unless a live workout is active and the key is absent, so view/edit renders
@@ -396,7 +403,7 @@ function ActiveWorkoutExerciseCard({
     // target expands here; the labeled "Expand" affordance is the row body.
     return (
       <View className="border-b border-border-subtle">
-        <View className="flex-row items-center gap-3 px-4 py-3">
+        <View className="flex-row items-center gap-3 px-2 py-3">
           <Pressable
             onPress={() => onToggleExpanded(exercise.id)}
             onLongPress={longPressMenu}
@@ -435,7 +442,7 @@ function ActiveWorkoutExerciseCard({
   const workingSetNumbers = buildWorkingSetNumbers(exercise.sets);
 
   return (
-    <View className="border-b border-border-subtle px-4 pt-3 pb-2">
+    <View className="border-b border-border-subtle px-2 pt-3 pb-2">
       <View className="flex-row items-center gap-3">
         {/* Always a <Pressable> so the thumb subtree matches the collapsed
             render and the <Image> is preserved rather than remounted. Inert
@@ -503,9 +510,10 @@ function ActiveWorkoutExerciseCard({
         </View>
       )}
 
-      {(showRestChip || lastSet != null || bestDisplay != null) && (
-        // flex-wrap + gap-y so the rest chip, "Last time", and "Best" stack
-        // gracefully on narrow screens instead of shifting off the edge.
+      {(showRestChip || bestDisplay != null) && (
+        // flex-wrap + gap-y so the rest chip and "Best" stack gracefully on
+        // narrow screens instead of shifting off the edge. "Last" lives in the
+        // per-set PREVIOUS column, not here.
         <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1 px-1">
           {showRestChip && (
             <RestPeriodChip
@@ -517,17 +525,6 @@ function ActiveWorkoutExerciseCard({
                   : () => onPressRestChip?.(exercise.id, exercise.sets[0]?.rest_time ?? null)
               }
             />
-          )}
-          {lastSet && lastSet.weight != null && lastSet.reps != null && (
-            <View className="flex-row items-baseline gap-1.5">
-              <Text className="text-sm uppercase tracking-wide text-text-muted">Last</Text>
-              <Text
-                className="text-sm text-text-secondary"
-                style={{ fontVariant: ['tabular-nums'] }}
-              >
-                {parseFloat(weightFromKg(lastSet.weight, weightUnit).toFixed(1))} × {lastSet.reps}
-              </Text>
-            </View>
           )}
           {bestDisplay != null && (
             <View className="flex-row items-baseline gap-1.5">
@@ -548,10 +545,15 @@ function ActiveWorkoutExerciseCard({
       )}
 
       {exercise.sets.length > 0 && (
-        <View className="flex-row items-center px-3 py-1.5">
+        <View className="flex-row items-center px-1 py-1.5">
           <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
             Set
           </Text>
+          {!readOnly && (
+            <Text className="w-20 text-center text-xs font-semibold uppercase text-text-muted">
+              Previous
+            </Text>
+          )}
           <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
             {weightUnit === 'kg' ? 'KG' : 'LBS'}
           </Text>
@@ -606,6 +608,7 @@ function ActiveWorkoutExerciseCard({
               state={state}
               metricColumn={metricColumn}
               weightUnit={weightUnit}
+              previousSet={readOnly ? undefined : (previousSessionSets?.[index] ?? null)}
               mode={mode}
               onComplete={onComplete}
               onUncomplete={onUncomplete}

@@ -1,7 +1,9 @@
 import { getClient } from '../db/poolManager.js';
 import exerciseRepository from '../models/exerciseRepository.js';
 import exerciseDb from '../models/exercise.js';
-import exerciseEntryDb from '../models/exerciseEntry.js';
+import exerciseEntryDb, {
+  type RecentSessionRow,
+} from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
@@ -211,6 +213,30 @@ function mapSetStatsRow(row: any) {
     setNumber: row.set_number,
   };
 }
+// The DB holds cross-source set_type variants ('Warm-up', 'Warm-up Set', ...);
+// mirror the fuzzy SQL warmup match so clients can compare against 'warmup'.
+function normalizeSetType(setType: string | null): string | null {
+  if (setType === null) {
+    return null;
+  }
+  return setType
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .startsWith('warmup')
+    ? 'warmup'
+    : setType;
+}
+function mapRecentSessionRow(row: RecentSessionRow) {
+  return {
+    entryDate: row.entry_date,
+    sets: (row.sets ?? []).map((s) => ({
+      setNumber: s.set_number,
+      setType: normalizeSetType(s.set_type),
+      weight: s.weight,
+      reps: s.reps,
+    })),
+  };
+}
 async function getExerciseStats(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -218,7 +244,7 @@ async function getExerciseStats(
   exerciseId: any,
   excludePresetEntryId: string | null = null
 ) {
-  const [bestRow, lastRow] = await Promise.all([
+  const [bestRow, lastRow, recentRows] = await Promise.all([
     exerciseEntryDb.getBestSetForExercise(
       userId,
       exerciseId,
@@ -229,10 +255,16 @@ async function getExerciseStats(
       exerciseId,
       excludePresetEntryId
     ),
+    exerciseEntryDb.getRecentSessionsForExercise(
+      userId,
+      exerciseId,
+      excludePresetEntryId
+    ),
   ]);
   return {
     bestSet: bestRow ? mapSetStatsRow(bestRow) : null,
     lastSet: lastRow ? mapSetStatsRow(lastRow) : null,
+    recentSessions: recentRows.map(mapRecentSessionRow),
   };
 }
 async function getAvailableEquipment() {

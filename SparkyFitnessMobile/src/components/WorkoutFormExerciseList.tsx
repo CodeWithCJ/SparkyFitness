@@ -31,6 +31,12 @@ interface WorkoutFormExerciseListProps {
   exercises: WorkoutDraftExercise[];
   weightUnit: 'kg' | 'lbs';
   getImageSource: GetImageSource;
+  /**
+   * When editing a saved workout: its preset-entry id, forwarded to every card
+   * so the stats/history baseline excludes the workout being edited. Absent in
+   * create mode and the preset form.
+   */
+  excludePresetEntryId?: string;
   /** `${exerciseClientId}:${setClientId}` from useExerciseSetEditing. */
   activeSetKey: string | null;
   activeSetField: 'weight' | 'reps' | 'rpe';
@@ -99,6 +105,7 @@ const WorkoutFormExerciseList = forwardRef<
     exercises,
     weightUnit,
     getImageSource,
+    excludePresetEntryId,
     activeSetKey,
     activeSetField,
     onActivateSet,
@@ -402,6 +409,7 @@ const WorkoutFormExerciseList = forwardRef<
           <ActiveWorkoutExerciseCard
             exercise={cardExercise}
             mode="edit"
+            excludePresetEntryId={excludePresetEntryId}
             expanded={isExpanded}
             completedSetIds={completedSetIds}
             activeSetId={cardActiveSetId}

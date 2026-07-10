@@ -333,34 +333,39 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
                 </TouchableOpacity>
 
-                <WorkoutFormExerciseList
-                  ref={exerciseListRef}
-                  exercises={state.exercises}
-                  weightUnit={weightUnit as 'kg' | 'lbs'}
-                  getImageSource={getImageSource}
-                  activeSetKey={activeSetKey}
-                  activeSetField={activeSetField}
-                  onActivateSet={activateSet}
-                  onDeactivateSet={deactivateSet}
-                  updateSetField={updateSetField}
-                  updateSetMeta={updateSetMeta}
-                  removeSet={removeSet}
-                  onAddSet={handleAddSet}
-                  onRemoveExercise={handleRemoveExercise}
-                  setExerciseRest={setExerciseRest}
-                  supersetWith={supersetWith}
-                  ungroupExercise={ungroupExercise}
-                  onReorderExercises={reorderExercises}
-                  onAddExercisePress={openExerciseSearch}
-                  onViewExercise={(exercise) =>
-                    navigation.navigate('ExerciseDetail', {
-                      item: exercise,
-                      hideWorkoutActions: true,
-                    })
-                  }
-                  isEligibleForPrefill={isEligibleForPrefill}
-                  removeExerciseOnLastSetDelete
-                />
+                {/* Full-bleed: cancel the scroll container's px-4 so the card
+                    separators reach the screen edges. */}
+                <View className="-mx-4">
+                  <WorkoutFormExerciseList
+                    ref={exerciseListRef}
+                    exercises={state.exercises}
+                    weightUnit={weightUnit as 'kg' | 'lbs'}
+                    getImageSource={getImageSource}
+                    excludePresetEntryId={session?.id}
+                    activeSetKey={activeSetKey}
+                    activeSetField={activeSetField}
+                    onActivateSet={activateSet}
+                    onDeactivateSet={deactivateSet}
+                    updateSetField={updateSetField}
+                    updateSetMeta={updateSetMeta}
+                    removeSet={removeSet}
+                    onAddSet={handleAddSet}
+                    onRemoveExercise={handleRemoveExercise}
+                    setExerciseRest={setExerciseRest}
+                    supersetWith={supersetWith}
+                    ungroupExercise={ungroupExercise}
+                    onReorderExercises={reorderExercises}
+                    onAddExercisePress={openExerciseSearch}
+                    onViewExercise={(exercise) =>
+                      navigation.navigate('ExerciseDetail', {
+                        item: exercise,
+                        hideWorkoutActions: true,
+                      })
+                    }
+                    isEligibleForPrefill={isEligibleForPrefill}
+                    removeExerciseOnLastSetDelete
+                  />
+                </View>
 
                 {/* Bottom spacer so content isn't hidden behind footer */}
                 <View style={{ height: 80 }} />

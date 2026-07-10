@@ -51,6 +51,14 @@ jest.mock('../../src/hooks/useExerciseImageSource', () => ({
   useExerciseImageSource: jest.fn(() => ({ getImageSource: jest.fn(() => null) })),
 }));
 
+// Stub the stats query so no fetch is attempted and the exclusion plumbing
+// (session.id → card → hook) is assertable.
+jest.mock('../../src/hooks/useExerciseStats', () => ({
+  useExerciseStats: jest.fn(() => ({ data: null })),
+}));
+const mockUseExerciseStats = jest.requireMock('../../src/hooks/useExerciseStats')
+  .useExerciseStats as jest.Mock;
+
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
@@ -239,6 +247,19 @@ describe('WorkoutDetailScreen', () => {
   });
 
   describe('edit mode', () => {
+    it('excludes the edited session from the stats baseline', () => {
+      const screen = renderScreen(buildSession());
+
+      // View mode: the stats fetch is disabled entirely.
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
+
+      fireEvent.press(screen.getByLabelText('Edit workout'));
+
+      // Edit mode: session.id reaches the stats layer so the workout being
+      // edited can't pollute its own Last/Best/recent-sessions baseline.
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
+    });
+
     it('renders edit cards and saves set_type/rpe edits through the payload', async () => {
       mockUpdateSession.mockResolvedValue(buildSession());
       const screen = renderScreen(buildSession());

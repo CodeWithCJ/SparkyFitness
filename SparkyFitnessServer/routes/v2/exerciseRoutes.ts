@@ -125,12 +125,14 @@ router.get('/search', searchHandler);
  * @swagger
  * /v2/exercises/{exerciseId}/stats:
  *   get:
- *     summary: Per-exercise best set + last set stats
+ *     summary: Per-exercise best set + last set stats + recent sessions
  *     tags: [Exercise & Workouts]
  *     description: |
- *       Returns the caller's all-time best set (heaviest weight; tie-broken by reps DESC, entry_date DESC, created_at DESC)
- *       and most recent set (entry_date + created_at DESC, then highest set_number) for a single exercise.
- *       Both fields are null when the user has no qualifying history. Scoped to req.userId.
+ *       Returns the caller's all-time best set (heaviest weight; tie-broken by reps DESC, entry_date DESC, created_at DESC),
+ *       most recent set (entry_date + created_at DESC, then highest set_number), and up to 3 most recent sessions
+ *       (entry date + full set list, newest first) for a single exercise. Recent sessions include warmup sets;
+ *       entries with no weight/reps-bearing sets (e.g. cardio) are skipped. Both set fields are null and
+ *       recentSessions is empty when the user has no qualifying history. Scoped to req.userId.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -149,10 +151,11 @@ router.get('/search', searchHandler);
  *           format: uuid
  *         description: |
  *           Optional preset-entry UUID to exclude from the baseline. Used by the live active-workout card so today's
- *           in-progress (or pre-persisted planned) sets do not pollute the historical best/last baseline.
+ *           in-progress (or pre-persisted planned) sets do not pollute the historical best/last baseline, and by the
+ *           edit-workout screens to exclude the workout being edited. Also applies to recentSessions.
  *     responses:
  *       200:
- *         description: Best set + last set stats.
+ *         description: Best set + last set stats + recent sessions.
  *       400:
  *         description: Invalid exerciseId or excludePresetEntryId (not a UUID).
  *       401:

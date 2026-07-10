@@ -1262,6 +1262,55 @@ async function getLastSetForExercise(
     client.release();
   }
 }
+export interface RecentSessionRow {
+  entry_date: string;
+  sets:
+    | {
+        id: string;
+        set_number: number;
+        set_type: string | null;
+        weight: number | null;
+        reps: number | null;
+      }[]
+    | null;
+}
+async function getRecentSessionsForExercise(
+  userId: string,
+  exerciseId: string,
+  excludePresetEntryId: string | null = null,
+  limit = 3
+): Promise<RecentSessionRow[]> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT
+         ee.entry_date::TEXT AS entry_date,
+         (SELECT json_agg(set_data ORDER BY set_data.set_number, set_data.id)
+            FROM (
+              SELECT ees.id, ees.set_number, ees.set_type, ees.weight, ees.reps
+                FROM exercise_entry_sets ees
+               WHERE ees.exercise_entry_id = ee.id
+                 AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL)
+            ) AS set_data
+         ) AS sets
+       FROM exercise_entries ee
+       WHERE ee.user_id = $1
+         AND ee.exercise_id = $2
+         AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3)
+         AND EXISTS (
+           SELECT 1 FROM exercise_entry_sets ees
+            WHERE ees.exercise_entry_id = ee.id
+              AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL)
+         )
+       ORDER BY ee.entry_date DESC, ee.created_at DESC, ee.id DESC
+       LIMIT $4`,
+      [userId, exerciseId, excludePresetEntryId, limit]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
 async function deleteExerciseEntriesByEntrySourceAndDate(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1507,6 +1556,7 @@ export { getExerciseProgressData };
 export { getExerciseHistory };
 export { getBestSetForExercise };
 export { getLastSetForExercise };
+export { getRecentSessionsForExercise };
 export { deleteExerciseEntriesByEntrySourceAndDate };
 export { getDailyExerciseTotalsRange };
 export { getExerciseDiaryRange };
@@ -1532,6 +1582,7 @@ export default {
   getExerciseHistory,
   getBestSetForExercise,
   getLastSetForExercise,
+  getRecentSessionsForExercise,
   deleteExerciseEntriesByEntrySourceAndDate,
   getDailyExerciseTotalsRange,
   getExerciseDiaryRange,
