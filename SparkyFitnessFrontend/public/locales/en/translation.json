@@ -474,6 +474,7 @@
       "dailyCalorieGoal": "Daily Calorie Goal",
       "dailyEnergyGoal": "Daily Energy Goal",
       "remaining": "remaining",
+      "remainingEnergy": "{{amount}} {{unit}} remaining",
       "eaten": "eaten",
       "burned": "burned",
       "burnedCaloriesBreakdown": "Burned Calories Breakdown:",

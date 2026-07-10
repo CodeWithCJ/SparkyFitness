@@ -590,6 +590,7 @@
       "dailyCalorieGoal": "هدف السعرات اليومي",
       "dailyEnergyGoal": "هدف الطاقة اليومي",
       "remaining": "متبقي",
+      "remainingEnergy": "متبقي {{amount}} {{unit}}",
       "eaten": "مأكول",
       "burned": "مستهلك",
       "burnedCaloriesBreakdown": "تفاصيل السعرات المستهلكة:",
