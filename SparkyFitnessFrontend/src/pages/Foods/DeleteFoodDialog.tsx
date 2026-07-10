@@ -14,6 +14,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import type { Food, FoodDeletionImpact } from '@/types/food';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 export interface PendingDeletion {
   food: Food;
@@ -27,13 +28,6 @@ interface DeleteFoodDialogProps {
   mealTypes?: { id: string; name: string }[];
 }
 
-const formatEntryDate = (date: string) =>
-  new Date(date).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-
 const toISODate = (date: string) => date.split('T')[0];
 
 const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
@@ -43,6 +37,7 @@ const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
   mealTypes,
 }) => {
   const { t } = useTranslation();
+  const { formatDateInUserTimezone } = usePreferences();
 
   if (!pendingDeletion) return null;
 
@@ -58,7 +53,12 @@ const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
   ];
 
   return (
-    <Dialog open onOpenChange={onCancel}>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
+    >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
@@ -78,27 +78,32 @@ const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
             {impact.foodEntries.length > 0 ? (
               <Collapsible
                 defaultOpen
-                className="rounded-lg border border-border overflow-hidden"
+                className="overflow-hidden rounded-lg border border-border"
               >
-                <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium bg-muted/40 hover:bg-muted/70 transition-colors text-left">
+                <CollapsibleTrigger className="flex w-full items-center justify-between bg-muted/40 px-3 py-2.5 text-start text-sm font-medium transition-colors hover:bg-muted/70">
                   <span>
                     {t('foodDatabaseManager.diaryEntries', {
                       count: impact.foodEntriesCount,
                       defaultValue: `${impact.foodEntriesCount} diary entries`,
                     })}
                   </span>
-                  <span className="text-muted-foreground text-xs">▼</span>
+                  <span className="text-xs text-muted-foreground" aria-hidden>
+                    ▼
+                  </span>
                 </CollapsibleTrigger>
 
                 <CollapsibleContent>
-                  <div className="max-h-56 overflow-y-auto divide-y divide-border">
+                  <div className="max-h-56 divide-y divide-border overflow-y-auto">
                     {impact.foodEntries.map((entry) => (
                       <div
                         key={entry.id}
-                        className="flex items-center gap-4 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
+                        className="flex items-center gap-4 px-3 py-2 text-sm transition-colors hover:bg-muted/30"
                       >
                         <span className="w-28 shrink-0 font-medium tabular-nums">
-                          {formatEntryDate(entry.entry_date)}
+                          {formatDateInUserTimezone(
+                            entry.entry_date,
+                            'd MMMM yyyy'
+                          )}
                         </span>
                         <span className="flex-1 text-muted-foreground capitalize">
                           {mealTypes?.find((mt) => mt.id === entry.meal_type_id)
@@ -114,13 +119,16 @@ const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-primary underline underline-offset-2 shrink-0 hover:text-primary/70 transition-colors cursor-pointer"
+                            className="shrink-0 cursor-pointer text-xs text-primary underline underline-offset-2 transition-colors hover:text-primary/70"
                           >
-                            View
+                            {t(
+                              'foodDatabaseManager.viewDiaryEntry',
+                              'View entry'
+                            )}
                           </Link>
                         ) : (
-                          <span className="text-[10px] text-muted-foreground shrink-0 px-1.5 py-0.5 rounded-full bg-muted">
-                            other user
+                          <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {t('foodDatabaseManager.otherUser', 'Other user')}
                           </span>
                         )}
                       </div>
@@ -129,7 +137,7 @@ const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
                 </CollapsibleContent>
               </Collapsible>
             ) : (
-              <div className="rounded-lg border border-border px-3 py-2.5 text-sm text-muted-foreground bg-muted/20">
+              <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-sm text-muted-foreground">
                 {t('foodDatabaseManager.diaryEntries', {
                   count: 0,
                   defaultValue: '0 diary entries',
@@ -142,7 +150,7 @@ const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
               .map(({ key, count }) => (
                 <div
                   key={key}
-                  className="rounded-lg border border-border px-3 py-2.5 text-sm bg-muted/20"
+                  className="rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-sm"
                 >
                   <span>{t('foodDatabaseManager.' + key, { count })}</span>
                 </div>
@@ -150,7 +158,7 @@ const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
           </div>
 
           {impact.otherUserReferences > 0 && (
-            <div className="p-3.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300 rounded-lg text-sm space-y-1">
+            <div className="space-y-1 rounded-lg border border-yellow-200 bg-yellow-50 p-3.5 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
               <p className="font-semibold">
                 {t('foodDatabaseManager.warning', 'Warning!')}
               </p>
@@ -164,7 +172,7 @@ const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
           )}
         </div>
 
-        <div className="flex justify-end space-x-2 mt-2">
+        <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={onCancel}>
             {t('foodDatabaseManager.cancel', 'Cancel')}
           </Button>
