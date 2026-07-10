@@ -73,7 +73,9 @@ Current SparkyFitness launch database:
 - Vercel runtime host (Supavisor session mode, IPv4):
   `aws-0-ap-southeast-1.pooler.supabase.com:5432`
 - DB name: `postgres`
-- SSL setting: `SPARKY_FITNESS_DB_SSL=require`
+- SSL setting: `SPARKY_FITNESS_DB_SSL=verify-full`
+- Supabase CA: protected `SPARKY_FITNESS_DB_SSL_CA` environment value from
+  Database Settings > SSL Configuration. Literal `\n` sequences are supported.
 
 The database password and app-role password are stored only in ignored local
 credentials at `private/supabase-sparkyfitness.env`.
@@ -89,7 +91,8 @@ SPARKY_FITNESS_DB_USER=postgres.diqsuhrgkwkgdonkmths
 SPARKY_FITNESS_DB_PASSWORD=...
 SPARKY_FITNESS_APP_DB_USER=sparky_app.diqsuhrgkwkgdonkmths
 SPARKY_FITNESS_APP_DB_PASSWORD=...
-SPARKY_FITNESS_DB_SSL=require
+SPARKY_FITNESS_DB_SSL=verify-full
+SPARKY_FITNESS_DB_SSL_CA=-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----
 SPARKY_FITNESS_DB_POOL_MAX=1
 SPARKY_FITNESS_DB_IDLE_TIMEOUT_MS=1000
 ```
@@ -114,7 +117,8 @@ Before launch:
    or Management API. For the current launch, the API reported WAL-G enabled and
    a completed physical backup (`1075427768`, 2026-07-09 16:22:23 UTC).
 2. Confirm both owner and app database users exist.
-3. Confirm the backend can connect with `SPARKY_FITNESS_DB_SSL=require`.
+3. Confirm the backend can connect with `SPARKY_FITNESS_DB_SSL=verify-full`
+   and the protected Supabase CA value.
 4. Run migrations/RLS once out-of-band or during a controlled first deploy and
    confirm they applied successfully. The current Vercel deployment uses
    `SPARKY_FITNESS_SKIP_STARTUP_MIGRATIONS=true` because the Supabase schema
@@ -142,7 +146,8 @@ SPARKY_FITNESS_DISABLE_BACKGROUND_JOBS=true
 SPARKY_FITNESS_STORAGE_MODE=disabled
 SPARKY_FITNESS_SERVER_BACKUPS_ENABLED=false
 SPARKY_FITNESS_DISABLE_SIGNUP=false
-SPARKY_FITNESS_DB_SSL=require
+SPARKY_FITNESS_DB_SSL=verify-full
+SPARKY_FITNESS_DB_SSL_CA=<protected Supabase CA certificate>
 SPARKY_FITNESS_DB_POOL_MAX=1
 SPARKY_FITNESS_DB_IDLE_TIMEOUT_MS=1000
 SPARKY_FITNESS_SYSTEM_DB_PORT=6543

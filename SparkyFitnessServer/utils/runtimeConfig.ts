@@ -29,8 +29,22 @@ function getDbSslConfig(): DbSslConfig {
     return { ssl: { rejectUnauthorized: false } };
   }
 
+  if (value === 'verify-full') {
+    const ca = process.env.SPARKY_FITNESS_DB_SSL_CA?.replace(
+      /\\n/g,
+      '\n'
+    ).trim();
+    if (!ca) {
+      throw new Error(
+        'SPARKY_FITNESS_DB_SSL_CA is required when SPARKY_FITNESS_DB_SSL is "verify-full".'
+      );
+    }
+
+    return { ssl: { ca, rejectUnauthorized: true } };
+  }
+
   throw new Error(
-    `Invalid SPARKY_FITNESS_DB_SSL value "${process.env.SPARKY_FITNESS_DB_SSL}". Expected "require" or "disable".`
+    `Invalid SPARKY_FITNESS_DB_SSL value "${process.env.SPARKY_FITNESS_DB_SSL}". Expected "verify-full", "require", or "disable".`
   );
 }
 

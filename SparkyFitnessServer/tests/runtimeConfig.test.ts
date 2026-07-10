@@ -17,6 +17,7 @@ describe('runtimeConfig', () => {
     delete process.env.PORT;
     delete process.env.SPARKY_FITNESS_SERVER_PORT;
     delete process.env.SPARKY_FITNESS_DB_SSL;
+    delete process.env.SPARKY_FITNESS_DB_SSL_CA;
     delete process.env.SPARKY_FITNESS_DB_POOL_MAX;
     delete process.env.SPARKY_FITNESS_DB_IDLE_TIMEOUT_MS;
     delete process.env.SPARKY_FITNESS_DB_PORT;
@@ -60,6 +61,27 @@ describe('runtimeConfig', () => {
     expect(getDbSslConfig()).toEqual({
       ssl: { rejectUnauthorized: false },
     });
+  });
+
+  it('verifies the Postgres certificate when verify-full is configured', () => {
+    process.env.SPARKY_FITNESS_DB_SSL = 'verify-full';
+    process.env.SPARKY_FITNESS_DB_SSL_CA =
+      '-----BEGIN CERTIFICATE-----\\ntrusted-ca\\n-----END CERTIFICATE-----';
+
+    expect(getDbSslConfig()).toEqual({
+      ssl: {
+        ca: '-----BEGIN CERTIFICATE-----\ntrusted-ca\n-----END CERTIFICATE-----',
+        rejectUnauthorized: true,
+      },
+    });
+  });
+
+  it('fails closed when verify-full has no CA certificate', () => {
+    process.env.SPARKY_FITNESS_DB_SSL = 'verify-full';
+
+    expect(() => getDbSslConfig()).toThrow(
+      'SPARKY_FITNESS_DB_SSL_CA is required when SPARKY_FITNESS_DB_SSL is "verify-full"'
+    );
   });
 
   it('defaults database pools to the existing local limit', () => {
