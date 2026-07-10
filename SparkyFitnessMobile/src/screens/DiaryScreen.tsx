@@ -33,6 +33,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { isMobileRtl, mobileT } from '../localization';
 
 type DiaryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Diary'>,
@@ -91,7 +92,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         onDatePress: openCalendar,
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
-        accessibilityLabel: 'Choose diary date',
+        accessibilityLabel: mobileT('diary.chooseDate'),
       },
     );
   }, [
@@ -115,8 +116,14 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   );
 
   const swipeGesture = useMemo(() => Gesture.Race(
-    Gesture.Fling().direction(Directions.RIGHT).onEnd(goToPreviousDay).runOnJS(true),
-    Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
+    Gesture.Fling()
+      .direction(isMobileRtl ? Directions.LEFT : Directions.RIGHT)
+      .onEnd(goToPreviousDay)
+      .runOnJS(true),
+    Gesture.Fling()
+      .direction(isMobileRtl ? Directions.RIGHT : Directions.LEFT)
+      .onEnd(goToNextDay)
+      .runOnJS(true),
   ), [goToPreviousDay, goToNextDay]);
 
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
@@ -170,9 +177,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your diary."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
+          title={mobileT('diary.noServerTitle')}
+          subtitle={mobileT('diary.noServerDescription')}
+          action={{
+            label: mobileT('common.goToSettings'),
+            onPress: () => navigation.navigate('Settings'),
+            variant: 'primary',
+          }}
         />
       );
     }
@@ -181,7 +192,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       return (
         <View className="flex-1 items-center justify-center p-8 shadow-sm">
           <ActivityIndicator size="large" color="#3B82F6" />
-          <Text className="text-text-muted text-base mt-4">Loading diary...</Text>
+          <Text className="text-text-muted text-base mt-4">
+            {mobileT('diary.loading')}
+          </Text>
         </View>
       );
     }
@@ -191,17 +204,17 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         <View className="flex-1 items-center justify-center p-8 shadow-sm">
           <Icon name="alert-circle" size={64} color="#EF4444" />
           <Text className="text-text-muted text-lg text-center mt-4">
-            Failed to load diary
+            {mobileT('diary.loadError')}
           </Text>
           <Text className="text-text-muted text-sm text-center mt-2">
-            Please check your connection and try again.
+            {mobileT('diary.loadErrorDescription')}
           </Text>
           <Button
             variant="primary"
             className="px-6 mt-6"
             onPress={() => refetch()}
           >
-            Retry
+            {mobileT('common.retry')}
           </Button>
         </View>
       );
@@ -237,7 +250,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               className="px-6 mt-4 self-center"
               onPress={() => navigation.navigate('FoodSearch', { date: selectedDate })}
             >
-              Add Food
+              {mobileT('diary.addFood')}
             </Button>
           </>
         ) : (
@@ -300,7 +313,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     <>
       {!isConnectionLoading && isConnected ? (
         <DateNavigator
-          title="Diary"
+          title={mobileT('tabs.diary')}
           selectedDate={selectedDate}
           onPreviousDay={goToPreviousDay}
           onNextDay={goToNextDay}
@@ -313,7 +326,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           className="px-4 pb-5"
           style={{ paddingTop: insets.top + 16 }}
         >
-          <Text className="text-2xl font-bold text-text-primary">Diary</Text>
+          <Text className="text-2xl font-bold text-text-primary">
+            {mobileT('tabs.diary')}
+          </Text>
         </View>
       )}
       {renderedContent}

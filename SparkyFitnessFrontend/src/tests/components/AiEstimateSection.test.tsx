@@ -4,6 +4,30 @@ import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSecti
 
 const mockRequestAiUnitConversion = jest.fn();
 
+const mockTranslations: Record<string, string> = {
+  'aiEstimate.convertWithAi': 'تقدير التحويل بالذكاء الاصطناعي',
+  'aiEstimate.estimating':
+    'جاري تقدير {{fromAmount}} {{fromUnit}} بوحدة {{toUnit}}…',
+  'aiEstimate.result': 'التقدير: حوالي {{amount}} {{unit}}',
+  'aiEstimate.confidenceEstimate': 'تقدير بثقة {{confidence}}',
+  'aiEstimate.confidence.medium': 'متوسطة',
+  'aiEstimate.useEstimate': 'استخدام التقدير',
+  'aiEstimate.editEstimate': 'تعديل يدوي',
+  'units.cup': 'كوب',
+  'units.gram': 'غ',
+};
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const translation = mockTranslations[key] ?? key;
+      return translation.replace(/{{(\w+)}}/g, (_, token: string) =>
+        String(options?.[token] ?? '')
+      );
+    },
+  }),
+}));
+
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     loggingLevel: 'ERROR',
@@ -39,12 +63,14 @@ describe('AiEstimateSection', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: /Convert with AI/i })
+      screen.getByRole('button', {
+        name: 'تقدير التحويل بالذكاء الاصطناعي',
+      })
     ).toBeInTheDocument();
     expect(screen.queryByText(/AI will estimate/i)).not.toBeInTheDocument();
   });
 
-  it('uses Good/Fair/Rough confidence wording in the result state', async () => {
+  it('localizes confidence wording in the result state', async () => {
     mockRequestAiUnitConversion.mockResolvedValue({
       estimatedAmount: 125,
       confidence: 'medium',
@@ -61,10 +87,14 @@ describe('AiEstimateSection', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Convert with AI/i }));
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'تقدير التحويل بالذكاء الاصطناعي',
+      })
+    );
 
     await waitFor(() => {
-      expect(screen.getByText(/Fair estimate/i)).toBeInTheDocument();
+      expect(screen.getByText('تقدير بثقة متوسطة')).toBeInTheDocument();
     });
   });
 });

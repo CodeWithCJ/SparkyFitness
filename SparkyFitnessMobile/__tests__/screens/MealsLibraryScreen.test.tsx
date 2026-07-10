@@ -117,11 +117,11 @@ describe('MealsLibraryScreen', () => {
     const screen = renderScreen();
 
     if (Platform.OS === 'ios') {
-      // On iOS the "Meals" title is provided by the native stack header
+      // On iOS the title is provided by the native stack header
       // (configured in App.tsx via createStackScreenOptions), not inline.
-      expect(screen.queryByText('Meals')).toBeNull();
+      expect(screen.queryByText('الوجبات')).toBeNull();
     } else {
-      expect(screen.getByText('Meals')).toBeTruthy();
+      expect(screen.getByText('الوجبات')).toBeTruthy();
     }
     expect(screen.getByText('Overnight Oats')).toBeTruthy();
     expect(screen.getByText('Protein Shake')).toBeTruthy();
@@ -168,8 +168,8 @@ describe('MealsLibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('No server configured')).toBeTruthy();
-    fireEvent.press(screen.getByText('Go to Settings'));
+    expect(screen.getByText('ما فيه خادم مربوط')).toBeTruthy();
+    fireEvent.press(screen.getByText('الذهاب للإعدادات'));
     expect(navigation.navigate).toHaveBeenCalledWith('Tabs', { screen: 'Settings' });
   });
 });

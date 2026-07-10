@@ -110,8 +110,8 @@ describe('WorkoutPresetsLibraryScreen', () => {
 
     await waitFor(() => expect(screen.getByText('Push Day')).toBeTruthy());
     expect(screen.getByText('Leg Day')).toBeTruthy();
-    expect(screen.getByText('3 exercises')).toBeTruthy();
-    expect(screen.getByText('1 exercise')).toBeTruthy();
+    expect(screen.getByText('٣ تمارين')).toBeTruthy();
+    expect(screen.getByText('تمرين واحد')).toBeTruthy();
   });
 
   it('navigates to WorkoutPresetDetail with the preset on row tap', async () => {
@@ -131,7 +131,7 @@ describe('WorkoutPresetsLibraryScreen', () => {
     const screen = renderScreen();
 
     await act(async () => {
-      fireEvent.changeText(screen.getByPlaceholderText('Search workout presets...'), 'pu');
+      fireEvent.changeText(screen.getByPlaceholderText('ابحث في قوالب التمرين…'), 'pu');
     });
 
     expect(mockUseWorkoutPresetsLibrary).toHaveBeenLastCalledWith('pu', { enabled: true });
@@ -145,11 +145,11 @@ describe('WorkoutPresetsLibraryScreen', () => {
     const screen = renderScreen();
 
     await act(async () => {
-      fireEvent.changeText(screen.getByPlaceholderText('Search workout presets...'), 'pu');
+      fireEvent.changeText(screen.getByPlaceholderText('ابحث في قوالب التمرين…'), 'pu');
     });
 
     await waitFor(() => expect(screen.getByText('Push Day Search Result')).toBeTruthy());
-    expect(screen.getByText('2 exercises')).toBeTruthy();
+    expect(screen.getByText('تمرينين')).toBeTruthy();
   });
 
   it('renders the no-server state when disconnected', () => {
@@ -163,8 +163,8 @@ describe('WorkoutPresetsLibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('No server configured')).toBeTruthy();
-    fireEvent.press(screen.getByText('Go to Settings'));
+    expect(screen.getByText('ما فيه خادم مربوط')).toBeTruthy();
+    fireEvent.press(screen.getByText('الذهاب للإعدادات'));
     expect(navigation.navigate).toHaveBeenCalledWith('Tabs', { screen: 'Settings' });
   });
 
@@ -176,13 +176,13 @@ describe('WorkoutPresetsLibraryScreen', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByText('Failed to load workout presets')).toBeTruthy();
-    fireEvent.press(screen.getByText('Retry'));
+    expect(screen.getByText('ما قدرنا نحمّل قوالب التمرين')).toBeTruthy();
+    fireEvent.press(screen.getByText('حاول مرة ثانية'));
     expect(refetch).toHaveBeenCalled();
   });
 
   it('shows an empty-state message when there are no presets', () => {
     const screen = renderScreen();
-    expect(screen.getByText('No workout presets yet')).toBeTruthy();
+    expect(screen.getByText('ما عندك قوالب تمرين للحين')).toBeTruthy();
   });
 });

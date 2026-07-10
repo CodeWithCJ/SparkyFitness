@@ -122,14 +122,18 @@ describe('ServerSettingsScreen', () => {
     const { getByLabelText } = renderScreen();
 
     // Tap the active card to open the menu
-    fireEvent.press(getByLabelText('Options for https://a.example.com'));
+    fireEvent.press(getByLabelText('خيارات الخادم https://a.example.com'));
 
     // Pull the Delete button from the alert and trigger it
     const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-    const deleteButton = alertButtons.find((b: any) => b.text === 'Delete');
+    const deleteButton = alertButtons.find((b: any) => b.text === 'حذف');
+
+    deleteButton.onPress();
+    const confirmButtons = (Alert.alert as jest.Mock).mock.calls[1][2];
+    const confirmDeleteButton = confirmButtons.find((b: any) => b.text === 'حذف');
 
     await act(async () => {
-      await deleteButton.onPress();
+      await confirmDeleteButton.onPress();
     });
 
     await waitFor(() => {
@@ -153,12 +157,16 @@ describe('ServerSettingsScreen', () => {
 
     const { getByLabelText } = renderScreen();
 
-    fireEvent.press(getByLabelText('Options for https://only.example.com'));
+    fireEvent.press(getByLabelText('خيارات الخادم https://only.example.com'));
     const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-    const deleteButton = alertButtons.find((b: any) => b.text === 'Delete');
+    const deleteButton = alertButtons.find((b: any) => b.text === 'حذف');
+
+    deleteButton.onPress();
+    const confirmButtons = (Alert.alert as jest.Mock).mock.calls[1][2];
+    const confirmDeleteButton = confirmButtons.find((b: any) => b.text === 'حذف');
 
     await act(async () => {
-      await deleteButton.onPress();
+      await confirmDeleteButton.onPress();
     });
 
     await waitFor(() => {
@@ -166,12 +174,12 @@ describe('ServerSettingsScreen', () => {
       expect(mockSetActiveServerConfig).not.toHaveBeenCalled();
     });
 
-    // The "Success" alert should have buttons; press OK to fire notifyNoConfigs
+    // Press Done on the completion alert to fire notifyNoConfigs.
     const successCall = (Alert.alert as jest.Mock).mock.calls.find(
-      (call) => call[0] === 'Success',
+      (call) => call[0] === 'تم حذف الخادم',
     );
     expect(successCall).toBeTruthy();
-    const okButton = successCall![2].find((b: any) => b.text === 'OK');
+    const okButton = successCall![2].find((b: any) => b.text === 'تم');
     okButton.onPress();
     expect(mockNotifyNoConfigs).toHaveBeenCalled();
   });
@@ -189,12 +197,12 @@ describe('ServerSettingsScreen', () => {
     const { getByText } = renderScreen();
 
     await act(async () => {
-      fireEvent.press(getByText('Test Connection'));
+      fireEvent.press(getByText('اختبار الاتصال'));
     });
 
     await waitFor(() => {
       expect(Toast.show).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'success', text1: 'Connected' }),
+        expect.objectContaining({ type: 'success', text1: 'الاتصال شغّال' }),
       );
     });
   });
@@ -212,12 +220,12 @@ describe('ServerSettingsScreen', () => {
     const { getByText } = renderScreen();
 
     await act(async () => {
-      fireEvent.press(getByText('Test Connection'));
+      fireEvent.press(getByText('اختبار الاتصال'));
     });
 
     await waitFor(() => {
       expect(Toast.show).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error', text1: 'Connection failed' }),
+        expect.objectContaining({ type: 'error', text1: 'فشل الاتصال' }),
       );
     });
   });

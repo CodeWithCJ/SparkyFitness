@@ -2,15 +2,23 @@ import AnchoredMenu, { type AnchorRect, type AnchoredMenuItem } from './Anchored
 import { SET_TYPE_OPTIONS } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
+import { mobileT } from '../localization';
 
 /** Options and labels for the metric-column picker menu the header opens. */
 const METRIC_OPTIONS: ActiveWorkoutMetricColumn[] = ['rpe', 'volume', 'e1rm', 'tenrm'];
 
 const METRIC_MENU_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
-  rpe: 'RPE',
-  volume: 'Volume',
-  e1rm: 'Est. 1RM',
-  tenrm: 'Est. 10RM',
+  rpe: mobileT('workoutMenu.metricRpe'),
+  volume: mobileT('workoutMenu.metricVolume'),
+  e1rm: mobileT('workoutMenu.metricEstimatedOneRm'),
+  tenrm: mobileT('workoutMenu.metricEstimatedTenRm'),
+};
+
+const SET_TYPE_LABELS: Record<(typeof SET_TYPE_OPTIONS)[number], string> = {
+  warmup: mobileT('workoutMenu.setTypeWarmup'),
+  normal: mobileT('workoutMenu.setTypeNormal'),
+  drop: mobileT('workoutMenu.setTypeDrop'),
+  failure: mobileT('workoutMenu.setTypeFailure'),
 };
 
 /**
@@ -78,11 +86,16 @@ export function SetTypeMenu({
   const current = currentType ?? 'normal';
   const items: AnchoredMenuItem[] = SET_TYPE_OPTIONS.map((type) => ({
     key: type,
-    label: `${type === current ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
+    label: `${type === current ? '✓ ' : ''}${SET_TYPE_LABELS[type]}`,
     onPress: () => onSelect(type),
   }));
   if (onDelete) {
-    items.push({ key: 'delete', label: 'Delete set', icon: 'trash', onPress: onDelete });
+    items.push({
+      key: 'delete',
+      label: mobileT('workoutMenu.deleteSet'),
+      icon: 'trash',
+      onPress: onDelete,
+    });
   }
   return (
     <AnchoredMenu

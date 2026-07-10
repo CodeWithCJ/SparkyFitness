@@ -21,6 +21,14 @@ import { buildSingleExerciseStartPayload } from '../utils/workoutSession';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  formatMobileNumber,
+  isMobileRtl,
+  localizeExerciseCategory,
+  localizeExerciseMetadata,
+  localizeExerciseSource,
+  mobileT,
+} from '../localization';
 
 type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
 
@@ -79,7 +87,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const { confirmAndDelete, isPending: isDeletePending } = useDeleteExerciseLibrary({
     exerciseId: exercise.id,
     onSuccess: () => {
-      Toast.show({ type: 'success', text1: 'Exercise deleted' });
+      Toast.show({ type: 'success', text1: mobileT('exerciseDetail.deleted') });
       navigation.goBack();
     },
   });
@@ -101,10 +109,16 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const primaryMusclesText = formatList(exercise.primary_muscles ?? []);
   const secondaryMusclesText = formatList(exercise.secondary_muscles ?? []);
   const description = exercise.description?.trim() ?? '';
-  const levelText = exercise.level ? capitalize(exercise.level) : '';
-  const forceText = exercise.force ? capitalize(exercise.force) : '';
-  const mechanicText = exercise.mechanic ? capitalize(exercise.mechanic) : '';
-  const sourceText = exercise.source ?? '';
+  const levelText = exercise.level
+    ? localizeExerciseMetadata('level', exercise.level)
+    : '';
+  const forceText = exercise.force
+    ? localizeExerciseMetadata('force', exercise.force)
+    : '';
+  const mechanicText = exercise.mechanic
+    ? localizeExerciseMetadata('mechanic', exercise.mechanic)
+    : '';
+  const sourceText = exercise.source ? localizeExerciseSource(exercise.source) : '';
   const hasDetails = Boolean(levelText || forceText || mechanicText || sourceText);
   const instructionSteps = cleanSteps(exercise.instructions);
 
@@ -122,6 +136,15 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
   const descriptionIsLong = description.length > DESCRIPTION_PREVIEW_THRESHOLD;
   const instructionsHasMore = instructionSteps.length > INSTRUCTIONS_PREVIEW_COUNT;
+  const collapsedDetailsIcon = isMobileRtl ? 'chevron-back' : 'chevron-forward';
+  const instructionsToggleLabel = instructionsExpanded
+    ? mobileT('exerciseDetail.showLess')
+    : mobileT('exerciseDetail.showAllSteps', {
+        count: formatMobileNumber(instructionSteps.length, { maximumFractionDigits: 0 }),
+      });
+  const descriptionToggleLabel = descriptionExpanded
+    ? mobileT('exerciseDetail.showLess')
+    : mobileT('exerciseDetail.showMore');
   const visibleSteps =
     instructionsExpanded || !instructionsHasMore
       ? instructionSteps
@@ -148,10 +171,10 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     right: canManageExercise
       ? {
           kind: 'text',
-          label: 'Edit',
+          label: mobileT('common.edit'),
           role: 'secondary',
           onPress: handleEdit,
-          accessibilityLabel: 'Edit exercise',
+          accessibilityLabel: mobileT('exerciseDetail.editExercise'),
           identifier: 'exercise-detail-edit',
         }
       : null,
@@ -173,7 +196,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
         <View className="bg-surface rounded-xl p-4">
           <Text className="text-2xl font-bold text-text-primary">{exercise.name}</Text>
           {exercise.category ? (
-            <Text className="text-text-secondary text-base mt-1">{exercise.category}</Text>
+            <Text className="text-text-secondary text-base mt-1">
+              {localizeExerciseCategory(exercise.category)}
+            </Text>
           ) : null}
         </View>
 
@@ -222,9 +247,11 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
         {exercise.calories_per_hour > 0 ? (
           <View className="bg-surface rounded-xl p-4">
-            <Text className="text-text-secondary text-sm">Calories / hour</Text>
+            <Text className="text-text-secondary text-sm">
+              {mobileT('exerciseDetail.caloriesPerHour')}
+            </Text>
             <Text className="text-text-primary text-xl font-semibold mt-1">
-              {exercise.calories_per_hour}
+              {formatMobileNumber(exercise.calories_per_hour, { maximumFractionDigits: 1 })}
             </Text>
           </View>
         ) : null}
@@ -237,7 +264,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
           <View className="bg-surface rounded-xl p-4">
             {equipmentText.length > 0 ? (
               <View>
-                <Text className="text-text-secondary text-sm">Equipment</Text>
+                <Text className="text-text-secondary text-sm">
+                  {mobileT('exerciseDetail.equipment')}
+                </Text>
                 <Text className="text-text-primary text-base font-medium mt-1">
                   {equipmentText}
                 </Text>
@@ -245,7 +274,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             ) : null}
             {primaryMusclesText.length > 0 ? (
               <View className={equipmentText.length > 0 ? 'mt-3' : ''}>
-                <Text className="text-text-secondary text-sm">Primary muscles</Text>
+                <Text className="text-text-secondary text-sm">
+                  {mobileT('exerciseDetail.primaryMuscles')}
+                </Text>
                 <Text className="text-text-primary text-base font-medium mt-1">
                   {primaryMusclesText}
                 </Text>
@@ -259,7 +290,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                     : ''
                 }
               >
-                <Text className="text-text-secondary text-sm">Secondary muscles</Text>
+                <Text className="text-text-secondary text-sm">
+                  {mobileT('exerciseDetail.secondaryMuscles')}
+                </Text>
                 <Text className="text-text-primary text-base font-medium mt-1">
                   {secondaryMusclesText}
                 </Text>
@@ -272,13 +305,16 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             activeOpacity={0.7}
             onPress={() => setDetailsExpanded((prev) => !prev)}
             className="bg-surface rounded-xl p-4"
+            accessibilityRole="button"
+            accessibilityLabel={mobileT('exerciseDetail.details')}
+            accessibilityState={{ expanded: detailsExpanded }}
           >
             <View className="flex-row items-center justify-between">
               <Text className="text-text-primary text-base font-semibold">
-                Exercise details
+                {mobileT('exerciseDetail.details')}
               </Text>
               <Icon
-                name={detailsExpanded ? 'chevron-down' : 'chevron-forward'}
+                name={detailsExpanded ? 'chevron-down' : collapsedDetailsIcon}
                 size={18}
                 color={textPrimary}
               />
@@ -287,7 +323,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
               <View className="mt-3">
                 {levelText ? (
                   <View>
-                    <Text className="text-text-secondary text-sm">Level</Text>
+                    <Text className="text-text-secondary text-sm">
+                      {mobileT('exerciseDetail.level')}
+                    </Text>
                     <Text className="text-text-primary text-base font-medium mt-1">
                       {levelText}
                     </Text>
@@ -295,7 +333,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 ) : null}
                 {forceText ? (
                   <View className={levelText ? 'mt-3' : ''}>
-                    <Text className="text-text-secondary text-sm">Force</Text>
+                    <Text className="text-text-secondary text-sm">
+                      {mobileT('exerciseDetail.force')}
+                    </Text>
                     <Text className="text-text-primary text-base font-medium mt-1">
                       {forceText}
                     </Text>
@@ -303,7 +343,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 ) : null}
                 {mechanicText ? (
                   <View className={levelText || forceText ? 'mt-3' : ''}>
-                    <Text className="text-text-secondary text-sm">Mechanic</Text>
+                    <Text className="text-text-secondary text-sm">
+                      {mobileT('exerciseDetail.mechanic')}
+                    </Text>
                     <Text className="text-text-primary text-base font-medium mt-1">
                       {mechanicText}
                     </Text>
@@ -311,7 +353,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 ) : null}
                 {sourceText ? (
                   <View className={levelText || forceText || mechanicText ? 'mt-3' : ''}>
-                    <Text className="text-text-secondary text-sm">Source</Text>
+                    <Text className="text-text-secondary text-sm">
+                      {mobileT('exerciseDetail.source')}
+                    </Text>
                     <Text className="text-text-primary text-base font-medium mt-1">
                       {sourceText}
                     </Text>
@@ -330,15 +374,22 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 : undefined
             }
             className="bg-surface rounded-xl p-4"
+            accessibilityRole={instructionsHasMore ? 'button' : undefined}
+            accessibilityLabel={instructionsHasMore ? instructionsToggleLabel : undefined}
+            accessibilityState={
+              instructionsHasMore ? { expanded: instructionsExpanded } : undefined
+            }
           >
-            <Text className="text-text-secondary text-sm mb-2">Instructions</Text>
+            <Text className="text-text-secondary text-sm mb-2">
+              {mobileT('exerciseDetail.instructions')}
+            </Text>
             {visibleSteps.map((step, index) => (
               <View
                 key={`${index}-${step.slice(0, 12)}`}
                 className={`flex-row ${index === 0 ? '' : 'mt-2'}`}
               >
                 <Text className="text-text-secondary text-base font-semibold w-6">
-                  {index + 1}.
+                  {formatMobileNumber(index + 1, { maximumFractionDigits: 0 })}.
                 </Text>
                 <Text className="text-text-primary text-base flex-1 leading-6">
                   {step}
@@ -347,9 +398,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             ))}
             {instructionsHasMore ? (
               <Text className="text-accent-primary text-sm font-medium mt-3">
-                {instructionsExpanded
-                  ? 'Show less'
-                  : `Show all ${instructionSteps.length} steps`}
+                {instructionsToggleLabel}
               </Text>
             ) : null}
           </TouchableOpacity>
@@ -364,8 +413,15 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 : undefined
             }
             className="bg-surface rounded-xl p-4"
+            accessibilityRole={descriptionIsLong ? 'button' : undefined}
+            accessibilityLabel={descriptionIsLong ? descriptionToggleLabel : undefined}
+            accessibilityState={
+              descriptionIsLong ? { expanded: descriptionExpanded } : undefined
+            }
           >
-            <Text className="text-text-secondary text-sm">Description</Text>
+            <Text className="text-text-secondary text-sm">
+              {mobileT('exerciseDetail.description')}
+            </Text>
             <Text
               className="text-text-primary text-base mt-1 leading-6"
               numberOfLines={
@@ -378,7 +434,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             </Text>
             {descriptionIsLong ? (
               <Text className="text-accent-primary text-sm font-medium mt-2">
-                {descriptionExpanded ? 'Show less' : 'Show more'}
+                {descriptionToggleLabel}
               </Text>
             ) : null}
           </TouchableOpacity>
@@ -388,12 +444,16 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
           <>
             <Button variant="primary" onPress={handleStartWorkout} disabled={isStarting}>
               <Text className="text-white text-base font-semibold">
-                {isStarting ? 'Starting…' : 'Start Workout'}
+                {isStarting
+                  ? mobileT('exerciseDetail.starting')
+                  : mobileT('exerciseDetail.startWorkout')}
               </Text>
             </Button>
 
             <Button variant="ghost" onPress={handleLog}>
-              <Text className="text-accent-primary text-base font-semibold">Log Exercise</Text>
+              <Text className="text-accent-primary text-base font-semibold">
+                {mobileT('exerciseDetail.logExercise')}
+              </Text>
             </Button>
           </>
         )}
@@ -405,7 +465,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             disabled={isDeletePending}
             textClassName="text-bg-danger font-medium"
           >
-            {isDeletePending ? 'Deleting...' : 'Delete Exercise'}
+            {isDeletePending
+              ? mobileT('exerciseDetail.deleting')
+              : mobileT('exerciseDetail.deleteExercise')}
           </Button>
         )}
       </ScrollView>

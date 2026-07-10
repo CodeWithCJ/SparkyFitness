@@ -73,3 +73,7 @@ dossier sans titre/
 # Nix build outputs
 /result
 /result-*
+.vercel
+.gstack/
+.tmp/
+/*.traineddata

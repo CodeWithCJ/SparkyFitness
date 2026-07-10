@@ -4,6 +4,7 @@ import Icon from './Icon';
 import Button from './ui/Button';
 import { addLog } from '../services/LogService';
 import { queryClient } from '../hooks/queryClient';
+import { mobileT } from '../localization';
 
 interface ScreenErrorBoundaryProps {
   screenName: string;
@@ -42,17 +43,17 @@ class ScreenErrorBoundary extends React.Component<ScreenErrorBoundaryProps, Scre
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="alert-circle" size={64} color="#EF4444" />
           <Text className="text-text-secondary text-base mt-4 text-center">
-            Something went wrong
+            {mobileT('errors.unexpectedTitle')}
           </Text>
           <Text className="text-text-secondary text-sm mt-2 text-center">
-            An unexpected error occurred. Your server may need to be updated.
+            {mobileT('errors.unexpectedDescription')}
           </Text>
           <Button variant="primary" onPress={this.handleRetry} className="mt-4 px-6">
-            Try Again
+            {mobileT('common.retry')}
           </Button>
           {this.props.onGoBack && (
             <Button variant="ghost" onPress={this.props.onGoBack} className="mt-2 px-6">
-              Go Back
+              {mobileT('common.back')}
             </Button>
           )}
         </View>
@@ -103,10 +104,10 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
         <View className="items-center py-6 px-4">
           <Icon name="alert-circle" size={32} color="#EF4444" />
           <Text className="text-text-secondary text-sm mt-2 text-center">
-            This section failed to load.
+            {mobileT('errors.sectionFailed')}
           </Text>
           <Button variant="ghost" onPress={this.handleRetry} className="mt-2 px-4">
-            Try Again
+            {mobileT('common.retry')}
           </Button>
         </View>
       );

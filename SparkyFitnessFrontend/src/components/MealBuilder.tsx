@@ -41,6 +41,8 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
+import { getLocalizedMealTypeName } from '@/utils/mealTypeLocalization';
 
 interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
@@ -57,6 +59,16 @@ interface MealBuilderProps {
 }
 
 const MEAL_SERVING_PRECISION = 6;
+const MEAL_UNIT_OPTIONS = [
+  'serving',
+  'g',
+  'ml',
+  'oz',
+  'cup',
+  'tbsp',
+  'tsp',
+  'piece',
+] as const;
 
 // Full nutrient snapshot key set (mirrors meal_foods columns), independent of
 // the user's visible-nutrient display preferences — used when aggregating a
@@ -353,7 +365,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       } else if (initialFoods) {
         // For new food-diary entries or when initialFoods are pre-loaded
         setMealFoods(initialFoods);
-        setMealName(foodEntryMealType || 'Logged Meal');
+        setMealName(
+          foodEntryMealType
+            ? getLocalizedMealTypeName(foodEntryMealType, t)
+            : t('mealBuilder.loggedMealName', 'Logged Meal')
+        );
         setMealDescription('');
         // Set template info based on props for scaling logic, defaults to 1 serving otherwise
         const initialSize = initialServingSize || 1;
@@ -397,6 +413,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     initialServingSize,
     initialServingUnit,
     queryClient,
+    t,
   ]);
 
   const handleAddFoodToMeal = (food: Food) => {
@@ -791,7 +808,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         meal_template_id: templateInfo.id, // Preserve template ID for proper scaling now that it has logic to handle missing template info
         meal_type: foodEntryMealType,
         entry_date: foodEntryDate,
-        name: mealName.trim() || 'Custom Meal', // Use edited name or default
+        name: mealName.trim() || t('mealBuilder.customMealName', 'Custom Meal'),
         description: mealDescription,
         quantity: parseFloat(servingSize) || 1,
         unit: servingUnit,
@@ -882,6 +899,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   ]); // Recalculate on changes
 
   const mealTotals = calculateMealNutrition();
+  const localizedServingUnit = getLocalizedUnitLabel(servingUnit, t);
 
   return (
     <div className="space-y-6 pt-4">
@@ -915,7 +933,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           disabled={source === 'food-diary'} // Disable description editing for food diary entries
         />
       </div>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-2">
         <Checkbox
           id="isPublic"
           checked={isPublic}
@@ -958,7 +976,13 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                       {mf.item_type === 'meal' ? (
                         <button
                           type="button"
-                          className="font-medium underline decoration-dotted underline-offset-2 text-left"
+                          className="font-medium text-start underline decoration-dotted underline-offset-2"
+                          aria-label={t('mealBuilder.openLinkedMeal', {
+                            ingredientName: mf.child_meal_name || mf.food_name,
+                            defaultValue: `Open ${
+                              mf.child_meal_name || mf.food_name
+                            }`,
+                          })}
                           onClick={() =>
                             mf.child_meal_id &&
                             setViewingLinkedMealId(mf.child_meal_id)
@@ -979,18 +1003,28 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center gap-1">
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEditFoodInMeal(index)}
+                        aria-label={t('mealBuilder.editIngredient', {
+                          ingredientName: mf.food_name,
+                          defaultValue: `Edit ${mf.food_name}`,
+                        })}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         onClick={() => handleRemoveFoodFromMeal(index)}
+                        aria-label={t('mealBuilder.removeIngredient', {
+                          ingredientName: mf.food_name,
+                          defaultValue: `Remove ${mf.food_name}`,
+                        })}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -998,10 +1032,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                   </div>
                   <div className="flex flex-col sm:flex-row justify-between text-sm text-muted-foreground">
                     <div>
-                      {mf.quantity} {mf.unit}
+                      {mf.quantity} {getLocalizedUnitLabel(mf.unit, t)}
                     </div>
-                    <div className="flex space-x-3 mt-1 sm:mt-0">
-                      <div className="flex space-x-3 mt-1 sm:mt-0 flex-wrap gap-y-1">
+                    <div className="mt-1 flex sm:mt-0">
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 sm:mt-0">
                         {visibleNutrients.map((key) => {
                           const meta = getNutrientMetadata(key);
                           let val = 0;
@@ -1032,14 +1066,12 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                           const unit =
                             key === 'calories'
                               ? getEnergyUnitString(energyUnit)
-                              : meta.unit;
+                              : getLocalizedUnitLabel(meta.unit, t);
                           const label = t(meta.label, meta.defaultLabel);
 
                           return (
-                            <span key={key} className={`${meta.color} mr-2`}>
-                              {key === 'calories' ? '' : `${label.charAt(0)}: `}
-                              {displayVal}
-                              {unit}
+                            <span key={key} className={meta.color}>
+                              {label}: {displayVal} {unit}
                             </span>
                           );
                         })}
@@ -1077,18 +1109,20 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                 onValueChange={setServingUnit}
                 disabled
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Unit" />
+                <SelectTrigger id="servingUnit">
+                  <SelectValue
+                    placeholder={t(
+                      'mealBuilder.servingUnitPlaceholder',
+                      'Choose a unit'
+                    )}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="serving">serving</SelectItem>
-                  <SelectItem value="g">grams (g)</SelectItem>
-                  <SelectItem value="ml">milliliters (ml)</SelectItem>
-                  <SelectItem value="oz">ounces (oz)</SelectItem>
-                  <SelectItem value="cup">cup</SelectItem>
-                  <SelectItem value="tbsp">tablespoon (tbsp)</SelectItem>
-                  <SelectItem value="tsp">teaspoon (tsp)</SelectItem>
-                  <SelectItem value="piece">piece</SelectItem>
+                  {MEAL_UNIT_OPTIONS.map((unit) => (
+                    <SelectItem key={unit} value={unit}>
+                      {getLocalizedUnitLabel(unit, t)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1125,7 +1159,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                   <>
                     <Label htmlFor="totalAmount">
                       {t('mealBuilder.totalAmount', 'Total Amount')} (
-                      {servingUnit})
+                      {localizedServingUnit})
                     </Label>
                     <Input
                       id="totalAmount"
@@ -1176,18 +1210,20 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                     }
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Unit" />
+                  <SelectTrigger id="servingUnit">
+                    <SelectValue
+                      placeholder={t(
+                        'mealBuilder.servingUnitPlaceholder',
+                        'Choose a unit'
+                      )}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="serving">serving</SelectItem>
-                    <SelectItem value="g">grams (g)</SelectItem>
-                    <SelectItem value="ml">milliliters (ml)</SelectItem>
-                    <SelectItem value="oz">ounces (oz)</SelectItem>
-                    <SelectItem value="cup">cup</SelectItem>
-                    <SelectItem value="tbsp">tablespoon (tbsp)</SelectItem>
-                    <SelectItem value="tsp">teaspoon (tsp)</SelectItem>
-                    <SelectItem value="piece">piece</SelectItem>
+                    {MEAL_UNIT_OPTIONS.map((unit) => (
+                      <SelectItem key={unit} value={unit}>
+                        {getLocalizedUnitLabel(unit, t)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1200,7 +1236,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                       'mealBuilder.defaultServingSize',
                       'Default Serving Size'
                     )}{' '}
-                    ({servingUnit})
+                    ({localizedServingUnit})
                   </Label>
                   <Input
                     id="servingSize"
@@ -1265,12 +1301,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               const unit =
                 key === 'calories'
                   ? getEnergyUnitString(energyUnit)
-                  : meta.unit;
+                  : getLocalizedUnitLabel(meta.unit, t);
 
               return (
                 <div key={key} className="whitespace-nowrap">
-                  {t(meta.label, meta.defaultLabel)}: {displayVal}
-                  {unit}
+                  {t(meta.label, meta.defaultLabel)}: {displayVal} {unit}
                 </div>
               );
             })}
@@ -1287,8 +1322,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               )
             : t('mealBuilder.addFoodToMealTitle', 'Add Food to Meal')}
         </h3>
-        <Button onClick={() => setShowFoodSearchDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />{' '}
+        <Button type="button" onClick={() => setShowFoodSearchDialog(true)}>
+          <Plus className="h-4 w-4" />
           {t('mealBuilder.addFoodButton', 'Add Food')}
         </Button>
       </div>
@@ -1371,8 +1406,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         }}
       />
 
-      <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={onCancel}>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel}>
           {t('common.cancel', 'Cancel')}
         </Button>
         <Button onClick={handleSaveMeal}>

@@ -212,13 +212,19 @@ describe('ChatScreen config gating', () => {
   it('prompts to set up a server when none is configured', async () => {
     mockGetActiveServerConfig.mockResolvedValue(null);
     const { findByText } = renderScreen();
-    expect(await findByText(/No active server config/i)).toBeTruthy();
+    expect(
+      await findByText('لا يوجد خادم نشط. أضف خادمًا من الإعدادات أولًا.'),
+    ).toBeTruthy();
   });
 
   it('prompts to configure an AI provider when none is active', async () => {
     mockUseActiveAiServiceSetting.mockReturnValue({ data: undefined, isLoading: false } as any);
     const { findByText } = renderScreen();
-    expect(await findByText(/No active AI provider/i)).toBeTruthy();
+    expect(
+      await findByText(
+        'لا يوجد مزود ذكاء اصطناعي نشط. قم بإعداده من تطبيق الويب أولًا.',
+      ),
+    ).toBeTruthy();
   });
 });
 
@@ -226,10 +232,10 @@ describe('ChatScreen thread', () => {
   it('renders the empty state with the configured starter suggestions', async () => {
     const { findByText, getByText } = renderScreen();
     expect(
-      await findByText('Ask Sparky anything about your nutrition, exercise, or goals.')
+      await findByText('اسأل سباركي عن تغذيتك أو تمارينك أو أهدافك.'),
     ).toBeTruthy();
-    expect(getByText('Log two eggs and a banana for breakfast')).toBeTruthy();
-    expect(getByText('Suggest a high-protein snack')).toBeTruthy();
+    expect(getByText('سجّل بيضتين وموزة على الفطور')).toBeTruthy();
+    expect(getByText('اقترح لي وجبة خفيفة غنية بالبروتين')).toBeTruthy();
   });
 
   it('shows the up-arrow send button while idle and swaps to a Stop button while running', async () => {
@@ -265,18 +271,22 @@ describe('ChatScreen thread', () => {
     });
 
     expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error', text1: 'Chat error', text2: 'bad config' })
+      expect.objectContaining({
+        type: 'error',
+        text1: 'تعذر الرد',
+        text2: 'ما ضبط الرد هالمرة. حاول مرة ثانية.',
+      }),
     );
   });
 
   it('keeps typed composer text local while forwarding it to assistant-ui', async () => {
     const { findByPlaceholderText, getByPlaceholderText } = renderScreen();
-    await findByPlaceholderText('Message Sparky…');
+    await findByPlaceholderText('اكتب لسباركي…');
 
-    fireEvent.changeText(getByPlaceholderText('Message Sparky…'), 'hello');
+    fireEvent.changeText(getByPlaceholderText('اكتب لسباركي…'), 'hello');
 
     expect((global as any).__mockComposerSetText).toHaveBeenCalledWith('hello');
-    expect(getByPlaceholderText('Message Sparky…').props.value).toBe('hello');
+    expect(getByPlaceholderText('اكتب لسباركي…').props.value).toBe('hello');
   });
 
   it('does not flicker to a stale value when backspacing to an earlier text before echoes catch up', async () => {
@@ -290,7 +300,7 @@ describe('ChatScreen thread', () => {
       </QueryClientProvider>
     );
     const { findByPlaceholderText, getByPlaceholderText, rerender } = render(makeTree());
-    const input = await findByPlaceholderText('Message Sparky…');
+    const input = await findByPlaceholderText('اكتب لسباركي…');
 
     // Type "a" -> "ab" -> "abc", then backspace to "ab". Echoes are deferred, so
     // the queue accumulates ["a", "ab", "abc", "ab"] with a duplicate "ab".
@@ -305,7 +315,7 @@ describe('ChatScreen thread', () => {
       'abc',
       'ab',
     ]);
-    expect(getByPlaceholderText('Message Sparky…').props.value).toBe('ab');
+    expect(getByPlaceholderText('اكتب لسباركي…').props.value).toBe('ab');
 
     // Now let the deferred echoes arrive in order, one render at a time. The
     // input must stay "ab" throughout — never flickering to the stale "abc".
@@ -313,12 +323,12 @@ describe('ChatScreen thread', () => {
     for (const echo of ['a', 'ab', 'abc', 'ab']) {
       (global as any).__mockComposerText = echo;
       rerender(makeTree());
-      observed.push(getByPlaceholderText('Message Sparky…').props.value);
+      observed.push(getByPlaceholderText('اكتب لسباركي…').props.value);
     }
 
     expect(observed).toEqual(['ab', 'ab', 'ab', 'ab']);
     expect(observed).not.toContain('abc');
-    expect(getByPlaceholderText('Message Sparky…').props.value).toBe('ab');
+    expect(getByPlaceholderText('اكتب لسباركي…').props.value).toBe('ab');
   });
 
   it('scrolls the message list to the bottom after the thread mounts', async () => {
@@ -354,7 +364,7 @@ describe('ChatScreen thread', () => {
 
   it('defers composer focus to the push transitionEnd instead of autoFocus', async () => {
     const { findByPlaceholderText } = renderScreen();
-    const input = await findByPlaceholderText('Message Sparky…');
+    const input = await findByPlaceholderText('اكتب لسباركي…');
 
     // Focusing mid-transition presents the keyboard over the still-sliding
     // screen, which flashes a dark-grey keyboard until the screen settles. So
@@ -392,7 +402,7 @@ describe('ChatScreen history seeding', () => {
 
     expect(queryByTestId('composer-send')).toBeNull();
     expect(
-      queryByText('Ask Sparky anything about your nutrition, exercise, or goals.')
+      queryByText('اسأل سباركي عن تغذيتك أو تمارينك أو أهدافك.'),
     ).toBeNull();
   });
 });

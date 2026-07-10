@@ -44,6 +44,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveAiServiceSetting, useChatHistory, chatHistoryQueryKey } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
+import { mobileT } from '../localization';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
 type InitialMessages = NonNullable<Parameters<typeof useChatRuntime>[0]>['messages'];
@@ -121,12 +122,15 @@ function useSparkyChatRuntime({
       addLog('Chat stream error', 'ERROR', [error?.message ?? String(error)]);
       Toast.show({
         type: 'error',
-        text1: 'Chat error',
-        text2: error?.message || 'Something went wrong. Tap retry to try again.',
+        text1: mobileT('chat.errorTitle'),
+        text2: mobileT('chat.errorDescription'),
       });
     },
   });
 }
+
+const getCopyLabel = (isCopied: boolean): string =>
+  isCopied ? mobileT('chat.copied') : mobileT('chat.copy');
 
 /** A single chat bubble. Rendered inside the message context. */
 function MessageBubble({ role }: { role: MessageRole }) {
@@ -200,26 +204,42 @@ function MessageBubble({ role }: { role: MessageRole }) {
           }}
         >
           <Icon name="alert-circle" size={16} color={dangerIcon} />
-          <ErrorPrimitive.Message style={{ flex: 1, color: dangerText, fontSize: 13 }} />
+          <Text style={{ flex: 1, color: dangerText, fontSize: 13 }}>
+            {mobileT('chat.messageError')}
+          </Text>
         </ErrorPrimitive.Root>
 
         {/* Actions appear under every settled (non-running) assistant message:
             Copy on all of them, Retry only on the latest reply. */}
         <MessagePrimitive.If running={false}>
-          <View className="flex-row gap-4 mt-1.5 ml-1">
+          <View className="flex-row gap-4 mt-1.5 ms-1">
             <MessagePrimitive.If last>
               <ActionBarPrimitive.Reload>
-                <View className="flex-row items-center gap-1">
+                <View
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={mobileT('chat.retry')}
+                  className="flex-row items-center gap-1"
+                >
                   <Icon name="sync" size={15} color={muted} />
-                  <Text className="text-text-secondary text-xs">Retry</Text>
+                  <Text className="text-text-secondary text-xs">
+                    {mobileT('chat.retry')}
+                  </Text>
                 </View>
               </ActionBarPrimitive.Reload>
             </MessagePrimitive.If>
             <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
               {({ isCopied }) => (
-                <View className="flex-row items-center gap-1">
+                <View
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={getCopyLabel(isCopied)}
+                  className="flex-row items-center gap-1"
+                >
                   <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
-                  <Text className="text-text-secondary text-xs">{isCopied ? 'Copied' : 'Copy'}</Text>
+                  <Text className="text-text-secondary text-xs">
+                    {getCopyLabel(isCopied)}
+                  </Text>
                 </View>
               )}
             </ActionBarPrimitive.Copy>
@@ -230,12 +250,19 @@ function MessageBubble({ role }: { role: MessageRole }) {
       {/* User messages aren't selectable either, so give them their own Copy
           button — right-aligned to sit under the right-aligned user bubble. */}
       <MessagePrimitive.If user>
-        <View className="flex-row justify-end mt-1.5 mr-1">
+        <View className="flex-row justify-end mt-1.5 me-1">
           <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
             {({ isCopied }) => (
-              <View className="flex-row items-center gap-1">
+              <View
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={getCopyLabel(isCopied)}
+                className="flex-row items-center gap-1"
+              >
                 <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
-                <Text className="text-text-secondary text-xs">{isCopied ? 'Copied' : 'Copy'}</Text>
+                <Text className="text-text-secondary text-xs">
+                  {getCopyLabel(isCopied)}
+                </Text>
               </View>
             )}
           </ActionBarPrimitive.Copy>
@@ -322,7 +349,7 @@ function Composer({ autoFocusReady }: { autoFocusReady: boolean }) {
     >
       <LocalComposerInput
         autoFocusReady={autoFocusReady}
-        placeholder="Message Sparky…"
+        placeholder={mobileT('chat.composerPlaceholder')}
         placeholderTextColor={muted}
         multiline
         style={{
@@ -340,14 +367,24 @@ function Composer({ autoFocusReady }: { autoFocusReady: boolean }) {
           is not): show Send when idle, swap to a Stop button while streaming. */}
       <ThreadPrimitive.If running={false}>
         <ComposerPrimitive.Send>
-          <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
+          <View
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={mobileT('chat.send')}
+            className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center"
+          >
             <Icon name="arrow-up" size={20} color="#ffffff" />
           </View>
         </ComposerPrimitive.Send>
       </ThreadPrimitive.If>
       <ThreadPrimitive.If running>
         <ComposerPrimitive.Cancel>
-          <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
+          <View
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={mobileT('chat.stop')}
+            className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center"
+          >
             <Icon name="stop" size={18} color="#ffffff" />
           </View>
         </ComposerPrimitive.Cancel>
@@ -429,7 +466,7 @@ function ChatThread({
           <ThreadPrimitive.Empty>
             <View className="flex-1 items-center justify-center p-8">
               <Text className="text-text-muted text-center text-base mb-6">
-                Ask Sparky anything about your nutrition, exercise, or goals.
+                {mobileT('chat.emptyDescription')}
               </Text>
               {/* ThreadPrimitive.Suggestion IS the Pressable, so its child must be a
                   non-touchable styled View (nested pressables swallow touches). */}
@@ -536,12 +573,12 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
 
   const handleClear = useCallback(() => {
     Alert.alert(
-      'Clear chat',
-      'This permanently deletes your Sparky chat history. This cannot be undone.',
+      mobileT('chat.clearTitle'),
+      mobileT('chat.clearDescription'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: mobileT('common.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: mobileT('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -555,8 +592,8 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
               ]);
               Toast.show({
                 type: 'error',
-                text1: 'Could not clear chat',
-                text2: 'Please try again.',
+                text1: mobileT('chat.clearFailed'),
+                text2: mobileT('common.retry'),
               });
             }
           },
@@ -568,7 +605,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   // Clear chat is disabled while a stream runs so the server's in-flight
   // onFinish save can't resurrect the exchange after the DELETE.
   const header = useScreenHeader({
-    title: 'Sparky',
+    title: mobileT('chat.title'),
     left: { kind: 'back' },
     right: baseUrl
       ? {
@@ -578,7 +615,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
           role: 'secondary',
           disabled: running,
           onPress: handleClear,
-          accessibilityLabel: 'Clear chat',
+          accessibilityLabel: mobileT('chat.clearAccessibility'),
           identifier: 'chat-clear',
         }
       : null,
@@ -610,9 +647,9 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
             <ActivityIndicator color={accent} />
           </View>
         ) : !baseUrl ? (
-          <Centered text="No active server config. Set one up in Settings first." />
+          <Centered text={mobileT('chat.noServer')} />
         ) : !serviceConfigId ? (
-          <Centered text="No active AI provider. Configure one in the web app first." />
+          <Centered text={mobileT('chat.noProvider')} />
         ) : (
           <ChatThread
             key={threadKey}

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-10_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -51,8 +51,9 @@ Features are organized by domain, and the same domain folder name appears in `sr
 - `src/main.tsx` - app bootstrap; creates the shared `QueryClient` with global `QueryCache`/`MutationCache` handlers that render toasts from query/mutation `meta` (`errorTitle`, `errorMessage`, `successMessage`).
 - `src/App.tsx` - route registry via `createBrowserRouter`, plus `PrivateRoute` and `PermissionRoute` wrappers (permission-gated areas include `reports` and `admin`).
 - `src/pages/<Domain>/` - route screens by domain.
-- `src/api/api.ts` - `apiCall(endpoint, options)` helper: base URL `/api`, query `params`, JSON/FormData bodies, `responseType`, error toasts, `suppress404Toast`. Use it for all backend requests.
+- `src/api/api.ts` - `apiCall(endpoint, options)` helper: base URL `/api`, query `params`, JSON/FormData bodies, `responseType`, structured `HttpApiError` codes, and `suppress404Toast`/`suppressErrorToast`. Use it for all backend requests.
 - `src/api/<Domain>/` - per-domain API clients built on `apiCall`.
+- `src/api/Integrations/huaweiHealth.ts`, `src/hooks/Integrations/useHuaweiHealth.ts`, `src/pages/Settings/HuaweiHealthSettings.tsx`, `src/pages/Integrations/HuaweiHealthCallback.tsx` - owner-only HUAWEI Health cloud linking, callback, status, sync, disconnect, and Najdi-first settings UX.
 - `src/hooks/<Domain>/` and `src/hooks/use*.ts(x)` - TanStack Query hooks and shared UI hooks (`use-toast`, `useDebounce`, `useAuth`, ...).
 - `src/components/` - shared components; `ui/` holds the shadcn-style primitives (~37 files); domain component folders include `Foods/`, `FoodSearch/`, `FoodUnitSelector/`, `Onboarding/`, `ExerciseCharts/`, `ai/` (assistant-ui chat pieces).
 - `src/contexts/` - `ActiveUserContext` (family-access acting-user switching), `PreferencesContext`, `ThemeContext`, `WaterContainerContext`, `ChatbotVisibilityContext`.
@@ -97,6 +98,7 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 - Chat (Sparky) issue: `src/pages/Chat/`, `src/components/ai/`, `src/api/Chatbot/`.
 - Theme/preferences issue: `src/contexts/ThemeContext.tsx`, `src/contexts/PreferencesContext.tsx`, `src/services/preferenceService.ts`, `src/utils/userPreferences.ts`.
 - Missing/wrong UI text: the i18n key in `public/locales/en/translation.json` and the `t('...')` call site.
+- HUAWEI Health web linking/sync issue: `src/api/Integrations/huaweiHealth.ts`, `src/hooks/Integrations/useHuaweiHealth.ts`, `src/pages/Settings/HuaweiHealthSettings.tsx`, and the `/huaweihealth/callback` route in `src/App.tsx`.
 - Chart issue: Recharts usage in the domain page plus `src/components/ExerciseCharts/` or `ZoomableChart.tsx`.
 
 ## Priority Rule

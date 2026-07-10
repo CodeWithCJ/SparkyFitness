@@ -30,9 +30,13 @@ const ConvertToMealDialog = ({
   mealType,
 }: ConvertToMealDialogProps) => {
   const { t } = useTranslation();
-  const { loggingLevel } = usePreferences();
+  const { loggingLevel, formatDate } = usePreferences();
+  const localizedMealType = t(`common.${mealType}`, mealType);
   const [mealName, setMealName] = useState(
-    `${t(`common.${mealType}`, mealType)} - ${selectedDate}`
+    t('mealCreation.defaultMealName', {
+      mealType: localizedMealType,
+      date: formatDate(selectedDate),
+    })
   );
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -79,48 +83,65 @@ const ConvertToMealDialog = ({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="mealName" className="text-right">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-center sm:gap-4">
+            <Label htmlFor="mealName" className="text-start">
               {t('mealCreation.mealName', 'Meal Name')}
             </Label>
             <Input
               id="mealName"
               value={mealName}
               onChange={(e) => setMealName(e.target.value)}
-              className="col-span-3"
+              placeholder={t('mealCreation.mealNamePlaceholder')}
               disabled={isLoading}
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-center sm:gap-4">
+            <Label htmlFor="description" className="text-start">
               {t('mealCreation.description', 'Description')}
             </Label>
             <Input
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="col-span-3"
+              placeholder={t('mealCreation.descriptionPlaceholder')}
               disabled={isLoading}
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="isPublic" className="text-right">
-              {t('mealCreation.makePublic', 'Make Public')}
-            </Label>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-start sm:gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="isPublic" className="text-start">
+                {t('mealCreation.makePublic', 'Make Public')}
+              </Label>
+              <p
+                id="meal-public-help"
+                className="max-w-xs text-xs leading-relaxed text-muted-foreground"
+              >
+                {t('mealCreation.publicHelp')}
+              </p>
+            </div>
             <Switch
               id="isPublic"
               checked={isPublic}
               onCheckedChange={setIsPublic}
-              className="col-span-3"
+              aria-describedby="meal-public-help"
               disabled={isLoading}
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isLoading}
+          >
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading || !mealName}>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isLoading || !mealName.trim()}
+          >
             {isLoading
               ? t('common.creating', 'Creating...')
               : t('common.create', 'Create')}

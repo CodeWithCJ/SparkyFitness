@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next';
+
 export const formatMinutesToHHMM = (totalMinutes: number): string => {
   const isNegative = totalMinutes < 0;
   const absMinutes = Math.abs(totalMinutes);
@@ -11,6 +13,32 @@ export const formatMinutesToHHMM = (totalMinutes: number): string => {
   const formatted = `${hours}h ${minutes}m`;
   return isNegative ? `-${formatted}` : formatted;
 };
+
+export const formatLocalizedMinutes = (
+  totalMinutes: number,
+  t: TFunction
+): string => {
+  const isNegative = totalMinutes < 0;
+  const absMinutes = Math.abs(totalMinutes);
+  const hours = Math.floor(absMinutes / 60);
+  const minutes = Math.round(absMinutes % 60);
+
+  if (hours === 0) {
+    return t('units.minuteValue', {
+      value: isNegative ? -minutes : minutes,
+    });
+  }
+
+  return t('units.hourMinuteValue', {
+    hours: isNegative ? -hours : hours,
+    minutes,
+  });
+};
+
+export const formatLocalizedSeconds = (
+  totalSeconds: number,
+  t: TFunction
+): string => formatLocalizedMinutes(Math.round(totalSeconds / 60), t);
 
 export const formatSecondsToHHMM = (totalSeconds: number): string => {
   const isNegative = totalSeconds < 0;

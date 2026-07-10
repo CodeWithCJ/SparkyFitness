@@ -87,8 +87,8 @@ describe('useWorkoutPresetMutations', () => {
       await waitFor(() => {
         expect(Toast.show).toHaveBeenCalledWith({
           type: 'error',
-          text1: 'Could not create workout preset',
-          text2: 'Please try again.',
+          text1: 'ما قدرنا ننشئ قالب التمرين',
+          text2: 'حاول مرة ثانية',
         });
       });
     });
@@ -125,8 +125,8 @@ describe('useWorkoutPresetMutations', () => {
       await waitFor(() => {
         expect(Toast.show).toHaveBeenCalledWith({
           type: 'error',
-          text1: 'Failed to update preset',
-          text2: "You don't have permission to edit this preset.",
+          text1: 'ما قدرنا نحدّث القالب',
+          text2: 'ليست لديك صلاحية تعديل هذا القالب.',
         });
       });
     });
@@ -145,8 +145,8 @@ describe('useWorkoutPresetMutations', () => {
       await waitFor(() => {
         expect(Toast.show).toHaveBeenCalledWith({
           type: 'error',
-          text1: 'Failed to update preset',
-          text2: 'Please try again.',
+          text1: 'ما قدرنا نحدّث القالب',
+          text2: 'حاول مرة ثانية',
         });
       });
     });
@@ -162,11 +162,11 @@ describe('useWorkoutPresetMutations', () => {
       act(() => result.current.confirmAndDelete());
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Delete Workout Preset?',
-        expect.stringContaining('permanently removed'),
+        'حذف قالب التمرين؟',
+        'سيُحذف هذا القالب نهائيًا من مكتبتك.',
         expect.arrayContaining([
-          expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
-          expect.objectContaining({ text: 'Delete', style: 'destructive' }),
+          expect.objectContaining({ text: 'إلغاء', style: 'cancel' }),
+          expect.objectContaining({ text: 'حذف', style: 'destructive' }),
         ]),
       );
     });
@@ -185,7 +185,7 @@ describe('useWorkoutPresetMutations', () => {
       act(() => result.current.confirmAndDelete());
 
       const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = buttons.find((b: { text: string }) => b.text === 'Delete');
+      const deleteButton = buttons.find((b: { text: string }) => b.text === 'حذف');
       await act(async () => {
         deleteButton.onPress();
       });
@@ -208,7 +208,7 @@ describe('useWorkoutPresetMutations', () => {
       act(() => result.current.confirmAndDelete());
 
       const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = buttons.find((b: { text: string }) => b.text === 'Delete');
+      const deleteButton = buttons.find((b: { text: string }) => b.text === 'حذف');
       await act(async () => {
         deleteButton.onPress();
       });
@@ -231,7 +231,7 @@ describe('useWorkoutPresetMutations', () => {
       act(() => result.current.confirmAndDelete());
 
       const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = buttons.find((b: { text: string }) => b.text === 'Delete');
+      const deleteButton = buttons.find((b: { text: string }) => b.text === 'حذف');
       await act(async () => {
         deleteButton.onPress();
       });
@@ -239,8 +239,8 @@ describe('useWorkoutPresetMutations', () => {
       await waitFor(() => {
         expect(Toast.show).toHaveBeenCalledWith({
           type: 'error',
-          text1: 'Failed to delete preset',
-          text2: "You don't have permission to delete this preset.",
+          text1: 'ما قدرنا نحذف القالب',
+          text2: 'ليست لديك صلاحية حذف هذا القالب.',
         });
       });
     });

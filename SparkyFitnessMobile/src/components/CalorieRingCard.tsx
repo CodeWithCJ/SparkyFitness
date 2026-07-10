@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import ProgressRing from './ProgressRing';
+import { formatMobileNumber, mobileT } from '../localization';
 
 interface SideStatProps {
   label: string;
@@ -11,7 +12,7 @@ interface SideStatProps {
 const SideStat: React.FC<SideStatProps> = ({ label, value }) => (
   <View className="items-center justify-center flex-1">
     <Text className="text-xl font-bold text-text-primary">
-      {Math.round(value).toLocaleString()}
+      {formatMobileNumber(Math.round(value), { maximumFractionDigits: 0 })}
     </Text>
     <Text className="text-text-secondary text-xs mt-1">{label}</Text>
   </View>
@@ -42,7 +43,7 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
       <View className="flex-row items-center justify-center">
-        <SideStat label="Consumed" value={caloriesConsumed} />
+        <SideStat label={mobileT('dashboard.consumed')} value={caloriesConsumed} />
 
         <View className="relative items-center justify-center mx-2">
           <View>
@@ -56,18 +57,24 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
           </View>
           <View className="absolute items-center justify-center">
             <Text className="text-2xl font-bold text-text-primary">
-              {displayRemaining.toLocaleString()}
+              {formatMobileNumber(displayRemaining, {
+                maximumFractionDigits: 0,
+              })}
             </Text>
             <Text className="text-text-secondary text-xs">
-              remaining
+              {mobileT('dashboard.remaining')}
             </Text>
             <Text className="text-text-muted text-[10px] mt-0.5">
-              of {calorieGoal.toLocaleString()} kcal
+              {mobileT('dashboard.calorieGoal', {
+                goal: formatMobileNumber(calorieGoal, {
+                  maximumFractionDigits: 0,
+                }),
+              })}
             </Text>
           </View>
         </View>
 
-        <SideStat label="Burned" value={caloriesBurned} />
+        <SideStat label={mobileT('dashboard.burned')} value={caloriesBurned} />
       </View>
     </View>
   );

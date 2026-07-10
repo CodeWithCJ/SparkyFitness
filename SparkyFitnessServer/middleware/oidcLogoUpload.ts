@@ -1,18 +1,24 @@
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'mult... Remove this comment to see the full error message
 import multer from 'multer';
+import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { createUploadMiddleware } from './uploadMiddleware.js';
+import { getStorageMode } from '../utils/runtimeConfig.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ensure the upload directory exists
+const useRuntimeUploadsDir =
+  process.env.VERCEL === '1' || getStorageMode() === 'disabled';
 const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
   ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
-  : path.join(__dirname, '..', 'uploads');
+  : useRuntimeUploadsDir
+    ? path.join(os.tmpdir(), 'sparkyfitness-uploads')
+    : path.join(__dirname, '..', 'uploads');
 const uploadDir = path.join(baseUploadsDir, 'oidc');
-if (!fs.existsSync(uploadDir)) {
+if (getStorageMode() !== 'disabled' && !fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 // Create a storage configuration for OIDC logos

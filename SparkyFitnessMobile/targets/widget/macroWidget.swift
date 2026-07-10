@@ -149,14 +149,8 @@ private struct MacroRingWithLabel: View {
 
     private var centerText: String {
         guard snapshot.hasData else { return "—" }
-        return Self.numberFormatter.string(from: NSNumber(value: Int(snapshot.caloriesConsumed.rounded()))) ?? "0"
+        return formatArabicInteger(snapshot.caloriesConsumed)
     }
-
-    private static let numberFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        return f
-    }()
 
     var body: some View {
         MacroRing(snapshot: snapshot, size: ringSize, strokeWidth: strokeWidth)
@@ -166,7 +160,7 @@ private struct MacroRingWithLabel: View {
                         .font(.system(size: numberFontSize, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
-                    Text("kcal")
+                    Text("سعرة")
                         .font(.system(size: numberFontSize * 0.58))
                         .foregroundStyle(.secondary)
                 }
@@ -181,7 +175,7 @@ private struct MacroRow: View {
     let color: Color
 
     private var valueText: String {
-        "\(Int(grams.rounded())) g"
+        "\(formatArabicInteger(grams)) غ"
     }
 
     var body: some View {
@@ -222,6 +216,7 @@ struct macroWidgetEntryView: View {
                 mediumBody
             }
         }
+        .environment(\.layoutDirection, .rightToLeft)
         .widgetURL(dashboardURL)
     }
 
@@ -234,9 +229,9 @@ struct macroWidgetEntryView: View {
                 numberFontSize: 18
             )
             VStack(spacing: 3) {
-                MacroRow(label: "Protein", grams: entry.snapshot.proteinGrams, color: MacroPalette.protein)
-                MacroRow(label: "Carbs", grams: entry.snapshot.carbsGrams, color: MacroPalette.carbs)
-                MacroRow(label: "Fat", grams: entry.snapshot.fatGrams, color: MacroPalette.fat)
+                MacroRow(label: "البروتين", grams: entry.snapshot.proteinGrams, color: MacroPalette.protein)
+                MacroRow(label: "الكربوهيدرات", grams: entry.snapshot.carbsGrams, color: MacroPalette.carbs)
+                MacroRow(label: "الدهون", grams: entry.snapshot.fatGrams, color: MacroPalette.fat)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -258,9 +253,9 @@ struct macroWidgetEntryView: View {
                 )
 
                 VStack(alignment: .leading, spacing: 20) {
-                    MacroRow(label: "Protein", grams: entry.snapshot.proteinGrams, color: MacroPalette.protein)
-                    MacroRow(label: "Carbs", grams: entry.snapshot.carbsGrams, color: MacroPalette.carbs)
-                    MacroRow(label: "Fat", grams: entry.snapshot.fatGrams, color: MacroPalette.fat)
+                    MacroRow(label: "البروتين", grams: entry.snapshot.proteinGrams, color: MacroPalette.protein)
+                    MacroRow(label: "الكربوهيدرات", grams: entry.snapshot.carbsGrams, color: MacroPalette.carbs)
+                    MacroRow(label: "الدهون", grams: entry.snapshot.fatGrams, color: MacroPalette.fat)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -272,11 +267,13 @@ struct macroWidgetEntryView: View {
                 VStack(spacing: 16) {
                     ActionButton(
                         icon: "magnifyingglass",
-                        destination: URL(string: "sparkyfitnessmobile://search")!
+                        destination: URL(string: "sparkyfitnessmobile://search")!,
+                        accessibilityLabel: "البحث عن صنف غذائي"
                     )
                     ActionButton(
                         icon: "barcode.viewfinder",
-                        destination: URL(string: "sparkyfitnessmobile://scan")!
+                        destination: URL(string: "sparkyfitnessmobile://scan")!,
+                        accessibilityLabel: "مسح باركود منتج"
                     )
                 }
                 .frame(width: buttonColumnWidth)
@@ -295,8 +292,8 @@ struct macroWidget: Widget {
             macroWidgetEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Macros")
-        .description("Today's protein, carbs, and fat at a glance.")
+        .configurationDisplayName("المغذيات الكبرى")
+        .description("ملخص البروتين والكربوهيدرات والدهون لليوم.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

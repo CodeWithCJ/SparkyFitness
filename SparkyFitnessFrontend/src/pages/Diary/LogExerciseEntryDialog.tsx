@@ -44,6 +44,7 @@ import { SetColumnHeaders } from '../Exercises/SetHeader';
 import { cn } from '@/lib/utils';
 import { CardioLog } from '../Exercises/CardioLog';
 import { v4 as uuidv4 } from 'uuid';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -74,13 +75,18 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   initialSets,
   energyUnit,
   convertEnergy,
-  getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
-  const { loggingLevel, weightUnit, distanceUnit, convertDistance } =
-    usePreferences();
+  const {
+    loggingLevel,
+    weightUnit,
+    distanceUnit,
+    convertDistance,
+    formatDate,
+  } = usePreferences();
 
   const isCardio = exercise?.category === 'cardio';
+  const formattedSelectedDate = formatDate(selectedDate);
 
   const [notes, setNotes] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -288,7 +294,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
             {t(
               'exercise.logExerciseEntryDialog.enterDetails',
               'Enter details for your exercise session on {{selectedDate}}.',
-              { selectedDate }
+              { selectedDate: formattedSelectedDate }
             )}
           </DialogDescription>
         </DialogHeader>
@@ -350,7 +356,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                 onClick={handleAddSet}
                 className="mt-1"
               >
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                <Plus className="h-3.5 w-3.5 me-1.5" aria-hidden="true" />
                 {t('exercise.logExerciseEntryDialog.addSet', 'Add Set')}
               </Button>
             </div>
@@ -381,6 +387,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
             <CollapsibleTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 className="w-full justify-start text-muted-foreground hover:text-foreground px-2"
@@ -404,7 +411,10 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                   <Label htmlFor="calories-burned" className="text-sm">
                     {t(
                       'exercise.logExerciseEntryDialog.caloriesBurnedOptional',
-                      `Calories burned (${getEnergyUnitString(energyUnit)}, optional)`
+                      'Calories burned ({{unit}}, optional)',
+                      {
+                        unit: getLocalizedUnitLabel(energyUnit, t),
+                      }
                     )}
                   </Label>
                   <Input
@@ -501,12 +511,16 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                       className="h-full w-full object-cover rounded-md"
                     />
                     <Button
+                      type="button"
                       variant="destructive"
                       size="icon"
                       onClick={handleClearImage}
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      className="absolute -top-2 -end-2 h-6 w-6 rounded-full"
+                      aria-label={t(
+                        'exercise.logExerciseEntryDialog.clearImage'
+                      )}
                     >
-                      <XCircle className="h-4 w-4" />
+                      <XCircle className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </div>
                 )}
@@ -516,10 +530,19 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+          >
             {t('exercise.logExerciseEntryDialog.cancel', 'Cancel')}
           </Button>
-          <Button onClick={handleSave} disabled={loading || !exercise}>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={loading || !exercise}
+          >
             {loading
               ? t('exercise.logExerciseEntryDialog.saving', 'Saving...')
               : t('exercise.logExerciseEntryDialog.saveEntry', 'Save Entry')}

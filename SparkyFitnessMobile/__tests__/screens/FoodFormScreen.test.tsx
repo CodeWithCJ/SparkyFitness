@@ -12,7 +12,10 @@ import {
 } from '../../src/hooks/useFoodVariants';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 
-const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
+const mockPop = jest.fn((count: number) => ({
+  type: 'POP',
+  payload: { count },
+}));
 const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
 const mockFoodForm = jest.fn();
 const mockNavigation = {
@@ -133,13 +136,20 @@ jest.mock('../../src/components/FoodForm', () => {
     __esModule: true,
     default: (props: any) => {
       mockFoodForm(props);
-      const { onSubmit, children, submitLabel = 'Add Food', unitSelector } = props;
+      const {
+        onSubmit,
+        children,
+        submitLabel = 'إضافة الصنف',
+        unitSelector,
+      } = props;
       return (
         <View>
           {children}
           {unitSelector ? (
             <Pressable
-              onPress={() => unitSelector.onUnitSelectionChange?.(mockUnitSelectionResult)}
+              onPress={() =>
+                unitSelector.onUnitSelectionChange?.(mockUnitSelectionResult)
+              }
             >
               <Text>Select Converted Unit</Text>
             </Pressable>
@@ -153,16 +163,26 @@ jest.mock('../../src/components/FoodForm', () => {
   };
 });
 
-const mockUseMealTypes = useMealTypes as jest.MockedFunction<typeof useMealTypes>;
-const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
+const mockUseMealTypes = useMealTypes as jest.MockedFunction<
+  typeof useMealTypes
+>;
+const mockUsePreferences = usePreferences as jest.MockedFunction<
+  typeof usePreferences
+>;
 const mockUseSaveFood = useSaveFood as jest.MockedFunction<typeof useSaveFood>;
-const mockUseAddFoodEntry = useAddFoodEntry as jest.MockedFunction<typeof useAddFoodEntry>;
-const mockUseCreateFoodVariant =
-  useCreateFoodVariant as jest.MockedFunction<typeof useCreateFoodVariant>;
-const mockUseFoodVariants =
-  useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
+const mockUseAddFoodEntry = useAddFoodEntry as jest.MockedFunction<
+  typeof useAddFoodEntry
+>;
+const mockUseCreateFoodVariant = useCreateFoodVariant as jest.MockedFunction<
+  typeof useCreateFoodVariant
+>;
+const mockUseFoodVariants = useFoodVariants as jest.MockedFunction<
+  typeof useFoodVariants
+>;
 const mockSetPendingMealIngredientSelection =
-  setPendingMealIngredientSelection as jest.MockedFunction<typeof setPendingMealIngredientSelection>;
+  setPendingMealIngredientSelection as jest.MockedFunction<
+    typeof setPendingMealIngredientSelection
+  >;
 const mockToast = Toast as unknown as { show: jest.Mock };
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -181,11 +201,13 @@ describe('FoodFormScreen', () => {
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <FoodFormScreen
           navigation={navigation}
-          route={{
-            key: 'FoodForm-key',
-            name: 'FoodForm',
-            params,
-          } as any}
+          route={
+            {
+              key: 'FoodForm-key',
+              name: 'FoodForm',
+              params,
+            } as any
+          }
         />
       </SafeAreaProvider>,
     );
@@ -226,7 +248,9 @@ describe('FoodFormScreen', () => {
       },
     };
     mockUseMealTypes.mockReturnValue({
-      mealTypes: [{ id: 'meal-1', name: 'breakfast', is_visible: true, sort_order: 1 }] as any,
+      mealTypes: [
+        { id: 'meal-1', name: 'breakfast', is_visible: true, sort_order: 1 },
+      ] as any,
       defaultMealTypeId: 'meal-1',
       isLoading: false,
       isError: false,
@@ -255,7 +279,7 @@ describe('FoodFormScreen', () => {
       isLoading: false,
       isError: false,
     });
-    mockUseAddFoodEntry.mockImplementation((options) => ({
+    mockUseAddFoodEntry.mockImplementation(options => ({
       addEntry: (input: any) => {
         mockAddEntry(input);
         options?.onSuccess?.({ entry_date: '2026-04-23' } as any);
@@ -288,7 +312,7 @@ describe('FoodFormScreen', () => {
       returnDepth: 2,
     });
 
-    fireEvent.press(screen.getByText('Add Food'));
+    fireEvent.press(screen.getByText('إضافة الصنف'));
 
     await waitFor(() => {
       expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
@@ -314,7 +338,7 @@ describe('FoodFormScreen', () => {
       date: '2026-04-23',
     });
 
-    fireEvent.press(screen.getByText('Add Food'));
+    fireEvent.press(screen.getByText('إضافة الصنف'));
 
     await waitFor(() => {
       expect(mockAddEntry).toHaveBeenCalledWith({
@@ -349,11 +373,11 @@ describe('FoodFormScreen', () => {
       barcode: '0123456789',
     });
 
-    expect(screen.queryByText('Date')).toBeNull();
-    expect(screen.queryByText('Meal')).toBeNull();
-    expect(screen.queryByText('Save to Database')).toBeNull();
-    expect(screen.queryByText('Barcode')).toBeNull();
-    expect(screen.queryByText('Scan with camera')).toBeNull();
+    expect(screen.queryByText('التاريخ')).toBeNull();
+    expect(screen.queryByText('الوجبة')).toBeNull();
+    expect(screen.queryByText('حفظ الصنف في المكتبة')).toBeNull();
+    expect(screen.queryByText('الباركود')).toBeNull();
+    expect(screen.queryByText('مسح بالكاميرا')).toBeNull();
     expect(screen.queryByTestId('calendar-sheet')).toBeNull();
   });
 
@@ -363,13 +387,13 @@ describe('FoodFormScreen', () => {
       barcode: '0123456789',
     });
 
-    expect(screen.getByText('Date')).toBeTruthy();
-    expect(screen.getByText('Meal')).toBeTruthy();
-    expect(screen.getByText('Save to Database')).toBeTruthy();
-    expect(screen.getByText('Barcode')).toBeTruthy();
-    expect(screen.getByText('Scan with camera')).toBeTruthy();
+    expect(screen.getByText('التاريخ')).toBeTruthy();
+    expect(screen.getByText('الوجبة')).toBeTruthy();
+    expect(screen.getByText('حفظ الصنف في المكتبة')).toBeTruthy();
+    expect(screen.getByText('الباركود')).toBeTruthy();
+    expect(screen.getByText('مسح بالكاميرا')).toBeTruthy();
     expect(screen.getByDisplayValue('0123456789')).toBeTruthy();
-    expect(screen.getByText(/100 g per serving/)).toBeTruthy();
+    expect(screen.getByText(/١٠٠ غ لكل حصة/)).toBeTruthy();
     expect(screen.getByTestId('calendar-sheet')).toBeTruthy();
   });
 
@@ -379,10 +403,10 @@ describe('FoodFormScreen', () => {
       pickerMode: 'library',
     });
 
-    expect(screen.queryByText('Date')).toBeNull();
-    expect(screen.queryByText('Save to Database')).toBeNull();
-    expect(screen.getByText('Barcode')).toBeTruthy();
-    expect(screen.getByText('Scan with camera')).toBeTruthy();
+    expect(screen.queryByText('التاريخ')).toBeNull();
+    expect(screen.queryByText('حفظ الصنف في المكتبة')).toBeNull();
+    expect(screen.getByText('الباركود')).toBeTruthy();
+    expect(screen.getByText('مسح بالكاميرا')).toBeTruthy();
   });
 
   it('saves a typed barcode with the new food in library mode', async () => {
@@ -397,7 +421,28 @@ describe('FoodFormScreen', () => {
       screen.getByPlaceholderText('012345678905'),
       '0123456789012',
     );
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('حفظ'));
+
+    await waitFor(() => {
+      expect(mockSaveFoodAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ barcode: '0123456789012' }),
+      );
+    });
+  });
+
+  it('normalizes Arabic barcode digits before saving', async () => {
+    mockSaveFoodAsync.mockResolvedValue({ id: 'lib-food-1' });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'library',
+    });
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('012345678905'),
+      '٠١٢٣٤٥٦٧٨٩٠١٢',
+    );
+    fireEvent.press(screen.getByText('حفظ'));
 
     await waitFor(() => {
       expect(mockSaveFoodAsync).toHaveBeenCalledWith(
@@ -413,21 +458,21 @@ describe('FoodFormScreen', () => {
     });
 
     fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '12345');
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('حفظ'));
 
     expect(mockSaveFoodAsync).not.toHaveBeenCalled();
     expect(mockToast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error', text1: 'Invalid barcode' }),
+      expect.objectContaining({ type: 'error', text1: 'الباركود غير صحيح' }),
     );
   });
 
-  it('navigates to FoodScan in capture-barcode mode when Scan with camera is pressed', () => {
+  it('navigates to FoodScan in capture-barcode mode when camera scan is pressed', () => {
     const screen = renderScreen({
       mode: 'create-food',
       pickerMode: 'library',
     });
 
-    fireEvent.press(screen.getByText('Scan with camera'));
+    fireEvent.press(screen.getByText('مسح بالكاميرا'));
 
     expect(navigation.navigate).toHaveBeenCalledWith('FoodScan', {
       mode: 'capture-barcode',
@@ -471,7 +516,7 @@ describe('FoodFormScreen', () => {
       mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
     expect(adjustModeCall?.showAutoScaleNutrition).toBe(true);
     expect(adjustModeCall?.initialAutoScaleNutritionEnabled).toBe(false);
-    expect(adjustModeCall?.submitLabel).toBe('Save');
+    expect(adjustModeCall?.submitLabel).toBe('حفظ');
   });
 
   it('passes a true auto-scale default through when the shared preference is enabled', () => {
@@ -616,11 +661,11 @@ describe('FoodFormScreen', () => {
     // adjust-entry-nutrition mode. Toggle it ON to keep the variant-creation
     // pathway under test; the no-toggle case has its own test below.
     fireEvent(
-      screen.getByLabelText('Save nutrition for future use'),
+      screen.getByLabelText('حفظ هالقيم للاستخدام لاحقًا'),
       'valueChange',
       true,
     );
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('حفظ'));
 
     await waitFor(() => {
       expect(mockCreateVariant).toHaveBeenCalledWith(
@@ -736,11 +781,11 @@ describe('FoodFormScreen', () => {
     // toggle in adjust-entry-nutrition mode. Flip it ON to keep the
     // create-variant pathway under test.
     fireEvent(
-      screen.getByLabelText('Save nutrition for future use'),
+      screen.getByLabelText('حفظ هالقيم للاستخدام لاحقًا'),
       'valueChange',
       true,
     );
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('حفظ'));
 
     await waitFor(() => {
       expect(mockCreateVariant).toHaveBeenCalledWith({
@@ -793,93 +838,90 @@ describe('FoodFormScreen', () => {
   // food_variants row ONLY when the user explicitly opts to "save for future
   // use" in the adjust-entry-nutrition flow. The entry itself still records
   // the chosen unit + nutrition inline.
-  it(
-    'skips the variant POST in adjust-entry-nutrition mode when the save-for-future-use toggle is off',
-    async () => {
-      mockUnitSelectionResult = {
-        kind: 'draft',
+  it('skips the variant POST in adjust-entry-nutrition mode when the save-for-future-use toggle is off', async () => {
+    mockUnitSelectionResult = {
+      kind: 'draft',
+      variant: {
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      },
+      requiresNutritionUpdate: true,
+    };
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      servingSize: '1',
+      servingUnit: 'cup',
+      calories: '45',
+      protein: '4',
+      carbs: '6',
+      fat: '1',
+    };
+
+    const screen = renderScreen({
+      mode: 'adjust-entry-nutrition',
+      initialValues: {
+        name: 'Greek Yogurt',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+      },
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      customNutrients: null,
+      availableUnitVariants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      ],
+      selectedUnitSelection: {
+        kind: 'existing',
         variant: {
-          serving_size: 1,
-          serving_unit: 'cup',
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
         },
-        requiresNutritionUpdate: true,
-      };
-      mockSubmittedFoodFormData = {
-        ...mockSubmittedFoodFormData,
-        servingSize: '1',
-        servingUnit: 'cup',
-        calories: '45',
-        protein: '4',
-        carbs: '6',
-        fat: '1',
-      };
+      },
+    });
 
-      const screen = renderScreen({
-        mode: 'adjust-entry-nutrition',
-        initialValues: {
-          name: 'Greek Yogurt',
-          servingSize: '100',
-          servingUnit: 'g',
-          calories: '120',
-        },
-        returnTo: 'FoodEntryAdd',
-        returnKey: 'FoodEntryAdd-key',
-        foodId: 'food-1',
-        variantId: 'variant-1',
-        customNutrients: null,
-        availableUnitVariants: [
-          {
-            id: 'variant-1',
-            food_id: 'food-1',
-            serving_size: 100,
-            serving_unit: 'g',
-            calories: 120,
-            protein: 10,
-            carbs: 8,
-            fat: 4,
-          },
-        ],
-        selectedUnitSelection: {
-          kind: 'existing',
-          variant: {
-            id: 'variant-1',
-            food_id: 'food-1',
-            serving_size: 100,
-            serving_unit: 'g',
-            calories: 120,
-            protein: 10,
-            carbs: 8,
-            fat: 4,
-          },
-        },
-      });
+    fireEvent.press(screen.getByText('Select Converted Unit'));
+    // Toggle stays OFF — default state. No need to interact with it.
+    fireEvent.press(screen.getByText('حفظ'));
 
-      fireEvent.press(screen.getByText('Select Converted Unit'));
-      // Toggle stays OFF — default state. No need to interact with it.
-      fireEvent.press(screen.getByText('Save'));
-
-      await waitFor(() => {
-        expect(navigation.dispatch).toHaveBeenCalled();
-      });
-      // The defining assertion: no variant POST when the toggle is off.
-      expect(mockCreateVariant).not.toHaveBeenCalled();
-      // Draft unit selection still propagates back so the caller can display
-      // the correct unit/nutrition ??? callers handle draft vs existing safely.
-      expect(navigation.dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          payload: expect.objectContaining({
-            params: expect.objectContaining({
-              adjustedUnitSelection: expect.objectContaining({ kind: 'draft' }),
-            }),
+    await waitFor(() => {
+      expect(navigation.dispatch).toHaveBeenCalled();
+    });
+    // The defining assertion: no variant POST when the toggle is off.
+    expect(mockCreateVariant).not.toHaveBeenCalled();
+    // Draft unit selection still propagates back so the caller can display
+    // the correct unit/nutrition ??? callers handle draft vs existing safely.
+    expect(navigation.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          params: expect.objectContaining({
+            adjustedUnitSelection: expect.objectContaining({ kind: 'draft' }),
           }),
         }),
-      );
-    },
-  );
+      }),
+    );
+  });
 
   it('blocks submit when the name is missing', () => {
     mockSubmittedFoodFormData = {
@@ -892,12 +934,12 @@ describe('FoodFormScreen', () => {
       pickerMode: 'meal-builder',
     });
 
-    fireEvent.press(screen.getByText('Add Food'));
+    fireEvent.press(screen.getByText('إضافة الصنف'));
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
-      text1: 'Missing name',
-      text2: 'Please enter a food name.',
+      text1: 'اسم الصنف ناقص',
+      text2: 'اكتب اسم الصنف الغذائي.',
     });
     expect(mockSaveFoodAsync).not.toHaveBeenCalled();
     expect(mockAddEntry).not.toHaveBeenCalled();
@@ -914,12 +956,12 @@ describe('FoodFormScreen', () => {
       pickerMode: 'meal-builder',
     });
 
-    fireEvent.press(screen.getByText('Add Food'));
+    fireEvent.press(screen.getByText('إضافة الصنف'));
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
-      text1: 'Invalid serving size',
-      text2: 'Serving size must be greater than zero.',
+      text1: 'حجم الحصة غير صحيح',
+      text2: 'لازم يكون حجم الحصة أكبر من صفر.',
     });
     expect(mockSaveFoodAsync).not.toHaveBeenCalled();
     expect(mockAddEntry).not.toHaveBeenCalled();
@@ -942,7 +984,8 @@ describe('FoodFormScreen', () => {
       },
     });
 
-    const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    const call =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
     expect(call?.unitSelector?.variants).toEqual([
       expect.objectContaining({
         id: '__create-form-source-variant__',
@@ -959,7 +1002,8 @@ describe('FoodFormScreen', () => {
       pickerMode: 'library',
     });
 
-    const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    const call =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
     expect(call?.unitSelector).toBeUndefined();
   });
 
@@ -1012,7 +1056,8 @@ describe('FoodFormScreen', () => {
       customNutrients: null,
     });
 
-    const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    const call =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
     expect(call?.unitSelector?.variants).toEqual([
       expect.objectContaining({
         id: 'variant-1',
@@ -1058,7 +1103,8 @@ describe('FoodFormScreen', () => {
       },
     });
 
-    const call = mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
+    const call =
+      mockFoodForm.mock.calls[mockFoodForm.mock.calls.length - 1]?.[0];
     expect(call?.unitSelector?.selectedSelection).toEqual(
       expect.objectContaining({
         kind: 'draft',
@@ -1152,7 +1198,7 @@ describe('FoodFormScreen', () => {
     });
 
     fireEvent.press(screen.getByText('Select Converted Unit'));
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('حفظ'));
 
     await waitFor(() => {
       expect(navigation.dispatch).toHaveBeenCalledWith(
@@ -1223,7 +1269,7 @@ describe('FoodFormScreen', () => {
       variantId: 'variant-1',
     });
 
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('حفظ'));
 
     await waitFor(() => {
       expect(mockToast.show).toHaveBeenCalledWith(
@@ -1234,4 +1280,3 @@ describe('FoodFormScreen', () => {
     expect(navigation.dispatch).not.toHaveBeenCalled();
   });
 });
-

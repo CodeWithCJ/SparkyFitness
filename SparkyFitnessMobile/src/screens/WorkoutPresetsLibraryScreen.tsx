@@ -11,6 +11,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
+import { formatMobileExerciseCount, mobileT } from '../localization';
 
 type WorkoutPresetsLibraryScreenProps = RootStackScreenProps<'WorkoutPresetsLibrary'>;
 
@@ -48,12 +49,14 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
   const renderEmpty = () => (
     <View className="px-6 py-10 items-center">
       <Text className="text-text-primary text-base font-medium text-center">
-        {searchText.trim().length > 0 ? 'No matching presets found' : 'No workout presets yet'}
+        {searchText.trim().length > 0
+          ? mobileT('library.noMatchingWorkoutPresets')
+          : mobileT('library.noWorkoutPresets')}
       </Text>
       <Text className="text-text-secondary text-sm mt-2 text-center">
         {searchText.trim().length > 0
-          ? 'Try a different search term to find a workout preset.'
-          : 'Workout presets you create will appear here.'}
+          ? mobileT('library.tryAnotherSearch')
+          : mobileT('library.savedWorkoutPresetsAppear')}
       </Text>
     </View>
   );
@@ -68,7 +71,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
       >
         <Text className="text-text-primary text-base font-medium">{item.name}</Text>
         <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+          {formatMobileExerciseCount(exerciseCount)}
         </Text>
       </TouchableOpacity>
     );
@@ -81,10 +84,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your workout presets."
+          title={mobileT('library.noServerTitle')}
+          subtitle={mobileT('library.noServerDescription')}
           action={{
-            label: 'Go to Settings',
+            label: mobileT('common.goToSettings'),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
             variant: 'primary',
           }}
@@ -93,7 +96,9 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading workout presets..." />;
+      return (
+        <StatusView loading title={mobileT('library.loadingWorkoutPresets')} />
+      );
     }
 
     if (isError) {
@@ -102,10 +107,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title="Failed to load workout presets"
-          subtitle="Please check your connection and try again."
+          title={mobileT('library.loadWorkoutPresetsFailed')}
+          subtitle={mobileT('library.connectionError')}
           action={{
-            label: 'Retry',
+            label: mobileT('common.retry'),
             onPress: () => {
               void refetch();
             },
@@ -125,7 +130,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more presets."
+            errorMessage={mobileT('library.loadMoreWorkoutPresetsFailed')}
             onRetry={loadMore}
           />
         }
@@ -144,7 +149,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     );
   };
 
-  const header = useScreenHeader({ title: 'Workout presets', left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: mobileT('library.workoutPresets'),
+    left: { kind: 'back' },
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -153,7 +161,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search workout presets..."
+          placeholder={mobileT('library.searchWorkoutPresets')}
           isSearching={isSearching}
         />
       ) : null}

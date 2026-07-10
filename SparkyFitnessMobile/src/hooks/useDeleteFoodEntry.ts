@@ -4,6 +4,7 @@ import Toast from 'react-native-toast-message';
 import { deleteFoodEntry } from '../services/api/foodEntriesApi';
 import { normalizeDate } from '../utils/dateUtils';
 import { dailySummaryQueryKey } from './queryKeys';
+import { mobileT } from '../localization';
 
 interface UseDeleteFoodEntryOptions {
   entryId: string;
@@ -21,14 +22,18 @@ export function useDeleteFoodEntry({ entryId, entryDate, onSuccess }: UseDeleteF
       onSuccess?.();
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: 'Failed to delete', text2: 'Please try again.' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('delete.failedTitle'),
+        text2: mobileT('common.retry'),
+      });
     },
   });
 
   const confirmAndDelete = () => {
-    Alert.alert('Delete Entry', 'Are you sure you want to delete this food entry?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => mutation.mutate() },
+    Alert.alert(mobileT('delete.foodEntryTitle'), mobileT('delete.foodEntryDescription'), [
+      { text: mobileT('common.cancel'), style: 'cancel' },
+      { text: mobileT('common.delete'), style: 'destructive', onPress: () => mutation.mutate() },
     ]);
   };
 

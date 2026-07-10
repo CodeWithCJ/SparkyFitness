@@ -10,13 +10,24 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn, error } from '@/utils/logging';
 import { Trash2, Edit, Save, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { formatSecondsToHHMM } from '@/utils/timeFormatters';
+import { formatLocalizedSeconds } from '@/utils/timeFormatters';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { parseISO, differenceInMinutes, addDays } from 'date-fns';
 import type { SleepStageEvent } from '@/types';
 import SleepTimelineEditor from './SleepTimelineEditor';
@@ -228,7 +239,13 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div role="status" className="py-8 text-center text-muted-foreground">
+        {t('sleepEntrySection.loading', 'Loading sleep data…')}
+      </div>
+    );
+  }
   return (
     <Card>
       <CardHeader>
@@ -239,14 +256,14 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
       <CardContent>
         <form onSubmit={handleSleepSubmit} className="space-y-4">
           {sleepSessions.map((session, index) => (
-            <div key={index} className="border p-4 rounded-lg space-y-4">
+            <div key={index} className="space-y-4 rounded-lg border p-4">
               <h4 className="text-md font-semibold">
                 {t('sleepEntrySection.sleepSession', {
                   sessionNumber: index + 1,
                   defaultValue: `Sleep Session ${index + 1}`,
                 })}
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor={`bedtime-${index}`}>
                     {t('sleepEntrySection.bedtime', 'Bedtime')}
@@ -254,6 +271,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                   <Input
                     id={`bedtime-${index}`}
                     type="time"
+                    dir="ltr"
                     value={session.bedtime}
                     onChange={(e) =>
                       handleSleepSessionChange(index, 'bedtime', e.target.value)
@@ -267,6 +285,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                   <Input
                     id={`wakeTime-${index}`}
                     type="time"
+                    dir="ltr"
                     value={session.wakeTime}
                     onChange={(e) =>
                       handleSleepSessionChange(
@@ -316,7 +335,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                 })()}
             </div>
           ))}
-          <div className="flex justify-center space-x-2">
+          <div className="flex flex-col justify-center gap-2 sm:flex-row">
             <Button
               type="button"
               onClick={handleAddSleepSession}
@@ -337,17 +356,25 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
         </form>
 
         {sleepEntries.length > 0 && (
-          <div className="space-y-2 mt-6">
+          <div className="mt-6 space-y-2">
             {sleepEntries.map((entry) => (
-              <div key={entry.id} className="border p-3 rounded-lg mb-2">
-                <div className="flex items-center justify-between">
+              <div key={entry.id} className="mb-2 rounded-lg border p-3">
+                <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-md font-semibold">
-                      Sleep Entry for{' '}
-                      {formatDateInUserTimezone(entry.entry_date, 'PPP')}
+                      {t(
+                        'sleepEntrySection.sleepEntryFor',
+                        'Sleep entry for {{date}}',
+                        {
+                          date: formatDateInUserTimezone(
+                            entry.entry_date,
+                            'PPP'
+                          ),
+                        }
+                      )}
                     </p>
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex shrink-0 gap-2">
                     {editingEntryId === entry.id ? (
                       <>
                         <TooltipProvider>
@@ -356,6 +383,11 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                               <Button
                                 variant="outline"
                                 size="icon"
+                                type="button"
+                                aria-label={t(
+                                  'sleepEntrySection.cancelEdit',
+                                  'Cancel sleep entry edit'
+                                )}
                                 onClick={() => {
                                   setEditingEntryId(null);
                                   setExistingEditDraft(null);
@@ -365,7 +397,12 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Cancel</p>
+                              <p>
+                                {t(
+                                  'sleepEntrySection.cancelEdit',
+                                  'Cancel sleep entry edit'
+                                )}
+                              </p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -375,6 +412,11 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                type="button"
+                                aria-label={t(
+                                  'sleepEntrySection.saveEdit',
+                                  'Save sleep entry edit'
+                                )}
                                 onClick={() => {
                                   if (existingEditDraft) {
                                     handleSaveExistingEntryStageEvents(
@@ -392,7 +434,12 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Save</p>
+                              <p>
+                                {t(
+                                  'sleepEntrySection.saveEdit',
+                                  'Save sleep entry edit'
+                                )}
+                              </p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -404,6 +451,11 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                             <Button
                               variant="outline"
                               size="icon"
+                              type="button"
+                              aria-label={t(
+                                'sleepEntrySection.editEntry',
+                                'Edit sleep entry'
+                              )}
                               onClick={() => {
                                 setEditingEntryId(entry.id);
                                 setExistingEditDraft({
@@ -417,27 +469,61 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Edit</p>
+                            <p>
+                              {t(
+                                'sleepEntrySection.editEntry',
+                                'Edit sleep entry'
+                              )}
+                            </p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     )}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon"
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          type="button"
+                          aria-label={t(
+                            'sleepEntrySection.deleteEntry',
+                            'Delete sleep entry'
+                          )}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {t(
+                              'sleepEntrySection.deleteConfirmTitle',
+                              'Delete this sleep entry?'
+                            )}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t(
+                              'sleepEntrySection.deleteConfirmDescription',
+                              'This removes the entry and its sleep stages. This action cannot be undone.'
+                            )}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>
+                            {t('sleepEntrySection.cancel', 'Cancel')}
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             onClick={() => handleDeleteSleepEntry(entry.id)}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Delete</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                            {t(
+                              'sleepEntrySection.deleteConfirmAction',
+                              'Delete entry'
+                            )}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
                 {entry.bedtime &&
@@ -494,13 +580,15 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                             entry.wake_time,
                             'p'
                           ),
-                          duration: formatSecondsToHHMM(
-                            entry.duration_in_seconds
+                          duration: formatLocalizedSeconds(
+                            entry.duration_in_seconds,
+                            t
                           ),
                           timeAsleep:
                             entry.time_asleep_in_seconds !== null
-                              ? formatSecondsToHHMM(
-                                  entry.time_asleep_in_seconds
+                              ? formatLocalizedSeconds(
+                                  entry.time_asleep_in_seconds,
+                                  t
                                 )
                               : undefined,
                           sleepScore: entry.sleep_score ?? 0,

@@ -23,6 +23,7 @@ import checkInPhotoUpload, {
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { todayInZone, gestationalAge } from '@workspace/shared';
 import { log } from '../../config/logging.js';
+import { requireUploadsEnabled } from '../../middleware/deploymentModeMiddleware.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const baseUploadsDir = process.env.SPARKY_FITNESS_UPLOADS_DIR
@@ -439,7 +440,12 @@ router.post('/contractions', createContraction);
 router.put('/contractions/:id', updateContraction);
 router.get('/contractions', listContractionsHandler);
 
-router.post('/photos', checkInPhotoUpload.single('photo'), uploadPhoto);
+router.post(
+  '/photos',
+  requireUploadsEnabled,
+  checkInPhotoUpload.single('photo'),
+  uploadPhoto
+);
 router.get('/photos', listPhotos);
 router.delete('/photos/:id', deletePhoto);
 

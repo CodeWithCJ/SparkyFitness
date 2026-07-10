@@ -26,12 +26,19 @@ import {
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import type { ActiveSetPatch, CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
+import {
+  formatMobileNumber,
+  formatMobileSetCount,
+  isMobileRtl,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 export const METRIC_COLUMN_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
-  rpe: 'RPE',
-  volume: 'Vol',
-  e1rm: '1RM',
-  tenrm: '10RM',
+  rpe: mobileT('workoutCard.metricRpe'),
+  volume: mobileT('workoutCard.metricVolume'),
+  e1rm: mobileT('workoutCard.metricEstimatedOneRm'),
+  tenrm: mobileT('workoutCard.metricEstimatedTenRm'),
 };
 
 
@@ -193,7 +200,7 @@ function ActiveWorkoutExerciseCard({
     '--color-pr',
   ]) as [string, string, string, string];
 
-  const name = exercise.exercise_snapshot?.name ?? 'Exercise';
+  const name = exercise.exercise_snapshot?.name ?? mobileT('workout.unknownExercise');
   // "Last time" / "Best" only make sense while performing or planning — skip
   // the fetch in view mode (the hook gates on a null id). In live mode the
   // active session is excluded so today's sets don't pollute the baseline.
@@ -328,10 +335,11 @@ function ActiveWorkoutExerciseCard({
     // "planned" describes a live workout that hasn't reached the exercise yet;
     // historical/imported workouts (view mode) and form drafts (edit mode)
     // never show it.
+    const setCount = formatMobileSetCount(exercise.sets.length);
     const subtitle =
       readOnly || isEdit || anyComplete
-        ? `${exercise.sets.length} sets${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
-        : `${exercise.sets.length} sets`;
+        ? `${setCount}${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
+        : setCount;
 
     // The root → header row → thumb <Pressable> wrappers mirror the expanded
     // card exactly so the thumbnail <Image> keeps its position in the tree
@@ -353,7 +361,7 @@ function ActiveWorkoutExerciseCard({
             onPress={() => onToggleExpanded(exercise.id)}
             onLongPress={longPressMenu}
             accessibilityRole="button"
-            accessibilityLabel={`Expand ${name}`}
+            accessibilityLabel={mobileT('workoutCard.expandExercise', { name })}
             className="flex-1 flex-row items-center gap-3"
           >
             <Text
@@ -365,7 +373,7 @@ function ActiveWorkoutExerciseCard({
             <Text className="text-sm text-text-muted" style={{ fontVariant: ['tabular-nums'] }}>
               {subtitle}
             </Text>
-            <Icon name="chevron-forward" size={16} color={textMuted} />
+            <Icon name={isMobileRtl ? 'chevron-back' : 'chevron-forward'} size={16} color={textMuted} />
           </Pressable>
         </View>
       </View>
@@ -384,7 +392,11 @@ function ActiveWorkoutExerciseCard({
           onPress={onPressThumb ? () => onPressThumb(exercise.id) : undefined}
           accessible={onPressThumb != null}
           accessibilityRole={onPressThumb != null ? 'button' : undefined}
-          accessibilityLabel={onPressThumb != null ? `View ${name} details` : undefined}
+          accessibilityLabel={
+            onPressThumb != null
+              ? mobileT('workoutCard.viewExerciseDetails', { name })
+              : undefined
+          }
         >
           {thumb}
         </Pressable>
@@ -393,7 +405,7 @@ function ActiveWorkoutExerciseCard({
           onLongPress={longPressExpandedMenu}
           className="flex-1"
           accessibilityRole="button"
-          accessibilityLabel={`Collapse ${name}`}
+          accessibilityLabel={mobileT('workoutCard.collapseExercise', { name })}
         >
           <Text numberOfLines={2} className="text-base font-semibold text-text-primary">
             {name}
@@ -405,7 +417,7 @@ function ActiveWorkoutExerciseCard({
               onPress={openOverflowMenu}
               hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
               accessibilityRole="button"
-              accessibilityLabel={`More options for ${name}`}
+              accessibilityLabel={mobileT('workoutCard.moreOptions', { name })}
               className="p-1"
             >
               <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
@@ -416,7 +428,7 @@ function ActiveWorkoutExerciseCard({
           onPress={() => onToggleExpanded(exercise.id)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel={`Collapse ${name}`}
+          accessibilityLabel={mobileT('workoutCard.collapseExercise', { name })}
           className="p-1"
         >
           <Animated.View style={chevronStyle}>
@@ -442,18 +454,25 @@ function ActiveWorkoutExerciseCard({
           )}
           {lastSet && lastSet.weight != null && lastSet.reps != null && (
             <View className="flex-row items-baseline gap-1.5">
-              <Text className="text-sm uppercase tracking-wide text-text-muted">Last</Text>
+              <Text className="text-sm tracking-wide text-text-muted">
+                {mobileT('workoutCard.last')}
+              </Text>
               <Text
                 className="text-sm text-text-secondary"
                 style={{ fontVariant: ['tabular-nums'] }}
               >
-                {parseFloat(weightFromKg(lastSet.weight, weightUnit).toFixed(1))} × {lastSet.reps}
+                {formatMobileNumber(
+                  parseFloat(weightFromKg(lastSet.weight, weightUnit).toFixed(1)),
+                )}{' '}
+                × {formatMobileNumber(lastSet.reps, { maximumFractionDigits: 0 })}
               </Text>
             </View>
           )}
           {bestDisplay != null && (
             <View className="flex-row items-baseline gap-1.5">
-              <Text className="text-sm uppercase tracking-wide text-text-muted">Best</Text>
+              <Text className="text-sm tracking-wide text-text-muted">
+                {mobileT('workoutCard.best')}
+              </Text>
               <Text
                 className="text-sm"
                 style={{
@@ -461,8 +480,14 @@ function ActiveWorkoutExerciseCard({
                   fontVariant: ['tabular-nums'],
                 }}
               >
-                {parseFloat(weightFromKg(bestDisplay.weight, weightUnit).toFixed(1))}
-                {bestDisplay.reps != null ? ` × ${bestDisplay.reps}` : ''}
+                {formatMobileNumber(
+                  parseFloat(weightFromKg(bestDisplay.weight, weightUnit).toFixed(1)),
+                )}
+                {bestDisplay.reps != null
+                  ? ` × ${formatMobileNumber(bestDisplay.reps, {
+                      maximumFractionDigits: 0,
+                    })}`
+                  : ''}
               </Text>
             </View>
           )}
@@ -472,20 +497,20 @@ function ActiveWorkoutExerciseCard({
       {exercise.sets.length > 0 && (
         <View className="flex-row items-center px-3 py-1.5">
           <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
-            Set
+            {mobileT('workoutCard.setHeader')}
           </Text>
           <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-            {weightUnit === 'kg' ? 'KG' : 'LBS'}
+            {localizeServingUnit(weightUnit)}
           </Text>
           <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-            Reps
+            {mobileT('workoutCard.repsHeader')}
           </Text>
           <View ref={metricAnchorRef} collapsable={false} className="w-14 items-center">
             <Pressable
               onPress={openMetricMenu}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityRole="button"
-              accessibilityLabel="Change metric column"
+              accessibilityLabel={mobileT('workoutCard.changeMetric')}
               className="flex-row items-center gap-0.5"
             >
               <Text
@@ -550,12 +575,12 @@ function ActiveWorkoutExerciseCard({
         <Pressable
           onPress={() => onAddSet?.(exercise.id)}
           accessibilityRole="button"
-          accessibilityLabel={`Add set to ${name}`}
+          accessibilityLabel={mobileT('workoutCard.addSetTo', { name })}
           className="flex-row items-center justify-center gap-1.5 py-2.5 mt-1"
         >
           <Icon name="add" size={15} color={accentPrimary} />
           <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
-            Add set
+            {mobileT('workoutCard.addSet')}
           </Text>
         </Pressable>
       )}

@@ -3,10 +3,34 @@ import '@testing-library/jest-dom';
 import MealBuilder from '@/components/MealBuilder';
 import { renderWithClient } from '../test-utils';
 
+const mockTranslations: Record<string, string> = {
+  'mealBuilder.loggedMealName': 'وجبة مسجّلة',
+  'mealBuilder.editIngredient': 'تعديل {{ingredientName}}',
+  'mealBuilder.removeIngredient': 'إزالة {{ingredientName}}',
+  'common.breakfast': 'الفطور',
+  'units.milliliter': 'مل',
+  'units.serving': 'حصة',
+  'units.gram': 'غ',
+  'units.fluidOunce': 'أونصة سائلة',
+  'units.ounce': 'أونصة',
+  'units.cup': 'كوب',
+  'units.tablespoon': 'ملعقة كبيرة',
+  'units.teaspoon': 'ملعقة صغيرة',
+  'units.piece': 'حبة',
+};
+
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, defaultValueOrOpts?: string | Record<string, unknown>) => {
+      const translation = mockTranslations[key];
+      if (translation) {
+        const options =
+          typeof defaultValueOrOpts === 'object' ? defaultValueOrOpts : {};
+        return translation.replace(/{{(\w+)}}/g, (_, token: string) =>
+          String(options[token] ?? '')
+        );
+      }
       if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;
       if (
         defaultValueOrOpts &&
@@ -79,42 +103,6 @@ jest.mock('@/components/FoodUnitSelector', () => {
   return function MockFoodUnitSelector() {
     return <div data-testid="food-unit-selector">FoodUnitSelector</div>;
   };
-  it('rounds derived total_servings for non-serving meals before saving', async () => {
-    mockCreateMeal.mockResolvedValue({ id: 'new-meal', name: 'My Meal' });
-
-    renderWithClient(
-      <MealBuilder
-        initialFoods={sampleFoods}
-        initialServingUnit="ml"
-        initialServingSize={333}
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
-    });
-    fireEvent.change(screen.getByLabelText('Meal Name'), {
-      target: { value: 'My Meal' },
-    });
-
-    fireEvent.change(screen.getByLabelText('Total Amount (ml)'), {
-      target: { value: '1000' },
-    });
-    fireEvent.change(screen.getByLabelText('Default Serving Size (ml)'), {
-      target: { value: '333' },
-    });
-    fireEvent.click(screen.getByText('Save Meal'));
-
-    await waitFor(() => {
-      expect(mockCreateMeal).toHaveBeenCalledWith(
-        expect.objectContaining({
-          serving_unit: 'ml',
-          serving_size: 333,
-          total_servings: 3.003003,
-        })
-      );
-    });
-  });
 });
 
 jest.mock('@/components/FoodSearch/FoodSearchDialog', () => {
@@ -155,6 +143,37 @@ describe('MealBuilder', () => {
     expect(screen.getByText('Add Food')).toBeInTheDocument();
   });
 
+  it('localizes the seeded meal name, units, and ingredient actions', async () => {
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        initialServingUnit="ml"
+        initialServingSize={250}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('وجبة مسجّلة');
+    });
+    expect(screen.getByLabelText('Total Amount (مل)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'تعديل Apple' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'إزالة Apple' })
+    ).toBeInTheDocument();
+  });
+
+  it('localizes a standard meal type shown in the form', async () => {
+    renderWithClient(
+      <MealBuilder initialFoods={sampleFoods} foodEntryMealType="breakfast" />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('الفطور');
+    });
+  });
+
   it('shows empty state message when no foods added', () => {
     renderWithClient(<MealBuilder />);
     expect(
@@ -176,9 +195,9 @@ describe('MealBuilder', () => {
   it('shows validation error for empty meal name when foods exist', async () => {
     renderWithClient(<MealBuilder initialFoods={sampleFoods} />);
 
-    // useEffect sets name to 'Logged Meal' — wait for it, then clear it
+    // The localized default name is seeded asynchronously; wait, then clear it.
     await waitFor(() => {
-      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('وجبة مسجّلة');
     });
     fireEvent.change(screen.getByLabelText('Meal Name'), {
       target: { value: '' },
@@ -290,7 +309,7 @@ describe('MealBuilder', () => {
     renderWithClient(<MealBuilder initialFoods={sampleFoods} />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('وجبة مسجّلة');
     });
     fireEvent.change(screen.getByLabelText('Meal Name'), {
       target: { value: 'My Meal' },
@@ -322,17 +341,17 @@ describe('MealBuilder', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('وجبة مسجّلة');
     });
     fireEvent.change(screen.getByLabelText('Meal Name'), {
       target: { value: 'My Meal' },
     });
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Total Amount (ml)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Total Amount (مل)')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Total Amount (ml)'), {
+    fireEvent.change(screen.getByLabelText('Total Amount (مل)'), {
       target: { value: '' },
     });
     fireEvent.click(screen.getByText('Save Meal'));
@@ -361,21 +380,21 @@ describe('MealBuilder', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Meal Name')).toHaveValue('Logged Meal');
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('وجبة مسجّلة');
     });
     fireEvent.change(screen.getByLabelText('Meal Name'), {
       target: { value: 'My Meal' },
     });
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Total Amount (ml)')).toBeInTheDocument();
+      expect(screen.getByLabelText('Total Amount (مل)')).toBeInTheDocument();
     });
 
     // 2000 ml batch with 250 ml servings = 8 servings.
-    fireEvent.change(screen.getByLabelText('Total Amount (ml)'), {
+    fireEvent.change(screen.getByLabelText('Total Amount (مل)'), {
       target: { value: '2000' },
     });
-    fireEvent.change(screen.getByLabelText('Default Serving Size (ml)'), {
+    fireEvent.change(screen.getByLabelText('Default Serving Size (مل)'), {
       target: { value: '250' },
     });
 
@@ -385,7 +404,7 @@ describe('MealBuilder', () => {
     const unitTrigger = screen.getByRole('combobox');
     fireEvent.click(unitTrigger);
     const servingOption = await screen.findByRole('option', {
-      name: /serving/i,
+      name: 'حصة',
     });
     fireEvent.click(servingOption);
 
@@ -403,6 +422,43 @@ describe('MealBuilder', () => {
           serving_unit: 'serving',
           serving_size: 1,
           total_servings: 8,
+        })
+      );
+    });
+  });
+
+  it('rounds derived total_servings for non-serving meals before saving', async () => {
+    mockCreateMeal.mockResolvedValue({ id: 'new-meal', name: 'My Meal' });
+
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        initialServingUnit="ml"
+        initialServingSize={333}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Meal Name')).toHaveValue('وجبة مسجّلة');
+    });
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'My Meal' },
+    });
+
+    fireEvent.change(screen.getByLabelText('Total Amount (مل)'), {
+      target: { value: '1000' },
+    });
+    fireEvent.change(screen.getByLabelText('Default Serving Size (مل)'), {
+      target: { value: '333' },
+    });
+    fireEvent.click(screen.getByText('Save Meal'));
+
+    await waitFor(() => {
+      expect(mockCreateMeal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serving_unit: 'ml',
+          serving_size: 333,
+          total_servings: 3.003003,
         })
       );
     });

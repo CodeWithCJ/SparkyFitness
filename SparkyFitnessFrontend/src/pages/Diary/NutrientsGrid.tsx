@@ -1,4 +1,3 @@
-import { Label } from '@/components/ui/label';
 import {
   getNutrientMetadata,
   formatNutrientValue,
@@ -7,6 +6,7 @@ import type { FoodVariant } from '@/types/food';
 import { CalculatedNutrition } from '@/utils/nutritionCalculations';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import { useTranslation } from 'react-i18next';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 interface NutrientGridProps {
   nutrition: CalculatedNutrition;
@@ -29,26 +29,25 @@ export const NutrientGrid = ({
   baseVariant,
   visibleNutrients,
 }: NutrientGridProps) => {
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal' ? 'kcal' : 'kJ';
-  };
   const { t } = useTranslation();
+  const energyUnitLabel = getLocalizedUnitLabel(energyUnit, t);
+  const gramUnitLabel = getLocalizedUnitLabel('g', t);
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {visibleNutrients.map((key) => {
           if (key === 'calories') {
             return (
               <div key="calories">
-                <Label className="text-sm">
-                  Calories ({getEnergyUnitString(energyUnit)})
-                </Label>
-                <div className="text-lg font-medium">
+                <dt className="text-sm font-medium">
+                  {t('nutrition.calories')} ({energyUnitLabel})
+                </dt>
+                <dd className="text-lg font-medium">
                   {Math.round(
                     convertEnergy(nutrition.calories, 'kcal', energyUnit)
                   )}
-                </div>
+                </dd>
               </div>
             );
           }
@@ -58,12 +57,13 @@ export const NutrientGrid = ({
             const value = nutrition.custom_nutrients?.[key] || 0;
             return (
               <div key={key}>
-                <Label className="text-sm">
-                  {customNutrient.name} ({customNutrient.unit})
-                </Label>
-                <div className="text-lg font-medium">
+                <dt className="text-sm font-medium">
+                  {customNutrient.name} (
+                  {getLocalizedUnitLabel(customNutrient.unit, t)})
+                </dt>
+                <dd className="text-lg font-medium">
                   {formatNutrientValue(key, value, customNutrients)}
-                </div>
+                </dd>
               </div>
             );
           }
@@ -73,38 +73,66 @@ export const NutrientGrid = ({
             const value = nutrition[key as keyof CalculatedNutrition] as number;
             return (
               <div key={key}>
-                <Label className="text-sm">
+                <dt className="text-sm font-medium">
                   {t(meta.label, { defaultValue: meta.defaultLabel })} (
-                  {meta.unit})
-                </Label>
-                <div className="text-lg font-medium">
+                  {getLocalizedUnitLabel(meta.unit, t)})
+                </dt>
+                <dd className="text-lg font-medium">
                   {formatNutrientValue(key, value, customNutrients)}
-                </div>
+                </dd>
               </div>
             );
           }
 
           return null;
         })}
-      </div>
+      </dl>
 
       {baseVariant && (
         <div className="bg-muted p-4 rounded-lg mt-4">
           <h4 className="font-medium mb-2">
-            Base Values (per {baseVariant.serving_size}{' '}
-            {baseVariant.serving_unit}):
+            {t('foodNutrition.baseValues', {
+              size: baseVariant.serving_size,
+              unit: getLocalizedUnitLabel(baseVariant.serving_unit, t),
+            })}
           </h4>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
-              {Math.round(
-                convertEnergy(baseVariant.calories || 0, 'kcal', energyUnit)
-              )}{' '}
-              {getEnergyUnitString(energyUnit)}
+              <dt className="text-muted-foreground">
+                {t('nutrition.calories')}
+              </dt>
+              <dd className="font-medium">
+                {Math.round(
+                  convertEnergy(baseVariant.calories || 0, 'kcal', energyUnit)
+                )}{' '}
+                {energyUnitLabel}
+              </dd>
             </div>
-            <div>{baseVariant.protein || 0}g protein</div>
-            <div>{baseVariant.carbs || 0}g carbs</div>
-            <div>{baseVariant.fat || 0}g fat</div>
-          </div>
+            {[
+              {
+                key: 'protein',
+                label: t('nutrition.protein'),
+                value: baseVariant.protein || 0,
+              },
+              {
+                key: 'carbs',
+                label: t('nutrition.carbs'),
+                value: baseVariant.carbs || 0,
+              },
+              {
+                key: 'fat',
+                label: t('nutrition.fat'),
+                value: baseVariant.fat || 0,
+              },
+            ].map((nutrient) => (
+              <div key={nutrient.key}>
+                <dt className="text-muted-foreground">{nutrient.label}</dt>
+                <dd className="font-medium">
+                  {nutrient.value} {gramUnitLabel}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
       )}
     </div>

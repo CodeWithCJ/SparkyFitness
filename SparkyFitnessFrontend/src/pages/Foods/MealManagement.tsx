@@ -59,6 +59,7 @@ import {
 } from '@/utils/nutrientUtils';
 import { useMealInvalidation } from '@/hooks/useInvalidateKeys';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkActionToolbar from '@/components/BulkActionToolbar';
@@ -75,7 +76,12 @@ import {
 // Interactions with the meal plan calendar are handled by the calendar itself.
 const MealManagement: React.FC = () => {
   const { t } = useTranslation();
-  const { loggingLevel } = usePreferences();
+  const {
+    loggingLevel,
+    nutrientDisplayPreferences,
+    energyUnit,
+    convertEnergy,
+  } = usePreferences();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<MealFilter>('all');
   const [editingMealId, setEditingMealId] = useState<string | undefined>(
@@ -94,8 +100,6 @@ const MealManagement: React.FC = () => {
   const [mealToDelete, setMealToDelete] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
-  const { nutrientDisplayPreferences, energyUnit, convertEnergy } =
-    usePreferences();
   const { data: customNutrients = [] } = useCustomNutrients();
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -341,14 +345,16 @@ const MealManagement: React.FC = () => {
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
-            aria-label="Select all"
+            aria-label={t('mealManagement.selectAllMeals', 'Select all meals')}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label={t('mealManagement.selectMeal', 'Select {{mealName}}', {
+              mealName: row.original.name,
+            })}
           />
         ),
         enableSorting: false,
@@ -365,12 +371,12 @@ const MealManagement: React.FC = () => {
                 <span className="font-semibold">{meal.name}</span>
                 {meal.is_public && (
                   <Badge variant="secondary" className="h-4 px-1 text-[10px]">
-                    <Share2 className="h-2.5 w-2.5 mr-1" />
+                    <Share2 className="me-1 h-2.5 w-2.5" aria-hidden="true" />
                     {t('mealManagement.public', 'Public')}
                   </Badge>
                 )}
               </div>
-              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+              <span className="max-w-[200px] truncate text-xs text-muted-foreground">
                 {meal.description || t('mealManagement.noDescription')}
               </span>
             </div>
@@ -388,7 +394,7 @@ const MealManagement: React.FC = () => {
                 (
                 {nutrient === 'calories'
                   ? getEnergyUnitString(energyUnit)
-                  : meta.unit}
+                  : getLocalizedUnitLabel(meta.unit, t)}
                 )
               </span>
             </div>
@@ -440,8 +446,15 @@ const MealManagement: React.FC = () => {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
+                <Button
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  aria-label={t(
+                    'mealManagement.openMealActions',
+                    'Open actions for {{mealName}}',
+                    { mealName: meal.name }
+                  )}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -450,15 +463,15 @@ const MealManagement: React.FC = () => {
                   {t('common.actions', 'Actions')}
                 </DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => handleViewDetails(meal)}>
-                  <Eye className="mr-2 h-4 w-4" />
+                  <Eye className="me-2 h-4 w-4" />
                   {t('mealManagement.viewMealDetails', 'View Details')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleEditMeal(meal.id!)}>
-                  <Edit className="mr-2 h-4 w-4" />
+                  <Edit className="me-2 h-4 w-4" />
                   {t('mealManagement.editMeal', 'Edit Meal')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleDuplicateMeal(meal.id!)}>
-                  <Copy className="mr-2 h-4 w-4" />
+                  <Copy className="me-2 h-4 w-4" />
                   {t('mealManagement.duplicateMeal', 'Duplicate Meal')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -470,12 +483,12 @@ const MealManagement: React.FC = () => {
                 >
                   {meal.is_public ? (
                     <>
-                      <Lock className="mr-2 h-4 w-4" />
+                      <Lock className="me-2 h-4 w-4" />
                       {t('mealManagement.unshareMeal', 'Make Private')}
                     </>
                   ) : (
                     <>
-                      <Share2 className="mr-2 h-4 w-4" />
+                      <Share2 className="me-2 h-4 w-4" />
                       {t('mealManagement.shareMeal', 'Share Public')}
                     </>
                   )}
@@ -485,7 +498,7 @@ const MealManagement: React.FC = () => {
                   className="text-destructive focus:text-destructive"
                   onClick={() => openDeleteConfirmation(meal.id!)}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="me-2 h-4 w-4" />
                   {t('mealManagement.deleteMeal', 'Delete Meal')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -514,7 +527,7 @@ const MealManagement: React.FC = () => {
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 pb-4">
-          <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
+          <CardTitle className="text-xl font-bold tracking-tight sm:text-2xl">
             {t('mealManagement.manageMeals', 'Meal Management')}
           </CardTitle>
           <div className="flex gap-2">
@@ -528,6 +541,11 @@ const MealManagement: React.FC = () => {
                   : ''
               }`}
               title={
+                isEditMode
+                  ? t('common.cancel', 'Cancel')
+                  : t('common.select', 'Select')
+              }
+              aria-label={
                 isEditMode
                   ? t('common.cancel', 'Cancel')
                   : t('common.select', 'Select')
@@ -550,8 +568,9 @@ const MealManagement: React.FC = () => {
               size={isMobile ? 'icon' : 'default'}
               className="shrink-0"
               title={t('mealManagement.createNewMeal', 'Create New Meal')}
+              aria-label={t('mealManagement.createNewMeal', 'Create New Meal')}
             >
-              <Plus className={isMobile ? 'h-5 w-5' : 'mr-2 h-4 w-4'} />
+              <Plus className={isMobile ? 'h-5 w-5' : 'me-2 h-4 w-4'} />
               {!isMobile && (
                 <span>
                   {t('mealManagement.createNewMeal', 'Create New Meal')}
@@ -561,7 +580,7 @@ const MealManagement: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4 mb-4">
+          <div className="mb-4 flex flex-wrap gap-4">
             <Input
               placeholder={t(
                 'mealManagement.searchMealsPlaceholder',
@@ -573,7 +592,7 @@ const MealManagement: React.FC = () => {
                 clearSelection();
                 setRowSelection({});
               }}
-              className="flex-1 min-w-[200px]"
+              className="min-w-[200px] flex-1"
             />
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-500" />
@@ -665,7 +684,7 @@ const MealManagement: React.FC = () => {
       >
         <DialogContent
           requireConfirmation
-          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+          className="max-h-[90vh] max-w-4xl overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle>
@@ -705,7 +724,7 @@ const MealManagement: React.FC = () => {
       >
         <DialogContent
           requireConfirmation
-          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+          className="max-h-[90vh] max-w-4xl overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle>
@@ -746,14 +765,15 @@ const MealManagement: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div>
-            <h4 className="font-semibold mb-2">
+            <h4 className="mb-2 font-semibold">
               {t('mealManagement.foodsInThisMeal', 'Foods in this Meal:')}
             </h4>
             {viewingMeal?.foods && viewingMeal.foods.length > 0 ? (
-              <ul className="list-disc pl-5 space-y-1">
+              <ul className="list-disc space-y-1 ps-5">
                 {viewingMeal.foods.map((food, index) => (
                   <li key={index}>
-                    {food.quantity} {food.unit} - {food.food_name}
+                    {food.quantity} {getLocalizedUnitLabel(food.unit, t)} –{' '}
+                    {food.food_name}
                   </li>
                 ))}
               </ul>
@@ -811,7 +831,7 @@ const MealManagement: React.FC = () => {
               )}
             </div>
           )}
-          <div className="flex justify-end space-x-2 mt-4">
+          <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               onClick={() => {

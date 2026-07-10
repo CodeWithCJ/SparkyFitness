@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import MealBuilder from '@/components/MealBuilder';
 import type { FoodEntryMeal, MealFood } from '@/types/meal';
+import { useTranslation } from 'react-i18next';
 
 interface EditMealFoodEntryDialogProps {
   foodEntry: FoodEntryMeal;
@@ -19,6 +20,7 @@ const EditMealFoodEntryDialog = ({
   open,
   onOpenChange,
 }: EditMealFoodEntryDialogProps) => {
+  const { t } = useTranslation();
   const initialMealFoods: MealFood[] = foodEntry.foods ?? [];
 
   const handleSave = () => {
@@ -29,13 +31,14 @@ const EditMealFoodEntryDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Logged Meal: {foodEntry?.name}</DialogTitle>{' '}
+          <DialogTitle>
+            {t('mealLogging.editTitle', { name: foodEntry.name })}
+          </DialogTitle>
           <DialogDescription>
-            Modify the foods and quantities for this specific logged meal entry.
+            {t('mealLogging.editDescription')}
           </DialogDescription>
-          <p className="text-sm text-blue-500 mt-2">
-            Note: Changes made here will only affect this specific entry in your
-            food diary, not the master meal template.
+          <p className="mt-2 rounded-md bg-muted px-3 py-2 text-sm leading-relaxed text-muted-foreground">
+            {t('mealLogging.editScopeNotice')}
           </p>
         </DialogHeader>
         <MealBuilder

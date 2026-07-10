@@ -22,7 +22,7 @@ import type {
   PresetExercise,
   ExerciseToLog,
 } from '@/types/workout';
-import { formatMinutesToHHMM } from '@/utils/timeFormatters';
+import { formatLocalizedMinutes } from '@/utils/timeFormatters';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import ExercisePresetEntryDisplay from './ExercisePresetEntryDisplay';
 import EditExerciseDatabaseDialog from './EditExerciseDatabaseDialog';
@@ -42,6 +42,7 @@ import {
   ExerciseEntry,
   GroupedExerciseEntry,
 } from '@/types/exercises';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
 interface PresetExerciseToLog extends Exercise {
@@ -395,7 +396,21 @@ const ExerciseCard = ({
   }, [exerciseEntries]);
 
   if (loading) {
-    return <div>Loading exercises...</div>;
+    const loadingLabel = t('exerciseCard.loadingExercises');
+
+    return (
+      <Card>
+        <CardContent className="py-10">
+          <div
+            role="status"
+            aria-label={loadingLabel}
+            className="flex items-center justify-center text-sm text-muted-foreground"
+          >
+            <span className="animate-pulse">{loadingLabel}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -410,11 +425,13 @@ const ExerciseCard = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    type="button"
                     size="default"
                     variant="outline"
                     onClick={handleStartWorkoutPlayback}
+                    aria-label={t('exerciseCard.startWorkout')}
                   >
-                    <Play className="w-4 h-4" />
+                    <Play className="w-4 h-4" aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -425,8 +442,13 @@ const ExerciseCard = ({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="default" onClick={handleOpenAddDialog}>
-                    <Dumbbell className="w-4 h-4" />
+                  <Button
+                    type="button"
+                    size="default"
+                    onClick={handleOpenAddDialog}
+                    aria-label={t('exerciseCard.addExercise')}
+                  >
+                    <Dumbbell className="w-4 h-4" aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -506,10 +528,10 @@ const ExerciseCard = ({
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-gray-900 dark:text-gray-100">
-                    {formatMinutesToHHMM(stats.totalDuration)}
+                    {formatLocalizedMinutes(stats.totalDuration, t)}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {t('common.minutesUnit', 'Min')}
+                    {t('exerciseCard.duration')}
                   </div>
                 </div>
                 <div className="text-center">
@@ -519,7 +541,7 @@ const ExerciseCard = ({
                       : 0}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {t('common.avgHrUnit', 'Avg HR')}
+                    {t('exerciseCard.averageHeartRate')}
                   </div>
                 </div>
                 <div className="text-center">
@@ -529,7 +551,7 @@ const ExerciseCard = ({
                     )}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {t('common.caloriesUnit', getEnergyUnitString(energyUnit))}
+                    {getLocalizedUnitLabel(energyUnit, t)}
                   </div>
                 </div>
               </div>

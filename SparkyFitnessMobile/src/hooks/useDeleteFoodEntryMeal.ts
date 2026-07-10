@@ -9,6 +9,7 @@ import {
   foodsQueryKey,
   recentMealsQueryKeyRoot,
 } from './queryKeys';
+import { mobileT } from '../localization';
 
 interface UseDeleteFoodEntryMealOptions {
   mealId: string;
@@ -30,14 +31,18 @@ export function useDeleteFoodEntryMeal({
       onSuccess?.();
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: 'Failed to delete', text2: 'Please try again.' });
+      Toast.show({
+        type: 'error',
+        text1: mobileT('delete.failedTitle'),
+        text2: mobileT('common.retry'),
+      });
     },
   });
 
   const confirmAndDelete = () => {
-    Alert.alert('Delete Meal', 'Delete this meal?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => mutation.mutate() },
+    Alert.alert(mobileT('delete.mealTitle'), mobileT('delete.mealDescription'), [
+      { text: mobileT('common.cancel'), style: 'cancel' },
+      { text: mobileT('common.delete'), style: 'destructive', onPress: () => mutation.mutate() },
     ]);
   };
 

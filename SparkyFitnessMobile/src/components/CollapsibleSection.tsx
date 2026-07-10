@@ -9,6 +9,7 @@ import {
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
+import { formatMobileItemCount, mobileT } from '../localization';
 
 
 interface CollapsibleSectionProps {
@@ -51,7 +52,9 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
-        accessibilityHint={expanded ? 'Collapse this section' : 'Expand this section'}
+        accessibilityHint={
+          expanded ? mobileT('section.collapse') : mobileT('section.expand')
+        }
       >
         <View className="flex-row items-center gap-2">
           <Animated.View style={chevronStyle}>
@@ -60,7 +63,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           <Text className="text-base font-semibold text-text-primary">{title}</Text>
         </View>
         <Text className="text-sm text-text-muted">
-          ({itemCount} {itemCount === 1 ? 'item' : 'items'})
+          ({formatMobileItemCount(itemCount)})
         </Text>
       </TouchableOpacity>
       {expanded && <View className="mt-1">{children}</View>}

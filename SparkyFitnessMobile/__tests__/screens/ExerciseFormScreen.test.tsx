@@ -14,6 +14,7 @@ import ExerciseFormScreen, {
 } from '../../src/screens/ExerciseFormScreen';
 import { useCreateExercise, useUpdateExercise } from '../../src/hooks';
 import type { Exercise } from '../../src/types/exercise';
+import { mobileT } from '../../src/localization';
 
 jest.mock('../../src/hooks', () => ({
   useCreateExercise: jest.fn(),
@@ -95,6 +96,10 @@ const baseExercise: Exercise = {
 describe('ExerciseFormScreen — helpers', () => {
   it('splitCsvList trims, dedupes, and drops empties', () => {
     expect(splitCsvList(' barbell, bench, barbell ,, ')).toEqual(['barbell', 'bench']);
+  });
+
+  it('splitCsvList accepts Arabic commas', () => {
+    expect(splitCsvList('دمبل، بنش, دمبل')).toEqual(['دمبل', 'بنش']);
   });
 
   it('joinCsvList round-trips', () => {
@@ -259,11 +264,11 @@ describe('ExerciseFormScreen — create mode', () => {
       </SafeAreaProvider>,
     );
 
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, mobileT('common.save'));
 
     await waitFor(() => {
       expect(Toast.show).toHaveBeenCalledWith(
-        expect.objectContaining({ text1: 'Missing name' }),
+        expect.objectContaining({ text1: mobileT('exerciseForm.missingName') }),
       );
     });
   });
@@ -303,7 +308,9 @@ describe('ExerciseFormScreen — edit mode', () => {
       </SafeAreaProvider>,
     );
 
-    pressAction(screen, navigation, 'Save');
+    expect(screen.getByDisplayValue('٣٦٠')).toBeTruthy();
+
+    pressAction(screen, navigation, mobileT('common.save'));
 
     await waitFor(() => {
       expect(navigation.goBack).toHaveBeenCalled();
@@ -329,10 +336,12 @@ describe('ExerciseFormScreen — edit mode', () => {
     );
 
     // Change the name field to force a diff. Find the Name input by its placeholder.
-    const nameInput = screen.getByPlaceholderText('e.g. Bulgarian Split Squat');
+    const nameInput = screen.getByPlaceholderText(
+      mobileT('exerciseForm.namePlaceholder'),
+    );
     fireEvent.changeText(nameInput, 'Bench Press 2');
 
-    pressAction(screen, navigation, 'Save');
+    pressAction(screen, navigation, mobileT('common.save'));
 
     await waitFor(() => {
       expect(updateExerciseAsync).toHaveBeenCalledWith({

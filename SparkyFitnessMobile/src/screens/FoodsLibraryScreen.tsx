@@ -13,6 +13,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodItem } from '../types/foods';
+import { mobileT } from '../localization';
 
 type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
 
@@ -51,12 +52,14 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const renderEmpty = () => (
     <View className="px-6 py-10 items-center">
       <Text className="text-text-primary text-base font-medium text-center">
-        {searchText.trim().length > 0 ? 'No matching foods found' : 'No foods found'}
+        {searchText.trim().length > 0
+          ? mobileT('library.noMatchingFoods')
+          : mobileT('library.noFoods')}
       </Text>
       <Text className="text-text-secondary text-sm mt-2 text-center">
         {searchText.trim().length > 0
-          ? 'Try a different search term to find saved foods.'
-          : 'Foods you save or log will appear here.'}
+          ? mobileT('library.tryAnotherSearch')
+          : mobileT('library.savedFoodsAppear')}
       </Text>
     </View>
   );
@@ -68,15 +71,19 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your food library."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          title={mobileT('library.noServerTitle')}
+          subtitle={mobileT('library.noServerDescription')}
+          action={{
+            label: mobileT('common.goToSettings'),
+            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
+            variant: 'primary',
+          }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading foods..." />;
+      return <StatusView loading title={mobileT('library.loadingFoods')} />;
     }
 
     if (isError) {
@@ -85,9 +92,13 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title="Failed to load foods"
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+          title={mobileT('library.loadFoodsFailed')}
+          subtitle={mobileT('library.connectionError')}
+          action={{
+            label: mobileT('common.retry'),
+            onPress: () => refetch(),
+            variant: 'primary',
+          }}
         />
       );
     }
@@ -108,7 +119,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more foods."
+            errorMessage={mobileT('library.loadMoreFoodsFailed')}
             onRetry={loadMore}
           />
         }
@@ -127,7 +138,10 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     );
   };
 
-  const header = useScreenHeader({ title: 'Foods', left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: mobileT('library.foods'),
+    left: { kind: 'back' },
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -136,7 +150,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search foods..."
+          placeholder={mobileT('library.searchFoods')}
           isSearching={isSearching}
         />
       ) : null}

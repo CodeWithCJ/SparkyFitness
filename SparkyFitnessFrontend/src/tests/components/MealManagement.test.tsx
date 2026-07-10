@@ -16,16 +16,40 @@ jest.mock('@/i18n', () => ({
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, defaultValueOrOpts?: string | Record<string, unknown>) => {
-      if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;
-      if (
-        defaultValueOrOpts &&
-        typeof defaultValueOrOpts === 'object' &&
-        'defaultValue' in defaultValueOrOpts
-      ) {
-        return defaultValueOrOpts['defaultValue'] as string;
-      }
-      return key;
+    t: (
+      key: string,
+      defaultValueOrOpts?: string | Record<string, string>,
+      options?: Record<string, string>
+    ) => {
+      const values =
+        typeof defaultValueOrOpts === 'object'
+          ? defaultValueOrOpts
+          : (options ?? {});
+      const translations: Record<string, string> = {
+        'mealManagement.manageMeals': 'مكتبة الوجبات',
+        'mealManagement.createNewMeal': 'إنشاء وجبة',
+        'mealManagement.searchMealsPlaceholder': 'ابحث في الوجبات…',
+        'mealManagement.all': 'الكل',
+        'mealManagement.noMealsFound':
+          'ما عندك وجبات محفوظة. أنشئ وجبتك الأولى.',
+        'mealManagement.noDescription': 'بدون وصف',
+        'mealManagement.public': 'عامة',
+        'mealManagement.openMealActions': 'فتح إجراءات {{mealName}}',
+        'common.select': 'تحديد',
+        'common.actions': 'الإجراءات',
+        'common.kcalUnit': 'سعرة حرارية',
+        'units.gram': 'غ',
+      };
+      const fallback =
+        typeof defaultValueOrOpts === 'string'
+          ? defaultValueOrOpts
+          : ((defaultValueOrOpts?.['defaultValue'] as string) ?? key);
+      const template = translations[key] ?? fallback;
+      return Object.entries(values).reduce(
+        (value, [name, replacement]) =>
+          value.replaceAll(`{{${name}}}`, replacement),
+        template
+      );
     },
   }),
 }));
@@ -90,11 +114,11 @@ describe('MealManagement', () => {
 
     renderWithClient(<MealManagement />);
 
-    expect(screen.getByText('Meal Management')).toBeInTheDocument();
+    expect(screen.getByText('مكتبة الوجبات')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(
-        screen.getByText('No meals found. Create one!')
+        screen.getByText('ما عندك وجبات محفوظة. أنشئ وجبتك الأولى.')
       ).toBeInTheDocument();
     });
   });
@@ -103,14 +127,14 @@ describe('MealManagement', () => {
     mockGetMeals.mockResolvedValue([
       {
         id: 'meal1',
-        name: 'Breakfast Bowl',
-        description: 'A healthy start',
+        name: 'وعاء الفطور',
+        description: 'بداية خفيفة',
         is_public: false,
         foods: [],
       },
       {
         id: 'meal2',
-        name: 'Protein Shake',
+        name: 'مشروب البروتين',
         description: '',
         is_public: true,
         foods: [],
@@ -120,8 +144,12 @@ describe('MealManagement', () => {
     renderWithClient(<MealManagement />);
 
     await waitFor(() => {
-      expect(screen.getAllByText('Breakfast Bowl').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('Protein Shake').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('وعاء الفطور').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('مشروب البروتين').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByRole('button', { name: 'فتح إجراءات وعاء الفطور' })
+          .length
+      ).toBeGreaterThan(0);
     });
   });
 });

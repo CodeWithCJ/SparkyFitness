@@ -13,6 +13,13 @@ import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import type { FoodEntry } from '../types/foodEntries';
 import type { EntryNutrition } from '../utils/mealNutrition';
+import {
+  formatMobileCalories,
+  formatMobileNumber,
+  isMobileRtl,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 interface SwipeableFoodRowProps {
   entry: FoodEntry;
@@ -87,19 +94,23 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
     };
   });
 
-  const renderRightActions = () => (
+  const renderDeleteAction = () => (
     <TouchableOpacity
-      className="bg-bg-danger justify-center items-center ml-4"
+      className="bg-bg-danger justify-center items-center"
       style={{ width: DELETE_ACTION_WIDTH }}
       onPress={confirmAndDelete}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={mobileT('diary.deleteFood')}
     >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+      <Text className="text-text-danger font-semibold text-sm">
+        {mobileT('common.delete')}
+      </Text>
     </TouchableOpacity>
   );
 
   const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
-  const name = entry.food_name || 'Unknown food';
+  const name = entry.food_name || mobileT('diary.unknownFood');
 
   const handlePress = () => {
     if (isMealComponent && entry.food_entry_meal_id) {
@@ -116,10 +127,17 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
       onPress?: () => void;
     }[] = [];
     if (canQuickAdjust) {
-      buttons.push({ text: 'Adjust serving', onPress: () => onAdjustServing!(entry) });
+      buttons.push({
+        text: mobileT('diary.adjustServing'),
+        onPress: () => onAdjustServing!(entry),
+      });
     }
-    buttons.push({ text: 'Delete', style: 'destructive', onPress: deleteEntry });
-    buttons.push({ text: 'Cancel', style: 'cancel' });
+    buttons.push({
+      text: mobileT('common.delete'),
+      style: 'destructive',
+      onPress: deleteEntry,
+    });
+    buttons.push({ text: mobileT('common.cancel'), style: 'cancel' });
     Alert.alert(name, undefined, buttons);
   };
 
@@ -127,13 +145,17 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
     <Animated.View style={animatedStyle} onLayout={handleLayout}>
       <ReanimatedSwipeable
         ref={swipeableRef}
-        renderRightActions={renderRightActions}
+        renderLeftActions={isMobileRtl ? renderDeleteAction : undefined}
+        renderRightActions={isMobileRtl ? undefined : renderDeleteAction}
+        overshootLeft={false}
         overshootRight={false}
+        leftThreshold={40}
         rightThreshold={40}
       >
         <View className="py-1.5 flex-row items-center bg-surface">
           <TouchableOpacity
-            className="flex-1 mr-2"
+            className="flex-1"
+            style={{ marginEnd: 8 }}
             activeOpacity={0.7}
             onPress={handlePress}
             onLongPress={handleLongPress}
@@ -143,7 +165,8 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
                 {name}{' · '}
               </Text>
               <Text className="text-sm text-text-secondary" numberOfLines={1}>
-                {entry.quantity} {entry.unit}
+                {formatMobileNumber(entry.quantity)}{' '}
+                {localizeServingUnit(entry.unit)}
               </Text>
             </View>
           </TouchableOpacity>
@@ -155,11 +178,14 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
               className="py-0 px-0"
               textClassName="text-sm text-text-secondary font-medium"
             >
-              {`${nutrition.calories} Cal ▾`}
+              {`${formatMobileCalories(nutrition.calories)} ▾`}
             </Button>
           ) : (
-            <Text className="text-sm text-text-secondary font-medium mr-2">
-              {nutrition.calories} Cal
+            <Text
+              className="text-sm text-text-secondary font-medium"
+              style={{ marginEnd: 8 }}
+            >
+              {formatMobileCalories(nutrition.calories)}
             </Text>
           )}
         </View>

@@ -11,6 +11,12 @@ import {
   groupFoodEntriesByMealType,
   type MealTypeKey,
 } from '../utils/mealNutrition';
+import {
+  formatMobileCalories,
+  isMobileRtl,
+  localizeMealType,
+  mobileT,
+} from '../localization';
 
 interface FoodSummaryProps {
   foodEntries: FoodEntry[];
@@ -28,20 +34,29 @@ interface MealSectionProps {
 
 const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustServing, onPressMealType }) => {
   const config = MEAL_CONFIG[mealType] || { label: mealType, icon: 'meal-snack' as IconName };
+  const mealLabel = localizeMealType(mealType);
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const totalCalories = calculateMealNutrition(entries).values.calories;
   const headerContent = (
     <>
       <Icon name={config.icon} size={18} color={accentPrimary} />
-      <Text className="text-base font-bold text-text-secondary flex-1">{config.label}</Text>
+      <Text className="text-base font-bold text-text-secondary flex-1">
+        {mealLabel}
+      </Text>
       {totalCalories > 0 && (
         <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
-          <Text className="text-xs text-accent-primary font-semibold">{totalCalories} Cal</Text>
+          <Text className="text-xs text-accent-primary font-semibold">
+            {formatMobileCalories(totalCalories)}
+          </Text>
         </View>
       )}
       {onPressMealType && (
-        <Icon name="chevron-forward" size={14} color={accentPrimary} />
+        <Icon
+          name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+          size={14}
+          color={accentPrimary}
+        />
       )}
     </>
   );
@@ -53,7 +68,9 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustSe
           onPress={() => onPressMealType(mealType, entries)}
           className="flex-row gap-2 mb-3 items-center"
           accessibilityRole="button"
-          accessibilityLabel={`${config.label} nutrition breakdown`}
+          accessibilityLabel={mobileT('diary.nutritionBreakdown', {
+            meal: mealLabel,
+          })}
         >
           {headerContent}
         </Pressable>
@@ -80,8 +97,15 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustSe
 const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdjustServing, onPressMealType }) => {
   if (foodEntries.length === 0) {
     return (
-      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
-        <Text className="text-text-muted text-base">Tap to add food</Text>
+      <Pressable
+        onPress={onAddFood}
+        accessibilityRole="button"
+        accessibilityLabel={mobileT('diary.tapToAddFood')}
+        className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
+      >
+        <Text className="text-text-muted text-base">
+          {mobileT('diary.tapToAddFood')}
+        </Text>
       </Pressable>
     );
   }
@@ -92,8 +116,15 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdj
 
   if (mealTypesWithEntries.length === 0 && !hasOther) {
     return (
-      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
-        <Text className="text-text-muted text-base">Tap to add food</Text>
+      <Pressable
+        onPress={onAddFood}
+        accessibilityRole="button"
+        accessibilityLabel={mobileT('diary.tapToAddFood')}
+        className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
+      >
+        <Text className="text-text-muted text-base">
+          {mobileT('diary.tapToAddFood')}
+        </Text>
       </Pressable>
     );
   }

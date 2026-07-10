@@ -1,4 +1,9 @@
 import { getMetabolicStage, type MetabolicStage } from '../constants/fasting';
+import {
+  formatMobileDuration,
+  formatMobileNumber,
+  mobileT,
+} from '../localization';
 import { toLocalDateString, formatDateLabel } from './dateUtils';
 import type { FastingLog, FastingStats } from '../types/fasting';
 
@@ -10,17 +15,19 @@ export function formatElapsedClock(ms: number): string {
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
   const seconds = total % 60;
-  const pad = (n: number) => String(n).padStart(2, '0');
+  const pad = (n: number) =>
+    formatMobileNumber(n, {
+      maximumFractionDigits: 0,
+      minimumIntegerDigits: 2,
+      useGrouping: false,
+    });
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-/** Formats a duration as a short "Xh Ym" label (drops the hours when zero). */
+/** Formats a duration with natural Saudi Arabic hour/minute plurals. */
 export function formatHoursMinutes(ms: number): string {
   const totalMinutes = Math.max(0, Math.floor(ms / 60000));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours <= 0) return `${minutes}m`;
-  return `${hours}h ${minutes}m`;
+  return formatMobileDuration(totalMinutes);
 }
 
 /**
@@ -84,10 +91,9 @@ export function computeFastTimerValues(
   };
 }
 
-/** Lowercases "Today"/"Yesterday" (matches the card mockup) but keeps absolute dates. */
+/** Returns the shared Gregorian Saudi Arabic date label. */
 export function relativeDayLabel(dateString: string): string {
-  const label = formatDateLabel(dateString);
-  return label === 'Today' || label === 'Yesterday' ? label.toLowerCase() : label;
+  return formatDateLabel(dateString);
 }
 
 /**
@@ -95,12 +101,17 @@ export function relativeDayLabel(dateString: string): string {
  * history row. Returns null when there is no usable completed fast (e.g. a row
  * with `duration_minutes = null`), so the caller can omit the line entirely.
  */
-export function formatLastFast(log: FastingLog | null | undefined): string | null {
+export function formatLastFast(
+  log: FastingLog | null | undefined,
+): string | null {
   if (!log || log.duration_minutes == null) return null;
   const duration = formatHoursMinutes(log.duration_minutes * 60000);
   const refDate = log.end_time ?? log.start_time;
-  if (!refDate) return `Last fast ${duration}`;
-  return `Last fast ${duration} · ${relativeDayLabel(toLocalDateString(refDate))}`;
+  if (!refDate) return mobileT('fasting.lastFast', { duration });
+  return mobileT('fasting.lastFastWithDate', {
+    duration,
+    date: relativeDayLabel(toLocalDateString(refDate)),
+  });
 }
 
 export interface FastingStatsDisplay {
@@ -114,7 +125,9 @@ export interface FastingStatsDisplay {
   totalUnit: string;
 }
 
-function toFiniteNumber(value: string | number | null | undefined): number | null {
+function toFiniteNumber(
+  value: string | number | null | undefined,
+): number | null {
   if (value == null) return null;
   const n = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(n) ? n : null;
@@ -133,10 +146,24 @@ export function formatFastingStats(
   const count = toFiniteNumber(stats?.total_completed_fasts);
 
   return {
-    avgFastValue: avgMin != null ? (avgMin / 60).toFixed(1) : '—',
-    avgFastUnit: avgMin != null ? 'h' : '',
-    fastsCount: count != null ? String(Math.round(count)) : '0',
-    totalValue: totalMin != null ? String(Math.round(totalMin / 60)) : '—',
-    totalUnit: totalMin != null ? 'h' : '',
+    avgFastValue:
+      avgMin != null
+        ? formatMobileNumber(avgMin / 60, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          })
+        : '—',
+    avgFastUnit: avgMin != null ? 'ساعة' : '',
+    fastsCount:
+      count != null
+        ? formatMobileNumber(Math.round(count), { maximumFractionDigits: 0 })
+        : formatMobileNumber(0),
+    totalValue:
+      totalMin != null
+        ? formatMobileNumber(Math.round(totalMin / 60), {
+            maximumFractionDigits: 0,
+          })
+        : '—',
+    totalUnit: totalMin != null ? 'ساعة' : '',
   };
 }

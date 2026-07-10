@@ -33,6 +33,8 @@ import {
   type ServerConfig,
 } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { mobileT } from '../localization';
+import { normalizeLocalizedDigits } from '../utils/numericInput';
 
 interface ReauthModalProps {
   visible: boolean;
@@ -127,9 +129,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
   // --- Sign In ---
 
   const handleSignIn = async () => {
-    if (!currentUrl) { setError('No server selected.'); return; }
-    if (!email.trim()) { setError('Please enter your email.'); return; }
-    if (!password) { setError('Please enter your password.'); return; }
+    if (!currentUrl) { setError(mobileT('reauth.noServer')); return; }
+    if (!email.trim()) { setError(mobileT('onboarding.emailRequired')); return; }
+    if (!password) { setError(mobileT('onboarding.passwordRequired')); return; }
 
     setLoading(true);
     setError('');
@@ -158,20 +160,22 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       clearPendingProxyHeaders();
       onLoginSuccess();
     } catch (err) {
-      if (err instanceof LoginError) {
-        setError(err.message);
-      } else {
-        setError('Could not connect to server. Please try again.');
-      }
+      const message = err instanceof Error ? err.message : String(err);
+      addLog(`[ReauthModal] Sign-in failed: ${message}`, 'ERROR');
+      setError(
+        err instanceof LoginError && err.statusCode === 401
+          ? mobileT('onboarding.invalidCredentials')
+          : mobileT('onboarding.signInFailed'),
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const handlePasskeySignIn = async () => {
-    if (!currentUrl) { setError('No server selected.'); return; }
+    if (!currentUrl) { setError(mobileT('reauth.noServer')); return; }
     if (!__DEV__ && currentUrl.toLowerCase().startsWith('http://')) {
-      setError('HTTPS is required for server connections.');
+      setError(mobileT('serverSettings.httpsRequired'));
       return;
     }
 
@@ -184,11 +188,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       clearPendingProxyHeaders();
       onLoginSuccess();
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(String(err));
-      }
+      const message = err instanceof Error ? err.message : String(err);
+      addLog(`[ReauthModal] Passkey sign-in failed: ${message}`, 'ERROR');
+      setError(mobileT('onboarding.passkeyFailed'));
     } finally {
       setLoading(false);
     }
@@ -197,8 +199,8 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
   // --- MFA ---
 
   const handleVerifyMfa = async () => {
-    const code = mfaCode.trim();
-    if (!code) { setError('Please enter the verification code.'); return; }
+    const code = normalizeLocalizedDigits(mfaCode.trim());
+    if (!code) { setError(mobileT('onboarding.verificationCodeRequired')); return; }
 
     setLoading(true);
     setError('');
@@ -215,25 +217,25 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
     } catch (err) {
       if (err instanceof LoginError) {
         if (err.statusCode === 429) {
-          setError('Too many attempts. Please wait a moment and try again.');
+          setError(mobileT('onboarding.tooManyAttempts'));
         } else if (err.message.toLowerCase().includes('invalid code')) {
-          setError('Invalid verification code. Please try again.');
-        } else if (err.statusCode === undefined) {
-          setError(err.message);
+          setError(mobileT('onboarding.invalidVerificationCode'));
         } else if (
           err.message.includes('INVALID_TWO_FACTOR_COOKIE') ||
           err.message.toLowerCase().includes('invalid two factor cookie') ||
           err.message.includes('expired')
         ) {
           await clearAuthCookies();
-          setError('Your session has expired. Please sign in again.');
+          setError(mobileT('onboarding.sessionExpired'));
           setStep('credentials');
         } else {
-          setError(err.message);
+          setError(mobileT('onboarding.verificationFailed'));
         }
       } else {
-        setError('Verification failed. Please try again.');
+        setError(mobileT('onboarding.verificationFailed'));
       }
+      const message = err instanceof Error ? err.message : String(err);
+      addLog(`[ReauthModal] MFA verification failed: ${message}`, 'ERROR');
     } finally {
       setLoading(false);
     }
@@ -247,11 +249,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       await sendEmailOtp(currentUrl);
       setEmailOtpSent(true);
     } catch (err) {
-      if (err instanceof LoginError) {
-        setError(err.message);
-      } else {
-        setError('Failed to send email code. Please try again.');
-      }
+      const message = err instanceof Error ? err.message : String(err);
+      addLog(`[ReauthModal] Email code request failed: ${message}`, 'ERROR');
+      setError(mobileT('onboarding.sendEmailCodeFailed'));
     } finally {
       setLoading(false);
     }
@@ -304,7 +304,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
             {/* Header */}
             <View className="items-center mb-5">
               <Text className="text-[22px] font-bold text-center text-text-primary">
-                {step === 'credentials' ? 'Session Expired' : 'Two-Factor Authentication'}
+                {step === 'credentials'
+                  ? mobileT('reauth.sessionExpired')
+                  : mobileT('onboarding.mfaTitle')}
               </Text>
             </View>
 
@@ -313,7 +315,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                 {/* Server picker (only if multiple session configs) */}
                 {configs.length > 1 && (
                   <View className="mb-3">
-                    <Text className="text-sm mb-2 text-text-secondary">Server</Text>
+                    <Text className="text-sm mb-2 text-text-secondary">
+                      {mobileT('reauth.server')}
+                    </Text>
                     {configs.map((config) => (
                       <TouchableOpacity
                         key={config.id}
@@ -336,11 +340,12 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                               ? accentPrimary
                               : textMuted
                           }
-                          style={{ marginRight: 8 }}
+                          style={{ marginEnd: 8 }}
                         />
                         <Text
                           className="flex-1 text-base text-text-primary"
                           numberOfLines={1}
+                          style={{ writingDirection: 'ltr', textAlign: 'left' }}
                         >
                           {config.url}
                         </Text>
@@ -352,7 +357,11 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                 {/* Server label (single config) */}
                 {configs.length === 1 && (
                   <View className="mb-3">
-                    <Text className="text-sm text-text-muted text-center" numberOfLines={1}>
+                    <Text
+                      className="text-sm text-text-muted text-center"
+                      numberOfLines={1}
+                      style={{ writingDirection: 'ltr' }}
+                    >
                       {configs[0].url}
                     </Text>
                   </View>
@@ -360,22 +369,27 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
 
                 {/* Email */}
                 <View className="mb-3">
-                  <Text className="text-sm mb-2 text-text-secondary">Email</Text>
+                  <Text className="text-sm mb-2 text-text-secondary">
+                    {mobileT('onboarding.email')}
+                  </Text>
                   <FormInput
-                    placeholder="email@example.com"
+                    placeholder="name@example.com"
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
                     keyboardType="email-address"
                     autoComplete="email"
+                    style={{ writingDirection: 'ltr', textAlign: 'left' }}
                   />
                 </View>
 
                 {/* Password */}
                 <View className="mb-4">
-                  <Text className="text-sm mb-2 text-text-secondary">Password</Text>
+                  <Text className="text-sm mb-2 text-text-secondary">
+                    {mobileT('onboarding.password')}
+                  </Text>
                   <FormInput
-                    placeholder="Password"
+                    placeholder={mobileT('onboarding.password')}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -385,7 +399,11 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
 
                 <ErrorBanner message={error} />
 
-                <PrimaryButton label="Sign In" onPress={handleSignIn} loading={loading} />
+                <PrimaryButton
+                  label={mobileT('onboarding.signIn')}
+                  onPress={handleSignIn}
+                  loading={loading}
+                />
 
                 <Button
                   variant="outline"
@@ -399,11 +417,11 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ marginRight: 8 }}>
+                    <View style={{ marginEnd: 8 }}>
                       <Icon name="fingerprint" size={20} color={accentPrimary} />
                     </View>
                     <Text className="text-base font-semibold text-text-primary">
-                      Sign in with Passkey
+                      {mobileT('onboarding.signInWithPasskey')}
                     </Text>
                   </View>
                 </Button>
@@ -415,7 +433,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                     className="mt-2 py-2"
                     textClassName="text-sm text-text-muted"
                   >
-                    Use API Key Instead
+                    {mobileT('mfa.useApiKey')}
                   </Button>
                 )}
 
@@ -425,7 +443,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                   className="mt-2 py-2.5"
                   textClassName="text-base text-text-muted"
                 >
-                  Later
+                  {mobileT('common.later')}
                 </Button>
               </>
             ) : (

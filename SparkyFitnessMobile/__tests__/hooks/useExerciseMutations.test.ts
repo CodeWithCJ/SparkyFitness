@@ -195,11 +195,11 @@ describe('useExerciseMutations', () => {
       });
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Delete Workout?',
-        'This workout and all its exercises will be permanently removed.',
+        'حذف التمرين؟',
+        'بينحذف التمرين وكل تفاصيله نهائيًا.',
         expect.arrayContaining([
-          expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
-          expect.objectContaining({ text: 'Delete', style: 'destructive' }),
+          expect.objectContaining({ text: 'إلغاء', style: 'cancel' }),
+          expect.objectContaining({ text: 'حذف', style: 'destructive' }),
         ]),
       );
     });
@@ -219,7 +219,7 @@ describe('useExerciseMutations', () => {
 
       // Extract the Delete button's onPress from the Alert.alert mock call
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = alertButtons.find((b: any) => b.text === 'Delete');
+      const deleteButton = alertButtons.find((b: any) => b.text === 'حذف');
 
       await act(async () => {
         deleteButton.onPress();
@@ -258,8 +258,8 @@ describe('useExerciseMutations', () => {
       });
 
       expect(Alert.alert).toHaveBeenCalledWith(
-        'Delete Activity?',
-        'This activity will be permanently removed.',
+        'حذف النشاط؟',
+        'بينحذف النشاط نهائيًا.',
         expect.any(Array),
       );
     });
@@ -278,7 +278,7 @@ describe('useExerciseMutations', () => {
       });
 
       const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = alertButtons.find((b: any) => b.text === 'Delete');
+      const deleteButton = alertButtons.find((b: any) => b.text === 'حذف');
 
       await act(async () => {
         deleteButton.onPress();

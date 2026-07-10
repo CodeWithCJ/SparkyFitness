@@ -247,6 +247,17 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const daysOfCalorieLogs = adaptiveTdeeData?.daysOfData ?? 0;
 
+  const getLocalizedFallbackReason = () => {
+    const reason = adaptiveTdeeData?.fallbackReason?.toLowerCase() || '';
+    if (reason.includes('weight')) {
+      return t('exercise.dailyProgress.fallbackReasons.weight');
+    }
+    if (reason.includes('calorie')) {
+      return t('exercise.dailyProgress.fallbackReasons.calories');
+    }
+    return t('exercise.dailyProgress.fallbackReasons.general');
+  };
+
   const getTargetFallbackNotice = () => {
     const fallbackVal = Math.round(
       convertEnergy(bmr * activityMultiplier, 'kcal', energyUnit)
@@ -254,22 +265,38 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     const unitStr = getEnergyUnitString(energyUnit);
 
     if (!adaptiveTdeeData) {
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to insufficient data.`;
+      return t('exercise.dailyProgress.targetFallbackNoData', {
+        fallback: fallbackVal,
+        unit: unitStr,
+      });
     }
 
     if (adaptiveTdeeData.isFallback) {
       const reason = adaptiveTdeeData.fallbackReason?.toLowerCase() || '';
       if (reason.includes('weight')) {
-        return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) because weight logs are missing (requires at least 2 weight logs spanning 7+ days).`;
+        return t('exercise.dailyProgress.targetFallbackWeight', {
+          fallback: fallbackVal,
+          unit: unitStr,
+        });
       }
       if (reason.includes('calorie')) {
-        return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) because calorie logs are missing (requires at least 7 days with ≥200 kcal).`;
+        return t('exercise.dailyProgress.targetFallbackCalories', {
+          fallback: fallbackVal,
+          unit: unitStr,
+        });
       }
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to: ${adaptiveTdeeData.fallbackReason}`;
+      return t('exercise.dailyProgress.targetFallbackGeneral', {
+        fallback: fallbackVal,
+        unit: unitStr,
+      });
     }
 
     if (daysOfCalorieLogs < 14) {
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) until 14 days of calorie logs are reached (currently ${daysOfCalorieLogs}/14 days logged).`;
+      return t('exercise.dailyProgress.targetFallbackCollecting', {
+        fallback: fallbackVal,
+        unit: unitStr,
+        days: daysOfCalorieLogs,
+      });
     }
 
     return '';
@@ -279,8 +306,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     <Card className="h-full">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center space-x-2 text-base">
-            <Target className="w-4 h-4 text-green-500" />
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Target className="h-4 w-4 text-primary" aria-hidden="true" />
             <span className="dark:text-slate-300">
               {t('exercise.dailyProgress.dailyEnergyGoal', 'Daily Energy Goal')}
             </span>
@@ -300,7 +327,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             {/* Eaten */}
             <div className="space-y-1">
               <div className="flex items-center justify-center text-lg font-bold text-green-600">
-                <Utensils className="w-4 h-4 mr-1" />
+                <Utensils className="me-1 h-4 w-4" aria-hidden="true" />
                 {display.eaten}
               </div>
               <div className="text-xs text-gray-500">
@@ -313,16 +340,22 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="space-y-1 cursor-help">
+                  <button
+                    type="button"
+                    className="w-full cursor-help space-y-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={t(
+                      'exercise.dailyProgress.energyBurnedBreakdownTitle'
+                    )}
+                  >
                     <div className="flex items-center justify-center text-lg font-bold text-orange-600">
-                      <Flame className="w-4 h-4 mr-1" />
+                      <Flame className="me-1 h-4 w-4" aria-hidden="true" />
                       {display.burnedTotal}
                     </div>
                     <div className="text-xs text-gray-500">
                       {t('exercise.dailyProgress.burned', 'burned')}{' '}
                       {getEnergyUnitString(energyUnit)}
                     </div>
-                  </div>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent className="bg-black text-white text-xs p-2 rounded-md">
                   <p>
@@ -404,7 +437,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             {/* Goal */}
             <div className="space-y-1">
               <div className="flex items-center justify-center text-lg font-bold dark:text-slate-400 text-gray-900">
-                <Flag className="w-4 h-4 mr-1" />
+                <Flag className="me-1 h-4 w-4" aria-hidden="true" />
                 {display.goal}
               </div>
               <div className="text-xs dark:text-slate-400 text-gray-500">
@@ -507,7 +540,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 <Button
                   variant="link"
                   size="sm"
-                  className="p-0 h-auto text-red-800 font-bold underline decoration-2 underline-offset-2 whitespace-normal text-left justify-start"
+                  className="h-auto justify-start whitespace-normal p-0 text-start font-bold text-red-800 underline decoration-2 underline-offset-2"
                   onClick={() =>
                     isLeanMassBmr
                       ? navigate('/checkin')
@@ -595,7 +628,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     {t(
                       'exercise.dailyProgress.fallbackReason',
                       'Using estimation: {{reason}}',
-                      { reason: adaptiveTdeeData.fallbackReason }
+                      { reason: getLocalizedFallbackReason() }
                     )}
                   </span>
                 </div>
@@ -696,7 +729,11 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               </span>
               <span>{Math.round(calorieProgress)}%</span>
             </div>
-            <Progress value={calorieProgress} className="h-2" />
+            <Progress
+              value={calorieProgress}
+              className="h-2"
+              aria-label={t('exercise.dailyProgress.dailyProgress')}
+            />
           </div>
 
           {/* Calorie Math Breakdown Dropdown */}

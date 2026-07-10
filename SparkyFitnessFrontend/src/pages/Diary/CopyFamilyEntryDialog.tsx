@@ -73,7 +73,8 @@ const CopyFamilyEntryDialog = ({
     useState<string>(sourceMealType);
 
   const { data: familyAccess = [] } = useFamilyAccess(user?.activeUserId);
-  const { data: availableMealTypes } = useMealTypes();
+  const { data: availableMealTypes, isLoading: mealTypesLoading } =
+    useMealTypes();
 
   const { mutateAsync: copyFromFamily, isPending: isCopyingFrom } =
     useCopyFoodEntriesFromUserMutation();
@@ -175,6 +176,14 @@ const CopyFamilyEntryDialog = ({
       onClose();
     } catch (err) {
       console.error('Error during family diary copy:', err);
+      toast({
+        title: t('common.error', 'Error'),
+        description: t(
+          'diary.copyFamilyError',
+          'We could not copy these entries. Try again.'
+        ),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -192,7 +201,7 @@ const CopyFamilyEntryDialog = ({
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
+            <Users className="h-5 w-5 text-primary" aria-hidden="true" />
             {t('diary.copyFamilyTitle', 'Copy Food with Family')}
           </DialogTitle>
           <DialogDescription>
@@ -236,10 +245,10 @@ const CopyFamilyEntryDialog = ({
 
             <div className="grid gap-4 py-4 mt-2">
               {/* Family Member Select */}
-              <div className="grid grid-cols-4 items-center gap-4">
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-center sm:gap-4">
                 <Label
                   htmlFor="familyMember"
-                  className="text-right text-xs font-semibold"
+                  className="text-start text-xs font-semibold"
                 >
                   {t('diary.copyFamilyMemberLabel', 'Family Member')}
                 </Label>
@@ -247,7 +256,7 @@ const CopyFamilyEntryDialog = ({
                   value={activeFamilyMember}
                   onValueChange={setSelectedFamilyMember}
                 >
-                  <SelectTrigger className="col-span-3">
+                  <SelectTrigger id="familyMember" className="w-full">
                     <SelectValue
                       placeholder={t(
                         'diary.copyFamilyMemberPlaceholder',
@@ -264,7 +273,8 @@ const CopyFamilyEntryDialog = ({
                         match?.full_name ||
                         access.owner_full_name ||
                         match?.email ||
-                        access.owner_email;
+                        access.owner_email ||
+                        t('diary.copyFamilyUnknownMember');
                       return (
                         <SelectItem
                           key={access.id}
@@ -287,20 +297,28 @@ const CopyFamilyEntryDialog = ({
                     : t('diary.copySourceTitleSelf', 'Source (You)')}
                 </div>
 
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right text-xs">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-center sm:gap-4">
+                  <Label
+                    htmlFor="familySourceDate"
+                    className="text-start text-xs"
+                  >
                     {t('common.date', 'Date')}
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
+                        id="familySourceDate"
+                        type="button"
                         variant="outline"
                         className={cn(
-                          'col-span-3 justify-start text-left font-normal text-xs',
+                          'w-full justify-start text-start font-normal text-xs',
                           !sourceDate && 'text-muted-foreground'
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                        <CalendarIcon
+                          className="me-2 h-3.5 w-3.5"
+                          aria-hidden="true"
+                        />
                         {sourceDate ? (
                           formatDate(sourceDate)
                         ) : (
@@ -318,18 +336,29 @@ const CopyFamilyEntryDialog = ({
                   </Popover>
                 </div>
 
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right text-xs">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-center sm:gap-4">
+                  <Label
+                    htmlFor="familySourceMeal"
+                    className="text-start text-xs"
+                  >
                     {t('diary.copyFamilyMealType', 'Meal Type')}
                   </Label>
                   <Select
                     value={sourceMealTypeState}
                     onValueChange={setSourceMealTypeState}
                   >
-                    <SelectTrigger className="col-span-3 text-xs">
+                    <SelectTrigger
+                      id="familySourceMeal"
+                      className="w-full text-xs"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      {mealTypesLoading && (
+                        <SelectItem value="source-loading" disabled>
+                          {t('foodDiary.copyFoodEntryDialog.loadingMealTypes')}
+                        </SelectItem>
+                      )}
                       {availableMealTypes?.map((meal) => (
                         <SelectItem key={meal.id} value={meal.name}>
                           {getDisplayName(meal.name)}
@@ -348,6 +377,7 @@ const CopyFamilyEntryDialog = ({
                       'h-4 w-4 transition-transform duration-300',
                       activeTab === 'to' && 'rotate-180'
                     )}
+                    aria-hidden="true"
                   />
                 </div>
               </div>
@@ -361,20 +391,28 @@ const CopyFamilyEntryDialog = ({
                     : t('diary.copyTargetTitleFamily', 'Target (Family)')}
                 </div>
 
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right text-xs">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-center sm:gap-4">
+                  <Label
+                    htmlFor="familyTargetDate"
+                    className="text-start text-xs"
+                  >
                     {t('common.date', 'Date')}
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
+                        id="familyTargetDate"
+                        type="button"
                         variant="outline"
                         className={cn(
-                          'col-span-3 justify-start text-left font-normal text-xs',
+                          'w-full justify-start text-start font-normal text-xs',
                           !targetDate && 'text-muted-foreground'
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                        <CalendarIcon
+                          className="me-2 h-3.5 w-3.5"
+                          aria-hidden="true"
+                        />
                         {targetDate ? (
                           formatDate(targetDate)
                         ) : (
@@ -392,18 +430,29 @@ const CopyFamilyEntryDialog = ({
                   </Popover>
                 </div>
 
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right text-xs">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,auto)_1fr] sm:items-center sm:gap-4">
+                  <Label
+                    htmlFor="familyTargetMeal"
+                    className="text-start text-xs"
+                  >
                     {t('diary.copyFamilyMealType', 'Meal Type')}
                   </Label>
                   <Select
                     value={targetMealTypeState}
                     onValueChange={setTargetMealTypeState}
                   >
-                    <SelectTrigger className="col-span-3 text-xs">
+                    <SelectTrigger
+                      id="familyTargetMeal"
+                      className="w-full text-xs"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      {mealTypesLoading && (
+                        <SelectItem value="target-loading" disabled>
+                          {t('foodDiary.copyFoodEntryDialog.loadingMealTypes')}
+                        </SelectItem>
+                      )}
                       {availableMealTypes?.map((meal) => (
                         <SelectItem key={meal.id} value={meal.name}>
                           {getDisplayName(meal.name)}
@@ -418,11 +467,12 @@ const CopyFamilyEntryDialog = ({
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             {t('common.cancel', 'Cancel')}
           </Button>
           {eligibleFamily.length > 0 && (
             <Button
+              type="button"
               onClick={handleCopyClick}
               disabled={
                 isCopyingFrom ||
@@ -434,7 +484,7 @@ const CopyFamilyEntryDialog = ({
             >
               {isCopyingFrom || isCopyingTo
                 ? t('common.copying', 'Copying...')
-                : t('copyFoodEntryDialog.copyButton', 'Copy')}
+                : t('foodDiary.copyFoodEntryDialog.copyButton', 'Copy')}
             </Button>
           )}
         </DialogFooter>

@@ -7,16 +7,16 @@ import {
 
 describe('foodPhotoEstimate', () => {
   describe('confidence mapping', () => {
-    test('overall labels: Good / Fair / Rough', () => {
-      expect(overallConfidenceLabels.high).toBe('Good');
-      expect(overallConfidenceLabels.medium).toBe('Fair');
-      expect(overallConfidenceLabels.low).toBe('Rough');
+    test('overall labels are Arabic', () => {
+      expect(overallConfidenceLabels.high).toBe('جيد');
+      expect(overallConfidenceLabels.medium).toBe('متوسط');
+      expect(overallConfidenceLabels.low).toBe('تقريبي');
     });
 
-    test('item labels: Likely / Possible / Uncertain', () => {
-      expect(itemConfidenceLabels.high).toBe('Likely');
-      expect(itemConfidenceLabels.medium).toBe('Possible');
-      expect(itemConfidenceLabels.low).toBe('Uncertain');
+    test('item labels are Arabic', () => {
+      expect(itemConfidenceLabels.high).toBe('مرجّح');
+      expect(itemConfidenceLabels.medium).toBe('محتمل');
+      expect(itemConfidenceLabels.low).toBe('غير مؤكّد');
     });
 
     test('tone maps to success / warning / error', () => {
@@ -32,7 +32,7 @@ describe('foodPhotoEstimate', () => {
         const copy = mapEstimateError(code);
         expect(copy.invalidateAiSettings).toBe(true);
         expect(copy.stayOnForm).toBe(false);
-        expect(copy.title.toLowerCase()).toContain('ai');
+        expect(copy.title).toBe('الذكاء الاصطناعي غير مهيأ');
       }
     });
 
@@ -40,7 +40,7 @@ describe('foodPhotoEstimate', () => {
       const copy = mapEstimateError('IMAGE_TOO_LARGE');
       expect(copy.stayOnForm).toBe(false);
       expect(copy.invalidateAiSettings).toBe(false);
-      expect(copy.message.toLowerCase()).toContain('retake');
+      expect(copy.message).toContain('صورة جديدة');
     });
 
     test('CONTENT_BLOCKED stays on form so user keeps typed context', () => {
@@ -60,8 +60,8 @@ describe('foodPhotoEstimate', () => {
       const copy = mapEstimateError('TIMEOUT');
       expect(copy.stayOnForm).toBe(true);
       expect(copy.invalidateAiSettings).toBe(false);
-      expect(copy.title.toLowerCase()).toContain('timed out');
-      expect(copy.message.toLowerCase()).toContain('too long');
+      expect(copy.title).toBe('مزود الذكاء الاصطناعي تأخر بالرد');
+      expect(copy.message).toContain('وقتًا أطول من المتوقع');
     });
 
     test('PRIVATE_NETWORK_FORBIDDEN invalidates AI settings', () => {

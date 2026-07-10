@@ -10,6 +10,7 @@ export default tseslint.config(
     ignores: [
       '**/node_modules/**',
       '**/coverage/**',
+      '**/dist/**',
       '**/uploads/**',
       '**/backup/**',
       '**/temp_uploads/**',

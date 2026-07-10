@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type RequestHandler } from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import exerciseService from '../services/exerciseService.js';
 import reportRepository from '../models/reportRepository.js';
@@ -8,6 +8,11 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { ExternalProviderType } from 'types/externalProvider.ts';
+import {
+  requireUploadsEnabled,
+  uploadsUnavailableBody,
+} from '../middleware/deploymentModeMiddleware.js';
+import { getStorageMode } from '../utils/runtimeConfig.js';
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -39,6 +44,36 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage: storage });
+const fieldsOnlyUpload = multer().none();
+
+// Exercise create/update requests use multipart form data even when they only
+// contain metadata. In storage-disabled deployments, parse those text fields
+// but reject any attached file before Multer's disk storage can run.
+const parseExerciseImages: RequestHandler = (req, res, next) => {
+  if (getStorageMode() !== 'disabled') {
+    upload.array('images', 10)(req, res, next);
+    return;
+  }
+
+  fieldsOnlyUpload(req, res, (error: unknown) => {
+    if (!error) {
+      next();
+      return;
+    }
+
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'LIMIT_UNEXPECTED_FILE'
+    ) {
+      res.status(501).json(uploadsUnavailableBody);
+      return;
+    }
+
+    next(error);
+  });
+};
 /**
  * @swagger
  * tags:
@@ -861,35 +896,30 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.post(
-  '/',
-  authenticate,
-  upload.array('images', 10),
-  async (req, res, next) => {
-    try {
-      const exerciseData = JSON.parse(req.body.exerciseData);
-      // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
-      const imagePaths = req.files
-        ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
-          req.files.map(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (file: any) =>
-              `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
-          )
-        : [];
+router.post('/', authenticate, parseExerciseImages, async (req, res, next) => {
+  try {
+    const exerciseData = JSON.parse(req.body.exerciseData);
+    // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
+    const imagePaths = req.files
+      ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
+        req.files.map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (file: any) =>
+            `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
+        )
+      : [];
 
-      const newExercise = await exerciseService.createExercise(req.userId, {
-        ...exerciseData,
+    const newExercise = await exerciseService.createExercise(req.userId, {
+      ...exerciseData,
 
-        user_id: req.userId,
-        images: imagePaths,
-      });
-      res.status(201).json(newExercise);
-    } catch (error) {
-      next(error);
-    }
+      user_id: req.userId,
+      images: imagePaths,
+    });
+    res.status(201).json(newExercise);
+  } catch (error) {
+    next(error);
   }
-);
+});
 // Endpoint to import exercises from CSV (file upload)
 /**
  * @swagger
@@ -933,6 +963,7 @@ router.post(
 router.post(
   '/import',
   authenticate,
+  requireUploadsEnabled,
   upload.single('file'),
   async (req, res, next) => {
     try {
@@ -1073,9 +1104,9 @@ router.post('/import-json', authenticate, async (req, res, next) => {
 router.put(
   '/:id',
   authenticate,
-  upload.array('images', 10),
+  parseExerciseImages,
   async (req, res, next) => {
-    const { id } = req.params;
+    const id = String(req.params.id ?? '');
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (!id || !uuidRegex.test(id)) {

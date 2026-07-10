@@ -15,37 +15,56 @@ import type {
   RootStackScreenProps,
 } from '../types/navigation';
 import type { CreateExercisePayload, UpdateExercisePayload } from '../services/api/exerciseApi';
-import { SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import {
+  formatMobileNumber,
+  isMobileRtl,
+  localizeExerciseCategory,
+  localizeExerciseMetadata,
+  mobileT,
+} from '../localization';
+
+const categoryOption = (value: string) => ({
+  label: localizeExerciseCategory(value),
+  value,
+});
+
+const metadataOption = (
+  kind: 'level' | 'force' | 'mechanic',
+  value: string,
+) => ({
+  label: localizeExerciseMetadata(kind, value),
+  value,
+});
 
 const CATEGORY_OPTIONS = [
-  { label: 'General', value: 'general' },
-  { label: 'Strength', value: 'strength' },
-  { label: 'Cardio', value: 'cardio' },
-  { label: 'Yoga', value: 'yoga' },
-  { label: 'Powerlifting', value: 'powerlifting' },
-  { label: 'Olympic Weightlifting', value: 'olympic weightlifting' },
-  { label: 'Strongman', value: 'strongman' },
-  { label: 'Plyometrics', value: 'plyometrics' },
-  { label: 'Stretching', value: 'stretching' },
-  { label: 'Isometric', value: 'isometric' },
-] as const;
+  categoryOption('general'),
+  categoryOption('strength'),
+  categoryOption('cardio'),
+  categoryOption('yoga'),
+  categoryOption('powerlifting'),
+  categoryOption('olympic weightlifting'),
+  categoryOption('strongman'),
+  categoryOption('plyometrics'),
+  categoryOption('stretching'),
+  categoryOption('isometric'),
+];
 
 const LEVEL_OPTIONS = [
-  { label: 'Beginner', value: 'beginner' },
-  { label: 'Intermediate', value: 'intermediate' },
-  { label: 'Expert', value: 'expert' },
-] as const;
+  metadataOption('level', 'beginner'),
+  metadataOption('level', 'intermediate'),
+  metadataOption('level', 'expert'),
+];
 
 const FORCE_OPTIONS = [
-  { label: 'Pull', value: 'pull' },
-  { label: 'Push', value: 'push' },
-  { label: 'Static', value: 'static' },
-] as const;
+  metadataOption('force', 'pull'),
+  metadataOption('force', 'push'),
+  metadataOption('force', 'static'),
+];
 
 const MECHANIC_OPTIONS = [
-  { label: 'Compound', value: 'compound' },
-  { label: 'Isolation', value: 'isolation' },
-] as const;
+  metadataOption('mechanic', 'compound'),
+  metadataOption('mechanic', 'isolation'),
+];
 
 type EditParams = Extract<RootStackParamList['ExerciseForm'], { mode: 'edit-exercise' }>;
 
@@ -53,7 +72,7 @@ type ExerciseFormScreenProps = RootStackScreenProps<'ExerciseForm'>;
 type Navigation = ExerciseFormScreenProps['navigation'];
 
 const splitCsvList = (s: string): string[] =>
-  Array.from(new Set(s.split(',').map((v) => v.trim()).filter(Boolean)));
+  Array.from(new Set(s.split(/[,،]/).map((v) => v.trim()).filter(Boolean)));
 
 const joinCsvList = (xs?: string[] | null): string => (xs ?? []).join(', ');
 
@@ -110,7 +129,7 @@ const labelForOption = (
   options: readonly { label: string; value: string }[],
   value: string | null,
 ): string => {
-  if (!value) return 'Select…';
+  if (!value) return mobileT('exerciseForm.select');
   const match = options.find((opt) => opt.value === value);
   return match ? match.label : titleCase(value);
 };
@@ -122,6 +141,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 }) => {
   const textMuted = useCSSVariable('--color-text-muted') as string;
   const [showAdvanced, setShowAdvanced] = useState(() => hasAdvancedContent(state));
+  const collapsedAdvancedIcon = isMobileRtl ? 'chevron-back' : 'chevron-forward';
 
   const categoryOptions = useMemo(() => {
     if (
@@ -148,11 +168,13 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
         value={value ?? ''}
         options={options.map((opt) => ({ label: opt.label, value: opt.value }))}
         onSelect={onSelect}
-        title={`Select ${label}`}
+        title={mobileT('exerciseForm.selectField', { field: label })}
         renderTrigger={({ onPress }) => (
           <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={mobileT('exerciseForm.selectField', { field: label })}
             className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
             style={{ height: 44 }}
           >
@@ -169,9 +191,11 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
       <View className="gap-1.5">
-        <Text className="text-text-secondary text-sm font-medium">Name *</Text>
+        <Text className="text-text-secondary text-sm font-medium">
+          {mobileT('exerciseForm.name')}
+        </Text>
         <FormInput
-          placeholder="e.g. Bulgarian Split Squat"
+          placeholder={mobileT('exerciseForm.namePlaceholder')}
           value={state.name}
           onChangeText={(name) => setState((prev) => ({ ...prev, name }))}
           autoCapitalize="words"
@@ -182,17 +206,20 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       </View>
 
       {showCategory
-        ? renderPicker('Category', categoryOptions, state.category, (category) =>
-            setState((prev) => ({ ...prev, category })),
+        ? renderPicker(
+            mobileT('exerciseForm.category'),
+            categoryOptions,
+            state.category,
+            (category) => setState((prev) => ({ ...prev, category })),
           )
         : null}
 
       <View className="gap-1.5">
         <Text className="text-text-secondary text-sm font-medium">
-          Calories per Hour
+          {mobileT('exerciseForm.caloriesPerHour')}
         </Text>
         <FormInput
-          placeholder="0"
+          placeholder={formatMobileNumber(0)}
           value={state.caloriesPerHourText}
           onChangeText={(v) => {
             if (DECIMAL_INPUT_REGEX.test(v)) {
@@ -205,9 +232,11 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       </View>
 
       <View className="gap-1.5">
-        <Text className="text-text-secondary text-sm font-medium">Description</Text>
+        <Text className="text-text-secondary text-sm font-medium">
+          {mobileT('exerciseForm.description')}
+        </Text>
         <FormInput
-          placeholder="Optional notes about the exercise"
+          placeholder={mobileT('exerciseForm.descriptionPlaceholder')}
           value={state.description}
           onChangeText={(description) =>
             setState((prev) => ({ ...prev, description }))
@@ -222,14 +251,15 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
         onPress={() => setShowAdvanced((prev) => !prev)}
         activeOpacity={0.7}
         accessibilityRole="button"
+        accessibilityLabel={mobileT('exerciseForm.advanced')}
         accessibilityState={{ expanded: showAdvanced }}
         className="flex-row items-center justify-between py-2"
       >
         <Text className="text-text-primary font-medium" style={{ fontSize: 16 }}>
-          Advanced
+          {mobileT('exerciseForm.advanced')}
         </Text>
         <Icon
-          name={showAdvanced ? 'chevron-down' : 'chevron-forward'}
+          name={showAdvanced ? 'chevron-down' : collapsedAdvancedIcon}
           size={16}
           color={textMuted}
         />
@@ -237,14 +267,14 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
       {showAdvanced ? (
         <View className="gap-4">
-          <SectionHeader>Muscles</SectionHeader>
+          <SectionHeader>{mobileT('exerciseForm.muscles')}</SectionHeader>
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
-              Primary muscles
+              {mobileT('exerciseForm.primaryMuscles')}
             </Text>
             <FormInput
-              placeholder="Comma-separated (e.g. quadriceps, glutes)"
+              placeholder={mobileT('exerciseForm.primaryMusclesPlaceholder')}
               value={state.primaryMuscles}
               onChangeText={(primaryMuscles) =>
                 setState((prev) => ({ ...prev, primaryMuscles }))
@@ -256,10 +286,10 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
-              Secondary muscles
+              {mobileT('exerciseForm.secondaryMuscles')}
             </Text>
             <FormInput
-              placeholder="Comma-separated"
+              placeholder={mobileT('exerciseForm.listPlaceholder')}
               value={state.secondaryMuscles}
               onChangeText={(secondaryMuscles) =>
                 setState((prev) => ({ ...prev, secondaryMuscles }))
@@ -269,26 +299,35 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
             />
           </View>
 
-          <SectionHeader>Classification</SectionHeader>
+          <SectionHeader>{mobileT('exerciseForm.classification')}</SectionHeader>
 
-          {renderPicker('Level', LEVEL_OPTIONS, state.level, (level) =>
-            setState((prev) => ({ ...prev, level })),
+          {renderPicker(
+            mobileT('exerciseForm.level'),
+            LEVEL_OPTIONS,
+            state.level,
+            (level) => setState((prev) => ({ ...prev, level })),
           )}
-          {renderPicker('Force', FORCE_OPTIONS, state.force, (force) =>
-            setState((prev) => ({ ...prev, force })),
+          {renderPicker(
+            mobileT('exerciseForm.force'),
+            FORCE_OPTIONS,
+            state.force,
+            (force) => setState((prev) => ({ ...prev, force })),
           )}
-          {renderPicker('Mechanic', MECHANIC_OPTIONS, state.mechanic, (mechanic) =>
-            setState((prev) => ({ ...prev, mechanic })),
+          {renderPicker(
+            mobileT('exerciseForm.mechanic'),
+            MECHANIC_OPTIONS,
+            state.mechanic,
+            (mechanic) => setState((prev) => ({ ...prev, mechanic })),
           )}
 
-          <SectionHeader>Details</SectionHeader>
+          <SectionHeader>{mobileT('exerciseForm.details')}</SectionHeader>
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
-              Equipment
+              {mobileT('exerciseForm.equipment')}
             </Text>
             <FormInput
-              placeholder="Comma-separated (e.g. dumbbell, bench)"
+              placeholder={mobileT('exerciseForm.equipmentPlaceholder')}
               value={state.equipment}
               onChangeText={(equipment) =>
                 setState((prev) => ({ ...prev, equipment }))
@@ -300,10 +339,10 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
-              Instructions
+              {mobileT('exerciseForm.instructions')}
             </Text>
             <FormInput
-              placeholder="One step per line"
+              placeholder={mobileT('exerciseForm.instructionsPlaceholder')}
               value={state.instructions}
               onChangeText={(instructions) =>
                 setState((prev) => ({ ...prev, instructions }))
@@ -328,8 +367,8 @@ const validateAndParseCalories = (
   if (Number.isNaN(parsed)) {
     Toast.show({
       type: 'error',
-      text1: 'Invalid calories per hour',
-      text2: 'Please enter a valid number.',
+      text1: mobileT('exerciseForm.invalidCalories'),
+      text2: mobileT('exerciseForm.validNumberPrompt'),
     });
     return { ok: false };
   }
@@ -390,8 +429,8 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     if (!trimmedName) {
       Toast.show({
         type: 'error',
-        text1: 'Missing name',
-        text2: 'Please enter an exercise name.',
+        text1: mobileT('exerciseForm.missingName'),
+        text2: mobileT('exerciseForm.nameRequired'),
       });
       return;
     }
@@ -403,7 +442,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
 
     try {
       const created = await createExerciseAsync(payload);
-      Toast.show({ type: 'success', text1: 'Exercise created' });
+      Toast.show({ type: 'success', text1: mobileT('exerciseForm.created') });
       navigation.replace('ExerciseDetail', { item: created });
     } catch {
       // Error toast handled in useCreateExercise.
@@ -412,9 +451,9 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
 
   return (
     <FormScreenChrome
-      title="New Exercise"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
+      title={mobileT('exerciseForm.newTitle')}
+      saveLabel={mobileT('common.save')}
+      savingLabel={mobileT('common.saving')}
       isSaving={isPending}
       onSave={() => {
         void handleSave();
@@ -508,7 +547,12 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     name: exercise.name,
     category: exercise.category,
     caloriesPerHourText:
-      exercise.calories_per_hour > 0 ? String(exercise.calories_per_hour) : '',
+      exercise.calories_per_hour > 0
+        ? formatMobileNumber(exercise.calories_per_hour, {
+            maximumFractionDigits: 2,
+            useGrouping: false,
+          })
+        : '',
     description: exercise.description ?? '',
     equipment: joinCsvList(exercise.equipment),
     primaryMuscles: joinCsvList(exercise.primary_muscles),
@@ -525,8 +569,8 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     if (!trimmedName) {
       Toast.show({
         type: 'error',
-        text1: 'Missing name',
-        text2: 'Please enter an exercise name.',
+        text1: mobileT('exerciseForm.missingName'),
+        text2: mobileT('exerciseForm.nameRequired'),
       });
       return;
     }
@@ -543,7 +587,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
 
     try {
       const updated = await updateExerciseAsync({ id: exercise.id, payload });
-      Toast.show({ type: 'success', text1: 'Exercise updated' });
+      Toast.show({ type: 'success', text1: mobileT('exerciseForm.updated') });
       navigation.dispatch({
         ...CommonActions.setParams({ updatedItem: updated }),
         source: returnKey,
@@ -556,9 +600,9 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
 
   return (
     <FormScreenChrome
-      title="Edit Exercise"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
+      title={mobileT('exerciseForm.editTitle')}
+      saveLabel={mobileT('common.save')}
+      savingLabel={mobileT('common.saving')}
       isSaving={isPending}
       onSave={() => {
         void handleSave();

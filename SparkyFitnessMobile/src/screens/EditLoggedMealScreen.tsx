@@ -7,7 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -21,14 +21,19 @@ import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel, normalizeDate } from '../utils/dateUtils';
-import { getMealTypeLabel } from '../constants/meals';
 import { buildMealIngredientDraftFromEntryMealFood } from '../utils/mealBuilderDraft';
-import { formatCaloriesDisplay, formatServingSizeDisplay } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { mealIngredientDraftToFoodInfo } from '../types/foodInfo';
 import type { MealIngredientDraft } from '../types/meals';
 import type { FoodEntryMealUpdateData } from '../types/foodEntryMeals';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  formatMobileNumber,
+  formatMobilePreciseCalories,
+  localizeMealType,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 type EditLoggedMealScreenProps = RootStackScreenProps<'EditLoggedMeal'>;
 
@@ -136,7 +141,14 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const effectiveName = name ?? meal?.name ?? '';
   const effectiveDate = selectedDate ?? (meal ? normalizeDate(meal.entry_date) : null);
   const effectiveMealId = selectedMealId ?? meal?.meal_type_id ?? undefined;
-  const effectiveQuantityText = quantityText ?? (meal ? String(meal.quantity) : '');
+  const effectiveQuantityText =
+    quantityText ??
+    (meal
+      ? formatMobileNumber(meal.quantity, {
+          maximumFractionDigits: 4,
+          useGrouping: false,
+        })
+      : '');
   const quantity = parseDecimalInput(effectiveQuantityText) || 0;
   const originalQuantity = meal?.quantity && meal.quantity > 0 ? meal.quantity : 1;
   // Rescale stored component quantities by the CHANGE in servings, not the raw
@@ -149,7 +161,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
   const mealPickerOptions = useMemo(
-    () => mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id })),
+    () =>
+      mealTypes.map((mt) => ({
+        label: localizeMealType(mt.name),
+        value: mt.id,
+      })),
     [mealTypes],
   );
 
@@ -224,14 +240,21 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
   const clampQuantity = () => {
     if (quantity <= 0) {
-      setQuantityText('1');
+      setQuantityText(
+        formatMobileNumber(1, { maximumFractionDigits: 0 }),
+      );
     }
   };
 
   const adjustQuantity = (delta: number) => {
     const step = 0.5;
     const next = quantity + delta * step;
-    setQuantityText(String(Math.max(step, next)));
+    setQuantityText(
+      formatMobileNumber(Math.max(step, next), {
+        maximumFractionDigits: 1,
+        useGrouping: false,
+      }),
+    );
   };
 
   const openIngredientPicker = () => {
@@ -300,12 +323,12 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     left: { kind: 'back' },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
+      label: mobileT('common.save'),
+      busyLabel: mobileT('common.saving'),
       busy: isSavePending,
       disabled: !canSave || isRowBusy,
       onPress: handleSave,
-      accessibilityLabel: 'Save meal',
+      accessibilityLabel: mobileT('editLoggedMeal.saveMeal'),
       identifier: 'edit-logged-meal-save',
     },
   });
@@ -319,7 +342,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   }
 
   if (isError || !meal) {
-    throw error instanceof Error ? error : new Error('Failed to load meal');
+    throw error instanceof Error
+      ? error
+      : new Error(mobileT('editLoggedMeal.loadFailed'));
   }
 
   // displayScale converts a draft's stored quantity to the consumed amount:
@@ -346,11 +371,13 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
       >
         {/* Name */}
         <View>
-          <Text className="text-text-secondary text-sm mb-1">Meal name</Text>
+          <Text className="text-text-secondary text-sm mb-1">
+            {mobileT('editLoggedMeal.mealName')}
+          </Text>
           <FormInput
             value={effectiveName}
             onChangeText={setName}
-            placeholder="Meal name"
+            placeholder={mobileT('editLoggedMeal.mealName')}
             autoCapitalize="sentences"
           />
         </View>
@@ -367,7 +394,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
         {/* Quantity */}
         <View>
-          <Text className="text-text-secondary text-sm mb-1">Servings</Text>
+          <Text className="text-text-secondary text-sm mb-1">
+            {mobileT('editLoggedMeal.servings')}
+          </Text>
           <View className="flex-row items-center">
             <StepperInput
               value={effectiveQuantityText}
@@ -377,8 +406,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               onDecrement={() => adjustQuantity(-1)}
               keyboardType="decimal-pad"
             />
-            <Text className="text-text-primary text-base font-medium ml-2">
-              {meal.unit}
+            <Text
+              className="text-text-primary text-base font-medium"
+              style={{ marginStart: 8 }}
+            >
+              {localizeServingUnit(meal.unit)}
             </Text>
           </View>
         </View>
@@ -386,7 +418,12 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
         {/* Date row */}
         <Animated.View layout={LinearTransition.duration(300)} className="flex-row items-center">
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">Date</Text>
+            <Text
+              className="text-text-secondary text-base"
+              style={{ marginEnd: 8 }}
+            >
+              {mobileT('foodEntry.date')}
+            </Text>
             <TouchableOpacity
               onPress={() => calendarRef.current?.present()}
               activeOpacity={0.7}
@@ -395,19 +432,24 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               <Text className="text-text-primary text-base font-medium">
                 {effectiveDate ? formatDateLabel(effectiveDate) : ''}
               </Text>
-              <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
+              <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginStart: 6 }} weight="medium" />
             </TouchableOpacity>
           </View>
 
           {/* Meal type */}
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">Meal</Text>
+            <Text
+              className="text-text-secondary text-base"
+              style={{ marginEnd: 8 }}
+            >
+              {mobileT('foodEntry.meal')}
+            </Text>
             {selectedMealType && effectiveMealId ? (
               <BottomSheetPicker
                 value={effectiveMealId}
                 options={mealPickerOptions}
                 onSelect={(id) => setSelectedMealId(id)}
-                title="Select Meal"
+                title={mobileT('foodEntry.selectMeal')}
                 renderTrigger={({ onPress }) => (
                   <TouchableOpacity
                     onPress={onPress}
@@ -415,15 +457,15 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
                     className="flex-row items-center"
                   >
                     <Text className="text-text-primary text-base font-medium">
-                      {getMealTypeLabel(selectedMealType.name)}
+                      {localizeMealType(selectedMealType.name)}
                     </Text>
-                    <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
+                    <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginStart: 6 }} weight="medium" />
                   </TouchableOpacity>
                 )}
               />
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {getMealTypeLabel(meal.meal_type)}
+                {localizeMealType(meal.meal_type)}
               </Text>
             )}
           </View>
@@ -431,7 +473,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
         {/* Component foods: tap a row to edit, swipe to remove, button to add. */}
         <View className="mt-2">
-          <Text className="text-text-secondary text-sm mb-2">Foods in this meal</Text>
+          <Text className="text-text-secondary text-sm mb-2">
+            {mobileT('editLoggedMeal.foods')}
+          </Text>
           {ingredients.length > 0 ? (
             <View className="bg-surface rounded-xl overflow-hidden">
               {ingredients.map((food, index) => {
@@ -439,13 +483,17 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
                 // rows stay consistent with the nutrition card and the payload.
                 const scaledQty = food.quantity * displayScale;
                 const scale = food.serving_size > 0 ? scaledQty / food.serving_size : 0;
-                const foodCals = formatCaloriesDisplay((food.calories ?? 0) * scale);
+                const foodCals = formatMobilePreciseCalories(
+                  (food.calories ?? 0) * scale,
+                );
                 return (
                   <SwipeableIngredientRow
                     key={`${food.food_id}-${food.variant_id}-${index}`}
-                    foodName={food.food_name ?? 'Food'}
-                    quantityLabel={`${formatServingSizeDisplay(scaledQty)} ${food.unit}`}
-                    caloriesLabel={`${foodCals} Cal`}
+                    foodName={food.food_name ?? mobileT('mealAdd.foodFallback')}
+                    quantityLabel={`${formatMobileNumber(scaledQty, {
+                      maximumFractionDigits: 4,
+                    })} ${localizeServingUnit(food.unit)}`}
+                    caloriesLabel={foodCals}
                     showBottomBorder={index < ingredients.length - 1}
                     isLastIngredient={ingredients.length === 1}
                     disabled={isRowBusy}
@@ -456,7 +504,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               })}
             </View>
           ) : (
-            <Text className="text-text-muted text-sm">No foods in this meal yet.</Text>
+            <Text className="text-text-muted text-sm">
+              {mobileT('editLoggedMeal.noFoods')}
+            </Text>
           )}
 
           <View className="items-center pt-3">
@@ -465,10 +515,12 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               onPress={openIngredientPicker}
               disabled={isRowBusy}
               className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
-              accessibilityLabel="Add Food"
+              accessibilityLabel={mobileT('editLoggedMeal.addFood')}
             >
               <Icon name="add" size={16} color={accentColor} />
-              <Text className="text-accent-primary text-sm font-semibold">Add Food</Text>
+              <Text className="text-accent-primary text-sm font-semibold">
+                {mobileT('editLoggedMeal.addFood')}
+              </Text>
             </Button>
           </View>
         </View>
@@ -481,7 +533,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           className="mt-2"
           textClassName="text-bg-danger font-medium"
         >
-          {isDeletePending ? 'Deleting...' : 'Delete Meal'}
+          {isDeletePending
+            ? mobileT('mealDetail.deleting')
+            : mobileT('mealDetail.deleteMeal')}
         </Button>
       </ScrollView>
 

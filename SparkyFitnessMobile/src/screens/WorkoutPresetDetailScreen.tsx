@@ -26,6 +26,7 @@ import {
 } from '../utils/workoutSession';
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
+import { formatMobileExerciseCount, mobileT } from '../localization';
 
 type WorkoutPresetDetailScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
 
@@ -97,7 +98,10 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   const { confirmAndDelete, isPending: isDeletePending } = useDeleteWorkoutPreset({
     presetId: preset.id,
     onSuccess: () => {
-      Toast.show({ type: 'success', text1: 'Workout preset deleted' });
+      Toast.show({
+        type: 'success',
+        text1: mobileT('workoutPresetDetail.deleted'),
+      });
       navigation.goBack();
     },
   });
@@ -125,18 +129,22 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     }
 
     Alert.alert(
-      'Draft in Progress',
-      `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+      mobileT('alerts.draftTitle'),
+      mobileT('alerts.unsavedDraft', {
+        activityType: mobileT(
+          draft.type === 'workout' ? 'alerts.workout' : 'alerts.activity',
+        ),
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: mobileT('common.cancel'), style: 'cancel' },
         {
-          text: 'Resume Draft',
+          text: mobileT('alerts.resumeDraft'),
           onPress: () => {
             navigation.navigate(draft.type === 'workout' ? 'WorkoutAdd' : 'ActivityAdd');
           },
         },
         {
-          text: 'Discard & Continue',
+          text: mobileT('alerts.discardAndContinue'),
           style: 'destructive',
           onPress: async () => {
             await clearDraft();
@@ -164,10 +172,10 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     right: canManagePreset
       ? {
           kind: 'text',
-          label: 'Edit',
+          label: mobileT('common.edit'),
           role: 'secondary',
           onPress: handleEdit,
-          accessibilityLabel: 'Edit workout preset',
+          accessibilityLabel: mobileT('workoutPresetDetail.editPreset'),
           identifier: 'workout-preset-detail-edit',
         }
       : null,
@@ -192,7 +200,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           <Text className="text-base text-text-secondary mt-2">{preset.description}</Text>
         ) : null}
         <Text className="text-sm text-text-muted mt-2 mb-4">
-          {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+          {formatMobileExerciseCount(exerciseCount)}
         </Text>
 
         {cardExercises.map(cardExercise => {
@@ -244,7 +252,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           className="mt-4"
         >
           <Text className="text-white text-base font-semibold">
-            {isStarting ? 'Starting...' : 'Start workout'}
+            {isStarting
+              ? mobileT('workoutPresetDetail.starting')
+              : mobileT('workoutPresetDetail.startWorkout')}
           </Text>
         </Button>
 
@@ -255,7 +265,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           className="mt-3"
           textClassName="text-text-secondary font-medium"
         >
-          Log past workout
+          {mobileT('workoutPresetDetail.logPastWorkout')}
         </Button>
 
         {canManagePreset && (
@@ -266,7 +276,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
             className="mt-3"
             textClassName="text-bg-danger font-medium"
           >
-            {isDeletePending ? 'Deleting...' : 'Delete preset'}
+            {isDeletePending
+              ? mobileT('workoutPresetDetail.deleting')
+              : mobileT('workoutPresetDetail.deletePreset')}
           </Button>
         )}
       </ScrollView>

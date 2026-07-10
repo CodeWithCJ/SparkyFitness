@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-10_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -66,6 +66,7 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - `models/` - PostgreSQL repositories and persistence helpers
 - `middleware/` - auth, permissions, uploads, and shared Express middleware
 - `integrations/` - provider adapters and ingest pipelines
+- `integrations/huaweihealth/` - owner-only HUAWEI Health cloud OAuth, token lifecycle, REST client, and ingest mapping
 - `schemas/` - Zod route schemas
 - `types/` - TypeScript declarations, including `Express.Request` augmentation
 - `db/` - pool management, grants, migrations, and RLS policies
@@ -225,6 +226,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect the matching file in `routes/v2/` plus the related Zod schema in `schemas/`
 - Food, barcode, or external provider issue:
   inspect the relevant `integrations/*` code, then the matching service and repository files
+- HUAWEI Health linking or cloud-sync issue:
+  inspect `routes/huaweiHealthRoutes.ts`, `schemas/huaweiHealthSchemas.ts`, and `integrations/huaweihealth/`
 - Health data or date bucketing issue:
   inspect `integrations/healthData/healthDataRoutes.ts`, `services/measurementService.ts`, and `utils/timezoneLoader.ts`
 - AI chat or chatbot tool issue:

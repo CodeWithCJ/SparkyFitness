@@ -12,6 +12,7 @@ import {
   foodsQueryKey,
   recentMealsQueryKeyRoot,
 } from './queryKeys';
+import { mobileT } from '../localization';
 
 interface UseUpdateFoodEntryMealOptions {
   mealId: string;
@@ -34,9 +35,13 @@ export function useUpdateFoodEntryMeal({
     },
     onError: (error) => {
       const message = error instanceof Error && error.message.includes('403')
-        ? "You don't have permission to edit this meal."
-        : 'Please try again.';
-      Toast.show({ type: 'error', text1: 'Failed to save meal', text2: message });
+        ? mobileT('editLoggedMeal.noPermission')
+        : mobileT('common.retry');
+      Toast.show({
+        type: 'error',
+        text1: mobileT('editLoggedMeal.updateFailed'),
+        text2: message,
+      });
     },
   });
 

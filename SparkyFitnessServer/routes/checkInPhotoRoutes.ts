@@ -6,6 +6,7 @@ import checkInPhotoUpload, {
 } from '../middleware/checkInPhotoUpload.js';
 import checkInPhotoService from '../services/checkInPhotoService.js';
 import { log } from '../config/logging.js';
+import { requireUploadsEnabled } from '../middleware/deploymentModeMiddleware.js';
 import {
   CheckInPhotoDateParamSchema,
   CheckInPhotoUploadParamSchema,
@@ -165,6 +166,7 @@ router.post(
   '/:date/:type',
   authenticate,
   checkPermissionMiddleware('checkin'),
+  requireUploadsEnabled,
   (req, res, next) => {
     const parsed = CheckInPhotoUploadParamSchema.safeParse(req.params);
     if (!parsed.success) {

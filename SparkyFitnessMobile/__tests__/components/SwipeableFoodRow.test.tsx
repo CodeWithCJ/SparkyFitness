@@ -51,7 +51,7 @@ describe('SwipeableFoodRow', () => {
       />,
     );
 
-    fireEvent.press(screen.getByText(/120 Cal/));
+    fireEvent.press(screen.getByText(/١٢٠ سعرة/));
 
     expect(onAdjustServing).toHaveBeenCalledWith(entry);
   });
@@ -101,7 +101,7 @@ describe('SwipeableFoodRow', () => {
     );
 
     // Just text — no button.
-    fireEvent.press(screen.getByText(/120 Cal/));
+    fireEvent.press(screen.getByText(/١٢٠ سعرة/));
     expect(onAdjustServing).not.toHaveBeenCalled();
   });
 
@@ -122,8 +122,8 @@ describe('SwipeableFoodRow', () => {
     expect(alertSpy).toHaveBeenCalled();
     const buttons = alertSpy.mock.calls[0][2] as { text: string }[];
     const labels = buttons.map((b) => b.text);
-    expect(labels).not.toContain('Adjust serving');
-    expect(labels).toEqual(expect.arrayContaining(['Delete', 'Cancel']));
+    expect(labels).not.toContain('تعديل الحصة');
+    expect(labels).toEqual(expect.arrayContaining(['حذف', 'إلغاء']));
 
     alertSpy.mockRestore();
   });

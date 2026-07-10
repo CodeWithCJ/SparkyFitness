@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Button from './ui/Button';
 import FormInput from './FormInput';
 import type { MfaFactors } from '../services/api/authService';
+import { mobileT } from '../localization';
+import { INTEGER_INPUT_REGEX } from '../utils/numericInput';
 
 // --- Shared auth sub-components ---
 
@@ -82,8 +84,11 @@ const MfaForm: React.FC<MfaFormProps> = ({
       {mfaFactors.mfaTotpEnabled && mfaFactors.mfaEmailEnabled && (
         <View className="flex-row mb-4 rounded-lg overflow-hidden border border-border-subtle">
           {([
-            { method: 'totp' as const, label: 'Authenticator App' },
-            { method: 'email' as const, label: 'Email Code' },
+            {
+              method: 'totp' as const,
+              label: mobileT('mfa.authenticatorApp'),
+            },
+            { method: 'email' as const, label: mobileT('mfa.emailCode') },
           ]).map(({ method, label }) => (
             <TouchableOpacity
               key={method}
@@ -108,16 +113,20 @@ const MfaForm: React.FC<MfaFormProps> = ({
       {/* MFA Instructions */}
       <Text className="text-sm text-text-secondary mb-3 text-center">
         {mfaMethod === 'totp'
-          ? 'Enter the code from your authenticator app.'
+          ? mobileT('mfa.authenticatorInstructions')
           : emailOtpSent
-            ? 'Enter the code sent to your email.'
-            : 'Tap the button below to receive a verification code by email.'}
+            ? mobileT('mfa.emailSentInstructions')
+            : mobileT('mfa.emailSendInstructions')}
       </Text>
 
       {/* Send Email OTP Button */}
       {mfaMethod === 'email' && !emailOtpSent && (
         <View className="mb-3">
-          <PrimaryButton label="Send Code" onPress={onSendEmailOtp} loading={loading} />
+          <PrimaryButton
+            label={mobileT('mfa.sendCode')}
+            onPress={onSendEmailOtp}
+            loading={loading}
+          />
         </View>
       )}
 
@@ -127,10 +136,14 @@ const MfaForm: React.FC<MfaFormProps> = ({
           <View className="mb-4">
             <FormInput
               className="text-base text-text-primary rounded-lg text-center tracking-[8px]"
-              placeholder="000000"
+              placeholder={mobileT('mfa.codePlaceholder')}
               placeholderTextColor={textMuted}
               value={mfaCode}
-              onChangeText={(text) => onMfaCodeChange(text.replace(/[^0-9]/g, '').slice(0, 6))}
+              onChangeText={text => {
+                if (INTEGER_INPUT_REGEX.test(text)) {
+                  onMfaCodeChange(text.slice(0, 6));
+                }
+              }}
               keyboardType="number-pad"
               maxLength={6}
               autoFocus
@@ -140,7 +153,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
           <ErrorBanner message={error} />
 
           <PrimaryButton
-            label="Verify"
+            label={mobileT('mfa.verify')}
             onPress={onVerify}
             loading={loading}
             disabled={loading || mfaCode.length < 6}
@@ -160,7 +173,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
           className="mt-2 py-3"
           textClassName="text-sm"
         >
-          Resend Code
+          {mobileT('mfa.resendCode')}
         </Button>
       )}
 
@@ -171,7 +184,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
         className="mt-2 py-3"
         textClassName="text-base text-text-muted"
       >
-        Back
+        {mobileT('common.back')}
       </Button>
 
       {onUseApiKey && (
@@ -181,7 +194,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
           className="py-2"
           textClassName="text-sm text-text-muted"
         >
-          Use API Key Instead
+          {mobileT('mfa.useApiKey')}
         </Button>
       )}
     </>

@@ -11,6 +11,7 @@ import { useUniwind, useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
+import { isMobileRtl } from '../localization';
 
 // Render the sheet inside an iOS UIWindow so it sits above any native modal
 // presentation. No-op on Android.
@@ -99,11 +100,26 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
         <BottomSheetView className="pb-safe-or-5 px-2">
           <DateTimePicker
             mode="single"
+            locale="ar"
+            numerals="arab"
+            firstDayOfWeek={0}
             date={dateValue}
             onChange={handleChange}
             components={{
-              IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
-              IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,
+              IconPrev: (
+                <Icon
+                  name={isMobileRtl ? 'chevron-forward' : 'chevron-back'}
+                  size={18}
+                  color={textPrimary}
+                />
+              ),
+              IconNext: (
+                <Icon
+                  name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+                  size={18}
+                  color={textPrimary}
+                />
+              ),
             }}
             styles={{
               selected: { backgroundColor: accentPrimary },

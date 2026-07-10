@@ -11,6 +11,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
+import { localizeExerciseCategory, mobileT } from '../localization';
 
 type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 
@@ -49,12 +50,14 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   const renderEmpty = () => (
     <View className="px-6 py-10 items-center">
       <Text className="text-text-primary text-base font-medium text-center">
-        {searchText.trim().length > 0 ? 'No matching exercises found' : 'No exercises found'}
+        {searchText.trim().length > 0
+          ? mobileT('library.noMatchingExercises')
+          : mobileT('library.noExercises')}
       </Text>
       <Text className="text-text-secondary text-sm mt-2 text-center">
         {searchText.trim().length > 0
-          ? 'Try a different search term to find saved exercises.'
-          : 'Exercises you save or log will appear here.'}
+          ? mobileT('library.tryAnotherSearch')
+          : mobileT('library.savedExercisesAppear')}
       </Text>
     </View>
   );
@@ -68,7 +71,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
       <Text className="text-text-primary text-base font-medium">{item.name}</Text>
       {item.category ? (
         <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {item.category}
+          {localizeExerciseCategory(item.category)}
         </Text>
       ) : null}
     </TouchableOpacity>
@@ -81,10 +84,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your exercise library."
+          title={mobileT('library.noServerTitle')}
+          subtitle={mobileT('library.noServerDescription')}
           action={{
-            label: 'Go to Settings',
+            label: mobileT('common.goToSettings'),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
             variant: 'primary',
           }}
@@ -93,7 +96,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading exercises..." />;
+      return <StatusView loading title={mobileT('library.loadingExercises')} />;
     }
 
     if (isError) {
@@ -102,10 +105,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title="Failed to load exercises"
-          subtitle="Please check your connection and try again."
+          title={mobileT('library.loadExercisesFailed')}
+          subtitle={mobileT('library.connectionError')}
           action={{
-            label: 'Retry',
+            label: mobileT('common.retry'),
             onPress: () => {
               void refetch();
             },
@@ -125,7 +128,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more exercises."
+            errorMessage={mobileT('library.loadMoreExercisesFailed')}
             onRetry={loadMore}
           />
         }
@@ -148,7 +151,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     );
   };
 
-  const header = useScreenHeader({ title: 'Exercises', left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: mobileT('library.exercises'),
+    left: { kind: 'back' },
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -157,7 +163,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search exercises..."
+          placeholder={mobileT('library.searchExercises')}
           isSearching={isSearching}
         />
       ) : null}

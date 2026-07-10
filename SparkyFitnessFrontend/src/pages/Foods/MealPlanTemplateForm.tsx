@@ -31,6 +31,8 @@ import { mealViewOptions } from '@/hooks/Foods/useMeals';
 import { foodViewOptions } from '@/hooks/Foods/useFoods';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
+import { getLocalizedUnitLabel } from '@/utils/unitLocalization';
+import { getLocalizedMealTypeName } from '@/utils/mealTypeLocalization';
 
 // Extended assignment type with nutrition data for display
 interface ExtendedAssignment extends MealPlanTemplateAssignment {
@@ -55,7 +57,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-  const { loggingLevel } = usePreferences(); // Get loggingLevel from preferences
+  const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
   const [planName, setPlanName] = useState(template?.plan_name || '');
   const [description, setDescription] = useState(template?.description || '');
   const [startDate, setStartDate] = useState(
@@ -89,6 +91,10 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
   const queryClient = useQueryClient();
   const { data: availableMealTypes = [] } = useMealTypes();
+  const localizedEnergyUnit = getLocalizedUnitLabel(energyUnit, t);
+  const gramUnit = getLocalizedUnitLabel('g', t);
+  const formatEnergy = (calories: number) =>
+    convertEnergy(calories, 'kcal', energyUnit).toFixed(0);
   // Helper function to fetch nutrition data for an assignment
   const fetchNutritionForAssignment = useCallback(
     async (
@@ -325,6 +331,8 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     if (!assignment) return;
 
     setEditingAssignmentIndex(index);
+    setCurrentDay(assignment.day_of_week);
+    setCurrentMealType(assignment.meal_type);
 
     if (assignment.item_type === 'meal' && assignment.meal_id) {
       try {
@@ -448,12 +456,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   const mealTypes =
     availableMealTypes.length > 0
       ? availableMealTypes.map((mt) => mt.name)
-      : [
-          t('common.breakfast', 'breakfast'),
-          t('common.lunch', 'lunch'),
-          t('common.dinner', 'dinner'),
-          t('common.snacks', 'snacks'),
-        ];
+      : ['breakfast', 'lunch', 'dinner', 'snacks'];
 
   return (
     <>
@@ -480,6 +483,10 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                 id="planName"
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
+                placeholder={t(
+                  'mealPlanTemplateForm.planNamePlaceholder',
+                  'e.g. Weekday meal plan'
+                )}
               />
             </div>
             <div className="space-y-2">
@@ -490,6 +497,10 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder={t(
+                  'mealPlanTemplateForm.descriptionPlaceholder',
+                  'What is this plan for?'
+                )}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -516,7 +527,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                 />
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="isActive"
@@ -537,7 +548,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                 return (
                   <div key={dayIndex}>
                     <h3 className="text-lg font-semibold">{day}</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                       {mealTypes.map((mealType) => {
                         const mealTypeTotals = calculateMealTypeNutrition(
                           dayIndex,
@@ -553,8 +564,8 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
                         return (
                           <div key={mealType} className="p-4 border rounded-lg">
-                            <h4 className="font-semibold capitalize">
-                              {mealType}
+                            <h4 className="font-semibold">
+                              {getLocalizedMealTypeName(mealType, t)}
                             </h4>
                             <div className="space-y-2 mt-2">
                               {assignmentsForMealType.map((assignment, idx) => {
@@ -583,24 +594,54 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                                           ? assignment.meal_name
                                           : assignment.food_name}
                                       </span>
-                                      <div className="flex items-center space-x-1">
+                                      <div className="flex items-center gap-1">
                                         <Button
+                                          type="button"
                                           variant="ghost"
                                           size="icon"
                                           onClick={() =>
                                             handleEditAssignment(actualIndex)
                                           }
-                                          title="Edit quantity"
+                                          title={t(
+                                            'mealPlanTemplateForm.editQuantity',
+                                            'Edit quantity'
+                                          )}
+                                          aria-label={t(
+                                            'mealPlanTemplateForm.editAssignment',
+                                            {
+                                              itemName:
+                                                assignment.item_type === 'meal'
+                                                  ? assignment.meal_name
+                                                  : assignment.food_name,
+                                              defaultValue:
+                                                'Edit {{itemName}} quantity',
+                                            }
+                                          )}
                                         >
                                           <Edit className="h-4 w-4" />
                                         </Button>
                                         <Button
+                                          type="button"
                                           variant="ghost"
                                           size="icon"
                                           onClick={() =>
                                             handleRemoveAssignment(actualIndex)
                                           }
-                                          title="Remove"
+                                          title={t(
+                                            'mealPlanTemplateForm.removeAssignmentLabel',
+                                            'Remove'
+                                          )}
+                                          aria-label={t(
+                                            'mealPlanTemplateForm.removeAssignment',
+                                            {
+                                              itemName:
+                                                assignment.item_type === 'meal'
+                                                  ? assignment.meal_name
+                                                  : assignment.food_name,
+                                              defaultValue:
+                                                'Remove {{itemName}}',
+                                            }
+                                          )}
                                         >
                                           <X className="h-4 w-4" />
                                         </Button>
@@ -609,18 +650,31 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                                     <div className="flex flex-col sm:flex-row justify-between text-sm text-muted-foreground">
                                       <div>
                                         {assignment.quantity || 1}{' '}
-                                        {assignment.unit || 'serving'}
+                                        {getLocalizedUnitLabel(
+                                          assignment.unit || 'serving',
+                                          t
+                                        )}
                                       </div>
-                                      <div className="flex space-x-3 mt-1 sm:mt-0">
-                                        <span>{calories.toFixed(0)} kcal</span>
+                                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 sm:mt-0">
+                                        <span>
+                                          {t('nutrition.calories', 'Calories')}:{' '}
+                                          {formatEnergy(calories)}{' '}
+                                          {localizedEnergyUnit}
+                                        </span>
                                         <span className="text-blue-500">
-                                          P: {protein.toFixed(1)}g
+                                          {t('nutrition.protein', 'Protein')}:{' '}
+                                          {protein.toFixed(1)} {gramUnit}
                                         </span>
                                         <span className="text-green-500">
-                                          C: {carbs.toFixed(1)}g
+                                          {t(
+                                            'nutrition.carbohydrates',
+                                            'Carbohydrates'
+                                          )}
+                                          : {carbs.toFixed(1)} {gramUnit}
                                         </span>
                                         <span className="text-yellow-500">
-                                          F: {fat.toFixed(1)}g
+                                          {t('nutrition.fat', 'Fat')}:{' '}
+                                          {fat.toFixed(1)} {gramUnit}
                                         </span>
                                       </div>
                                     </div>
@@ -629,16 +683,38 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                               })}
                             </div>
                             {assignmentsForMealType.length > 0 && (
-                              <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded">
-                                <strong>Total:</strong>{' '}
-                                {mealTypeTotals.totalCalories.toFixed(0)} kcal |{' '}
-                                P: {mealTypeTotals.totalProtein.toFixed(1)}g |{' '}
-                                C: {mealTypeTotals.totalCarbs.toFixed(1)}g | F:{' '}
-                                {mealTypeTotals.totalFat.toFixed(1)}g
+                              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 rounded bg-muted p-2 text-xs text-muted-foreground">
+                                <strong>
+                                  {t('mealPlanTemplateForm.mealTotal', 'Total')}
+                                  :
+                                </strong>
+                                <span>
+                                  {formatEnergy(mealTypeTotals.totalCalories)}{' '}
+                                  {localizedEnergyUnit}
+                                </span>
+                                <span>
+                                  {t('nutrition.protein', 'Protein')}:{' '}
+                                  {mealTypeTotals.totalProtein.toFixed(1)}{' '}
+                                  {gramUnit}
+                                </span>
+                                <span>
+                                  {t(
+                                    'nutrition.carbohydrates',
+                                    'Carbohydrates'
+                                  )}
+                                  : {mealTypeTotals.totalCarbs.toFixed(1)}{' '}
+                                  {gramUnit}
+                                </span>
+                                <span>
+                                  {t('nutrition.fat', 'Fat')}:{' '}
+                                  {mealTypeTotals.totalFat.toFixed(1)}{' '}
+                                  {gramUnit}
+                                </span>
                               </div>
                             )}
-                            <div className="flex space-x-2 mt-2">
+                            <div className="mt-2 flex gap-2">
                               <Button
+                                type="button"
                                 variant="outline"
                                 size="sm"
                                 onClick={() =>
@@ -654,21 +730,29 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                     </div>
                     {hasDailyAssignments && (
                       <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                        <h4 className="font-semibold text-sm mb-2">
-                          Daily Total for {day}
+                        <h4 className="mb-2 text-sm font-semibold">
+                          {t('mealPlanTemplateForm.dailyTotalFor', {
+                            day,
+                            defaultValue: '{{day}} total',
+                          })}
                         </h4>
-                        <div className="text-sm space-x-4">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                           <span className="font-medium">
-                            {dailyTotals.totalCalories.toFixed(0)} kcal
+                            {t('nutrition.calories', 'Calories')}:{' '}
+                            {formatEnergy(dailyTotals.totalCalories)}{' '}
+                            {localizedEnergyUnit}
                           </span>
                           <span className="text-blue-500">
-                            P: {dailyTotals.totalProtein.toFixed(1)}g
+                            {t('nutrition.protein', 'Protein')}:{' '}
+                            {dailyTotals.totalProtein.toFixed(1)} {gramUnit}
                           </span>
                           <span className="text-green-500">
-                            C: {dailyTotals.totalCarbs.toFixed(1)}g
+                            {t('nutrition.carbohydrates', 'Carbohydrates')}:{' '}
+                            {dailyTotals.totalCarbs.toFixed(1)} {gramUnit}
                           </span>
                           <span className="text-yellow-500">
-                            F: {dailyTotals.totalFat.toFixed(1)}g
+                            {t('nutrition.fat', 'Fat')}:{' '}
+                            {dailyTotals.totalFat.toFixed(1)} {gramUnit}
                           </span>
                         </div>
                       </div>
@@ -679,10 +763,12 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={handleSave}>{t('common.saveChanges')}</Button>
+            <Button type="button" onClick={handleSave}>
+              {t('mealPlanTemplateForm.savePlan', 'Save plan')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

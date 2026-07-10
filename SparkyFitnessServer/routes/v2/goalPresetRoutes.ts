@@ -254,4 +254,4 @@ router.get('/:id', getGoalPresetHandler);
 router.put('/:id', updateGoalPresetHandler);
 router.delete('/:id', deleteGoalPresetHandler);
 
-module.exports = router;
+export default router;

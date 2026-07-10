@@ -203,15 +203,15 @@ describe('FoodDetailScreen', () => {
     const screen = renderScreen();
 
     expect(screen.getByText('Greek Yogurt')).toBeTruthy();
-    expect(screen.getByText('100')).toBeTruthy();
+    expect(screen.getByText('١٠٠')).toBeTruthy();
 
-    fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
+    fireEvent.press(screen.getAllByText('٢ كوب (٢٠٠ سعرة)')[0]);
 
     await waitFor(() => {
-      expect(screen.getByText('200')).toBeTruthy();
+      expect(screen.getByText('٢٠٠')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText('Log Food'));
+    fireEvent.press(screen.getByText('تسجيل الصنف'));
 
     expect(navigation.navigate).toHaveBeenCalledWith(
       'FoodEntryAdd',
@@ -230,8 +230,8 @@ describe('FoodDetailScreen', () => {
   it('opens the edit form for owned foods using the selected variant values', async () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
-    pressAction(screen, navigation, 'Edit');
+    fireEvent.press(screen.getAllByText('٢ كوب (٢٠٠ سعرة)')[0]);
+    pressAction(screen, navigation, 'تعديل');
 
     expect(navigation.navigate).toHaveBeenCalledWith(
       'FoodForm',
@@ -256,14 +256,14 @@ describe('FoodDetailScreen', () => {
       sharedWithPublic: true,
     });
 
-    expect(screen.queryByText('Edit')).toBeNull();
-    expect(screen.queryByText('Delete Food')).toBeNull();
+    expect(screen.queryByText('تعديل')).toBeNull();
+    expect(screen.queryByText('حذف الصنف')).toBeNull();
   });
 
   it('shows delete for owned foods and triggers the delete hook', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Delete Food'));
+    fireEvent.press(screen.getByText('حذف الصنف'));
 
     expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
   });
@@ -272,25 +272,25 @@ describe('FoodDetailScreen', () => {
     const screen = renderScreen();
 
     expect(screen.queryByText('Create Draft Unit')).toBeNull();
-    fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
+    fireEvent.press(screen.getAllByText('٢ كوب (٢٠٠ سعرة)')[0]);
 
     await waitFor(() => {
-      expect(screen.getByText('200')).toBeTruthy();
+      expect(screen.getByText('٢٠٠')).toBeTruthy();
     });
   });
 
   it('shows the Barcode row with the current value for owned foods', () => {
     const screen = renderScreen({ barcode: '3017620422003' });
 
-    expect(screen.getByText('Barcode')).toBeTruthy();
+    expect(screen.getByText('الباركود')).toBeTruthy();
     expect(screen.getByText('3017620422003')).toBeTruthy();
   });
 
-  it('shows "Not set" on the Barcode row when no barcode is stored', () => {
+  it('shows the Arabic empty value when no barcode is stored', () => {
     const screen = renderScreen({ barcode: null });
 
-    expect(screen.getByText('Barcode')).toBeTruthy();
-    expect(screen.getByText('Not set')).toBeTruthy();
+    expect(screen.getByText('الباركود')).toBeTruthy();
+    expect(screen.getByText('غير مضاف')).toBeTruthy();
   });
 
   it('hides the Barcode row for foods the user does not own', () => {
@@ -300,13 +300,13 @@ describe('FoodDetailScreen', () => {
       barcode: '3017620422003',
     });
 
-    expect(screen.queryByText('Barcode')).toBeNull();
+    expect(screen.queryByText('الباركود')).toBeNull();
   });
 
   it('navigates to EditBarcode with the current barcode and returnKey on tap', () => {
     const screen = renderScreen({ barcode: '3017620422003' });
 
-    fireEvent.press(screen.getByText('Barcode'));
+    fireEvent.press(screen.getByText('الباركود'));
 
     expect(navigation.navigate).toHaveBeenCalledWith('EditBarcode', {
       foodId: 'food-1',
@@ -337,7 +337,7 @@ describe('FoodDetailScreen', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Not set')).toBeTruthy();
+      expect(screen.getByText('غير مضاف')).toBeTruthy();
     });
     expect(screen.queryByText('3017620422003')).toBeNull();
   });
@@ -358,13 +358,33 @@ describe('FoodDetailScreen', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('200')).toBeTruthy();
+      expect(screen.getByText('٢٠٠')).toBeTruthy();
     });
 
-    expect(screen.getAllByText('2 cup (200 cal)')[0]).toBeTruthy();
+    expect(screen.getAllByText('٢ كوب (٢٠٠ سعرة)')[0]).toBeTruthy();
     expect(navigation.setParams).toHaveBeenCalledWith({
       updatedItem: undefined,
       updatedSelectedVariantId: undefined,
     });
+  });
+
+  it('shows a Saudi Arabic server recovery state', () => {
+    mockUseServerConnection.mockReturnValue({
+      isConnected: false,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen();
+
+    expect(screen.getByText('ما فيه خادم مربوط')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'اربط خادمك من الإعدادات عشان تشوف تفاصيل الصنف.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('الذهاب للإعدادات')).toBeTruthy();
   });
 });

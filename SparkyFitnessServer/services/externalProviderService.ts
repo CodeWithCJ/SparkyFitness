@@ -18,6 +18,14 @@ function badRequest(message: any) {
   return err;
 }
 
+function assertGenericProviderTypeAllowed(providerType: unknown): void {
+  if (providerType === 'huaweihealth') {
+    throw badRequest(
+      'Use the dedicated HUAWEI Health connection flow for this managed provider.'
+    );
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function hasYazioLoginCredentials(appId: any, appKey: any) {
   const credentials = resolveYazioCredentials({
@@ -95,6 +103,7 @@ function applyRuntimeAvailability(provider: any) {
 function stripCredentialSecret(provider: any) {
   const {
     app_key: _appKey,
+    encrypted_access_token: _encryptedAccessToken,
     encrypted_app_id: _eAppId,
     app_id_iv: _iAppId,
     app_id_tag: _tAppId,
@@ -201,6 +210,7 @@ async function createExternalDataProvider(
   try {
     providerData.user_id = authenticatedUserId;
     providerData.is_public = false; // Regular users cannot create global public providers
+    assertGenericProviderTypeAllowed(providerData.provider_type);
     if (providerData.provider_type === 'openfoodfacts') {
       // OFF authenticated access requires a username/password pair. Reject
       // half-configured credentials so the settings page can't land in a
@@ -264,6 +274,8 @@ async function updateExternalDataProvider(
     // we need to invalidate the OFF session cache after the update.
     const existingProvider =
       await externalProviderRepository.getExternalDataProviderById(providerId);
+    assertGenericProviderTypeAllowed(existingProvider?.provider_type);
+    assertGenericProviderTypeAllowed(updateData.provider_type);
 
     // Mutual exclusion: an OFF row cannot simultaneously be shared publicly
     // and hold credentials. Since user providers are private, they cannot be shared.
@@ -436,6 +448,9 @@ async function deleteExternalDataProvider(
         'Forbidden: You do not have permission to delete this external data provider.'
       );
     }
+    const existingProvider =
+      await externalProviderRepository.getExternalDataProviderById(providerId);
+    assertGenericProviderTypeAllowed(existingProvider?.provider_type);
     const success = await externalProviderRepository.deleteExternalDataProvider(
       providerId,
       authenticatedUserId

@@ -19,7 +19,7 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
@@ -27,6 +27,13 @@ import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import { formatDateLabel } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  formatMobileNumber,
+  isMobileRtl,
+  localizeExerciseCategory,
+  localizeServingUnit,
+  mobileT,
+} from '../localization';
 
 type Props = RootStackScreenProps<'ActivityAdd'>;
 
@@ -72,7 +79,8 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const isPending = isCreating || isUpdating;
 
   const { preferences } = usePreferences();
-  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+  const distanceUnit: 'km' | 'miles' =
+    preferences?.default_distance_unit === 'miles' ? 'miles' : 'km';
   const { getImageSource } = useExerciseImageSource();
 
   const [isNameEditing, setIsNameEditing] = useState(false);
@@ -110,6 +118,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
       kind: 'dismiss',
       onPress: () => void handleCancel(),
       disabled: isPending,
+      accessibilityLabel: mobileT('common.cancel'),
       identifier: 'activity-add-cancel',
     },
   });
@@ -140,8 +149,12 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
         navigation.pop(popCount);
       }
     } catch (error) {
-      addLog(`Failed to save activity: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
+      addLog(`${mobileT('activity.saveFailed')}: ${error}`, 'ERROR');
+      Toast.show({
+        type: 'error',
+        text1: mobileT('activity.saveFailed'),
+        text2: mobileT('common.retry'),
+      });
     }
   }, [
     submission, isEditMode, entry, popCount,
@@ -166,7 +179,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     className="text-xl font-bold text-text-primary rounded-lg"
                     value={state.name}
                     onChangeText={setName}
-                    placeholder="Activity"
+                    placeholder={mobileT('activity.namePlaceholder')}
                     returnKeyType="done"
                     autoFocus
                     selectTextOnFocus
@@ -180,9 +193,11 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     className="flex-row items-center self-start gap-2"
                     onPress={() => setIsNameEditing(true)}
                     activeOpacity={0.6}
+                    accessibilityRole="button"
+                    accessibilityLabel={mobileT('activity.editName')}
                   >
                     <Text className="text-xl font-bold text-text-primary">
-                      {state.name || state.exerciseName || 'Activity'}
+                      {state.name || state.exerciseName || mobileT('activity.fallbackName')}
                     </Text>
                     <Icon name="pencil" size={20} color={textMuted} />
                   </TouchableOpacity>
@@ -195,8 +210,12 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
               onPress={() => calendarSheetRef.current?.present()}
               activeOpacity={0.7}
               className="flex-row items-center mb-4"
+              accessibilityRole="button"
+              accessibilityLabel={mobileT('activity.chooseDate')}
             >
-              <Text className="text-text-secondary text-base">Date</Text>
+              <Text className="text-text-secondary text-base">
+                {mobileT('activity.date')}
+              </Text>
               <Text className="text-text-primary text-base font-medium mx-1.5">
                 {formatDateLabel(state.entryDate)}
               </Text>
@@ -209,6 +228,8 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
               style={{ backgroundColor: raisedBg }}
               onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={mobileT('activity.chooseActivity')}
             >
               {state.exerciseId ? (
                 <FadeView key="exercise-selected">
@@ -221,21 +242,27 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     ) : (
                       <Icon name="exercise" size={20} color={accentPrimary} />
                     )}
-                    <View className="ml-3 flex-1">
+                    <View className="ms-3 flex-1">
                       <Text className="text-base font-semibold text-text-primary">{state.exerciseName}</Text>
                       {state.exerciseCategory && (
-                        <Text className="text-sm text-text-muted mt-0.5">{state.exerciseCategory}</Text>
+                        <Text className="text-sm text-text-muted mt-0.5">
+                          {localizeExerciseCategory(state.exerciseCategory)}
+                        </Text>
                       )}
                     </View>
-                    <Icon name="chevron-forward" size={16} color={textMuted} />
+                    <Icon
+                      name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+                      size={16}
+                      color={textMuted}
+                    />
                   </View>
                 </FadeView>
               ) : (
                 <FadeView key="exercise-empty">
                   <View className="flex-row items-center">
                     <Icon name="add-circle" size={20} color={accentPrimary} />
-                    <Text className="text-base font-medium ml-3" style={{ color: accentPrimary }}>
-                      Select Activity
+                    <Text className="text-base font-medium ms-3" style={{ color: accentPrimary }}>
+                      {mobileT('activity.chooseActivity')}
                     </Text>
                   </View>
                 </FadeView>
@@ -244,11 +271,13 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Duration */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Duration (min)</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">
+                {mobileT('activity.duration')}
+              </Text>
               <FormInput
                 value={state.duration}
                 onChangeText={setDuration}
-                placeholder="0"
+                placeholder={formatMobileNumber(0)}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
               />
@@ -257,12 +286,14 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Distance */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-text-secondary mb-1.5">
-                Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
+                {mobileT('activity.distance', {
+                  unit: localizeServingUnit(distanceUnit === 'miles' ? 'mi' : 'km'),
+                })}
               </Text>
               <FormInput
                 value={state.distance}
                 onChangeText={setDistance}
-                placeholder="0"
+                placeholder={formatMobileNumber(0)}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
               />
@@ -270,26 +301,32 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Calories */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Calories</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">
+                {mobileT('activity.calories')}
+              </Text>
               <FormInput
                 value={state.calories}
                 onChangeText={setCalories}
-                placeholder="0"
+                placeholder={formatMobileNumber(0)}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
               />
               <Text className="text-xs text-text-muted mt-1">
-                {state.caloriesManuallySet ? 'Custom' : 'Auto-calculated'}
+                {state.caloriesManuallySet
+                  ? mobileT('activity.customCalories')
+                  : mobileT('activity.autoCalories')}
               </Text>
             </View>
 
             {/* Avg Heart Rate */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Avg Heart Rate (bpm)</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">
+                {mobileT('activity.averageHeartRate')}
+              </Text>
               <FormInput
                 value={state.avgHeartRate}
                 onChangeText={setAvgHeartRate}
-                placeholder="0"
+                placeholder={formatMobileNumber(0)}
                 keyboardType="number-pad"
                 returnKeyType="done"
               />
@@ -297,11 +334,13 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Notes */}
             <View className="mb-6">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Notes</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">
+                {mobileT('activity.notes')}
+              </Text>
               <FormInput
                 value={state.notes}
                 onChangeText={setNotes}
-                placeholder="Optional notes..."
+                placeholder={mobileT('activity.notesPlaceholder')}
                 multiline
                 textAlignVertical="top"
                 returnKeyType="default"
@@ -333,7 +372,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
-              {SAVE_LABEL}
+              {mobileT('common.save')}
             </Text>
           )}
         </Button>

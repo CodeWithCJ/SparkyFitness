@@ -1,0 +1,21 @@
+FROM node:24-slim
+
+WORKDIR /app
+
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY SparkyFitnessServer/package.json SparkyFitnessServer/package.json
+COPY shared/package.json shared/package.json
+COPY patches patches
+
+RUN pnpm install --frozen-lockfile --filter sparkyfitnessserver...
+
+ENV NODE_ENV=production
+
+COPY SparkyFitnessServer SparkyFitnessServer
+COPY shared shared
+
+RUN pnpm --dir SparkyFitnessServer run build:vercel
+
+CMD ["node", "SparkyFitnessServer/dist/index.js"]

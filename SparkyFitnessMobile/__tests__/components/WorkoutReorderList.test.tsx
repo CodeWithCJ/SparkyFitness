@@ -76,16 +76,24 @@ describe('WorkoutReorderList', () => {
 
   it('shows the per-row set count', () => {
     const { getByText } = renderList(exercises);
-    expect(getByText('3 sets')).toBeTruthy();
-    expect(getByText('2 sets')).toBeTruthy();
-    expect(getByText('4 sets')).toBeTruthy();
-    expect(getByText('1 set')).toBeTruthy();
+    expect(getByText('٣ مجموعات')).toBeTruthy();
+    expect(getByText('مجموعتين')).toBeTruthy();
+    expect(getByText('٤ مجموعات')).toBeTruthy();
+    expect(getByText('مجموعة واحدة')).toBeTruthy();
   });
 
   it('invokes onDone when Done is pressed', () => {
     const { getByText, onDone } = renderList(exercises);
-    fireEvent.press(getByText('Done'));
+    fireEvent.press(getByText('تم'));
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('localizes the title and drag accessibility labels', () => {
+    const { getByText, getAllByLabelText, getByLabelText } = renderList(exercises);
+
+    expect(getByText('إعادة ترتيب التمارين')).toBeTruthy();
+    expect(getAllByLabelText('سحب لإعادة الترتيب')).toHaveLength(3);
+    expect(getByLabelText('إنهاء إعادة الترتيب')).toBeTruthy();
   });
 
   describe('computeReorderTargetIndex', () => {

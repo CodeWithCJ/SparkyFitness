@@ -184,6 +184,10 @@ const AddWorkoutPlanDialog = ({
                 id="planName"
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
+                placeholder={t(
+                  'addWorkoutPlanDialog.planNamePlaceholder',
+                  'For example: Three-day plan'
+                )}
               />
             </div>
             <div className="space-y-2">
@@ -194,9 +198,13 @@ const AddWorkoutPlanDialog = ({
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder={t(
+                  'addWorkoutPlanDialog.descriptionPlaceholder',
+                  'What do you want to achieve with this plan?'
+                )}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="startDate">
                   {t('addWorkoutPlanDialog.startDateLabel', 'Start Date')}
@@ -205,9 +213,10 @@ const AddWorkoutPlanDialog = ({
                   <Input
                     id="startDate"
                     type="date"
+                    dir="ltr"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="pr-8"
+                    className="pe-8"
                   />
                 </div>
               </div>
@@ -222,14 +231,15 @@ const AddWorkoutPlanDialog = ({
                   <Input
                     id="endDate"
                     type="date"
+                    dir="ltr"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="pr-8"
+                    className="pe-8"
                   />
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <Checkbox
                 id="isActive"
                 checked={isActive}
@@ -240,7 +250,7 @@ const AddWorkoutPlanDialog = ({
               </Label>
             </div>
             <p
-              className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mt-2"
+              className="mt-2 rounded-lg border border-amber-200 border-s-4 border-s-amber-500 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:border-s-amber-500 dark:bg-amber-950/30 dark:text-amber-100"
               role="alert"
             >
               <span className="font-bold">
@@ -266,23 +276,27 @@ const AddWorkoutPlanDialog = ({
                     (assignment) => assignment.day_of_week === day.id
                   );
                   return (
-                    <Card key={day.name} className="p-4 bg-muted/30">
+                    <Card key={day.name} className="bg-muted/30 p-4">
                       <SortableContext
                         items={dayAssignments.map((a) => a.id as string)}
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <h3 className="font-semibold text-primary">
-                              {day.name}
+                              {t(day.labelKey, day.name)}
                             </h3>
-                            <div className="flex items-center space-x-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               {copiedAssignment && (
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handlePasteAssignment(day.id)}
                                 >
-                                  <Clipboard className="h-4 w-4 mr-2" />{' '}
+                                  <Clipboard
+                                    className="h-4 w-4"
+                                    aria-hidden="true"
+                                  />
                                   {t(
                                     'addWorkoutPlanDialog.pasteButton',
                                     'Paste'
@@ -290,6 +304,7 @@ const AddWorkoutPlanDialog = ({
                                 </Button>
                               )}
                               <Button
+                                type="button"
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
@@ -297,7 +312,7 @@ const AddWorkoutPlanDialog = ({
                                   setIsAddExerciseDialogOpen(true);
                                 }}
                               >
-                                <Plus className="h-4 w-4 mr-2" />{' '}
+                                <Plus className="h-4 w-4" aria-hidden="true" />
                                 {t(
                                   'addWorkoutPlanDialog.addExerciseButtonInDay',
                                   'Add Exercise'
@@ -343,7 +358,7 @@ const AddWorkoutPlanDialog = ({
                 {t('addWorkoutPlanDialog.cancelButton', 'Cancel')}
               </Button>
             </DialogClose>
-            <Button onClick={handleSave}>
+            <Button type="button" onClick={handleSave}>
               {t('addWorkoutPlanDialog.saveButton', 'Save Plan')}
             </Button>
           </DialogFooter>

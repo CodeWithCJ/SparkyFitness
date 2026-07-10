@@ -2,6 +2,7 @@ import React, { createContext, useContext } from 'react';
 import { View, Text, Pressable, type StyleProp, type ViewStyle } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon, { type IconName } from './Icon';
+import { isMobileRtl } from '../localization';
 
 const SettingsRowGroupContext = createContext<{ grouped: boolean }>({ grouped: false });
 
@@ -72,13 +73,13 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
     <>
       {icon ? (
         <View
-          className="w-10 h-10 rounded-lg items-center justify-center mr-3"
-          style={{ backgroundColor: tileBg }}
+          className="w-10 h-10 rounded-lg items-center justify-center"
+          style={{ backgroundColor: tileBg, marginEnd: 12 }}
         >
           <Icon name={icon} size={22} color={tintColor} weight='semibold' />
         </View>
       ) : null}
-      <View className="flex-1 mr-2">
+      <View className="flex-1" style={{ marginEnd: 8 }}>
         <Text
           className="text-base font-semibold text-text-primary"
           numberOfLines={1}
@@ -101,7 +102,11 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
       {rightAccessory !== undefined ? (
         rightAccessory
       ) : onPress ? (
-        <Icon name="chevron-forward" size={20} color={textSecondary} />
+        <Icon
+          name={isMobileRtl ? 'chevron-back' : 'chevron-forward'}
+          size={20}
+          color={textSecondary}
+        />
       ) : null}
     </>
   );

@@ -38,11 +38,8 @@ export const OnboardingDialog = ({
   const handleSavePreset = async () => {
     if (!presetName.trim()) {
       toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'goals.presetNameRequired',
-          'Please enter a name for your preset.'
-        ),
+        title: t('onboarding.personalPlanSaveDialogErrorTitle'),
+        description: t('onboarding.personalPlanSaveDialogNameRequired'),
         variant: 'destructive',
       });
       return;
@@ -54,24 +51,21 @@ export const OnboardingDialog = ({
       // Create the preset
       await createGoalPreset({
         ...editedPlan,
-        preset_name: presetName,
+        preset_name: presetName.trim(),
       });
 
       toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'goals.presetCreatedSuccess',
-          'Goal preset created successfully!'
-        ),
+        title: t('onboarding.personalPlanSaveDialogSuccessTitle'),
+        description: t('onboarding.personalPlanSaveDialogSuccessDescription'),
       });
 
       // After saving preset, proceed to submit the plan as the active goal (finish onboarding)
-      handleSubmit();
+      await handleSubmit();
     } catch (error) {
       console.error('Error saving preset:', error);
       toast({
-        title: t('common.error', 'Error'),
-        description: t('goals.errorSavingPreset', 'Failed to save preset.'),
+        title: t('onboarding.personalPlanSaveDialogErrorTitle'),
+        description: t('onboarding.personalPlanSaveDialogErrorDescription'),
         variant: 'destructive',
       });
     }
@@ -79,46 +73,54 @@ export const OnboardingDialog = ({
 
   return (
     <Dialog open={isSavePresetOpen} onOpenChange={setIsSavePresetOpen}>
-      <DialogContent
-        style={
-          { '--color-ring': 'hsl(142.1 70.6% 45.3%)' } as React.CSSProperties
-        }
-      >
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {t('goals.saveAsPreset', 'Save as Goal Preset')}
+            {t('onboarding.personalPlanSaveDialogTitle')}
           </DialogTitle>
           <DialogDescription>
-            {t(
-              'goals.savePresetDescription',
-              'Give your goal preset a name. This will save your current configuration for future use and apply it as your plan starting today.'
-            )}
+            {t('onboarding.personalPlanSaveDialogDescription')}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">{t('goals.presetName', 'Preset Name')}</Label>
-            <Input
-              id="name"
-              value={presetName}
-              onChange={(e) => setPresetName(e.target.value)}
-              placeholder={t(
-                'goals.presetNamePlaceholder',
-                'e.g., Cutting Phase 1'
-              )}
-            />
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSavePreset();
+          }}
+        >
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="onboarding-plan-name">
+                {t('onboarding.personalPlanSaveDialogName')}
+              </Label>
+              <Input
+                id="onboarding-plan-name"
+                value={presetName}
+                onChange={(event) => setPresetName(event.target.value)}
+                placeholder={t('onboarding.personalPlanSaveDialogPlaceholder')}
+                autoFocus
+              />
+            </div>
           </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setIsSavePresetOpen(false)}>
-            {t('common.cancel', 'Cancel')}
-          </Button>
-          <Button onClick={handleSavePreset} disabled={isSavingPreset}>
-            {isSavingPreset
-              ? t('common.saving', 'Saving...')
-              : t('goals.saveAndStart', 'Save & Start Plan')}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsSavePresetOpen(false)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSavingPreset}
+              aria-busy={isSavingPreset}
+            >
+              {isSavingPreset
+                ? t('common.saving')
+                : t('onboarding.personalPlanSaveDialogConfirm')}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

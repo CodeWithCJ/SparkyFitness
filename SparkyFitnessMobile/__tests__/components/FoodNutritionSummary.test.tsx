@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import FoodNutritionSummary from '../../src/components/FoodNutritionSummary';
 
 jest.mock('../../src/hooks', () => ({
@@ -37,7 +37,7 @@ describe('FoodNutritionSummary — Total Carbs row', () => {
       const { queryByText } = render(
         <FoodNutritionSummary name="Oats" values={baseValues} />,
       );
-      expect(queryByText('Total Carbs')).toBeNull();
+      expect(queryByText('إجمالي الكربوهيدرات')).toBeNull();
     });
   });
 
@@ -51,9 +51,9 @@ describe('FoodNutritionSummary — Total Carbs row', () => {
           showNetCarbs
         />,
       );
-      expect(getByText('Total Carbs')).toBeTruthy();
+      expect(getByText('إجمالي الكربوهيدرات')).toBeTruthy();
       // 30g raw carbs * 1 serving = 30g
-      expect(getByText('30g')).toBeTruthy();
+      expect(getByText('٣٠ غ')).toBeTruthy();
     });
 
     it('scales the Total Carbs row value by servings (servings>1)', () => {
@@ -65,10 +65,10 @@ describe('FoodNutritionSummary — Total Carbs row', () => {
           showNetCarbs
         />,
       );
-      expect(getByText('Total Carbs')).toBeTruthy();
+      expect(getByText('إجمالي الكربوهيدرات')).toBeTruthy();
       // 30g raw carbs * 2.5 servings = 75g
       // Previously this row was double-scaled (would have shown 187g)
-      expect(getByText('75g')).toBeTruthy();
+      expect(getByText('٧٥ غ')).toBeTruthy();
     });
 
     it('scales fiber, sugars, and the new Total Carbs row consistently', () => {
@@ -90,11 +90,11 @@ describe('FoodNutritionSummary — Total Carbs row', () => {
         />,
       );
       // Fiber 8 * 2 = 16g
-      expect(getByText('16g')).toBeTruthy();
+      expect(getByText('١٦ غ')).toBeTruthy();
       // Sugars 5 * 2 = 10g
-      expect(getByText('10g')).toBeTruthy();
+      expect(getByText('١٠ غ')).toBeTruthy();
       // Total Carbs 30 * 2 = 60g (this was 187g under the double-scaling bug)
-      expect(getByText('60g')).toBeTruthy();
+      expect(getByText('٦٠ غ')).toBeTruthy();
     });
   });
 
@@ -110,7 +110,36 @@ describe('FoodNutritionSummary — Total Carbs row', () => {
       );
       // The macro bar in NutritionMacroCard falls back to "Carbs" with total
       // carbs in this case; we shouldn't add a redundant Total Carbs row.
-      expect(queryByText('Total Carbs')).toBeNull();
+      expect(queryByText('إجمالي الكربوهيدرات')).toBeNull();
     });
+  });
+
+  it('reveals additional nutrients with Arabic labels and values', () => {
+    const { getByLabelText, getByText } = render(
+      <FoodNutritionSummary
+        name="تمر"
+        values={{ ...baseValues, potassium: 125.4 }}
+      />,
+    );
+
+    const showMoreButton = getByLabelText('عرض عناصر غذائية أكثر');
+    fireEvent.press(showMoreButton);
+
+    expect(getByText('البوتاسيوم')).toBeTruthy();
+    expect(getByText('١٢٥ ملجم')).toBeTruthy();
+    expect(getByText('عرض عناصر أقل ▴')).toBeTruthy();
+    expect(getByLabelText('عرض عناصر غذائية أقل')).toBeTruthy();
+  });
+
+  it('announces provider verification accessibly', () => {
+    const { getByLabelText } = render(
+      <FoodNutritionSummary
+        name="تمر"
+        values={baseValues}
+        provider_verified
+      />,
+    );
+
+    expect(getByLabelText('بيانات موثّقة من المصدر')).toBeTruthy();
   });
 });

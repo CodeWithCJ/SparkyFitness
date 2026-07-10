@@ -51,8 +51,8 @@ describe('ScreenErrorBoundary', () => {
         <BadChild />
       </ScreenErrorBoundary>,
     );
-    expect(getByText('Something went wrong')).toBeTruthy();
-    expect(getByText(/unexpected error occurred/)).toBeTruthy();
+    expect(getByText('صار خطأ')).toBeTruthy();
+    expect(getByText(/خطأ غير متوقع/)).toBeTruthy();
     expect(queryByText('All good')).toBeNull();
   });
 
@@ -82,10 +82,10 @@ describe('ScreenErrorBoundary', () => {
       </ScreenErrorBoundary>,
     );
 
-    expect(getByText('Something went wrong')).toBeTruthy();
+    expect(getByText('صار خطأ')).toBeTruthy();
 
     shouldThrow = false;
-    fireEvent.press(getByText('Try Again'));
+    fireEvent.press(getByText('حاول مرة ثانية'));
 
     expect(mockResetQueries).toHaveBeenCalled();
     expect(getByText('Recovered')).toBeTruthy();
@@ -98,7 +98,7 @@ describe('ScreenErrorBoundary', () => {
         <BadChild />
       </ScreenErrorBoundary>,
     );
-    fireEvent.press(getByText('Go Back'));
+    fireEvent.press(getByText('رجوع'));
     expect(goBack).toHaveBeenCalled();
   });
 
@@ -108,7 +108,7 @@ describe('ScreenErrorBoundary', () => {
         <BadChild />
       </ScreenErrorBoundary>,
     );
-    expect(queryByText('Go Back')).toBeNull();
+    expect(queryByText('رجوع')).toBeNull();
   });
 });
 
@@ -133,7 +133,7 @@ describe('withErrorBoundary HOC', () => {
 
     const SafeCrash = withErrorBoundary(CrashScreen, 'Crash', { canGoBack: true });
     const { getByText } = render(<SafeCrash navigation={{ goBack }} />);
-    fireEvent.press(getByText('Go Back'));
+    fireEvent.press(getByText('رجوع'));
     expect(goBack).toHaveBeenCalled();
   });
 });
@@ -154,9 +154,9 @@ describe('SectionErrorBoundary', () => {
         <BadChild />
       </SectionErrorBoundary>,
     );
-    expect(getByText('This section failed to load.')).toBeTruthy();
-    expect(getByText('Try Again')).toBeTruthy();
-    expect(queryByText('Something went wrong')).toBeNull();
+    expect(getByText('ما قدرنا نحمّل هالقسم.')).toBeTruthy();
+    expect(getByText('حاول مرة ثانية')).toBeTruthy();
+    expect(queryByText('صار خطأ')).toBeNull();
   });
 
   it('logs via addLog with section name', () => {
@@ -185,10 +185,10 @@ describe('SectionErrorBoundary', () => {
       </SectionErrorBoundary>,
     );
 
-    expect(getByText('This section failed to load.')).toBeTruthy();
+    expect(getByText('ما قدرنا نحمّل هالقسم.')).toBeTruthy();
 
     shouldThrow = false;
-    fireEvent.press(getByText('Try Again'));
+    fireEvent.press(getByText('حاول مرة ثانية'));
 
     expect(mockResetQueries).toHaveBeenCalled();
     expect(getByText('Section recovered')).toBeTruthy();

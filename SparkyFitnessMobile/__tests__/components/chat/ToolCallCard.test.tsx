@@ -30,7 +30,7 @@ describe('ToolCallCard', () => {
     const { getByText, getByTestId } = render(
       <ToolCallCard part={{ ...baseFoodPart, result: LOGGED }} />
     );
-    expect(getByText('Food')).toBeTruthy();
+    expect(getByText('تسجيل الطعام')).toBeTruthy();
     expect(getByTestId('icon-food')).toBeTruthy();
   });
 
@@ -38,11 +38,11 @@ describe('ToolCallCard', () => {
     const { queryByText, getByText, getByTestId } = render(
       <ToolCallCard part={{ ...baseFoodPart, result: LOGGED }} />
     );
-    // Collapsed: result hidden, chevron points forward.
+    // Collapsed: result hidden, chevron points inward for RTL.
     expect(queryByText(LOGGED)).toBeNull();
-    expect(getByTestId('icon-chevron-forward')).toBeTruthy();
+    expect(getByTestId('icon-chevron-back')).toBeTruthy();
 
-    fireEvent.press(getByText('Food'));
+    fireEvent.press(getByText('تسجيل الطعام'));
 
     // Expanded: result shown, chevron points down.
     expect(getByText(LOGGED)).toBeTruthy();
@@ -76,7 +76,7 @@ describe('ToolCallCard', () => {
     const { getByText, queryByTestId } = render(
       <ToolCallCard part={{ ...baseFoodPart, result: { ok: true, id: 7 } }} />
     );
-    fireEvent.press(getByText('Food'));
+    fireEvent.press(getByText('تسجيل الطعام'));
     expect(getByText(/"ok": true/)).toBeTruthy();
     // Structured (non-string) results stay monospace JSON, not markdown.
     expect(queryByTestId('enriched-markdown')).toBeNull();
@@ -88,7 +88,7 @@ describe('ToolCallCard', () => {
     );
     // Collapsed: nothing rendered yet.
     expect(queryByTestId('enriched-markdown')).toBeNull();
-    fireEvent.press(getByText('Food'));
+    fireEvent.press(getByText('تسجيل الطعام'));
     // Expanded: the result goes through MarkdownMessage (mocked to testID).
     expect(getByTestId('enriched-markdown')).toBeTruthy();
   });
@@ -106,12 +106,26 @@ describe('ToolCallCard', () => {
       <ToolCallCard part={lookupPart} />
     );
     // Labeled + complete...
-    expect(getByText('Looked up food diary')).toBeTruthy();
+    expect(getByText('الاطلاع على يوميات الطعام')).toBeTruthy();
     expect(getByTestId('icon-checkmark-circle')).toBeTruthy();
     // ...but nothing to expand and the raw result is never rendered.
     expect(queryByTestId('icon-chevron-forward')).toBeNull();
+    expect(queryByTestId('icon-chevron-back')).toBeNull();
     expect(queryByTestId('icon-chevron-down')).toBeNull();
     expect(queryByTestId('enriched-markdown')).toBeNull();
     expect(queryByText('1850')).toBeNull();
+  });
+
+  it('announces localized status and expand state', () => {
+    const { getByLabelText, getByText } = render(
+      <ToolCallCard part={{ ...baseFoodPart, result: LOGGED }} />,
+    );
+
+    expect(getByLabelText('تسجيل الطعام، اكتمل')).toBeTruthy();
+    fireEvent.press(getByText('تسجيل الطعام'));
+    expect(getByLabelText('تسجيل الطعام، اكتمل')).toHaveProp(
+      'accessibilityState',
+      { expanded: true },
+    );
   });
 });

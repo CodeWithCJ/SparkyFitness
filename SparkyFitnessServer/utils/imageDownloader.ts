@@ -2,6 +2,7 @@ import axios from 'axios';
 import fs from 'fs';
 import { promises } from 'fs';
 import path from 'path';
+import { getStorageMode } from './runtimeConfig.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,10 +31,15 @@ async function ensureUploadsDir() {
  * Downloads an image from a URL and saves it locally.
  * @param {string} imageUrl - The URL of the image to download.
  * @param {string} exerciseId - The ID of the exercise, used for creating a subdirectory.
- * @returns {Promise<string>} The local path to the downloaded image.
+ * @returns {Promise<string | null>} The local path to the downloaded image, or null when storage is disabled.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function downloadImage(imageUrl: any, exerciseId: any) {
+async function downloadImage(
+  imageUrl: string,
+  exerciseId: string
+): Promise<string | null> {
+  if (getStorageMode() === 'disabled') {
+    return null;
+  }
   await ensureUploadsDir();
   const imageFileName = path.basename(imageUrl);
   const exerciseUploadDir = path.join(UPLOADS_DIR, exerciseId);
@@ -47,7 +53,7 @@ async function downloadImage(imageUrl: any, exerciseId: any) {
     });
     const writer = fs.createWriteStream(localImagePath);
     response.data.pipe(writer);
-    return new Promise((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
       writer.on('finish', () =>
         resolve(`/uploads/exercises/${exerciseId}/${imageFileName}`)
       ); // Return web-accessible path

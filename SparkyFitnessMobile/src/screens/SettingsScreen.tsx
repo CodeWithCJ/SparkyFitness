@@ -20,6 +20,8 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { mobileT } from '../localization';
+import { addLog } from '../services/LogService';
 
 type SettingsScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Settings'>,
@@ -52,8 +54,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   );
 
   const syncSubtitle = lastSyncedTime
-    ? `Last synced ${formatRelativeTime(new Date(lastSyncedTime))}`
-    : 'Never synced';
+    ? mobileT('settings.lastSynced', {
+        time: formatRelativeTime(new Date(lastSyncedTime)),
+      })
+    : formatRelativeTime(null);
 
   const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration, macroGreen] = useCSSVariable([
     '--color-icon-success',
@@ -70,8 +74,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const serverSubtitle = activeConfig ? (
     <View className="flex-row items-center">
       <View
-        className="w-2 h-2 rounded-full mr-2"
-        style={{ backgroundColor: isConnected ? success : danger }}
+        className="w-2 h-2 rounded-full"
+        style={{
+          backgroundColor: isConnected ? success : danger,
+          marginEnd: 8,
+        }}
       />
       <Text
         className="text-sm text-text-secondary flex-1"
@@ -82,7 +89,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       </Text>
     </View>
   ) : (
-    'Tap to add a server'
+    mobileT('settings.addServer')
   );
 
   const handleShareDiagnosticReport = async (): Promise<void> => {
@@ -110,7 +117,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to share diagnostic report: ${errorMessage}` });
+      addLog(
+        `[Settings] Failed to share diagnostic report: ${errorMessage}`,
+        'ERROR',
+      );
+      Toast.show({
+        type: 'error',
+        text1: mobileT('common.error'),
+        text2: mobileT('settings.shareFailed'),
+      });
     } finally {
       setIsSharing(false);
     }
@@ -132,27 +147,33 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         <View className={usesNativeTabs ? 'px-4 pb-4' : 'flex-1 p-4'}>
           {!usesNativeTabs && (
             <View className="mb-6">
-              <Text className="text-2xl font-bold text-text-primary">Settings</Text>
+              <Text className="text-2xl font-bold text-text-primary">
+                {mobileT('tabs.settings')}
+              </Text>
             </View>
           )}
 
           <SettingsRow
             icon="server"
-            title="Server"
+            title={mobileT('settings.server')}
             subtitle={serverSubtitle}
             onPress={() => navigation.navigate('ServerSettings')}
             iconColor={catSlate}
             accessibilityLabel={
               activeConfig
-                ? `Server settings. ${isConnected ? 'Connected' : 'Connection failed'}.`
-                : 'Server settings. No server configured.'
+                ? mobileT(
+                    isConnected
+                      ? 'settings.serverAccessibilityConnected'
+                      : 'settings.serverAccessibilityFailed',
+                  )
+                : mobileT('settings.serverAccessibilityMissing')
             }
           />
 
           <SectionErrorBoundary sectionName="Settings">
             <SettingsRow
               icon="health-data-sync"
-              title="Health Data Sync"
+              title={mobileT('screens.sync')}
               subtitle={syncSubtitle}
               onPress={() => navigation.navigate('Sync')}
               iconColor={catPink}
@@ -162,7 +183,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && activeConfig?.authType === 'session' && (
                 <SettingsRow
                   icon="fingerprint"
-                  title="Passkeys"
+                  title={mobileT('screens.passkeySettings')}
                   onPress={() => navigation.navigate('PasskeySettings')}
                   iconColor={catSlate}
                 />
@@ -170,7 +191,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"
-                  title="Calorie & BMR Settings"
+                  title={mobileT('screens.calorieSettings')}
                   onPress={() => navigation.navigate('CalorieSettings')}
                   iconColor={catCalories}
                 />
@@ -178,7 +199,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="food-search-settings"
-                  title="Food Settings"
+                  title={mobileT('screens.foodSettings')}
                   onPress={() => navigation.navigate('FoodSettings')}
                   iconColor={catOrange}
                 />
@@ -186,14 +207,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="dashboard-settings"
-                  title="Dashboard Settings"
+                  title={mobileT('screens.dashboardSettings')}
                   onPress={() => navigation.navigate('DashboardSettings')}
                   iconColor={macroGreen}
                 />
               )}
               <SettingsRow
                 icon="app-settings"
-                title="App Settings"
+                title={mobileT('screens.appSettings')}
                 onPress={() => navigation.navigate('AppSettings')}
                 iconColor={catViolet}
               />
@@ -202,19 +223,19 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             <SettingsRowGroup>
               <SettingsRow
                 icon="whats-new"
-                title="What's New"
+                title={mobileT('screens.whatsNew')}
                 onPress={() => navigation.navigate('WhatsNew')}
                 iconColor={catPink}
               />
               <SettingsRow
                 icon="document-text"
-                title="View Logs"
+                title={mobileT('screens.logs')}
                 onPress={() => navigation.navigate('Logs')}
                 iconColor={catSlate}
               />
               <SettingsRow
                 icon="info-circle"
-                title="About"
+                title={mobileT('screens.about')}
                 onPress={() => navigation.navigate('About')}
                 iconColor={hydration}
               />
@@ -222,15 +243,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
             <SettingsRow
               icon="share"
-              title="Share Diagnostic Report"
+              title={mobileT('settings.shareDiagnostic')}
               onPress={handleShareDiagnosticReport}
               disabled={isSharing}
               iconColor={catSlate}
               rightAccessory={isSharing ? <ActivityIndicator size="small" /> : undefined}
             />
             <Text className="text-text-secondary text-sm px-2 mb-4 mt-2">
-              Exports a local diagnostic report (app version, sync status, logs).
-              No personal health or food data is included. Nothing is sent automatically.
+              {mobileT('settings.diagnosticDescription')}
             </Text>
 
             {__DEV__ &&

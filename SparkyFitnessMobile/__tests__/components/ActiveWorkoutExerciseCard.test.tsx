@@ -168,7 +168,7 @@ describe('ActiveWorkoutExerciseCard', () => {
   it('renders the overflow trigger when expanded and fires onPressOverflow', () => {
     const { getByLabelText, callbacks } = renderCard(true);
 
-    fireEvent.press(getByLabelText('More options for Bench Press'));
+    fireEvent.press(getByLabelText('خيارات إضافية لـ Bench Press'));
 
     expect(callbacks.onPressOverflow).toHaveBeenCalledTimes(1);
     expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
@@ -184,7 +184,7 @@ describe('ActiveWorkoutExerciseCard', () => {
 
   it('offers no overflow trigger while collapsed (expand first)', () => {
     const { queryByLabelText } = renderCard(false);
-    expect(queryByLabelText('More options for Bench Press')).toBeNull();
+    expect(queryByLabelText('خيارات إضافية لـ Bench Press')).toBeNull();
   });
 
   it('keeps the thumbnail image mounted across expand/collapse (no reload flash)', () => {
@@ -219,7 +219,7 @@ describe('ActiveWorkoutExerciseCard', () => {
   describe('long-press menu (live)', () => {
     it('opens the overflow menu from a collapsed row long-press', () => {
       const { getByLabelText, callbacks } = renderCard(false);
-      fireEvent(getByLabelText('Expand Bench Press'), 'longPress');
+      fireEvent(getByLabelText('توسيع Bench Press'), 'longPress');
       expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
         'ex-uuid-1',
         expect.objectContaining({ x: expect.any(Number) }),
@@ -228,7 +228,7 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('opens the overflow menu from an expanded name long-press', () => {
       const { getAllByLabelText, callbacks } = renderCard(true);
-      fireEvent(getAllByLabelText('Collapse Bench Press')[0], 'longPress');
+      fireEvent(getAllByLabelText('طي Bench Press')[0], 'longPress');
       expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
         'ex-uuid-1',
         expect.objectContaining({ x: expect.any(Number) }),
@@ -237,21 +237,21 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('does not wire long-press in edit mode (screen-scoped to live)', () => {
       const { getByLabelText } = renderCard(false, { mode: 'edit' });
-      expect(getByLabelText('Expand Bench Press').props.onLongPress).toBeUndefined();
+      expect(getByLabelText('توسيع Bench Press').props.onLongPress).toBeUndefined();
     });
   });
 
   describe('view mode', () => {
     it('hides the overflow trigger and the Add set button', () => {
       const { queryByLabelText } = renderCard(true, { mode: 'view' });
-      expect(queryByLabelText('More options for Bench Press')).toBeNull();
-      expect(queryByLabelText('Add set to Bench Press')).toBeNull();
+      expect(queryByLabelText('خيارات إضافية لـ Bench Press')).toBeNull();
+      expect(queryByLabelText('إضافة مجموعة إلى Bench Press')).toBeNull();
     });
 
     it('keeps the metric header pressable and reports its anchor', () => {
       const { getByLabelText, callbacks } = renderCard(true, { mode: 'view' });
 
-      fireEvent.press(getByLabelText('Change metric column'));
+      fireEvent.press(getByLabelText('تغيير عمود القياس'));
 
       expect(callbacks.onPressMetricHeader).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -265,13 +265,13 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('renders the rest chip read-only so it cannot open the rest sheet', () => {
       const { getByText, callbacks } = renderCard(true, { mode: 'view' });
-      fireEvent.press(getByText('Rest · 1:30'));
+      fireEvent.press(getByText('راحة · ١:٣٠'));
       expect(callbacks.onPressRestChip).not.toHaveBeenCalled();
     });
 
     it('hides the rest chip entirely with showRestChip={false}', () => {
       const { queryByText } = renderCard(true, { mode: 'view', showRestChip: false });
-      expect(queryByText('Rest · 1:30')).toBeNull();
+      expect(queryByText('راحة · ١:٣٠')).toBeNull();
     });
 
     it('skips the exercise stats fetch', () => {
@@ -284,8 +284,8 @@ describe('ActiveWorkoutExerciseCard', () => {
         mode: 'view',
         completedSetIds: {},
       });
-      expect(queryByText('1 sets planned')).toBeNull();
-      expect(getByText('1 sets · 600 kg')).toBeTruthy();
+      expect(queryByText('مجموعة واحدة مخططة')).toBeNull();
+      expect(getByText('مجموعة واحدة · ٦٠٠ كجم')).toBeTruthy();
     });
 
     it('drives done/upcoming row states from completedSetIds and marks rows read-only', () => {
@@ -357,8 +357,8 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('keeps the overflow menu and Add set visible', () => {
       const { getByLabelText, callbacks } = renderCard(true, { mode: 'edit' });
-      expect(getByLabelText('More options for Bench Press')).toBeTruthy();
-      fireEvent.press(getByLabelText('Add set to Bench Press'));
+      expect(getByLabelText('خيارات إضافية لـ Bench Press')).toBeTruthy();
+      fireEvent.press(getByLabelText('إضافة مجموعة إلى Bench Press'));
       expect(callbacks.onAddSet).toHaveBeenCalledWith('ex-uuid-1');
     });
 
@@ -369,8 +369,8 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('never labels a collapsed draft as planned', () => {
       const { getByText, queryByText } = renderCard(false, { mode: 'edit' });
-      expect(queryByText('1 sets planned')).toBeNull();
-      expect(getByText('1 sets · 600 kg')).toBeTruthy();
+      expect(queryByText('مجموعة واحدة مخططة')).toBeNull();
+      expect(getByText('مجموعة واحدة · ٦٠٠ كجم')).toBeTruthy();
     });
 
     describe('prefill', () => {
@@ -505,8 +505,8 @@ describe('ActiveWorkoutExerciseCard', () => {
     it('renders the Best line from the historical best', () => {
       mockUseExerciseStats.mockReturnValue(STATS_WITH_BEST);
       const { getByText } = renderCard(true, { mode: 'live' });
-      expect(getByText('Best')).toBeTruthy();
-      expect(getByText('100 × 5')).toBeTruthy();
+      expect(getByText('الأفضل')).toBeTruthy();
+      expect(getByText('١٠٠ × ٥')).toBeTruthy();
     });
 
     it('surfaces the stamped session record when a set earned a PR', () => {
@@ -517,8 +517,8 @@ describe('ActiveWorkoutExerciseCard', () => {
         prSetIds: { '101': true },
       });
       // The new record (105 × 5) replaces the historical best (100 × 5).
-      expect(getByText('105 × 5')).toBeTruthy();
-      expect(queryByText('100 × 5')).toBeNull();
+      expect(getByText('١٠٥ × ٥')).toBeTruthy();
+      expect(queryByText('١٠٠ × ٥')).toBeNull();
     });
 
     it('does not fetch stats or render the Best line in view mode', () => {
@@ -526,7 +526,7 @@ describe('ActiveWorkoutExerciseCard', () => {
       const { queryByText } = renderCard(true, { mode: 'view' });
       expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
       expect(mockCapturePrBaseline).not.toHaveBeenCalled();
-      expect(queryByText('Best')).toBeNull();
+      expect(queryByText('الأفضل')).toBeNull();
     });
   });
 });

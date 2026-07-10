@@ -2,32 +2,46 @@ import { getToolDisplay, isLookupTool, CHAT_SUGGESTIONS } from '../../src/consta
 
 describe('getToolDisplay', () => {
   it('maps the high-traffic logging tools to friendly labels + icons', () => {
-    expect(getToolDisplay('sparky_manage_food')).toEqual({ label: 'Food', icon: 'food' });
+    expect(getToolDisplay('sparky_manage_food')).toEqual({
+      label: 'تسجيل الطعام',
+      icon: 'food',
+    });
     expect(getToolDisplay('sparky_manage_exercise')).toEqual({
-      label: 'Exercise',
+      label: 'تسجيل التمارين',
       icon: 'exercise',
     });
     expect(getToolDisplay('sparky_manage_checkin')).toEqual({
-      label: 'Check-in',
+      label: 'تسجيل القياسات',
       icon: 'measurements',
     });
-    expect(getToolDisplay('sparky_manage_goals')).toEqual({ label: 'Goals', icon: 'flame' });
+    expect(getToolDisplay('sparky_manage_goals')).toEqual({
+      label: 'إدارة الأهداف',
+      icon: 'flame',
+    });
   });
 
-  it('labels sparky_get_* tools as "Looked up …" with the search icon', () => {
+  it('labels known lookup tools in Arabic with the search icon', () => {
     expect(getToolDisplay('sparky_get_food_diary')).toEqual({
-      label: 'Looked up food diary',
+      label: 'الاطلاع على يوميات الطعام',
+      icon: 'search',
+    });
+    expect(getToolDisplay('sparky_get_exercise_progress')).toEqual({
+      label: 'الاطلاع على تقدم التمارين',
+      icon: 'search',
+    });
+    expect(getToolDisplay('sparky_get_nutritional_summary')).toEqual({
+      label: 'الاطلاع على ملخص التغذية',
       icon: 'search',
     });
   });
 
-  it('humanizes unmapped tool names and falls back to the wrench icon', () => {
+  it('localizes known searches and hides unknown technical identifiers', () => {
     expect(getToolDisplay('sparky_search_foods')).toEqual({
-      label: 'Search foods',
-      icon: 'wrench',
+      label: 'البحث عن أصناف غذائية',
+      icon: 'search',
     });
     expect(getToolDisplay('some_random_tool')).toEqual({
-      label: 'Some random tool',
+      label: 'أداة سباركي',
       icon: 'wrench',
     });
   });
@@ -48,8 +62,10 @@ describe('isLookupTool', () => {
 });
 
 describe('CHAT_SUGGESTIONS', () => {
-  it('provides non-empty starter prompts', () => {
+  it('provides non-empty Saudi Arabic starter prompts', () => {
     expect(CHAT_SUGGESTIONS.length).toBeGreaterThan(0);
+    expect(CHAT_SUGGESTIONS).toContain('سجّل بيضتين وموزة على الفطور');
+    expect(CHAT_SUGGESTIONS).toContain('كم باقي لي من السعرات اليوم؟');
     CHAT_SUGGESTIONS.forEach((suggestion) => {
       expect(suggestion.trim().length).toBeGreaterThan(0);
     });
