@@ -7,7 +7,7 @@ import measurementRepository from '../../models/measurementRepository.js';
 import reportRepository from '../../models/reportRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { normalizeDayKeywords } from './dates.js';
-import { dayString } from './formatting.js';
+import { dayString, formatJsonResult } from './formatting.js';
 import { getNutritionalSummaryRows, getWaterHistoryRows } from './foodTools.js';
 import { getBiometricsHistoryRows } from './checkinTools.js';
 import {
@@ -189,7 +189,7 @@ export function buildReportTools(userId: string, tz: string) {
         }
         try {
           const data = await getDailyReport(userId, tz, parsed.data);
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Report Tool] sparky_get_daily_report error:', error);
           if (error instanceof Error && error.message.includes('not found')) {

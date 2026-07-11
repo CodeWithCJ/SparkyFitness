@@ -49,10 +49,19 @@ const lookupFoodNutritionSchema = z
   })
   .strict();
 
+// food_name/unit/entry_date are optional so a model holding a food_id from a
+// lookup can log with just (food_id, quantity, meal_type): the handler
+// resolves the unit from the food's default variant and defaults the date to
+// today. Requiring all three tripped small local models into dead ends.
 const logFoodSchema = z
   .object({
     action: z.literal('log_food'),
-    food_name: z.string().min(1).max(200).describe('Name of the food item'),
+    food_name: z
+      .string()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe('Name of the food item (required when food_id is omitted)'),
     food_id: uuidSchema.optional().describe('UUID of the food item (if known)'),
     variant_id: uuidSchema
       .optional()
@@ -62,9 +71,12 @@ const logFoodSchema = z
       .string()
       .min(1)
       .max(50)
-      .describe("Unit of measurement (e.g., 'g', 'piece', 'serving')"),
+      .optional()
+      .describe(
+        "Unit of measurement (e.g., 'g', 'piece', 'serving'); defaults to the food's serving unit"
+      ),
     meal_type: mealTypeEnum.describe('Meal type category'),
-    entry_date: dateSchema,
+    entry_date: optionalDateSchema,
   })
   .strict();
 
@@ -504,10 +516,16 @@ export const manageFoodInput = z.object({
     .describe(
       'Food name — required for search_food/log_food/create_food/delete_food (alternative to food_id)'
     ),
-  food_id: uuidSchema
+  // Published as plain strings (advisory; the per-action union enforces UUID)
+  // so a model passing a lookup result's External ID reaches the handler and
+  // gets a chat-visible correction instead of an SDK-level type error.
+  food_id: z
+    .string()
     .optional()
-    .describe('Food UUID — alternative to food_name'),
-  variant_id: uuidSchema.optional().describe('Food variant UUID'),
+    .describe(
+      'Internal food UUID — alternative to food_name. NOT the External ID from lookup_food_nutrition results.'
+    ),
+  variant_id: z.string().optional().describe('Food variant UUID'),
   update_existing_entries: z.coerce
     .boolean()
     .optional()

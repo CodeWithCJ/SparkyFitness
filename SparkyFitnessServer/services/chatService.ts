@@ -10,6 +10,7 @@ import {
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { TtlCache } from '../utils/ttlCache.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
   createGuardedFetch,
@@ -55,20 +56,43 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { buildChatbotTools, type ChatToolProfile } from '../ai/tools/index.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const MAX_AGENTIC_STEPS = 15;
+// Tighter agent-loop ceiling for the 'core' profile (small/local models with
+// no prompt cache): every step re-processes the full prefix from scratch, so
+// 15 runaway steps on a confused 3B model is pure token burn. Core-profile
+// flows are simple log/read round-trips; 8 steps covers lookup → log → confirm
+// with room to spare.
+const CORE_PROFILE_MAX_AGENTIC_STEPS = 8;
 
-// Sampling temperature for the 'core' tool profile — resolved only for Ollama
-// services the user flagged as small/local (see prepareChatContext). Small
-// models emit noticeably steadier tool-call JSON at a low temperature, and this
-// chat is tool-orchestration first, prose second. Cloud providers and
-// full-profile Ollama keep their provider-tuned defaults (no temperature set).
+// Sampling temperature for the 'core' tool profile — resolved only for
+// self-hosted services the user flagged as small/local (see
+// prepareChatContext). Small models emit noticeably steadier tool-call JSON at
+// a low temperature, and this chat is tool-orchestration first, prose second.
+// Cloud providers and full-profile self-hosted services keep their
+// provider-tuned defaults (no temperature set).
 const CORE_PROFILE_CHAT_TEMPERATURE = 0.2;
 
 // Retries per chat request on persistent provider errors. Each retry re-sends the
 // full request (system + tools + history), so a high count multiplies token cost
 // on a hard provider outage. 3 covers transient blips without a runaway 5×.
 const MAX_PROVIDER_RETRIES = 3;
+// A single retry for core-profile (cache-less local) backends: with no prompt
+// cache each retry re-processes the entire prefix, and a struggling local
+// server rarely recovers on the 3rd identical attempt anyway.
+const CORE_PROFILE_MAX_PROVIDER_RETRIES = 1;
+
+// Hard wall-clock cap on one chat request (the agent loop as a whole is
+// unbounded otherwise — the chat path never had a timeout, unlike
+// providerDispatch.ts). Generous: a slow local model streaming a long answer
+// with several tool round-trips can legitimately take minutes.
+const CHAT_REQUEST_TIMEOUT_MS = 5 * 60_000;
 
 async function handleAiServiceSettings(
   action: string,
@@ -378,31 +402,53 @@ async function saveSparkyChatHistory(
  * registry. Everything is scoped to the authenticated user — chat tool calls
  * always act as the logged-in actor, matching the previous MCP behavior.
  */
+// Per-user cache of the two DB lookups behind every chat turn. Timezone and
+// custom categories change rarely (settings edits), so a short TTL keeps a
+// multi-turn conversation from re-querying both on each message while a
+// settings change still lands within a minute. Never cache auth/permission
+// state or secrets here.
+const chatContextInputsCache = new TtlCache<{
+  chatTz: string;
+  customCategoriesList: string;
+}>(60_000);
+
 async function prepareChatContext(
   authenticatedUserId: string,
   serviceType: string,
   chatToolProfile?: string | null
 ) {
-  const [customCategories, chatTz] = await Promise.all([
-    measurementRepository.getCustomCategories(authenticatedUserId),
-    loadUserTimezone(authenticatedUserId),
-  ]);
-
-  const customCategoriesList =
-    customCategories.length > 0
-      ? customCategories
-          .map(
-            (cat: DatabaseCustomCategories) =>
-              `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
-          )
-          .join('\n')
-      : 'None';
+  const { chatTz, customCategoriesList } =
+    await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
+      const [customCategories, tz] = await Promise.all([
+        measurementRepository.getCustomCategories(authenticatedUserId),
+        loadUserTimezone(authenticatedUserId),
+      ]);
+      return {
+        chatTz: tz,
+        customCategoriesList:
+          customCategories.length > 0
+            ? customCategories
+                .map(
+                  (cat: DatabaseCustomCategories) =>
+                    `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
+                )
+                .join('\n')
+            : 'None',
+      };
+    });
 
   // Per-service chat tool profile. 'core' trims the tool surface for small/local
-  // models and is only offered for Ollama; every other backend always gets the
-  // full set, so a stale 'core' on a non-Ollama service can never trim it.
+  // models and is honored for every self-hosted service type (ollama,
+  // openai_compatible, custom) — the backends with weak models and no prompt
+  // cache, where the 35-tool block is the dominant per-turn token cost. Cloud
+  // provider types always get the full set, so a stale 'core' there can never
+  // trim it. The default stays 'full' everywhere: openai_compatible/custom can
+  // point at powerful endpoints, and silently dropping 15 tools would degrade
+  // answer quality for those users.
   const toolProfile: ChatToolProfile =
-    serviceType === 'ollama' && chatToolProfile === 'core' ? 'core' : 'full';
+    requiresUserSuppliedAiUrl(serviceType) && chatToolProfile === 'core'
+      ? 'core'
+      : 'full';
   const tools = buildChatbotTools(authenticatedUserId, chatTz, toolProfile);
   log(
     'info',
@@ -446,59 +492,14 @@ export function getSystemPrompt(
   customCategoriesList: string,
   profile: ChatToolProfile = 'full'
 ): string {
-  if (profile === 'core') {
-    return `You are Sparky, an AI nutrition and wellness coach. Help users track their food, exercise, measurements, and goals.
-The current local date is ${todayInZone(chatTz)}.
+  const fileName = profile === 'core' ? 'chatbot-core.md' : 'chatbot-full.md';
+  const filePath = path.join(__dirname, '../prompts', fileName);
+  const template = readFileSync(filePath, 'utf-8').trim();
 
-When the user mentions logging, prioritize using the matching tools directly.
-User's custom measurement categories:
-${customCategoriesList}
-
-Compare inputs to the custom categories. If you find a match, use the exact category name.
-For solid food items or beverages, use 'sparky_manage_food'. For water intake, use 'sparky_manage_food' with 'log_water' action.
-MANDATORY: Call 'sparky_manage_food' with 'lookup_food_nutrition' before creating new food entries, and use the returned nutrition data.
-Keep responses concise and direct.`;
-  }
-
-  // Vision tools (sparky_analyze_food_image, sparky_scan_label) are dropped
-  // from the 'core' profile, so omit their guidance there — keeping the prompt
-  // a strict subset of the full one and never pointing small/local models at
-  // tools they don't have.
-  const visionSupport =
-    profile === 'full'
-      ? `
-
-## VISION SUPPORT
-You are a multimodal AI. When the user provides an image (photo of food, meal, or nutrition label):
-1. **Analyze it directly** using your built-in vision capabilities. You can see the images in the conversation history.
-2. If you need a more structured nutritional estimate or if the image is a complex meal, you can use the 'sparky_analyze_food_image' tool as a secondary step.
-3. For nutrition labels, you can use 'sparky_scan_label' to ensure high accuracy in data extraction.
-4. Based on your analysis, proceed to log the entry using the appropriate tools (e.g., 'sparky_manage_food').`
-      : '';
-
-  return `You are Sparky, an AI nutrition and wellness coach. Your primary goal is to help users track their food, exercise, and measurements, and provide helpful advice and motivation based on their data and general health knowledge.
-
-The current local date is ${todayInZone(chatTz)}.
-
-When the user mentions logging food, exercise, or measurements, prioritize using the matching tools.
-
-Here are the user's existing custom measurement categories:
-${customCategoriesList}
-
-When logging measurements or custom categories, compare user inputs to the list above. If you find a match or variations (synonyms, capitalization), use the exact category name.
-
-For solid food items or beverages that are not water, use the 'sparky_manage_food' tool. Do NOT classify water as food. Use the 'sparky_manage_food' tool with the 'log_water' action for water intake.
-
-## MANDATORY FOOD LOOKUP RULE
-BEFORE creating any new food entry or logging food that may not exist in the database, you MUST call the 'sparky_manage_food' tool with the 'lookup_food_nutrition' action first to search for verified nutritional data. This searches internal database, user food providers, OpenFoodFacts, and other verified sources.
-
-- If 'lookup_food_nutrition' returns nutrition data (calories > 0), use that data when calling 'sparky_manage_food' with the 'log_food' action. Do NOT override it with your own estimates.
-- Only use AI-estimated nutrition if 'lookup_food_nutrition' explicitly returns no data or a zero-calorie result.
-- Always tell the user the source of nutrition data (e.g., "from OpenFoodFacts", "from internal database", "AI estimate").
-- If the user explicitly asks for internet search or a specific source, pass that preference to 'lookup_food_nutrition' using the provider_type parameter.
-- **Nutritional detail**: When creating a food via the 'create_food' action, include any micronutrients (saturated_fat, fiber, sugar, sodium, etc.) the looked-up source provides or that you can confidently derive. Don't fabricate values you can't reasonably estimate, and don't pad unknown fields with zeros.${visionSupport}
-
-Be precise with data extraction and call the correct tools in the correct order.`;
+  // Replace placeholders dynamically
+  return template
+    .replace(/\${today}/g, todayInZone(chatTz))
+    .replace(/\${customCategories}/g, customCategoriesList);
 }
 
 // OpenAI's 24h extended retention is only supported on the gpt-5.1+ families
@@ -628,6 +629,173 @@ function trimToTokenBudget(
   return messages.slice(startIndex);
 }
 
+// ---------------------------------------------------------------------------
+// Helpers shared by the blocking (processChatMessage) and streaming
+// (processChatMessageStream) paths. These blocks used to be duplicated in
+// both functions and drifted; keep changes here so both paths stay in sync.
+// ---------------------------------------------------------------------------
+
+// The service-setting fields the provider factory needs.
+interface ChatAiServiceConfig {
+  service_type: string;
+  api_key?: string | null;
+  custom_url?: string | null;
+}
+
+// Resolves the AI SDK model instance for a chat service: native adapters for
+// openai/anthropic/google, and the OpenAI-compatible base-URL ladder for
+// everything else. Self-hosted types get the SSRF-guarded fetch.
+function createChatModelInstance(
+  aiService: ChatAiServiceConfig,
+  modelName: string,
+  networkPolicy: ReturnType<typeof deriveAiNetworkPolicy>
+): Parameters<typeof generateText>[0]['model'] {
+  const apiKey = aiService.api_key ?? undefined;
+
+  if (aiService.service_type === 'openai') {
+    return createOpenAI({ apiKey })(modelName);
+  }
+  if (aiService.service_type === 'anthropic') {
+    return createAnthropic({ apiKey })(modelName);
+  }
+  if (aiService.service_type === 'google') {
+    return createGoogleGenerativeAI({ apiKey })(modelName);
+  }
+  if (
+    aiService.service_type === 'ollama' ||
+    aiService.service_type === 'openai_compatible' ||
+    aiService.service_type === 'custom' ||
+    aiService.service_type === 'mistral' ||
+    aiService.service_type === 'groq' ||
+    aiService.service_type === 'openrouter' ||
+    aiService.service_type === 'xai'
+  ) {
+    // Connect as OpenAI-compatible
+    let baseURL = aiService.custom_url ?? undefined;
+    if (aiService.service_type === 'ollama') {
+      baseURL = `${aiService.custom_url}/v1`;
+    } else if (aiService.service_type === 'groq') {
+      baseURL = 'https://api.groq.com/openai/v1';
+    } else if (aiService.service_type === 'openrouter') {
+      baseURL = 'https://openrouter.ai/api/v1';
+    } else if (aiService.service_type === 'mistral') {
+      baseURL = 'https://api.mistral.ai/v1';
+    } else if (aiService.service_type === 'xai') {
+      baseURL = 'https://api.x.ai/v1';
+    }
+    const providerOptions: Parameters<typeof createOpenAI>[0] = {
+      baseURL,
+      apiKey: apiKey || 'no-key',
+    };
+    if (requiresUserSuppliedAiUrl(aiService.service_type)) {
+      providerOptions.fetch = createGuardedFetch(networkPolicy);
+    }
+    return createOpenAI(providerOptions).chat(modelName);
+  }
+  throw new Error(`Unsupported service type: ${aiService.service_type}`);
+}
+
+// Maps one client message part to a CoreMessage part; unknown parts fall back
+// to text.
+function mapMessagePart(part: ChatMessagePart): ProcessedMessagePart {
+  if (part.type === 'text') {
+    return { type: 'text' as const, text: part.text || part.content || '' };
+  }
+  if (
+    part.type === 'image' ||
+    part.type === 'image_url' ||
+    (part.type === 'file' &&
+      (part.mimeType?.startsWith('image/') ||
+        part.mediaType?.startsWith('image/') ||
+        part.url?.startsWith('data:image/')))
+  ) {
+    // Handle both base64 data URLs and remote URLs
+    const url = part.image_url?.url || part.image || part.url || '';
+    return { type: 'image' as const, image: url };
+  }
+  // Fallback: treat unknown parts as text
+  return { type: 'text' as const, text: String(part.text || '') };
+}
+
+// Maps client chat messages (parts arrays or plain strings) to CoreMessages.
+function toCoreMessages(messages: ChatMessage[]): LlmMessage[] {
+  return messages.map((msg) => {
+    const role = msg.role === 'assistant' ? 'assistant' : 'user';
+    const partsSource = Array.isArray(msg.parts)
+      ? msg.parts
+      : Array.isArray(msg.content)
+        ? (msg.content as ChatMessagePart[])
+        : null;
+
+    if (partsSource) {
+      const parts = partsSource
+        .map(mapMessagePart)
+        .filter(
+          (p) =>
+            p.type === 'image' ||
+            (p.type === 'text' && p.text && p.text.trim() !== '')
+        );
+      if (parts.length > 0) {
+        return { role, content: parts };
+      }
+    }
+
+    if (typeof msg.content === 'string' && msg.content.trim() !== '') {
+      return { role, content: msg.content };
+    }
+    return { role, content: '' };
+  });
+}
+
+// Applies the context-window controls in order: drop trailing empty assistant
+// messages some clients send, strip historical images, trim to the profile's
+// token budget, and ensure the window starts with a user message (some models
+// reject assistant-first history).
+function buildLlmWindow(
+  conversationMessages: LlmMessage[],
+  toolProfile: ChatToolProfile
+): LlmMessage[] {
+  const msgs = [...conversationMessages];
+  while (
+    msgs.length > 0 &&
+    msgs[msgs.length - 1].role === 'assistant' &&
+    (!msgs[msgs.length - 1].content ||
+      (Array.isArray(msgs[msgs.length - 1].content) &&
+        msgs[msgs.length - 1].content.length === 0))
+  ) {
+    msgs.pop();
+  }
+
+  const llmMessages = trimToTokenBudget(
+    stripHistoricalImages(msgs),
+    toolProfile === 'core'
+      ? CORE_PROFILE_CONTEXT_TOKEN_BUDGET
+      : CONTEXT_TOKEN_BUDGET
+  );
+
+  while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
+    llmMessages.shift();
+  }
+  return llmMessages;
+}
+
+// Derives the display text and parts for saving a user message to history.
+function describeUserMessage(msg?: LlmMessage): {
+  content: string;
+  parts: ChatMessagePart[];
+} {
+  const content = Array.isArray(msg?.content)
+    ? msg.content
+        .filter((p: ChatMessagePart) => p.type === 'text')
+        .map((p: ChatMessagePart) => p.text || '')
+        .join(' ') || '[Image message]'
+    : (msg?.content as string) || 'Message sent';
+  const parts: ChatMessagePart[] = Array.isArray(msg?.content)
+    ? msg.content
+    : [{ type: 'text' as const, text: String(msg?.content || '') }];
+  return { content, parts };
+}
+
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -664,53 +832,11 @@ async function processChatMessage(
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = deriveAiNetworkPolicy(aiService, actorIsAdmin);
 
-    // Initialize Vercel AI SDK Model based on service_type
-    let modelInstance: Parameters<typeof generateText>[0]['model'];
-    const apiKey = aiService.api_key;
-
-    if (aiService.service_type === 'openai') {
-      const provider = createOpenAI({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (aiService.service_type === 'anthropic') {
-      const provider = createAnthropic({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (aiService.service_type === 'google') {
-      const provider = createGoogleGenerativeAI({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (
-      aiService.service_type === 'ollama' ||
-      aiService.service_type === 'openai_compatible' ||
-      aiService.service_type === 'custom' ||
-      aiService.service_type === 'mistral' ||
-      aiService.service_type === 'groq' ||
-      aiService.service_type === 'openrouter' ||
-      aiService.service_type === 'xai'
-    ) {
-      // Connect as OpenAI-compatible
-      let baseURL = aiService.custom_url;
-      if (aiService.service_type === 'ollama') {
-        baseURL = `${aiService.custom_url}/v1`;
-      } else if (aiService.service_type === 'groq') {
-        baseURL = 'https://api.groq.com/openai/v1';
-      } else if (aiService.service_type === 'openrouter') {
-        baseURL = 'https://openrouter.ai/api/v1';
-      } else if (aiService.service_type === 'mistral') {
-        baseURL = 'https://api.mistral.ai/v1';
-      } else if (aiService.service_type === 'xai') {
-        baseURL = 'https://api.x.ai/v1';
-      }
-      const providerOptions: Parameters<typeof createOpenAI>[0] = {
-        baseURL,
-        apiKey: apiKey || 'no-key',
-      };
-      if (requiresUserSuppliedAiUrl(aiService.service_type)) {
-        providerOptions.fetch = createGuardedFetch(networkPolicy);
-      }
-      const provider = createOpenAI(providerOptions);
-      modelInstance = provider.chat(modelName);
-    } else {
-      throw new Error(`Unsupported service type: ${aiService.service_type}`);
-    }
+    const modelInstance = createChatModelInstance(
+      aiService,
+      modelName,
+      networkPolicy
+    );
 
     const { systemPromptContent, tools, toolProfile } =
       await prepareChatContext(
@@ -725,139 +851,16 @@ async function processChatMessage(
       modelName
     );
 
-    // Map conversation history messages to CoreMessage format
-    const conversationMessages = messages.map((msg: ChatMessage) => {
-      // If parts or content is an array of parts (text + images), pass them through
-      const partsSource =
-        msg.parts && Array.isArray(msg.parts)
-          ? msg.parts
-          : Array.isArray(msg.content)
-            ? msg.content
-            : null;
-
-      if (partsSource) {
-        const parts = (partsSource as ChatMessagePart[])
-          .map((part: ChatMessagePart) => {
-            if (part.type === 'text') {
-              return { type: 'text' as const, text: part.text || '' };
-            }
-            if (
-              part.type === 'image' ||
-              part.type === 'image_url' ||
-              (part.type === 'file' &&
-                (part.mimeType?.startsWith('image/') ||
-                  part.mediaType?.startsWith('image/') ||
-                  part.url?.startsWith('data:image/')))
-            ) {
-              // Handle both base64 data URLs and remote URLs
-              const url = part.image_url?.url || part.image || part.url || '';
-              return { type: 'image' as const, image: url };
-            }
-            // Fallback: treat unknown parts as text
-            return { type: 'text' as const, text: String(part.text || '') };
-          })
-          .filter(
-            (p: ProcessedMessagePart) =>
-              p.type === 'image' ||
-              (p.type === 'text' && p.text && p.text.trim() !== '')
-          );
-
-        if (parts.length > 0) {
-          return {
-            role: (msg.role === 'assistant' ? 'assistant' : 'user') as
-              | 'assistant'
-              | 'user',
-            content: parts,
-          };
-        }
-      }
-
-      return {
-        role: (msg.role === 'assistant' ? 'assistant' : 'user') as
-          | 'assistant'
-          | 'user',
-        content: typeof msg.content === 'string' ? msg.content : '',
-      };
-    });
-
-    // Add the incoming message(s) to the history
-    const incomingMessages = messages.map((msg: ChatMessage) => {
-      if (Array.isArray(msg.parts) || Array.isArray(msg.content)) {
-        const partsSource = (
-          Array.isArray(msg.parts) ? msg.parts : msg.content
-        ) as ChatMessagePart[];
-        const parts = partsSource
-          .map((part: ChatMessagePart) => {
-            if (part.type === 'text') {
-              return {
-                type: 'text' as const,
-                text: part.text || part.content || '',
-              };
-            }
-            if (
-              part.type === 'image' ||
-              part.type === 'image_url' ||
-              (part.type === 'file' &&
-                (part.mimeType?.startsWith('image/') ||
-                  part.mediaType?.startsWith('image/') ||
-                  part.url?.startsWith('data:image/')))
-            ) {
-              const url = part.image_url?.url || part.image || part.url || '';
-              return { type: 'image' as const, image: url };
-            }
-            return { type: 'text' as const, text: String(part.text || '') };
-          })
-          .filter(
-            (p: ProcessedMessagePart) =>
-              p.type === 'image' ||
-              (p.type === 'text' && p.text && p.text.trim() !== '')
-          );
-
-        return {
-          role: (msg.role === 'assistant' ? 'assistant' : 'user') as
-            | 'assistant'
-            | 'user',
-          content: parts,
-        };
-      }
-
-      return {
-        role: (msg.role === 'assistant' ? 'assistant' : 'user') as
-          | 'assistant'
-          | 'user',
-        content: typeof msg.content === 'string' ? msg.content : '',
-      };
-    });
-
-    // Filter out trailing empty assistant messages if sent by the client
-    while (
-      conversationMessages.length > 0 &&
-      conversationMessages[conversationMessages.length - 1].role ===
-        'assistant' &&
-      !conversationMessages[conversationMessages.length - 1].content
-    ) {
-      conversationMessages.pop();
-    }
-
-    // Mirror the streaming path's context-window controls so the non-streaming
-    // route doesn't resend historical images or overflow the context budget.
-    const strippedMessages = stripHistoricalImages(conversationMessages);
-    const llmMessages = trimToTokenBudget(
-      strippedMessages,
-      toolProfile === 'core'
-        ? CORE_PROFILE_CONTEXT_TOKEN_BUDGET
-        : CONTEXT_TOKEN_BUDGET
-    );
-
-    // Ensure the window starts with a user message (some models reject assistant-first history)
-    while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
-      llmMessages.shift();
-    }
+    // Map conversation history messages to CoreMessage format, then apply the
+    // shared context-window controls (image strip, token budget, user-first).
+    const conversationMessages = toCoreMessages(messages);
+    const llmMessages = buildLlmWindow(conversationMessages, toolProfile);
 
     const executedToolsList: Array<{
       name: string;
       args: Record<string, unknown>;
     }> = [];
+    const toolOutputs: string[] = [];
 
     const result = await generateText({
       model: modelInstance,
@@ -872,8 +875,18 @@ async function processChatMessage(
       ...(toolProfile === 'core' && {
         temperature: CORE_PROFILE_CHAT_TEMPERATURE,
       }),
-      stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
-      maxRetries: MAX_PROVIDER_RETRIES,
+      // Tighter step/retry ceilings for cache-less core-profile backends,
+      // where every step and retry re-processes the full prefix.
+      stopWhen: stepCountIs(
+        toolProfile === 'core'
+          ? CORE_PROFILE_MAX_AGENTIC_STEPS
+          : MAX_AGENTIC_STEPS
+      ),
+      maxRetries:
+        toolProfile === 'core'
+          ? CORE_PROFILE_MAX_PROVIDER_RETRIES
+          : MAX_PROVIDER_RETRIES,
+      abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
       onStepFinish({ toolCalls, toolResults }) {
         if (toolCalls && toolCalls.length > 0) {
           toolCalls.forEach((call) => {
@@ -888,6 +901,11 @@ async function processChatMessage(
           });
         }
         if (toolResults && toolResults.length > 0) {
+          toolResults.forEach((r) => {
+            if (r.output && typeof r.output === 'string') {
+              toolOutputs.push(r.output);
+            }
+          });
           const sizes = toolResults
             .map((r) => `${r.toolName}=${String(r.output ?? '').length}c`)
             .join(' ');
@@ -903,17 +921,10 @@ async function processChatMessage(
     );
 
     // Save history dynamically to DB (replacing frontend client-side saves)
-    const lastUserMsg = incomingMessages[incomingMessages.length - 1];
-    const userMessageContent = Array.isArray(lastUserMsg?.content)
-      ? lastUserMsg.content
-          .filter((p: ChatMessagePart) => p.type === 'text')
-          .map((p: ChatMessagePart) => p.text || '')
-          .join(' ') || '[Image message]'
-      : (lastUserMsg?.content as string) || 'Message sent';
-
-    const userMessageParts = Array.isArray(lastUserMsg?.content)
-      ? lastUserMsg.content
-      : [{ type: 'text' as const, text: String(lastUserMsg?.content || '') }];
+    const { content: userMessageContent, parts: userMessageParts } =
+      describeUserMessage(
+        conversationMessages[conversationMessages.length - 1]
+      );
 
     await chatRepository
       .saveChatHistory({
@@ -926,22 +937,53 @@ async function processChatMessage(
         log('error', 'Failed to save user chat history:', err)
       );
 
-    if (result.text.trim()) {
+    let finalContent = result.text.trim();
+    if (!finalContent) {
+      if (executedToolsList.length > 0) {
+        const lastTool = executedToolsList[executedToolsList.length - 1];
+        if (lastTool.name === 'sparky_manage_food') {
+          if (lastTool.args?.action === 'log_water') {
+            finalContent = "I've logged your water intake.";
+          } else {
+            finalContent = "I've logged that food for you.";
+          }
+        } else if (lastTool.name === 'sparky_manage_exercise') {
+          finalContent = "I've logged your exercise.";
+        } else if (lastTool.name === 'sparky_manage_checkin') {
+          if (lastTool.args?.action === 'log_mood') {
+            finalContent = "I've recorded your mood.";
+          } else if (lastTool.args?.action === 'log_sleep') {
+            finalContent = "I've logged your sleep.";
+          } else if (lastTool.args?.action === 'log_biometrics') {
+            finalContent = "I've updated your biometrics.";
+          } else if (lastTool.args?.action === 'log_fasting') {
+            finalContent = "I've logged your fasting window.";
+          } else {
+            finalContent = "I've updated your wellness diary.";
+          }
+        } else {
+          finalContent = "I've recorded that for you!";
+        }
+        log(
+          'info',
+          `[chat] LLM returned empty text; generated generic fallback confirmation: "${finalContent}"`
+        );
+      } else {
+        finalContent = EMPTY_RESPONSE_ERROR_TEXT;
+      }
+    }
+
+    if (finalContent) {
       await chatRepository
         .saveChatHistory({
           user_id: userId,
-          content: result.text,
+          content: finalContent,
           messageType: 'assistant',
-          parts: [{ type: 'text', text: result.text }],
+          parts: [{ type: 'text', text: finalContent }],
         })
         .catch((err: unknown) =>
           log('error', 'Failed to save assistant chat history:', err)
         );
-    } else {
-      log(
-        'warn',
-        `Skipping empty assistant chat history for user ${userId} (finishReason: ${result.finishReason})`
-      );
     }
 
     // Determine the general action type based on executed tools
@@ -985,7 +1027,7 @@ async function processChatMessage(
     }
 
     return {
-      content: result.text,
+      content: finalContent,
       action: actionType,
       executedTools: executedToolsList,
     };
@@ -1283,7 +1325,6 @@ async function processChatMessageStream(
       throw new Error('AI service setting not found for the provided ID.');
     }
 
-    const apiKey = aiService.api_key;
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = deriveAiNetworkPolicy(aiService, actorIsAdmin);
@@ -1293,49 +1334,11 @@ async function processChatMessageStream(
       `Streaming chat message with service: ${aiService.service_type}, model: ${modelName}`
     );
 
-    let modelInstance: Parameters<typeof streamText>[0]['model'];
-    if (aiService.service_type === 'openai') {
-      const provider = createOpenAI({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (aiService.service_type === 'anthropic') {
-      const provider = createAnthropic({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (aiService.service_type === 'google') {
-      const provider = createGoogleGenerativeAI({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (
-      aiService.service_type === 'ollama' ||
-      aiService.service_type === 'openai_compatible' ||
-      aiService.service_type === 'custom' ||
-      aiService.service_type === 'mistral' ||
-      aiService.service_type === 'groq' ||
-      aiService.service_type === 'openrouter' ||
-      aiService.service_type === 'xai'
-    ) {
-      let baseURL = aiService.custom_url;
-      if (aiService.service_type === 'ollama') {
-        baseURL = `${aiService.custom_url}/v1`;
-      } else if (aiService.service_type === 'groq') {
-        baseURL = 'https://api.groq.com/openai/v1';
-      } else if (aiService.service_type === 'openrouter') {
-        baseURL = 'https://openrouter.ai/api/v1';
-      } else if (aiService.service_type === 'mistral') {
-        baseURL = 'https://api.mistral.ai/v1';
-      } else if (aiService.service_type === 'xai') {
-        baseURL = 'https://api.x.ai/v1';
-      }
-      const providerOptions: Parameters<typeof createOpenAI>[0] = {
-        baseURL,
-        apiKey: apiKey || 'no-key',
-      };
-      if (requiresUserSuppliedAiUrl(aiService.service_type)) {
-        providerOptions.fetch = createGuardedFetch(networkPolicy);
-      }
-      const provider = createOpenAI(providerOptions);
-      modelInstance = provider.chat(modelName);
-    } else {
-      throw new Error(`Unsupported service type: ${aiService.service_type}`);
-    }
+    const modelInstance = createChatModelInstance(
+      aiService,
+      modelName,
+      networkPolicy
+    );
 
     const { systemPromptContent, tools, toolProfile } =
       await prepareChatContext(
@@ -1350,109 +1353,19 @@ async function processChatMessageStream(
       modelName
     );
 
-    const conversationMessages = messages.map((msg: ChatMessage) => {
-      // If parts or content is an array of parts (text + images), pass them through
-      const partsSource = Array.isArray(msg.parts)
-        ? msg.parts
-        : Array.isArray(msg.content)
-          ? msg.content
-          : null;
-
-      if (partsSource) {
-        const parts = (partsSource as ChatMessagePart[])
-          .map((part: ChatMessagePart) => {
-            if (part.type === 'text') {
-              return { type: 'text' as const, text: part.text || '' };
-            }
-            if (
-              part.type === 'image' ||
-              part.type === 'image_url' ||
-              (part.type === 'file' &&
-                (part.mimeType?.startsWith('image/') ||
-                  part.mediaType?.startsWith('image/') ||
-                  part.url?.startsWith('data:image/')))
-            ) {
-              // Handle both base64 data URLs and remote URLs
-              const url = part.image_url?.url || part.image || part.url || '';
-              return { type: 'image' as const, image: url };
-            }
-            // Fallback: treat unknown parts as text
-            return { type: 'text' as const, text: String(part.text || '') };
-          })
-          .filter(
-            (p: ProcessedMessagePart) =>
-              p.type === 'image' ||
-              (p.type === 'text' && p.text && p.text.trim() !== '')
-          );
-
-        if (parts.length > 0) {
-          return {
-            role: msg.role === 'assistant' ? 'assistant' : 'user',
-            content: parts,
-          };
-        }
-      }
-
-      // If content is a plain string, use as-is
-      if (typeof msg.content === 'string' && msg.content.trim() !== '') {
-        return {
-          role: msg.role === 'assistant' ? 'assistant' : 'user',
-          content: msg.content,
-        };
-      }
-
-      return {
-        role: msg.role === 'assistant' ? 'assistant' : 'user',
-        content: '',
-      };
-    });
-
-    // Filter out trailing empty assistant messages if sent by the client
-    while (
-      conversationMessages.length > 0 &&
-      conversationMessages[conversationMessages.length - 1].role ===
-        'assistant' &&
-      (!conversationMessages[conversationMessages.length - 1].content ||
-        (Array.isArray(
-          conversationMessages[conversationMessages.length - 1].content
-        ) &&
-          conversationMessages[conversationMessages.length - 1].content
-            .length === 0))
-    ) {
-      conversationMessages.pop();
-    }
-
-    // Drop images from earlier turns first so the token budget reflects what is
-    // actually sent; the current user turn keeps its image so live vision
-    // analysis still works.
-    const strippedMessages = stripHistoricalImages(conversationMessages);
-
-    // Token-budgeted sliding window of recent messages to give the LLM multi-turn
-    // context without an unpredictable, count-based blow-up.
-    const llmMessages = trimToTokenBudget(
-      strippedMessages,
-      toolProfile === 'core'
-        ? CORE_PROFILE_CONTEXT_TOKEN_BUDGET
-        : CONTEXT_TOKEN_BUDGET
-    );
+    // Map client messages to CoreMessage format, then apply the shared
+    // context-window controls (image strip, token budget, user-first).
+    const conversationMessages = toCoreMessages(messages);
+    const llmMessages = buildLlmWindow(conversationMessages, toolProfile);
 
     log(
       'debug',
       `[DEBUG] AI Transmission: Preparing ${llmMessages.length} messages. Last message content structure: ${JSON.stringify(llmMessages[llmMessages.length - 1]?.content || '').substring(0, 200)}`
     );
 
-    // Ensure the window starts with a user message (some models reject assistant-first history)
-    while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
-      llmMessages.shift();
-    }
-
-    const lastMsg = llmMessages[llmMessages.length - 1];
-    const userMessageContent = Array.isArray(lastMsg?.content)
-      ? lastMsg.content
-          .filter((p: ChatMessagePart) => p.type === 'text')
-          .map((p: ChatMessagePart) => p.text || '')
-          .join(' ') || '[Image message]'
-      : (lastMsg?.content as string) || 'Message sent';
+    const { content: userMessageContent } = describeUserMessage(
+      llmMessages[llmMessages.length - 1]
+    );
 
     const result = streamText({
       model: modelInstance,
@@ -1467,8 +1380,18 @@ async function processChatMessageStream(
       ...(toolProfile === 'core' && {
         temperature: CORE_PROFILE_CHAT_TEMPERATURE,
       }),
-      stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
-      maxRetries: MAX_PROVIDER_RETRIES,
+      // Tighter step/retry ceilings for cache-less core-profile backends,
+      // where every step and retry re-processes the full prefix.
+      stopWhen: stepCountIs(
+        toolProfile === 'core'
+          ? CORE_PROFILE_MAX_AGENTIC_STEPS
+          : MAX_AGENTIC_STEPS
+      ),
+      maxRetries:
+        toolProfile === 'core'
+          ? CORE_PROFILE_MAX_PROVIDER_RETRIES
+          : MAX_PROVIDER_RETRIES,
+      abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
       onStepFinish({ toolResults }) {
         if (toolResults && toolResults.length > 0) {
           const sizes = toolResults

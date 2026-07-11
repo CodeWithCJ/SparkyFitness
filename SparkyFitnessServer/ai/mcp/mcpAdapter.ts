@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolCallOptions } from 'ai';
 import { buildChatbotTools } from '../tools/index.js';
 import { buildDevTools } from '../tools/devTools.js';
+import { isToolErrorText } from '../tools/errors.js';
 
 // Registry handlers read only rawArgs (no abortSignal/messages), so a stub
 // satisfies the execute() signature.
@@ -34,7 +35,13 @@ function registerToolMap(
         const out = await t.execute!(args, EXEC_STUB);
         // Registry handlers return plain strings; guard anyway.
         const text = typeof out === 'string' ? out : JSON.stringify(out);
-        return { content: [{ type: 'text' as const, text }] };
+        // Registry failures come back as ERRORS.* strings by contract; flag
+        // them so MCP clients can distinguish failures from results instead
+        // of parsing prose.
+        return {
+          content: [{ type: 'text' as const, text }],
+          ...(isToolErrorText(text) ? { isError: true } : {}),
+        };
       }
     );
   }
@@ -49,10 +56,15 @@ export function registerRegistryTools(
   tz: string,
   profile: 'full' | 'core' = 'full'
 ): void {
-  const tools = buildChatbotTools(userId, tz, profile) as unknown as Record<
-    string,
-    RegistryTool
-  >;
+  // providerTuning=false: MCP publishes schemas over JSON-RPC, so the
+  // chat-only provider settings (strict flag, Anthropic cache breakpoint)
+  // are skipped for a clean provider-independent surface.
+  const tools = buildChatbotTools(
+    userId,
+    tz,
+    profile,
+    false
+  ) as unknown as Record<string, RegistryTool>;
   registerToolMap(mcpServer, tools);
 }
 

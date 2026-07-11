@@ -1,3 +1,4 @@
+import { Tool } from 'ai';
 import { buildCheckinTools } from './checkinTools.js';
 import { buildCoachTools } from './coachTools.js';
 import { buildEngagementTools } from './engagementTools.js';
@@ -22,25 +23,21 @@ import { buildWizardTools } from './wizardTools.js';
  */
 export type ChatToolProfile = 'full' | 'core';
 
-/**
- * Composes the in-process chatbot tool set for generateText/streamText.
- * Handlers close over the authenticated userId — chat tools always act as the
- * session user, so two-actor services receive (userId, userId, …) — and the
- * user's IANA timezone, used for "today" defaults and day bucketing.
- *
- * Domain order mirrors MCP's registerAllTools; the MCP-only dev tools are
- * intentionally not part of the chat surface. The 'core' profile is a strict
- * prefix of the full set, so the full set keeps its original ordering.
- */
-export function buildChatbotTools(
+type ToolMap = Record<string, Tool>;
+
+// Composes the raw per-domain tool builders. Domain order mirrors MCP's
+// registerAllTools; the MCP-only dev tools are intentionally not part of this
+// surface. The 'core' profile is a strict prefix of the full set, so the full
+// set keeps its original ordering.
+function composeTools(
   userId: string,
   tz: string,
-  profile: ChatToolProfile = 'full'
-) {
+  profile: ChatToolProfile
+): ToolMap {
   // Core domains: food, exercise, measurements/check-ins, and goals. Goals are
   // in core because a nutrition-coaching chat must be able to answer "what are
   // my goals?"; keeping this block a strict prefix of the full set below.
-  const tools = {
+  const tools: ToolMap = {
     ...buildExerciseTools(userId, tz),
     ...buildFoodTools(userId, tz),
     ...buildCheckinTools(userId, tz),
@@ -58,14 +55,22 @@ export function buildChatbotTools(
       buildReportTools(userId, tz)
     );
   }
+  return tools;
+}
+
+// Applies chat-provider tuning that only matters when the tools are sent to an
+// LLM provider through the AI SDK. The MCP surface skips this — MCP publishes
+// the schemas over JSON-RPC where strict-mode flags and Anthropic cache
+// markers are meaningless.
+function applyChatProviderTuning(tools: ToolMap): void {
   // The published flat schemas are advisory; real validation is the strict
   // per-action union inside each handler. Strict provider-side mode must stay
   // off: OpenAI's Responses API treats an omitted flag as "attempt strict
   // mode" and then forces models to emit every published property, producing
   // placeholder junk that the per-action validation rejects.
-  const allTools = Object.values(tools);
-  for (const tool of allTools) {
-    tool.strict = false;
+  const names = Object.keys(tools);
+  for (const name of names) {
+    tools[name].strict = false;
   }
 
   // Anthropic prompt caching: tag the final tool as a cache breakpoint so the
@@ -75,10 +80,11 @@ export function buildChatbotTools(
   // ignore it (and auto-cache on their own). MUST be the LAST tool the SDK
   // emits (Anthropic caches the prefix up to & including the marked tool). This
   // relies on the AI SDK preserving Object.values() order when building the
-  // Anthropic `tools` array — true today; if a package bump reorders tools this
-  // stops caching the full block silently (no error). Merge, don't overwrite,
+  // Anthropic `tools` array — true today; tests/chatbotToolsIndex.test.ts
+  // asserts the marker lands on the final composed tool so a domain reorder or
+  // new trailing domain can't silently drop caching. Merge, don't overwrite,
   // so any future providerOptions on this tool (e.g. deferLoading) survive.
-  const lastTool = allTools[allTools.length - 1];
+  const lastTool = tools[names[names.length - 1]];
   if (lastTool) {
     lastTool.providerOptions = {
       ...lastTool.providerOptions,
@@ -90,5 +96,51 @@ export function buildChatbotTools(
       },
     };
   }
+}
+
+// Memoized per (userId, tz, profile, tuning): the Zod schemas are module-level
+// constants, but the ~35 tool() wrappers and closures were being rebuilt on
+// every chat message and every MCP request. Entries expire so a user's
+// timezone change is picked up within a minute; execute() closures are
+// stateless, so reuse across concurrent requests is safe. Callers must not
+// mutate the returned map.
+const TOOL_CACHE_TTL_MS = 60_000;
+const TOOL_CACHE_MAX_ENTRIES = 500;
+const toolCache = new Map<string, { tools: ToolMap; expiresAt: number }>();
+
+/**
+ * Composes the in-process chatbot tool set for generateText/streamText.
+ * Handlers close over the authenticated userId — chat tools always act as the
+ * session user, so two-actor services receive (userId, userId, …) — and the
+ * user's IANA timezone, used for "today" defaults and day bucketing.
+ *
+ * `providerTuning` (default true) applies the chat/AI-SDK provider settings
+ * (strict off, Anthropic cache breakpoint). The MCP adapter passes false to
+ * publish a clean provider-independent surface.
+ */
+export function buildChatbotTools(
+  userId: string,
+  tz: string,
+  profile: ChatToolProfile = 'full',
+  providerTuning = true
+): ToolMap {
+  const key = `${providerTuning ? 'chat' : 'mcp'}|${profile}|${tz}|${userId}`;
+  const now = Date.now();
+  const cached = toolCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.tools;
+  }
+
+  const tools = composeTools(userId, tz, profile);
+  if (providerTuning) {
+    applyChatProviderTuning(tools);
+  }
+
+  if (toolCache.size >= TOOL_CACHE_MAX_ENTRIES) {
+    // Simple pressure valve: drop the oldest entries (insertion order).
+    const firstKey = toolCache.keys().next().value;
+    if (firstKey !== undefined) toolCache.delete(firstKey);
+  }
+  toolCache.set(key, { tools, expiresAt: now + TOOL_CACHE_TTL_MS });
   return tools;
 }

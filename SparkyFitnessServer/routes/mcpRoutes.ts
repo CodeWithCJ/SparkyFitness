@@ -10,8 +10,18 @@ import {
 import { resolveIsAdmin } from '../utils/adminCheck.js';
 import versionService from '../services/versionService.js';
 import chatService from '../services/chatService.js';
+import { TtlCache } from '../utils/ttlCache.js';
 
 const router = express.Router();
+
+// Per-user cache of the two DB lookups at the top of every MCP request (each
+// request builds a fresh McpServer, so tools/list + tools/call each paid a
+// timezone query plus the full active-AI-setting fetch just to read one
+// profile string). Both change rarely; a settings edit lands within a minute.
+const mcpContextCache = new TtlCache<{
+  tz: string;
+  profile: 'full' | 'core';
+}>(60_000);
 
 // Reported to MCP clients; sourced from package.json so it tracks releases.
 const SERVER_VERSION = versionService.getAppVersion();
@@ -56,12 +66,25 @@ function stripNulls(val: any): any {
 router.post('/', async (req, res) => {
   try {
     const userId = req.authenticatedUserId;
-    const tz = await loadUserTimezone(userId);
-    const activeSetting = await chatService.getActiveAiServiceSetting(
+    // The profile is honored verbatim for every service type (unlike chat,
+    // which only honors 'core' for self-hosted backends): a user who trimmed
+    // their tool surface to 'core' wants the lean 20-tool list in MCP clients
+    // too — MCP clients pay the full tool-list cost in their own context
+    // window on every call, with no server-side prompt cache to soften it.
+    const { tz, profile } = await mcpContextCache.getOrLoad(
       userId,
-      userId
+      async () => {
+        const [tz, activeSetting] = await Promise.all([
+          loadUserTimezone(userId),
+          chatService.getActiveAiServiceSetting(userId, userId),
+        ]);
+        return {
+          tz,
+          profile:
+            activeSetting?.chat_tool_profile === 'core' ? 'core' : 'full',
+        };
+      }
     );
-    const profile = activeSetting?.chat_tool_profile || 'full';
 
     // Normalize null arguments to undefined (omitted) for tools/call requests.
     // This prevents validation errors (MCP -32602) on optional schema fields.
@@ -111,7 +134,14 @@ router.post('/', async (req, res) => {
   } catch (e) {
     log('error', '[MCP] /mcp handler error', e);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal server error' });
+      // JSON-RPC error envelope (not a bare {error} object) so compliant MCP
+      // clients parse fatal failures instead of choking on the shape.
+      // -32603 = JSON-RPC "Internal error".
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal server error' },
+        id: null,
+      });
     }
   }
 });

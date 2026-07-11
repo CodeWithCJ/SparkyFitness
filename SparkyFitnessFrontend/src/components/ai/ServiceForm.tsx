@@ -182,7 +182,12 @@ export const ServiceForm = ({
         </div>
       )}
 
-      {formData.service_type === 'ollama' && (
+      {/* Self-hosted types (ollama/openai_compatible/custom) can point at
+          small local models with no prompt cache, where the full 35-tool
+          block is the dominant per-turn token cost — offer the leaner 'core'
+          profile for all of them. The server only honors 'core' for these
+          types (see chatService.prepareChatContext). */}
+      {requiresCustomUrl && (
         <>
           <div>
             <Label htmlFor="chat_tool_profile">
@@ -213,35 +218,38 @@ export const ServiceForm = ({
             </p>
           </div>
 
-          {(formData.chat_tool_profile === 'full' ||
-            !formData.chat_tool_profile) && (
-            <div className="flex gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              <div className="text-xs">
-                <p className="font-medium">
-                  {t(`${translationPrefix}.ollamaFullProfileWarningTitle`)}
-                </p>
-                <p className="mt-1">
-                  {t(`${translationPrefix}.ollamaFullProfileWarningHint`)}
-                </p>
+          {formData.service_type === 'ollama' &&
+            (formData.chat_tool_profile === 'full' ||
+              !formData.chat_tool_profile) && (
+              <div className="flex gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <div className="text-xs">
+                  <p className="font-medium">
+                    {t(`${translationPrefix}.ollamaFullProfileWarningTitle`)}
+                  </p>
+                  <p className="mt-1">
+                    {t(`${translationPrefix}.ollamaFullProfileWarningHint`)}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Ollama silently truncates prompts past its default 4096-token
               context, which corrupts tool calls. Surface this prominently so
               users raise it before blaming the model. */}
-          <div className="flex gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-            <div className="text-xs">
-              <p className="font-medium">
-                {t(`${translationPrefix}.ollamaContextTitle`)}
-              </p>
-              <p className="mt-1">
-                {t(`${translationPrefix}.ollamaContextHint`)}
-              </p>
+          {formData.service_type === 'ollama' && (
+            <div className="flex gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="text-xs">
+                <p className="font-medium">
+                  {t(`${translationPrefix}.ollamaContextTitle`)}
+                </p>
+                <p className="mt-1">
+                  {t(`${translationPrefix}.ollamaContextHint`)}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
 

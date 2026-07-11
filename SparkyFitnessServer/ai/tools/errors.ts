@@ -59,6 +59,18 @@ export const ERRORS = {
     ),
 };
 
+// Every registry tool failure goes through toolError(), so the "Error [CODE]:"
+// prefix is a stable machine-checkable contract. The MCP adapter uses it to
+// set isError on tool results; keep it in sync with toolError above.
+const TOOL_ERROR_PREFIX = /^Error \[[A-Z_]+\]: /;
+
+/**
+ * True when a registry tool's returned text is a toolError() failure string.
+ */
+export function isToolErrorText(text: string): boolean {
+  return TOOL_ERROR_PREFIX.test(text);
+}
+
 /**
  * Renders a zod parse failure as a chat-visible VALIDATION error,
  * formatted as "path: message; path2: message2".

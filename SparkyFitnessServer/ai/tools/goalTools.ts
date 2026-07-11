@@ -5,7 +5,12 @@ import { log } from '../../config/logging.js';
 import goalService from '../../services/goalService.js';
 import goalRepository from '../../models/goalRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { dayString, formatConfirmation, formatList } from './formatting.js';
+import {
+  dayString,
+  formatConfirmation,
+  formatJsonResult,
+  formatList,
+} from './formatting.js';
 import {
   manageGoalsSchema,
   manageGoalsInput,
@@ -229,7 +234,7 @@ Actions:
               data[field] = roundGoalValue(goals[field]);
             }
           }
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Goal Tool] sparky_get_goal_snapshot error:', error);
           if (error instanceof Error && error.message.includes('not found')) {

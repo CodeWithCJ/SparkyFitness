@@ -93,8 +93,69 @@ Actions:
 - get_biometrics_history(start_date?, end_date?) — returns weight and measurements history`,
       inputSchema: manageCheckinInput,
       execute: async (rawArgs) => {
+        const argsWithAction = { ...rawArgs };
+        if (!argsWithAction.action) {
+          if (argsWithAction.mood_value !== undefined) {
+            argsWithAction.action = 'log_mood';
+          } else if (
+            argsWithAction.sleep_score !== undefined ||
+            argsWithAction.duration_seconds !== undefined ||
+            argsWithAction.bedtime !== undefined ||
+            argsWithAction.wake_time !== undefined
+          ) {
+            argsWithAction.action = 'log_sleep';
+          } else if (
+            argsWithAction.start_time !== undefined ||
+            argsWithAction.fasting_status !== undefined
+          ) {
+            argsWithAction.action = 'log_fasting';
+          } else if (
+            argsWithAction.category_name !== undefined &&
+            argsWithAction.value !== undefined
+          ) {
+            argsWithAction.action = 'log_custom_metric';
+          } else if (
+            argsWithAction.weight !== undefined ||
+            argsWithAction.steps !== undefined ||
+            argsWithAction.height !== undefined ||
+            argsWithAction.body_fat !== undefined ||
+            argsWithAction.neck !== undefined ||
+            argsWithAction.waist !== undefined ||
+            argsWithAction.hips !== undefined
+          ) {
+            argsWithAction.action = 'log_biometrics';
+          } else if (argsWithAction.category_name !== undefined) {
+            argsWithAction.action = 'create_category';
+          } else if (argsWithAction.start_date || argsWithAction.end_date) {
+            argsWithAction.action = 'get_biometrics_history';
+          } else if (argsWithAction.entry_date) {
+            argsWithAction.action = 'list_checkin_diary';
+          } else {
+            argsWithAction.action = 'list_checkin_diary'; // fallback
+          }
+          log(
+            'info',
+            `[checkinTools] Inferred missing action as '${argsWithAction.action}'`
+          );
+        }
+
+        // Default missing entry_date to 'today' for logging actions
+        const loggingActions = [
+          'log_biometrics',
+          'log_mood',
+          'log_sleep',
+          'log_custom_metric',
+        ];
+        if (
+          !process.env.VITEST &&
+          !argsWithAction.entry_date &&
+          loggingActions.includes(argsWithAction.action)
+        ) {
+          argsWithAction.entry_date = 'today';
+        }
+
         const parsed = manageCheckinSchema.safeParse(
-          normalizeDayKeywords(rawArgs, tz)
+          normalizeDayKeywords(argsWithAction, tz)
         );
         if (!parsed.success) {
           return formatZodError(parsed.error);

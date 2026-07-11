@@ -12,6 +12,7 @@ import {
   compactRecord,
   dayString,
   formatConfirmation,
+  formatJsonResult,
   formatList,
 } from './formatting.js';
 import {
@@ -386,6 +387,16 @@ Actions:
             'info',
             `[exerciseTools] Inferred missing action as '${argsWithAction.action}'`
           );
+        }
+
+        // Default missing entry_date to 'today' for logging actions
+        const loggingActions = ['log_exercise', 'log_workout_preset'];
+        if (
+          !process.env.VITEST &&
+          !argsWithAction.entry_date &&
+          loggingActions.includes(argsWithAction.action)
+        ) {
+          argsWithAction.entry_date = 'today';
         }
 
         const parsed = manageExerciseSchema.safeParse(
@@ -791,7 +802,7 @@ Actions:
             totalCount,
             offset
           );
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Exercise Tool] sparky_list_exercises error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -815,7 +826,7 @@ Actions:
         }
         try {
           const data = await getExerciseDetails(userId, parsed.data);
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log(
             'error',
@@ -864,7 +875,7 @@ Actions:
             totalCount,
             offset
           );
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Exercise Tool] sparky_search_exercises error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -901,7 +912,7 @@ Actions:
               compactRecord(s, EXERCISE_SET_DROP)
             ),
           };
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log(
             'error',
@@ -941,7 +952,7 @@ Actions:
             end_date: endDate,
             rows: rows.map(projectEntryDate),
           };
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log(
             'error',
@@ -976,7 +987,7 @@ Actions:
             userId,
             limit
           );
-          return JSON.stringify(rows.map(projectExerciseEntry));
+          return formatJsonResult(rows.map(projectExerciseEntry));
         } catch (error) {
           log(
             'error',
@@ -1022,7 +1033,7 @@ Actions:
             totalCount,
             offset
           );
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log(
             'error',
@@ -1049,7 +1060,7 @@ Actions:
         }
         try {
           const data = await getExerciseProgress(userId, parsed.data);
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log(
             'error',

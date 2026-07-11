@@ -8,9 +8,9 @@ vi.mock('../config/logging', () => ({
   log: vi.fn(),
 }));
 
-// The chat-visible tool surface: every MCP tool except the four dev tools
-// (sparky_inspect_schema, sparky_get_user_info, sparky_get_db_stats,
-// sparky_run_project_tests), which are intentionally not ported.
+// The chat-visible tool surface: every MCP tool except the three dev tools
+// (sparky_inspect_schema, sparky_get_user_info, sparky_get_db_stats),
+// which are intentionally not ported.
 const EXPECTED_TOOLS = [
   'sparky_analyze_food_image',
   'sparky_analyze_trends',
@@ -126,5 +126,53 @@ describe('buildChatbotTools', () => {
     for (const [name, t] of Object.entries(tools)) {
       expect(t.strict, `${name} strict`).toBe(false);
     }
+  });
+
+  // Anthropic caches the request prefix up to and including the marked tool,
+  // so the ephemeral breakpoint MUST land on the final tool of the composed
+  // map (in both profiles) or the whole tool block silently stops caching.
+  it('marks the last tool of each profile as the Anthropic cache breakpoint', () => {
+    for (const profile of ['full', 'core'] as const) {
+      const tools = buildChatbotTools('user-1', 'UTC', profile);
+      const names = Object.keys(tools);
+      const last = tools[names[names.length - 1]];
+      expect(
+        last.providerOptions?.anthropic?.cacheControl,
+        `${profile} last tool cacheControl`
+      ).toEqual({ type: 'ephemeral' });
+      // And on no other tool — extra breakpoints waste Anthropic's 4-marker
+      // budget.
+      for (const name of names.slice(0, -1)) {
+        expect(
+          tools[name].providerOptions?.anthropic?.cacheControl,
+          `${name} should not carry a cache breakpoint`
+        ).toBeUndefined();
+      }
+    }
+  });
+
+  // The MCP surface (providerTuning=false) must publish clean schemas: no
+  // strict flag, no Anthropic cache marker — those are chat/AI-SDK concerns.
+  it('skips provider tuning when providerTuning is false', () => {
+    const tools = buildChatbotTools('mcp-user', 'UTC', 'full', false);
+    for (const [name, t] of Object.entries(tools)) {
+      expect(t.strict, `${name} strict`).toBeUndefined();
+      expect(
+        t.providerOptions?.anthropic?.cacheControl,
+        `${name} cacheControl`
+      ).toBeUndefined();
+    }
+  });
+
+  it('memoizes the tool map per user/tz/profile within the cache TTL', () => {
+    const first = buildChatbotTools('memo-user', 'UTC', 'full');
+    const second = buildChatbotTools('memo-user', 'UTC', 'full');
+    expect(second).toBe(first);
+    // Different key dimensions build fresh maps.
+    expect(buildChatbotTools('memo-user', 'UTC', 'core')).not.toBe(first);
+    expect(buildChatbotTools('other-user', 'UTC', 'full')).not.toBe(first);
+    expect(buildChatbotTools('memo-user', 'UTC', 'full', false)).not.toBe(
+      first
+    );
   });
 });

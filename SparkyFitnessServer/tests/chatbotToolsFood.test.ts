@@ -240,7 +240,7 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      '### Found match in **internal**:\n**Eggs** (Farm Fresh)\n  Serving Size: 100 g\n  Energy: 155 kcal\n  Macros: Protein: 13g | Carbs: 1.1g | Fat: 11g\n  Details: Fiber: 0g | Sugar: 1.1g | Sodium: 124mg | SatFat: 3.3g\n\n**Other Alternatives found:**\n- **eggs** (Other Farm) (100g: 155 kcal)'
+      `### Found match in **internal**:\n**Eggs** (Farm Fresh)\n  Serving Size: 100 g\n  Energy: 155 kcal\n  Macros: Protein: 13g | Carbs: 1.1g | Fat: 11g\n  Details: Fiber: 0g | Sugar: 1.1g | Sodium: 124mg | SatFat: 3.3g\n  ID: ${FOOD_ID}\n\n**Other Alternatives found:**\n- **eggs** (Other Farm) (100g: 155 kcal)`
     );
     expect(searchProviderFoods).not.toHaveBeenCalled();
   });
@@ -330,7 +330,7 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      '### Found match in **usda**:\n**Apple** (USDA)\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g\n  Details: Fiber: 2.4g | Sugar: 10g | Sodium: 1mg | SatFat: 0g\n  External ID: 171688\n\n**Other Alternatives found:**\n- **Apple juice** (240ml: 110 kcal)'
+      '### Found match in **usda**:\n**Apple** (USDA)\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g\n  Details: Fiber: 2.4g | Sugar: 10g | Sodium: 1mg | SatFat: 0g\n  External ID: 171688\n\n**Other Alternatives found:**\n- **Apple juice** (240ml: 110 kcal)\n\nNote: this external result is not saved in the food database yet. To log it, call create_food with these nutrition values (include meal_type and entry_date to log it in the same call). Do NOT pass the External ID as food_id.'
     );
   });
 
@@ -367,7 +367,7 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      '### Found match in **openfoodfacts**:\n**Apple**\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g'
+      '### Found match in **openfoodfacts**:\n**Apple**\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g\n\nNote: this external result is not saved in the food database yet. To log it, call create_food with these nutrition values (include meal_type and entry_date to log it in the same call). Do NOT pass the External ID as food_id.'
     );
   });
 
@@ -476,9 +476,114 @@ describe('log_food', () => {
     );
 
     expect(result).toBe(
-      'Error [VALIDATION]: Food "Unicorn Steak" not found. Create it first using create_food action.'
+      'Error [VALIDATION]: Food "Unicorn Steak" not found. Create it first using the create_food action with the nutrition values from lookup_food_nutrition (include meal_type and entry_date to log it in the same call).'
     );
     expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+  });
+
+  // Regression: models paste a lookup result's provider "External ID" (e.g. a
+  // USDA FDC id like '2058078') into food_id. That must fall back to name
+  // resolution, not blow up on UUID validation.
+  it('ignores a non-UUID food_id (provider External ID) and resolves by name', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      eggsRow,
+    ]);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Eggs',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: 'Eggs',
+        food_id: '2058078',
+        quantity: 2,
+        unit: 'serving',
+        meal_type: 'breakfast',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Logged "Eggs" (2 serving) for breakfast on 2026-06-10.'
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ food_id: FOOD_ID })
+    );
+  });
+
+  it('returns a chat-visible correction for a non-UUID food_id without a food_name', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'delete_food',
+        food_id: '2058078',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      "Error [VALIDATION]: food_id '2058078' is not an internal food UUID — External IDs from lookup_food_nutrition results cannot be logged directly. Retry with the food_name instead, or create the food first with create_food using the looked-up nutrition values."
+    );
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+  });
+
+  // Regression: after a lookup returns an internal ID, models log with just
+  // (food_id, quantity, meal_type). unit must default to the food's serving
+  // unit and entry_date to today — requiring them dead-ended small models.
+  it('logs with only food_id/quantity/meal_type, defaulting unit and date', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue(eggsRow);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Eggs',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_id: FOOD_ID,
+        quantity: 1,
+        meal_type: 'breakfast',
+      },
+      opts
+    );
+
+    const today = todayInZone('UTC');
+    expect(result).toBe(
+      `✅ Logged "Eggs" (1 ${eggsRow.default_variant.serving_unit}) for breakfast on ${today}.`
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        food_id: FOOD_ID,
+        variant_id: VARIANT_ID,
+        unit: eggsRow.default_variant.serving_unit,
+        entry_date: today,
+      })
+    );
+  });
+
+  // A no-action call shaped like a log (food_id + quantity + meal_type) must
+  // infer log_food — it used to fall through to the bare-food_id branch and
+  // infer delete_food.
+  it('infers log_food (not delete_food) for food_id + quantity + meal_type without action', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue(eggsRow);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Eggs',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      { food_id: FOOD_ID, quantity: 2, meal_type: 'lunch' },
+      opts
+    );
+
+    expect(result).toContain('✅ Logged "Eggs"');
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalled();
   });
 
   it('uses an explicit food_id and resolves its default variant', async () => {

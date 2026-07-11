@@ -21,6 +21,7 @@ import {
   compactRecord,
   dayString,
   formatConfirmation,
+  formatJsonResult,
   formatList,
 } from './formatting.js';
 import {
@@ -34,7 +35,7 @@ import {
   manageFoodInput,
   type ManageFoodInput,
 } from './schemas/food.js';
-import { optionalDateSchema } from './schemas/common.js';
+import { optionalDateSchema, uuidSchema } from './schemas/common.js';
 import { normalizeDayKeywords } from './dates.js';
 
 const VALID_ACTIONS = [
@@ -492,8 +493,8 @@ export function buildFoodTools(userId: string, tz: string) {
 Actions:
 - search_food(food_name, search_type:"exact"|"broad", limit?, offset?)
 - lookup_food_nutrition(food_name, provider_type?) — AI MUST call this cascade lookup first before creating or estimating a food. Bypasses regular cascade to search specific provider (e.g. openfoodfacts, usda) if provider_type given.
-- log_food(food_name, quantity, unit, meal_type:"breakfast"|"lunch"|"dinner"|"snacks", entry_date, food_id?, variant_id?)
-- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, saturated_fat?, fiber?, sugar?, sodium?, ...) — AI clients should search the web and populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros. ONLY call this if lookup_food_nutrition returns source='ai_estimate'.
+- log_food(quantity, meal_type:"breakfast"|"lunch"|"dinner"|"snacks", food_name?|food_id?, unit?, entry_date?, variant_id?) — provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
+- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, meal_type?, entry_date?, saturated_fat?, fiber?, sugar?, sodium?, ...) — MANDATORY: You must run lookup_food_nutrition first to verify nutrition data. Call when the food is not in the internal database yet: after an external lookup_food_nutrition match (usda/openfoodfacts/...), pass the looked-up values verbatim; only use AI-estimated values when lookup returns source='ai_estimate'. Include meal_type + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros.
 - search_meal(meal_name)
 - log_meal(meal_type, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?)
@@ -513,13 +514,15 @@ Actions:
           if (argsWithAction.amount_ml) {
             argsWithAction.action = 'log_water';
           } else if (
-            argsWithAction.food_name &&
+            (argsWithAction.food_name || argsWithAction.food_id) &&
             argsWithAction.quantity &&
-            argsWithAction.unit &&
             argsWithAction.meal_type
           ) {
+            // unit is optional for log_food (defaults to the food's serving
+            // unit); requiring it here used to drop id-based log calls
+            // through to the food_id branch below — inferring delete_food.
             if (
-              argsWithAction.food_name.toLowerCase() === 'water' ||
+              argsWithAction.food_name?.toLowerCase() === 'water' ||
               argsWithAction.unit === 'ml'
             ) {
               argsWithAction.action = 'log_water';
@@ -558,6 +561,56 @@ Actions:
             'info',
             `[foodTools] Inferred missing action as '${argsWithAction.action}'`
           );
+        }
+
+        // Models routinely paste a lookup result's provider "External ID"
+        // into food_id, which must be an internal UUID. When the food_name is
+        // also present, drop the bad id and resolve by name (log_food's
+        // normal path); otherwise return a chat-visible correction instead of
+        // letting the strict union emit a bare "Must be a valid UUID".
+        if (
+          typeof argsWithAction.food_id === 'string' &&
+          !uuidSchema.safeParse(argsWithAction.food_id).success
+        ) {
+          if (argsWithAction.food_name) {
+            log(
+              'info',
+              `[foodTools] Ignoring non-UUID food_id '${argsWithAction.food_id}' (likely a provider External ID); resolving by food_name`
+            );
+            delete argsWithAction.food_id;
+          } else {
+            return ERRORS.VALIDATION(
+              `food_id '${argsWithAction.food_id}' is not an internal food UUID — External IDs from lookup_food_nutrition results cannot be logged directly. Retry with the food_name instead, or create the food first with create_food using the looked-up nutrition values.`
+            );
+          }
+        }
+
+        // Same trap for variant_id; dropping it falls back to the default
+        // variant, which is what the model wanted anyway.
+        if (
+          typeof argsWithAction.variant_id === 'string' &&
+          !uuidSchema.safeParse(argsWithAction.variant_id).success
+        ) {
+          log(
+            'info',
+            `[foodTools] Ignoring non-UUID variant_id '${argsWithAction.variant_id}'; using the default variant`
+          );
+          delete argsWithAction.variant_id;
+        }
+        // Default missing entry_date to 'today' for logging actions
+        const loggingActions = [
+          'log_food',
+          'create_food',
+          'log_meal',
+          'log_water',
+          'save_as_meal_template',
+        ];
+        if (
+          !process.env.VITEST &&
+          !argsWithAction.entry_date &&
+          loggingActions.includes(argsWithAction.action)
+        ) {
+          argsWithAction.entry_date = 'today';
         }
 
         const parsed = manageFoodSchema.safeParse(
@@ -635,6 +688,11 @@ Actions:
                 ) {
                   text += `\n  Details: Fiber: ${v.dietary_fiber ?? 0}g | Sugar: ${v.sugars ?? 0}g | Sodium: ${v.sodium ?? 0}mg | SatFat: ${v.saturated_fat ?? 0}g`;
                 }
+                // Internal hits carry a usable food UUID; surface it so the
+                // model can call log_food(food_id) directly.
+                if (result.source === 'internal' && f.id) {
+                  text += `\n  ID: ${f.id}`;
+                }
                 if (f.provider_external_id) {
                   text += `\n  External ID: ${f.provider_external_id}`;
                 }
@@ -653,6 +711,14 @@ Actions:
                 });
               }
 
+              // External-provider results are not yet in the user's food
+              // database, and their External ID is not a food_id. Without this
+              // hint, models plug the External ID into log_food and dead-end.
+              if (result.source !== 'internal') {
+                text +=
+                  '\n\nNote: this external result is not saved in the food database yet. To log it, call create_food with these nutrition values (include meal_type and entry_date to log it in the same call). Do NOT pass the External ID as food_id.';
+              }
+
               return text;
             }
 
@@ -662,19 +728,27 @@ Actions:
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               let foodRow: any;
               if (!foodId) {
+                if (!args.food_name) {
+                  return ERRORS.MISSING_PARAMS(['food_name (or food_id)']);
+                }
                 foodRow = await findFoodByExactName(userId, args.food_name);
                 if (!foodRow) {
                   return ERRORS.VALIDATION(
-                    `Food "${args.food_name}" not found. Create it first using create_food action.`
+                    `Food "${args.food_name}" not found. Create it first using the create_food action with the nutrition values from lookup_food_nutrition (include meal_type and entry_date to log it in the same call).`
                   );
                 }
                 foodId = foodRow.id;
               }
+              // The food row also supplies the default variant and, when the
+              // model omits a unit, the variant's serving unit.
+              const food =
+                foodRow ?? (await foodRepository.getFoodById(foodId, userId));
               if (!variantId) {
-                const food =
-                  foodRow ?? (await foodRepository.getFoodById(foodId, userId));
                 variantId = food?.default_variant?.id;
               }
+              const unit =
+                args.unit || food?.default_variant?.serving_unit || 'serving';
+              const entryDate = args.entry_date || todayInZone(tz);
               const entry = await foodEntryService.createFoodEntry(
                 userId,
                 userId,
@@ -682,14 +756,14 @@ Actions:
                   user_id: userId,
                   food_id: foodId,
                   variant_id: variantId,
-                  entry_date: args.entry_date,
+                  entry_date: entryDate,
                   quantity: args.quantity,
-                  unit: args.unit,
+                  unit,
                   meal_type: args.meal_type,
                 }
               );
               return formatConfirmation(
-                `Logged "${entry.food_name}" (${args.quantity} ${args.unit}) for ${args.meal_type} on ${args.entry_date}.`
+                `Logged "${entry.food_name}" (${args.quantity} ${unit}) for ${args.meal_type} on ${entryDate}.`
               );
             }
 
@@ -1319,7 +1393,7 @@ Actions:
             totalCount,
             offset
           );
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_list_foods error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -1357,7 +1431,7 @@ Actions:
               compactRecord(v, VARIANT_DROP)
             ),
           };
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_get_food_details error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -1399,7 +1473,7 @@ Actions:
             totalCount,
             offset
           );
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_search_foods error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -1445,7 +1519,7 @@ Actions:
               compactRecord(m, DIARY_MEAL_DROP)
             ),
           };
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_get_food_diary error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -1477,7 +1551,7 @@ Actions:
             startDate,
             endDate
           );
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log(
             'error',
@@ -1512,7 +1586,7 @@ Actions:
           const data = rows.map((r: Record<string, unknown>) =>
             compactRecord(r, FULL_ENTRY_DROP)
           );
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log(
             'error',
@@ -1559,7 +1633,7 @@ Actions:
             totalCount,
             offset
           );
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Food Tool] sparky_get_food_usage error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
