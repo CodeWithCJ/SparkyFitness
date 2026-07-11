@@ -287,13 +287,19 @@ export const manageExerciseInput = z.object({
       'Optional action to perform (server infers if omitted); see tool description for per-action fields.'
     ),
   // identity
-  exercise_id: uuidSchema.optional().describe('Exercise UUID'),
+  exercise_id: uuidSchema
+    .optional()
+    .describe(
+      'Exercise UUID. REQUIRED for "log_exercise" if exercise_name is not provided.'
+    ),
   exercise_name: z
     .string()
     .min(1)
     .max(200)
     .optional()
-    .describe('Exercise name (alternative to exercise_id)'),
+    .describe(
+      'Exercise name (e.g. "Walking", "Running", "Squats"). REQUIRED for "log_exercise" if exercise_id is not provided.'
+    ),
   exercise_ids: z
     .array(uuidSchema)
     .optional()

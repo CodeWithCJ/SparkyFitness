@@ -103,7 +103,8 @@ const SparkyChatInner = ({
   // from its full/core profile. getSelected() is stable and reads the latest
   // value, so the runtime's prepareSendMessagesRequest closure (created once)
   // always sends the current selection without being recreated.
-  const { getSelected, setActiveService } = useChatToolCategories();
+  const { getSelected, setActiveService, hasCustomSelection } =
+    useChatToolCategories();
 
   useEffect(() => {
     setActiveService(
@@ -193,7 +194,7 @@ const SparkyChatInner = ({
             // Latest runtime tool-category selection (stable getter so the
             // closure never sends a stale set). Empty => server falls back to
             // the service's profile default.
-            toolCategories: getSelected(),
+            toolCategories: hasCustomSelection ? getSelected() : undefined,
             messages: processedMessages,
           },
         };

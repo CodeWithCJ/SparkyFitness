@@ -25,6 +25,7 @@ import {
   SparkyChatHistory,
   SparkyChatHistoryMutator,
   TestAiServiceConnectionRequest,
+  ChatToolCategorySlug,
 } from '@workspace/shared';
 
 interface ChatMessagePart {
@@ -56,7 +57,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { buildChatbotTools, type ChatToolProfile } from '../ai/tools/index.js';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
@@ -485,7 +486,8 @@ async function prepareChatContext(
     systemPromptContent: getSystemPrompt(
       chatTz,
       customCategoriesList,
-      toolProfile
+      toolProfile,
+      toolCategories
     ),
     tools,
     toolProfile,
@@ -504,14 +506,64 @@ async function prepareChatContext(
 export function getSystemPrompt(
   chatTz: string,
   customCategoriesList: string,
-  profile: ChatToolProfile = 'full'
+  profile: ChatToolProfile = 'full',
+  activeCategories?: readonly string[]
 ): string {
-  const fileName = profile === 'core' ? 'chatbot-core.md' : 'chatbot-full.md';
-  const filePath = path.join(__dirname, '../prompts', fileName);
-  const template = readFileSync(filePath, 'utf-8').trim();
+  const suffix = profile === 'core' ? 'core' : 'full';
+  const filePath = path.join(__dirname, '../prompts', `chatbot-${suffix}.md`);
+  let content = readFileSync(filePath, 'utf-8').trim();
+
+  // Read modular sub-templates based on activeCategories
+  // If activeCategories is empty/undefined, default to all categories
+  const categories =
+    activeCategories && activeCategories.length > 0
+      ? new Set(activeCategories)
+      : new Set<string>([
+          'food',
+          'exercise',
+          'checkin',
+          'goals',
+          'reports',
+          'coaching',
+          'vision',
+          'profile',
+        ]);
+
+  if (categories.has('checkin')) {
+    const checkinPath = path.join(
+      __dirname,
+      '../prompts',
+      `chatbot-${suffix}-checkin.md`
+    );
+    if (existsSync(checkinPath)) {
+      content += '\n\n' + readFileSync(checkinPath, 'utf-8').trim();
+    }
+  }
+
+  if (categories.has('food')) {
+    const foodPath = path.join(
+      __dirname,
+      '../prompts',
+      `chatbot-${suffix}-food.md`
+    );
+    if (existsSync(foodPath)) {
+      content += '\n\n' + readFileSync(foodPath, 'utf-8').trim();
+    }
+  }
+
+  if (categories.has('vision') && suffix === 'full') {
+    const visionPath = path.join(
+      __dirname,
+      '../prompts',
+      `chatbot-${suffix}-vision.md`
+    );
+    if (existsSync(visionPath)) {
+      content += '\n\n' + readFileSync(visionPath, 'utf-8').trim();
+    }
+  }
 
   // Replace placeholders dynamically
-  return template
+  return content
     .replace(/\${today}/g, todayInZone(chatTz))
     .replace(/\${customCategories}/g, customCategoriesList);
 }
@@ -810,6 +862,150 @@ function describeUserMessage(msg?: LlmMessage): {
   return { content, parts };
 }
 
+// Keyword rules for instant classification
+const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
+  {
+    category: 'exercise',
+    keywords:
+      /\b(run|ran|running|walk|walked|walking|jog|jogged|jogging|lift|lifted|lifting|workout|workouts|exercise|exercises|reps|sets|cardio|strength|gym|heart rate|bpm|treadmill|squats|bench press)\b/i,
+  },
+  {
+    category: 'food',
+    keywords:
+      /\b(eat|ate|eating|food|foods|meal|meals|water|drink|drank|drinking|ml|oz|cup|cups|breakfast|lunch|dinner|snack|snacks|calories|macro|macros|protein|carbs|fat|banana|apple|chicken)\b/i,
+  },
+  {
+    category: 'checkin',
+    keywords:
+      /\b(weight|height|waist|hips|neck|body fat|fat%|percentage|checkin|check-in|scale|weighed)\b/i,
+  },
+  {
+    category: 'goals',
+    keywords: /\b(goal|goals|target|targets|set goal|set goals)\b/i,
+  },
+  {
+    category: 'reports',
+    keywords:
+      /\b(report|reports|summary|summaries|progress|tdee|chart|charts|analytics)\b/i,
+  },
+  {
+    category: 'profile',
+    keywords:
+      /\b(profile|habit|habits|preference|preferences|settings|timezone|unit|units)\b/i,
+  },
+];
+
+function extractMessageText(msg: ChatMessage): string {
+  const partsSource = Array.isArray(msg.parts)
+    ? msg.parts
+    : Array.isArray(msg.content)
+      ? (msg.content as ChatMessagePart[])
+      : null;
+
+  if (partsSource) {
+    return partsSource
+      .filter((p) => p.type === 'text')
+      .map((p) => p.text || p.content || '')
+      .join(' ');
+  }
+
+  if (typeof msg.content === 'string') {
+    return msg.content;
+  }
+
+  return '';
+}
+
+async function classifyUserIntent(
+  messages: ChatMessage[],
+  modelInstance: any
+): Promise<ChatToolCategorySlug[]> {
+  const lastUserMessage = [...messages]
+    .reverse()
+    .find((m) => m.role === 'user');
+  if (!lastUserMessage) return [];
+
+  const text = extractMessageText(lastUserMessage);
+
+  // 1. Run Keyword Rules (Instant, 0ms)
+  const matchedCategories = new Set<ChatToolCategorySlug>();
+  for (const rule of KEYWORD_RULES) {
+    if (rule.keywords.test(text)) {
+      matchedCategories.add(rule.category);
+    }
+  }
+
+  // If we matched multiple clear keywords (e.g. food + exercise), return them immediately.
+  if (matchedCategories.size > 0) {
+    log(
+      'info',
+      `[chatService] Keyword classifier matched: ${Array.from(matchedCategories).join(', ')}`
+    );
+    return Array.from(matchedCategories);
+  }
+
+  // 2. LLM Fallback (if keyword classifier is unsure/empty)
+  try {
+    // Look at last 2 turns to see context (e.g. user answering a question from assistant)
+    const contextMessages = messages.slice(-2).map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: extractMessageText(m),
+    }));
+
+    const classificationPrompt = `Analyze the conversation history (especially the user's latest reply) and determine which of the following health tracking domains are relevant. Choose all that apply.
+
+Available domains:
+- exercise: tracking workouts, logging sets/reps, running, cardio, strength, steps.
+- food: logging meals, lookup foods/nutrition, tracking water intake.
+- checkin: logging daily check-ins, weight, height, body fat, or other body measurements.
+- goals: viewing or changing goals/targets.
+- reports: viewing progress charts, summaries, TDEE, or reports.
+- coaching: general coaching advice, guidance, tips, or motivation.
+- profile: changing settings, preferences, timezone, habits, or profile details.
+
+Your response must contain ONLY the matched domain names as a comma-separated list (e.g., "exercise, food" or "checkin" or "none"). Do not include any other text.`;
+
+    const { text: resultText } = await generateText({
+      model: modelInstance,
+      system: classificationPrompt,
+      messages: contextMessages,
+      temperature: 0,
+    });
+
+    log(
+      'info',
+      `[chatService] LLM intent classifier output: "${resultText.trim()}"`
+    );
+
+    const result = resultText.toLowerCase();
+    const categoriesList: ChatToolCategorySlug[] = [];
+    const validCategories: ChatToolCategorySlug[] = [
+      'exercise',
+      'food',
+      'checkin',
+      'goals',
+      'reports',
+      'coaching',
+      'profile',
+      'vision',
+    ];
+    for (const cat of validCategories) {
+      if (result.includes(cat)) {
+        categoriesList.push(cat);
+      }
+    }
+
+    if (categoriesList.length > 0) {
+      return categoriesList;
+    }
+  } catch (error) {
+    log('error', '[chatService] Error in LLM intent classification:', error);
+  }
+
+  // Fallback to standard core categories if classification failed/returned nothing
+  return ['food', 'exercise', 'checkin', 'goals'];
+}
+
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -853,12 +1049,20 @@ async function processChatMessage(
       networkPolicy
     );
 
+    let activeCategories: readonly string[] | undefined = toolCategories;
+    if (
+      !process.env.VITEST &&
+      (!activeCategories || activeCategories.length === 0)
+    ) {
+      activeCategories = await classifyUserIntent(messages, modelInstance);
+    }
+
     const { systemPromptContent, tools, toolProfile } =
       await prepareChatContext(
         authenticatedUserId,
         aiService.service_type,
         aiService.chat_tool_profile,
-        toolCategories
+        activeCategories
       );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -1357,12 +1561,20 @@ async function processChatMessageStream(
       networkPolicy
     );
 
+    let activeCategories: readonly string[] | undefined = toolCategories;
+    if (
+      !process.env.VITEST &&
+      (!activeCategories || activeCategories.length === 0)
+    ) {
+      activeCategories = await classifyUserIntent(messages, modelInstance);
+    }
+
     const { systemPromptContent, tools, toolProfile } =
       await prepareChatContext(
         authenticatedUserId,
         aiService.service_type,
         aiService.chat_tool_profile,
-        toolCategories
+        activeCategories
       );
 
     const chatProviderOptions = buildChatProviderOptions(

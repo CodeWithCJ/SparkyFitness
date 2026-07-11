@@ -461,9 +461,7 @@ Actions:
 
             case 'log_exercise': {
               if (!args.exercise_id && !args.exercise_name) {
-                return ERRORS.VALIDATION(
-                  'Either exercise_id or exercise_name must be provided'
-                );
+                args.exercise_name = 'General Exercise';
               }
               // Parse sets if it arrives as a JSON string (LLM serialisation quirk)
               let parsedSets: ExerciseSetInput[] | undefined;

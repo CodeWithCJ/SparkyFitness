@@ -566,7 +566,7 @@ export const manageFoodInput = z.object({
     .max(200)
     .optional()
     .describe(
-      'Food name — required for search_food/log_food/create_food/delete_food (alternative to food_id)'
+      'Food name — required for search_food/log_food/log_external_food/create_food/delete_food (alternative to food_id)'
     ),
   // Published as plain strings (advisory; the per-action union enforces UUID)
   // so a model passing a lookup result's External ID reaches the handler and

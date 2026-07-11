@@ -271,13 +271,24 @@ describe('create_exercise', () => {
 });
 
 describe('log_exercise', () => {
-  it('requires exercise_id or exercise_name', async () => {
+  it('defaults to General Exercise when exercise_id and exercise_name are missing', async () => {
+    vi.mocked(exerciseService.searchExercises).mockResolvedValue([]);
+    vi.mocked(exerciseService.createExercise).mockResolvedValue({
+      id: EXERCISE_ID,
+      name: 'General Exercise',
+    } as any);
+    vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
     const result = await tools.sparky_manage_exercise.execute!(
       { action: 'log_exercise', entry_date: '2026-06-10' },
       opts
     );
-    expect(result).toBe(
-      'Error [VALIDATION]: Either exercise_id or exercise_name must be provided'
+    expect(result).toBe('✅ Exercise logged for 2026-06-10.');
+    expect(exerciseService.createExercise).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ name: 'General Exercise' })
     );
   });
 
