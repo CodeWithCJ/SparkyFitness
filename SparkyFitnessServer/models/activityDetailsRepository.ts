@@ -1,8 +1,7 @@
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createActivityDetail(userId: any, detail: any) {
-  const client = await getClient(userId);
+async function _createActivityDetailWithClient(client: any, detail: any) {
   const {
     exercise_entry_id,
     exercise_preset_entry_id, // New parameter
@@ -62,6 +61,13 @@ async function createActivityDetail(userId: any, detail: any) {
     throw new Error(`Failed to create activity detail: ${error.message}`, {
       cause: error,
     });
+  }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function createActivityDetail(userId: any, detail: any) {
+  const client = await getClient(userId);
+  try {
+    return await _createActivityDetailWithClient(client, detail);
   } finally {
     client.release();
   }
@@ -221,7 +227,9 @@ async function deleteActivityDetail(userId: any, id: any) {
     client.release();
   }
 }
-async function deleteActivityDetailsByEntryIdAndProvider(
+async function _deleteActivityDetailsByEntryIdAndProviderWithClient(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -229,7 +237,6 @@ async function deleteActivityDetailsByEntryIdAndProvider(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   providerName: any
 ) {
-  const client = await getClient(userId);
   const query = `
         DELETE FROM exercise_entry_activity_details
         WHERE (exercise_entry_id = $1 OR exercise_preset_entry_id = $1)
@@ -257,19 +264,41 @@ async function deleteActivityDetailsByEntryIdAndProvider(
     throw new Error(`Failed to delete activity details: ${error.message}`, {
       cause: error,
     });
+  }
+}
+async function deleteActivityDetailsByEntryIdAndProvider(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entryId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  providerName: any
+) {
+  const client = await getClient(userId);
+  try {
+    return await _deleteActivityDetailsByEntryIdAndProviderWithClient(
+      client,
+      userId,
+      entryId,
+      providerName
+    );
   } finally {
     client.release();
   }
 }
 export { createActivityDetail };
+export { _createActivityDetailWithClient };
 export { getActivityDetailsByEntryOrPresetId };
 export { updateActivityDetail };
 export { deleteActivityDetail };
 export { deleteActivityDetailsByEntryIdAndProvider };
+export { _deleteActivityDetailsByEntryIdAndProviderWithClient };
 export default {
   createActivityDetail,
+  _createActivityDetailWithClient,
   getActivityDetailsByEntryOrPresetId,
   updateActivityDetail,
   deleteActivityDetail,
   deleteActivityDetailsByEntryIdAndProvider,
+  _deleteActivityDetailsByEntryIdAndProviderWithClient,
 };

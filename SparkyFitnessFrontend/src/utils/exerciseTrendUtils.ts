@@ -208,14 +208,22 @@ export const extractGarminActivityEntries = (
   if (selectedExercise === 'All') {
     Object.values(exerciseProgressData).forEach((dataArray) => {
       dataArray.forEach((entry) => {
-        if (entry.provider_name === 'garmin' && entry.exercise_entry_id) {
+        if (
+          (entry.provider_name === 'garmin' ||
+            entry.provider_name === 'garmin_fit') &&
+          entry.exercise_entry_id
+        ) {
           allGarminActivityEntries.push(entry);
         }
       });
     });
   } else if (selectedExercise && exerciseProgressData[selectedExercise]) {
     exerciseProgressData[selectedExercise].forEach((entry) => {
-      if (entry.provider_name === 'garmin' && entry.exercise_entry_id) {
+      if (
+        (entry.provider_name === 'garmin' ||
+          entry.provider_name === 'garmin_fit') &&
+        entry.exercise_entry_id
+      ) {
         allGarminActivityEntries.push(entry);
       }
     });

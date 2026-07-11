@@ -29,6 +29,7 @@
     "@better-auth/expo": "1.5.6",
     "@better-auth/passkey": "^1.5.6",
     "@better-auth/sso": "^1.5.6",
+    "@garmin/fitsdk": "^21.208.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@workspace/shared": "workspace:*",
     "ai": "^6.0.191",

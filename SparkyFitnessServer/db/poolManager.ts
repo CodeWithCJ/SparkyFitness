@@ -67,7 +67,10 @@ function _getRawAppPool() {
   return appPoolInstance;
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getClient(userId: any, authenticatedUserId = null) {
+async function getClient(
+  userId: any,
+  authenticatedUserId: string | null = null
+) {
   if (!userId) {
     throw new Error(
       'userId is required for getClient to ensure RLS is applied.'

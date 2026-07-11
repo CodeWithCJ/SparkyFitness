@@ -55,7 +55,7 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
 
     const providerName = detail.provider_name.toLowerCase();
 
-    if (providerName === 'garmin') {
+    if (providerName === 'garmin' || providerName === 'garmin_fit') {
       const directActivity = toRecord(record.activity);
       const nestedActivity = toRecord(directActivity?.activity);
       const garminActivity = nestedActivity ?? directActivity;

@@ -342,6 +342,7 @@
       "onlineTab": "Online",
       "addCustomTab": "Add Custom",
       "importCSVTab": "Import Exercises",
+      "importFitTab": "Import FIT",
       "nameLabel": "Name",
       "categoryLabel": "Category",
       "selectCategoryPlaceholder": "Select a category",
@@ -551,6 +552,25 @@
       "voiceLabel": "Voice:",
       "selectVoicePlaceholder": "Select a voice",
       "stepCount": "Step {{currentInstructionIndex}} of {{totalInstructions}}"
+    },
+    "importFit": {
+      "title": "Import Garmin FIT Files",
+      "description": "Upload activity files exported from a Garmin device (up to 10 at a time). Each file becomes a diary entry with heart rate, laps, and other report data. Re-uploading a file updates its entry.",
+      "importButton": "Import {{count}} file(s)",
+      "importing": "Importing...",
+      "successTitle": "Import complete",
+      "successDescription": "{{count}} activities imported.",
+      "partialTitle": "Import finished with errors",
+      "partialDescription": "{{imported}} imported, {{failed}} failed. See the results below.",
+      "resultsTitle": "Import Results",
+      "fileColumn": "File",
+      "statusColumn": "Status",
+      "activityColumn": "Activity",
+      "dateColumn": "Date",
+      "detailsColumn": "Details",
+      "statusCreated": "Imported",
+      "statusUpdated": "Updated",
+      "statusFailed": "Failed"
     }
   },
   "workoutPresetsManager": {
@@ -1982,8 +2002,7 @@
       "lapTableMaxHRBpmHeader": "Max HR (bpm)",
       "lapTableCaloriesHeader": "Calories",
       "heartRateTimeInZonesTitle": "Heart Rate Time in Zones",
-      "timeInZoneSLabel": "Time in Zone (s)",
-      "cadence": "Cadence"
+      "timeInZoneSLabel": "Time in Zone (s)"
     },
     "bodyBattery": "Body Battery",
     "charged": "Charged",
