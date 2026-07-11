@@ -191,6 +191,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   iconColor={macroGreen}
                 />
               )}
+              {isConnected && (
+                <SettingsRow
+                  icon="diary-settings"
+                  title="Diary Settings"
+                  onPress={() => navigation.navigate('DiarySettings')}
+                  iconColor={catOrange}
+                />
+              )}
               <SettingsRow
                 icon="app-settings"
                 title="App Settings"

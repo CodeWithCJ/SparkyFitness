@@ -22,6 +22,8 @@ describe('appPreferencesStore', () => {
       expect(state.askSparkyVisible).toBe(true);
       expect(state.liquidGlassTabBarEnabled).toBe(false);
       expect(state.activeWorkoutMetricColumn).toBe('rpe');
+      expect(state.diaryCalorieSummaryVisible).toBe(true);
+      expect(state.diaryMacroSummaryVisible).toBe(true);
     });
   });
 
@@ -41,6 +43,13 @@ describe('appPreferencesStore', () => {
 
       store.setActiveWorkoutMetricColumn('e1rm');
       expect(useAppPreferencesStore.getState().activeWorkoutMetricColumn).toBe('e1rm');
+
+      store.setDiaryCalorieSummaryVisible(false);
+      expect(useAppPreferencesStore.getState().diaryCalorieSummaryVisible).toBe(false);
+      expect(useAppPreferencesStore.getState().diaryMacroSummaryVisible).toBe(true);
+
+      store.setDiaryMacroSummaryVisible(false);
+      expect(useAppPreferencesStore.getState().diaryMacroSummaryVisible).toBe(false);
     });
   });
 

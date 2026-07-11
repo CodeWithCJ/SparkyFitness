@@ -14,6 +14,7 @@ import { addSheetRef } from '../components/AddSheet';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
+import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useDailySummary } from '../hooks';
@@ -229,6 +230,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
+        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
+          <DiaryCalorieMacroSummary
+            summary={summary}
+            showNetCarbs={preferences?.show_net_carbs === true}
+          />
+        )}
         {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 && !hasAnyMeasurement ? (
           <>
             <EmptyDayIllustration />
