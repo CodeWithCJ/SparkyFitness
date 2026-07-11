@@ -3,6 +3,7 @@ import { todayInZone } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import coachRepository from '../../models/coachRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
+import { normalizeDayKeywords } from './dates.js';
 import { dayString, formatSuccess } from './formatting.js';
 import {
   GetHealthSummarySchema,
@@ -352,7 +353,9 @@ export function buildCoachTools(userId: string, tz: string) {
         "Get a summary of the user's health status (Nutrition, Fitness, Vitals, Hydration) for a specific date range.",
       inputSchema: GetHealthSummarySchema,
       execute: async (rawArgs) => {
-        const parsed = GetHealthSummarySchema.safeParse(rawArgs);
+        const parsed = GetHealthSummarySchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -375,7 +378,9 @@ export function buildCoachTools(userId: string, tz: string) {
         'Analyze weight trends vs. calorie intake to identify plateaus or progress over a specified number of days.',
       inputSchema: AnalyzeTrendsSchema,
       execute: async (rawArgs) => {
-        const parsed = AnalyzeTrendsSchema.safeParse(rawArgs);
+        const parsed = AnalyzeTrendsSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -394,7 +399,9 @@ export function buildCoachTools(userId: string, tz: string) {
         'Get comprehensive trends for the last 30 days including food, exercise, mood, sleep, and biometrics.',
       inputSchema: Get30DayTrendsSchema,
       execute: async (rawArgs) => {
-        const parsed = Get30DayTrendsSchema.safeParse(rawArgs);
+        const parsed = Get30DayTrendsSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -413,7 +420,9 @@ export function buildCoachTools(userId: string, tz: string) {
         'Health Detective: Scans historical data for correlations between nutrition, sleep, and mood.',
       inputSchema: DetectPatternsSchema,
       execute: async (rawArgs) => {
-        const parsed = DetectPatternsSchema.safeParse(rawArgs);
+        const parsed = DetectPatternsSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -432,7 +441,9 @@ export function buildCoachTools(userId: string, tz: string) {
         'Auto-Coach: Generates a 7-day macro plan and shopping list based on your goal and weight trends.',
       inputSchema: GenerateCoachingPlanSchema,
       execute: async (rawArgs) => {
-        const parsed = GenerateCoachingPlanSchema.safeParse(rawArgs);
+        const parsed = GenerateCoachingPlanSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }

@@ -491,7 +491,10 @@ export const manageFoodInput = z.object({
       'get_nutritional_summary',
       'get_water_history',
     ])
-    .describe('Action to perform; see tool description for per-action fields.'),
+    .optional()
+    .describe(
+      'Optional action to perform (server infers if omitted); see tool description for per-action fields.'
+    ),
   // food identity
   food_name: z
     .string()

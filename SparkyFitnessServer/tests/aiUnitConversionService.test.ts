@@ -332,7 +332,7 @@ describe('estimateUnitConversion', () => {
     await estimateUnitConversion(TEST_USER_ID, baseRequest, true);
 
     const body = capturedBody(m);
-    expect(body.options).toEqual({ temperature: 0 });
+    expect(body.options).toEqual({ num_ctx: 8192, temperature: 0 });
     expect(body.format).toEqual(STRUCTURED_OUTPUT_SCHEMA);
   });
 

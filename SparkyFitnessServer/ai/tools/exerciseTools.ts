@@ -24,6 +24,8 @@ import {
   manageExerciseInput,
   type ManageExerciseInput,
 } from './schemas/exercise.js';
+import { optionalDateSchema } from './schemas/common.js';
+import { normalizeDayKeywords } from './dates.js';
 
 const VALID_ACTIONS = [
   'search_exercises',
@@ -298,18 +300,9 @@ async function getExerciseProgress(
 
 // Standalone domain tools.
 const exerciseDateRangeSchema = z.object({
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  start_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  end_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  date: optionalDateSchema,
+  start_date: optionalDateSchema,
+  end_date: optionalDateSchema,
 });
 
 const exercisePaginationSchema = z.object({
@@ -368,7 +361,36 @@ Actions:
 - get_exercise_progress(exercise_id?|exercise_name?, start_date?, end_date?, limit?, offset?) — returns paginated performance history`,
       inputSchema: manageExerciseInput,
       execute: async (rawArgs) => {
-        const parsed = manageExerciseSchema.safeParse(rawArgs);
+        const argsWithAction = { ...rawArgs };
+        if (!argsWithAction.action) {
+          if (argsWithAction.searchTerm) {
+            argsWithAction.action = 'search_exercises';
+          } else if (
+            argsWithAction.sets ||
+            argsWithAction.duration_minutes ||
+            argsWithAction.calories_burned
+          ) {
+            argsWithAction.action = 'log_exercise';
+          } else if (argsWithAction.preset_id || argsWithAction.preset_name) {
+            argsWithAction.action = 'log_workout_preset';
+          } else if (argsWithAction.entry_id) {
+            argsWithAction.action = 'update_exercise_entry';
+          } else if (argsWithAction.start_date || argsWithAction.end_date) {
+            argsWithAction.action = 'get_exercise_progress';
+          } else if (argsWithAction.entry_date) {
+            argsWithAction.action = 'list_exercise_diary';
+          } else {
+            argsWithAction.action = 'list_exercise_diary'; // fallback
+          }
+          log(
+            'info',
+            `[exerciseTools] Inferred missing action as '${argsWithAction.action}'`
+          );
+        }
+
+        const parsed = manageExerciseSchema.safeParse(
+          normalizeDayKeywords(argsWithAction, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -737,7 +759,9 @@ Actions:
         'Returns a paginated exercise catalog for the authenticated user.',
       inputSchema: listExercisesSchema,
       execute: async (rawArgs) => {
-        const parsed = listExercisesSchema.safeParse(rawArgs);
+        const parsed = listExercisesSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -783,7 +807,9 @@ Actions:
         'Returns full details for one exercise by exercise_id or exercise_name.',
       inputSchema: getExerciseDetailsSchema,
       execute: async (rawArgs) => {
-        const parsed = getExerciseDetailsSchema.safeParse(rawArgs);
+        const parsed = getExerciseDetailsSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -811,7 +837,9 @@ Actions:
       description: 'Searches exercises by name and optional filters.',
       inputSchema: searchExercisesSchema,
       execute: async (rawArgs) => {
-        const parsed = searchExercisesSchema.safeParse(rawArgs);
+        const parsed = searchExercisesSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -852,7 +880,9 @@ Actions:
         'Returns entry-level exercise diary data for a specific date or date range.',
       inputSchema: exerciseDateRangeSchema,
       execute: async (rawArgs) => {
-        const parsed = exerciseDateRangeSchema.safeParse(rawArgs);
+        const parsed = exerciseDateRangeSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -893,7 +923,9 @@ Actions:
       description: 'Returns daily exercise totals for a date or range.',
       inputSchema: exerciseDateRangeSchema,
       execute: async (rawArgs) => {
-        const parsed = exerciseDateRangeSchema.safeParse(rawArgs);
+        const parsed = exerciseDateRangeSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -932,7 +964,9 @@ Actions:
         'Returns recent entry-level exercise diary rows for the authenticated user.',
       inputSchema: recentExerciseEntriesSchema,
       execute: async (rawArgs) => {
-        const parsed = recentExerciseEntriesSchema.safeParse(rawArgs);
+        const parsed = recentExerciseEntriesSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -962,7 +996,9 @@ Actions:
         'Shows where a specific exercise_id was used in the exercise diary.',
       inputSchema: exerciseUsageSchema,
       execute: async (rawArgs) => {
-        const parsed = exerciseUsageSchema.safeParse(rawArgs);
+        const parsed = exerciseUsageSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -1005,7 +1041,9 @@ Actions:
       description: 'Returns paginated performance history for an exercise.',
       inputSchema: exerciseProgressSchema,
       execute: async (rawArgs) => {
-        const parsed = exerciseProgressSchema.safeParse(rawArgs);
+        const parsed = exerciseProgressSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }

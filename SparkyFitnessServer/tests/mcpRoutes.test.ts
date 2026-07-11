@@ -172,7 +172,9 @@ describe('POST /mcp', () => {
     // Scoped to the authenticated user; tz resolved to UTC for the today default.
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       TEST_USER,
-      todayInZone('UTC')
+      todayInZone('UTC'),
+      undefined,
+      true
     );
   });
 
@@ -199,7 +201,9 @@ describe('POST /mcp', () => {
     ]);
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       TEST_USER,
-      todayInZone('UTC')
+      todayInZone('UTC'),
+      undefined,
+      true
     );
   });
 

@@ -328,7 +328,7 @@ describe('sparky_get_goal_snapshot', () => {
     );
 
     expect(result).toBe(
-      'Error [VALIDATION]: target_date: Invalid string: must match pattern /^\\d{4}-\\d{2}-\\d{2}$/'
+      'Error [VALIDATION]: target_date: Date must be in YYYY-MM-DD format (or "today", "yesterday", "tomorrow")'
     );
   });
 

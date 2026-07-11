@@ -177,7 +177,7 @@ describe('sparky_get_report (get_weekly_report)', () => {
     );
 
     expect(result).toBe(
-      'Error [VALIDATION]: end_date: Date must be in YYYY-MM-DD format'
+      'Error [VALIDATION]: end_date: Date must be in YYYY-MM-DD format (or "today", "yesterday", "tomorrow")'
     );
   });
 

@@ -536,7 +536,7 @@ describe('chatService', () => {
           chat_tool_profile: 'core',
         }
       );
-      scriptModel([textStep('Hi there!')]);
+      const model = scriptModel([textStep('Hi there!')]);
 
       await chatService.processChatMessage(
         [{ role: 'user', content: 'hello' }],
@@ -547,8 +547,15 @@ describe('chatService', () => {
 
       expect(log).toHaveBeenCalledWith(
         'info',
-        expect.stringMatching(/Loaded 18 core tools/)
+        expect.stringMatching(/Loaded 20 core tools/)
       );
+      // The core profile is the mitigation, so no context-window warning.
+      expect(log).not.toHaveBeenCalledWith(
+        'warn',
+        expect.stringMatching(/default 4096-token context/)
+      );
+      // Small local models get a low temperature for steadier tool JSON.
+      expect(model.doGenerateCalls[0].temperature).toBe(0.2);
     });
 
     it('ships the full tool set for an Ollama service left on the full profile', async () => {
@@ -559,7 +566,7 @@ describe('chatService', () => {
           chat_tool_profile: 'full',
         }
       );
-      scriptModel([textStep('Hi there!')]);
+      const model = scriptModel([textStep('Hi there!')]);
 
       await chatService.processChatMessage(
         [{ role: 'user', content: 'hello' }],
@@ -572,6 +579,14 @@ describe('chatService', () => {
         'info',
         expect.stringMatching(/Loaded 35 full tools/)
       );
+      // Ollama + full profile is the risky combo, so warn about the 4096 default.
+      expect(log).toHaveBeenCalledWith(
+        'warn',
+        expect.stringMatching(/default 4096-token context/)
+      );
+      // A capable full-profile model (incl. remote/cloud Ollama) keeps the
+      // provider default temperature — we don't flatten it.
+      expect(model.doGenerateCalls[0].temperature).toBeUndefined();
     });
 
     it('defaults to the full tool set when an Ollama service has no stored profile', async () => {
@@ -618,6 +633,11 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(/Loaded 35 full tools/)
+      );
+      // The context-window warning is Ollama-only; cloud providers never see it.
+      expect(log).not.toHaveBeenCalledWith(
+        'warn',
+        expect.stringMatching(/default 4096-token context/)
       );
     });
 

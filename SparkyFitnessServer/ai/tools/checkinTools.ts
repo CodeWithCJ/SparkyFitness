@@ -7,6 +7,7 @@ import moodRepository from '../../models/moodRepository.js';
 import fastingRepository from '../../models/fastingRepository.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
+import { normalizeDayKeywords } from './dates.js';
 import { formatConfirmation, formatList, formatSuccess } from './formatting.js';
 import { convertWeight, convertMeasurement } from './unitConversion.js';
 import {
@@ -92,7 +93,9 @@ Actions:
 - get_biometrics_history(start_date?, end_date?) — returns weight and measurements history`,
       inputSchema: manageCheckinInput,
       execute: async (rawArgs) => {
-        const parsed = manageCheckinSchema.safeParse(rawArgs);
+        const parsed = manageCheckinSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }

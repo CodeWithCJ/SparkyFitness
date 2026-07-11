@@ -34,6 +34,8 @@ import {
   manageFoodInput,
   type ManageFoodInput,
 } from './schemas/food.js';
+import { optionalDateSchema } from './schemas/common.js';
+import { normalizeDayKeywords } from './dates.js';
 
 const VALID_ACTIONS = [
   'search_food',
@@ -107,9 +109,8 @@ function foodDateRange(
 
 // The variant column set MCP's food search exposed; the server's
 // default_variant JSON is projected down to it.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function projectVariant(foodId: string, v: any) {
-  return {
+  const result: Record<string, any> = {
     id: v.id,
     food_id: foodId,
     serving_size: v.serving_size,
@@ -118,21 +119,39 @@ function projectVariant(foodId: string, v: any) {
     protein: v.protein,
     carbs: v.carbs,
     fat: v.fat,
-    saturated_fat: v.saturated_fat,
-    polyunsaturated_fat: v.polyunsaturated_fat,
-    monounsaturated_fat: v.monounsaturated_fat,
-    trans_fat: v.trans_fat,
-    cholesterol: v.cholesterol,
-    sodium: v.sodium,
-    potassium: v.potassium,
-    dietary_fiber: v.dietary_fiber,
-    sugars: v.sugars,
-    vitamin_a: v.vitamin_a,
-    vitamin_c: v.vitamin_c,
-    calcium: v.calcium,
-    iron: v.iron,
-    glycemic_index: v.glycemic_index,
   };
+
+  const optionalFields = [
+    'saturated_fat',
+    'polyunsaturated_fat',
+    'monounsaturated_fat',
+    'trans_fat',
+    'cholesterol',
+    'sodium',
+    'potassium',
+    'dietary_fiber',
+    'sugars',
+    'vitamin_a',
+    'vitamin_c',
+    'calcium',
+    'iron',
+    'glycemic_index',
+  ];
+
+  for (const field of optionalFields) {
+    const val = v[field];
+    if (
+      val !== undefined &&
+      val !== null &&
+      val !== 0 &&
+      val !== '0' &&
+      val !== 'None'
+    ) {
+      result[field] = val;
+    }
+  }
+
+  return result;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -435,18 +454,9 @@ async function lookupFoodNutrition(
 
 // Standalone domain tools.
 const foodDateRangeSchema = z.object({
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  start_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  end_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  date: optionalDateSchema,
+  start_date: optionalDateSchema,
+  end_date: optionalDateSchema,
 });
 
 const foodPaginationSchema = z.object({
@@ -498,7 +508,61 @@ Actions:
 - get_water_history(start_date?, end_date?)`,
       inputSchema: manageFoodInput,
       execute: async (rawArgs) => {
-        const parsed = manageFoodSchema.safeParse(rawArgs);
+        const argsWithAction = { ...rawArgs };
+        if (!argsWithAction.action) {
+          if (argsWithAction.amount_ml) {
+            argsWithAction.action = 'log_water';
+          } else if (
+            argsWithAction.food_name &&
+            argsWithAction.quantity &&
+            argsWithAction.unit &&
+            argsWithAction.meal_type
+          ) {
+            if (
+              argsWithAction.food_name.toLowerCase() === 'water' ||
+              argsWithAction.unit === 'ml'
+            ) {
+              argsWithAction.action = 'log_water';
+              argsWithAction.amount_ml = argsWithAction.quantity;
+            } else {
+              argsWithAction.action = 'log_food';
+            }
+          } else if (
+            argsWithAction.food_name &&
+            (argsWithAction.calories !== undefined ||
+              argsWithAction.protein !== undefined)
+          ) {
+            argsWithAction.action = 'create_food';
+          } else if (argsWithAction.food_name) {
+            argsWithAction.action = 'lookup_food_nutrition';
+          } else if (argsWithAction.meal_name) {
+            argsWithAction.action = 'search_meal';
+          } else if (argsWithAction.meal_id || argsWithAction.meal_type) {
+            argsWithAction.action = 'log_meal';
+          } else if (argsWithAction.entry_id && argsWithAction.quantity) {
+            argsWithAction.action = 'update_entry';
+          } else if (argsWithAction.entry_id && argsWithAction.entry_type) {
+            argsWithAction.action = 'delete_entry';
+          } else if (argsWithAction.food_id) {
+            argsWithAction.action = 'delete_food';
+          } else if (argsWithAction.target_date || argsWithAction.source_date) {
+            argsWithAction.action = 'copy_from_yesterday';
+          } else if (argsWithAction.start_date || argsWithAction.end_date) {
+            argsWithAction.action = 'get_nutritional_summary';
+          } else if (argsWithAction.entry_date) {
+            argsWithAction.action = 'list_diary';
+          } else {
+            argsWithAction.action = 'list_diary'; // fallback
+          }
+          log(
+            'info',
+            `[foodTools] Inferred missing action as '${argsWithAction.action}'`
+          );
+        }
+
+        const parsed = manageFoodSchema.safeParse(
+          normalizeDayKeywords(argsWithAction, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -1227,7 +1291,9 @@ Actions:
         'Returns a paginated food catalog for the authenticated user, including variants.',
       inputSchema: listFoodsSchema,
       execute: async (rawArgs) => {
-        const parsed = listFoodsSchema.safeParse(rawArgs);
+        const parsed = listFoodsSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -1269,7 +1335,9 @@ Actions:
         'Returns full details for one food by food_id, including available variants.',
       inputSchema: getFoodDetailsSchema,
       execute: async (rawArgs) => {
-        const parsed = getFoodDetailsSchema.safeParse(rawArgs);
+        const parsed = getFoodDetailsSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -1304,7 +1372,9 @@ Actions:
       description: 'Searches foods by name for the authenticated user.',
       inputSchema: searchFoodsSchema,
       execute: async (rawArgs) => {
-        const parsed = searchFoodsSchema.safeParse(rawArgs);
+        const parsed = searchFoodsSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -1345,7 +1415,9 @@ Actions:
         'Returns entry-level food diary data for a specific date or date range.',
       inputSchema: foodDateRangeSchema,
       execute: async (rawArgs) => {
-        const parsed = foodDateRangeSchema.safeParse(rawArgs);
+        const parsed = foodDateRangeSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -1392,7 +1464,9 @@ Actions:
         'Returns nutrition summary rows for a specific date or date range.',
       inputSchema: foodDateRangeSchema,
       execute: async (rawArgs) => {
-        const parsed = foodDateRangeSchema.safeParse(rawArgs);
+        const parsed = foodDateRangeSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -1426,7 +1500,9 @@ Actions:
         'Returns recent entry-level food diary rows for the authenticated user.',
       inputSchema: recentFoodEntriesSchema,
       execute: async (rawArgs) => {
-        const parsed = recentFoodEntriesSchema.safeParse(rawArgs);
+        const parsed = recentFoodEntriesSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -1455,7 +1531,9 @@ Actions:
       description: 'Shows where a specific food_id was used in the diary.',
       inputSchema: foodUsageSchema,
       execute: async (rawArgs) => {
-        const parsed = foodUsageSchema.safeParse(rawArgs);
+        const parsed = foodUsageSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }

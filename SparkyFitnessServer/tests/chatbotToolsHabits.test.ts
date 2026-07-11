@@ -22,7 +22,7 @@ let tools: ReturnType<typeof buildHabitTools>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  tools = buildHabitTools('user-1');
+  tools = buildHabitTools('user-1', 'UTC');
 });
 
 describe('sparky_manage_habits', () => {

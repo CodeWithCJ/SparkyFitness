@@ -9,6 +9,7 @@ import {
 } from '../ai/mcp/mcpAdapter.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
 import versionService from '../services/versionService.js';
+import chatService from '../services/chatService.js';
 
 const router = express.Router();
 
@@ -56,6 +57,11 @@ router.post('/', async (req, res) => {
   try {
     const userId = req.authenticatedUserId;
     const tz = await loadUserTimezone(userId);
+    const activeSetting = await chatService.getActiveAiServiceSetting(
+      userId,
+      userId
+    );
+    const profile = activeSetting?.chat_tool_profile || 'full';
 
     // Normalize null arguments to undefined (omitted) for tools/call requests.
     // This prevents validation errors (MCP -32602) on optional schema fields.
@@ -82,7 +88,7 @@ router.post('/', async (req, res) => {
     });
     // McpServer wraps the low-level Server as `.server`.
     mcpServer.server.onerror = (e) => log('error', '[MCP] server error', e);
-    registerRegistryTools(mcpServer, userId, tz);
+    registerRegistryTools(mcpServer, userId, tz, profile);
     // Admin-only dev tools, off by default; gating at registration keeps them
     // out of non-admins' tools/list. authenticate already populated req.user.
     const devToolsAllowed =

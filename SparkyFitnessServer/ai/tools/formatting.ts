@@ -41,20 +41,25 @@ export function compactRecord(
 /**
  * Formats successful tool result data as text, with optional truncation.
  */
-export function formatSuccess(data: unknown, title?: string): string {
+export function formatSuccess(
+  data: unknown,
+  title?: string,
+  profile: 'full' | 'core' = 'full'
+): string {
   let text: string;
 
   if (typeof data === 'string') {
     text = data;
   } else {
-    text = JSON.stringify(data, null, 2);
+    text =
+      profile === 'core' ? JSON.stringify(data) : JSON.stringify(data, null, 2);
   }
 
   if (title) {
     text = `# ${title}\n\n${text}`;
   }
 
-  return truncateIfNeeded(text);
+  return truncateIfNeeded(text, undefined, profile);
 }
 
 /**
@@ -64,7 +69,8 @@ export function formatList<T>(
   items: T[],
   title: string,
   formatItem: (item: T) => string,
-  meta?: { total_count: number; has_more: boolean; next_offset: number | null }
+  meta?: { total_count: number; has_more: boolean; next_offset: number | null },
+  profile: 'full' | 'core' = 'full'
 ): string {
   let text = `# ${title}\n\n`;
 
@@ -81,7 +87,7 @@ export function formatList<T>(
     }
   }
 
-  return truncateIfNeeded(text);
+  return truncateIfNeeded(text, undefined, profile);
 }
 
 /**

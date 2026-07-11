@@ -46,9 +46,10 @@ function registerToolMap(
 export function registerRegistryTools(
   mcpServer: McpServer,
   userId: string,
-  tz: string
+  tz: string,
+  profile: 'full' | 'core' = 'full'
 ): void {
-  const tools = buildChatbotTools(userId, tz) as unknown as Record<
+  const tools = buildChatbotTools(userId, tz, profile) as unknown as Record<
     string,
     RegistryTool
   >;

@@ -11,6 +11,8 @@ import {
   manageGoalsInput,
   type ManageGoalsInput,
 } from './schemas/goals.js';
+import { optionalDateSchema } from './schemas/common.js';
+import { normalizeDayKeywords } from './dates.js';
 
 const VALID_ACTIONS = ['get_goals', 'set_goals', 'list_goal_timeline'];
 
@@ -37,11 +39,16 @@ const GOAL_SNAPSHOT_FIELDS = [
   'iron',
 ] as const;
 
+// Adjusted goals come from the goal-mode calculation and can carry float noise
+// (e.g. 88.30000000000001). Round to 1 decimal for chat display — integers stay
+// integers, so raw stored goals render exactly as before.
+function roundGoalValue(value: unknown): unknown {
+  const num = Number(value);
+  return Number.isFinite(num) ? Math.round(num * 10) / 10 : value;
+}
+
 const goalSnapshotSchema = z.object({
-  target_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  target_date: optionalDateSchema,
 });
 
 export function buildGoalTools(userId: string, tz: string) {
@@ -55,7 +62,9 @@ Actions:
 - list_goal_timeline() — lists all goal changes over time`,
       inputSchema: manageGoalsInput,
       execute: async (rawArgs) => {
-        const parsed = manageGoalsSchema.safeParse(rawArgs);
+        const parsed = manageGoalsSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -111,7 +120,7 @@ Actions:
                       label = field;
                       unit = '';
                   }
-                  text += `- **${label}:** ${goals[field]}${unit}\n`;
+                  text += `- **${label}:** ${roundGoalValue(goals[field])}${unit}\n`;
                 }
               }
               if (
@@ -199,7 +208,9 @@ Actions:
       description: 'Returns the goals active on a specific date.',
       inputSchema: goalSnapshotSchema,
       execute: async (rawArgs) => {
-        const parsed = goalSnapshotSchema.safeParse(rawArgs);
+        const parsed = goalSnapshotSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -215,7 +226,7 @@ Actions:
           const data: Record<string, unknown> = {};
           for (const field of GOAL_SNAPSHOT_FIELDS) {
             if (field in goals) {
-              data[field] = goals[field];
+              data[field] = roundGoalValue(goals[field]);
             }
           }
           return JSON.stringify(data);

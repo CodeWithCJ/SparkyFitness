@@ -1111,10 +1111,10 @@ describe('dispatchAiRequest — temperature', () => {
         temperature: 0,
       })
     );
-    expect(captured(m).body.options).toEqual({ temperature: 0 });
+    expect(captured(m).body.options).toEqual({ num_ctx: 8192, temperature: 0 });
   });
 
-  it('ollama omits options when temperature is unset', async () => {
+  it('ollama sends default options when temperature is unset', async () => {
     const m = mockFetch(ollamaBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(
       baseRequest({
@@ -1126,7 +1126,7 @@ describe('dispatchAiRequest — temperature', () => {
         networkPolicy: PRIVATE_NETWORK_POLICY,
       })
     );
-    expect(captured(m).body.options).toBeUndefined();
+    expect(captured(m).body.options).toEqual({ num_ctx: 8192 });
   });
 });
 

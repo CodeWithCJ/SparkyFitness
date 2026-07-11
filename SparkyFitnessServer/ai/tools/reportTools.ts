@@ -6,6 +6,7 @@ import exerciseEntryDb from '../../models/exerciseEntry.js';
 import measurementRepository from '../../models/measurementRepository.js';
 import reportRepository from '../../models/reportRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
+import { normalizeDayKeywords } from './dates.js';
 import { dayString } from './formatting.js';
 import { getNutritionalSummaryRows, getWaterHistoryRows } from './foodTools.js';
 import { getBiometricsHistoryRows } from './checkinTools.js';
@@ -149,7 +150,9 @@ export function buildReportTools(userId: string, tz: string) {
       description: 'Generates consolidated health and fitness reports.',
       inputSchema: manageReportInput,
       execute: async (rawArgs) => {
-        const parsed = manageReportSchema.safeParse(rawArgs);
+        const parsed = manageReportSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -178,7 +181,9 @@ export function buildReportTools(userId: string, tz: string) {
         'Returns daily report data across nutrition, exercise, and water for a specific date or range.',
       inputSchema: dailyReportSchema,
       execute: async (rawArgs) => {
-        const parsed = dailyReportSchema.safeParse(rawArgs);
+        const parsed = dailyReportSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }

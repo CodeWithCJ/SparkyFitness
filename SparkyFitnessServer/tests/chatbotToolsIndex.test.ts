@@ -50,9 +50,10 @@ const EXPECTED_TOOLS = [
 ];
 
 // The 'core' profile (used for Ollama and other small/local models): the
-// food, exercise, and measurement logging the system prompt centers on, minus
-// the analytics, coaching, vision, goal, profile, habit, wizard, and report
-// tools that weaker models struggle to drive and that inflate prefill cost.
+// food, exercise, and measurement logging the system prompt centers on, plus
+// goals (a coaching chat must answer "what are my goals?"), minus the
+// analytics, coaching, vision, profile, habit, wizard, and report tools that
+// weaker models struggle to drive and that inflate prefill cost.
 const EXPECTED_CORE_TOOLS = [
   'sparky_get_daily_exercise_totals',
   'sparky_get_exercise_details',
@@ -62,6 +63,7 @@ const EXPECTED_CORE_TOOLS = [
   'sparky_get_food_details',
   'sparky_get_food_diary',
   'sparky_get_food_usage',
+  'sparky_get_goal_snapshot',
   'sparky_get_nutrition_summary',
   'sparky_get_recent_exercise_entries',
   'sparky_get_recent_food_entries',
@@ -70,6 +72,7 @@ const EXPECTED_CORE_TOOLS = [
   'sparky_manage_checkin',
   'sparky_manage_exercise',
   'sparky_manage_food',
+  'sparky_manage_goals',
   'sparky_search_exercises',
   'sparky_search_foods',
 ];

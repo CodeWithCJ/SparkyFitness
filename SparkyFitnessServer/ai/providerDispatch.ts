@@ -434,10 +434,11 @@ function buildOllamaRequest(ctx: BuildContext): BuiltRequest {
     model: ctx.model,
     messages: [message],
     stream: false,
+    options: {
+      num_ctx: 8192, // Enforce 8k context window support
+      ...(ctx.temperature !== undefined && { temperature: ctx.temperature }),
+    },
   };
-  if (ctx.temperature !== undefined) {
-    body.options = { temperature: ctx.temperature };
-  }
   if (ctx.jsonSchema) {
     body.format = ctx.jsonSchema;
   }

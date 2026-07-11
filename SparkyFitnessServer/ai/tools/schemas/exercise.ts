@@ -282,7 +282,10 @@ export const manageExerciseInput = z.object({
       'create_workout_preset',
       'get_exercise_progress',
     ])
-    .describe('Action to perform; see tool description for per-action fields.'),
+    .optional()
+    .describe(
+      'Optional action to perform (server infers if omitted); see tool description for per-action fields.'
+    ),
   // identity
   exercise_id: uuidSchema.optional().describe('Exercise UUID'),
   exercise_name: z

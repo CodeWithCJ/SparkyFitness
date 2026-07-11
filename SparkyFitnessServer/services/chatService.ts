@@ -58,6 +58,13 @@ import { buildChatbotTools, type ChatToolProfile } from '../ai/tools/index.js';
 
 const MAX_AGENTIC_STEPS = 15;
 
+// Sampling temperature for the 'core' tool profile — resolved only for Ollama
+// services the user flagged as small/local (see prepareChatContext). Small
+// models emit noticeably steadier tool-call JSON at a low temperature, and this
+// chat is tool-orchestration first, prose second. Cloud providers and
+// full-profile Ollama keep their provider-tuned defaults (no temperature set).
+const CORE_PROFILE_CHAT_TEMPERATURE = 0.2;
+
 // Retries per chat request on persistent provider errors. Each retry re-sends the
 // full request (system + tools + history), so a high count multiplies token cost
 // on a hard provider outage. 3 covers transient blips without a runaway 5×.
@@ -402,6 +409,18 @@ async function prepareChatContext(
     `Loaded ${Object.keys(tools).length} ${toolProfile} tools for chatbot: ${Object.keys(tools).join(', ')}`
   );
 
+  // Ollama's default server-side context window is 4096 tokens and overflow is
+  // truncated *silently* (it chops the prompt head, mangling tool schemas and
+  // the system prompt — looks like a "dumb model"). We connect over the
+  // OpenAI-compatible endpoint, which ignores a per-request num_ctx, so we can
+  // only warn. The 'full' profile is the risky combo; 'core' is the mitigation.
+  if (serviceType === 'ollama' && toolProfile === 'full') {
+    log(
+      'warn',
+      `Ollama chat is using the 'full' tool profile (${Object.keys(tools).length} tools), which plus the system prompt and history usually exceeds Ollama's default 4096-token context and gets truncated silently. Raise it (OLLAMA_CONTEXT_LENGTH=16384 or num_ctx in the Modelfile) and/or switch this service to the 'core' tool profile.`
+    );
+  }
+
   return {
     systemPromptContent: getSystemPrompt(
       chatTz,
@@ -409,14 +428,38 @@ async function prepareChatContext(
       toolProfile
     ),
     tools,
+    toolProfile,
   };
 }
 
+// INVARIANT — keep the request prefix (system prompt + tool schemas) stable
+// across turns. Prompt caching (Anthropic breakpoint, OpenAI cache key, Gemini
+// auto-cache) and Ollama's KV-cache reuse only kick in when a new request is a
+// byte-for-byte prefix extension of the previous one. So this prompt must NOT
+// embed per-request values (timestamps, request ids, live totals, entry
+// counts). The only inputs here are the day string (changes at most once a day)
+// and the user's custom-category list (changes only when they edit categories);
+// both are acceptable. If a future feature needs per-turn context, inject it as
+// a message, never into this system prompt.
 export function getSystemPrompt(
   chatTz: string,
   customCategoriesList: string,
   profile: ChatToolProfile = 'full'
 ): string {
+  if (profile === 'core') {
+    return `You are Sparky, an AI nutrition and wellness coach. Help users track their food, exercise, measurements, and goals.
+The current local date is ${todayInZone(chatTz)}.
+
+When the user mentions logging, prioritize using the matching tools directly.
+User's custom measurement categories:
+${customCategoriesList}
+
+Compare inputs to the custom categories. If you find a match, use the exact category name.
+For solid food items or beverages, use 'sparky_manage_food'. For water intake, use 'sparky_manage_food' with 'log_water' action.
+MANDATORY: Call 'sparky_manage_food' with 'lookup_food_nutrition' before creating new food entries, and use the returned nutrition data.
+Keep responses concise and direct.`;
+  }
+
   // Vision tools (sparky_analyze_food_image, sparky_scan_label) are dropped
   // from the 'core' profile, so omit their guidance there — keeping the prompt
   // a strict subset of the full one and never pointing small/local models at
@@ -532,6 +575,12 @@ function stripHistoricalImages(messages: LlmMessage[]): LlmMessage[] {
 // than a fixed message count: 20 short turns and 20 turns full of long pastes or
 // tool dumps cost wildly different amounts, and a count can't tell them apart.
 const CONTEXT_TOKEN_BUDGET = 6000;
+// Tighter history window for the 'core' profile, which is only resolved for
+// Ollama services the user has flagged as small/local (see prepareChatContext).
+// Their context window is often just 4096-8192 tokens, so a smaller *intact*
+// history beats a larger one that Ollama silently truncates. Cloud providers
+// and full-profile Ollama keep the full CONTEXT_TOKEN_BUDGET.
+const CORE_PROFILE_CONTEXT_TOKEN_BUDGET = 2000;
 // Flat per-image cost. A base64 data URL is tens of KB of characters but bills as
 // roughly a fixed number of vision tokens, so char-based estimation would
 // massively overcount it. Past images are already stripped, so in practice this
@@ -663,11 +712,12 @@ async function processChatMessage(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    const { systemPromptContent, tools } = await prepareChatContext(
-      authenticatedUserId,
-      aiService.service_type,
-      aiService.chat_tool_profile
-    );
+    const { systemPromptContent, tools, toolProfile } =
+      await prepareChatContext(
+        authenticatedUserId,
+        aiService.service_type,
+        aiService.chat_tool_profile
+      );
 
     const chatProviderOptions = buildChatProviderOptions(
       aiService.service_type,
@@ -794,7 +844,9 @@ async function processChatMessage(
     const strippedMessages = stripHistoricalImages(conversationMessages);
     const llmMessages = trimToTokenBudget(
       strippedMessages,
-      CONTEXT_TOKEN_BUDGET
+      toolProfile === 'core'
+        ? CORE_PROFILE_CONTEXT_TOKEN_BUDGET
+        : CONTEXT_TOKEN_BUDGET
     );
 
     // Ensure the window starts with a user message (some models reject assistant-first history)
@@ -815,6 +867,11 @@ async function processChatMessage(
       >,
       tools,
       providerOptions: chatProviderOptions,
+      // Low temperature only for small local models (core profile); cloud and
+      // full-profile Ollama keep provider defaults.
+      ...(toolProfile === 'core' && {
+        temperature: CORE_PROFILE_CHAT_TEMPERATURE,
+      }),
       stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
       maxRetries: MAX_PROVIDER_RETRIES,
       onStepFinish({ toolCalls, toolResults }) {
@@ -1280,11 +1337,12 @@ async function processChatMessageStream(
       throw new Error(`Unsupported service type: ${aiService.service_type}`);
     }
 
-    const { systemPromptContent, tools } = await prepareChatContext(
-      authenticatedUserId,
-      aiService.service_type,
-      aiService.chat_tool_profile
-    );
+    const { systemPromptContent, tools, toolProfile } =
+      await prepareChatContext(
+        authenticatedUserId,
+        aiService.service_type,
+        aiService.chat_tool_profile
+      );
 
     const chatProviderOptions = buildChatProviderOptions(
       aiService.service_type,
@@ -1373,7 +1431,9 @@ async function processChatMessageStream(
     // context without an unpredictable, count-based blow-up.
     const llmMessages = trimToTokenBudget(
       strippedMessages,
-      CONTEXT_TOKEN_BUDGET
+      toolProfile === 'core'
+        ? CORE_PROFILE_CONTEXT_TOKEN_BUDGET
+        : CONTEXT_TOKEN_BUDGET
     );
 
     log(
@@ -1402,6 +1462,11 @@ async function processChatMessageStream(
       >,
       tools,
       providerOptions: chatProviderOptions,
+      // Low temperature only for small local models (core profile); cloud and
+      // full-profile Ollama keep provider defaults.
+      ...(toolProfile === 'core' && {
+        temperature: CORE_PROFILE_CHAT_TEMPERATURE,
+      }),
       stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
       maxRetries: MAX_PROVIDER_RETRIES,
       onStepFinish({ toolResults }) {

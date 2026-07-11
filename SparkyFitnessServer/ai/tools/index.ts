@@ -13,12 +13,12 @@ import { buildWizardTools } from './wizardTools.js';
 /**
  * Tool surfaces the chatbot can expose:
  * - 'full': every chat-visible tool (the default).
- * - 'core': just the food/exercise/measurement logging the system prompt
- *   centers on. Used for small/local models (e.g. Ollama's default 3B
- *   llama3.2) that have no prompt cache — so the whole tool block is
- *   reprocessed every turn — and select tools more reliably from a smaller
- *   surface. Analytics, coaching, vision, goals, profile, habits, the check-in
- *   wizard, and reports are dropped.
+ * - 'core': the food/exercise/measurement logging the system prompt centers
+ *   on, plus goals (a coaching chat needs to answer "what are my goals?").
+ *   Used for small/local models (e.g. Ollama's default 3B llama3.2) that have
+ *   no prompt cache — so the whole tool block is reprocessed every turn — and
+ *   select tools more reliably from a smaller surface. Analytics, coaching,
+ *   vision, profile, habits, the check-in wizard, and reports are dropped.
  */
 export type ChatToolProfile = 'full' | 'core';
 
@@ -37,11 +37,14 @@ export function buildChatbotTools(
   tz: string,
   profile: ChatToolProfile = 'full'
 ) {
-  // Core logging domains: food, exercise, and measurements/check-ins.
+  // Core domains: food, exercise, measurements/check-ins, and goals. Goals are
+  // in core because a nutrition-coaching chat must be able to answer "what are
+  // my goals?"; keeping this block a strict prefix of the full set below.
   const tools = {
     ...buildExerciseTools(userId, tz),
     ...buildFoodTools(userId, tz),
     ...buildCheckinTools(userId, tz),
+    ...buildGoalTools(userId, tz),
   };
   if (profile === 'full') {
     Object.assign(
@@ -49,9 +52,8 @@ export function buildChatbotTools(
       buildCoachTools(userId, tz),
       buildEngagementTools(userId, tz),
       buildVisionTools(userId),
-      buildGoalTools(userId, tz),
       buildProfileTools(userId),
-      buildHabitTools(userId),
+      buildHabitTools(userId, tz),
       buildWizardTools(userId),
       buildReportTools(userId, tz)
     );

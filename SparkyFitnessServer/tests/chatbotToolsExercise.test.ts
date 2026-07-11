@@ -78,6 +78,21 @@ describe('sparky_manage_exercise validation', () => {
       'Error [VALIDATION]: searchTerm: Invalid input: expected string, received undefined'
     );
   });
+
+  it('infers action when missing from input parameters', async () => {
+    vi.mocked(exerciseService.searchExercisesPaginated).mockResolvedValue({
+      exercises: [],
+      totalCount: 0,
+    });
+    // Omit the 'action' field, but supply 'searchTerm' to imply search_exercises
+    const result = await tools.sparky_manage_exercise.execute!(
+      { searchTerm: 'pushups' },
+      opts
+    );
+    expect(result).toBe(
+      '# Exercise Search: "pushups"\n\nNo results found.\n\n---\nShowing 0 of 0 results.'
+    );
+  });
 });
 
 describe('search_exercises', () => {

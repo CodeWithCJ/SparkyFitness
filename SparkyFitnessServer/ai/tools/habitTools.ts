@@ -8,10 +8,11 @@ import {
   manageHabitsInput,
   type ManageHabitsInput,
 } from './schemas/habits.js';
+import { normalizeDayKeywords } from './dates.js';
 
 const VALID_ACTIONS = ['list_habits', 'log_habit', 'get_habit_history'];
 
-export function buildHabitTools(userId: string) {
+export function buildHabitTools(userId: string, tz: string) {
   return {
     sparky_manage_habits: tool({
       description: `Habit tracking: list habits, log completions, and view history.
@@ -22,7 +23,9 @@ Actions:
 - get_habit_history(habit_id, start_date?, end_date?) — returns completion history for a habit`,
       inputSchema: manageHabitsInput,
       execute: async (rawArgs) => {
-        const parsed = manageHabitsSchema.safeParse(rawArgs);
+        const parsed = manageHabitsSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }

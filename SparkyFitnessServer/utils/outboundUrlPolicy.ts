@@ -27,7 +27,7 @@ export class OutboundUrlBlockedError extends Error {
   code = 'private_network_forbidden';
 
   constructor(
-    message = 'Private or internal AI service URLs are not allowed.'
+    message = 'Private or internal AI service URLs are not allowed. To allow connections to local services (e.g., local Ollama), set ALLOW_PRIVATE_NETWORK_AI=true in your server environment configuration.'
   ) {
     super(message);
     this.name = 'OutboundUrlBlockedError';

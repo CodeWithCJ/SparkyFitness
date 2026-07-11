@@ -1,4 +1,4 @@
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { renderWithClient } from '../test-utils';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import type { AiServiceSettingsFormInput } from '@/schemas/form/AiServiceSettings.form.zod';
@@ -116,6 +116,59 @@ describe('ServiceForm — model validation', () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(mockToast).not.toHaveBeenCalled();
+  });
+});
+
+describe('ServiceForm — Ollama tool profile default', () => {
+  function renderWithChange(formData: AiServiceSettingsFormInput) {
+    const onFormDataChange = jest.fn();
+    const utils = renderWithClient(
+      <ServiceForm
+        formData={formData}
+        onFormDataChange={onFormDataChange}
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+        translationPrefix="settings.aiService.userSettings"
+      />
+    );
+    return { ...utils, onFormDataChange };
+  }
+
+  async function pickServiceType(typeKey: string) {
+    // The service_type SelectTrigger renders as role="combobox" with
+    // id="service_type"; it is the first combobox in the form.
+    const trigger = document.getElementById('service_type')!;
+    fireEvent.click(trigger);
+    const option = await screen.findByRole('option', {
+      name: `settings.aiService.serviceTypes.${typeKey}`,
+    });
+    fireEvent.click(option);
+  }
+
+  // Tools default to 'full' for all services including Ollama.
+  it('defaults chat_tool_profile to full when Ollama is selected', async () => {
+    const { onFormDataChange } = renderWithChange(makeFormData());
+    await pickServiceType('ollama');
+    expect(onFormDataChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        service_type: 'ollama',
+        chat_tool_profile: 'full',
+      })
+    );
+  });
+
+  // Switching service type resets the profile to 'full'.
+  it('resets chat_tool_profile to full when switching service types', async () => {
+    const { onFormDataChange } = renderWithChange(
+      makeFormData({ service_type: 'ollama', chat_tool_profile: 'core' })
+    );
+    await pickServiceType('anthropic');
+    expect(onFormDataChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        service_type: 'anthropic',
+        chat_tool_profile: 'full',
+      })
+    );
   });
 });
 
