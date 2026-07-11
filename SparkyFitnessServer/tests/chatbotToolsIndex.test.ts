@@ -164,6 +164,42 @@ describe('buildChatbotTools', () => {
     }
   });
 
+  // Small local models routinely emit optional fields as null; the AI SDK
+  // rejects null against `.optional()` before execute() runs. The chat surface
+  // must strip nulls so those calls still reach the handler.
+  it('strips null-valued optional fields from chat-tool input before validation', () => {
+    const tools = buildChatbotTools('user-1', 'UTC');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const schema = tools.sparky_manage_food.inputSchema as any;
+    const parsed = schema.safeParse({
+      action: 'log_external_food',
+      food_name: 'egg',
+      external_id: null,
+      quantity: 2,
+      unit: 'piece',
+      meal_type: 'breakfast',
+    });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data.external_id).toBeUndefined();
+    expect(parsed.data.food_name).toBe('egg');
+  });
+
+  // The MCP surface strips nulls upstream (routes/mcpRoutes.ts), so its
+  // published schema stays a bare object and rejects an explicit null — the
+  // chat-only preprocess wrapper must not leak into it.
+  it('does not add the null-stripping wrapper to the MCP surface', () => {
+    const tools = buildChatbotTools('mcp-user', 'UTC', 'full', false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const schema = tools.sparky_manage_food.inputSchema as any;
+    const parsed = schema.safeParse({
+      action: 'log_external_food',
+      food_name: 'egg',
+      external_id: null,
+      meal_type: 'breakfast',
+    });
+    expect(parsed.success).toBe(false);
+  });
+
   it('memoizes the tool map per user/tz/profile within the cache TTL', () => {
     const first = buildChatbotTools('memo-user', 'UTC', 'full');
     const second = buildChatbotTools('memo-user', 'UTC', 'full');
@@ -174,5 +210,87 @@ describe('buildChatbotTools', () => {
     expect(buildChatbotTools('memo-user', 'UTC', 'full', false)).not.toBe(
       first
     );
+  });
+
+  // Runtime tool-category selection: an explicit, validated category list
+  // defines the composed surface regardless of the full/core profile.
+  describe('toolCategories selection', () => {
+    it('composes only the food domain when categories=["food"]', () => {
+      const tools = buildChatbotTools('cat-user', 'UTC', 'full', true, [
+        'food',
+      ]);
+      const names = Object.keys(tools);
+      expect(names).toContain('sparky_manage_food');
+      expect(names).toContain('sparky_search_foods');
+      // No other domain leaks in.
+      expect(names.some((n) => n.includes('exercise'))).toBe(false);
+      expect(names).not.toContain('sparky_manage_goals');
+      expect(names).not.toContain('sparky_get_report');
+    });
+
+    it('unions multiple categories (food + reports) and drops others', () => {
+      const names = Object.keys(
+        buildChatbotTools('cat-user', 'UTC', 'full', true, ['food', 'reports'])
+      );
+      expect(names).toContain('sparky_manage_food');
+      expect(names).toContain('sparky_get_report');
+      expect(names.some((n) => n.includes('exercise'))).toBe(false);
+    });
+
+    it('reproduces the core surface when given the core category slugs', () => {
+      const viaCategories = Object.keys(
+        buildChatbotTools('cat-user', 'UTC', 'full', true, [
+          'food',
+          'exercise',
+          'checkin',
+          'goals',
+        ])
+      ).sort();
+      const viaProfile = Object.keys(
+        buildChatbotTools('cat-user2', 'UTC', 'core')
+      ).sort();
+      expect(viaCategories).toEqual(viaProfile);
+    });
+
+    it('ignores unknown slugs and falls back to the profile when none remain', () => {
+      const bogusOnly = Object.keys(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        buildChatbotTools('cat-user', 'UTC', 'full', true, ['bogus'] as any)
+      ).sort();
+      const fullProfile = Object.keys(
+        buildChatbotTools('cat-user3', 'UTC', 'full')
+      ).sort();
+      expect(bogusOnly).toEqual(fullProfile);
+    });
+
+    it('keys the memo cache on the category set', () => {
+      const foodOnly = buildChatbotTools('memo-cat', 'UTC', 'full', true, [
+        'food',
+      ]);
+      expect(buildChatbotTools('memo-cat', 'UTC', 'full', true, ['food'])).toBe(
+        foodOnly
+      );
+      // A different category set is a different cache entry.
+      expect(
+        buildChatbotTools('memo-cat', 'UTC', 'full', true, ['exercise'])
+      ).not.toBe(foodOnly);
+      // Order-independent: same set in a different order hits the same entry.
+      expect(
+        buildChatbotTools('memo-cat2', 'UTC', 'full', true, ['food', 'goals'])
+      ).toBe(
+        buildChatbotTools('memo-cat2', 'UTC', 'full', true, ['goals', 'food'])
+      );
+    });
+
+    it('still marks the last composed tool as the Anthropic cache breakpoint', () => {
+      const tools = buildChatbotTools('cat-user', 'UTC', 'full', true, [
+        'food',
+      ]);
+      const names = Object.keys(tools);
+      const last = tools[names[names.length - 1]];
+      expect(last.providerOptions?.anthropic?.cacheControl).toEqual({
+        type: 'ephemeral',
+      });
+    });
   });
 });

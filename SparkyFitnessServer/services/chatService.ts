@@ -415,7 +415,8 @@ const chatContextInputsCache = new TtlCache<{
 async function prepareChatContext(
   authenticatedUserId: string,
   serviceType: string,
-  chatToolProfile?: string | null
+  chatToolProfile?: string | null,
+  toolCategories?: readonly string[]
 ) {
   const { chatTz, customCategoriesList } =
     await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
@@ -449,10 +450,23 @@ async function prepareChatContext(
     requiresUserSuppliedAiUrl(serviceType) && chatToolProfile === 'core'
       ? 'core'
       : 'full';
-  const tools = buildChatbotTools(authenticatedUserId, chatTz, toolProfile);
+  // A validated runtime category selection (from the client selector) defines
+  // the tool set when present; otherwise buildChatbotTools falls back to the
+  // profile's default set. toolProfile still drives tuning below regardless.
+  const tools = buildChatbotTools(
+    authenticatedUserId,
+    chatTz,
+    toolProfile,
+    true,
+    toolCategories
+  );
   log(
     'info',
-    `Loaded ${Object.keys(tools).length} ${toolProfile} tools for chatbot: ${Object.keys(tools).join(', ')}`
+    `Loaded ${Object.keys(tools).length} tools for chatbot (profile=${toolProfile}${
+      toolCategories && toolCategories.length > 0
+        ? `, categories=${toolCategories.join(',')}`
+        : ''
+    }): ${Object.keys(tools).join(', ')}`
   );
 
   // Ollama's default server-side context window is 4096 tokens and overflow is
@@ -801,7 +815,8 @@ async function processChatMessage(
   serviceConfigId: string,
   userId: string,
   authenticatedUserId: string,
-  actorIsAdmin = false
+  actorIsAdmin = false,
+  toolCategories?: readonly string[]
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -842,7 +857,8 @@ async function processChatMessage(
       await prepareChatContext(
         authenticatedUserId,
         aiService.service_type,
-        aiService.chat_tool_profile
+        aiService.chat_tool_profile,
+        toolCategories
       );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -1308,7 +1324,8 @@ async function processChatMessageStream(
   serviceConfigId: string,
   userId: string,
   authenticatedUserId: string,
-  actorIsAdmin = false
+  actorIsAdmin = false,
+  toolCategories?: readonly string[]
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -1344,7 +1361,8 @@ async function processChatMessageStream(
       await prepareChatContext(
         authenticatedUserId,
         aiService.service_type,
-        aiService.chat_tool_profile
+        aiService.chat_tool_profile,
+        toolCategories
       );
 
     const chatProviderOptions = buildChatProviderOptions(

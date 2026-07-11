@@ -134,17 +134,30 @@ describe('sparky_manage_goals', () => {
     });
   });
 
-  it('set_goals without start_date returns a validation error', async () => {
+  it('set_goals without start_date defaults to today', async () => {
+    vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+      message: 'ok',
+    });
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      protein: 150,
+      carbs: 250,
+      fat: 67,
+      water_goal_ml: 2000,
+    });
+
     const result = await tools.sparky_manage_goals.execute!(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { action: 'set_goals' } as any,
+      { action: 'set_goals', calories: 2200 } as any,
       opts
     );
 
-    expect(result).toBe(
-      'Error [VALIDATION]: start_date: Invalid input: expected string, received undefined'
+    const today = todayInZone('UTC');
+    expect(result).toBe(`✅ Goals set successfully starting from ${today}.`);
+    expect(goalService.manageGoalTimeline).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ p_start_date: today, p_calories: 2200 })
     );
-    expect(goalService.manageGoalTimeline).not.toHaveBeenCalled();
   });
 
   it('rejects unknown actions', async () => {

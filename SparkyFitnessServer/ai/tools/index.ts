@@ -1,4 +1,11 @@
 import { Tool } from 'ai';
+import { z } from 'zod';
+import {
+  CHAT_TOOL_CATEGORY_SLUGS,
+  CORE_CHAT_TOOL_CATEGORY_SLUGS,
+  isChatToolCategorySlug,
+  type ChatToolCategorySlug,
+} from '@workspace/shared';
 import { buildCheckinTools } from './checkinTools.js';
 import { buildCoachTools } from './coachTools.js';
 import { buildEngagementTools } from './engagementTools.js';
@@ -25,37 +32,97 @@ export type ChatToolProfile = 'full' | 'core';
 
 type ToolMap = Record<string, Tool>;
 
-// Composes the raw per-domain tool builders. Domain order mirrors MCP's
-// registerAllTools; the MCP-only dev tools are intentionally not part of this
-// surface. The 'core' profile is a strict prefix of the full set, so the full
-// set keeps its original ordering.
+// Category slug -> the per-domain builders it composes. Iteration order (both
+// this map and the array within each entry) IS the composed tool order, so it
+// mirrors the historical builder ordering — the Anthropic cache breakpoint
+// lands on whatever ends up last (see applyChatProviderTuning), and
+// tests/chatbotToolsIndex.test.ts pins the full/core surfaces against it.
+const CATEGORY_BUILDERS: Record<
+  ChatToolCategorySlug,
+  ((userId: string, tz: string) => ToolMap)[]
+> = {
+  exercise: [(u, tz) => buildExerciseTools(u, tz)],
+  food: [(u, tz) => buildFoodTools(u, tz)],
+  checkin: [(u, tz) => buildCheckinTools(u, tz)],
+  goals: [(u, tz) => buildGoalTools(u, tz)],
+  coaching: [
+    (u, tz) => buildCoachTools(u, tz),
+    (u, tz) => buildEngagementTools(u, tz),
+    (u) => buildWizardTools(u),
+  ],
+  vision: [(u) => buildVisionTools(u)],
+  profile: [(u) => buildProfileTools(u), (u, tz) => buildHabitTools(u, tz)],
+  reports: [(u, tz) => buildReportTools(u, tz)],
+};
+
+// Composition order: the core categories first (a strict prefix of the full
+// set, preserved from the original layout), then the full-only categories.
+const CATEGORY_ORDER: ChatToolCategorySlug[] = [
+  'exercise',
+  'food',
+  'checkin',
+  'goals',
+  'coaching',
+  'vision',
+  'profile',
+  'reports',
+];
+
+// Resolves the category set to compose: an explicit (already-validated,
+// non-empty) selection wins; otherwise the profile's default set ('core' ->
+// the shared core slugs, 'full' -> every category).
+function resolveCategories(
+  profile: ChatToolProfile,
+  categories?: readonly string[]
+): Set<ChatToolCategorySlug> {
+  if (categories && categories.length > 0) {
+    const valid = categories.filter(isChatToolCategorySlug);
+    if (valid.length > 0) return new Set(valid);
+  }
+  return new Set(
+    profile === 'core'
+      ? CORE_CHAT_TOOL_CATEGORY_SLUGS
+      : CHAT_TOOL_CATEGORY_SLUGS
+  );
+}
+
+// Composes the raw per-domain tool builders for the resolved category set. The
+// MCP-only dev tools are intentionally not part of this surface.
 function composeTools(
   userId: string,
   tz: string,
-  profile: ChatToolProfile
+  profile: ChatToolProfile,
+  categories?: readonly string[]
 ): ToolMap {
-  // Core domains: food, exercise, measurements/check-ins, and goals. Goals are
-  // in core because a nutrition-coaching chat must be able to answer "what are
-  // my goals?"; keeping this block a strict prefix of the full set below.
-  const tools: ToolMap = {
-    ...buildExerciseTools(userId, tz),
-    ...buildFoodTools(userId, tz),
-    ...buildCheckinTools(userId, tz),
-    ...buildGoalTools(userId, tz),
-  };
-  if (profile === 'full') {
-    Object.assign(
-      tools,
-      buildCoachTools(userId, tz),
-      buildEngagementTools(userId, tz),
-      buildVisionTools(userId),
-      buildProfileTools(userId),
-      buildHabitTools(userId, tz),
-      buildWizardTools(userId),
-      buildReportTools(userId, tz)
-    );
+  const selected = resolveCategories(profile, categories);
+  const tools: ToolMap = {};
+  for (const slug of CATEGORY_ORDER) {
+    if (!selected.has(slug)) continue;
+    for (const build of CATEGORY_BUILDERS[slug]) {
+      Object.assign(tools, build(userId, tz));
+    }
   }
   return tools;
+}
+
+// Recursively drops null-valued keys so a model that emits an optional field
+// as `null` (small local models do this constantly) doesn't trip the AI SDK's
+// pre-execute input validation, which rejects null against `.optional()` and
+// surfaces a raw "Type validation failed" the model rarely recovers from. The
+// MCP surface does the same via stripNulls() in routes/mcpRoutes.ts before it
+// reaches the tool, so this is the chat-path equivalent.
+function stripNullValues(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stripNullValues);
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      if (val !== null) out[key] = stripNullValues(val);
+    }
+    return out;
+  }
+  return value;
 }
 
 // Applies chat-provider tuning that only matters when the tools are sent to an
@@ -63,6 +130,19 @@ function composeTools(
 // the schemas over JSON-RPC where strict-mode flags and Anthropic cache
 // markers are meaningless.
 function applyChatProviderTuning(tools: ToolMap): void {
+  // Null-tolerant input: wrap each published schema so null-valued optional
+  // fields are stripped before validation. z.preprocess preserves the emitted
+  // JSON schema (object type, properties, enums) the model sees — only the
+  // runtime parse changes. Chat-only: MCP strips nulls upstream itself.
+  for (const name of Object.keys(tools)) {
+    const t = tools[name] as Tool & { inputSchema?: unknown };
+    if (t.inputSchema) {
+      t.inputSchema = z.preprocess(
+        stripNullValues,
+        t.inputSchema as z.ZodType
+      ) as unknown as typeof t.inputSchema;
+    }
+  }
   // The published flat schemas are advisory; real validation is the strict
   // per-action union inside each handler. Strict provider-side mode must stay
   // off: OpenAI's Responses API treats an omitted flag as "attempt strict
@@ -117,21 +197,31 @@ const toolCache = new Map<string, { tools: ToolMap; expiresAt: number }>();
  * `providerTuning` (default true) applies the chat/AI-SDK provider settings
  * (strict off, Anthropic cache breakpoint). The MCP adapter passes false to
  * publish a clean provider-independent surface.
+ *
+ * `categories` is an optional, already-validated runtime tool-category
+ * selection (see @workspace/shared). When present and non-empty it defines the
+ * composed tool set; otherwise the profile's default set is used.
  */
 export function buildChatbotTools(
   userId: string,
   tz: string,
   profile: ChatToolProfile = 'full',
-  providerTuning = true
+  providerTuning = true,
+  categories?: readonly string[]
 ): ToolMap {
-  const key = `${providerTuning ? 'chat' : 'mcp'}|${profile}|${tz}|${userId}`;
+  // Normalize the selection into the cache key so two requests with different
+  // category sets don't share a memoized map. Sorted for order-independence.
+  const validCategories = (categories ?? []).filter(isChatToolCategorySlug);
+  const categoryKey =
+    validCategories.length > 0 ? [...validCategories].sort().join(',') : 'all';
+  const key = `${providerTuning ? 'chat' : 'mcp'}|${profile}|${categoryKey}|${tz}|${userId}`;
   const now = Date.now();
   const cached = toolCache.get(key);
   if (cached && cached.expiresAt > now) {
     return cached.tools;
   }
 
-  const tools = composeTools(userId, tz, profile);
+  const tools = composeTools(userId, tz, profile, categories);
   if (providerTuning) {
     applyChatProviderTuning(tools);
   }

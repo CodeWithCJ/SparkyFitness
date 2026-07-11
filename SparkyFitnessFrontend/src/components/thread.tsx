@@ -24,6 +24,7 @@ import {
 import type { AssistantRuntime } from '@assistant-ui/react';
 import { getThreadMessageTokenUsage } from '@assistant-ui/react-ai-sdk';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
+import { ChatToolCategoriesSelector } from '@/components/ai/ChatToolCategoriesSelector';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -195,7 +196,10 @@ const Composer: FC = () => {
 const ComposerAction: FC = () => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <ComposerAddAttachment />
+      <div className="flex items-center gap-1">
+        <ComposerAddAttachment />
+        <ChatToolCategoriesSelector />
+      </div>
       <AuiIf condition={(s) => !s.thread.isRunning}>
         <ComposerPrimitive.Send asChild>
           <TooltipIconButton

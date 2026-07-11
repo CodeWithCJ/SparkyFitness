@@ -42,6 +42,7 @@ const VALID_ACTIONS = [
   'search_food',
   'lookup_food_nutrition',
   'log_food',
+  'log_external_food',
   'create_food',
   'search_meal',
   'log_meal',
@@ -89,6 +90,129 @@ const NAME_RESOLUTION_WINDOW = 500;
 // Optional inputs and nullable DB columns are treated alike: absent.
 function isSet<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
+}
+
+// Serving units that signal a data-entry error rather than a real food
+// serving (a food portion measured in milli/microgram is almost always
+// mislabeled branded data). Variants using them are demoted when picking the
+// one to show/log.
+const IMPLAUSIBLE_SERVING_UNITS = new Set(['mg', 'mcg', 'µg', 'ug']);
+
+// Picks the variant to surface for an external provider match. Providers
+// (USDA especially) sometimes mark a nonsensical variant as default — e.g. a
+// "28 mg" serving on a branded item — so prefer a variant with a plausible
+// serving unit and positive size, keeping the provider's default only as a
+// tiebreak within the sane set.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pickBestVariant(food: any) {
+  const variants: any[] = (
+    food?.variants?.length ? food.variants : [food?.default_variant]
+  ).filter(Boolean);
+  if (variants.length === 0) return food?.default_variant ?? null;
+  const isPlausible = (v: any) =>
+    Number(v.serving_size) > 0 &&
+    !IMPLAUSIBLE_SERVING_UNITS.has(String(v.serving_unit || '').toLowerCase());
+  const pool = variants.filter(isPlausible);
+  const chosen = pool.length > 0 ? pool : variants;
+  return chosen.find((v) => v.is_default) ?? chosen[0];
+}
+
+// Re-ranks external provider matches so generic/whole foods win over branded
+// products. Providers return branded items ("EGG (SNICKERS)", "BANANA
+// (BETTER'N PEANUT BUTTER)") ahead of the plain whole food a user almost
+// always means, and small models just take the first result. Stable within
+// each tier so the provider's own relevance order is otherwise preserved.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rankProviderMatches(foods: any[], query: string): any[] {
+  const q = query.trim().toLowerCase();
+  const qStem = q.replace(/s$/, '');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const score = (f: any): number => {
+    const name = String(f?.name ?? '').toLowerCase();
+    const branded = Boolean(f?.brand && String(f.brand).trim());
+    const firstSegment = name.split(',')[0].trim();
+    let s = branded ? 0 : 100; // whole foods first
+    if (firstSegment === q || firstSegment === qStem) s += 20;
+    else if (firstSegment.startsWith(qStem)) s += 10;
+    else if (name.includes(q)) s += 5;
+    return s;
+  };
+  return foods
+    .map((f, i) => ({ f, i, s: score(f) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.f);
+}
+
+// Provider nutrition values arrive as strings or numbers; absent/blank/NaN
+// all normalize to null so createFood stores them as empty, not 0.
+function toNutrientNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return isNaN(n) ? null : n;
+}
+
+// Placeholder values for corrective retry examples (see
+// formatActionParseError). Date-like fields resolve to today at call time.
+const FIELD_EXAMPLE_VALUES: Record<string, unknown> = {
+  food_name: 'banana',
+  meal_type: 'breakfast',
+  quantity: 1,
+  unit: 'serving',
+  amount_ml: 250,
+  calories: 100,
+  protein: 1,
+  carbs: 20,
+  fat: 0.5,
+  search_type: 'broad',
+  meal_name: 'My Meal',
+  entry_type: 'food_entry',
+  entry_id: '<entry UUID from list_diary>',
+  food_id: '<internal food UUID>',
+  meal_id: '<meal UUID from search_meal>',
+};
+
+function unionOptionForAction(action: string) {
+  return manageFoodSchema.options.find(
+    (o) => o.shape.action.safeParse(action).success
+  );
+}
+
+// Renders a failed per-action parse as a corrective error: the field problems
+// plus a complete retry example built from the model's own valid args and
+// placeholders for missing required fields. Small local models recover from a
+// copyable example far more often than from a bare Zod trace.
+function formatActionParseError(
+  action: string,
+  error: z.ZodError,
+  args: Record<string, unknown>,
+  tz: string
+): string {
+  const option = unionOptionForAction(action);
+  if (!option) {
+    return ERRORS.INVALID_ACTION(action, VALID_ACTIONS);
+  }
+  const example: Record<string, unknown> = { action };
+  for (const [key, fieldSchema] of Object.entries(option.shape)) {
+    if (key === 'action') continue;
+    const schema = fieldSchema as z.ZodType;
+    const provided = args[key];
+    if (provided !== undefined && schema.safeParse(provided).success) {
+      example[key] = provided;
+    } else if (!schema.safeParse(undefined).success) {
+      // Required and missing/invalid: fill with a placeholder.
+      example[key] = key.includes('date')
+        ? todayInZone(tz)
+        : (FIELD_EXAMPLE_VALUES[key] ?? `<${key}>`);
+    }
+  }
+  const issues = error.issues
+    .map((i) =>
+      i.path.length > 0 ? `${i.path.join('.')}: ${i.message}` : i.message
+    )
+    .join('; ');
+  return ERRORS.VALIDATION(
+    `${action} call was invalid — ${issues}. Retry sparky_manage_food with all required fields, for example: ${JSON.stringify(example)}`
+  );
 }
 
 // MCP's date-range defaults: a single `date` overrides start/end; otherwise
@@ -435,10 +559,11 @@ async function lookupFoodNutrition(
         { providerId: provider.id }
       );
       if (result.foods.length > 0) {
+        const ranked = rankProviderMatches(result.foods, foodName);
         return {
           source: provider.provider_type,
-          food: result.foods[0],
-          alternatives: result.foods.slice(1),
+          food: ranked[0],
+          alternatives: ranked.slice(1),
         };
       }
     } catch (error) {
@@ -494,7 +619,8 @@ Actions:
 - search_food(food_name, search_type:"exact"|"broad", limit?, offset?)
 - lookup_food_nutrition(food_name, provider_type?) — AI MUST call this cascade lookup first before creating or estimating a food. Bypasses regular cascade to search specific provider (e.g. openfoodfacts, usda) if provider_type given.
 - log_food(quantity, meal_type:"breakfast"|"lunch"|"dinner"|"snacks", food_name?|food_id?, unit?, entry_date?, variant_id?) — provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
-- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, meal_type?, entry_date?, saturated_fat?, fiber?, sugar?, sodium?, ...) — MANDATORY: You must run lookup_food_nutrition first to verify nutrition data. Call when the food is not in the internal database yet: after an external lookup_food_nutrition match (usda/openfoodfacts/...), pass the looked-up values verbatim; only use AI-estimated values when lookup returns source='ai_estimate'. Include meal_type + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros.
+- log_external_food(food_name, meal_type, quantity?, unit?, entry_date?, external_id?, provider_type?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. quantity is in servings and defaults to 1.
+- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, meal_type?, entry_date?, saturated_fat?, fiber?, sugar?, sodium?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros.
 - search_meal(meal_name)
 - log_meal(meal_type, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?)
@@ -513,6 +639,9 @@ Actions:
         if (!argsWithAction.action) {
           if (argsWithAction.amount_ml) {
             argsWithAction.action = 'log_water';
+          } else if (argsWithAction.external_id) {
+            // external_id only belongs to log_external_food.
+            argsWithAction.action = 'log_external_food';
           } else if (
             (argsWithAction.food_name || argsWithAction.food_id) &&
             argsWithAction.quantity &&
@@ -580,7 +709,7 @@ Actions:
             delete argsWithAction.food_id;
           } else {
             return ERRORS.VALIDATION(
-              `food_id '${argsWithAction.food_id}' is not an internal food UUID — External IDs from lookup_food_nutrition results cannot be logged directly. Retry with the food_name instead, or create the food first with create_food using the looked-up nutrition values.`
+              `food_id '${argsWithAction.food_id}' is not an internal food UUID — External IDs from lookup_food_nutrition results cannot be logged directly. Retry with log_external_food, passing the food_name (and optionally external_id '${argsWithAction.food_id}') plus quantity and meal_type.`
             );
           }
         }
@@ -597,14 +726,32 @@ Actions:
           );
           delete argsWithAction.variant_id;
         }
-        // Default missing entry_date to 'today' for logging actions
         const loggingActions = [
           'log_food',
+          'log_external_food',
           'create_food',
           'log_meal',
           'log_water',
           'save_as_meal_template',
         ];
+        // Small-model salvage: a date supplied under the wrong key on a
+        // logging action (source_date/target_date belong to
+        // copy_from_yesterday) becomes entry_date instead of an
+        // unrecognized-key failure.
+        if (loggingActions.includes(argsWithAction.action)) {
+          const misfiled =
+            argsWithAction.source_date || argsWithAction.target_date;
+          if (misfiled && !argsWithAction.entry_date) {
+            argsWithAction.entry_date = misfiled;
+            log(
+              'info',
+              `[foodTools] Remapped misfiled date '${misfiled}' to entry_date for ${argsWithAction.action}`
+            );
+          }
+          delete argsWithAction.source_date;
+          delete argsWithAction.target_date;
+        }
+        // Default missing entry_date to 'today' for logging actions
         if (
           !process.env.VITEST &&
           !argsWithAction.entry_date &&
@@ -613,11 +760,33 @@ Actions:
           argsWithAction.entry_date = 'today';
         }
 
-        const parsed = manageFoodSchema.safeParse(
-          normalizeDayKeywords(argsWithAction, tz)
-        );
+        const normalized = normalizeDayKeywords(argsWithAction, tz) as Record<
+          string,
+          unknown
+        >;
+        let parsed = manageFoodSchema.safeParse(normalized);
         if (!parsed.success) {
-          return formatZodError(parsed.error);
+          // Small-model salvage: drop keys the action doesn't accept (models
+          // bleed fields across actions) and re-parse once.
+          const badKeys = parsed.error.issues.flatMap((i) =>
+            i.code === 'unrecognized_keys' ? i.keys : []
+          );
+          if (badKeys.length > 0) {
+            for (const key of badKeys) delete normalized[key];
+            log(
+              'info',
+              `[foodTools] Dropped unrecognized keys for ${argsWithAction.action}: ${badKeys.join(', ')}`
+            );
+            parsed = manageFoodSchema.safeParse(normalized);
+          }
+        }
+        if (!parsed.success) {
+          return formatActionParseError(
+            String(argsWithAction.action),
+            parsed.error,
+            normalized,
+            tz
+          );
         }
         const args: ManageFoodInput = parsed.data;
         try {
@@ -675,7 +844,10 @@ Actions:
               text += `**${f.name}**`;
               if (f.brand) text += ` (${f.brand})`;
 
-              const v = f.default_variant || f.variants?.[0];
+              const v =
+                result.source === 'internal'
+                  ? f.default_variant || f.variants?.[0]
+                  : pickBestVariant(f);
               if (v) {
                 text += `\n  Serving Size: ${v.serving_size} ${v.serving_unit}`;
                 text += `\n  Energy: ${v.calories ?? v.energy ?? 0} kcal`;
@@ -702,7 +874,10 @@ Actions:
                 text += '\n\n**Other Alternatives found:**';
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 result.alternatives.slice(0, 5).forEach((alt: any) => {
-                  const altV = alt.default_variant || alt.variants?.[0];
+                  const altV =
+                    result.source === 'internal'
+                      ? alt.default_variant || alt.variants?.[0]
+                      : pickBestVariant(alt);
                   text += `\n- **${alt.name}**`;
                   if (alt.brand) text += ` (${alt.brand})`;
                   if (altV) {
@@ -712,11 +887,21 @@ Actions:
               }
 
               // External-provider results are not yet in the user's food
-              // database, and their External ID is not a food_id. Without this
-              // hint, models plug the External ID into log_food and dead-end.
+              // database, and their External ID is not a food_id. The hint is
+              // a literal, filled-in example call: small local models copy an
+              // example far more reliably than they carry the food name and
+              // nutrition values across turns into their own call.
               if (result.source !== 'internal') {
-                text +=
-                  '\n\nNote: this external result is not saved in the food database yet. To log it, call create_food with these nutrition values (include meal_type and entry_date to log it in the same call). Do NOT pass the External ID as food_id.';
+                const exampleCall = JSON.stringify({
+                  action: 'log_external_food',
+                  food_name: f.name,
+                  ...(f.provider_external_id
+                    ? { external_id: String(f.provider_external_id) }
+                    : {}),
+                  quantity: 1,
+                  meal_type: '<breakfast|lunch|dinner|snacks>',
+                });
+                text += `\n\nNote: this external result is not saved in the food database yet. To save and log it in one step, call sparky_manage_food with: ${exampleCall} (adjust quantity and meal_type). Do NOT pass the External ID as food_id.`;
               }
 
               return text;
@@ -734,7 +919,7 @@ Actions:
                 foodRow = await findFoodByExactName(userId, args.food_name);
                 if (!foodRow) {
                   return ERRORS.VALIDATION(
-                    `Food "${args.food_name}" not found. Create it first using the create_food action with the nutrition values from lookup_food_nutrition (include meal_type and entry_date to log it in the same call).`
+                    `Food "${args.food_name}" not found in the database. Call lookup_food_nutrition first; if it returns an external match, log it with log_external_food (or create_food with estimated values if nothing matches).`
                   );
                 }
                 foodId = foodRow.id;
@@ -764,6 +949,102 @@ Actions:
               );
               return formatConfirmation(
                 `Logged "${entry.food_name}" (${args.quantity} ${unit}) for ${args.meal_type} on ${entryDate}.`
+              );
+            }
+
+            case 'log_external_food': {
+              const entryDate = args.entry_date || todayInZone(tz);
+              const quantity = args.quantity ?? 1;
+              const result = await lookupFoodNutrition(
+                userId,
+                args.food_name,
+                args.provider_type
+              );
+              if (result.source === 'ai_estimate' || !result.food) {
+                return ERRORS.VALIDATION(
+                  `No match found for "${args.food_name}" in the internal database or configured providers. Estimate the nutrition yourself and call create_food (include meal_type and entry_date to log it in the same call).`
+                );
+              }
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const candidates: any[] = [
+                result.food,
+                ...(result.alternatives ?? []),
+              ];
+              const match =
+                (args.external_id &&
+                  candidates.find(
+                    (c) =>
+                      String(c.provider_external_id ?? '') ===
+                      String(args.external_id)
+                  )) ||
+                result.food;
+
+              if (result.source === 'internal') {
+                // Already saved: log it directly against the existing food.
+                const variant = match.variants?.[0];
+                const unit = args.unit || variant?.serving_unit || 'serving';
+                const entry = await foodEntryService.createFoodEntry(
+                  userId,
+                  userId,
+                  {
+                    user_id: userId,
+                    food_id: match.id,
+                    variant_id: variant?.id,
+                    entry_date: entryDate,
+                    quantity,
+                    unit,
+                    meal_type: args.meal_type,
+                  }
+                );
+                return formatConfirmation(
+                  `"${entry.food_name}" was already in the food database — logged ${quantity} ${unit} for ${args.meal_type} on ${entryDate}.`
+                );
+              }
+
+              const v = pickBestVariant(match);
+              if (!v) {
+                return ERRORS.VALIDATION(
+                  `Provider result for "${match.name}" has no nutrition data. Use create_food with estimated nutrition values instead.`
+                );
+              }
+              const food = await foodCoreService.createFood(userId, {
+                user_id: userId,
+                name: match.name,
+                brand: match.brand || null,
+                serving_size: toNutrientNumber(v.serving_size) ?? 100,
+                serving_unit: v.serving_unit || 'g',
+                calories: toNutrientNumber(v.calories ?? v.energy) ?? 0,
+                protein: toNutrientNumber(v.protein) ?? 0,
+                carbs: toNutrientNumber(v.carbs) ?? 0,
+                fat: toNutrientNumber(v.fat) ?? 0,
+                saturated_fat: toNutrientNumber(v.saturated_fat),
+                polyunsaturated_fat: toNutrientNumber(v.polyunsaturated_fat),
+                monounsaturated_fat: toNutrientNumber(v.monounsaturated_fat),
+                trans_fat: toNutrientNumber(v.trans_fat),
+                cholesterol: toNutrientNumber(v.cholesterol),
+                sodium: toNutrientNumber(v.sodium),
+                potassium: toNutrientNumber(v.potassium),
+                dietary_fiber: toNutrientNumber(v.dietary_fiber),
+                sugars: toNutrientNumber(v.sugars),
+                vitamin_a: toNutrientNumber(v.vitamin_a),
+                vitamin_c: toNutrientNumber(v.vitamin_c),
+                calcium: toNutrientNumber(v.calcium),
+                iron: toNutrientNumber(v.iron),
+                glycemic_index: v.glycemic_index || null,
+              });
+              const dv = food.default_variant;
+              const unit = args.unit || 'serving';
+              await foodEntryService.createFoodEntry(userId, userId, {
+                user_id: userId,
+                food_id: food.id,
+                variant_id: dv?.id,
+                entry_date: entryDate,
+                quantity,
+                unit,
+                meal_type: args.meal_type,
+              });
+              return formatConfirmation(
+                `Saved "${food.name}" from ${result.source} (${dv?.calories || 0} kcal per ${dv?.serving_size || 100}${dv?.serving_unit || 'g'}) and logged ${quantity} ${unit} to ${args.meal_type} on ${entryDate}.`
               );
             }
 

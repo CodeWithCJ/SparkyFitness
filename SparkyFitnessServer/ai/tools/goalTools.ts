@@ -144,14 +144,15 @@ Actions:
             }
 
             case 'set_goals': {
+              const startDate = args.start_date || todayInZone(tz);
               // Fetch existing goals for the start date to preserve unchanged nutrients
               const existingGoals: any = await goalService.getUserGoals(
                 userId,
-                args.start_date
+                startDate
               );
               // Build base payload with required fields, using existing goals as defaults
               const payload: any = {
-                p_start_date: args.start_date,
+                p_start_date: startDate,
                 p_cascade: true,
                 p_calories: args.calories ?? existingGoals.calories,
                 p_protein: args.protein ?? existingGoals.protein,
@@ -182,7 +183,7 @@ Actions:
               };
               await goalService.manageGoalTimeline(userId, payload);
               return formatConfirmation(
-                `Goals set successfully starting from ${args.start_date}.`
+                `Goals set successfully starting from ${startDate}.`
               );
             }
 

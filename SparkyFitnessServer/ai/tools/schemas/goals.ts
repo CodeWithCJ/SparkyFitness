@@ -13,7 +13,9 @@ const getGoalsSchema = z
 const setGoalsSchema = z
   .object({
     action: z.literal('set_goals'),
-    start_date: dateSchema.describe('Date when these goals take effect'),
+    start_date: dateSchema
+      .optional()
+      .describe('Date when these goals take effect'),
     calories: z.coerce
       .number()
       .min(0)

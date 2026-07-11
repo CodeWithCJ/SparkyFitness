@@ -10,7 +10,10 @@ import {
   deriveAiNetworkPolicy,
   OutboundUrlBlockedError,
 } from '../utils/outboundUrlPolicy.js';
-import { testAiServiceConnectionRequestSchema } from '@workspace/shared';
+import {
+  testAiServiceConnectionRequestSchema,
+  normalizeChatToolCategories,
+} from '@workspace/shared';
 const router = express.Router();
 /**
  * @swagger
@@ -57,6 +60,10 @@ const router = express.Router();
  */
 router.post('/', authenticate, async (req, res, next) => {
   const { messages, service_config_id, action, service_data } = req.body;
+  // Optional runtime tool-category selection from the client; normalized to
+  // known slugs (unknown/empty -> undefined so the service falls back to the
+  // per-service profile default rather than loading zero tools).
+  const toolCategories = normalizeChatToolCategories(req.body?.toolCategories);
   try {
     if (action === 'save_ai_service_settings') {
       // Check if user AI config is allowed
@@ -139,7 +146,8 @@ router.post('/', authenticate, async (req, res, next) => {
       service_config_id,
       req.userId,
       req.authenticatedUserId,
-      isAdmin
+      isAdmin,
+      toolCategories
     );
     return res.status(200).json({ content, action: actionType, executedTools });
   } catch (error) {
@@ -192,6 +200,7 @@ router.post('/', authenticate, async (req, res, next) => {
 });
 router.post('/stream', authenticate, async (req, res, next) => {
   const { messages, service_config_id } = req.body;
+  const toolCategories = normalizeChatToolCategories(req.body?.toolCategories);
   try {
     const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
     const { stream } = await chatService.processChatMessageStream(
@@ -199,7 +208,8 @@ router.post('/stream', authenticate, async (req, res, next) => {
       service_config_id,
       req.userId,
       req.authenticatedUserId,
-      isAdmin
+      isAdmin,
+      toolCategories
     );
 
     pipeUIMessageStreamToResponse({ response: res, stream });

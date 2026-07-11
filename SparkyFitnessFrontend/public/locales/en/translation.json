@@ -1,4 +1,23 @@
 {
+  "chat": {
+    "toolCategories": {
+      "tooltip": "Choose chatbot tools",
+      "title": "Chatbot tools",
+      "description": "Fewer tools help smaller local models respond reliably.",
+      "presetFull": "Full",
+      "presetCore": "Core",
+      "clearAll": "Clear all",
+      "emptyHint": "No categories selected — the chatbot will use its default tool set.",
+      "food": "Food & Water",
+      "exercise": "Exercise",
+      "checkin": "Body & Check-ins",
+      "goals": "Goals",
+      "reports": "Reports & Analytics",
+      "coaching": "Coaching",
+      "vision": "Vision",
+      "profile": "Profile & Habits"
+    }
+  },
   "foodCsvImport": {
     "title": "Import Food Data",
     "addRow": "Add Row",

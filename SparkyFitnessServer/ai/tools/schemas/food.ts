@@ -80,6 +80,56 @@ const logFoodSchema = z
   })
   .strict();
 
+// One-call bridge from an external lookup_food_nutrition match to the diary:
+// the handler re-runs the provider lookup server-side, saves the matched food
+// with the provider's full nutrition, and logs it. Exists because small local
+// models reliably fail the copy-every-nutrient-into-create_food hop.
+const logExternalFoodSchema = z
+  .object({
+    action: z.literal('log_external_food'),
+    food_name: z
+      .string()
+      .min(1)
+      .max(200)
+      .describe(
+        'Food name to look up and log — use the exact name from the lookup_food_nutrition result'
+      ),
+    external_id: z
+      .string()
+      .max(100)
+      .optional()
+      .describe(
+        "The lookup result's External ID, to pin the exact provider item (optional)"
+      ),
+    provider_type: z
+      .enum([
+        'internal',
+        'openfoodfacts',
+        'usda',
+        'fatsecret',
+        'mealie',
+        'tandoor',
+        'yazio',
+        'norish',
+      ])
+      .optional()
+      .describe('Provider the lookup match came from (optional)'),
+    quantity: z.coerce
+      .number()
+      .min(0)
+      .optional()
+      .describe('Number of servings consumed (defaults to 1)'),
+    unit: z
+      .string()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe("Unit of measurement (defaults to 'serving')"),
+    meal_type: mealTypeEnum.describe('Meal type category'),
+    entry_date: optionalDateSchema,
+  })
+  .strict();
+
 const createFoodSchema = z
   .object({
     action: z
@@ -462,6 +512,7 @@ export const manageFoodSchema = z.discriminatedUnion('action', [
   searchFoodSchema,
   lookupFoodNutritionSchema,
   logFoodSchema,
+  logExternalFoodSchema,
   createFoodSchema,
   searchMealSchema,
   logMealSchema,
@@ -489,6 +540,7 @@ export const manageFoodInput = z.object({
       'search_food',
       'lookup_food_nutrition',
       'log_food',
+      'log_external_food',
       'create_food',
       'search_meal',
       'log_meal',
@@ -526,6 +578,13 @@ export const manageFoodInput = z.object({
       'Internal food UUID — alternative to food_name. NOT the External ID from lookup_food_nutrition results.'
     ),
   variant_id: z.string().optional().describe('Food variant UUID'),
+  external_id: z
+    .string()
+    .max(100)
+    .optional()
+    .describe(
+      "For log_external_food: the lookup result's External ID pinning the exact provider item"
+    ),
   update_existing_entries: z.coerce
     .boolean()
     .optional()

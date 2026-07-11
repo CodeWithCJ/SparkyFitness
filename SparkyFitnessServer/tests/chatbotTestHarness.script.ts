@@ -366,6 +366,18 @@ async function runChatbotScenario(
               (t: any) => t.name === 'sparky_get_nutrition_summary'
             );
             if (foundTool) isAlternative = true;
+          } else if (turn.expectedAction === 'get_water_history') {
+            foundTool = executedTools.find(
+              (t: any) => t.name === 'sparky_get_water_history'
+            );
+            if (foundTool) isAlternative = true;
+          }
+        } else if (turn.expectedTool === 'sparky_manage_goals') {
+          if (turn.expectedAction === 'get_goals') {
+            foundTool = executedTools.find(
+              (t: any) => t.name === 'sparky_get_goal_snapshot'
+            );
+            if (foundTool) isAlternative = true;
           }
         }
       }

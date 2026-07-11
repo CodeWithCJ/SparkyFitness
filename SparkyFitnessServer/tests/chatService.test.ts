@@ -372,6 +372,16 @@ describe('chatService', () => {
       warnings: [],
     });
 
+    // The AI SDK passes tools to the model as an array of function-tool defs
+    // (each with a `.name`); normalize to a name list for assertions.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const modelToolNames = (model: any): string[] => {
+      const raw = model.doGenerateCalls[0]?.tools ?? [];
+      return Array.isArray(raw)
+        ? raw.map((t: { name: string }) => t.name)
+        : Object.keys(raw);
+    };
+
     const textStep = (text: string) => ({
       finishReason: { unified: 'stop' as const, raw: undefined },
       usage,
@@ -471,6 +481,43 @@ describe('chatService', () => {
       );
     });
 
+    it('limits the tool set passed to the model when toolCategories is provided', async () => {
+      const model = scriptModel([textStep('Sure.')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId,
+        false,
+        ['exercise']
+      );
+
+      const toolNames = modelToolNames(model);
+      // Exercise domain present, food/goals/reports excluded.
+      expect(toolNames.some((n) => n.includes('exercise'))).toBe(true);
+      expect(toolNames).not.toContain('sparky_manage_food');
+      expect(toolNames).not.toContain('sparky_manage_goals');
+      expect(toolNames).not.toContain('sparky_get_report');
+    });
+
+    it('falls back to the full tool set when toolCategories is omitted', async () => {
+      const model = scriptModel([textStep('Sure.')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      const toolNames = modelToolNames(model);
+      // openai is a cloud provider -> full profile default.
+      expect(toolNames).toContain('sparky_manage_food');
+      expect(toolNames).toContain('sparky_manage_exercise');
+      expect(toolNames).toContain('sparky_get_report');
+    });
+
     it('completes with an ERRORS string as the tool result when a backing service throws', async () => {
       vi.mocked(foodRepository.getFoodsWithPagination).mockRejectedValue(
         new Error('connection refused')
@@ -547,7 +594,7 @@ describe('chatService', () => {
 
       expect(log).toHaveBeenCalledWith(
         'info',
-        expect.stringMatching(/Loaded 20 core tools/)
+        expect.stringMatching(/Loaded 20 tools for chatbot \(profile=core/)
       );
       // The core profile is the mitigation, so no context-window warning.
       expect(log).not.toHaveBeenCalledWith(
@@ -577,7 +624,7 @@ describe('chatService', () => {
 
       expect(log).toHaveBeenCalledWith(
         'info',
-        expect.stringMatching(/Loaded 35 full tools/)
+        expect.stringMatching(/Loaded 35 tools for chatbot \(profile=full/)
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
       expect(log).toHaveBeenCalledWith(
@@ -607,7 +654,7 @@ describe('chatService', () => {
 
       expect(log).toHaveBeenCalledWith(
         'info',
-        expect.stringMatching(/Loaded 35 full tools/)
+        expect.stringMatching(/Loaded 35 tools for chatbot \(profile=full/)
       );
     });
 
@@ -632,7 +679,7 @@ describe('chatService', () => {
 
       expect(log).toHaveBeenCalledWith(
         'info',
-        expect.stringMatching(/Loaded 35 full tools/)
+        expect.stringMatching(/Loaded 35 tools for chatbot \(profile=full/)
       );
       // The context-window warning is Ollama-only; cloud providers never see it.
       expect(log).not.toHaveBeenCalledWith(

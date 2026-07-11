@@ -15,12 +15,17 @@ import {
 } from '@assistant-ui/react-ai-sdk';
 import { Thread } from '@/components/thread';
 import { useToast } from '@/hooks/use-toast';
+import { useChatToolCategories } from '@/contexts/ChatToolCategoriesContext';
+import { useEffect } from 'react';
 
 import { MessagePart, ImagePart } from '@/types/Chatbot_types';
 import { type UIMessage } from 'ai';
 
 interface SparkyChatInnerProps {
-  activeAIServiceSetting: { id: string } | null;
+  activeAIServiceSetting: {
+    id: string;
+    chat_tool_profile?: 'full' | 'core' | null;
+  } | null;
   history: Array<{
     id: string;
     content: string;
@@ -93,6 +98,23 @@ const SparkyChatInner = ({
   const invalidateChat = useChatInvalidation();
   const userDate = formatDateToYYYYMMDD(new Date());
   const { toast } = useToast();
+
+  // Runtime tool-category selection, scoped to the active service and prefilled
+  // from its full/core profile. getSelected() is stable and reads the latest
+  // value, so the runtime's prepareSendMessagesRequest closure (created once)
+  // always sends the current selection without being recreated.
+  const { getSelected, setActiveService } = useChatToolCategories();
+
+  useEffect(() => {
+    setActiveService(
+      activeAIServiceSetting?.id,
+      activeAIServiceSetting?.chat_tool_profile
+    );
+  }, [
+    activeAIServiceSetting?.id,
+    activeAIServiceSetting?.chat_tool_profile,
+    setActiveService,
+  ]);
 
   // Map database message history to ai@6.x UIMessage format (requires `parts` + `attachments`)
   const initialMessages = history.map((msg, i) => {
@@ -168,6 +190,10 @@ const SparkyChatInner = ({
         return {
           body: {
             ...options.body,
+            // Latest runtime tool-category selection (stable getter so the
+            // closure never sends a stale set). Empty => server falls back to
+            // the service's profile default.
+            toolCategories: getSelected(),
             messages: processedMessages,
           },
         };
