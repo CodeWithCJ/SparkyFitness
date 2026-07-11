@@ -680,7 +680,7 @@ function ActiveWorkoutSetRow({
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.75}
-          className="text-center text-xs text-text-muted"
+          className="text-center text-xs text-text-secondary"
           style={{ fontVariant: ['tabular-nums'] }}
         >
           {previousSet != null ? formatPreviousSet(previousSet, weightUnit) : '—'}
