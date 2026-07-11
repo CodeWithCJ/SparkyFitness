@@ -640,7 +640,7 @@ describe('log_food', () => {
     );
 
     expect(result).toBe(
-      'Error [VALIDATION]: Food "Unicorn Steak" not found in the database. Call lookup_food_nutrition first; if it returns an external match, log it with log_external_food (or create_food with estimated values if nothing matches).'
+      'Error [VALIDATION]: Food "Unicorn Steak" not found in the database. Call lookup_food_nutrition first to search external providers, for example: {"action":"lookup_food_nutrition","food_name":"Unicorn Steak"}. If it returns an external match, log it with log_external_food; otherwise call create_food with estimated macros.'
     );
     expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
   });
@@ -1004,7 +1004,7 @@ describe('log_external_food', () => {
     );
 
     expect(result).toBe(
-      'Error [VALIDATION]: No match found for "dragonfruit smoothie" in the internal database or configured providers. Estimate the nutrition yourself and call create_food (include meal_type and entry_date to log it in the same call).'
+      'Error [VALIDATION]: No external match found for "dragonfruit smoothie". Please estimate the nutrition yourself and call create_food (include meal_type and entry_date to save and log in one step), for example: {"action":"create_food","food_name":"dragonfruit smoothie","calories":300,"protein":15,"carbs":40,"fat":5,"meal_type":"snacks"}'
     );
     expect(foodCoreService.createFood).not.toHaveBeenCalled();
     expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
