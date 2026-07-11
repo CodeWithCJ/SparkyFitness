@@ -418,7 +418,11 @@ function openAiFamilyUrl(provider: ProviderConfig): string {
   if (provider.service_type === 'custom') {
     return provider.custom_url as string;
   }
-  return `${getOpenAiCompatibleBaseUrl(provider.service_type, provider.custom_url)}/chat/completions`;
+  const baseUrl = getOpenAiCompatibleBaseUrl(
+    provider.service_type,
+    provider.custom_url
+  );
+  return baseUrl ? `${baseUrl}/chat/completions` : '';
 }
 
 function buildGoogleRequest(

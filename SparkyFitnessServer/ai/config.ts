@@ -54,16 +54,17 @@ function getDefaultVisionModel(serviceType: any) {
 // service) appends `/chat/completions` itself; the raw-request dispatcher
 // appends it explicitly. Providers that expect a user-supplied endpoint
 // ('openai_compatible', 'custom') fall through to `customUrl` unchanged.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getOpenAiCompatibleBaseUrl(
-  serviceType: any,
+  serviceType: string,
   customUrl?: string
 ): string | undefined {
   switch (serviceType) {
     case 'openai':
       return 'https://api.openai.com/v1';
     case 'ollama':
-      return `${customUrl}/v1`;
+      // Ollama is the one family member whose base is derived from customUrl;
+      // guard so a missing URL yields undefined rather than "undefined/v1".
+      return customUrl ? `${customUrl}/v1` : undefined;
     case 'mistral':
       return 'https://api.mistral.ai/v1';
     case 'groq':
