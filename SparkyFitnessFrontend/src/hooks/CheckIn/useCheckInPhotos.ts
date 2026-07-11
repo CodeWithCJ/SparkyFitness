@@ -20,12 +20,17 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 // mutations can invalidate the calendar indicator alongside the day's photos.
 const PHOTO_DATES_KEY = ['check-in-photo-dates'];
 
+// Stable empty-array reference for the loading/undefined state. A fresh `[]`
+// default would change identity every render and defeat the useMemo in
+// DayNavigator that depends on the returned array.
+const EMPTY_DATES: string[] = [];
+
 /**
  * The calendar-day strings (YYYY-MM-DD) on which the user has progress photos.
  * Used to mark those days on the check-in calendar.
  */
 export const useCheckInPhotoDates = () => {
-  const { data: photoDates = [] } = useQuery({
+  const { data: photoDates = EMPTY_DATES } = useQuery({
     queryKey: PHOTO_DATES_KEY,
     queryFn: fetchCheckInPhotoDates,
   });
