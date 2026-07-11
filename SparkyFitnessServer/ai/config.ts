@@ -16,6 +16,8 @@ function getDefaultModel(serviceType: any) {
       return 'google/gemini-2.5-flash';
     case 'xai':
       return 'grok-4.3';
+    case 'meta':
+      return 'muse-spark-1.1';
     case 'ollama':
       return 'llama3.2';
     default:
@@ -40,6 +42,8 @@ function getDefaultVisionModel(serviceType: any) {
       return 'google/gemini-2.5-flash';
     case 'xai':
       return 'grok-4.3';
+    case 'meta':
+      return 'muse-spark-1.1';
     case 'ollama':
       return 'llava';
     default:

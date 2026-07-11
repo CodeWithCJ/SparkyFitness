@@ -635,7 +635,8 @@ async function processChatMessage(
       aiService.service_type === 'mistral' ||
       aiService.service_type === 'groq' ||
       aiService.service_type === 'openrouter' ||
-      aiService.service_type === 'xai'
+      aiService.service_type === 'xai' ||
+      aiService.service_type === 'meta'
     ) {
       // Connect as OpenAI-compatible
       let baseURL = aiService.custom_url;
@@ -649,6 +650,9 @@ async function processChatMessage(
         baseURL = 'https://api.mistral.ai/v1';
       } else if (aiService.service_type === 'xai') {
         baseURL = 'https://api.x.ai/v1';
+      } else if (aiService.service_type === 'meta') {
+        // Muse Spark's OpenAI-compatible endpoint (auth is Bearer api_key).
+        baseURL = 'https://api.meta.ai/v1';
       }
       const providerOptions: Parameters<typeof createOpenAI>[0] = {
         baseURL,
@@ -1253,7 +1257,8 @@ async function processChatMessageStream(
       aiService.service_type === 'mistral' ||
       aiService.service_type === 'groq' ||
       aiService.service_type === 'openrouter' ||
-      aiService.service_type === 'xai'
+      aiService.service_type === 'xai' ||
+      aiService.service_type === 'meta'
     ) {
       let baseURL = aiService.custom_url;
       if (aiService.service_type === 'ollama') {
@@ -1266,6 +1271,9 @@ async function processChatMessageStream(
         baseURL = 'https://api.mistral.ai/v1';
       } else if (aiService.service_type === 'xai') {
         baseURL = 'https://api.x.ai/v1';
+      } else if (aiService.service_type === 'meta') {
+        // Muse Spark's OpenAI-compatible endpoint (auth is Bearer api_key).
+        baseURL = 'https://api.meta.ai/v1';
       }
       const providerOptions: Parameters<typeof createOpenAI>[0] = {
         baseURL,

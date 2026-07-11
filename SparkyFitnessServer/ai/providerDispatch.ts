@@ -145,6 +145,7 @@ function providerFamily(serviceType: string): ProviderFamily | null {
     case 'groq':
     case 'openrouter':
     case 'xai':
+    case 'meta': // Muse Spark's OpenAI-compatible endpoint; see openAiFamilyUrl.
     case 'custom':
       return 'openai';
     case 'anthropic':
@@ -421,6 +422,8 @@ function openAiFamilyUrl(provider: ProviderConfig): string {
       return 'https://openrouter.ai/api/v1/chat/completions';
     case 'xai':
       return 'https://api.x.ai/v1/chat/completions';
+    case 'meta':
+      return 'https://api.meta.ai/v1/chat/completions';
     default:
       // 'custom' uses the user-supplied URL as-is.
       return provider.custom_url as string;
