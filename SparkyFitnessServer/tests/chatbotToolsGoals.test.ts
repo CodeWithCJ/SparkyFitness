@@ -56,7 +56,9 @@ describe('sparky_manage_goals', () => {
     );
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
-      '2026-06-01'
+      '2026-06-01',
+      undefined,
+      true
     );
   });
 
@@ -84,7 +86,9 @@ describe('sparky_manage_goals', () => {
     );
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
-      todayInZone('UTC')
+      todayInZone('UTC'),
+      undefined,
+      true
     );
   });
 
@@ -282,7 +286,9 @@ describe('sparky_get_goal_snapshot', () => {
     expect(result).toBe(JSON.stringify(snapshotFields));
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
-      '2026-06-01'
+      '2026-06-01',
+      undefined,
+      true
     );
   });
 
@@ -294,7 +300,9 @@ describe('sparky_get_goal_snapshot', () => {
     expect(result).toBe(JSON.stringify({ calories: 2000 }));
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
-      todayInZone('UTC')
+      todayInZone('UTC'),
+      undefined,
+      true
     );
   });
 

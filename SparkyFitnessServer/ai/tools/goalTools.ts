@@ -63,9 +63,16 @@ Actions:
         try {
           switch (args.action) {
             case 'get_goals': {
+              // adjust=true applies the same goal-mode calculation (adaptive
+              // TDEE, exercise-water addition, etc.) the Diary tab uses, so the
+              // chatbot reports the goal the user actually sees there rather
+              // than the raw stored goal row. set_goals below intentionally
+              // stays on raw goals since it persists them.
               const goals = (await goalService.getUserGoals(
                 userId,
-                args.target_date || todayInZone(tz)
+                args.target_date || todayInZone(tz),
+                undefined,
+                true
               )) as Record<string, unknown>;
               let text = `### Goals for ${args.target_date || 'today'}\n\n`;
               const DISPLAY_FIELDS = [
@@ -197,9 +204,13 @@ Actions:
           return formatZodError(parsed.error);
         }
         try {
+          // adjust=true so the snapshot matches the goal-mode-calculated goal
+          // shown on the Diary tab, consistent with the get_goals action above.
           const goals = (await goalService.getUserGoals(
             userId,
-            parsed.data.target_date || todayInZone(tz)
+            parsed.data.target_date || todayInZone(tz),
+            undefined,
+            true
           )) as Record<string, unknown>;
           const data: Record<string, unknown> = {};
           for (const field of GOAL_SNAPSHOT_FIELDS) {
