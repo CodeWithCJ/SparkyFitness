@@ -6,6 +6,7 @@ import foodCoreService from '../../services/foodCoreService.js';
 import foodEntryService from '../../services/foodEntryService.js';
 import mealService from '../../services/mealService.js';
 import preferenceService from '../../services/preferenceService.js';
+import measurementService from '../../services/measurementService.js';
 import {
   searchProviderFoods,
   type ProviderType,
@@ -1155,13 +1156,11 @@ Actions:
             }
 
             case 'log_water': {
-              await measurementRepository.insertWaterIntakeLog(
+              await measurementService.logWaterIntakeAmount(
                 userId,
                 userId,
                 args.entry_date,
-                args.amount_ml,
-                null,
-                null
+                args.amount_ml
               );
               return formatConfirmation(
                 `Logged ${args.amount_ml}ml water for ${args.entry_date}.`

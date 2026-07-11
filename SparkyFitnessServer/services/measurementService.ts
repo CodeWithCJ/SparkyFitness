@@ -584,6 +584,55 @@ async function upsertWaterIntake(
     throw error;
   }
 }
+// Logs a raw ml amount into the itemized water_intake_entries log AND keeps the
+// aggregated water_intake row (the daily total read by the dashboard) in sync.
+// Used by callers that log a plain amount rather than a container-based drink
+// count (e.g. the AI chat log_water tool), mirroring how upsertWaterIntake keeps
+// both tables reconciled for the manual "+" button.
+async function logWaterIntakeAmount(
+  authenticatedUserId: string,
+  actingUserId: string,
+  entryDate: string,
+  waterMl: number,
+  source = 'manual'
+) {
+  try {
+    // 1. Insert the itemized log entry.
+    const logEntry = await measurementRepository.insertWaterIntakeLog(
+      authenticatedUserId,
+      actingUserId,
+      entryDate,
+      waterMl,
+      null,
+      null,
+      source
+    );
+    // 2. Add the amount to the aggregated daily total for this source so the
+    //    dashboard (which SUMs water_intake) reflects the logged water.
+    const currentRecord = await measurementRepository.getWaterIntakeByDate(
+      authenticatedUserId,
+      entryDate,
+      // @ts-expect-error TS(2345): source narrows the aggregate lookup to this source
+      source
+    );
+    const currentMl = currentRecord ? Number(currentRecord.water_ml) : 0;
+    await measurementRepository.upsertWaterData(
+      authenticatedUserId,
+      actingUserId,
+      Math.max(0, currentMl + waterMl),
+      entryDate,
+      source
+    );
+    return logEntry;
+  } catch (error) {
+    log(
+      'error',
+      `Error logging water intake amount for user ${authenticatedUserId} by ${actingUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWaterIntakeEntryById(authenticatedUserId: any, id: any) {
   try {
@@ -1666,6 +1715,7 @@ export const deleteSleepEntry = sleepRepository.deleteSleepEntry;
 export { processHealthData };
 export { getWaterIntake };
 export { upsertWaterIntake };
+export { logWaterIntakeAmount };
 export { getWaterIntakeEntryById };
 export { updateWaterIntake };
 export { deleteWaterIntake };
@@ -1801,6 +1851,7 @@ export default {
   processHealthData,
   getWaterIntake,
   upsertWaterIntake,
+  logWaterIntakeAmount,
   getWaterIntakeEntryById,
   updateWaterIntake,
   deleteWaterIntake,

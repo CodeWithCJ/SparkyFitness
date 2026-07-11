@@ -71,6 +71,8 @@ vi.mock('../models/foodEntryMealRepository', () => ({
 vi.mock('../models/measurementRepository', () => ({
   default: {
     insertWaterIntakeLog: vi.fn(),
+    getWaterIntakeByDate: vi.fn(),
+    upsertWaterData: vi.fn(),
     getWaterTotalsByDateRange: vi.fn(),
   },
 }));
@@ -1346,9 +1348,12 @@ describe('save_as_meal_template', () => {
 });
 
 describe('log_water', () => {
-  it('inserts a manual water entry', async () => {
+  it('inserts a manual water entry and syncs the aggregated daily total', async () => {
     vi.mocked(measurementRepository.insertWaterIntakeLog).mockResolvedValue({
       id: ENTRY_ID,
+    });
+    vi.mocked(measurementRepository.getWaterIntakeByDate).mockResolvedValue({
+      water_ml: 250,
     });
 
     const result = await tools.sparky_manage_food.execute!(
@@ -1363,7 +1368,17 @@ describe('log_water', () => {
       '2026-06-11',
       500,
       null,
-      null
+      null,
+      'manual'
+    );
+    // The aggregated water_intake row (read by the dashboard) must be updated
+    // to include the newly logged amount: existing 250ml + 500ml = 750ml.
+    expect(measurementRepository.upsertWaterData).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      750,
+      '2026-06-11',
+      'manual'
     );
   });
 });
