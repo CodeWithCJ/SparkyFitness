@@ -42,6 +42,8 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   buildLocalUnitVariants,
+  convertEquivalentVariantQuantity,
+  formatServingSizeDisplay,
   buildLocalVariantOptions,
   formatServingUnit,
   formatVariantLabel,
@@ -440,14 +442,31 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
 
     // Keep old saved reference/sibling IDs out of the display picker. The
     // canonical ID is an in-memory edit state until the user explicitly saves.
+    const selectedVariant = selectorVariants.find(
+      (variant) => variant.id === selectedVariantId,
+    );
+    const resolvedVariant = variantPickerOptions.find(
+      (variant) => variant.id === resolvedLocalPickerVariantId,
+    );
+    const convertedQuantity = convertEquivalentVariantQuantity(
+      parseDecimalInput(quantityText) || 0,
+      selectedVariant?.serving_size,
+      resolvedVariant?.servingSize,
+    );
     // eslint-disable-next-line react-hooks/set-state-in-effect
     updateEdit({
       selectedVariantId: resolvedLocalPickerVariantId,
+      ...(convertedQuantity !== undefined
+        ? { quantityText: formatServingSizeDisplay(convertedQuantity) }
+        : {}),
     });
   }, [
+    quantityText,
     resolvedLocalPickerVariantId,
     selectedVariantId,
+    selectorVariants,
     updateEdit,
+    variantPickerOptions,
   ]);
 
   const handleVariantChange = useCallback(

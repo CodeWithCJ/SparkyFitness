@@ -5,6 +5,7 @@ import {
   applyDisplayValuesToFoodInfo,
   buildExternalVariantOptions,
   buildLocalVariantOptions,
+  convertEquivalentVariantQuantity,
   diffSiblingRows,
   foodInfoToDisplayValues,
   formatVariantLabel,
@@ -316,6 +317,19 @@ describe('buildLocalVariantOptions', () => {
     expect(resolveLocalPickerVariantId(variants, 'v-portion-grams')).toBe(
       'v-portion',
     );
+  });
+});
+
+describe('convertEquivalentVariantQuantity', () => {
+  test('keeps consumed servings constant when remapping to a visible equivalent variant', () => {
+    expect(convertEquivalentVariantQuantity(2, 1, 150)).toBe(300);
+    expect(convertEquivalentVariantQuantity(75, 150, 1)).toBe(0.5);
+  });
+
+  test('returns undefined when serving sizes are missing or invalid', () => {
+    expect(convertEquivalentVariantQuantity(2, undefined, 150)).toBeUndefined();
+    expect(convertEquivalentVariantQuantity(2, 1, 0)).toBeUndefined();
+    expect(convertEquivalentVariantQuantity(Number.NaN, 1, 150)).toBeUndefined();
   });
 });
 

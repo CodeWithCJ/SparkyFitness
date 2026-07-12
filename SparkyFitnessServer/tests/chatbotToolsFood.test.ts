@@ -567,6 +567,86 @@ describe('log_food', () => {
     );
   });
 
+  it('matches plural count and volume units to singular variant units', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      ...eggsRow,
+      default_variant: {
+        ...eggsRow.default_variant,
+        id: 'cup-variant',
+        serving_size: 1,
+        serving_unit: 'cup',
+      },
+    });
+    vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue([
+      {
+        ...eggsRow.default_variant,
+        id: 'piece-variant',
+        serving_size: 1,
+        serving_unit: 'piece',
+      },
+      {
+        ...eggsRow.default_variant,
+        id: 'cup-variant',
+        serving_size: 1,
+        serving_unit: 'cup',
+      },
+    ]);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Eggs',
+    });
+
+    const pieceResult = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: 'Eggs',
+        food_id: FOOD_ID,
+        quantity: 2,
+        unit: 'pieces',
+        meal_type: 'lunch',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+    const cupResult = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: 'Eggs',
+        food_id: FOOD_ID,
+        quantity: 1,
+        unit: 'cups',
+        meal_type: 'lunch',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(pieceResult).toBe(
+      '✅ Logged "Eggs" (2 piece) for lunch on 2026-06-10.'
+    );
+    expect(cupResult).toBe('✅ Logged "Eggs" (1 cup) for lunch on 2026-06-10.');
+    expect(foodEntryService.createFoodEntry).toHaveBeenNthCalledWith(
+      1,
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        variant_id: 'piece-variant',
+        quantity: 2,
+        unit: 'piece',
+      })
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenNthCalledWith(
+      2,
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        variant_id: 'cup-variant',
+        quantity: 1,
+        unit: 'cup',
+      })
+    );
+  });
+
   it('rejects mismatched units when no matching variant is available', async () => {
     vi.mocked(foodRepository.getFoodById).mockResolvedValue({
       ...eggsRow,

@@ -60,8 +60,10 @@ import {
   buildExternalVariantOptions,
   buildLocalUnitVariants,
   buildLocalVariantOptions,
+  convertEquivalentVariantQuantity,
   foodInfoToUnitVariant,
   formatQuantityUnitLabel,
+  formatServingSizeDisplay,
   formatVariantLabel,
   formatVariantServingLabel,
   resolveFoodDisplayValues,
@@ -623,7 +625,21 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       resolvedLocalPickerVariantId &&
       resolvedLocalPickerVariantId !== selectedVariantId
     ) {
+      const selectedVariant = selectorVariants.find(
+        (variant) => variant.id === selectedVariantId,
+      );
+      const resolvedVariant = localVariantOptions.find(
+        (variant) => variant.id === resolvedLocalPickerVariantId,
+      );
+      const convertedQuantity = convertEquivalentVariantQuantity(
+        quantity,
+        selectedVariant?.serving_size,
+        resolvedVariant?.servingSize,
+      );
       setSelectedVariantId(resolvedLocalPickerVariantId);
+      if (convertedQuantity !== undefined) {
+        setQuantityText(formatServingSizeDisplay(convertedQuantity));
+      }
       return;
     }
 
@@ -638,8 +654,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   }, [
     externalVariantOptions,
     localVariantOptions,
+    quantity,
     resolvedLocalPickerVariantId,
     selectedVariantId,
+    selectorVariants,
   ]);
 
   const handleVariantChange = useCallback(

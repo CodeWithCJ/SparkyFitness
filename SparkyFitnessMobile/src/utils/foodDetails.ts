@@ -61,6 +61,24 @@ export function formatServingSizeDisplay(value: number): string {
   return formatPreciseNumber(value, 4);
 }
 
+export function convertEquivalentVariantQuantity(
+  quantity: number,
+  fromServingSize: number | undefined,
+  toServingSize: number | undefined,
+): number | undefined {
+  if (
+    !Number.isFinite(quantity) ||
+    !Number.isFinite(fromServingSize) ||
+    !Number.isFinite(toServingSize) ||
+    !fromServingSize ||
+    !toServingSize
+  ) {
+    return undefined;
+  }
+
+  return (quantity / fromServingSize) * toServingSize;
+}
+
 export function formatCaloriesDisplay(value: number): string {
   if (!Number.isFinite(value)) return '0';
   if (Math.abs(value) >= 1) {
