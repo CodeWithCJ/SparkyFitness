@@ -41,12 +41,15 @@ import type { RootStackScreenProps } from '../types/navigation';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
-  formatVariantLabel,
-  formatServingUnit,
   buildLocalUnitVariants,
+  buildLocalVariantOptions,
+  formatServingUnit,
+  formatVariantLabel,
+  resolveLocalPickerVariantId,
   unitVariantToDisplayValues,
 } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import VerifiedBadge from '../components/VerifiedBadge';
 
 type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
 
@@ -186,31 +189,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   }, [createdVariantOverride, entry, variants]);
 
   const variantPickerOptions = useMemo(() => {
-    const baseOptions = (variants ?? []).map((variant) => ({
-      id: variant.id,
-      label: formatVariantLabel({
-        servingSize: variant.serving_size,
-        servingUnit: variant.serving_unit,
-        calories: variant.calories,
-      }),
-      servingSize: variant.serving_size,
-      servingUnit: variant.serving_unit,
-      calories: variant.calories,
-      protein: variant.protein,
-      carbs: variant.carbs,
-      fat: variant.fat,
-      fiber: variant.dietary_fiber,
-      saturatedFat: variant.saturated_fat,
-      sodium: variant.sodium,
-      sugars: variant.sugars,
-      transFat: variant.trans_fat,
-      potassium: variant.potassium,
-      calcium: variant.calcium,
-      iron: variant.iron,
-      cholesterol: variant.cholesterol,
-      vitaminA: variant.vitamin_a,
-      vitaminC: variant.vitamin_c,
-    }));
+    const baseOptions = buildLocalVariantOptions(variants);
 
     if (!createdVariantOverride?.id) {
       return baseOptions;
@@ -231,6 +210,14 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ...baseOptions,
     ];
   }, [createdVariantOverride, variants]);
+
+  const resolvedLocalPickerVariantId = useMemo(
+    () =>
+      createdVariantOverride
+        ? undefined
+        : resolveLocalPickerVariantId(variants, selectedVariantId),
+    [createdVariantOverride, selectedVariantId, variants],
+  );
 
   const selectedUnitSelection = useMemo<FoodUnitSelectionResult | undefined>(() => {
     if (createdVariantOverride && createdVariantOverride.id === selectedVariantId) {
@@ -441,6 +428,26 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     navigation,
     updateEdit,
     variants,
+  ]);
+
+  useEffect(() => {
+    if (
+      !resolvedLocalPickerVariantId ||
+      resolvedLocalPickerVariantId === selectedVariantId
+    ) {
+      return;
+    }
+
+    // Keep old saved reference/sibling IDs out of the display picker. The
+    // canonical ID is an in-memory edit state until the user explicitly saves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    updateEdit({
+      selectedVariantId: resolvedLocalPickerVariantId,
+    });
+  }, [
+    resolvedLocalPickerVariantId,
+    selectedVariantId,
+    updateEdit,
   ]);
 
   const handleVariantChange = useCallback(
@@ -752,9 +759,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         }}
       >
         <Animated.View layout={LinearTransition.duration(300)}>
-          <Text className="text-text-primary text-3xl font-bold">
-            {(isEditing && adjustedValues?.name) || entry.food_name || 'Unknown food'}
-          </Text>
+          <View className="flex-row items-start gap-2">
+            <Text className="text-text-primary text-3xl font-bold flex-shrink">
+              {(isEditing && adjustedValues?.name) || entry.food_name || 'Unknown food'}
+            </Text>
+            {entry.provider_verified ? <VerifiedBadge size="md" style={{ marginTop: 7 }} /> : null}
+          </View>
           {((isEditing && adjustedValues?.brand) || entry.brand_name) && (
             <Text className="text-text-muted mt-1 font-semibold">
               {(isEditing && adjustedValues?.brand) || entry.brand_name}

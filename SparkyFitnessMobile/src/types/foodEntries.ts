@@ -2,7 +2,6 @@ export interface FoodVariant {
   id: string;
   food_id: string;
   serving_size: string;
-  serving_weight: number;
   data: string; // JSON stringified nutritional data
 }
 export interface FoodEntry {
@@ -48,4 +47,5 @@ export interface FoodEntry {
   // manually-logged entries. Used by Health Connect writeback to avoid re-exporting
   // entries that were themselves imported from a provider.
   source?: string | null;
+  provider_verified?: boolean;
 }

@@ -1,4 +1,5 @@
-import { buildNutrientDisplayList } from '../../src/types/foodInfo';
+import { buildNutrientDisplayList, foodItemToFoodInfo } from '../../src/types/foodInfo';
+import type { FoodItem } from '../../src/types/foods';
 
 describe('buildNutrientDisplayList', () => {
   describe('default behavior (showNetCarbs not set or false)', () => {
@@ -93,5 +94,37 @@ describe('buildNutrientDisplayList', () => {
         'Calcium',
       ]);
     });
+  });
+});
+
+
+describe('foodItemToFoodInfo', () => {
+  it('preserves provider identity and verified status for saved provider foods', () => {
+    const food: FoodItem = {
+      id: 'food-1',
+      name: 'Brezeln TK Grafschafter',
+      brand: 'Grafschafter',
+      barcode: '1234567890123',
+      is_custom: false,
+      user_id: 'user-1',
+      provider_type: 'yazio',
+      provider_external_id: 'yazio-food-1',
+      provider_verified: true,
+      default_variant: {
+        id: 'variant-100g',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 249,
+        protein: 6,
+        carbs: 46,
+        fat: 1,
+      },
+    };
+
+    expect(foodItemToFoodInfo(food)).toEqual(expect.objectContaining({
+      provider_type: 'yazio',
+      provider_external_id: 'yazio-food-1',
+      provider_verified: true,
+    }));
   });
 });

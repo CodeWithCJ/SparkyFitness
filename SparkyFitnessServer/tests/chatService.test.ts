@@ -38,6 +38,8 @@ vi.mock('../models/foodRepository', () => ({
     getFoodsWithPagination: vi.fn(),
     countFoods: vi.fn(),
     getFoodById: vi.fn(),
+    getFoodVariantById: vi.fn(),
+    getFoodVariantsByFoodId: vi.fn(),
   },
 }));
 vi.mock('../services/preferenceService', () => ({
@@ -410,8 +412,16 @@ describe('chatService', () => {
 
     it('executes a log_food tool call in-process, derives food_added from call input, and saves history', async () => {
       vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
-        eggsRow,
+        {
+          ...eggsRow,
+          default_variant: {
+            ...eggsRow.default_variant,
+            serving_size: 1,
+            serving_unit: 'serving',
+          },
+        },
       ]);
+      vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue([]);
       vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
         id: 'entry-1',
         food_name: 'Eggs',

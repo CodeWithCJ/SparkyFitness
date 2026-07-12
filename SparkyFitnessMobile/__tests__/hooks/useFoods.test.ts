@@ -1,14 +1,28 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { useFoods } from '../../src/hooks/useFoods';
 import { foodsQueryKey } from '../../src/hooks/queryKeys';
 import { fetchFoods } from '../../src/services/api/foodsApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import { createTestQueryClient, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/foodsApi', () => ({
   fetchFoods: jest.fn(),
 }));
 
 const mockFetchFoods = fetchFoods as jest.MockedFunction<typeof fetchFoods>;
+
+function createFoodsWrapper(queryClient: QueryClient) {
+  const Wrapper = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(
+      NavigationContainer,
+      null,
+      React.createElement(QueryClientProvider, { client: queryClient }, children),
+    );
+  Wrapper.displayName = 'FoodsHookWrapper';
+  return Wrapper;
+}
 
 describe('useFoods', () => {
   let queryClient: QueryClient;
@@ -30,7 +44,7 @@ describe('useFoods', () => {
       });
 
       renderHook(() => useFoods(), {
-        wrapper: createQueryWrapper(queryClient),
+        wrapper: createFoodsWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -77,7 +91,7 @@ describe('useFoods', () => {
       mockFetchFoods.mockResolvedValue(foodsData);
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createQueryWrapper(queryClient),
+        wrapper: createFoodsWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -88,6 +102,62 @@ describe('useFoods', () => {
       expect(result.current.topFoods).toEqual(foodsData.topFoods);
     });
 
+    test('preserves provider_verified for landing lists', async () => {
+      const foodsData = {
+        recentFoods: [
+          {
+            id: '1',
+            name: 'Yazio Recent',
+            brand: null,
+            is_custom: true,
+            provider_type: 'yazio',
+            provider_external_id: 'yazio-1',
+            provider_verified: true,
+            default_variant: {
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 105,
+              protein: 1.3,
+              carbs: 27,
+              fat: 0.4,
+            },
+          },
+        ],
+        topFoods: [
+          {
+            id: '2',
+            name: 'Yazio Top',
+            brand: null,
+            is_custom: true,
+            usage_count: 3,
+            provider_type: 'yazio',
+            provider_external_id: 'yazio-2',
+            provider_verified: true,
+            default_variant: {
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 165,
+              protein: 31,
+              carbs: 0,
+              fat: 3.6,
+            },
+          },
+        ],
+      };
+      mockFetchFoods.mockResolvedValue(foodsData);
+
+      const { result } = renderHook(() => useFoods(), {
+        wrapper: createFoodsWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.recentFoods[0].provider_verified).toBe(true);
+      expect(result.current.topFoods[0].provider_verified).toBe(true);
+    });
+
     test('returns empty arrays when no data', async () => {
       mockFetchFoods.mockResolvedValue({
         recentFoods: [],
@@ -95,7 +165,7 @@ describe('useFoods', () => {
       });
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createQueryWrapper(queryClient),
+        wrapper: createFoodsWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -110,7 +180,7 @@ describe('useFoods', () => {
       mockFetchFoods.mockRejectedValue(new Error('Network error'));
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createQueryWrapper(queryClient),
+        wrapper: createFoodsWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -129,7 +199,7 @@ describe('useFoods', () => {
       });
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createQueryWrapper(queryClient),
+        wrapper: createFoodsWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -146,7 +216,7 @@ describe('useFoods', () => {
       });
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createQueryWrapper(queryClient),
+        wrapper: createFoodsWrapper(queryClient),
       });
 
       await waitFor(() => {

@@ -87,6 +87,48 @@ describe('FoodResultCard', () => {
     expect(screen.queryByText(/AI /i)).not.toBeInTheDocument();
   });
 
+  it('renders the provider verified badge for verified foods', () => {
+    render(
+      <FoodResultCard
+        item={createFood({
+          provider_type: 'yazio',
+          provider_external_id: 'yazio-pretzel-1',
+          provider_verified: true,
+        })}
+        nutrientConfig={nutrientConfig}
+        onCardClick={jest.fn()}
+      />
+    );
+
+    const badge = screen.getByTestId('provider-verified-badge');
+    expect(badge).toHaveAccessibleName('Verified food');
+    expect(badge).not.toHaveTextContent(/Verified/i);
+    expect(badge.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('renders provider serving descriptions with gram amounts', () => {
+    render(
+      <FoodResultCard
+        item={createFood({
+          default_variant: {
+            id: 'variant-1',
+            serving_size: 1,
+            serving_unit: 'whole',
+            serving_description: '1 whole (20 g)',
+            calories: 50,
+            protein: 1,
+            carbs: 10,
+            fat: 1,
+          },
+        })}
+        nutrientConfig={nutrientConfig}
+        onCardClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Per 1 whole (20 g)')).toBeInTheDocument();
+  });
+
   it('renders Private badge for meals owned by active user', () => {
     render(
       <FoodResultCard

@@ -266,6 +266,77 @@ describe('FoodEntryViewScreen', () => {
     expect(navigation.replace).not.toHaveBeenCalled();
   });
 
+  it('renders verified badge for verified diary entries', () => {
+    const screen = renderScreen({
+      entry: { ...baseEntry, provider_verified: true },
+    });
+
+    expect(screen.getByText('Greek Yogurt')).toBeTruthy();
+    expect(screen.getByTestId('verified-badge')).toBeTruthy();
+  });
+
+  it('offers the 100 g reference when editing a grouped local entry', () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-portion',
+          food_id: 'food-1',
+          is_default: true,
+          serving_size: 1,
+          serving_unit: 'portion',
+          serving_description: 'portion (150 g)',
+          calories: 183,
+          protein: 4,
+          carbs: 40,
+          fat: 0,
+        },
+        {
+          id: 'variant-reference',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          serving_description: '100 g',
+          calories: 122,
+          protein: 2.7,
+          carbs: 27,
+          fat: 0,
+        },
+        {
+          id: 'variant-portion-grams',
+          food_id: 'food-1',
+          serving_size: 150,
+          serving_unit: 'g',
+          serving_description: '150 g',
+          calories: 183,
+          protein: 4,
+          carbs: 40,
+          fat: 0,
+        },
+      ] as any,
+      isLoading: false,
+      isError: false,
+    });
+
+    const screen = renderScreen({
+      entry: {
+        ...baseEntry,
+        variant_id: 'variant-reference',
+        quantity: 100,
+        unit: 'g',
+        serving_size: 100,
+        calories: 122,
+        protein: 2.7,
+        carbs: 27,
+      },
+    });
+
+    pressAction(screen, navigation, 'Edit');
+
+    expect(screen.getByText('1 portion (150 g) (183 cal)')).toBeTruthy();
+    expect(screen.getByText('100 g (122 cal)')).toBeTruthy();
+    expect(screen.queryByText('150 g (183 cal)')).toBeNull();
+  });
+
   it('applies the unit returned from adjust nutrition and saves against that variant', async () => {
     const screen = renderScreen({
       adjustedValues: {

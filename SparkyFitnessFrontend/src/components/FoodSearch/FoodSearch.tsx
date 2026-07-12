@@ -850,7 +850,14 @@ const EnhancedFoodSearch = ({
             providerId
           )
         );
-        setEditingProduct(detailedFood);
+        setEditingProduct({
+          ...detailedFood,
+          provider_type: detailedFood.provider_type ?? food.provider_type,
+          provider_external_id:
+            detailedFood.provider_external_id ?? food.provider_external_id,
+          provider_verified:
+            detailedFood.provider_verified ?? food.provider_verified,
+        });
         setShowEditDialog(true);
       } catch {
         toast({

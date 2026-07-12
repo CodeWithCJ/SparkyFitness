@@ -1953,6 +1953,7 @@ CREATE TABLE public.foods (
     updated_at timestamp with time zone DEFAULT now(),
     shared_with_public boolean DEFAULT false,
     provider_type text,
+    provider_verified boolean DEFAULT false NOT NULL,
     is_quick_food boolean DEFAULT false NOT NULL
 );
 
@@ -10147,4 +10148,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 --
 
 \unrestrict 44eQlT10iDrmsmDVhovuOda81iGeJkzS04UKKv8q9Hs26m3yTXW76b6ezSgNE36
-

@@ -102,6 +102,7 @@ const FOOD_PROVIDER_TYPES = [
   'fatsecret',
   'mealie',
   'tandoor',
+  'yazio',
   'norish',
   'usda',
   'openfoodfacts',
@@ -421,7 +422,15 @@ describe('lookup_food_nutrition', () => {
 describe('log_food', () => {
   it('resolves the food by exact name and logs with the default variant', async () => {
     vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
-      { ...eggsRow, name: 'eggs' },
+      {
+        ...eggsRow,
+        name: 'eggs',
+        default_variant: {
+          ...eggsRow.default_variant,
+          serving_size: 1,
+          serving_unit: 'serving',
+        },
+      },
     ]);
     vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
       id: ENTRY_ID,
@@ -504,6 +513,90 @@ describe('log_food', () => {
     expect(foodRepository.getFoodById).toHaveBeenCalledWith(FOOD_ID, 'user-1');
   });
 
+  it('uses a matching unit variant instead of the default to avoid over-scaling calories', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      ...eggsRow,
+      default_variant: {
+        ...eggsRow.default_variant,
+        id: 'serving-variant',
+        serving_size: 1,
+        serving_unit: 'serving',
+      },
+    });
+    vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue([
+      {
+        ...eggsRow.default_variant,
+        id: 'serving-variant',
+        serving_size: 1,
+        serving_unit: 'serving',
+      },
+      {
+        ...eggsRow.default_variant,
+        id: 'grams-variant',
+        serving_size: 100,
+        serving_unit: 'g',
+      },
+    ]);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Eggs',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: 'Eggs',
+        food_id: FOOD_ID,
+        quantity: 100,
+        unit: 'g',
+        meal_type: 'lunch',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Logged "Eggs" (100 g) for lunch on 2026-06-10.');
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        variant_id: 'grams-variant',
+        quantity: 100,
+        unit: 'g',
+      })
+    );
+  });
+
+  it('rejects mismatched units when no matching variant is available', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      ...eggsRow,
+      default_variant: {
+        ...eggsRow.default_variant,
+        serving_size: 1,
+        serving_unit: 'serving',
+      },
+    });
+    vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue([]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: 'Eggs',
+        food_id: FOOD_ID,
+        quantity: 100,
+        unit: 'g',
+        meal_type: 'lunch',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      'Error [VALIDATION]: Cannot safely log 100 g for this food because no matching serving variant is available.'
+    );
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+  });
+
   it('maps a snapshotting failure to a validation error with the service message', async () => {
     vi.mocked(foodRepository.getFoodById).mockResolvedValue(eggsRow);
     vi.mocked(foodEntryService.createFoodEntry).mockRejectedValue(
@@ -516,7 +609,7 @@ describe('log_food', () => {
         food_name: 'Eggs',
         food_id: FOOD_ID,
         quantity: 1,
-        unit: 'serving',
+        unit: 'g',
         meal_type: 'lunch',
         entry_date: '2026-06-10',
       },

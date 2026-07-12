@@ -13,8 +13,6 @@ export interface FoodVariant {
   serving_size: number;
   serving_unit: string;
   serving_description?: string;
-  serving_weight?: number;
-  serving_weight_unit?: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -208,7 +206,6 @@ export type NumericFoodVariantKeys = Exclude<
   | 'id'
   | 'serving_unit'
   | 'serving_description'
-  | 'serving_weight_unit'
   | 'is_default'
   | 'is_locked'
   | 'glycemic_index'

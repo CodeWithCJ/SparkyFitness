@@ -20,6 +20,7 @@ import {
 } from '../integrations/fatsecret/fatsecretService.js';
 import { searchYazioByBarcode } from '../integrations/yazio/yazioService.js';
 import type { BulkImportFoodData } from '../models/food.js';
+
 async function searchFoods(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -57,7 +58,10 @@ async function searchFoods(
         limit,
         mealType
       );
-      return { recentFoods, topFoods };
+      return {
+        recentFoods,
+        topFoods,
+      };
     } else {
       // Otherwise, perform a regular search
       const userPreferences = await preferenceService.getUserPreferences(
@@ -85,6 +89,42 @@ async function searchFoods(
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function refreshExistingExternalFoodMetadata(
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  existingFood: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foodData: any
+) {
+  const metadata: Record<string, unknown> = {};
+  const sameProviderIdentity =
+    foodData.provider_type &&
+    foodData.provider_external_id &&
+    existingFood.provider_type === foodData.provider_type &&
+    existingFood.provider_external_id === foodData.provider_external_id;
+
+  if (
+    sameProviderIdentity &&
+    foodData.provider_verified === true &&
+    existingFood.provider_verified !== true
+  ) {
+    metadata.provider_verified = true;
+  }
+
+  if (Object.keys(metadata).length === 0) {
+    return existingFood;
+  }
+
+  await foodRepository.updateFood(
+    existingFood.id,
+    authenticatedUserId,
+    metadata
+  );
+
+  return { ...existingFood, ...metadata };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createFood(authenticatedUserId: any, foodData: any) {
   try {
     if (foodData.barcode) {
@@ -93,7 +133,27 @@ async function createFood(authenticatedUserId: any, foodData: any) {
         authenticatedUserId
       );
       if (existingFood) {
-        return existingFood;
+        return refreshExistingExternalFoodMetadata(
+          authenticatedUserId,
+          existingFood,
+          foodData
+        );
+      }
+    }
+    // Dedup by provider (e.g. Yazio product ID) — catches duplicate saves of
+    // the same external food even when no barcode is present on the package.
+    if (foodData.provider_external_id && foodData.provider_type) {
+      const existingFood = await foodRepository.findFoodByProviderExternalId(
+        authenticatedUserId,
+        foodData.provider_external_id,
+        foodData.provider_type
+      );
+      if (existingFood) {
+        return refreshExistingExternalFoodMetadata(
+          authenticatedUserId,
+          existingFood,
+          foodData
+        );
       }
     }
     const newFood = await foodRepository.createFood({
