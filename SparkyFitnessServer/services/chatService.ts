@@ -31,7 +31,9 @@ import {
 } from '@workspace/shared';
 
 interface ChatMessagePart {
-  type: 'text' | 'image' | 'image_url' | 'file';
+  // AI SDK tool parts arrive as `tool-<toolName>`; only sparky_ask_user is
+  // interpreted (see mapMessagePart), the rest fall through to text.
+  type: 'text' | 'image' | 'image_url' | 'file' | string;
   text?: string;
   content?: string;
   mimeType?: string;
@@ -39,6 +41,8 @@ interface ChatMessagePart {
   url?: string;
   image?: string;
   image_url?: { url: string };
+  input?: unknown;
+  output?: unknown;
 }
 
 interface ProcessedMessagePart {
@@ -53,7 +57,7 @@ interface ChatMessage {
   parts?: ChatMessagePart[];
 }
 
-import { generateText, streamText, stepCountIs } from 'ai';
+import { generateText, streamText, stepCountIs, hasToolCall } from 'ai';
 import type { JSONValue, LanguageModelUsage, UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
@@ -63,6 +67,7 @@ import {
   buildChatToolSurface,
   resolveCategories,
   ENABLE_TOOLS_TOOL_NAME,
+  ASK_USER_TOOL_NAME,
   type ChatToolProfile,
 } from '../ai/tools/index.js';
 import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
@@ -422,6 +427,26 @@ const chatContextInputsCache = new TtlCache<{
   customCategoriesList: string;
 }>(60_000);
 
+// The agent loop's stop conditions, shared by the streaming and non-streaming
+// chat paths so they can't drift.
+//
+// - Step ceiling: tighter for cache-less core-profile backends, where every
+//   step re-processes the full prefix.
+// - sparky_ask_user: the model is offering the user quick-reply chips, so the
+//   turn is over — without this the echoed tool result would come straight back
+//   and the model would answer its own question. Harmless on the non-streaming
+//   path (no chip UI there): the question simply degrades to plain text.
+export function buildChatStopConditions(toolProfile: ChatToolProfile) {
+  return [
+    stepCountIs(
+      toolProfile === 'core'
+        ? CORE_PROFILE_MAX_AGENTIC_STEPS
+        : MAX_AGENTIC_STEPS
+    ),
+    hasToolCall(ASK_USER_TOOL_NAME),
+  ];
+}
+
 // Builds the prepareStep callback that implements the sparky_enable_tools
 // escalation: if a prior step in this request called it with category slugs,
 // widen activeTools for the next step to include those categories' tools (on
@@ -528,7 +553,10 @@ async function prepareChatContext(
       chatTz,
       toolProfile,
       true,
-      toolCategories
+      toolCategories,
+      // Quick-reply chips: full profile only (the small local models 'core'
+      // exists for pick tools unreliably from a wider surface).
+      toolProfile === 'full'
     );
     activeToolNames = undefined; // every composed tool is sent
     prepareStep = undefined; // no mid-request widening
@@ -542,6 +570,9 @@ async function prepareChatContext(
         )
       ),
       ENABLE_TOOLS_TOOL_NAME,
+      // Quick-reply chips: full profile only. The tool belongs to no category,
+      // so it is never pulled in by the classifier — it has to be added here.
+      ...(toolProfile === 'full' ? [ASK_USER_TOOL_NAME] : []),
     ];
     prepareStep = buildEscalationPrepareStep(
       surface.toolNamesByCategory,
@@ -884,11 +915,81 @@ function createChatModelInstance(
   throw new Error(`Unsupported service type: ${aiService.service_type}`);
 }
 
+// The AI SDK part type for a sparky_ask_user tool call, as it comes back from
+// the client (and out of saved history).
+const ASK_USER_PART_TYPE = `tool-${ASK_USER_TOOL_NAME}`;
+
+// Replays a quick-reply tool call as plain text so the model remembers the
+// question it asked and what the chips meant.
+//
+// Tool parts are stripped from the LLM window (only text and image survive
+// mapMessagePart), which is what keeps an unanswered tool_use from ever
+// reaching a provider. But an assistant turn whose only content was the ask
+// tool call then collapses to nothing, and the model sees a bare "75g each"
+// with no idea what it answered — it re-asks, or invents what happened. Turning
+// the call into text keeps the transcript valid AND keeps the context intact.
+function askUserPartToText(part: ChatMessagePart): string | null {
+  const input = part.input as
+    | { question?: unknown; options?: unknown }
+    | undefined;
+  const question = typeof input?.question === 'string' ? input.question : '';
+  const options = Array.isArray(input?.options)
+    ? input.options.filter((o): o is string => typeof o === 'string')
+    : [];
+  if (!question && options.length === 0) return null;
+  const asked = question || 'Offered the user these options';
+  return options.length > 0
+    ? `${asked} (options offered: ${options.join(' | ')})`
+    : asked;
+}
+
+// How much of a past tool result to replay. Enough to carry the identifiers a
+// follow-up turn needs (a food's id, the matched name, its serving units)
+// without dragging whole diaries back into every subsequent request.
+const REPLAYED_TOOL_RESULT_CHARS = 600;
+
+// Replays a completed tool call from an earlier turn as plain text.
+//
+// Tool parts are stripped from the LLM window (only text and image survive this
+// mapper), which is what keeps an unanswered tool_use from ever reaching a
+// provider. The cost is amnesia: the model could not see what it had already
+// looked up or logged, so on the next turn it would re-ask, re-log, invent a
+// result it never got, or — after the user answered a quick reply — emit a
+// half-formed call because the food id from the previous turn's lookup was
+// gone. Replaying the call as text restores that memory while keeping the
+// transcript provider-safe (there is no tool_use block, just prose).
+function toolPartToText(part: ChatMessagePart): string | null {
+  const toolName = part.type.slice('tool-'.length);
+  if (!toolName) return null;
+
+  const input =
+    part.input === undefined ? '' : JSON.stringify(part.input).slice(0, 300);
+  const rawOutput =
+    typeof part.output === 'string'
+      ? part.output
+      : part.output === undefined
+        ? ''
+        : JSON.stringify(part.output);
+  const output =
+    rawOutput.length > REPLAYED_TOOL_RESULT_CHARS
+      ? `${rawOutput.slice(0, REPLAYED_TOOL_RESULT_CHARS)}…[truncated]`
+      : rawOutput;
+
+  if (!input && !output) return null;
+  return `[Earlier this conversation you called ${toolName}(${input}) and it returned: ${output || '(no output)'}]`;
+}
+
 // Maps one client message part to a CoreMessage part; unknown parts fall back
 // to text.
 function mapMessagePart(part: ChatMessagePart): ProcessedMessagePart {
   if (part.type === 'text') {
     return { type: 'text' as const, text: part.text || part.content || '' };
+  }
+  if (part.type === ASK_USER_PART_TYPE) {
+    return { type: 'text' as const, text: askUserPartToText(part) ?? '' };
+  }
+  if (part.type.startsWith('tool-')) {
+    return { type: 'text' as const, text: toolPartToText(part) ?? '' };
   }
   if (
     part.type === 'image' ||
@@ -1287,13 +1388,9 @@ async function processChatMessage(
       ...(toolProfile === 'core' && {
         temperature: CORE_PROFILE_CHAT_TEMPERATURE,
       }),
-      // Tighter step/retry ceilings for cache-less core-profile backends,
-      // where every step and retry re-processes the full prefix.
-      stopWhen: stepCountIs(
-        toolProfile === 'core'
-          ? CORE_PROFILE_MAX_AGENTIC_STEPS
-          : MAX_AGENTIC_STEPS
-      ),
+      // Tighter retry ceiling for cache-less core-profile backends, where every
+      // retry re-processes the full prefix.
+      stopWhen: buildChatStopConditions(toolProfile),
       maxRetries:
         toolProfile === 'core'
           ? CORE_PROFILE_MAX_PROVIDER_RETRIES
@@ -1815,13 +1912,9 @@ async function processChatMessageStream(
       ...(toolProfile === 'core' && {
         temperature: CORE_PROFILE_CHAT_TEMPERATURE,
       }),
-      // Tighter step/retry ceilings for cache-less core-profile backends,
-      // where every step and retry re-processes the full prefix.
-      stopWhen: stepCountIs(
-        toolProfile === 'core'
-          ? CORE_PROFILE_MAX_AGENTIC_STEPS
-          : MAX_AGENTIC_STEPS
-      ),
+      // Tighter retry ceiling for cache-less core-profile backends, where every
+      // retry re-processes the full prefix.
+      stopWhen: buildChatStopConditions(toolProfile),
       maxRetries:
         toolProfile === 'core'
           ? CORE_PROFILE_MAX_PROVIDER_RETRIES
@@ -1835,7 +1928,13 @@ async function processChatMessageStream(
           log('info', `[chat] tool result sizes: ${sizes}`);
         }
       },
-      onFinish: async ({ text, finishReason, usage, totalUsage }) => {
+      onFinish: async ({
+        text,
+        finishReason,
+        usage,
+        totalUsage,
+        toolCalls,
+      }) => {
         const observedUsage = totalUsage ?? usage;
         log(
           'info',
@@ -1868,7 +1967,15 @@ async function processChatMessageStream(
             log('error', 'Failed to save user chat history:', err)
           );
 
-        if (!text.trim()) {
+        // A turn that ends on a quick-reply call carries the question in the
+        // tool call, so it must be persisted too — otherwise the chips (and the
+        // question they answer) vanish on reload, and the reloaded transcript
+        // reads as if the user answered a question nobody asked.
+        const askCall = toolCalls?.find(
+          (call) => call.toolName === ASK_USER_TOOL_NAME
+        );
+
+        if (!text.trim() && !askCall) {
           log(
             'warn',
             `Skipping empty assistant chat history for user ${userId} (finishReason: ${finishReason})`
@@ -1876,12 +1983,32 @@ async function processChatMessageStream(
           return;
         }
 
+        const assistantParts: Record<string, unknown>[] = [];
+        if (text.trim()) assistantParts.push({ type: 'text', text });
+        if (askCall) {
+          assistantParts.push({
+            type: ASK_USER_PART_TYPE,
+            toolCallId: askCall.toolCallId,
+            state: 'output-available',
+            input: askCall.input,
+            output: '',
+          });
+        }
+
         await chatRepository
           .saveChatHistory({
             user_id: userId,
-            content: text,
+            // The question is the user-visible content when the model let the
+            // chips speak for it.
+            content:
+              text.trim() ||
+              askUserPartToText({
+                type: ASK_USER_PART_TYPE,
+                input: askCall?.input,
+              }) ||
+              '',
             messageType: 'assistant',
-            parts: [{ type: 'text', text }],
+            parts: assistantParts,
           })
           .catch((err: unknown) =>
             log('error', 'Failed to save assistant chat history:', err)

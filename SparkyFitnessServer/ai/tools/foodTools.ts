@@ -991,6 +991,7 @@ Actions:
                   quantity: args.quantity,
                   unit,
                   meal_type: args.meal_type,
+                  entry_time: args.entry_time,
                 }
               );
               return formatConfirmation(
@@ -1060,6 +1061,7 @@ Actions:
                     quantity,
                     unit,
                     meal_type: args.meal_type,
+                    entry_time: args.entry_time,
                   }
                 );
                 return formatConfirmation(
@@ -1097,7 +1099,14 @@ Actions:
                 calcium: toNutrientNumber(v.calcium),
                 iron: toNutrientNumber(v.iron),
                 glycemic_index: v.glycemic_index || null,
-                source: result.source,
+                // food_variants.source is constrained to manual|ai_estimate|
+                // imported — the provider name ('usda', 'openfoodfacts', …)
+                // violates the CHECK and rolls the whole insert back. The
+                // provider identity belongs on the food, not the variant's
+                // source. Matches services/healthDataHandlers.ts.
+                source: 'imported',
+                provider_type: result.source,
+                provider_external_id: match.provider_external_id ?? null,
               });
 
               // Create the other variants returned by the provider
@@ -1137,7 +1146,14 @@ Actions:
                   iron: toNutrientNumber(varOpt.iron),
                   glycemic_index: varOpt.glycemic_index || null,
                   is_default: false,
-                  source: result.source,
+                  // Same CHECK constraint as the default variant above: the
+                  // provider name is not a valid source. This insert is
+                  // best-effort (failures are only warned about), so the bad
+                  // value silently cost the food every alternative serving unit
+                  // the provider returned — including the count units ("1
+                  // fruit", "1 slice") whose absence forces a gram
+                  // clarification at log time.
+                  source: 'imported',
                 }));
                 try {
                   createdVariants =
@@ -1184,6 +1200,7 @@ Actions:
                 quantity,
                 unit,
                 meal_type: args.meal_type,
+                entry_time: args.entry_time,
               });
               return formatConfirmation(
                 `Saved "${food.name}" from ${result.source} (${dv?.calories || 0} kcal per ${dv?.serving_size || 100}${dv?.serving_unit || 'g'}) and logged ${quantity} ${unit} to ${args.meal_type} on ${entryDate}.`
@@ -1235,6 +1252,7 @@ Actions:
                   quantity: targetQuantity,
                   unit: targetUnit,
                   meal_type: args.meal_type,
+                  entry_time: args.entry_time,
                 });
                 msg += ` Also logged to ${args.meal_type} for ${entryDate}.`;
               }
@@ -1778,7 +1796,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.VALIDATION(error.message);
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -1822,7 +1840,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Food', 'unknown');
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -1860,7 +1878,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Food', parsed.data.food_id);
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -1902,7 +1920,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Food', parsed.data.query);
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -1951,7 +1969,7 @@ Actions:
               parsed.data.date || parsed.data.start_date || 'unknown'
             );
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -1987,7 +2005,7 @@ Actions:
               parsed.data.date || parsed.data.start_date || 'unknown'
             );
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -2019,7 +2037,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Food entries', 'recent');
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -2062,7 +2080,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Food', parsed.data.food_id);
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

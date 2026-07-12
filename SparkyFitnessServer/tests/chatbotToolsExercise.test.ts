@@ -52,7 +52,7 @@ vi.mock('../config/logging', () => ({
 
 const opts = { toolCallId: 'tc-1', messages: [] };
 const DB_ERROR_TEXT =
-  'Error [DB_ERROR]: A database error occurred. Please try again.\n\nSuggestion: If the issue persists, contact support.';
+  'Error [DB_ERROR]: A database error occurred.\n\nSuggestion: Do NOT retry the same call — it will fail the same way. Tell the user what failed and stop.';
 const NOT_FOUND_RESOURCE_TEXT =
   "Error [NOT_FOUND]: Resource with ID 'unknown' not found.\n\nSuggestion: Check the ID and try again.";
 
@@ -199,6 +199,30 @@ describe('search_exercises', () => {
     );
     expect(result).toBe(DB_ERROR_TEXT);
   });
+
+  // A deterministic constraint violation used to reach the chat as a bare
+  // "a database error occurred", so the only way to see what broke was to grep
+  // the server log. Surface the constraint name (schema metadata, not row data).
+  it('names the violated constraint instead of a bare DB error', async () => {
+    const pgError = Object.assign(new Error('insert failed'), {
+      code: '23514',
+      constraint: 'food_variants_source_check',
+    });
+    vi.mocked(exerciseService.searchExercisesPaginated).mockRejectedValue(
+      pgError
+    );
+
+    const result = await tools.sparky_manage_exercise.execute!(
+      { action: 'search_exercises', searchTerm: 'bench' },
+      opts
+    );
+
+    expect(result).toContain('check constraint food_variants_source_check');
+    // And it must never invite the blind identical retry that a deterministic
+    // failure guarantees will fail again.
+    expect(result).not.toContain('try again');
+    expect(result).toContain('Do NOT retry');
+  });
 });
 
 describe('create_exercise', () => {
@@ -289,6 +313,32 @@ describe('log_exercise', () => {
     expect(exerciseService.createExercise).toHaveBeenCalledWith(
       'user-1',
       expect.objectContaining({ name: 'General Exercise' })
+    );
+  });
+
+  // Matches the web's entry_time contract; without it a chatbot-logged workout
+  // had a NULL time and sorted differently in the diary than a web-logged one.
+  it('persists entry_time when the user states a time', async () => {
+    vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        entry_date: '2026-06-10',
+        entry_time: '19:45',
+        duration_minutes: 30,
+      },
+      opts
+    );
+
+    expect(exerciseService.createExerciseEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ entry_time: '19:45' }),
+      expect.anything()
     );
   });
 

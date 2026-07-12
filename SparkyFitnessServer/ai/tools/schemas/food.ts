@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   dateSchema,
   optionalDateSchema,
+  optionalEntryTimeSchema,
   uuidSchema,
   mealTypeEnum,
   searchTypeEnum,
@@ -83,6 +84,7 @@ const logFoodSchema = z
       ),
     meal_type: mealTypeEnum.describe('Meal type category'),
     entry_date: optionalDateSchema,
+    entry_time: optionalEntryTimeSchema,
   })
   .strict();
 
@@ -133,6 +135,7 @@ const logExternalFoodSchema = z
       .describe("Unit of measurement (defaults to 'serving')"),
     meal_type: mealTypeEnum.describe('Meal type category'),
     entry_date: optionalDateSchema,
+    entry_time: optionalEntryTimeSchema,
   })
   .strict();
 
@@ -257,6 +260,7 @@ const createFoodSchema = z
     entry_date: optionalDateSchema.describe(
       'Optional: Date for automatic log (YYYY-MM-DD)'
     ),
+    entry_time: optionalEntryTimeSchema,
   })
   .strict();
 
@@ -630,6 +634,7 @@ export const manageFoodInput = z.object({
     .optional()
     .describe('breakfast | lunch | dinner | snacks'),
   entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
+  entry_time: optionalEntryTimeSchema,
   meal_id: uuidSchema.optional().describe('Meal template UUID'),
   meal_name: z
     .string()

@@ -6,6 +6,8 @@ import {
   isChatToolCategorySlug,
   type ChatToolCategorySlug,
 } from '@workspace/shared';
+import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { buildAskTools } from './askTools.js';
 import { buildCheckinTools } from './checkinTools.js';
 import { buildCoachTools } from './coachTools.js';
 import { buildEngagementTools } from './engagementTools.js';
@@ -228,20 +230,26 @@ const toolCache = new Map<string, { tools: ToolMap; expiresAt: number }>();
  * `categories` is an optional, already-validated runtime tool-category
  * selection (see @workspace/shared). When present and non-empty it defines the
  * composed tool set; otherwise the profile's default set is used.
+ *
+ * `includeAskTool` (default false) appends the chat-only sparky_ask_user
+ * quick-reply tool. Only the manual-category chat path passes true (and only on
+ * the 'full' profile) — MCP has no chip UI to render it, and it belongs to no
+ * category, so it can never be composed by a category selection.
  */
 export function buildChatbotTools(
   userId: string,
   tz: string,
   profile: ChatToolProfile = 'full',
   providerTuning = true,
-  categories?: readonly string[]
+  categories?: readonly string[],
+  includeAskTool = false
 ): ToolMap {
   // Normalize the selection into the cache key so two requests with different
   // category sets don't share a memoized map. Sorted for order-independence.
   const validCategories = (categories ?? []).filter(isChatToolCategorySlug);
   const categoryKey =
     validCategories.length > 0 ? [...validCategories].sort().join(',') : 'all';
-  const key = `${providerTuning ? 'chat' : 'mcp'}|${profile}|${categoryKey}|${tz}|${userId}`;
+  const key = `${providerTuning ? 'chat' : 'mcp'}|${profile}|${categoryKey}|${includeAskTool ? 'ask' : 'noask'}|${tz}|${userId}`;
   const now = Date.now();
   const cached = toolCache.get(key);
   if (cached && cached.expiresAt > now) {
@@ -249,6 +257,12 @@ export function buildChatbotTools(
   }
 
   const tools = composeTools(userId, tz, profile, categories);
+  // Composed last so applyChatProviderTuning's Anthropic cache breakpoint lands
+  // on it: when present it is always present, so the marker position stays
+  // stable no matter which categories were selected.
+  if (includeAskTool) {
+    Object.assign(tools, buildAskTools());
+  }
   if (providerTuning) {
     applyChatProviderTuning(tools);
   }
@@ -294,6 +308,10 @@ export function buildChatToolSurface(
   }
 
   const { tools, toolNamesByCategory } = composeAllToolsWithIndex(userId, tz);
+  // The quick-reply tool is composed for every surface but only made active for
+  // the 'full' profile (see activeToolNames in chatService.ts); it belongs to no
+  // category, so it is not in toolNamesByCategory.
+  Object.assign(tools, buildAskTools());
   // The escalation tool must be composed last so applyChatProviderTuning's
   // Anthropic cache breakpoint lands on it — it is always present and always
   // active, so the marker is always sent regardless of per-request narrowing.
@@ -309,4 +327,4 @@ export function buildChatToolSurface(
   return surface;
 }
 
-export { ENABLE_TOOLS_TOOL_NAME };
+export { ENABLE_TOOLS_TOOL_NAME, ASK_USER_TOOL_NAME };

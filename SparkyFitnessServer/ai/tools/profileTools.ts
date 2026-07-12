@@ -142,7 +142,7 @@ Actions:
           }
         } catch (error) {
           log('error', '[Profile Tool] Error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

@@ -46,7 +46,7 @@ vi.mock('../config/logging', () => ({
 
 const opts = { toolCallId: 'tc-1', messages: [] };
 const DB_ERROR_TEXT =
-  'Error [DB_ERROR]: A database error occurred. Please try again.\n\nSuggestion: If the issue persists, contact support.';
+  'Error [DB_ERROR]: A database error occurred.\n\nSuggestion: Do NOT retry the same call — it will fail the same way. Tell the user what failed and stop.';
 
 const PREFS = {
   energy_unit: 'kcal',

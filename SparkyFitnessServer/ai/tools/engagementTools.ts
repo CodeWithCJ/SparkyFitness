@@ -94,7 +94,7 @@ export function buildEngagementTools(userId: string, tz: string) {
           );
         } catch (error) {
           log('error', '[Engagement Tool] checkEngagement error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -140,7 +140,7 @@ export function buildEngagementTools(userId: string, tz: string) {
           );
         } catch (error) {
           log('error', '[Engagement Tool] getLoggingStreak error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -200,7 +200,7 @@ export function buildEngagementTools(userId: string, tz: string) {
           );
         } catch (error) {
           log('error', '[Engagement Tool] getContextualNudge error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

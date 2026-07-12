@@ -99,7 +99,7 @@ Actions:
           }
         } catch (error) {
           log('error', '[Habit Tool] Error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

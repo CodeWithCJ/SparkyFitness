@@ -227,7 +227,7 @@ Actions:
           }
         } catch (error) {
           log('error', '[Goal Tool] Error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -266,7 +266,7 @@ Actions:
               parsed.data.target_date || 'unknown'
             );
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

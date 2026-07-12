@@ -171,7 +171,7 @@ export function buildReportTools(userId: string, tz: string) {
           }
         } catch (error) {
           log('error', '[Report Tool] Error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -198,7 +198,7 @@ export function buildReportTools(userId: string, tz: string) {
               parsed.data.date || parsed.data.start_date || 'unknown'
             );
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

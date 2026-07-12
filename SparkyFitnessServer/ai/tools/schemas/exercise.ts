@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   dateSchema,
+  optionalEntryTimeSchema,
   setTypeEnum,
   paginationSchema,
   uuidSchema,
@@ -88,6 +89,7 @@ const logExerciseSchema = z
       .optional()
       .describe('Name of the exercise (alternative to ID)'),
     entry_date: dateSchema,
+    entry_time: optionalEntryTimeSchema,
     duration_minutes: z.coerce
       .number()
       .min(0)
@@ -160,6 +162,7 @@ const updateExerciseEntrySchema = z
     entry_date: dateSchema
       .optional()
       .describe('New date for the entry (YYYY-MM-DD)'),
+    entry_time: optionalEntryTimeSchema,
     duration_minutes: z.coerce
       .number()
       .min(0)
@@ -355,6 +358,7 @@ export const manageExerciseInput = z.object({
     .describe('Description of the exercise'),
   // log
   entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
+  entry_time: optionalEntryTimeSchema,
   duration_minutes: z.coerce
     .number()
     .min(0)

@@ -511,6 +511,7 @@ Actions:
                 {
                   exercise_id: exerciseId,
                   entry_date: args.entry_date,
+                  entry_time: args.entry_time,
                   duration_minutes: args.duration_minutes,
                   calories_burned: args.calories_burned,
                   notes: args.notes,
@@ -644,6 +645,7 @@ Actions:
                   args.entry_id,
                   {
                     entry_date: args.entry_date,
+                    entry_time: args.entry_time,
                     duration_minutes: args.duration_minutes,
                     calories_burned: args.calories_burned,
                     notes: args.notes,
@@ -756,7 +758,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Resource', 'unknown');
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -804,7 +806,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Exercise', 'unknown');
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -835,7 +837,7 @@ Actions:
               parsed.data.exercise_id || parsed.data.exercise_name || 'unknown'
             );
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -877,7 +879,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Exercise', parsed.data.query);
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -921,7 +923,7 @@ Actions:
               parsed.data.date || parsed.data.start_date || 'unknown'
             );
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -961,7 +963,7 @@ Actions:
               parsed.data.date || parsed.data.start_date || 'unknown'
             );
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -993,7 +995,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Exercise entries', 'recent');
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -1039,7 +1041,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.NOT_FOUND('Exercise', parsed.data.exercise_id);
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -1069,7 +1071,7 @@ Actions:
               parsed.data.exercise_id || parsed.data.exercise_name || 'unknown'
             );
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

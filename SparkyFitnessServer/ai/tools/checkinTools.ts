@@ -656,7 +656,7 @@ Actions:
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.VALIDATION(error.message);
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

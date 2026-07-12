@@ -18,6 +18,7 @@ vi.mock('../services/foodCoreService', () => ({
     getFoodById: vi.fn(),
     deleteFood: vi.fn(),
     updateFoodEntriesSnapshot: vi.fn(),
+    bulkCreateFoodVariants: vi.fn(),
   },
 }));
 vi.mock('../services/foodEntryService', () => ({
@@ -92,7 +93,7 @@ vi.mock('../config/logging', () => ({
 
 const opts = { toolCallId: 'tc-1', messages: [] };
 const DB_ERROR_TEXT =
-  'Error [DB_ERROR]: A database error occurred. Please try again.\n\nSuggestion: If the issue persists, contact support.';
+  'Error [DB_ERROR]: A database error occurred.\n\nSuggestion: Do NOT retry the same call — it will fail the same way. Tell the user what failed and stop.';
 
 const FOOD_ID = '11111111-1111-4111-8111-111111111111';
 const VARIANT_ID = '22222222-2222-4222-8222-222222222222';
@@ -207,6 +208,64 @@ describe('sparky_manage_food validation', () => {
 
     expect(result).toBe(
       '✅ Logged "Eggs" (2 piece) for breakfast on 2026-06-11.'
+    );
+  });
+
+  // entry_time is a real column the web writes, but no tool schema had the
+  // field — so every chatbot-logged entry landed with a NULL time and sorted
+  // differently in the diary than the same entry made from the web.
+  it('persists entry_time when the user states a time', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      eggsRow,
+    ]);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      food_name: 'Eggs',
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: 'Eggs',
+        quantity: 2,
+        unit: 'piece',
+        meal_type: 'breakfast',
+        entry_date: '2026-06-11',
+        entry_time: '08:30',
+      },
+      opts
+    );
+
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ entry_time: '08:30' })
+    );
+  });
+
+  it('leaves entry_time undefined when no time was given', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      eggsRow,
+    ]);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      food_name: 'Eggs',
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: 'Eggs',
+        quantity: 2,
+        unit: 'piece',
+        meal_type: 'breakfast',
+        entry_date: '2026-06-11',
+      },
+      opts
+    );
+
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ entry_time: undefined })
     );
   });
 });
@@ -927,7 +986,12 @@ describe('log_external_food', () => {
       calcium: null,
       iron: null,
       glycemic_index: null,
-      source: 'usda',
+      // food_variants.source has a CHECK constraint (manual|ai_estimate|
+      // imported); passing the provider name here rolled back the whole insert
+      // with an opaque DB error. The provider identity lives on the food.
+      source: 'imported',
+      provider_type: 'usda',
+      provider_external_id: '171688',
     });
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
       'user-1',
@@ -941,6 +1005,57 @@ describe('log_external_food', () => {
         unit: 'serving',
         meal_type: 'breakfast',
       }
+    );
+  });
+
+  // The provider's other serving units are what let a user log "1 fruit"
+  // instead of guessing grams. This insert is best-effort (failures are only
+  // warned about), so an invalid `source` silently stripped every count unit
+  // off external foods — and forced a gram clarification at log time.
+  it('saves the provider alternative serving units with a constraint-valid source', async () => {
+    const guava = {
+      name: 'Guava, raw',
+      provider_external_id: '2709238',
+      variants: [
+        {
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 68,
+          is_default: true,
+        },
+        { serving_size: 1, serving_unit: 'fruit', calories: 37 },
+      ],
+    };
+    mockUsdaLookup([guava]);
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Guava, raw',
+      default_variant: { id: VARIANT_ID, serving_size: 100, serving_unit: 'g' },
+    });
+    vi.mocked(foodCoreService.bulkCreateFoodVariants).mockResolvedValue([
+      { id: 'variant-fruit', serving_size: 1, serving_unit: 'fruit' },
+    ]);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Guava, raw',
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_external_food',
+        food_name: 'Guava, raw',
+        external_id: '2709238',
+        quantity: 5,
+        unit: 'fruit',
+        meal_type: 'dinner',
+        entry_date: '2026-07-12',
+      },
+      opts
+    );
+
+    expect(foodCoreService.bulkCreateFoodVariants).toHaveBeenCalledWith(
+      'user-1',
+      [expect.objectContaining({ serving_unit: 'fruit', source: 'imported' })]
     );
   });
 

@@ -2,7 +2,11 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { MockLanguageModelV3 } from 'ai/test';
 import { simulateReadableStream } from 'ai';
 import type { UIMessageChunk } from 'ai';
-import chatService, { mapUsageToMetadata } from '../services/chatService.js';
+import chatService, {
+  mapUsageToMetadata,
+  buildChatStopConditions,
+} from '../services/chatService.js';
+import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
@@ -596,7 +600,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 21\/36 active tools for chatbot \(profile=core/
+          /Loaded 21\/37 active tools for chatbot \(profile=core/
         )
       );
       // The core profile is the mitigation, so no context-window warning.
@@ -628,7 +632,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 36\/36 active tools for chatbot \(profile=full/
+          /Loaded 37\/37 active tools for chatbot \(profile=full/
         )
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
@@ -660,15 +664,15 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 36\/36 active tools for chatbot \(profile=full/
+          /Loaded 37\/37 active tools for chatbot \(profile=full/
         )
       );
     });
 
     it('never trims a non-Ollama service even with a stale core profile stored', async () => {
       // The profile gate keys on service_type, so a service that was Ollama+core
-      // and later switched to OpenAI still loads the full 36-tool surface
-      // (35 domain tools + sparky_enable_tools).
+      // and later switched to OpenAI still loads the full 37-tool surface
+      // (35 domain tools + sparky_enable_tools + sparky_ask_user).
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         {
           ...aiServiceSetting,
@@ -688,7 +692,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 36\/36 active tools for chatbot \(profile=full/
+          /Loaded 37\/37 active tools for chatbot \(profile=full/
         )
       );
       // The context-window warning is Ollama-only; cloud providers never see it.
@@ -775,6 +779,173 @@ describe('chatService', () => {
       expect(sentTools).not.toContain('sparky_manage_exercise');
       // ...and the escalation tool is withheld in manual mode.
       expect(sentTools).not.toContain('sparky_enable_tools');
+      // ...but quick replies survive: they belong to no category, so a manual
+      // selection must not strip the model's ability to offer chips.
+      expect(sentTools).toContain(ASK_USER_TOOL_NAME);
+    });
+
+    // Quick replies are full-profile only: the small local models the 'core'
+    // profile exists for pick tools unreliably from a wider surface.
+    it('withholds the quick-reply tool from the core profile', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'ollama',
+          chat_tool_profile: 'core',
+        }
+      );
+      const model = scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'log my lunch' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(modelToolNames(model)).not.toContain(ASK_USER_TOOL_NAME);
+    });
+
+    // Tool parts are stripped from the LLM window, so an assistant turn that
+    // was only a quick-reply call used to collapse to nothing: the model then
+    // saw a bare "75g each" with no idea what it answered, and would re-ask or
+    // invent what had happened. The call has to survive as text.
+    it('replays a previous quick-reply call as text so the model remembers what it asked', async () => {
+      const model = scriptModel([textStep('Updated.')]);
+
+      await chatService.processChatMessage(
+        [
+          { role: 'user', content: 'i had 5 pancakes for snacks' },
+          {
+            role: 'assistant',
+            content: '',
+            parts: [
+              {
+                type: `tool-${ASK_USER_TOOL_NAME}`,
+                input: {
+                  mode: 'ask',
+                  question: 'How big were they?',
+                  options: ['75g each — small', '225g each — large'],
+                },
+              },
+            ],
+          },
+          { role: 'user', content: '75g each — small' },
+        ] as unknown as Parameters<typeof chatService.processChatMessage>[0],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      const sent = JSON.stringify(model.doGenerateCalls[0].prompt);
+      expect(sent).toContain('How big were they?');
+      expect(sent).toContain('75g each — small');
+    });
+
+    // Without this the model forgets what it already looked up: after the user
+    // answers a quick reply it no longer has the food's id, and emits a
+    // half-formed log call (missing action/food_id) or invents a result.
+    it('replays earlier tool calls and their results as text', async () => {
+      const model = scriptModel([textStep('Logged.')]);
+
+      await chatService.processChatMessage(
+        [
+          { role: 'user', content: 'i had 3 pancakes for breakfast' },
+          {
+            role: 'assistant',
+            content: '',
+            parts: [
+              {
+                type: 'tool-sparky_manage_food',
+                input: {
+                  action: 'lookup_food_nutrition',
+                  food_name: 'pancake',
+                },
+                output:
+                  'Found match in internal: Pancakes, plain. ID: fb932a4f-9862-4a4d-8c2d-fcf7f4688acb',
+              },
+            ],
+          },
+          { role: 'user', content: '100g each — standard' },
+        ] as unknown as Parameters<typeof chatService.processChatMessage>[0],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      const sent = JSON.stringify(model.doGenerateCalls[0].prompt);
+      expect(sent).toContain('sparky_manage_food');
+      // The food id is the part the follow-up turn actually needs.
+      expect(sent).toContain('fb932a4f-9862-4a4d-8c2d-fcf7f4688acb');
+    });
+
+    // Whole diaries would otherwise be dragged back into every later request.
+    it('truncates a huge replayed tool result', async () => {
+      const model = scriptModel([textStep('Done.')]);
+
+      await chatService.processChatMessage(
+        [
+          { role: 'user', content: 'show my diary' },
+          {
+            role: 'assistant',
+            content: '',
+            parts: [
+              {
+                type: 'tool-sparky_get_food_diary',
+                input: { action: 'list_diary' },
+                output: 'x'.repeat(5000),
+              },
+            ],
+          },
+          { role: 'user', content: 'thanks' },
+        ] as unknown as Parameters<typeof chatService.processChatMessage>[0],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      const sent = JSON.stringify(model.doGenerateCalls[0].prompt);
+      expect(sent).toContain('[truncated]');
+      expect(sent).not.toContain('x'.repeat(1000));
+    });
+
+    it('offers the quick-reply tool on the full profile', async () => {
+      const model = scriptModel([textStep('Sure.')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'log my lunch' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(modelToolNames(model)).toContain(ASK_USER_TOOL_NAME);
+    });
+  });
+
+  // The agent loop must halt the moment the model offers chips. Without this the
+  // echoed tool result feeds straight back and the model answers its own
+  // question instead of waiting for the user's tap.
+  describe('buildChatStopConditions', () => {
+    const askCallStep = {
+      steps: [{ toolCalls: [{ toolName: ASK_USER_TOOL_NAME }] }],
+    };
+
+    it('stops the loop as soon as sparky_ask_user is called', () => {
+      const [, stopOnAsk] = buildChatStopConditions('full');
+      expect(
+        stopOnAsk(askCallStep as unknown as Parameters<typeof stopOnAsk>[0])
+      ).toBe(true);
+    });
+
+    it('does not stop the loop for an ordinary tool call', () => {
+      const [, stopOnAsk] = buildChatStopConditions('full');
+      const loggingStep = {
+        steps: [{ toolCalls: [{ toolName: 'sparky_manage_food' }] }],
+      };
+      expect(
+        stopOnAsk(loggingStep as unknown as Parameters<typeof stopOnAsk>[0])
+      ).toBe(false);
     });
   });
 

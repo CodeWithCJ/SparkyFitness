@@ -80,7 +80,7 @@ export function buildDevTools(userId: string) {
           );
         } catch (error) {
           log('error', '[Dev Tool] inspectSchema error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         } finally {
           client.release();
         }
@@ -115,7 +115,7 @@ export function buildDevTools(userId: string) {
           );
         } catch (error) {
           log('error', '[Dev Tool] getUserInfo error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         } finally {
           client.release();
         }
@@ -134,7 +134,7 @@ export function buildDevTools(userId: string) {
           return formatSuccess(getPoolStats(), 'Database Pool Stats');
         } catch (error) {
           log('error', '[Dev Tool] getDbStats error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

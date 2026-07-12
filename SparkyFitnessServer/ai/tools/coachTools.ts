@@ -372,7 +372,7 @@ export function buildCoachTools(userId: string, tz: string) {
           return formatSuccess(result, 'Health Summary');
         } catch (error) {
           log('error', '[Coach Tool] getHealthSummary error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -393,7 +393,7 @@ export function buildCoachTools(userId: string, tz: string) {
           return formatSuccess(result, 'Trend Analysis');
         } catch (error) {
           log('error', '[Coach Tool] analyzeTrends error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -414,7 +414,7 @@ export function buildCoachTools(userId: string, tz: string) {
           return formatSuccess(result, '30-Day Trends');
         } catch (error) {
           log('error', '[Coach Tool] get30DayTrends error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -435,7 +435,7 @@ export function buildCoachTools(userId: string, tz: string) {
           return formatSuccess(result, 'Pattern Detection');
         } catch (error) {
           log('error', '[Coach Tool] detectPatterns error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -461,7 +461,7 @@ export function buildCoachTools(userId: string, tz: string) {
           return formatSuccess(result, 'Coaching Plan');
         } catch (error) {
           log('error', '[Coach Tool] generateCoachingPlan error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

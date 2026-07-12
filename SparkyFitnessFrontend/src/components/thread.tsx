@@ -5,6 +5,8 @@ import {
 } from '@/components/attachment';
 import { MarkdownText } from '@/components/markdown-text';
 import { Reasoning } from '@/components/reasoning';
+import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { AskUserToolUI } from '@/components/ai/AskUserToolUI';
 import { ToolFallback } from '@/components/tool-fallback';
 import { TooltipIconButton } from '@/components/tooltip-icon-button';
 import { Button } from '@/components/ui/button';
@@ -339,6 +341,9 @@ const AssistantMessage: FC = () => {
             Text: MarkdownText,
             Reasoning: Reasoning,
             tools: {
+              by_name: {
+                [ASK_USER_TOOL_NAME]: AskUserToolUI,
+              },
               Fallback: ToolFallback,
             },
           }}
