@@ -32,7 +32,7 @@ import {
 import { useCopyFoodEntriesFromYesterdayMutation } from '@/hooks/Diary/useFoodEntries';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
-
+import { toHourMinute } from '@workspace/shared';
 interface MealTotals {
   calories: number;
   protein: number;
@@ -460,6 +460,14 @@ const MealCard = ({
                               <span aria-hidden="true">&bull;</span>
                             )}
                             {servingLabel && <span>{servingLabel}</span>}
+                            {item.entry_time && (
+                              <>
+                                <span aria-hidden="true">&bull;</span>
+                                <span className="font-medium text-blue-600 dark:text-blue-400">
+                                  {toHourMinute(item.entry_time)}
+                                </span>
+                              </>
+                            )}
                             {isFromMealPlan && (
                               <Badge variant="outline" className="text-[10px]">
                                 From Plan
@@ -600,6 +608,11 @@ const MealCard = ({
                         <span className="text-sm text-gray-500">
                           {servingLabel}
                         </span>
+                        {item.entry_time && (
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
+                            {toHourMinute(item.entry_time)}
+                          </span>
+                        )}
                         {isFromMealPlan && (
                           <Badge variant="outline" className="text-xs w-fit">
                             From Plan

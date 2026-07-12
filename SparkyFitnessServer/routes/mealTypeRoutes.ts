@@ -8,6 +8,7 @@ import {
 } from '../models/mealType.js';
 import { log } from '../config/logging.js';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { isEntryTimeString } from '@workspace/shared';
 const router = express.Router();
 router.use(authenticate);
 /**
@@ -119,6 +120,10 @@ router.get('/:id', async (req, res) => {
  *                 type: integer
  *                 description: The sort order for the meal type.
  *                 nullable: true
+ *               default_time:
+ *                 type: string
+ *                 description: Default time of day (HH:MM, 24h) used to prefill diary entry times for this meal.
+ *                 nullable: true
  *     responses:
  *       201:
  *         description: The new meal type was created successfully.
@@ -138,11 +143,23 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const userId = req.userId;
-    const { name, sort_order } = req.body;
+    const { name, sort_order, default_time } = req.body;
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
-    const newMealType = await createMealType({ name, sort_order }, userId);
+    if (
+      default_time !== null &&
+      default_time !== undefined &&
+      !isEntryTimeString(default_time)
+    ) {
+      return res
+        .status(400)
+        .json({ error: 'default_time must be in HH:MM (24h) format.' });
+    }
+    const newMealType = await createMealType(
+      { name, sort_order, default_time },
+      userId
+    );
     res.status(201).json(newMealType);
   } catch (error) {
     log('error', 'Route POST /meal-types error:', error);
@@ -191,6 +208,10 @@ router.post('/', async (req, res) => {
  *               show_in_quick_log:
  *                 type: boolean
  *                 description: Whether this meal type appears in the quick food log menu.
+ *               default_time:
+ *                 type: string
+ *                 description: Per-user default time of day (HH:MM, 24h) used to prefill diary entry times. Null clears it.
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: The meal type was updated successfully.
@@ -212,9 +233,28 @@ router.put('/:id', async (req, res) => {
     const userId = req.userId;
     const { id } = req.params;
     const { name, sort_order, is_visible, show_in_quick_log } = req.body;
+    // Distinguish "not provided" (undefined, preserve) from explicit null (clear)
+    const hasDefaultTime = 'default_time' in req.body;
+    const default_time = req.body.default_time;
+    if (
+      hasDefaultTime &&
+      default_time !== null &&
+      default_time !== undefined &&
+      !isEntryTimeString(default_time)
+    ) {
+      return res
+        .status(400)
+        .json({ error: 'default_time must be in HH:MM (24h) format.' });
+    }
     const updatedMealType = await updateMealType(
       id,
-      { name, sort_order, is_visible, show_in_quick_log },
+      {
+        name,
+        sort_order,
+        is_visible,
+        show_in_quick_log,
+        ...(hasDefaultTime ? { default_time: default_time ?? null } : {}),
+      },
       userId
     );
     res.status(200).json(updatedMealType);

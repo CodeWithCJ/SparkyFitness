@@ -15,6 +15,7 @@ interface LogMealDialogProps {
   onOpenChange: (open: boolean) => void;
   date: string;
   mealType: string;
+  initialEntryTime?: string | null;
 }
 
 const LogMealDialog: React.FC<LogMealDialogProps> = ({
@@ -23,6 +24,7 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
   onOpenChange,
   date,
   mealType,
+  initialEntryTime,
 }) => {
   const handleSave = () => {
     onOpenChange(false);
@@ -55,6 +57,7 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
           foodEntryMealType={mealType}
           initialServingSize={mealTemplate.serving_size}
           initialServingUnit={mealTemplate.serving_unit}
+          initialEntryTime={initialEntryTime}
         />
       </DialogContent>
     </Dialog>

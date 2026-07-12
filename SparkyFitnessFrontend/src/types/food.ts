@@ -110,6 +110,7 @@ export interface FoodEntry {
   food_name?: string; // Snapshotted food name
   brand_name?: string; // Snapshotted brand name
   entry_date: string;
+  entry_time?: string | null;
   meal_plan_template_id?: string;
   // Add water_ml to FoodEntry if it's a water entry
   water_ml?: number;

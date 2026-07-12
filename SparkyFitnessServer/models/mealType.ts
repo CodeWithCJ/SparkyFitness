@@ -15,10 +15,10 @@ async function createMealType(data: any, userId: any) {
   try {
     const sortOrder = data.sort_order !== undefined ? data.sort_order : 100;
     const result = await client.query(
-      `INSERT INTO meal_types (name, user_id, sort_order, is_visible)
-       VALUES ($1, $2, $3, TRUE)
+      `INSERT INTO meal_types (name, user_id, sort_order, is_visible, default_time)
+       VALUES ($1, $2, $3, TRUE, $4)
        RETURNING *`,
-      [data.name, userId, sortOrder]
+      [data.name, userId, sortOrder, data.default_time ?? null]
     );
     return result.rows[0];
   } catch (error) {
@@ -46,11 +46,12 @@ async function getAllMealTypes(userId: any) {
          mt.user_id,
          mt.created_at,
          COALESCE(umv.is_visible, mt.is_visible) AS is_visible,
-         COALESCE(umv.show_in_quick_log, mt.show_in_quick_log, true) AS show_in_quick_log
+         COALESCE(umv.show_in_quick_log, mt.show_in_quick_log, true) AS show_in_quick_log,
+         COALESCE(umv.default_time, mt.default_time) AS default_time
        FROM meal_types mt
-       LEFT JOIN user_meal_visibilities umv 
+       LEFT JOIN user_meal_visibilities umv
          ON mt.id = umv.meal_type_id AND umv.user_id = $1
-       WHERE mt.user_id = $1 OR mt.user_id IS NULL 
+       WHERE mt.user_id = $1 OR mt.user_id IS NULL
        ORDER BY mt.sort_order ASC, mt.id ASC`,
       [userId]
     );
@@ -71,11 +72,12 @@ async function getMealTypeById(mealTypeId: any, userId: any) {
       `SELECT 
          mt.*,
          COALESCE(umv.is_visible, mt.is_visible) AS is_visible,
-         COALESCE(umv.show_in_quick_log, mt.show_in_quick_log, true) AS show_in_quick_log
+         COALESCE(umv.show_in_quick_log, mt.show_in_quick_log, true) AS show_in_quick_log,
+         COALESCE(umv.default_time, mt.default_time) AS default_time
        FROM meal_types mt
-       LEFT JOIN user_meal_visibilities umv 
+       LEFT JOIN user_meal_visibilities umv
          ON mt.id = umv.meal_type_id AND umv.user_id = $2
-       WHERE mt.id = $1 
+       WHERE mt.id = $1
          AND (mt.user_id = $2 OR mt.user_id IS NULL)`,
       [mealTypeId, userId]
     );
@@ -95,15 +97,29 @@ async function updateMealType(mealTypeId: any, data: any, userId: any) {
     await client.query('BEGIN');
     //console.log(data);
     //console.log(data.is_visible);
-    if (data.is_visible !== undefined || data.show_in_quick_log !== undefined) {
+    if (
+      data.is_visible !== undefined ||
+      data.show_in_quick_log !== undefined ||
+      data.default_time !== undefined
+    ) {
+      // default_time uses a provided-flag ($5) instead of COALESCE so an
+      // explicit null clears the per-user override.
       await client.query(
-        `INSERT INTO user_meal_visibilities (user_id, meal_type_id, is_visible, show_in_quick_log)
-         VALUES ($1, $2, COALESCE($3, true), COALESCE($4, true))
-         ON CONFLICT (user_id, meal_type_id) 
-         DO UPDATE SET 
+        `INSERT INTO user_meal_visibilities (user_id, meal_type_id, is_visible, show_in_quick_log, default_time)
+         VALUES ($1, $2, COALESCE($3, true), COALESCE($4, true), $6::time)
+         ON CONFLICT (user_id, meal_type_id)
+         DO UPDATE SET
            is_visible = COALESCE($3, user_meal_visibilities.is_visible),
-           show_in_quick_log = COALESCE($4, user_meal_visibilities.show_in_quick_log)`,
-        [userId, mealTypeId, data.is_visible, data.show_in_quick_log]
+           show_in_quick_log = COALESCE($4, user_meal_visibilities.show_in_quick_log),
+           default_time = CASE WHEN $5::boolean THEN $6::time ELSE user_meal_visibilities.default_time END`,
+        [
+          userId,
+          mealTypeId,
+          data.is_visible,
+          data.show_in_quick_log,
+          data.default_time !== undefined,
+          data.default_time ?? null,
+        ]
       );
     }
     if (data.name !== undefined || data.sort_order !== undefined) {

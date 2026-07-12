@@ -27,16 +27,17 @@ async function createFoodEntryMeal(
     }
     const result = await client.query(
       `INSERT INTO food_entry_meals (
-                user_id, meal_template_id, meal_type_id, entry_date, name, description,
+                user_id, meal_template_id, meal_type_id, entry_date, entry_time, name, description,
                 quantity, unit, legacy_serving_unit_math,
                 created_by_user_id, updated_by_user_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING *`,
       [
         foodEntryMealData.user_id,
         foodEntryMealData.meal_template_id,
         mealTypeId,
         foodEntryMealData.entry_date,
+        foodEntryMealData.entry_time ?? null,
         foodEntryMealData.name,
         foodEntryMealData.description,
         foodEntryMealData.quantity,
@@ -89,6 +90,9 @@ async function updateFoodEntryMeal(
                 description = COALESCE($5, description),
                 quantity = COALESCE($6, quantity),
                 unit = COALESCE($7, unit),
+                -- COALESCE cannot clear a value; $10 flags whether entry_time
+                -- was provided so an explicit null clears it.
+                entry_time = CASE WHEN $10::boolean THEN $11::time ELSE entry_time END,
                 updated_at = CURRENT_TIMESTAMP,
                 updated_by_user_id = $8
             WHERE id = $9
@@ -103,6 +107,8 @@ async function updateFoodEntryMeal(
         foodEntryMealData.unit,
         updatedByUserId,
         foodEntryMealId,
+        foodEntryMealData.entry_time !== undefined,
+        foodEntryMealData.entry_time ?? null,
       ]
     );
     if (result.rows.length === 0) {
@@ -136,6 +142,7 @@ async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
             mt.name as meal_type,
             fem.meal_type_id,
             fem.entry_date,
+            fem.entry_time,
             fem.name,
             fem.description,
             fem.quantity,
@@ -178,6 +185,7 @@ async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
             mt.name as meal_type,
             fem.meal_type_id,
             fem.entry_date,
+            fem.entry_time,
             fem.name,
             fem.description,
             fem.quantity,
@@ -190,7 +198,7 @@ async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
             WHERE fem.user_id = $1 AND fem.entry_date = $2
-            ORDER BY mt.sort_order ASC, fem.created_at ASC`,
+            ORDER BY mt.sort_order ASC, fem.entry_time ASC NULLS LAST, fem.created_at ASC`,
       [userId, selectedDate]
     );
     return result.rows;

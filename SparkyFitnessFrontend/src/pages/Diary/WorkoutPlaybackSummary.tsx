@@ -16,6 +16,9 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { instantHourMinute } from '@workspace/shared';
 import type {
   WorkoutPlaybackDraft,
   WorkoutPlaybackStats,
@@ -37,12 +40,14 @@ interface WorkoutPlaybackSummaryProps {
   isRestActive: boolean;
   saveError: string | null;
   isSaving: boolean;
+  timezone: string;
   onCloseKeepDraft: () => void;
   onDiscard: () => void;
   onFinishWorkout: () => void;
   onPauseResumeRest: () => void;
   onSkipRest: () => void;
   onSessionNotesChange: (value: string) => void;
+  onStartTimeChange: (value: string) => void;
 }
 
 const WorkoutPlaybackSummary = ({
@@ -54,14 +59,26 @@ const WorkoutPlaybackSummary = ({
   isRestActive,
   saveError,
   isSaving,
+  timezone,
   onCloseKeepDraft,
   onDiscard,
   onFinishWorkout,
   onPauseResumeRest,
   onSkipRest,
   onSessionNotesChange,
+  onStartTimeChange,
 }: WorkoutPlaybackSummaryProps) => {
   const { t } = useTranslation();
+
+  const startTime = (() => {
+    if (!draft.started_at) return '';
+    try {
+      const hm = instantHourMinute(draft.started_at, timezone);
+      return `${String(hm.hour).padStart(2, '0')}:${String(hm.minute).padStart(2, '0')}`;
+    } catch {
+      return '';
+    }
+  })();
 
   return (
     <>
@@ -170,6 +187,20 @@ const WorkoutPlaybackSummary = ({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Start Time */}
+          <div className="space-y-1.5 max-w-[200px]">
+            <Label htmlFor="startTime" className="text-sm">
+              Start Time
+            </Label>
+            <Input
+              id="startTime"
+              type="time"
+              value={startTime}
+              onChange={(e) => onStartTimeChange(e.target.value)}
+              className="text-sm h-9"
+            />
           </div>
 
           <div className="space-y-1">

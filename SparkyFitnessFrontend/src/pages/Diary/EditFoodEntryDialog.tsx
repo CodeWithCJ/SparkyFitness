@@ -42,6 +42,7 @@ import {
   OVERALL_CONFIDENCE_LABELS,
   type AiConfidence,
   type ConfidenceTone,
+  toHourMinute,
 } from '@workspace/shared';
 
 const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
@@ -77,6 +78,9 @@ const EditFoodEntryDialog = ({
     entry?.variant_id || null
   );
   const [mealId, setMealId] = useState<string>(entry?.meal_type_id ?? '');
+  const [entryTime, setEntryTime] = useState<string>(
+    toHourMinute(entry?.entry_time) || ''
+  );
 
   const { data: customNutrients } = useCustomNutrients();
   const { data: foodData, isLoading: isLoadingFood } = useFoodView(
@@ -222,6 +226,7 @@ const EditFoodEntryDialog = ({
           unit: variantWithId.serving_unit,
           variant_id: variantWithId.id || null,
           meal_type_id: mealId,
+          entry_time: entryTime || null,
         };
         await updateFoodEntry({
           id: entry.id,
@@ -252,6 +257,7 @@ const EditFoodEntryDialog = ({
         meal_type_id: mealId,
         variant_id:
           selectedVariant.id === 'default-variant' ? null : selectedVariant.id,
+        entry_time: entryTime || null,
       };
 
       await updateFoodEntry({ id: entry.id, data: updateData });
@@ -304,7 +310,7 @@ const EditFoodEntryDialog = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <Label htmlFor="quantity">Quantity</Label>
                   <Input
@@ -397,6 +403,16 @@ const EditFoodEntryDialog = ({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="entryTime">Time (optional)</Label>
+                  <Input
+                    id="entryTime"
+                    type="time"
+                    value={entryTime}
+                    onChange={(e) => setEntryTime(e.target.value)}
+                  />
                 </div>
               </div>
 

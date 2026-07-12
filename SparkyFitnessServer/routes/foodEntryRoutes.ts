@@ -4,6 +4,7 @@ import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.j
 import foodEntryService from '../services/foodEntryService.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
+import { isEntryTimeString } from '@workspace/shared';
 const router = express.Router();
 router.use(express.json());
 // Apply diary permission check to all food entry routes
@@ -88,6 +89,16 @@ router.post(
       // Check if creating for another user (explicitly requested)
 
       const targetUserId = req.body.user_id || req.userId;
+
+      if (
+        req.body.entry_time !== null &&
+        req.body.entry_time !== undefined &&
+        !isEntryTimeString(req.body.entry_time)
+      ) {
+        return res.status(400).json({
+          error: 'entry_time must be in HH:MM (24h) format.',
+        });
+      }
 
       if (req.body.user_id && req.body.user_id !== req.userId) {
         const hasPermission = await { canAccessUserData }.canAccessUserData(
@@ -575,6 +586,15 @@ router.put(
     const { id } = req.params;
     if (!id) {
       return res.status(400).json({ error: 'Food entry ID is required.' });
+    }
+    if (
+      req.body.entry_time !== null &&
+      req.body.entry_time !== undefined &&
+      !isEntryTimeString(req.body.entry_time)
+    ) {
+      return res.status(400).json({
+        error: 'entry_time must be in HH:MM (24h) format.',
+      });
     }
     try {
       const updatedEntry = await foodEntryService.updateFoodEntry(

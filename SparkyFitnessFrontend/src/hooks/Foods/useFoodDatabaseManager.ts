@@ -1,6 +1,5 @@
 // hooks/useFoodDatabaseManager.ts
 import { useState } from 'react';
-import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +7,12 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import { info } from '@/utils/logging';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
+import {
+  defaultMealTypeForTime,
+  todayInZone,
+  userHourMinute,
+} from '@workspace/shared';
 import type { Food, FoodVariant, FoodDeletionImpact } from '@/types/food';
 import { MealFilter } from '@/types/meal';
 import type { Meal } from '@/types/meal';
@@ -25,10 +30,12 @@ export function useFoodDatabaseManager() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const { nutrientDisplayPreferences, loggingLevel } = usePreferences();
+  const { nutrientDisplayPreferences, loggingLevel, timezone } =
+    usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const queryClient = useQueryClient();
+  const { data: mealTypes = [] } = useMealTypes();
 
   const quickInfoPreferences =
     nutrientDisplayPreferences.find(
@@ -182,7 +189,9 @@ export function useFoodDatabaseManager() {
     food: Food,
     quantity: number,
     unit: string,
-    selectedVariant: FoodVariant
+    selectedVariant: FoodVariant,
+    selectedEntryTime?: string | null,
+    selectedMealType?: string | null
   ) => {
     if (!user || !activeUserId) {
       toast({
@@ -196,13 +205,22 @@ export function useFoodDatabaseManager() {
       return;
     }
 
+    const nowTime = userHourMinute(timezone);
+    const defaultMeal = defaultMealTypeForTime(mealTypes, nowTime);
+    const resolvedMealType = selectedMealType || defaultMeal;
+    const defaultEntryTime = `${String(nowTime.hour).padStart(2, '0')}:${String(nowTime.minute).padStart(2, '0')}`;
+    const entryTime =
+      selectedEntryTime !== undefined ? selectedEntryTime : defaultEntryTime;
+    const today = todayInZone(timezone);
+
     await createFoodEntry({
       foodData: {
         food_id: food.id!,
-        meal_type: 'breakfast',
+        meal_type: resolvedMealType,
         quantity,
         unit,
-        entry_date: formatDateToYYYYMMDD(new Date()),
+        entry_date: today,
+        entry_time: entryTime,
         variant_id: selectedVariant.id || null,
       },
     });
@@ -272,5 +290,6 @@ export function useFoodDatabaseManager() {
     handleConfirmDelete,
     handleCancelDelete,
     deleteFood,
+    mealTypes,
   };
 }

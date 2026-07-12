@@ -54,6 +54,7 @@ export const useUpdateMealTypeMutation = () => {
         sort_order?: number;
         is_visible?: boolean;
         show_in_quick_log?: boolean;
+        default_time?: string | null;
       };
     }) => updateMealType(id, data),
     onSuccess: () => {

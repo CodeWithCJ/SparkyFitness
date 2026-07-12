@@ -11,6 +11,9 @@ export const foodEntryResponseSchema = z.object({
   unit: z.string().nullable(),
   variant_id: z.string().nullable(),
   entry_date: z.string(),
+  // Optional wall-clock time of day ('HH:MM:SS' from Postgres TIME); NULL when
+  // the user did not record a time.
+  entry_time: z.string().nullish(),
   meal_plan_template_id: z.string().nullable(),
   food_entry_meal_id: z.string().nullable(),
   food_name: z.string().nullable(),

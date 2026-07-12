@@ -25,6 +25,7 @@ import FoodSearchDialog from './FoodSearch/FoodSearchDialog';
 import MealUnitSelector from '@/pages/Foods/MealUnitSelector';
 import LinkedMealPreviewDialog from './LinkedMealPreviewDialog';
 import { useQueryClient } from '@tanstack/react-query';
+import { toHourMinute } from '@workspace/shared';
 import {
   mealViewOptions,
   useCreateMealMutation,
@@ -54,6 +55,7 @@ interface MealBuilderProps {
   initialServingSize?: number;
   initialServingUnit?: string;
   onSave?: () => void;
+  initialEntryTime?: string | null;
 }
 
 const MEAL_SERVING_PRECISION = 6;
@@ -93,6 +95,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   initialServingSize,
   initialServingUnit,
   onSave,
+  initialEntryTime,
 }) => {
   const { activeUserId } = useActiveUser();
   const {
@@ -123,6 +126,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   );
   const [mealName, setMealName] = useState('');
   const [mealDescription, setMealDescription] = useState('');
+  const [entryTime, setEntryTime] = useState<string>(
+    toHourMinute(initialEntryTime) || ''
+  );
   const [isPublic, setIsPublic] = useState(false);
   const [servingSize, setServingSize] = useState<string>(
     initialServingSize?.toString() || '1'
@@ -796,6 +802,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         quantity: parseFloat(servingSize) || 1,
         unit: servingUnit,
         foods: mealFoods,
+        entry_time: entryTime || null,
       };
 
       console.log('[MealBuilder] Saving food diary meal:', {
@@ -1053,8 +1060,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         )}
 
         {source === 'food-diary' ? (
-          // Diary mode: keep the existing "Quantity Consumed" + locked unit pair.
-          <div className="grid grid-cols-2 gap-4">
+          // Diary mode: keep the existing "Quantity Consumed" + locked unit pair + time.
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="servingSize">
                 {t('mealBuilder.consumedQuantity', 'Quantity Consumed')}
@@ -1091,6 +1098,15 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                   <SelectItem value="piece">piece</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="entryTime">Time (optional)</Label>
+              <Input
+                id="entryTime"
+                type="time"
+                value={entryTime}
+                onChange={(e) => setEntryTime(e.target.value)}
+              />
             </div>
           </div>
         ) : (

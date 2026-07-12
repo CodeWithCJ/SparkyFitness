@@ -7,6 +7,13 @@ const dateStringSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Entry date must be in YYYY-MM-DD format.");
 
+const timeStringSchema = z
+  .string()
+  .regex(
+    /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/,
+    "Entry time must be in HH:MM (24h) format.",
+  );
+
 /** Query params for the paginated exercise history endpoint */
 export const exerciseHistoryQuerySchema = z
   .object({
@@ -106,6 +113,7 @@ export const presetSessionExerciseRequestSchema = z
     notes: z.string().nullable().optional(),
     superset_group: z.number().int().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).default([]),
+    entry_time: timeStringSchema.nullish(),
   })
   .strict();
 
@@ -174,6 +182,7 @@ export const createExerciseEntryRequestSchema = z
     duration_minutes: z.coerce.number().min(0).default(0),
     calories_burned: z.coerce.number().min(0).default(0),
     entry_date: dateStringSchema,
+    entry_time: timeStringSchema.nullish(),
     notes: z.string().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).optional(),
     reps: z.coerce.number().nullable().optional(),
@@ -199,6 +208,7 @@ export const exerciseEntryResponseSchema = z
     duration_minutes: z.number(),
     calories_burned: z.number(),
     entry_date: z.string().nullable(),
+    entry_time: z.string().nullish(),
     notes: z.string().nullable(),
     distance: z.number().nullable(),
     avg_heart_rate: z.number().nullable(),

@@ -48,6 +48,7 @@ import { SetColumnHeaders } from '../Exercises/SetHeader';
 import { CardioLog } from '../Exercises/CardioLog';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
+import { toHourMinute } from '@workspace/shared';
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
   open: boolean;
@@ -75,6 +76,9 @@ const EditExerciseEntryDialog = ({
     }))
   );
   const [notes, setNotes] = useState(entry.notes || '');
+  const [entryTime, setEntryTime] = useState<string>(
+    toHourMinute(entry.entry_time) || ''
+  );
   const [imageUrl, setImageUrl] = useState<string | null>(
     entry.image_url || null
   );
@@ -234,6 +238,7 @@ const EditExerciseEntryDialog = ({
           duration_minutes: totalDuration,
           calories_burned: caloriesBurned,
           notes,
+          entry_time: entryTime || null,
           sets: sets.map(({ _dndId, ...set }) => ({
             ...set,
             weight: set.weight ?? 0,
@@ -391,6 +396,20 @@ const EditExerciseEntryDialog = ({
               </Button>
             </div>
           )}
+
+          {/* Start Time (optional) */}
+          <div className="space-y-1.5 max-w-[200px]">
+            <Label htmlFor="entryTime" className="text-sm">
+              Start Time (optional)
+            </Label>
+            <Input
+              id="entryTime"
+              type="time"
+              value={entryTime}
+              onChange={(e) => setEntryTime(e.target.value)}
+              className="text-sm h-9"
+            />
+          </div>
 
           {/* Notes */}
           <div className="space-y-1.5">

@@ -268,6 +268,10 @@ async function _updateExerciseEntryWithClient(
       updateData.entry_date !== undefined
         ? updateData.entry_date
         : currentEntry.entry_date,
+    entry_time:
+      updateData.entry_time !== undefined
+        ? updateData.entry_time
+        : currentEntry.entry_time,
     notes:
       updateData.notes !== undefined ? updateData.notes : currentEntry.notes,
     workout_plan_assignment_id:
@@ -371,6 +375,7 @@ async function _updateExerciseEntryWithClient(
       steps = $25,
       water_estimated = $26,
       superset_group = $27,
+      entry_time = $30,
       updated_at = now()
     WHERE id = $28 AND user_id = $29
     RETURNING id`,
@@ -404,6 +409,7 @@ async function _updateExerciseEntryWithClient(
       mergedData.superset_group ?? null,
       id,
       userId,
+      mergedData.entry_time ?? null,
     ]
   );
   // Handle sets update
@@ -534,8 +540,8 @@ async function _createExerciseEntryWithClient(
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
            distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated,
-           superset_group
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29) RETURNING id`,
+           superset_group, entry_time
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30) RETURNING id`,
         [
           userId,
           entryData.exercise_id,
@@ -566,6 +572,7 @@ async function _createExerciseEntryWithClient(
           entryData.steps || null,
           entryData.water_estimated || null,
           entryData.superset_group ?? null,
+          entryData.entry_time ?? null,
         ]
       );
       newEntryId = entryResult.rows[0].id;
@@ -690,6 +697,7 @@ async function updateExerciseEntry(
         exercise_name = $12,
         superset_group = $13,
         updated_by_user_id = $14,
+        entry_time = $17,
         updated_at = now()
       WHERE id = $15 AND user_id = $16
       RETURNING id`,
@@ -710,6 +718,7 @@ async function updateExerciseEntry(
         actingUserId,
         id,
         userId,
+        updateData.entry_time ?? null,
       ]
     );
     // Only modify sets if they are explicitly provided in the update
@@ -1071,13 +1080,39 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
       finalEntriesMap.set(preset.id, preset); // Add preset to map, overwriting if already present (shouldn't happen for presets)
     }
     const finalEntries = Array.from(finalEntriesMap.values()); // Convert map values to an array
-    // Sort final entries by sort_order then created_at for consistent display
-    finalEntries.sort(
-      (a, b) =>
-        (a.sort_order || 0) - (b.sort_order || 0) ||
-        // @ts-expect-error TS(2362): The left-hand side of an arithmetic operation must... Remove this comment to see the full error message
-        new Date(a.created_at) - new Date(b.created_at)
-    );
+
+    const getEntryTime = (entry: any) => {
+      if (entry.type === 'individual') {
+        return entry.entry_time || null;
+      }
+      if (
+        entry.type === 'preset' &&
+        entry.exercises &&
+        entry.exercises.length > 0
+      ) {
+        const times = entry.exercises
+          .map((ex: any) => ex.entry_time)
+          .filter((t: any) => t);
+        if (times.length > 0) {
+          times.sort();
+          return times[0];
+        }
+      }
+      return null;
+    };
+
+    // Sort final entries chronologically by entry_time, falling back to created_at
+    finalEntries.sort((a, b) => {
+      const timeA = getEntryTime(a);
+      const timeB = getEntryTime(b);
+      if (timeA && timeB) {
+        return timeA.localeCompare(timeB);
+      }
+      if (timeA) return -1;
+      if (timeB) return 1;
+      // @ts-expect-error TS(2362): Date arithmetic
+      return new Date(a.created_at) - new Date(b.created_at);
+    });
     log(
       'debug',
       `getExerciseEntriesByDate: Returning grouped entries for user ${userId} on ${selectedDate}:`,
