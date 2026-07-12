@@ -22,12 +22,16 @@ import { useCSSVariable } from 'uniwind';
 
 import Icon from './Icon';
 import { TAB_BAR_HEIGHT } from './CustomTabBar';
-import { formatRestCountdown } from './ActiveWorkoutRestBar';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { flushActiveWorkoutBeforeClear } from '../hooks/useActiveWorkoutAutosave';
 import { usePreferences } from '../hooks/usePreferences';
 import { useRestCountdown } from '../hooks/useRestCountdown';
-import { describeActiveSet, formatSetLoad } from '../utils/workoutSession';
+import {
+  describeActiveSet,
+  formatRestCountdown,
+  formatSetLoad,
+  normalizeWeightUnit,
+} from '../utils/workoutSession';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import type { RootStackParamList } from '../types/navigation';
 import LiquidGlassSurface, {
@@ -281,7 +285,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   const { state: restState, remainingMs, progress } = useRestCountdown();
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
-  const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
+  const weightUnit = normalizeWeightUnit(preferences?.default_weight_unit);
 
   const [navInfo, setNavInfo] = useState(() =>
     computeNavInfo(

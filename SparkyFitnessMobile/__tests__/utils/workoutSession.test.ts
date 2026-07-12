@@ -29,6 +29,8 @@ import {
   formatRecentSessionSet,
   describeActiveSet,
   formatSetLoad,
+  formatRestCountdown,
+  normalizeWeightUnit,
   getRpeTone,
   getSupersetRuns,
   buildSupersetColorMap,
@@ -2400,6 +2402,32 @@ describe('workoutSession', () => {
 
       it('returns null when the set has neither weight nor reps', () => {
         expect(formatSetLoad({ weightKg: null, reps: null }, 'kg')).toBeNull();
+      });
+    });
+
+    describe('normalizeWeightUnit', () => {
+      it('maps kg to kg and everything else to lbs', () => {
+        expect(normalizeWeightUnit('kg')).toBe('kg');
+        expect(normalizeWeightUnit('lbs')).toBe('lbs');
+        expect(normalizeWeightUnit('st_lbs')).toBe('lbs');
+      });
+
+      it('defaults a missing preference to kg', () => {
+        expect(normalizeWeightUnit(undefined)).toBe('kg');
+      });
+    });
+
+    describe('formatRestCountdown', () => {
+      it('formats M:SS, rounding partial seconds up', () => {
+        expect(formatRestCountdown(0)).toBe('0:00');
+        expect(formatRestCountdown(1_000)).toBe('0:01');
+        expect(formatRestCountdown(59_001)).toBe('1:00');
+        expect(formatRestCountdown(65_500)).toBe('1:06');
+        expect(formatRestCountdown(90_000)).toBe('1:30');
+      });
+
+      it('clamps negative remaining time to zero', () => {
+        expect(formatRestCountdown(-5_000)).toBe('0:00');
       });
     });
   });

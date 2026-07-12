@@ -9,7 +9,10 @@ import { flushActiveWorkoutBeforeClear } from './useActiveWorkoutAutosave';
 import { serverConnectionQueryKey } from './queryKeys';
 import { defaultWorkoutName } from './useWorkoutForm';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
-import { ensureNotificationPermission } from '../services/notifications';
+import {
+  ensureNotificationPermission,
+  maybePromptForExactAlarmPermission,
+} from '../services/notifications';
 import { getTodayDate } from '../utils/dateUtils';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -70,7 +73,11 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
           exercises,
         });
         invalidateCache(entryDate);
-        void ensureNotificationPermission();
+        // Chained so the exact-alarm prompt never stacks on top of the OS
+        // notification-permission dialog.
+        void ensureNotificationPermission().then(() =>
+          maybePromptForExactAlarmPermission(),
+        );
         useActiveWorkoutStore.getState().startWorkout(session, { createdByLiveStart: true });
         if (navigation.isFocused()) {
           navigation.replace('ActiveWorkout');

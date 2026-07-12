@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-07-03*
+*Last updated: 2026-07-12*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -88,8 +88,8 @@ npx expo prebuild -c
 - `src/stores/` - Zustand stores, including the persisted active workout/rest timer store.
 - `src/utils/` - date helpers, unit conversion, food details, meal nutrition, nutrient display, workout/session helpers, fasting formatting, numeric input, concurrency, sync utilities, photo estimate error mapping, and rate limiting.
 - `src/constants/` - meal, exercise, fasting, and nutrient metadata.
-- `src/native/` - JS bridges to native modules, including Android widget reloads.
-- `plugins/`, `targets/widget/`, `targets/android-widget/` - Expo plugins and widget/native extension sources.
+- JS bridges to native modules live in `src/services/` (`CalorieWidgetBridge.ts`, `ExactAlarmBridge.ts`); there is no `src/native/` directory.
+- `plugins/`, `targets/widget/`, `targets/android-widget/`, `targets/android-exact-alarm/` - Expo plugins and widget/native extension sources.
 
 ## React Query And Local State
 
@@ -229,7 +229,8 @@ npx expo prebuild -c
 - iOS widgets live under `targets/widget/`, share data through the app group from `app.identifiers.js`, and reload through `ExtensionStorage` in `useWidgetSync`.
 - Current iOS widgets are calorie and macro widgets. When changing display, update Swift views, shared helpers, TS snapshot shape, and reload kind handling together.
 - Android widgets live under `targets/android-widget/`. `plugins/withCalorieWidget.ts` copies Kotlin/templates/resources, registers receivers, wires the native module package, and documents the pattern for adding another widget.
-- `src/native/CalorieWidgetBridge.ts` is the JS bridge for Android widget snapshot writes and Glance reloads.
+- `src/services/CalorieWidgetBridge.ts` is the JS bridge for Android widget snapshot writes and Glance reloads.
+- The scheduled "Rest complete" alert fires exactly only with the `SCHEDULE_EXACT_ALARM` special access ("Alarms & reminders", user-granted, denied by default on Android 13+) — without it expo-notifications falls back to inexact alarms the OS batches ~15s late. The `targets/android-exact-alarm/` Kotlin module (registered by `plugins/withExactAlarmModule.ts`) exposes `canScheduleExactAlarms`/`openExactAlarmSettings` through `src/services/ExactAlarmBridge.ts`; `maybePromptForExactAlarmPermission` in `notifications.ts` owns the one-time grant prompt at workout start.
 - Widget snapshot shape is owned by `useWidgetSync.ts`; keep it aligned with Swift views and Kotlin composables.
 - `app.config.ts` controls bundle identifiers, Apple team IDs, iOS app group, Android permissions, navigation bar contrast, widget plugins, and production-only network security config.
 - `APP_VARIANT` selects dev vs production behavior; dev builds request extra Android Health Connect write permissions for local testing/seeding.

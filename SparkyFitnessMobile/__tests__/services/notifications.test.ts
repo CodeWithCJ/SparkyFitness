@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import {
   __resetNotificationStateForTests,
@@ -10,11 +10,21 @@ import {
   ensureNotificationPermission,
   fireRestCompleteHaptic,
   initNotifications,
+  maybePromptForExactAlarmPermission,
   scheduleFastGoalNotification,
   scheduleRestNotification,
   setNotificationsEnabled,
 } from '../../src/services/notifications';
+import { ExactAlarmBridge } from '../../src/services/ExactAlarmBridge';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
+
+jest.mock('../../src/services/ExactAlarmBridge', () => ({
+  ExactAlarmBridge: {
+    isAvailable: true,
+    canScheduleExactAlarms: jest.fn(async () => false),
+    openExactAlarmSettings: jest.fn(async () => undefined),
+  },
+}));
 
 const mockGetPerms = Notifications.getPermissionsAsync as jest.MockedFunction<
   typeof Notifications.getPermissionsAsync
@@ -272,6 +282,65 @@ describe('notifications service', () => {
     it('swallows errors', async () => {
       mockCancel.mockRejectedValue(new Error('boom'));
       await expect(cancelScheduledNotification('abc')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('maybePromptForExactAlarmPermission', () => {
+    const mockCanExact =
+      ExactAlarmBridge.canScheduleExactAlarms as jest.MockedFunction<
+        typeof ExactAlarmBridge.canScheduleExactAlarms
+      >;
+    const mockOpenSettings =
+      ExactAlarmBridge.openExactAlarmSettings as jest.MockedFunction<
+        typeof ExactAlarmBridge.openExactAlarmSettings
+      >;
+    let alertSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      mockCanExact.mockReset().mockResolvedValue(false);
+      mockOpenSettings.mockReset().mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      alertSpy.mockRestore();
+    });
+
+    it('prompts once and persists the shown flag', async () => {
+      await maybePromptForExactAlarmPermission();
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+
+      await maybePromptForExactAlarmPermission();
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not prompt when exact alarms are already allowed', async () => {
+      mockCanExact.mockResolvedValue(true);
+      await maybePromptForExactAlarmPermission();
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not prompt when the notifications toggle is off', async () => {
+      useAppPreferencesStore.getState().setNotificationsEnabled(false);
+      await maybePromptForExactAlarmPermission();
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not prompt without OS notification permission', async () => {
+      mockGetPerms.mockResolvedValue({ status: 'denied' } as any);
+      await maybePromptForExactAlarmPermission();
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('the settings button opens the exact-alarm grant screen', async () => {
+      await maybePromptForExactAlarmPermission();
+      const buttons = alertSpy.mock.calls[0][2] as {
+        text: string;
+        onPress?: () => void;
+      }[];
+      const openButton = buttons.find((b) => b.text === 'Open Settings');
+      openButton?.onPress?.();
+      expect(mockOpenSettings).toHaveBeenCalledTimes(1);
     });
   });
 });

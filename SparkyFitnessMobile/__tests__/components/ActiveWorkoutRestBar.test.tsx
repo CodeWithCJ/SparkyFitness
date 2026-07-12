@@ -3,9 +3,7 @@ import { StyleSheet } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import ActiveWorkoutRestBar, {
-  formatRestCountdown,
-} from '../../src/components/ActiveWorkoutRestBar';
+import ActiveWorkoutRestBar from '../../src/components/ActiveWorkoutRestBar';
 import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
 
 jest.mock('../../src/services/nativeTabBarPreference', () => ({
@@ -55,20 +53,6 @@ function renderBar(
 function fillStyle(getByTestId: (id: string) => any) {
   return StyleSheet.flatten(getByTestId('rest-progress-fill').props.style);
 }
-
-describe('formatRestCountdown', () => {
-  it('formats M:SS, rounding partial seconds up', () => {
-    expect(formatRestCountdown(0)).toBe('0:00');
-    expect(formatRestCountdown(1_000)).toBe('0:01');
-    expect(formatRestCountdown(59_001)).toBe('1:00');
-    expect(formatRestCountdown(65_500)).toBe('1:06');
-    expect(formatRestCountdown(90_000)).toBe('1:30');
-  });
-
-  it('clamps negative remaining time to zero', () => {
-    expect(formatRestCountdown(-5_000)).toBe('0:00');
-  });
-});
 
 describe('ActiveWorkoutRestBar', () => {
   beforeEach(() => {

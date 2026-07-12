@@ -45,7 +45,10 @@ import {
   useActiveWorkoutStore,
 } from '../stores/activeWorkoutStore';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import { ensureNotificationPermission } from '../services/notifications';
+import {
+  ensureNotificationPermission,
+  maybePromptForExactAlarmPermission,
+} from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
@@ -241,7 +244,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // starts the cursor on a specific set (the "Start workout here" long-press).
   const enterLiveWorkout = useCallback(
     (atSetId?: string) => {
-      void ensureNotificationPermission();
+      // Chained so the exact-alarm prompt never stacks on top of the OS
+      // notification-permission dialog.
+      void ensureNotificationPermission().then(() =>
+        maybePromptForExactAlarmPermission(),
+      );
       const store = useActiveWorkoutStore.getState();
       if (atSetId != null) store.startWorkoutAtSet(session, atSetId);
       else store.startWorkout(session);

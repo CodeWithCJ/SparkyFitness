@@ -1,8 +1,10 @@
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import { fireSuccessHaptic } from './haptics';
+import { ExactAlarmBridge } from './ExactAlarmBridge';
 import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
@@ -10,6 +12,7 @@ import {
 
 const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
+const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
 
 let initialized = false;
 let hasShownDeniedToast = false;
@@ -79,6 +82,49 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   } catch (err) {
     addLog(`ensureNotificationPermission failed: ${(err as Error).message}`, 'ERROR');
     return false;
+  }
+}
+
+/**
+ * One-time Android prompt for the "Alarms & reminders" special access.
+ * Without it, expo-notifications schedules inexact alarms that the OS batches
+ * ~15s late, so the rest-complete ping lags the actual deadline. Denied by
+ * default on Android 13+; only the user can grant it, via system settings.
+ */
+export async function maybePromptForExactAlarmPermission(): Promise<void> {
+  if (!ExactAlarmBridge.isAvailable) return;
+  if (!useAppPreferencesStore.getState().notificationsEnabled) return;
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.status !== 'granted') return;
+    if (await ExactAlarmBridge.canScheduleExactAlarms()) return;
+    if ((await AsyncStorage.getItem(EXACT_ALARM_PROMPT_KEY)) === 'true') return;
+    await AsyncStorage.setItem(EXACT_ALARM_PROMPT_KEY, 'true');
+    Alert.alert(
+      'On-time rest alerts',
+      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers ring on time.',
+      [
+        { text: 'Not Now', style: 'cancel' },
+        {
+          text: 'Open Settings',
+          onPress: () => {
+            void ExactAlarmBridge.openExactAlarmSettings().catch(
+              (err: unknown) => {
+                addLog(
+                  `openExactAlarmSettings failed: ${(err as Error).message}`,
+                  'ERROR',
+                );
+              },
+            );
+          },
+        },
+      ],
+    );
+  } catch (err) {
+    addLog(
+      `maybePromptForExactAlarmPermission failed: ${(err as Error).message}`,
+      'ERROR',
+    );
   }
 }
 

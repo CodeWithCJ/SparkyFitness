@@ -501,6 +501,24 @@ export function describeActiveSet(
 }
 
 /**
+ * Collapse the three-way preference unit to the two display units the workout
+ * formatters understand: `st_lbs` (and anything unexpected) renders as lbs,
+ * while a missing preference defaults to kg (the server-side storage unit).
+ */
+export function normalizeWeightUnit(unit: string | undefined): 'kg' | 'lbs' {
+  if (unit == null || unit === 'kg') return 'kg';
+  return 'lbs';
+}
+
+/** Rest countdown as `M:SS`, rounding partial seconds up and clamping at zero. */
+export function formatRestCountdown(remainingMs: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+/**
  * Target-load text for a set, e.g. `135 lbs × 8`, `8 reps`, or `60 kg`;
  * null when the set has neither weight nor reps.
  */

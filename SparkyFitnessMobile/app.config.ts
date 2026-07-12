@@ -57,6 +57,10 @@ const androidPermissions = [
   // so these live in the base list (not the dev-only writes below).
   'android.permission.health.WRITE_NUTRITION',
   'android.permission.health.WRITE_HYDRATION',
+  // Exact rest-complete alerts: without this special access (user-granted via
+  // "Alarms & reminders" on Android 13+), expo-notifications falls back to
+  // inexact alarms that the OS batches ~15s late.
+  'android.permission.SCHEDULE_EXACT_ALARM',
 ];
 
 const devAndroidPermissions = [
@@ -144,6 +148,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       ...(config.plugins ?? []),
       './plugins/withGlanceAndroidSupport',
       './plugins/withCalorieWidget',
+      './plugins/withExactAlarmModule',
       './plugins/withEnrichedMarkdownNoMath',
       ...(!isDev ? prodPlugins : []),
     ],

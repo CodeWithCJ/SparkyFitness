@@ -27,6 +27,7 @@ jest.mock('../../src/hooks/invalidateExerciseCache', () => ({
 
 jest.mock('../../src/services/notifications', () => ({
   ensureNotificationPermission: jest.fn(async () => true),
+  maybePromptForExactAlarmPermission: jest.fn(async () => undefined),
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
   cancelScheduledNotification: jest.fn(async () => undefined),
   fireRestCompleteHaptic: jest.fn(),

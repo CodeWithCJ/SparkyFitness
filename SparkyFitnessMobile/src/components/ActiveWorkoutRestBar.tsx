@@ -6,13 +6,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import LiquidGlassSurface, { createLiquidGlassPillStyle } from './LiquidGlassSurface';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
-
-export function formatRestCountdown(remainingMs: number): string {
-  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
+import { formatRestCountdown } from '../utils/workoutSession';
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
