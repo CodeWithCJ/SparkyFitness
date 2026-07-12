@@ -29,3 +29,4 @@ minimumReleaseAgeExclude: []
 
 patchedDependencies:
   "react-native-health-connect@3.5.3": "patches/react-native-health-connect@3.5.3.patch"
+  "@bacons/apple-targets@4.0.6": "patches/@bacons__apple-targets@4.0.6.patch"

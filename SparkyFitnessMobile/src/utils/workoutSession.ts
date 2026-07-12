@@ -510,6 +510,20 @@ export function normalizeWeightUnit(unit: string | undefined): 'kg' | 'lbs' {
   return 'lbs';
 }
 
+/** Elapsed workout clock as `MM:SS`, growing to `HH:MM:SS` past an hour. */
+export function formatElapsed(startedAt: number | null, now: number): string {
+  const totalSeconds = startedAt == null ? 0 : Math.max(0, Math.floor((now - startedAt) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  // Drop the hours segment until the workout actually crosses an hour, so a
+  // one-minute set reads "01:00" rather than "00:01:00".
+  return hours > 0
+    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
+}
+
 /** Rest countdown as `M:SS`, rounding partial seconds up and clamping at zero. */
 export function formatRestCountdown(remainingMs: number): string {
   const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));

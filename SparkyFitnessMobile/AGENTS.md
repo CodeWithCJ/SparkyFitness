@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-07-12*
+*Last updated: 2026-07-13*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -36,13 +36,13 @@ pnpm run validate
 pnpm run test:run -- --watchman=false --runInBand
 pnpm exec jest --watchman=false --runInBand <test-path>
 pnpm run test:coverage -- --watchman=false --runInBand
-npx expo prebuild -c
+npx expo prebuild --clean
 ```
 
 - `pnpm run validate` runs typecheck and Expo lint.
 - Use Watchman-disabled Jest commands in agent/sandbox runs; bare Jest often fails on macOS.
 - `collectCoverage` is enabled in Jest config, so expect coverage output from normal test runs.
-- Run `npx expo prebuild -c` after native dependency changes, permissions, app group or widget target changes, Expo plugin changes, native config edits, or patching native modules.
+- Run `npx expo prebuild --clean` after native dependency changes, permissions, app group or widget target changes, Expo plugin changes, native config edits, or patching native modules.
 - After editing the root `patches/react-native-health-connect@3.5.3.patch`, run `pnpm install` from the repo root, then prebuild from mobile.
 
 ## App Shell And Navigation
@@ -135,12 +135,13 @@ npx expo prebuild -c
 - `HealthDataWriteback` on `SyncScreen` owns the remove flow. `BottomSheetPicker` offers all-time purge or date range through `DateRangeSheet`; both call `removeWrittenData(range)` and clear tracking.
 - Inbound iOS nutrition sync reads food correlations with a rolling nutrition lookback and upserts by `(source, source_id)` server-side.
 
-## Native Patch
+## Native Patches
 
 - `react-native-health-connect` is declared as `^3.5.3`; the installed 3.5.3 build is patched from the repo root via `pnpm.patchedDependencies`.
 - Patch file: `../patches/react-native-health-connect@3.5.3.patch`.
 - The patch changes Android `getAggregateGroupByPeriodRequest` implementations from instant-based `getTimeRangeFilter` to local-date-time `getTimeRangeFilterLocal` for non-Steps record types. This protects per-day grouping around DST and local-day boundaries.
-- After changing the patch or upgrading `react-native-health-connect`, run `pnpm install` from the repo root and then `npx expo prebuild -c` from mobile before Android validation.
+- `@bacons/apple-targets@4.0.6` is patched via `../patches/@bacons__apple-targets@4.0.6.patch`: its xcode pass matched "its" extension target by type with a fall-back to any same-type target, which adopted and corrupted the expo-widgets `ExpoWidgetsTarget` on a clean prebuild. The patch scopes the match to an exact product-name hit.
+- After changing a patch or upgrading a patched package, run `pnpm install` from the repo root and then `npx expo prebuild --clean` from mobile before native validation.
 
 ## Food, Meals, Units, And Photo Estimates
 
@@ -232,9 +233,10 @@ npx expo prebuild -c
 - `src/services/CalorieWidgetBridge.ts` is the JS bridge for Android widget snapshot writes and Glance reloads.
 - The scheduled "Rest complete" alert fires exactly only with the `SCHEDULE_EXACT_ALARM` special access ("Alarms & reminders", user-granted, denied by default on Android 13+) — without it expo-notifications falls back to inexact alarms the OS batches ~15s late. The `targets/android-exact-alarm/` Kotlin module (registered by `plugins/withExactAlarmModule.ts`) exposes `canScheduleExactAlarms`/`openExactAlarmSettings` through `src/services/ExactAlarmBridge.ts`; `maybePromptForExactAlarmPermission` in `notifications.ts` owns the one-time grant prompt at workout start.
 - Widget snapshot shape is owned by `useWidgetSync.ts`; keep it aligned with Swift views and Kotlin composables.
+- The workout Live Activity (Lock Screen + Dynamic Island elapsed/rest timers) uses `expo-widgets`, whose generated `ExpoWidgetsTarget` extension coexists with the `@bacons/apple-targets` `targets/widget/` target. `src/services/WorkoutLiveActivityLayout.tsx` is the `'widget'`-directive layout (self-contained; only `@expo/ui/swift-ui` imports; epoch-ms props, never `Date`s) and must only be imported from `src/services/workoutLiveActivity.ios.ts` — `createLiveActivity` runs at module scope and would drag iOS native modules into the Android bundle. The `.ios.ts` service subscribes to `activeWorkoutStore` (ops held until persist hydration + instance reconcile), serializes all start/update/end calls, and is display-only: the OS ticks the timers from absolute timestamps, no polling. Live Activities get NO `widgets[]` entry in `app.config.ts` (that array is only for home/Lock Screen widgets).
 - `app.config.ts` controls bundle identifiers, Apple team IDs, iOS app group, Android permissions, navigation bar contrast, widget plugins, and production-only network security config.
 - `APP_VARIANT` selects dev vs production behavior; dev builds request extra Android Health Connect write permissions for local testing/seeding.
-- After editing `targets/`, native config plugins, app groups, permissions, or native bridge shape, run `npx expo prebuild -c`.
+- After editing `targets/`, native config plugins, app groups, permissions, or native bridge shape, run `npx expo prebuild --clean`.
 
 ## Shared Workspace Contracts
 

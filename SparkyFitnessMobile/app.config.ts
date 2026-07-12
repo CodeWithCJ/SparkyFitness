@@ -150,6 +150,16 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       './plugins/withCalorieWidget',
       './plugins/withExactAlarmModule',
       './plugins/withEnrichedMarkdownNoMath',
+      [
+        'expo-widgets',
+        {
+          groupIdentifier: getIosAppGroup(),
+          // Live Activities register at runtime via createLiveActivity and must
+          // NOT be listed here — widgets[] is only for home/Lock Screen widgets
+          // (an entry without supportedFamilies breaks the generated target).
+          widgets: [],
+        },
+      ],
       ...(!isDev ? prodPlugins : []),
     ],
     extra: {

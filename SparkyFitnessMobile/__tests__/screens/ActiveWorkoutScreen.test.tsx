@@ -307,3 +307,64 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     expect(mockSheet.props?.title).toBe('Squat');
   });
 });
+
+describe('ActiveWorkoutScreen stale deep link guard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it('auto-pops when the hydrated store has no session', () => {
+    jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(true);
+
+    renderScreen();
+
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+
+  it('waits for hydration before popping, and keeps a restored session', () => {
+    jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(false);
+    let finishHydration: (() => void) | undefined;
+    jest
+      .spyOn(useActiveWorkoutStore.persist, 'onFinishHydration')
+      .mockImplementation(((cb: () => void) => {
+        finishHydration = cb;
+        return () => {};
+      }) as any);
+
+    // A cold-start Live Activity tap lands here before rehydration finishes.
+    renderScreen();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+
+    // Hydration restores the live workout — the screen must stay put.
+    act(() => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      finishHydration?.();
+    });
+    expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('pops once hydration completes with no session', () => {
+    jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(false);
+    let finishHydration: (() => void) | undefined;
+    jest
+      .spyOn(useActiveWorkoutStore.persist, 'onFinishHydration')
+      .mockImplementation(((cb: () => void) => {
+        finishHydration = cb;
+        return () => {};
+      }) as any);
+
+    renderScreen();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+
+    act(() => finishHydration?.());
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+});

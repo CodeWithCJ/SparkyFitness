@@ -187,6 +187,22 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     return unsubscribe;
   }, [navigation, flush]);
 
+  // A cold-start deep link (e.g. tapping the workout Live Activity) can land
+  // here before the persisted store rehydrates, so an empty sessionId proves
+  // nothing until hydration completes.
+  const [storeHydrated, setStoreHydrated] = useState(() =>
+    useActiveWorkoutStore.persist.hasHydrated(),
+  );
+  useEffect(() => {
+    if (storeHydrated) return;
+    // Hydration may have finished between the initial read and this effect.
+    if (useActiveWorkoutStore.persist.hasHydrated()) {
+      setStoreHydrated(true);
+      return;
+    }
+    return useActiveWorkoutStore.persist.onFinishHydration(() => setStoreHydrated(true));
+  }, [storeHydrated]);
+
   // If the route is opened with no live workout (stale deep link), bail out.
   // Finish/Discard clear the session themselves and own their navigation, so
   // this only auto-pops when the screen *arrived* without a session.
@@ -196,8 +212,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       hadSessionRef.current = true;
       return;
     }
+    if (!storeHydrated) return;
     if (!hadSessionRef.current && navigation.canGoBack()) navigation.goBack();
-  }, [sessionId, navigation]);
+  }, [sessionId, storeHydrated, navigation]);
 
   const activeExerciseId = useMemo(() => {
     if (session == null || activeSetId == null) return null;

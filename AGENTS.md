@@ -53,7 +53,7 @@ For `docs/` and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md`. `
 Do not read or search these paths; they burn context for nothing:
 
 - `WIP/` - personal scratch area; contains zips and full copies of other repos, including a stale duplicate of this repo (`WIP/SparkyFitness-main/`). Never read or edit anything under it.
-- `SparkyFitnessMobile/ios/` and `SparkyFitnessMobile/android/` - generated native projects (`ios/` is >1 GB of Pods). Regenerate with `npx expo prebuild -c`; edit `app.config.ts`, `plugins/`, or `targets/` instead.
+- `SparkyFitnessMobile/ios/` and `SparkyFitnessMobile/android/` - generated native projects (`ios/` is >1 GB of Pods). Regenerate with `npx expo prebuild --clean`; edit `app.config.ts`, `plugins/`, or `targets/` instead.
 - `pnpm-lock.yaml` (~1.3 MB) - never read; check `package.json` files instead.
 - `db_schema_backup.sql` (~330 KB) - never read whole; grep for the one `CREATE TABLE` you need.
 - `SparkyFitnessFrontend/dist/` - build output.
@@ -127,7 +127,7 @@ pnpm run ios
 pnpm run android
 pnpm run validate
 pnpm run test:run -- --watchman=false --runInBand
-npx expo prebuild -c
+npx expo prebuild --clean
 ```
 
 ### Docs (`docs/`)

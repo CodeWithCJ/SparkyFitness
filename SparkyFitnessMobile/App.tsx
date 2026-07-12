@@ -94,6 +94,7 @@ import { initializeTheme } from './src/services/themeService';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
+import { initWorkoutLiveActivity } from './src/services/workoutLiveActivity';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -583,6 +584,13 @@ function AppContent() {
 
     initializeApp();
 
+    // iOS-only (no-op on Android): keeps the workout Live Activity in sync
+    // with the active-workout store.
+    initWorkoutLiveActivity().catch(error => {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to initialize workout Live Activity: ${message}`, 'ERROR');
+    });
+
     // Initialize log service (warms cache, prunes old logs, registers AppState listener)
     initLogService().catch(error => {
       const message = error instanceof Error ? error.message : String(error);
@@ -765,6 +773,8 @@ function AppContent() {
         },
         FoodScan: 'scan',
         FoodSearch: 'search',
+        // Tapping the workout Live Activity opens its associated URL.
+        ActiveWorkout: 'active-workout',
       },
     },
   }), []);
