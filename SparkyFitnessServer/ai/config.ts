@@ -56,7 +56,7 @@ function getDefaultVisionModel(serviceType: any) {
 // ('openai_compatible', 'custom') fall through to `customUrl` unchanged.
 function getOpenAiCompatibleBaseUrl(
   serviceType: string,
-  customUrl?: string
+  customUrl?: string | null
 ): string | undefined {
   switch (serviceType) {
     case 'openai':
@@ -77,7 +77,7 @@ function getOpenAiCompatibleBaseUrl(
       // Muse Spark's OpenAI-compatible endpoint (auth is Bearer api_key).
       return 'https://api.meta.ai/v1';
     default:
-      return customUrl;
+      return customUrl ?? undefined;
   }
 }
 export { getDefaultModel };
