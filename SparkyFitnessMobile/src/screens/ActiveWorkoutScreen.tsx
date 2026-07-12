@@ -29,7 +29,9 @@ import ActiveWorkoutRail, { useSupersetBorders } from '../components/ActiveWorko
 import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
 import KeyboardCollapsible from '../components/KeyboardCollapsible';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
-import ActiveWorkoutRestBar from '../components/ActiveWorkoutRestBar';
+import ActiveWorkoutRestBar, {
+  REST_BAR_GLASS_CLEARANCE,
+} from '../components/ActiveWorkoutRestBar';
 import ActionSheet, {
   type ActionSheetItem,
   type ActionSheetRef,
@@ -44,15 +46,18 @@ import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { usePreferences } from '../hooks/usePreferences';
+import { useRestCountdown } from '../hooks/useRestCountdown';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { deleteWorkout } from '../services/api/exerciseApi';
 import { addLog } from '../services/LogService';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutStore, type ActiveSetPatch } from '../stores/activeWorkoutStore';
 import { normalizeDate } from '../utils/dateUtils';
-import { weightFromKg } from '../utils/unitConversions';
 import {
   buildExerciseReorderItems,
+  describeActiveSet,
   exerciseFromSnapshot,
+  formatSetLoad,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -145,10 +150,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
   const setRenderKeys = useActiveWorkoutStore((s) => s.setRenderKeys);
   const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
-  const restState = useActiveWorkoutStore((s) => s.rest.state);
-  const restEndsAt = useActiveWorkoutStore((s) => s.rest.endsAt);
-  const restPausedRemainingMs = useActiveWorkoutStore((s) => s.rest.pausedRemainingMs);
-  const restDurationSec = useActiveWorkoutStore((s) => s.rest.durationSec);
+  const {
+    state: restState,
+    remainingMs: restRemainingMs,
+    progress: restProgress,
+  } = useRestCountdown({ selfTick: false });
+  const usesGlassRestBar = useNativeIOSTabsActive();
   const createdByLiveStart = useActiveWorkoutStore((s) => s.createdByLiveStart);
   const queryClient = useQueryClient();
 
@@ -160,21 +167,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const { flush } = useActiveWorkoutAutosave();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
 
-  // One 1s tick drives the elapsed clock, the rest countdown, and the guarded
-  // rest-complete transition (the floating HUD is hidden on this route, so
-  // this screen owns `markRestReady`). Set rows are memoized, so ticks only
-  // re-render the header and rest bar.
+  // One 1s tick drives the elapsed clock and re-renders the rest countdown
+  // (`useRestCountdown` is told not to stack a second interval on top). Set
+  // rows are memoized, so ticks only re-render the header and rest bar.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-
-  useEffect(() => {
-    if (restState === 'resting' && restEndsAt != null && now >= restEndsAt) {
-      useActiveWorkoutStore.getState().markRestReady();
-    }
-  }, [restState, restEndsAt, now]);
 
   // Flush unsaved edits when the screen loses focus, and on mount when a cold
   // start rehydrated a dirty session (the autosave hook wasn't mounted to see
@@ -821,45 +821,20 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const hasAnyCompletedSets = Object.keys(completedSetIds).length > 0;
 
   const restVisible = restState !== 'ready';
-  const restRemainingMs = (() => {
-    if (restState === 'resting' && restEndsAt != null) {
-      return Math.max(0, restEndsAt - now);
-    }
-    if (restState === 'paused' && restPausedRemainingMs != null) {
-      return restPausedRemainingMs;
-    }
-    return 0;
-  })();
-  const restLabel = (() => {
-    if (activeSetId == null) return '';
-    for (const exercise of session.exercises) {
-      const set = exercise.sets.find((s) => String(s.id) === activeSetId);
-      if (set) {
-        return `${exercise.exercise_snapshot?.name ?? 'Exercise'} · Set ${set.set_number}`;
-      }
-    }
-    return '';
-  })();
+  // With Liquid Glass tabs active the rest bar floats over the log instead of
+  // docking below it, so the scroll content reserves clearance for the pill.
+  const restBarPadding = usesGlassRestBar
+    ? REST_BAR_GLASS_CLEARANCE + insets.bottom
+    : 16;
+  const activeSetDescription = describeActiveSet(session, activeSetId);
+  const restLabel =
+    activeSetDescription == null
+      ? ''
+      : `${activeSetDescription.exerciseName ?? 'Exercise'} · Set ${activeSetDescription.setNumber}`;
   // Target load for the upcoming set, shown under the rest label so the user
   // knows what's next while resting.
-  const restNextSetText = (() => {
-    if (activeSetId == null) return null;
-    for (const exercise of session.exercises) {
-      const set = exercise.sets.find((s) => String(s.id) === activeSetId);
-      if (!set) continue;
-      if (set.weight != null && set.reps != null) {
-        const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
-        return `${w} ${weightUnit} × ${set.reps}`;
-      }
-      if (set.reps != null) return `${set.reps} reps`;
-      if (set.weight != null) {
-        const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
-        return `${w} ${weightUnit}`;
-      }
-      return null;
-    }
-    return null;
-  })();
+  const restNextSetText =
+    activeSetDescription == null ? null : formatSetLoad(activeSetDescription, weightUnit);
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -895,7 +870,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         ref={scrollRef}
         className="flex-1"
         contentContainerClassName="px-3 pt-2"
-        contentContainerStyle={{ paddingBottom: restVisible ? 16 : insets.bottom + 16 }}
+        contentContainerStyle={{
+          paddingBottom: restVisible ? restBarPadding : insets.bottom + 16,
+        }}
         onScroll={handleScroll}
         scrollEventThrottle={32}
         onLayout={(e) => {
@@ -1004,7 +981,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       {restVisible && (
         <ActiveWorkoutRestBar
           remainingMs={restRemainingMs}
-          durationSec={restDurationSec}
+          progress={restProgress}
           paused={restState === 'paused'}
           label={restLabel}
           nextSetText={restNextSetText}

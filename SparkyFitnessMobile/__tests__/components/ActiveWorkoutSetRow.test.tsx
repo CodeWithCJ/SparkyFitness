@@ -359,6 +359,27 @@ describe('ActiveWorkoutSetRow', () => {
       expect(ids.every(Boolean)).toBe(true);
       expect(new Set(ids).size).toBe(3);
     });
+
+    it('issues a fresh accessory id on each activation but holds it while active', () => {
+      // Fabric recycles native TextInputs with their last props retained, so a
+      // remount that reuses a prior activation's exact id string is treated as
+      // unchanged and the accessory bar never reattaches (bare keyboard on the
+      // second edit of the same cell). Re-renders during one activation must
+      // NOT change the id, or the live attachment breaks under the open
+      // keyboard (e.g. autosave churn).
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, rerenderRow } = renderRow({ ...base, isFocused: true });
+      const firstId = getByLabelText('Weight').props.inputAccessoryViewID;
+
+      rerenderRow({ ...base, isFocused: true, weightUnit: 'lbs' });
+      expect(getByLabelText('Weight').props.inputAccessoryViewID).toBe(firstId);
+
+      rerenderRow({ ...base, isFocused: false });
+      rerenderRow({ ...base, isFocused: true });
+      const secondId = getByLabelText('Weight').props.inputAccessoryViewID;
+      expect(secondId).toBeTruthy();
+      expect(secondId).not.toBe(firstId);
+    });
   });
 
   describe('upcoming state', () => {

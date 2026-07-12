@@ -27,6 +27,8 @@ import {
   getExerciseVolumeKg,
   formatVolume,
   formatRecentSessionSet,
+  describeActiveSet,
+  formatSetLoad,
   getRpeTone,
   getSupersetRuns,
   buildSupersetColorMap,
@@ -2274,6 +2276,130 @@ describe('workoutSession', () => {
         expect(getRpeTone(9)).toBe('hard');
         expect(getRpeTone(9.5)).toBe('hard');
         expect(getRpeTone(10)).toBe('max');
+      });
+    });
+
+    describe('describeActiveSet', () => {
+      const sessionWithSets = makePreset({
+        exercises: [
+          {
+            id: 'entry-1',
+            exercise_id: 'ex-1',
+            duration_minutes: 20,
+            calories_burned: 150,
+            entry_date: '2026-03-20',
+            notes: null,
+            distance: null,
+            avg_heart_rate: null,
+            source: null,
+            superset_group: null,
+            exercise_snapshot: {
+              id: 'ex-1',
+              name: 'Bench Press',
+              category: 'Strength',
+              calories_per_hour: 400,
+              source: 'system',
+              images: [],
+            },
+            activity_details: [],
+            sets: [
+              {
+                id: 101,
+                set_number: 1,
+                set_type: 'normal',
+                reps: 10,
+                weight: 60,
+                duration: null,
+                rest_time: 90,
+                notes: null,
+                rpe: null,
+                completed_at: null,
+              },
+              {
+                id: 102,
+                set_number: 2,
+                set_type: 'normal',
+                reps: 8,
+                weight: 70,
+                duration: null,
+                rest_time: 90,
+                notes: null,
+                rpe: null,
+                completed_at: null,
+              },
+            ],
+          },
+          {
+            id: 'entry-2',
+            exercise_id: 'ex-2',
+            duration_minutes: 15,
+            calories_burned: 120,
+            entry_date: '2026-03-20',
+            notes: null,
+            distance: null,
+            avg_heart_rate: null,
+            source: null,
+            superset_group: null,
+            exercise_snapshot: null,
+            activity_details: [],
+            sets: [
+              {
+                id: 201,
+                set_number: 1,
+                set_type: 'normal',
+                reps: null,
+                weight: null,
+                duration: null,
+                rest_time: 120,
+                notes: null,
+                rpe: null,
+                completed_at: null,
+              },
+            ],
+          },
+        ] as PresetSession['exercises'],
+      });
+
+      it('finds the set across exercises and returns its structured fields', () => {
+        expect(describeActiveSet(sessionWithSets, '102')).toEqual({
+          exerciseName: 'Bench Press',
+          setNumber: 2,
+          setCount: 2,
+          reps: 8,
+          weightKg: 70,
+        });
+      });
+
+      it('returns a null exerciseName when the exercise has no snapshot', () => {
+        expect(describeActiveSet(sessionWithSets, '201')).toEqual({
+          exerciseName: null,
+          setNumber: 1,
+          setCount: 1,
+          reps: null,
+          weightKg: null,
+        });
+      });
+
+      it('returns null for a null session, null setId, or an unknown setId', () => {
+        expect(describeActiveSet(null, '101')).toBeNull();
+        expect(describeActiveSet(sessionWithSets, null)).toBeNull();
+        expect(describeActiveSet(sessionWithSets, '999')).toBeNull();
+      });
+    });
+
+    describe('formatSetLoad', () => {
+      it('formats weight × reps with the display unit, converting for lbs', () => {
+        expect(formatSetLoad({ weightKg: 60, reps: 8 }, 'kg')).toBe('60 kg × 8');
+        expect(formatSetLoad({ weightKg: 60, reps: 8 }, 'lbs')).toBe('132.3 lbs × 8');
+      });
+
+      it('handles reps-only and weight-only sets', () => {
+        expect(formatSetLoad({ weightKg: null, reps: 12 }, 'kg')).toBe('12 reps');
+        expect(formatSetLoad({ weightKg: 80, reps: null }, 'kg')).toBe('80 kg');
+      });
+
+      it('returns null when the set has neither weight nor reps', () => {
+        expect(formatSetLoad({ weightKg: null, reps: null }, 'kg')).toBeNull();
       });
     });
   });

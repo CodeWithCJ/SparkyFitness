@@ -465,6 +465,58 @@ export function formatRecentSessionSet(
   return `${prefix}${set.reps} reps`; // reps-only set in a mixed history
 }
 
+/**
+ * Structured description of the set the active-workout cursor points at.
+ * Shared by the workout HUD, the active-workout screen, and the rest-complete
+ * notification so their labels can't drift apart; each consumer applies its
+ * own name fallback and formatting.
+ */
+export interface ActiveSetDescription {
+  /** Snapshot name; null when the exercise carries no snapshot name. */
+  exerciseName: string | null;
+  setNumber: number;
+  setCount: number;
+  reps: number | null;
+  weightKg: number | null;
+}
+
+/** Look up the session set matching the active-set cursor id. */
+export function describeActiveSet(
+  session: PresetSessionResponse | null,
+  setId: string | null,
+): ActiveSetDescription | null {
+  if (session == null || setId == null) return null;
+  for (const exercise of session.exercises) {
+    const set = exercise.sets.find((s) => String(s.id) === setId);
+    if (!set) continue;
+    return {
+      exerciseName: exercise.exercise_snapshot?.name ?? null,
+      setNumber: set.set_number,
+      setCount: exercise.sets.length,
+      reps: set.reps ?? null,
+      weightKg: set.weight ?? null,
+    };
+  }
+  return null;
+}
+
+/**
+ * Target-load text for a set, e.g. `135 lbs × 8`, `8 reps`, or `60 kg`;
+ * null when the set has neither weight nor reps.
+ */
+export function formatSetLoad(
+  set: Pick<ActiveSetDescription, 'weightKg' | 'reps'>,
+  weightUnit: 'kg' | 'lbs',
+): string | null {
+  const w =
+    set.weightKg != null
+      ? `${parseFloat(weightFromKg(set.weightKg, weightUnit).toFixed(1))} ${weightUnit}`
+      : null;
+  if (w != null && set.reps != null) return `${w} × ${set.reps}`;
+  if (set.reps != null) return `${set.reps} reps`;
+  return w;
+}
+
 export type RpeTone = 'easy' | 'moderate' | 'hard' | 'max';
 
 /** Effort bucket for tinting a logged RPE value. */

@@ -1066,6 +1066,70 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('rest deadline timer', () => {
+    beforeEach(async () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      mockSchedule.mockResolvedValueOnce('notif-deadline');
+      useActiveWorkoutStore.getState().completeActiveSet(); // rest 60s before set 102
+      await flushPromises();
+    });
+
+    it('flips resting → ready by itself when the deadline passes', () => {
+      mockHaptic.mockClear();
+      jest.advanceTimersByTime(59_999);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
+
+      jest.advanceTimersByTime(1);
+      const { rest } = useActiveWorkoutStore.getState();
+      expect(rest.state).toBe('ready');
+      expect(rest.endsAt).toBeNull();
+      expect(mockCancel).toHaveBeenCalledWith('notif-deadline');
+      expect(mockHaptic).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not fire while paused', () => {
+      useActiveWorkoutStore.getState().pauseRest();
+      mockHaptic.mockClear();
+      jest.advanceTimersByTime(120_000);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('paused');
+      expect(mockHaptic).not.toHaveBeenCalled();
+    });
+
+    it('follows an adjustRest extension to the new deadline', async () => {
+      mockSchedule.mockResolvedValueOnce('notif-extended');
+      useActiveWorkoutStore.getState().adjustRest(15); // deadline now +75s
+      await flushPromises();
+
+      jest.advanceTimersByTime(60_000);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
+
+      jest.advanceTimersByTime(15_000);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+    });
+
+    it('reschedules from the resumed deadline after pause → resume', async () => {
+      jest.advanceTimersByTime(10_000); // 50s remaining
+      useActiveWorkoutStore.getState().pauseRest();
+      jest.advanceTimersByTime(30_000);
+      mockSchedule.mockResolvedValueOnce('notif-resumed');
+      useActiveWorkoutStore.getState().resumeRest();
+      await flushPromises();
+
+      jest.advanceTimersByTime(49_999);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
+      jest.advanceTimersByTime(1);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+    });
+
+    it('is cancelled when the workout is cleared', () => {
+      useActiveWorkoutStore.getState().clearWorkout();
+      mockHaptic.mockClear();
+      jest.advanceTimersByTime(120_000);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      expect(mockHaptic).not.toHaveBeenCalled();
+    });
+  });
+
   describe('dismissRest', () => {
     beforeEach(() => {
       useActiveWorkoutStore.getState().startWorkout(makeSession());

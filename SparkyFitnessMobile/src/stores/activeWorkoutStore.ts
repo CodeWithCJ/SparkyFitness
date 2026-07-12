@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type {
@@ -10,6 +11,7 @@ import type {
 import type { Exercise } from '../types/exercise';
 import {
   DEFAULT_REST_SEC,
+  describeActiveSet,
   getSupersetRuns,
   isDropSetType,
   isPrSet,
@@ -693,18 +695,14 @@ function buildRestNotificationContent(
   setId: string | null,
   fallbackExerciseName: string,
 ): { title: string; body: string } {
-  if (session != null && setId != null) {
-    for (const exercise of session.exercises) {
-      const set = exercise.sets.find((s) => String(s.id) === setId);
-      if (set != null) {
-        const name = exercise.exercise_snapshot?.name ?? fallbackExerciseName;
-        let body = `${name} · Set ${set.set_number} of ${exercise.sets.length}`;
-        if (set.reps != null) {
-          body += ` · ${set.reps} rep${set.reps === 1 ? '' : 's'} target`;
-        }
-        return { title: 'Rest complete — next set up', body };
-      }
+  const desc = describeActiveSet(session, setId);
+  if (desc != null) {
+    const name = desc.exerciseName ?? fallbackExerciseName;
+    let body = `${name} · Set ${desc.setNumber} of ${desc.setCount}`;
+    if (desc.reps != null) {
+      body += ` · ${desc.reps} rep${desc.reps === 1 ? '' : 's'} target`;
     }
+    return { title: 'Rest complete — next set up', body };
   }
   return { title: 'Rest complete', body: fallbackExerciseName };
 }
@@ -1671,6 +1669,47 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
     },
   ),
 );
+
+let restDeadlineTimerId: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Keep exactly one JS timer pointed at the current rest deadline so the
+ * resting → ready flip (notification cancel + haptic) happens in the store,
+ * independent of which screens are mounted. The callback re-checks live state:
+ * a timer that fires early (clock drift) reschedules for the remainder instead
+ * of stranding the rest in 'resting'.
+ */
+function syncRestDeadlineTimer(rest: Rest): void {
+  if (restDeadlineTimerId != null) {
+    clearTimeout(restDeadlineTimerId);
+    restDeadlineTimerId = null;
+  }
+  if (rest.state !== 'resting' || rest.endsAt == null) return;
+  restDeadlineTimerId = setTimeout(() => {
+    restDeadlineTimerId = null;
+    const current = useActiveWorkoutStore.getState().rest;
+    if (current.state !== 'resting' || current.endsAt == null) return;
+    if (Date.now() < current.endsAt) {
+      syncRestDeadlineTimer(current);
+      return;
+    }
+    useActiveWorkoutStore.getState().markRestReady();
+  }, Math.max(0, rest.endsAt - Date.now()));
+}
+
+// Every rest transition replaces the `rest` object, so a reference check is
+// enough to keep the deadline timer in sync (including persist rehydration).
+useActiveWorkoutStore.subscribe((state, prevState) => {
+  if (state.rest !== prevState.rest) syncRestDeadlineTimer(state.rest);
+});
+
+// JS timers pause while the app is backgrounded; re-sync on foreground return
+// so an expired rest flips promptly even if the queued timer lags.
+AppState.addEventListener('change', (status) => {
+  if (status === 'active') {
+    syncRestDeadlineTimer(useActiveWorkoutStore.getState().rest);
+  }
+});
 
 /**
  * Test-only helper — resets store state to initial data while preserving

@@ -22,10 +22,12 @@ import { useCSSVariable } from 'uniwind';
 
 import Icon from './Icon';
 import { TAB_BAR_HEIGHT } from './CustomTabBar';
+import { formatRestCountdown } from './ActiveWorkoutRestBar';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { flushActiveWorkoutBeforeClear } from '../hooks/useActiveWorkoutAutosave';
 import { usePreferences } from '../hooks/usePreferences';
-import { weightFromKg } from '../utils/unitConversions';
+import { useRestCountdown } from '../hooks/useRestCountdown';
+import { describeActiveSet, formatSetLoad } from '../utils/workoutSession';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import type { RootStackParamList } from '../types/navigation';
 import LiquidGlassSurface, {
@@ -154,13 +156,6 @@ const HIDDEN_ROUTES = new Set<string>([
   'ActiveWorkout',
 ]);
 
-function formatCountdown(totalSeconds: number): string {
-  const s = Math.max(0, totalSeconds);
-  const mm = Math.floor(s / 60);
-  const ss = s % 60;
-  return `${mm}:${ss.toString().padStart(2, '0')}`;
-}
-
 function computeNavInfo(state: NavigationState | undefined): {
   suppressed: boolean;
   isOnTabs: boolean;
@@ -283,12 +278,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   const sessionId = useActiveWorkoutStore(s => s.sessionId);
   const activeSession = useActiveWorkoutStore(s => s.session);
   const activeSetId = useActiveWorkoutStore(s => s.activeSetId);
-  const restState = useActiveWorkoutStore(s => s.rest.state);
-  const endsAt = useActiveWorkoutStore(s => s.rest.endsAt);
-  const pausedRemainingMs = useActiveWorkoutStore(
-    s => s.rest.pausedRemainingMs,
-  );
-  const durationSec = useActiveWorkoutStore(s => s.rest.durationSec);
+  const { state: restState, remainingMs, progress } = useRestCountdown();
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
@@ -417,52 +407,21 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       '--color-progress-track',
     ]) as [string, string, string, string];
 
-  // Tick while resting so the countdown redraws each second. We use a bare
-  // tick counter (not a cached `Date.now()`) to force re-renders — the actual
-  // "now" used in calculations is read fresh at render time below. Caching it
-  // in state would make the first render after going ready → resting show a
-  // stale value (the countdown would briefly read too high).
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (restState !== 'resting') return;
-    const id = setInterval(() => setTick(t => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [restState]);
-
-  // Transition resting → ready when the deadline passes.
-  useEffect(() => {
-    if (restState === 'resting' && endsAt != null && Date.now() >= endsAt) {
-      useActiveWorkoutStore.getState().markRestReady();
-    }
-  }, [restState, endsAt, tick]);
-
   const isWorkoutComplete = sessionId != null && activeSetId == null;
 
   // Active-set details (exercise name, set number, weight × reps) looked up
   // against the session snapshot since `steps` only holds name/restSec.
   // Split into discrete fields so the rendering can stack "status: name -
   // set N/M" on one row and the load ("135 lbs × 8") on a second row.
-  const activeSetLabel = (() => {
-    if (activeSession == null || activeSetId == null) return null;
-    for (const exercise of activeSession.exercises) {
-      const set = exercise.sets.find(st => String(st.id) === activeSetId);
-      if (!set) continue;
-      const exerciseName = exercise.exercise_snapshot?.name ?? 'Exercise';
-      const setNumber = `Set ${set.set_number}/${exercise.sets.length}`;
-      let loadText = '';
-      if (set.weight != null && set.reps != null) {
-        const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
-        loadText = `${w} ${weightUnit} × ${set.reps}`;
-      } else if (set.reps != null) {
-        loadText = `${set.reps} reps`;
-      } else if (set.weight != null) {
-        const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
-        loadText = `${w} ${weightUnit}`;
-      }
-      return { exerciseName, setNumber, loadText };
-    }
-    return null;
-  })();
+  const activeSetDescription = describeActiveSet(activeSession, activeSetId);
+  const activeSetLabel =
+    activeSetDescription == null
+      ? null
+      : {
+          exerciseName: activeSetDescription.exerciseName ?? 'Exercise',
+          setNumber: `Set ${activeSetDescription.setNumber}/${activeSetDescription.setCount}`,
+          loadText: formatSetLoad(activeSetDescription, weightUnit) ?? '',
+        };
 
   useEffect(() => {
     const targetBottomOffset = shouldSitAboveTabs
@@ -509,24 +468,6 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   if (sessionId == null) return null;
   if (navInfo.suppressed && !(usesNativeTabs && isClosingToTabs)) return null;
   if (variant === 'floating' && navInfo.isOnTabs && !usesNativeTabs) return null;
-
-  const remainingMs = (() => {
-    if (restState === 'resting' && endsAt != null) {
-      // Read `Date.now()` fresh at render time — caching it in state would
-      // briefly display a stale value on the first render after a new rest
-      // starts (the `tick` state only advances via the 1s interval).
-      // eslint-disable-next-line react-hooks/purity
-      return Math.max(0, endsAt - Date.now());
-    }
-    if (restState === 'paused' && pausedRemainingMs != null)
-      return pausedRemainingMs;
-    return 0;
-  })();
-  const displaySeconds = Math.ceil(remainingMs / 1000);
-  const progress =
-    durationSec > 0
-      ? Math.max(0, Math.min(1, remainingMs / (durationSec * 1000)))
-      : 0;
 
   const handlePausePlay = () => {
     if (restState === 'resting') {
@@ -618,7 +559,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     : (activeSetLabel?.loadText ?? '');
   // Right-aligned countdown — only rendered while a rest timer is running.
   const countdownLabel =
-    restState === 'resting' ? formatCountdown(displaySeconds) : null;
+    restState === 'resting' ? formatRestCountdown(remainingMs) : null;
 
   // Left button:
   //  - resting → Pause (pauses the rest timer)

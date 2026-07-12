@@ -6,6 +6,15 @@ import { useCSSVariable } from 'uniwind';
 import ActiveWorkoutRestBar, {
   formatRestCountdown,
 } from '../../src/components/ActiveWorkoutRestBar';
+import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
+
+jest.mock('../../src/services/nativeTabBarPreference', () => ({
+  useNativeIOSTabsActive: jest.fn(() => false),
+}));
+
+const mockUseNativeIOSTabsActive = useNativeIOSTabsActive as jest.MockedFunction<
+  typeof useNativeIOSTabsActive
+>;
 
 // Distinct values per CSS variable so paused-vs-resting color assertions mean
 // something (the global uniwind mock returns the same color for everything).
@@ -26,7 +35,7 @@ function renderBar(
 ) {
   const props = {
     remainingMs: 45_000,
-    durationSec: 90,
+    progress: 0.5,
     paused: false,
     label: 'Incline DB Press · Set 3',
     onAdjust: jest.fn(),
@@ -63,6 +72,7 @@ describe('formatRestCountdown', () => {
 
 describe('ActiveWorkoutRestBar', () => {
   beforeEach(() => {
+    mockUseNativeIOSTabsActive.mockReturnValue(false);
     (useCSSVariable as jest.Mock).mockImplementation((vars: string | string[]) =>
       Array.isArray(vars)
         ? vars.map((v) => COLORS[v] ?? '#888888')
@@ -81,17 +91,9 @@ describe('ActiveWorkoutRestBar', () => {
     expect(getByText('Target 135 lbs × 8')).toBeTruthy();
   });
 
-  it('sets the progress fill width to the remaining fraction', () => {
-    const { getByTestId } = renderBar({ remainingMs: 45_000, durationSec: 90 });
+  it('sets the progress fill width from the progress fraction', () => {
+    const { getByTestId } = renderBar({ progress: 0.5 });
     expect(fillStyle(getByTestId).width).toBe('50%');
-  });
-
-  it('clamps the progress fill between 0% and 100%', () => {
-    const over = renderBar({ remainingMs: 120_000, durationSec: 90 });
-    expect(fillStyle(over.getByTestId).width).toBe('100%');
-
-    const zeroDuration = renderBar({ remainingMs: 30_000, durationSec: 0 });
-    expect(fillStyle(zeroDuration.getByTestId).width).toBe('0%');
   });
 
   it('uses the accent color while resting', () => {
@@ -133,5 +135,27 @@ describe('ActiveWorkoutRestBar', () => {
     fireEvent.press(getByLabelText('Resume rest'));
     expect(props.onResume).toHaveBeenCalledTimes(1);
     expect(props.onPause).not.toHaveBeenCalled();
+  });
+
+  it('renders the docked chrome when Liquid Glass tabs are off', () => {
+    const { queryByTestId } = renderBar();
+    expect(queryByTestId('rest-bar-glass')).toBeNull();
+  });
+
+  it('renders the floating glass pill when Liquid Glass tabs are active', () => {
+    mockUseNativeIOSTabsActive.mockReturnValue(true);
+    const { getByTestId, getByText } = renderBar();
+    expect(getByTestId('rest-bar-glass')).toBeTruthy();
+    expect(getByText('0:45')).toBeTruthy();
+    expect(getByText('Incline DB Press · Set 3')).toBeTruthy();
+  });
+
+  it('keeps the controls wired in glass mode', () => {
+    mockUseNativeIOSTabsActive.mockReturnValue(true);
+    const { getByLabelText, props } = renderBar();
+    fireEvent.press(getByLabelText('Skip rest'));
+    fireEvent.press(getByLabelText('Shorten rest by 15 seconds'));
+    expect(props.onSkip).toHaveBeenCalledTimes(1);
+    expect(props.onAdjust).toHaveBeenCalledWith(-15);
   });
 });

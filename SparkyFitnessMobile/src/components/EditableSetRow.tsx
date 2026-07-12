@@ -7,7 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
-import { SetInputAccessoryBar, SetSwipeDeleteAction } from './SetRowChrome';
+import { SetInputAccessoryBar, SetSwipeDeleteAction, useAccessoryEpoch } from './SetRowChrome';
 import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import { parseDecimalInput } from '../utils/numericInput';
 
@@ -119,7 +119,10 @@ function EditableSetRow({
 
   const advanceLabel = activeField === 'weight' ? 'Next' : 'Next Set';
 
-  const accessoryId = `set-${setClientId}`;
+  // The epoch keeps a remounted input from reusing a prior activation's id,
+  // which iOS view recycling would treat as unchanged (see useAccessoryEpoch).
+  const accessoryEpoch = useAccessoryEpoch(isActive);
+  const accessoryId = `set-${setClientId}-${accessoryEpoch}`;
   const weightInputProps = useMemo(
     () => ({
       onFocus: handleActivateWeight,

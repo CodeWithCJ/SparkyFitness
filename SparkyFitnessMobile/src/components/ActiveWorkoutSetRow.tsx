@@ -21,6 +21,7 @@ import CompletionCheck from './CompletionCheck';
 import {
   SetInputAccessoryBar,
   SetSwipeDeleteAction,
+  useAccessoryEpoch,
   type SetAccessoryAction,
 } from './SetRowChrome';
 import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
@@ -680,9 +681,11 @@ function ActiveWorkoutSetRow({
   // shared accessory to only the first-registered input, so reps/RPE would come
   // up with a bare keyboard if all three pointed at one id. The ids derive from
   // the render key, not the set id, so they stay stable across an autosave that
-  // churns the id while the keyboard is up.
+  // churns the id while the keyboard is up — and carry a per-activation epoch
+  // so a remount never reuses a prior activation's id (see useAccessoryEpoch).
+  const accessoryEpoch = useAccessoryEpoch(isActiveEditRow);
   const isIOS = Platform.OS === 'ios';
-  const accessoryKey = renderKey ?? setId;
+  const accessoryKey = `${renderKey ?? setId}-${accessoryEpoch}`;
   const weightAccessoryId = isIOS ? `active-set-${accessoryKey}-weight` : undefined;
   const repsAccessoryId = isIOS ? `active-set-${accessoryKey}-reps` : undefined;
   const rpeAccessoryId = isIOS ? `active-set-${accessoryKey}-rpe` : undefined;
