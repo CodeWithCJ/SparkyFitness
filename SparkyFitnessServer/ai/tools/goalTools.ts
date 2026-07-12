@@ -17,7 +17,7 @@ import {
   type ManageGoalsInput,
 } from './schemas/goals.js';
 import { optionalDateSchema } from './schemas/common.js';
-import { normalizeDayKeywords } from './dates.js';
+import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
 
 const VALID_ACTIONS = ['get_goals', 'set_goals', 'list_goal_timeline'];
 
@@ -60,16 +60,38 @@ export function buildGoalTools(userId: string, tz: string) {
   return {
     sparky_manage_goals: tool({
       description: `Target management: set and view calorie, macro, water, and weight goals.
-      
+
+This tool takes a FLAT object with an "action" field. Do NOT nest fields under the action name.
+
 Actions:
-- get_goals(target_date?) — returns the goals active on a specific date
-- set_goals(start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?) — sets new goals from a start date
-- list_goal_timeline() — lists all goal changes over time`,
+- action: 'get_goals' (fields: target_date?) — returns the goals active on a specific date
+- action: 'set_goals' (fields: start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?) — sets new goals from a start date
+- action: 'list_goal_timeline' — lists all goal changes over time`,
       inputSchema: manageGoalsInput,
       execute: async (rawArgs) => {
-        const parsed = manageGoalsSchema.safeParse(
-          normalizeDayKeywords(rawArgs, tz)
+        const normalized = normalizeActionArgs(
+          rawArgs,
+          tz,
+          VALID_ACTIONS,
+          (args) => {
+            if (
+              args.calories !== undefined ||
+              args.protein !== undefined ||
+              args.carbs !== undefined ||
+              args.fat !== undefined ||
+              args.water_goal_ml !== undefined ||
+              args.weight !== undefined ||
+              args.start_date !== undefined
+            ) {
+              return 'set_goals';
+            }
+            if (args.target_date !== undefined) {
+              return 'get_goals';
+            }
+            return undefined;
+          }
         );
+        const parsed = manageGoalsSchema.safeParse(normalized);
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }

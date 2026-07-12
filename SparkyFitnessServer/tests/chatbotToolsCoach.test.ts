@@ -210,16 +210,32 @@ describe('sparky_get_health_summary', () => {
     );
   });
 
-  it('returns a validation error when start_date is missing', async () => {
+  it('defaults to today when start_date is missing', async () => {
+    vi.mocked(coachRepository.getNutritionAggregates).mockResolvedValue({
+      calories: 2000,
+      protein: 150,
+      carbs: 200,
+      fat: 70,
+    });
+    vi.mocked(coachRepository.getExerciseAggregates).mockResolvedValue({
+      workouts: 1,
+      active_calories: 300,
+      duration_minutes: 45,
+    });
+    vi.mocked(coachRepository.getLatestWeightInRange).mockResolvedValue({
+      weight: 75,
+    });
+    vi.mocked(coachRepository.getWaterIntakeTotal).mockResolvedValue({
+      water_ml: 2000,
+    });
+
     const result = await tools.sparky_get_health_summary.execute!(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {} as any,
       opts
     );
 
-    expect(result).toBe(
-      'Error [VALIDATION]: start_date: Invalid input: expected string, received undefined'
-    );
+    expect(result).toContain('Health Summary');
   });
 
   it('maps repository failures to DB_ERROR', async () => {

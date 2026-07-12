@@ -45,3 +45,45 @@ export function normalizeDayKeywords(rawArgs: unknown, tz: string): unknown {
   }
   return out;
 }
+
+/**
+ * Normalizes tool arguments by:
+ * 1. Un-nesting any arguments structured like { action_name: { arg1, arg2 } } where the action_name matches one of the validActions.
+ * 2. Inferring the action based on an optional inference function.
+ * 3. Normalizing day keywords ("today", "yesterday", etc. via normalizeDayKeywords).
+ */
+export function normalizeActionArgs(
+  rawArgs: unknown,
+  tz: string,
+  validActions: string[],
+  inferAction?: (args: Record<string, any>) => string | undefined
+): unknown {
+  if (!rawArgs || typeof rawArgs !== 'object' || Array.isArray(rawArgs)) {
+    return rawArgs;
+  }
+  const out = { ...(rawArgs as Record<string, any>) };
+
+  // 1. Un-nest actions (e.g. {"update_preferences": {"default_weight_unit": "lbs"}})
+  for (const actionKey of validActions) {
+    if (
+      out[actionKey] &&
+      typeof out[actionKey] === 'object' &&
+      !Array.isArray(out[actionKey])
+    ) {
+      out.action = actionKey;
+      Object.assign(out, out[actionKey]);
+      delete out[actionKey];
+    }
+  }
+
+  // 2. Infer action if still missing
+  if (!out.action && inferAction) {
+    const inferred = inferAction(out);
+    if (inferred) {
+      out.action = inferred;
+    }
+  }
+
+  // 3. Normalize day keywords
+  return normalizeDayKeywords(out, tz);
+}

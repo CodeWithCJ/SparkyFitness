@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { dayToUtcRange, todayInZone } from '@workspace/shared';
+import { dayToUtcRange, todayInZone, BUILT_IN_MOODS } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import measurementService from '../../services/measurementService.js';
 import preferenceService from '../../services/preferenceService.js';
@@ -7,7 +7,7 @@ import moodRepository from '../../models/moodRepository.js';
 import fastingRepository from '../../models/fastingRepository.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { normalizeDayKeywords } from './dates.js';
+import { normalizeActionArgs } from './dates.js';
 import { formatConfirmation, formatList, formatSuccess } from './formatting.js';
 import { convertWeight, convertMeasurement } from './unitConversion.js';
 import {
@@ -32,6 +32,20 @@ const VALID_ACTIONS = [
 // Optional inputs and nullable DB columns are treated alike: absent.
 function isSet<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
+}
+
+function formatMoodTags(tags?: string[] | null): string {
+  if (!tags || !tags.length) return '';
+  const formatted = tags.map((t) => {
+    const matched = BUILT_IN_MOODS.find(
+      (m) => m.name.toLowerCase() === t.toLowerCase()
+    );
+    if (matched) {
+      return `${matched.emoji} ${matched.displayName}`;
+    }
+    return t; // fallback if it is a custom tag or not found
+  });
+  return ` [${formatted.join(', ')}]`;
 }
 
 // Biometrics rows converted into the user's preferred units, oldest-first —
@@ -93,51 +107,57 @@ Actions:
 - get_biometrics_history(start_date?, end_date?) — returns weight and measurements history`,
       inputSchema: manageCheckinInput,
       execute: async (rawArgs) => {
-        const argsWithAction = { ...rawArgs };
-        if (!argsWithAction.action) {
-          if (argsWithAction.mood_value !== undefined) {
-            argsWithAction.action = 'log_mood';
-          } else if (
-            argsWithAction.sleep_score !== undefined ||
-            argsWithAction.duration_seconds !== undefined ||
-            argsWithAction.bedtime !== undefined ||
-            argsWithAction.wake_time !== undefined
-          ) {
-            argsWithAction.action = 'log_sleep';
-          } else if (
-            argsWithAction.start_time !== undefined ||
-            argsWithAction.fasting_status !== undefined
-          ) {
-            argsWithAction.action = 'log_fasting';
-          } else if (
-            argsWithAction.category_name !== undefined &&
-            argsWithAction.value !== undefined
-          ) {
-            argsWithAction.action = 'log_custom_metric';
-          } else if (
-            argsWithAction.weight !== undefined ||
-            argsWithAction.steps !== undefined ||
-            argsWithAction.height !== undefined ||
-            argsWithAction.body_fat !== undefined ||
-            argsWithAction.neck !== undefined ||
-            argsWithAction.waist !== undefined ||
-            argsWithAction.hips !== undefined
-          ) {
-            argsWithAction.action = 'log_biometrics';
-          } else if (argsWithAction.category_name !== undefined) {
-            argsWithAction.action = 'create_category';
-          } else if (argsWithAction.start_date || argsWithAction.end_date) {
-            argsWithAction.action = 'get_biometrics_history';
-          } else if (argsWithAction.entry_date) {
-            argsWithAction.action = 'list_checkin_diary';
-          } else {
-            argsWithAction.action = 'list_checkin_diary'; // fallback
+        const normalized = normalizeActionArgs(
+          rawArgs,
+          tz,
+          VALID_ACTIONS,
+          (args) => {
+            if (
+              args.mood_value !== undefined ||
+              (args.notes !== undefined && args.category_name === undefined)
+            ) {
+              return 'log_mood';
+            }
+            if (
+              args.sleep_score !== undefined ||
+              args.duration_seconds !== undefined ||
+              args.bedtime !== undefined ||
+              args.wake_time !== undefined
+            ) {
+              return 'log_sleep';
+            }
+            if (
+              args.start_time !== undefined ||
+              args.fasting_status !== undefined
+            ) {
+              return 'log_fasting';
+            }
+            if (args.category_name !== undefined && args.value !== undefined) {
+              return 'log_custom_metric';
+            }
+            if (
+              args.weight !== undefined ||
+              args.steps !== undefined ||
+              args.height !== undefined ||
+              args.body_fat !== undefined ||
+              args.neck !== undefined ||
+              args.waist !== undefined ||
+              args.hips !== undefined
+            ) {
+              return 'log_biometrics';
+            }
+            if (args.category_name !== undefined) {
+              return 'create_category';
+            }
+            if (args.start_date || args.end_date) {
+              return 'get_biometrics_history';
+            }
+            if (args.entry_date) {
+              return 'list_checkin_diary';
+            }
+            return 'list_checkin_diary'; // fallback
           }
-          log(
-            'info',
-            `[checkinTools] Inferred missing action as '${argsWithAction.action}'`
-          );
-        }
+        ) as any;
 
         // Default missing entry_date to 'today' for logging actions
         const loggingActions = [
@@ -148,15 +168,13 @@ Actions:
         ];
         if (
           !process.env.VITEST &&
-          !argsWithAction.entry_date &&
-          loggingActions.includes(argsWithAction.action)
+          !normalized.entry_date &&
+          loggingActions.includes(normalized.action)
         ) {
-          argsWithAction.entry_date = 'today';
+          normalized.entry_date = 'today';
         }
 
-        const parsed = manageCheckinSchema.safeParse(
-          normalizeDayKeywords(argsWithAction, tz)
-        );
+        const parsed = manageCheckinSchema.safeParse(normalized);
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -312,10 +330,12 @@ Actions:
                 userId,
                 args.mood_value,
                 args.notes || null,
-                args.entry_date
+                args.entry_date,
+                args.mood_tags || null
               );
+              const tagsStr = formatMoodTags(args.mood_tags);
               return formatConfirmation(
-                `Mood logged for ${args.entry_date}: ${args.mood_value}/10${args.notes ? ' — ' + args.notes : ''}.`
+                `Mood logged for ${args.entry_date}: ${args.mood_value}/10${tagsStr}${args.notes ? ' — ' + args.notes : ''}.`
               );
             }
 
@@ -523,7 +543,8 @@ Actions:
               if (moods.length > 0) {
                 text += '## Mood\n';
                 for (const m of moods) {
-                  text += `- ${m.mood_value}/10`;
+                  const tagsStr = formatMoodTags(m.mood_tags);
+                  text += `- ${m.mood_value}/10${tagsStr}`;
                   if (m.notes) text += ` — ${m.notes}`;
                   text += '\n';
                 }

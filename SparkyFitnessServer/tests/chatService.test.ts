@@ -594,7 +594,9 @@ describe('chatService', () => {
 
       expect(log).toHaveBeenCalledWith(
         'info',
-        expect.stringMatching(/Loaded 20 tools for chatbot \(profile=core/)
+        expect.stringMatching(
+          /Loaded 21\/36 active tools for chatbot \(profile=core/
+        )
       );
       // The core profile is the mitigation, so no context-window warning.
       expect(log).not.toHaveBeenCalledWith(
@@ -624,7 +626,9 @@ describe('chatService', () => {
 
       expect(log).toHaveBeenCalledWith(
         'info',
-        expect.stringMatching(/Loaded 35 tools for chatbot \(profile=full/)
+        expect.stringMatching(
+          /Loaded 36\/36 active tools for chatbot \(profile=full/
+        )
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
       expect(log).toHaveBeenCalledWith(
@@ -654,13 +658,16 @@ describe('chatService', () => {
 
       expect(log).toHaveBeenCalledWith(
         'info',
-        expect.stringMatching(/Loaded 35 tools for chatbot \(profile=full/)
+        expect.stringMatching(
+          /Loaded 36\/36 active tools for chatbot \(profile=full/
+        )
       );
     });
 
     it('never trims a non-Ollama service even with a stale core profile stored', async () => {
       // The profile gate keys on service_type, so a service that was Ollama+core
-      // and later switched to OpenAI still loads the full 35-tool surface.
+      // and later switched to OpenAI still loads the full 36-tool surface
+      // (35 domain tools + sparky_enable_tools).
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         {
           ...aiServiceSetting,
@@ -679,7 +686,9 @@ describe('chatService', () => {
 
       expect(log).toHaveBeenCalledWith(
         'info',
-        expect.stringMatching(/Loaded 35 tools for chatbot \(profile=full/)
+        expect.stringMatching(
+          /Loaded 36\/36 active tools for chatbot \(profile=full/
+        )
       );
       // The context-window warning is Ollama-only; cloud providers never see it.
       expect(log).not.toHaveBeenCalledWith(
@@ -738,6 +747,33 @@ describe('chatService', () => {
           actorUserId
         )
       ).rejects.toThrow('API key missing for selected AI service.');
+    });
+
+    // A manual in-chat category selection is a strict ceiling: only the chosen
+    // categories are sent, and the sparky_enable_tools escalation tool is NOT
+    // offered (the model is prompted to send the user to the tool selector
+    // instead — see the getSystemPrompt strict-mode test in
+    // chatServiceClassifier.test.ts). Auto-classification keeps escalation; the
+    // widening logic itself is unit-tested via buildEscalationPrepareStep.
+    it('enforces a strict tool ceiling for a manual category selection (no escalation tool)', async () => {
+      const model = scriptModel([textStep('Sure.')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'log my lunch' }],
+        'svc-1',
+        activeUserId,
+        actorUserId,
+        false,
+        ['food']
+      );
+
+      const sentTools = modelToolNames(model);
+      // Chosen category is present...
+      expect(sentTools).toContain('sparky_manage_food');
+      // ...unchosen categories are not...
+      expect(sentTools).not.toContain('sparky_manage_exercise');
+      // ...and the escalation tool is withheld in manual mode.
+      expect(sentTools).not.toContain('sparky_enable_tools');
     });
   });
 

@@ -26,7 +26,7 @@ import {
   type ManageExerciseInput,
 } from './schemas/exercise.js';
 import { optionalDateSchema } from './schemas/common.js';
-import { normalizeDayKeywords } from './dates.js';
+import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
 
 const VALID_ACTIONS = [
   'search_exercises',
@@ -362,46 +362,44 @@ Actions:
 - get_exercise_progress(exercise_id?|exercise_name?, start_date?, end_date?, limit?, offset?) — returns paginated performance history`,
       inputSchema: manageExerciseInput,
       execute: async (rawArgs) => {
-        const argsWithAction = { ...rawArgs };
-        if (!argsWithAction.action) {
-          if (argsWithAction.searchTerm) {
-            argsWithAction.action = 'search_exercises';
-          } else if (
-            argsWithAction.sets ||
-            argsWithAction.duration_minutes ||
-            argsWithAction.calories_burned
-          ) {
-            argsWithAction.action = 'log_exercise';
-          } else if (argsWithAction.preset_id || argsWithAction.preset_name) {
-            argsWithAction.action = 'log_workout_preset';
-          } else if (argsWithAction.entry_id) {
-            argsWithAction.action = 'update_exercise_entry';
-          } else if (argsWithAction.start_date || argsWithAction.end_date) {
-            argsWithAction.action = 'get_exercise_progress';
-          } else if (argsWithAction.entry_date) {
-            argsWithAction.action = 'list_exercise_diary';
-          } else {
-            argsWithAction.action = 'list_exercise_diary'; // fallback
+        const normalized = normalizeActionArgs(
+          rawArgs,
+          tz,
+          VALID_ACTIONS,
+          (args) => {
+            if (args.searchTerm) {
+              return 'search_exercises';
+            }
+            if (args.sets || args.duration_minutes || args.calories_burned) {
+              return 'log_exercise';
+            }
+            if (args.preset_id || args.preset_name) {
+              return 'log_workout_preset';
+            }
+            if (args.entry_id) {
+              return 'update_exercise_entry';
+            }
+            if (args.start_date || args.end_date) {
+              return 'get_exercise_progress';
+            }
+            if (args.entry_date) {
+              return 'list_exercise_diary';
+            }
+            return 'list_exercise_diary'; // fallback
           }
-          log(
-            'info',
-            `[exerciseTools] Inferred missing action as '${argsWithAction.action}'`
-          );
-        }
+        ) as any;
 
         // Default missing entry_date to 'today' for logging actions
         const loggingActions = ['log_exercise', 'log_workout_preset'];
         if (
           !process.env.VITEST &&
-          !argsWithAction.entry_date &&
-          loggingActions.includes(argsWithAction.action)
+          !normalized.entry_date &&
+          loggingActions.includes(normalized.action)
         ) {
-          argsWithAction.entry_date = 'today';
+          normalized.entry_date = 'today';
         }
 
-        const parsed = manageExerciseSchema.safeParse(
-          normalizeDayKeywords(argsWithAction, tz)
-        );
+        const parsed = manageExerciseSchema.safeParse(normalized);
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }

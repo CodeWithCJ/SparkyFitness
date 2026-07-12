@@ -1,5 +1,6 @@
 import { vi, describe, expect, it } from 'vitest';
-import { buildChatbotTools } from '../ai/tools/index.js';
+import { buildChatbotTools, buildChatToolSurface } from '../ai/tools/index.js';
+import { ENABLE_TOOLS_TOOL_NAME } from '../ai/tools/metaTools.js';
 
 // Loading the real foodEntryService trips on a deep '@workspace/shared'
 // subpath import; the registry surface test never executes handlers.
@@ -292,5 +293,60 @@ describe('buildChatbotTools', () => {
         type: 'ephemeral',
       });
     });
+  });
+});
+
+// buildChatToolSurface backs the chat (not MCP) path: it always composes the
+// full tool map plus the sparky_enable_tools escalation tool, and callers
+// narrow per-request via the AI SDK's activeTools instead of recomposing.
+describe('buildChatToolSurface', () => {
+  it('includes every domain tool plus sparky_enable_tools, with the escalation tool last', () => {
+    const { tools } = buildChatToolSurface('surface-user', 'UTC');
+    const names = Object.keys(tools);
+    // Composition order mirrors CATEGORY_ORDER, not alphabetical, so compare
+    // as sets; only the trailing position of the escalation tool is order-
+    // sensitive (it's what the Anthropic cache breakpoint anchors to).
+    expect(names.slice(0, -1).sort()).toEqual(EXPECTED_TOOLS);
+    expect(names[names.length - 1]).toBe(ENABLE_TOOLS_TOOL_NAME);
+  });
+
+  it('marks only sparky_enable_tools as the Anthropic cache breakpoint', () => {
+    const { tools } = buildChatToolSurface('surface-user', 'UTC');
+    const names = Object.keys(tools);
+    expect(
+      tools[ENABLE_TOOLS_TOOL_NAME].providerOptions?.anthropic?.cacheControl
+    ).toEqual({ type: 'ephemeral' });
+    for (const name of names.slice(0, -1)) {
+      expect(
+        tools[name].providerOptions?.anthropic?.cacheControl,
+        `${name} should not carry a cache breakpoint`
+      ).toBeUndefined();
+    }
+  });
+
+  it('applies chat provider tuning (strict disabled) to every tool including the escalation tool', () => {
+    const { tools } = buildChatToolSurface('surface-user', 'UTC');
+    for (const [name, t] of Object.entries(tools)) {
+      expect(t.strict, `${name} strict`).toBe(false);
+    }
+  });
+
+  it('indexes every composed tool name under exactly one category', () => {
+    const { toolNamesByCategory } = buildChatToolSurface('surface-user', 'UTC');
+    const indexed = Object.values(toolNamesByCategory).flat();
+    // Every domain tool (i.e. every tool except the escalation tool) is
+    // indexed exactly once.
+    expect(indexed.sort()).toEqual(EXPECTED_TOOLS.slice().sort());
+    expect(new Set(indexed).size).toBe(indexed.length);
+  });
+
+  it('memoizes per user/tz and returns a fresh surface for a different key', () => {
+    const first = buildChatToolSurface('memo-surface', 'UTC');
+    const second = buildChatToolSurface('memo-surface', 'UTC');
+    expect(second).toBe(first);
+    expect(buildChatToolSurface('other-surface', 'UTC')).not.toBe(first);
+    expect(buildChatToolSurface('memo-surface', 'America/New_York')).not.toBe(
+      first
+    );
   });
 });

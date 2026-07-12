@@ -49,10 +49,11 @@ const lookupFoodNutritionSchema = z
   })
   .strict();
 
-// food_name/unit/entry_date are optional so a model holding a food_id from a
-// lookup can log with just (food_id, quantity, meal_type): the handler
-// resolves the unit from the food's default variant and defaults the date to
-// today. Requiring all three tripped small local models into dead ends.
+// food_name/unit/quantity/entry_date are optional so a model holding a food_id
+// from a lookup can log with just (food_id, meal_type): the handler resolves
+// the unit from the food's default variant, defaults quantity to 1, and
+// defaults the date to today. Requiring all four tripped small local models
+// into dead ends.
 const logFoodSchema = z
   .object({
     action: z.literal('log_food'),
@@ -66,7 +67,12 @@ const logFoodSchema = z
     variant_id: uuidSchema
       .optional()
       .describe('UUID of the food variant (if known)'),
-    quantity: z.coerce.number().min(0).describe('Amount consumed'),
+    quantity: z.coerce
+      .number()
+      .min(0)
+      .optional()
+      .default(1)
+      .describe('Amount consumed (defaults to 1 serving when omitted)'),
     unit: z
       .string()
       .min(1)

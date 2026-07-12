@@ -114,6 +114,7 @@ export type ManageGoalsInput = z.infer<typeof manageGoalsSchema>;
 export const manageGoalsInput = z.object({
   action: z
     .enum(['get_goals', 'set_goals', 'list_goal_timeline'])
+    .optional()
     .describe(
       'Action to perform; see the tool description for the fields each action needs.'
     ),

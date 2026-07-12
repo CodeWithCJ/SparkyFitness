@@ -36,7 +36,7 @@ import {
   type ManageFoodInput,
 } from './schemas/food.js';
 import { optionalDateSchema, uuidSchema } from './schemas/common.js';
-import { normalizeDayKeywords } from './dates.js';
+import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
 
 const VALID_ACTIONS = [
   'search_food',
@@ -635,62 +635,66 @@ Actions:
 - get_water_history(start_date?, end_date?)`,
       inputSchema: manageFoodInput,
       execute: async (rawArgs) => {
-        const argsWithAction = { ...rawArgs };
-        if (!argsWithAction.action) {
-          if (argsWithAction.amount_ml) {
-            argsWithAction.action = 'log_water';
-          } else if (argsWithAction.external_id) {
-            // external_id only belongs to log_external_food.
-            argsWithAction.action = 'log_external_food';
-          } else if (
-            (argsWithAction.food_name || argsWithAction.food_id) &&
-            argsWithAction.quantity &&
-            argsWithAction.meal_type
-          ) {
-            // unit is optional for log_food (defaults to the food's serving
-            // unit); requiring it here used to drop id-based log calls
-            // through to the food_id branch below — inferring delete_food.
-            if (
-              argsWithAction.food_name?.toLowerCase() === 'water' ||
-              argsWithAction.unit === 'ml'
-            ) {
-              argsWithAction.action = 'log_water';
-              argsWithAction.amount_ml = argsWithAction.quantity;
-            } else {
-              argsWithAction.action = 'log_food';
+        const normalized = normalizeActionArgs(
+          rawArgs,
+          tz,
+          VALID_ACTIONS,
+          (args) => {
+            if (args.amount_ml) {
+              return 'log_water';
             }
-          } else if (
-            argsWithAction.food_name &&
-            (argsWithAction.calories !== undefined ||
-              argsWithAction.protein !== undefined)
-          ) {
-            argsWithAction.action = 'create_food';
-          } else if (argsWithAction.food_name) {
-            argsWithAction.action = 'lookup_food_nutrition';
-          } else if (argsWithAction.meal_name) {
-            argsWithAction.action = 'search_meal';
-          } else if (argsWithAction.meal_id || argsWithAction.meal_type) {
-            argsWithAction.action = 'log_meal';
-          } else if (argsWithAction.entry_id && argsWithAction.quantity) {
-            argsWithAction.action = 'update_entry';
-          } else if (argsWithAction.entry_id && argsWithAction.entry_type) {
-            argsWithAction.action = 'delete_entry';
-          } else if (argsWithAction.food_id) {
-            argsWithAction.action = 'delete_food';
-          } else if (argsWithAction.target_date || argsWithAction.source_date) {
-            argsWithAction.action = 'copy_from_yesterday';
-          } else if (argsWithAction.start_date || argsWithAction.end_date) {
-            argsWithAction.action = 'get_nutritional_summary';
-          } else if (argsWithAction.entry_date) {
-            argsWithAction.action = 'list_diary';
-          } else {
-            argsWithAction.action = 'list_diary'; // fallback
+            if (args.external_id) {
+              return 'log_external_food';
+            }
+            if (
+              (args.food_name || args.food_id) &&
+              args.quantity &&
+              args.meal_type
+            ) {
+              if (
+                args.food_name?.toLowerCase() === 'water' ||
+                args.unit === 'ml'
+              ) {
+                return 'log_water';
+              }
+              return 'log_food';
+            }
+            if (
+              args.food_name &&
+              (args.calories !== undefined || args.protein !== undefined)
+            ) {
+              return 'create_food';
+            }
+            if (args.food_name) {
+              return 'lookup_food_nutrition';
+            }
+            if (args.meal_name) {
+              return 'search_meal';
+            }
+            if (args.meal_id || args.meal_type) {
+              return 'log_meal';
+            }
+            if (args.entry_id && args.quantity) {
+              return 'update_entry';
+            }
+            if (args.entry_id && args.entry_type) {
+              return 'delete_entry';
+            }
+            if (args.food_id) {
+              return 'delete_food';
+            }
+            if (args.target_date || args.source_date) {
+              return 'copy_from_yesterday';
+            }
+            if (args.start_date || args.end_date) {
+              return 'get_nutritional_summary';
+            }
+            if (args.entry_date) {
+              return 'list_diary';
+            }
+            return 'list_diary'; // fallback
           }
-          log(
-            'info',
-            `[foodTools] Inferred missing action as '${argsWithAction.action}'`
-          );
-        }
+        ) as Record<string, any>;
 
         // Models routinely paste a lookup result's provider "External ID"
         // into food_id, which must be an internal UUID. When the food_name is
@@ -698,18 +702,18 @@ Actions:
         // normal path); otherwise return a chat-visible correction instead of
         // letting the strict union emit a bare "Must be a valid UUID".
         if (
-          typeof argsWithAction.food_id === 'string' &&
-          !uuidSchema.safeParse(argsWithAction.food_id).success
+          typeof normalized.food_id === 'string' &&
+          !uuidSchema.safeParse(normalized.food_id).success
         ) {
-          if (argsWithAction.food_name) {
+          if (normalized.food_name) {
             log(
               'info',
-              `[foodTools] Ignoring non-UUID food_id '${argsWithAction.food_id}' (likely a provider External ID); resolving by food_name`
+              `[foodTools] Ignoring non-UUID food_id '${normalized.food_id}' (likely a provider External ID); resolving by food_name`
             );
-            delete argsWithAction.food_id;
+            delete normalized.food_id;
           } else {
             return ERRORS.VALIDATION(
-              `food_id '${argsWithAction.food_id}' is not an internal food UUID — External IDs from lookup_food_nutrition results cannot be logged directly. Retry with log_external_food, passing the food_name (and optionally external_id '${argsWithAction.food_id}') plus quantity and meal_type.`
+              `food_id '${normalized.food_id}' is not an internal food UUID — External IDs from lookup_food_nutrition results cannot be logged directly. Retry with log_external_food, passing the food_name (and optionally external_id '${normalized.food_id}') plus quantity and meal_type.`
             );
           }
         }
@@ -717,14 +721,14 @@ Actions:
         // Same trap for variant_id; dropping it falls back to the default
         // variant, which is what the model wanted anyway.
         if (
-          typeof argsWithAction.variant_id === 'string' &&
-          !uuidSchema.safeParse(argsWithAction.variant_id).success
+          typeof normalized.variant_id === 'string' &&
+          !uuidSchema.safeParse(normalized.variant_id).success
         ) {
           log(
             'info',
-            `[foodTools] Ignoring non-UUID variant_id '${argsWithAction.variant_id}'; using the default variant`
+            `[foodTools] Ignoring non-UUID variant_id '${normalized.variant_id}'; using the default variant`
           );
-          delete argsWithAction.variant_id;
+          delete normalized.variant_id;
         }
         const loggingActions = [
           'log_food',
@@ -738,32 +742,27 @@ Actions:
         // logging action (source_date/target_date belong to
         // copy_from_yesterday) becomes entry_date instead of an
         // unrecognized-key failure.
-        if (loggingActions.includes(argsWithAction.action)) {
-          const misfiled =
-            argsWithAction.source_date || argsWithAction.target_date;
-          if (misfiled && !argsWithAction.entry_date) {
-            argsWithAction.entry_date = misfiled;
+        if (loggingActions.includes(normalized.action)) {
+          const misfiled = normalized.source_date || normalized.target_date;
+          if (misfiled && !normalized.entry_date) {
+            normalized.entry_date = misfiled;
             log(
               'info',
-              `[foodTools] Remapped misfiled date '${misfiled}' to entry_date for ${argsWithAction.action}`
+              `[foodTools] Remapped misfiled date '${misfiled}' to entry_date for ${normalized.action}`
             );
           }
-          delete argsWithAction.source_date;
-          delete argsWithAction.target_date;
+          delete normalized.source_date;
+          delete normalized.target_date;
         }
         // Default missing entry_date to 'today' for logging actions
         if (
           !process.env.VITEST &&
-          !argsWithAction.entry_date &&
-          loggingActions.includes(argsWithAction.action)
+          !normalized.entry_date &&
+          loggingActions.includes(normalized.action)
         ) {
-          argsWithAction.entry_date = 'today';
+          normalized.entry_date = 'today';
         }
 
-        const normalized = normalizeDayKeywords(argsWithAction, tz) as Record<
-          string,
-          unknown
-        >;
         let parsed = manageFoodSchema.safeParse(normalized);
         if (!parsed.success) {
           // Small-model salvage: drop keys the action doesn't accept (models
@@ -775,14 +774,14 @@ Actions:
             for (const key of badKeys) delete normalized[key];
             log(
               'info',
-              `[foodTools] Dropped unrecognized keys for ${argsWithAction.action}: ${badKeys.join(', ')}`
+              `[foodTools] Dropped unrecognized keys for ${normalized.action}: ${badKeys.join(', ')}`
             );
             parsed = manageFoodSchema.safeParse(normalized);
           }
         }
         if (!parsed.success) {
           return formatActionParseError(
-            String(argsWithAction.action),
+            String(normalized.action),
             parsed.error,
             normalized,
             tz

@@ -13,6 +13,7 @@ import { buildExerciseTools } from './exerciseTools.js';
 import { buildFoodTools } from './foodTools.js';
 import { buildGoalTools } from './goalTools.js';
 import { buildHabitTools } from './habitTools.js';
+import { ENABLE_TOOLS_TOOL_NAME, buildMetaTools } from './metaTools.js';
 import { buildProfileTools } from './profileTools.js';
 import { buildReportTools } from './reportTools.js';
 import { buildVisionTools } from './visionTools.js';
@@ -70,8 +71,10 @@ const CATEGORY_ORDER: ChatToolCategorySlug[] = [
 
 // Resolves the category set to compose: an explicit (already-validated,
 // non-empty) selection wins; otherwise the profile's default set ('core' ->
-// the shared core slugs, 'full' -> every category).
-function resolveCategories(
+// the shared core slugs, 'full' -> every category). Exported so chatService
+// can derive the same activeTools set from buildChatToolSurface's full map
+// without duplicating the resolution rule.
+export function resolveCategories(
   profile: ChatToolProfile,
   categories?: readonly string[]
 ): Set<ChatToolCategorySlug> {
@@ -103,6 +106,30 @@ function composeTools(
     }
   }
   return tools;
+}
+
+// Composes every category's tools plus a per-category name index, used by
+// buildChatToolSurface to build the always-full chat map and let the caller
+// derive activeTools per request without recomposing anything.
+function composeAllToolsWithIndex(
+  userId: string,
+  tz: string
+): {
+  tools: ToolMap;
+  toolNamesByCategory: Record<ChatToolCategorySlug, string[]>;
+} {
+  const tools: ToolMap = {};
+  const toolNamesByCategory = {} as Record<ChatToolCategorySlug, string[]>;
+  for (const slug of CATEGORY_ORDER) {
+    const names: string[] = [];
+    for (const build of CATEGORY_BUILDERS[slug]) {
+      const built = build(userId, tz);
+      Object.assign(tools, built);
+      names.push(...Object.keys(built));
+    }
+    toolNamesByCategory[slug] = names;
+  }
+  return { tools, toolNamesByCategory };
 }
 
 // Recursively drops null-valued keys so a model that emits an optional field
@@ -234,3 +261,52 @@ export function buildChatbotTools(
   toolCache.set(key, { tools, expiresAt: now + TOOL_CACHE_TTL_MS });
   return tools;
 }
+
+interface ChatToolSurface {
+  tools: ToolMap;
+  toolNamesByCategory: Record<ChatToolCategorySlug, string[]>;
+}
+
+// Memoized per (userId, tz): same TTL/eviction policy as buildChatbotTools.
+const surfaceCache = new Map<
+  string,
+  { surface: ChatToolSurface; expiresAt: number }
+>();
+
+/**
+ * Composes the full chat tool surface — every domain's tools plus the
+ * sparky_enable_tools escalation tool — for use with the AI SDK's
+ * `activeTools`/`prepareStep`. Unlike buildChatbotTools, the returned map is
+ * always the complete set; per-request narrowing happens via `activeTools`
+ * in chatService.ts so a model can still call sparky_enable_tools mid-request
+ * to escalate into tools that weren't initially active. Chat-only: the MCP
+ * adapter keeps using buildChatbotTools directly (no escalation tool there).
+ */
+export function buildChatToolSurface(
+  userId: string,
+  tz: string
+): ChatToolSurface {
+  const key = `${tz}|${userId}`;
+  const now = Date.now();
+  const cached = surfaceCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.surface;
+  }
+
+  const { tools, toolNamesByCategory } = composeAllToolsWithIndex(userId, tz);
+  // The escalation tool must be composed last so applyChatProviderTuning's
+  // Anthropic cache breakpoint lands on it — it is always present and always
+  // active, so the marker is always sent regardless of per-request narrowing.
+  Object.assign(tools, buildMetaTools());
+  applyChatProviderTuning(tools);
+
+  if (surfaceCache.size >= TOOL_CACHE_MAX_ENTRIES) {
+    const firstKey = surfaceCache.keys().next().value;
+    if (firstKey !== undefined) surfaceCache.delete(firstKey);
+  }
+  const surface: ChatToolSurface = { tools, toolNamesByCategory };
+  surfaceCache.set(key, { surface, expiresAt: now + TOOL_CACHE_TTL_MS });
+  return surface;
+}
+
+export { ENABLE_TOOLS_TOOL_NAME };

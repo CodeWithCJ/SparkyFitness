@@ -19,7 +19,10 @@ export type ManageReportInput = z.infer<typeof manageReportSchema>;
 // Flat shape published to the LLM as `inputSchema`. Strict validation still
 // runs in the handler via `manageReportSchema.safeParse`.
 export const manageReportInput = z.object({
-  action: z.enum(['get_weekly_report']).describe('Action to perform.'),
+  action: z
+    .enum(['get_weekly_report'])
+    .optional()
+    .describe('Action to perform.'),
   end_date: optionalDateSchema.describe(
     'get_weekly_report: end date for the weekly report (YYYY-MM-DD)'
   ),

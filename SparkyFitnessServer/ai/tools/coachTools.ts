@@ -353,8 +353,12 @@ export function buildCoachTools(userId: string, tz: string) {
         "Get a summary of the user's health status (Nutrition, Fitness, Vitals, Hydration) for a specific date range.",
       inputSchema: GetHealthSummarySchema,
       execute: async (rawArgs) => {
+        const rawArgsWithDefaults = {
+          start_date: rawArgs.start_date || 'today',
+          end_date: rawArgs.end_date,
+        };
         const parsed = GetHealthSummarySchema.safeParse(
-          normalizeDayKeywords(rawArgs, tz)
+          normalizeDayKeywords(rawArgsWithDefaults, tz)
         );
         if (!parsed.success) {
           return formatZodError(parsed.error);
@@ -362,7 +366,7 @@ export function buildCoachTools(userId: string, tz: string) {
         try {
           const result = await getHealthSummary(
             userId,
-            parsed.data.start_date,
+            parsed.data.start_date!,
             parsed.data.end_date
           );
           return formatSuccess(result, 'Health Summary');

@@ -731,6 +731,39 @@ describe('log_food', () => {
     );
   });
 
+  it('logs with only food_id/meal_type, defaulting quantity, unit, and date', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue(eggsRow);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Eggs',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_id: FOOD_ID,
+        meal_type: 'breakfast',
+      },
+      opts
+    );
+
+    const today = todayInZone('UTC');
+    expect(result).toBe(
+      `✅ Logged "Eggs" (1 ${eggsRow.default_variant.serving_unit}) for breakfast on ${today}.`
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        food_id: FOOD_ID,
+        variant_id: VARIANT_ID,
+        quantity: 1,
+        unit: eggsRow.default_variant.serving_unit,
+        entry_date: today,
+      })
+    );
+  });
+
   // A no-action call shaped like a log (food_id + quantity + meal_type) must
   // infer log_food — it used to fall through to the bare-food_id branch and
   // infer delete_food.

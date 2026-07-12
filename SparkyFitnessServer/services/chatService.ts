@@ -26,6 +26,8 @@ import {
   SparkyChatHistoryMutator,
   TestAiServiceConnectionRequest,
   ChatToolCategorySlug,
+  CHAT_TOOL_CATEGORY_SLUGS,
+  isChatToolCategorySlug,
 } from '@workspace/shared';
 
 interface ChatMessagePart {
@@ -56,7 +58,14 @@ import type { JSONValue, LanguageModelUsage, UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { buildChatbotTools, type ChatToolProfile } from '../ai/tools/index.js';
+import {
+  buildChatbotTools,
+  buildChatToolSurface,
+  resolveCategories,
+  ENABLE_TOOLS_TOOL_NAME,
+  type ChatToolProfile,
+} from '../ai/tools/index.js';
+import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -413,11 +422,53 @@ const chatContextInputsCache = new TtlCache<{
   customCategoriesList: string;
 }>(60_000);
 
+// Builds the prepareStep callback that implements the sparky_enable_tools
+// escalation: if a prior step in this request called it with category slugs,
+// widen activeTools for the next step to include those categories' tools (on
+// top of the turn's base selection). Returning {} when nothing was requested
+// lets the outer generateText/streamText-level activeTools apply unchanged.
+// Exported for unit testing; only wired into the auto-classification path
+// (manual category selections are a strict ceiling — see prepareChatContext).
+export function buildEscalationPrepareStep(
+  toolNamesByCategory: Record<ChatToolCategorySlug, string[]>,
+  baseActiveTools: string[]
+) {
+  return ({
+    steps,
+  }: {
+    steps: Array<{
+      toolCalls?: Array<{ toolName: string; input?: unknown }>;
+    }>;
+  }) => {
+    const requested = new Set<ChatToolCategorySlug>();
+    for (const step of steps) {
+      for (const call of step.toolCalls ?? []) {
+        if (call.toolName !== ENABLE_TOOLS_TOOL_NAME) continue;
+        const categories = (call.input as { categories?: unknown })?.categories;
+        if (!Array.isArray(categories)) continue;
+        for (const c of categories) {
+          if (isChatToolCategorySlug(c)) requested.add(c);
+        }
+      }
+    }
+    if (requested.size === 0) return {};
+    const extra = [...requested].flatMap((slug) => toolNamesByCategory[slug]);
+    return { activeTools: [...new Set([...baseActiveTools, ...extra])] };
+  };
+}
+
 async function prepareChatContext(
   authenticatedUserId: string,
   serviceType: string,
   chatToolProfile?: string | null,
-  toolCategories?: readonly string[]
+  toolCategories?: readonly string[],
+  // True when toolCategories came from the user's explicit in-chat selector
+  // (not from auto-classification). A manual selection is a strict ceiling:
+  // no escalation tool, and the prompt tells the model to send the user to
+  // the selector rather than attempt or fake a dormant capability. An
+  // auto-classified selection stays self-healing (escalation tool + widening
+  // prepareStep) since there's no human-set limit to respect.
+  categoriesAreManual = false
 ) {
   const { chatTz, customCategoriesList } =
     await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
@@ -451,23 +502,63 @@ async function prepareChatContext(
     requiresUserSuppliedAiUrl(serviceType) && chatToolProfile === 'core'
       ? 'core'
       : 'full';
-  // A validated runtime category selection (from the client selector) defines
-  // the tool set when present; otherwise buildChatbotTools falls back to the
-  // profile's default set. toolProfile still drives tuning below regardless.
-  const tools = buildChatbotTools(
-    authenticatedUserId,
-    chatTz,
-    toolProfile,
-    true,
-    toolCategories
-  );
+
+  const selectedCategories = resolveCategories(toolProfile, toolCategories);
+
+  // Two tool-loading modes:
+  //
+  // - Manual selection (categoriesAreManual): a strict ceiling. Compose the
+  //   exact narrow set with buildChatbotTools — its own last tool carries the
+  //   Anthropic cache breakpoint — and expose no escalation tool. The prompt
+  //   tells the model to point the user at the tool selector for anything
+  //   outside the chosen categories instead of attempting or faking it.
+  //
+  // - Auto-classification: self-healing. Compose the full surface once and
+  //   narrow what's *sent* per turn via activeTools; the always-present
+  //   sparky_enable_tools (+ widening prepareStep) lets a capable model pull
+  //   in a category the classifier missed. The breakpoint sits on the
+  //   escalation tool, which is always in activeTools, so caching stays stable.
+  let tools: ReturnType<typeof buildChatbotTools>;
+  let activeToolNames: string[] | undefined;
+  let prepareStep: ReturnType<typeof buildEscalationPrepareStep> | undefined;
+
+  if (categoriesAreManual) {
+    tools = buildChatbotTools(
+      authenticatedUserId,
+      chatTz,
+      toolProfile,
+      true,
+      toolCategories
+    );
+    activeToolNames = undefined; // every composed tool is sent
+    prepareStep = undefined; // no mid-request widening
+  } else {
+    const surface = buildChatToolSurface(authenticatedUserId, chatTz);
+    tools = surface.tools;
+    activeToolNames = [
+      ...new Set(
+        [...selectedCategories].flatMap(
+          (slug: ChatToolCategorySlug) => surface.toolNamesByCategory[slug]
+        )
+      ),
+      ENABLE_TOOLS_TOOL_NAME,
+    ];
+    prepareStep = buildEscalationPrepareStep(
+      surface.toolNamesByCategory,
+      activeToolNames
+    );
+  }
+
+  const sentToolCount = activeToolNames?.length ?? Object.keys(tools).length;
   log(
     'info',
-    `Loaded ${Object.keys(tools).length} tools for chatbot (profile=${toolProfile}${
+    `Loaded ${sentToolCount}/${Object.keys(tools).length} active tools for chatbot (profile=${toolProfile}, mode=${
+      categoriesAreManual ? 'manual' : 'auto'
+    }${
       toolCategories && toolCategories.length > 0
         ? `, categories=${toolCategories.join(',')}`
         : ''
-    }): ${Object.keys(tools).join(', ')}`
+    }): ${(activeToolNames ?? Object.keys(tools)).join(', ')}`
   );
 
   // Ollama's default server-side context window is 4096 tokens and overflow is
@@ -478,7 +569,7 @@ async function prepareChatContext(
   if (serviceType === 'ollama' && toolProfile === 'full') {
     log(
       'warn',
-      `Ollama chat is using the 'full' tool profile (${Object.keys(tools).length} tools), which plus the system prompt and history usually exceeds Ollama's default 4096-token context and gets truncated silently. Raise it (OLLAMA_CONTEXT_LENGTH=16384 or num_ctx in the Modelfile) and/or switch this service to the 'core' tool profile.`
+      `Ollama chat is using the 'full' tool profile (${sentToolCount} active tools), which plus the system prompt and history usually exceeds Ollama's default 4096-token context and gets truncated silently. Raise it (OLLAMA_CONTEXT_LENGTH=16384 or num_ctx in the Modelfile) and/or switch this service to the 'core' tool profile.`
     );
   }
 
@@ -487,9 +578,14 @@ async function prepareChatContext(
       chatTz,
       customCategoriesList,
       toolProfile,
-      toolCategories
+      [...selectedCategories],
+      // Auto mode advertises the escalation tool; manual mode advertises the
+      // tool selector as the way to widen.
+      !categoriesAreManual
     ),
     tools,
+    activeToolNames,
+    prepareStep,
     toolProfile,
   };
 }
@@ -507,7 +603,12 @@ export function getSystemPrompt(
   chatTz: string,
   customCategoriesList: string,
   profile: ChatToolProfile = 'full',
-  activeCategories?: readonly string[]
+  activeCategories?: readonly string[],
+  // When true (auto-classification), dormant domains are reachable via the
+  // sparky_enable_tools escalation tool. When false (a manual selection), the
+  // dormant domains are a hard limit and the model is told to send the user to
+  // the tool selector instead of attempting or claiming a dormant capability.
+  allowEscalation = true
 ): string {
   const suffix = profile === 'core' ? 'core' : 'full';
   const filePath = path.join(__dirname, '../prompts', `chatbot-${suffix}.md`);
@@ -560,6 +661,28 @@ export function getSystemPrompt(
     if (existsSync(visionPath)) {
       content += '\n\n' + readFileSync(visionPath, 'utf-8').trim();
     }
+  }
+
+  // List any domains this turn's tool selection left dormant. In auto mode the
+  // model can pull them in itself via sparky_enable_tools; in manual mode they
+  // are a hard limit set by the user, so the model must instead point the user
+  // at the tool selector and never attempt or fake the capability. Omitted
+  // entirely when nothing is dormant (the common case: full set active).
+  const dormant = CHAT_TOOL_CATEGORY_SLUGS.filter(
+    (slug) => !categories.has(slug)
+  );
+  if (dormant.length > 0) {
+    const dormantList = dormant
+      .map((slug) => `- ${slug}: ${CATEGORY_SUMMARIES[slug]}`)
+      .join('\n');
+    content += allowEscalation
+      ? '\n\n## Additional capabilities available on request\n' +
+        "The following tool categories are not currently loaded, but you can enable them mid-conversation by calling sparky_enable_tools if the user's request needs them:\n" +
+        dormantList
+      : '\n\n## Restricted tool set\n' +
+        'The user has limited you to the categories above using the in-chat tool selector. You do NOT have tools for the following, and you cannot enable them yourself:\n' +
+        dormantList +
+        '\n\nIf the user asks for something in one of these areas, do NOT attempt it and do NOT claim you did it. Tell them to enable that category using the tool selector in the chat, then retry.';
   }
 
   // Replace placeholders dynamically
@@ -862,31 +985,48 @@ function describeUserMessage(msg?: LlmMessage): {
   return { content, parts };
 }
 
-// Keyword rules for instant classification
+// Keyword rules for instant classification. Kept deliberately moderate
+// (stems and a handful of high-signal synonyms) rather than exhaustive:
+// wide-net keyword lists trade recall for false positives ("I ran out of
+// milk" would match exercise), and vocabulary is unbounded across users and
+// languages anyway. The LLM fallback (below) and the sparky_enable_tools
+// escalation tool (see ai/tools/metaTools.ts) exist specifically to catch
+// what this tier misses, so this list does not need to be — and should not
+// try to be — complete.
 const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
   {
     category: 'exercise',
     keywords:
-      /\b(run|ran|running|walk|walked|walking|jog|jogged|jogging|lift|lifted|lifting|workout|workouts|exercise|exercises|reps|sets|cardio|strength|gym|heart rate|bpm|treadmill|squats|bench press)\b/i,
+      /\b(run|ran|running|walk|walked|walking|jog|jogged|jogging|lift|lifted|lifting|workout|workouts|exercise|exercises|reps|sets|cardio|strength|gym|heart rate|bpm|treadmill|squats?|bench press|swim|swam|swimming|bike|biking|cycling|cycled|yoga|hike[ds]?|hiking|steps|push-?ups?|pull-?ups?|training|trained|worked out)\b/i,
   },
   {
     category: 'food',
     keywords:
-      /\b(eat|ate|eating|food|foods|meal|meals|water|drink|drank|drinking|ml|oz|cup|cups|breakfast|lunch|dinner|snack|snacks|calories|macro|macros|protein|carbs|fat|banana|apple|chicken)\b/i,
+      /\b(eat|ate|eating|food|foods|meal|meals|water|drink|drank|drinking|ml|oz|cup|cups|breakfast|lunch|dinner|snack|snacks|calories?|kcal|macro|macros|protein|carbs|fat|banana|apple|chicken|nutrition|nutrients?|coffee|tea|juice|smoothie|recipe)\b/i,
   },
   {
     category: 'checkin',
     keywords:
-      /\b(weight|height|waist|hips|neck|body fat|fat%|percentage|checkin|check-in|scale|weighed)\b/i,
+      /\b(weigh(?:t|ts|ed|ing|s)?|height|waist|hips|neck|body fat|fat%|percentage|checkin|check-in|scale|bmi|mood|sleep|slept|nap|fasting|fasted|measurements?|measured)\b/i,
   },
   {
     category: 'goals',
-    keywords: /\b(goal|goals|target|targets|set goal|set goals)\b/i,
+    keywords:
+      /\b(goal|goals|target|targets|set goal|set goals|objectives?|milestones?)\b/i,
   },
   {
     category: 'reports',
     keywords:
-      /\b(report|reports|summary|summaries|progress|tdee|chart|charts|analytics)\b/i,
+      /\b(report|reports|summar(?:y|ies|ize|ise|ized|ised|izing)|progress|tdee|chart|charts|analytics|recap|overview|trends?|graphs?|stats?|statistics|analy(?:ze|sis|tics)|averages?|compare|comparison|how (?:am|did|was|have) i)\b/i,
+  },
+  {
+    category: 'coaching',
+    keywords:
+      /\b(advice|advise|tips?|motivat\w*|recommend\w*|suggest\w*|coach(?:ing)?|plan)\b/i,
+  },
+  {
+    category: 'vision',
+    keywords: /\b(photo|picture|image|label|scan|barcode)\b/i,
   },
   {
     category: 'profile',
@@ -916,6 +1056,36 @@ function extractMessageText(msg: ChatMessage): string {
   return '';
 }
 
+// True when a message carries an image part. Deterministic signal (unlike
+// text keywords or the LLM fallback, an attached image is unambiguous), so
+// it's applied directly rather than routed through classification.
+function hasImageParts(msg: ChatMessage): boolean {
+  const partsSource = Array.isArray(msg.parts)
+    ? msg.parts
+    : Array.isArray(msg.content)
+      ? (msg.content as ChatMessagePart[])
+      : null;
+  return (
+    partsSource?.some((p) => p.type === 'image' || p.type === 'image_url') ??
+    false
+  );
+}
+
+// Pure keyword classification step, exported for unit testing. Intentionally
+// moderate (see KEYWORD_RULES comment): it favors precision over exhaustive
+// recall, and readily returns multiple categories for one message (e.g.
+// "summarize what I ate" -> food + reports) since an extra loaded category is
+// cheap but a missing one is fatal.
+export function classifyByKeywords(text: string): ChatToolCategorySlug[] {
+  const matched = new Set<ChatToolCategorySlug>();
+  for (const rule of KEYWORD_RULES) {
+    if (rule.keywords.test(text)) {
+      matched.add(rule.category);
+    }
+  }
+  return Array.from(matched);
+}
+
 async function classifyUserIntent(
   messages: ChatMessage[],
   modelInstance: any
@@ -927,12 +1097,15 @@ async function classifyUserIntent(
 
   const text = extractMessageText(lastUserMessage);
 
-  // 1. Run Keyword Rules (Instant, 0ms)
-  const matchedCategories = new Set<ChatToolCategorySlug>();
-  for (const rule of KEYWORD_RULES) {
-    if (rule.keywords.test(text)) {
-      matchedCategories.add(rule.category);
-    }
+  // 1. Deterministic + keyword signals (instant, 0ms). An attached image
+  // always implies vision (+ food, the dominant meal-photo case) regardless
+  // of accompanying text.
+  const matchedCategories = new Set<ChatToolCategorySlug>(
+    classifyByKeywords(text)
+  );
+  if (hasImageParts(lastUserMessage)) {
+    matchedCategories.add('vision');
+    matchedCategories.add('food');
   }
 
   // If we matched multiple clear keywords (e.g. food + exercise), return them immediately.
@@ -998,12 +1171,18 @@ Your response must contain ONLY the matched domain names as a comma-separated li
     if (categoriesList.length > 0) {
       return categoriesList;
     }
+    // LLM classified confidently as "none of the above" (general chit-chat).
+    // Load the cheap coaching surface; sparky_enable_tools rescues the model
+    // mid-turn if it turns out to need something else.
+    return ['coaching'];
   } catch (error) {
     log('error', '[chatService] Error in LLM intent classification:', error);
   }
 
-  // Fallback to standard core categories if classification failed/returned nothing
-  return ['food', 'exercise', 'checkin', 'goals'];
+  // Classification itself failed (not just "no match") — we know nothing, so
+  // defer to the profile's default set (resolveCategories in ai/tools/index.ts)
+  // rather than guessing a fixed subset. sparky_enable_tools covers any gap.
+  return [];
 }
 
 async function processChatMessage(
@@ -1049,21 +1228,29 @@ async function processChatMessage(
       networkPolicy
     );
 
+    // A non-empty toolCategories here is the user's explicit in-chat selection
+    // (a strict ceiling); an empty one falls through to auto-classification.
+    const categoriesAreManual = Boolean(
+      toolCategories && toolCategories.length > 0
+    );
     let activeCategories: readonly string[] | undefined = toolCategories;
-    if (
-      !process.env.VITEST &&
-      (!activeCategories || activeCategories.length === 0)
-    ) {
+    if (!process.env.VITEST && !categoriesAreManual) {
       activeCategories = await classifyUserIntent(messages, modelInstance);
     }
 
-    const { systemPromptContent, tools, toolProfile } =
-      await prepareChatContext(
-        authenticatedUserId,
-        aiService.service_type,
-        aiService.chat_tool_profile,
-        activeCategories
-      );
+    const {
+      systemPromptContent,
+      tools,
+      activeToolNames,
+      prepareStep,
+      toolProfile,
+    } = await prepareChatContext(
+      authenticatedUserId,
+      aiService.service_type,
+      aiService.chat_tool_profile,
+      activeCategories,
+      categoriesAreManual
+    );
 
     const chatProviderOptions = buildChatProviderOptions(
       aiService.service_type,
@@ -1089,6 +1276,11 @@ async function processChatMessage(
         Parameters<typeof generateText>[0]['messages']
       >,
       tools,
+      // Narrows the published/sent tool schemas to this turn's classified
+      // categories; sparky_enable_tools lets the model escalate mid-request
+      // via prepareStep if it turns out to need a dormant category.
+      activeTools: activeToolNames,
+      prepareStep,
       providerOptions: chatProviderOptions,
       // Low temperature only for small local models (core profile); cloud and
       // full-profile Ollama keep provider defaults.
@@ -1561,21 +1753,29 @@ async function processChatMessageStream(
       networkPolicy
     );
 
+    // A non-empty toolCategories here is the user's explicit in-chat selection
+    // (a strict ceiling); an empty one falls through to auto-classification.
+    const categoriesAreManual = Boolean(
+      toolCategories && toolCategories.length > 0
+    );
     let activeCategories: readonly string[] | undefined = toolCategories;
-    if (
-      !process.env.VITEST &&
-      (!activeCategories || activeCategories.length === 0)
-    ) {
+    if (!process.env.VITEST && !categoriesAreManual) {
       activeCategories = await classifyUserIntent(messages, modelInstance);
     }
 
-    const { systemPromptContent, tools, toolProfile } =
-      await prepareChatContext(
-        authenticatedUserId,
-        aiService.service_type,
-        aiService.chat_tool_profile,
-        activeCategories
-      );
+    const {
+      systemPromptContent,
+      tools,
+      activeToolNames,
+      prepareStep,
+      toolProfile,
+    } = await prepareChatContext(
+      authenticatedUserId,
+      aiService.service_type,
+      aiService.chat_tool_profile,
+      activeCategories,
+      categoriesAreManual
+    );
 
     const chatProviderOptions = buildChatProviderOptions(
       aiService.service_type,
@@ -1604,6 +1804,11 @@ async function processChatMessageStream(
         Parameters<typeof streamText>[0]['messages']
       >,
       tools,
+      // Narrows the published/sent tool schemas to this turn's classified
+      // categories; sparky_enable_tools lets the model escalate mid-request
+      // via prepareStep if it turns out to need a dormant category.
+      activeTools: activeToolNames,
+      prepareStep,
       providerOptions: chatProviderOptions,
       // Low temperature only for small local models (core profile); cloud and
       // full-profile Ollama keep provider defaults.
