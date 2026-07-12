@@ -1,4 +1,5 @@
 import { apiFetch, normalizeUrl } from './apiClient';
+import { AI_TIMEOUT_MS } from '../../utils/concurrency';
 import type {
   FoodPhotoEstimateErrorCode,
   FoodPhotoEstimateResponse,
@@ -626,6 +627,7 @@ export async function scanNutritionLabel(base64Image: string, mimeType: string):
     operation: 'scan nutrition label',
     method: 'POST',
     body: { image: base64Image, mime_type: mimeType },
+    timeoutMs: AI_TIMEOUT_MS,
   });
 }
 

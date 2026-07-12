@@ -36,6 +36,11 @@ import {
 import { saveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
+import {
+  CONNECTION_CHECK_TIMEOUT_MS,
+  TimeoutError,
+  fetchWithTimeout,
+} from '../utils/concurrency';
 import { markCurrentVersionSeen } from '../services/whatsNewBanner';
 import { queryClient, serverConnectionQueryKey } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -46,13 +51,13 @@ const LEARN_MORE_SECTION_MIN_HEIGHT = 208;
 
 const checkReachability = async (url: string): Promise<boolean> => {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const response = await fetch(`${normalizeUrl(url)}/api/auth/settings`, {
-      signal: controller.signal,
-      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
-    });
-    clearTimeout(timeout);
+    const response = await fetchWithTimeout(
+      `${normalizeUrl(url)}/api/auth/settings`,
+      {
+        cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
+      },
+      CONNECTION_CHECK_TIMEOUT_MS,
+    );
     return response.ok;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -160,8 +165,11 @@ export default function OnboardingScreen({ navigation }: Props) {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       addLog(`[Onboarding] Settings fetch failed for ${url}: ${message}. Trying fallback reachability...`, 'WARNING');
-      
-      const reachable = await checkReachability(url);
+
+      // A timeout means the host silently drops packets (#1767) — the
+      // fallback would probe the same host and just add 10s of spinner. Fast
+      // HTTP errors (typo'd URL) go through the fallback as before.
+      const reachable = err instanceof TimeoutError ? false : await checkReachability(url);
       if (reachable) {
         setAuthSettings({
           trusted_origin: null,
@@ -315,13 +323,13 @@ export default function OnboardingScreen({ navigation }: Props) {
     setError('');
 
     try {
-      const response = await fetch(`${url}/api/identity/user`, {
+      const response = await fetchWithTimeout(`${url}/api/identity/user`, {
         method: 'GET',
         cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
         headers: {
           Authorization: `Bearer ${apiKey.trim()}`,
         },
-      });
+      }, CONNECTION_CHECK_TIMEOUT_MS);
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');

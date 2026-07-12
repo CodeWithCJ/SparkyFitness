@@ -2,6 +2,7 @@ import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { addLog } from '../LogService';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ApiError } from './errors';
+import { DEFAULT_API_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
 
 export const normalizeUrl = (url: string): string => {
   return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -14,10 +15,19 @@ interface ApiFetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   headers?: Record<string, string>;
+  timeoutMs?: number;
 }
 
 export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
-  const { endpoint, serviceName, operation, method = 'GET', body, headers: customHeaders } = options;
+  const {
+    endpoint,
+    serviceName,
+    operation,
+    method = 'GET',
+    body,
+    headers: customHeaders,
+    timeoutMs = DEFAULT_API_TIMEOUT_MS,
+  } = options;
 
   const config = await getActiveServerConfig();
   if (!config) {
@@ -31,7 +41,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
   }
 
   try {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    const response = await fetchWithTimeout(`${baseUrl}${endpoint}`, {
       method,
       // Defeat the native HTTP cache (iOS NSURLCache/CFNetwork, Android OkHttp).
       // Left cacheable, it stores GET responses and silently replays
@@ -57,7 +67,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
         ...customHeaders,
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    }, timeoutMs);
 
     if (!response.ok) {
       if (response.status === 401 && config.authType === 'session') {

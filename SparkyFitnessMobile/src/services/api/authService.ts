@@ -7,6 +7,11 @@ import * as WebBrowser from 'expo-web-browser';
 import { clearSessionToken, ServerConfig } from '../storage';
 import { addLog } from '../LogService';
 import { LoginError } from './authErrors';
+import {
+  CONNECTION_CHECK_TIMEOUT_MS,
+  DEFAULT_API_TIMEOUT_MS,
+  fetchWithTimeout,
+} from '../../utils/concurrency';
 
 // Re-exported so existing `import { LoginError } from '.../authService'` call
 // sites keep working; the class itself lives in the dependency-light authErrors
@@ -150,12 +155,12 @@ const getTrustedAuthOrigin = async (serverUrl: string): Promise<string | undefin
   let trustedOrigin: string | undefined;
 
   try {
-    const response = await fetch(`${baseUrl}/api/auth/settings`, {
+    const response = await fetchWithTimeout(`${baseUrl}/api/auth/settings`, {
       method: 'GET',
       credentials: 'omit',
       cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
       headers: { ...pendingProxyHeaders },
-    });
+    }, CONNECTION_CHECK_TIMEOUT_MS);
 
     if (response.ok) {
       const body = (await response.json()) as AuthSettingsResponse;
@@ -247,12 +252,12 @@ export const login = async (
   // Native fetch persists cookies, so start a fresh sign-in without stale Better Auth cookies.
   await clearAuthCookies();
 
-  const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+  const response = await fetchWithTimeout(`${baseUrl}/api/auth/sign-in/email`, {
     method: 'POST',
     credentials: 'include',
     headers: await getBetterAuthHeaders(baseUrl),
     body: JSON.stringify({ email, password }),
-  });
+  }, DEFAULT_API_TIMEOUT_MS);
 
   if (!response.ok) {
     const errorText = parseAuthErrorText(await response.text());
@@ -290,13 +295,14 @@ export const fetchMfaFactors = async (
   email: string,
 ): Promise<MfaFactors> => {
   const baseUrl = normalizeUrl(serverUrl);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${baseUrl}/api/auth/mfa-factors?email=${encodeURIComponent(email)}`,
     {
       credentials: 'omit',
       cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
       headers: { ...pendingProxyHeaders },
     },
+    DEFAULT_API_TIMEOUT_MS,
   );
 
   if (!response.ok) {
@@ -322,12 +328,12 @@ export const verifyTotp = async (
   const baseUrl = normalizeUrl(serverUrl);
   const headers = await getBetterAuthHeaders(baseUrl);
 
-  const response = await fetch(`${baseUrl}/api/auth/two-factor/verify-totp`, {
+  const response = await fetchWithTimeout(`${baseUrl}/api/auth/two-factor/verify-totp`, {
     method: 'POST',
     credentials: 'include',
     headers,
     body: JSON.stringify({ code }),
-  });
+  }, DEFAULT_API_TIMEOUT_MS);
 
   if (!response.ok) {
     throw new LoginError(parseAuthErrorText(await response.text()), response.status);
@@ -356,11 +362,11 @@ export const sendEmailOtp = async (
   const baseUrl = normalizeUrl(serverUrl);
   const headers = await getBetterAuthHeaders(baseUrl);
 
-  const response = await fetch(`${baseUrl}/api/auth/two-factor/send-otp`, {
+  const response = await fetchWithTimeout(`${baseUrl}/api/auth/two-factor/send-otp`, {
     method: 'POST',
     credentials: 'include',
     headers,
-  });
+  }, DEFAULT_API_TIMEOUT_MS);
 
   if (!response.ok) {
     throw new LoginError(parseAuthErrorText(await response.text()), response.status);
@@ -377,12 +383,12 @@ export const verifyEmailOtp = async (
   const baseUrl = normalizeUrl(serverUrl);
   const headers = await getBetterAuthHeaders(baseUrl);
 
-  const response = await fetch(`${baseUrl}/api/auth/two-factor/verify-otp`, {
+  const response = await fetchWithTimeout(`${baseUrl}/api/auth/two-factor/verify-otp`, {
     method: 'POST',
     credentials: 'include',
     headers,
     body: JSON.stringify({ code }),
-  });
+  }, DEFAULT_API_TIMEOUT_MS);
 
   if (!response.ok) {
     throw new LoginError(parseAuthErrorText(await response.text()), response.status);
@@ -439,7 +445,7 @@ export const fetchAuthSettings = async (
   customHeaders?: Record<string, string>
 ): Promise<AuthSettings> => {
   const baseUrl = normalizeUrl(serverUrl);
-  const response = await fetch(`${baseUrl}/api/auth/settings`, {
+  const response = await fetchWithTimeout(`${baseUrl}/api/auth/settings`, {
     method: 'GET',
     credentials: 'omit',
     cache: 'no-store',
@@ -447,7 +453,7 @@ export const fetchAuthSettings = async (
       ...pendingProxyHeaders,
       ...customHeaders,
     },
-  });
+  }, CONNECTION_CHECK_TIMEOUT_MS);
 
   if (!response.ok) {
     throw new LoginError('Failed to fetch authentication settings.', response.status);
@@ -480,6 +486,7 @@ const createSsoAuthClient = (baseUrl: string, authHeaders?: Record<string, strin
       }),
     ],
     fetchOptions: {
+      timeout: DEFAULT_API_TIMEOUT_MS,
       headers: {
         ...pendingProxyHeaders,
         ...authHeaders,
@@ -660,14 +667,14 @@ export const requestPasskeyRegistrationTicket = async (
   sessionToken: string
 ): Promise<string> => {
   const baseUrl = normalizeUrl(serverUrl);
-  const res = await fetch(`${baseUrl}/api/auth/web-login/register-ticket`, {
+  const res = await fetchWithTimeout(`${baseUrl}/api/auth/web-login/register-ticket`, {
     method: 'POST',
     cache: 'no-store',
     headers: {
       ...pendingProxyHeaders,
       Authorization: `Bearer ${sessionToken}`,
     },
-  });
+  }, DEFAULT_API_TIMEOUT_MS);
 
   if (res.status === 403) {
     const body = await res.json().catch(() => ({}));
@@ -740,7 +747,7 @@ export const deletePasskey = async (serverUrl: string, sessionToken: string, id:
   // is sent exactly as given — the better-fetch client dropped it when per-call
   // headers were supplied, leaving delete requests unauthenticated. The server's
   // /api/auth interceptor converts this Bearer token into the session cookie.
-  const response = await fetch(`${baseUrl}/api/auth/passkey/delete-passkey`, {
+  const response = await fetchWithTimeout(`${baseUrl}/api/auth/passkey/delete-passkey`, {
     method: 'POST',
     cache: 'no-store',
     headers: {
@@ -753,7 +760,7 @@ export const deletePasskey = async (serverUrl: string, sessionToken: string, id:
       Origin: 'sparkyfitnessmobile://',
     },
     body: JSON.stringify({ id }),
-  });
+  }, DEFAULT_API_TIMEOUT_MS);
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');

@@ -1,3 +1,5 @@
+import { TimeoutError } from '../../utils/concurrency';
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -10,6 +12,9 @@ export class ApiError extends Error {
 }
 
 export function getApiErrorMessage(error: unknown): string | null {
+  if (error instanceof TimeoutError) {
+    return 'Request timed out — check your server connection';
+  }
   if (!(error instanceof ApiError) || !error.body) return null;
   try {
     const parsed = JSON.parse(error.body);

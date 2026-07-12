@@ -5,6 +5,45 @@ export class TimeoutError extends Error {
   }
 }
 
+// Shared request-timeout policy. React Native's Android HTTP stack zeroes all
+// OkHttp timeouts and expects JS to enforce them, so a bare fetch() against an
+// unreachable host hangs for the whole OS TCP retry cycle (minutes). Every
+// network call must go through fetchWithTimeout (or pass a timeout) with one
+// of these budgets. (#1767)
+export const DEFAULT_API_TIMEOUT_MS = 30_000;
+export const CONNECTION_CHECK_TIMEOUT_MS = 10_000;
+export const UPLOAD_TIMEOUT_MS = 60_000;
+// LLM-backed endpoints: self-hosted Ollama can legitimately take this long on
+// a cold model load.
+export const AI_TIMEOUT_MS = 120_000;
+
+/**
+ * Wraps fetch with an AbortController that auto-aborts after timeoutMs.
+ * Caller-provided signals are excluded from the type because they would be
+ * clobbered by the timeout signal; if a caller ever needs cancellation, the
+ * two signals must be combined here (AbortSignal.any isn't available in RN).
+ */
+export const fetchWithTimeout = async (
+  url: string,
+  options: Omit<RequestInit, 'signal'>,
+  timeoutMs: number,
+): Promise<Response> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new TimeoutError('Request', timeoutMs);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 /**
  * Wraps a promise with a timeout. Rejects with a TimeoutError if the
  * promise doesn't settle within `ms` milliseconds.
