@@ -289,7 +289,7 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      `### Found match in **internal**:\n**Eggs** (Farm Fresh)\n  Serving Size: 100 g\n  Energy: 155 kcal\n  Macros: Protein: 13g | Carbs: 1.1g | Fat: 11g\n  Details: Fiber: 0g | Sugar: 1.1g | Sodium: 124mg | SatFat: 3.3g\n  ID: ${FOOD_ID}\n\n**Other Alternatives found:**\n- **eggs** (Other Farm) (100g: 155 kcal)`
+      `### Found match in **internal**:\n**Eggs** (Farm Fresh)\n  Serving Size: 100 g\n  Energy: 155 kcal\n  Macros: Protein: 13g | Carbs: 1.1g | Fat: 11g\n  Details: Fiber: 0g | Sugar: 1.1g | Sodium: 124mg | SatFat: 3.3g\n  Available Serving Units: 100 g\n  ID: ${FOOD_ID}\n\n**Other Alternatives found:**\n- **eggs** (Other Farm) (100g: 155 kcal)`
     );
     expect(searchProviderFoods).not.toHaveBeenCalled();
   });
@@ -378,7 +378,7 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      '### Found match in **usda**:\n**Apple**\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g\n  Details: Fiber: 2.4g | Sugar: 10g | Sodium: 1mg | SatFat: 0g\n  External ID: 171688\n\n**Other Alternatives found:**\n- **Apple juice** (240ml: 110 kcal)\n\nNote: this external result is not saved in the food database yet. To save and log it in one step, call sparky_manage_food with: {"action":"log_external_food","food_name":"Apple","external_id":"171688","quantity":1,"meal_type":"<breakfast|lunch|dinner|snacks>"} (adjust quantity and meal_type). Do NOT pass the External ID as food_id.'
+      '### Found match in **usda**:\n**Apple**\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g\n  Details: Fiber: 2.4g | Sugar: 10g | Sodium: 1mg | SatFat: 0g\n  Available Serving Units: 100 g\n  External ID: 171688\n\n**Other Alternatives found:**\n- **Apple juice** (240ml: 110 kcal)\n\nNote: this external result is not saved in the food database yet. To save and log it in one step, call sparky_manage_food with: {"action":"log_external_food","food_name":"Apple","external_id":"171688","quantity":1,"meal_type":"<breakfast|lunch|dinner|snacks>"} (adjust quantity and meal_type). Do NOT pass the External ID as food_id.'
     );
   });
 
@@ -415,7 +415,7 @@ describe('lookup_food_nutrition', () => {
     );
 
     expect(result).toBe(
-      '### Found match in **openfoodfacts**:\n**Apple**\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g\n\nNote: this external result is not saved in the food database yet. To save and log it in one step, call sparky_manage_food with: {"action":"log_external_food","food_name":"Apple","quantity":1,"meal_type":"<breakfast|lunch|dinner|snacks>"} (adjust quantity and meal_type). Do NOT pass the External ID as food_id.'
+      '### Found match in **openfoodfacts**:\n**Apple**\n  Serving Size: 100 g\n  Energy: 52 kcal\n  Macros: Protein: 0.3g | Carbs: 14g | Fat: 0.2g\n  Available Serving Units: 100 g\n\nNote: this external result is not saved in the food database yet. To save and log it in one step, call sparky_manage_food with: {"action":"log_external_food","food_name":"Apple","quantity":1,"meal_type":"<breakfast|lunch|dinner|snacks>"} (adjust quantity and meal_type). Do NOT pass the External ID as food_id.'
     );
   });
 
@@ -927,6 +927,7 @@ describe('log_external_food', () => {
       calcium: null,
       iron: null,
       glycemic_index: null,
+      source: 'usda',
     });
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
       'user-1',

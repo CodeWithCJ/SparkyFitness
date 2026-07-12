@@ -38,6 +38,7 @@ vi.mock('../models/foodRepository', () => ({
     getFoodsWithPagination: vi.fn(),
     countFoods: vi.fn(),
     getFoodById: vi.fn(),
+    getFoodVariantsByFoodId: vi.fn(),
   },
 }));
 vi.mock('../services/preferenceService', () => ({

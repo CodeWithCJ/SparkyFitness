@@ -37,6 +37,7 @@ import {
 } from './schemas/food.js';
 import { optionalDateSchema, uuidSchema } from './schemas/common.js';
 import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
+import { normalizeServingUnit } from '../../utils/foodUtils.js';
 
 const VALID_ACTIONS = [
   'search_food',
@@ -843,6 +844,16 @@ Actions:
               text += `**${f.name}**`;
               if (f.brand) text += ` (${f.brand})`;
 
+              if (result.source === 'internal') {
+                const dbVariants = await foodRepository.getFoodVariantsByFoodId(
+                  f.id,
+                  userId
+                );
+                if (Array.isArray(dbVariants)) {
+                  f.variants = dbVariants;
+                }
+              }
+
               const v =
                 result.source === 'internal'
                   ? f.default_variant || f.variants?.[0]
@@ -859,6 +870,26 @@ Actions:
                 ) {
                   text += `\n  Details: Fiber: ${v.dietary_fiber ?? 0}g | Sugar: ${v.sugars ?? 0}g | Sodium: ${v.sodium ?? 0}mg | SatFat: ${v.saturated_fat ?? 0}g`;
                 }
+
+                const plausibleVariants = (f.variants || []).filter(
+                  (vOpt: any) =>
+                    vOpt &&
+                    Number(vOpt.serving_size) > 0 &&
+                    !IMPLAUSIBLE_SERVING_UNITS.has(
+                      String(vOpt.serving_unit || '').toLowerCase()
+                    )
+                );
+                if (plausibleVariants.length > 0) {
+                  const units = plausibleVariants
+                    .map(
+                      (vOpt: any) => `${vOpt.serving_size} ${vOpt.serving_unit}`
+                    )
+                    .join(', ');
+                  text += `\n  Available Serving Units: ${units}`;
+                } else {
+                  text += `\n  Available Serving Units: ${v.serving_size} ${v.serving_unit}`;
+                }
+
                 // Internal hits carry a usable food UUID; surface it so the
                 // model can call log_food(food_id) directly.
                 if (result.source === 'internal' && f.id) {
@@ -923,15 +954,31 @@ Actions:
                 }
                 foodId = foodRow.id;
               }
-              // The food row also supplies the default variant and, when the
-              // model omits a unit, the variant's serving unit.
               const food =
                 foodRow ?? (await foodRepository.getFoodById(foodId, userId));
+              let unit =
+                args.unit || food?.default_variant?.serving_unit || 'serving';
               if (!variantId) {
                 variantId = food?.default_variant?.id;
+                if (args.unit) {
+                  const variants = await foodRepository.getFoodVariantsByFoodId(
+                    foodId,
+                    userId
+                  );
+                  if (Array.isArray(variants)) {
+                    const normalizedReqUnit = normalizeServingUnit(args.unit);
+                    const matchedVariant = variants.find(
+                      (v: any) =>
+                        normalizeServingUnit(v.serving_unit) ===
+                        normalizedReqUnit
+                    );
+                    if (matchedVariant) {
+                      variantId = matchedVariant.id;
+                      unit = matchedVariant.serving_unit;
+                    }
+                  }
+                }
               }
-              const unit =
-                args.unit || food?.default_variant?.serving_unit || 'serving';
               const entryDate = args.entry_date || todayInZone(tz);
               const entry = await foodEntryService.createFoodEntry(
                 userId,
@@ -980,15 +1027,35 @@ Actions:
 
               if (result.source === 'internal') {
                 // Already saved: log it directly against the existing food.
-                const variant = match.variants?.[0];
-                const unit = args.unit || variant?.serving_unit || 'serving';
+                const variants = await foodRepository.getFoodVariantsByFoodId(
+                  match.id,
+                  userId
+                );
+                let variantId =
+                  match.default_variant?.id || match.variants?.[0]?.id;
+                let unit =
+                  args.unit ||
+                  match.default_variant?.serving_unit ||
+                  match.variants?.[0]?.serving_unit ||
+                  'serving';
+                if (args.unit && Array.isArray(variants)) {
+                  const normalizedReqUnit = normalizeServingUnit(args.unit);
+                  const matchedVariant = variants.find(
+                    (v: any) =>
+                      normalizeServingUnit(v.serving_unit) === normalizedReqUnit
+                  );
+                  if (matchedVariant) {
+                    variantId = matchedVariant.id;
+                    unit = matchedVariant.serving_unit;
+                  }
+                }
                 const entry = await foodEntryService.createFoodEntry(
                   userId,
                   userId,
                   {
                     user_id: userId,
                     food_id: match.id,
-                    variant_id: variant?.id,
+                    variant_id: variantId,
                     entry_date: entryDate,
                     quantity,
                     unit,
@@ -1030,13 +1097,89 @@ Actions:
                 calcium: toNutrientNumber(v.calcium),
                 iron: toNutrientNumber(v.iron),
                 glycemic_index: v.glycemic_index || null,
+                source: result.source,
               });
+
+              // Create the other variants returned by the provider
+              const otherVariants = (match.variants || []).filter(
+                (varOpt: any) =>
+                  varOpt !== v &&
+                  (varOpt.serving_size !== v.serving_size ||
+                    varOpt.serving_unit !== v.serving_unit)
+              );
+              let createdVariants: any[] = [];
+              if (otherVariants.length > 0) {
+                const variantsToSave = otherVariants.map((varOpt: any) => ({
+                  food_id: food.id,
+                  serving_size: toNutrientNumber(varOpt.serving_size) ?? 100,
+                  serving_unit: varOpt.serving_unit || 'g',
+                  calories:
+                    toNutrientNumber(varOpt.calories ?? varOpt.energy) ?? 0,
+                  protein: toNutrientNumber(varOpt.protein) ?? 0,
+                  carbs: toNutrientNumber(varOpt.carbs) ?? 0,
+                  fat: toNutrientNumber(varOpt.fat) ?? 0,
+                  saturated_fat: toNutrientNumber(varOpt.saturated_fat),
+                  polyunsaturated_fat: toNutrientNumber(
+                    varOpt.polyunsaturated_fat
+                  ),
+                  monounsaturated_fat: toNutrientNumber(
+                    varOpt.monounsaturated_fat
+                  ),
+                  trans_fat: toNutrientNumber(varOpt.trans_fat),
+                  cholesterol: toNutrientNumber(varOpt.cholesterol),
+                  sodium: toNutrientNumber(varOpt.sodium),
+                  potassium: toNutrientNumber(varOpt.potassium),
+                  dietary_fiber: toNutrientNumber(varOpt.dietary_fiber),
+                  sugars: toNutrientNumber(varOpt.sugars),
+                  vitamin_a: toNutrientNumber(varOpt.vitamin_a),
+                  vitamin_c: toNutrientNumber(varOpt.vitamin_c),
+                  calcium: toNutrientNumber(varOpt.calcium),
+                  iron: toNutrientNumber(varOpt.iron),
+                  glycemic_index: varOpt.glycemic_index || null,
+                  is_default: false,
+                  source: result.source,
+                }));
+                try {
+                  createdVariants =
+                    await foodCoreService.bulkCreateFoodVariants(
+                      userId,
+                      variantsToSave
+                    );
+                } catch (err) {
+                  log(
+                    'warn',
+                    '[Food Tool] Failed to bulk save alternative variants:',
+                    err
+                  );
+                }
+              }
+
               const dv = food.default_variant;
-              const unit = args.unit || 'serving';
+              let variantId = dv?.id;
+              let unit = args.unit || 'serving';
+
+              if (args.unit) {
+                const normalizedReqUnit = normalizeServingUnit(args.unit);
+                const matchedAlt = createdVariants.find(
+                  (cv: any) =>
+                    normalizeServingUnit(cv.serving_unit) === normalizedReqUnit
+                );
+                if (matchedAlt) {
+                  variantId = matchedAlt.id;
+                  unit = matchedAlt.serving_unit;
+                } else if (
+                  dv &&
+                  normalizeServingUnit(dv.serving_unit) === normalizedReqUnit
+                ) {
+                  variantId = dv.id;
+                  unit = dv.serving_unit;
+                }
+              }
+
               await foodEntryService.createFoodEntry(userId, userId, {
                 user_id: userId,
                 food_id: food.id,
-                variant_id: dv?.id,
+                variant_id: variantId,
                 entry_date: entryDate,
                 quantity,
                 unit,
