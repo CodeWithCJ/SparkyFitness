@@ -6,6 +6,8 @@ export const mealKeys = {
   filter: (filter: MealFilter, searchTerm?: string) =>
     [...mealKeys.all, 'filter', filter, searchTerm] as const,
   impact: (mealId: string) => [...mealKeys.one(mealId), 'impact'] as const,
+  recent: (limit: number) => [...mealKeys.all, 'recent', limit] as const,
+  top: (limit: number) => [...mealKeys.all, 'top', limit] as const,
 };
 export const foodKeys = {
   all: ['foods'] as const,

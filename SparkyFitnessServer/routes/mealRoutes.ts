@@ -391,6 +391,38 @@ router.get('/recent', authenticate, async (req, res, next) => {
 });
 /**
  * @swagger
+ * /meals/top:
+ *   get:
+ *     summary: Get most frequently logged meal templates
+ *     tags: [Nutrition & Meals]
+ *     description: Retrieves the meal templates the authenticated user logs most often, ranked by usage count.
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 3
+ *           minimum: 1
+ *           maximum: 20
+ *         description: The maximum number of top meals to return.
+ *     responses:
+ *       200:
+ *         description: A list of the most frequently logged meal templates.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ */
+router.get('/top', authenticate, async (req, res, next) => {
+  try {
+    const limit = parseRecentMealsLimit(req.query.limit);
+    const meals = await mealService.getTopMeals(req.userId, limit);
+    res.status(200).json(meals);
+  } catch (error) {
+    log('error', 'Error getting top meals:', error);
+    next(error);
+  }
+});
+/**
+ * @swagger
  * /meals/search:
  *   get:
  *     summary: Search for meal templates

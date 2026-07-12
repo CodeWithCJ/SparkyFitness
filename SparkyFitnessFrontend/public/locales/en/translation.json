@@ -699,6 +699,9 @@
     "family": "Family",
     "topFoods": "Top Foods",
     "noRecentOrTopFoods": "No recent or top foods found. Start logging foods to see them here.",
+    "noRecentOrTopItems": "No recent or frequent foods or meals found. Start logging to see them here.",
+    "recent": "Recent",
+    "frequent": "Frequent",
     "noItemsFoundInDatabase": "No items found in your database for \"{{searchTerm}}\".",
     "clickSearchIconOnline": "Click the search icon to search online.",
     "noFoodsFoundOnline": "No foods found from the selected online provider.",
@@ -1635,6 +1638,8 @@
   },
   "mealManagement": {
     "failedToLoadMeals": "Failed to load meals.",
+    "failedToLoadRecentMeals": "Failed to load recent meals.",
+    "failedToLoadTopMeals": "Failed to load top meals.",
     "failedToDeleteMeal": "Failed to delete meal: {{errorMessage}}",
     "couldNotCheckMealUsage": "Could not check meal usage.",
     "mealSavedSuccessfully": "Meal \"{{mealName}}\" saved successfully.",
