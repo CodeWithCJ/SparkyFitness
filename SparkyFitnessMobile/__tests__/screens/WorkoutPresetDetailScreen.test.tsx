@@ -207,8 +207,8 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    // The name lives in the (native) header title now; the body keeps the
-    // description, exercise count, and the exercise card.
+    // The name lives in the header title; the body keeps the description,
+    // exercise count, and the exercise card.
     expect(navigation.setOptions).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Push Day' }),
     );

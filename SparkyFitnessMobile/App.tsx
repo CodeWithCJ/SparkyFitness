@@ -874,7 +874,13 @@ function AppContent() {
           <Stack.Screen
             name="ExerciseDetail"
             component={SafeExerciseDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: 'Exercises' })}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, {
+              headerBackTitle: 'Exercises',
+              // iOS 26 defaults the pop gesture to full-screen swipes; keep it
+              // edge-only here so interior right-swipes switch tabs instead of
+              // navigating back.
+              fullScreenGestureEnabled: false,
+            })}
           />
           <Stack.Screen
             name="FoodSearch"

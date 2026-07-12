@@ -176,14 +176,17 @@ describe('ExerciseDetailScreen', () => {
   it('renders the exercise fields from the route param', () => {
     const screen = renderScreen();
 
-    expect(screen.getByText('Bench Press')).toBeTruthy();
-    expect(screen.getByText('strength')).toBeTruthy();
+    // The name lives in the (native) header title.
+    expect(mockNavigation.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Bench Press' }),
+    );
     expect(screen.getByText('360')).toBeTruthy();
     expect(screen.getByText('Barbell, Bench')).toBeTruthy();
     expect(screen.getByText('Chest')).toBeTruthy();
     expect(screen.getByText('Triceps, Shoulders')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Exercise details'));
+    expect(screen.getByText('Strength')).toBeTruthy();
     expect(screen.getByText('sparky')).toBeTruthy();
   });
 
@@ -302,7 +305,9 @@ describe('ExerciseDetailScreen', () => {
         <ExerciseDetailScreen navigation={navigation} route={route as any} />
       </Providers>,
     );
-    expect(screen.getByText('Bench Press')).toBeTruthy();
+    expect(mockNavigation.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Bench Press' }),
+    );
 
     screen.rerender(
       <Providers>
@@ -321,7 +326,9 @@ describe('ExerciseDetailScreen', () => {
       </Providers>,
     );
 
-    expect(screen.getByText('Bench Press 2')).toBeTruthy();
+    expect(mockNavigation.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Bench Press 2' }),
+    );
   });
 
   describe('hydration by id', () => {
@@ -344,9 +351,15 @@ describe('ExerciseDetailScreen', () => {
         secondary_muscles: [],
       });
 
-      expect(screen.getByText('Sparse Bench')).toBeTruthy();
+      expect(mockNavigation.setOptions).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Sparse Bench' }),
+      );
 
-      await waitFor(() => expect(screen.getByText('Hydrated Bench Press')).toBeTruthy());
+      await waitFor(() =>
+        expect(mockNavigation.setOptions).toHaveBeenCalledWith(
+          expect.objectContaining({ title: 'Hydrated Bench Press' }),
+        ),
+      );
       expect(mockFetchExerciseById).toHaveBeenCalledWith(uuidId);
       expect(screen.getByText('Pectorals')).toBeTruthy();
     });
@@ -439,19 +452,24 @@ describe('ExerciseDetailScreen', () => {
     });
   });
 
-  describe('about/history tabs', () => {
+  describe('summary/history/how-to tabs', () => {
     const uuidId = '22222222-2222-4222-8222-222222222222';
 
-    it('shows the segmented control only for connected UUID exercises', () => {
+    it('shows the History tab only for connected UUID exercises', () => {
       const screen = renderScreen({ id: uuidId });
-      expect(screen.getByText('About')).toBeTruthy();
+      expect(screen.getByText('Summary')).toBeTruthy();
       expect(screen.getByText('History')).toBeTruthy();
 
       const nonUuid = renderScreen({ id: 'not-a-uuid' });
       expect(nonUuid.queryByText('History')).toBeNull();
     });
 
-    it('hides the segmented control while offline', () => {
+    it('hides the How to tab when there is no instructional content', () => {
+      const screen = renderScreen({ id: uuidId });
+      expect(screen.queryByText('How to')).toBeNull();
+    });
+
+    it('hides the segmented control entirely while offline with no how-to content', () => {
       mockUseServerConnection.mockReturnValue({
         isConnected: false,
         isLoading: false,
@@ -461,9 +479,33 @@ describe('ExerciseDetailScreen', () => {
 
       const screen = renderScreen({ id: uuidId });
       expect(screen.queryByText('History')).toBeNull();
+      expect(screen.queryByText('Summary')).toBeNull();
     });
 
-    it('swaps About content for the history list when History is selected', () => {
+    it('shows all instruction steps on the How to tab and hides summary content', () => {
+      const screen = renderScreen({
+        id: uuidId,
+        instructions: ['Lie on the bench.', 'Lower the bar.', 'Press back up.'],
+      });
+
+      // Summary tab content is visible by default; instructions are not.
+      expect(screen.getByText('Equipment')).toBeTruthy();
+      expect(screen.queryByText('Lie on the bench.')).toBeNull();
+
+      fireEvent.press(screen.getByText('How to'));
+
+      expect(screen.getByText('Instructions')).toBeTruthy();
+      expect(screen.getByText('Lie on the bench.')).toBeTruthy();
+      expect(screen.getByText('Lower the bar.')).toBeTruthy();
+      expect(screen.getByText('Press back up.')).toBeTruthy();
+      expect(screen.queryByText('Equipment')).toBeNull();
+      expect(screen.queryByText('Start Workout')).toBeNull();
+
+      fireEvent.press(screen.getByText('Summary'));
+      expect(screen.getByText('Equipment')).toBeTruthy();
+    });
+
+    it('swaps Summary content for the history list when History is selected', () => {
       mockUseExerciseHistory.mockReturnValue({
         sessions: [
           {
@@ -507,7 +549,7 @@ describe('ExerciseDetailScreen', () => {
 
       const screen = renderScreen({ id: uuidId });
 
-      // About tab content is visible by default.
+      // Summary tab content is visible by default.
       expect(screen.getByText('Equipment')).toBeTruthy();
 
       fireEvent.press(screen.getByText('History'));
@@ -518,7 +560,7 @@ describe('ExerciseDetailScreen', () => {
       expect(screen.queryByText('Equipment')).toBeNull();
       expect(screen.queryByText('Start Workout')).toBeNull();
 
-      fireEvent.press(screen.getByText('About'));
+      fireEvent.press(screen.getByText('Summary'));
       expect(screen.getByText('Equipment')).toBeTruthy();
     });
   });
