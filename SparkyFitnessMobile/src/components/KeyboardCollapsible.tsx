@@ -1,9 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import Animated, {
   Extrapolation,
   interpolate,
+  runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
@@ -23,6 +25,23 @@ import Animated, {
 export default function KeyboardCollapsible({ children }: { children: ReactNode }) {
   const { progress: keyboardProgress } = useReanimatedKeyboardAnimation();
   const [height, setHeight] = useState(0);
+
+  // JS-thread mirror of `keyboardProgress > 0` for the onLayout guard below:
+  // layout events can be dispatched during React's render/commit, where
+  // reading a shared value directly trips Reanimated's strict mode.
+  const keyboardEngagedRef = useRef(false);
+  const setKeyboardEngaged = useCallback((engaged: boolean) => {
+    keyboardEngagedRef.current = engaged;
+  }, []);
+  useAnimatedReaction(
+    () => keyboardProgress.value > 0,
+    (engaged, previous) => {
+      if (engaged !== previous) {
+        runOnJS(setKeyboardEngaged)(engaged);
+      }
+    },
+    [setKeyboardEngaged],
+  );
 
   const collapseStyle = useAnimatedStyle(() => {
     const p = keyboardProgress.value;
@@ -44,7 +63,7 @@ export default function KeyboardCollapsible({ children }: { children: ReactNode 
           // heights mid-animation, so only a keyboard-closed measurement
           // reflects the child's natural height. Accepting a partial value
           // would ratchet the restored height down on every keyboard cycle.
-          if (keyboardProgress.value > 0) {
+          if (keyboardEngagedRef.current) {
             return;
           }
           const h = e.nativeEvent.layout.height;
