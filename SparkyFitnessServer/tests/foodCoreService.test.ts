@@ -1,7 +1,11 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import foodRepository from '../models/foodRepository.js';
 import foodCoreService from '../services/foodCoreService.js';
+import preferenceService from '../services/preferenceService.js';
 vi.mock('../models/foodRepository');
+vi.mock('../services/preferenceService.js', () => ({
+  default: { getUserPreferences: vi.fn() },
+}));
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
 const TEST_USER_ID = 'user-123';
 const makeFoodData = (overrides = {}) => ({
@@ -57,6 +61,44 @@ describe('foodCoreService.createFood', () => {
       TEST_USER_ID
     );
     expect(foodRepository.createFood).not.toHaveBeenCalled();
+    expect(foodRepository.updateFood).not.toHaveBeenCalled();
+    expect(result).toEqual(existingFood);
+  });
+  it('should refresh provider verification when an existing external food is saved again', async () => {
+    const existingFood = makeExistingFood({ provider_verified: false });
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.findFoodByBarcode.mockResolvedValue(null);
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.findFoodByProviderExternalId.mockResolvedValueOnce(
+      existingFood
+    );
+
+    const result = await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({ barcode: undefined, provider_verified: true })
+    );
+
+    expect(foodRepository.createFood).not.toHaveBeenCalled();
+    expect(foodRepository.updateFood).toHaveBeenCalledWith(
+      existingFood.id,
+      TEST_USER_ID,
+      { provider_verified: true }
+    );
+    expect(result).toEqual({ ...existingFood, provider_verified: true });
+  });
+  it('should not refresh provider metadata when an existing food is found only by barcode', async () => {
+    const existingFood = makeExistingFood({ provider_verified: false });
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    foodRepository.findFoodByBarcode.mockResolvedValue(existingFood);
+
+    const result = await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({ provider_type: 'yazio', provider_verified: true })
+    );
+
+    expect(foodRepository.findFoodByProviderExternalId).not.toHaveBeenCalled();
+    expect(foodRepository.createFood).not.toHaveBeenCalled();
+    expect(foodRepository.updateFood).not.toHaveBeenCalled();
     expect(result).toEqual(existingFood);
   });
   it('should create a new food when barcode does not exist for user', async () => {
@@ -141,6 +183,74 @@ describe('foodCoreService.createFood', () => {
     await expect(
       foodCoreService.createFood(TEST_USER_ID, makeFoodData())
     ).rejects.toThrow('Database error');
+  });
+});
+
+describe('foodCoreService.searchFoods provider metadata', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // @ts-expect-error mocked in test
+    preferenceService.getUserPreferences.mockResolvedValue({
+      item_display_limit: 10,
+      food_display_limit: 10,
+    });
+  });
+
+  it('returns recent and top local foods without refreshing provider metadata during search', async () => {
+    const recentFood = makeExistingFood({
+      id: 'recent-yazio',
+      provider_type: 'yazio',
+      provider_external_id: 'yazio-recent',
+      provider_verified: false,
+    });
+    const topFood = makeExistingFood({
+      id: 'top-yazio',
+      provider_type: 'yazio',
+      provider_external_id: 'yazio-top',
+      provider_verified: false,
+    });
+    // @ts-expect-error mocked in test
+    foodRepository.getRecentFoods.mockResolvedValue([recentFood]);
+    // @ts-expect-error mocked in test
+    foodRepository.getTopFoods.mockResolvedValue([topFood]);
+
+    const result = await foodCoreService.searchFoods(
+      TEST_USER_ID,
+      undefined,
+      TEST_USER_ID,
+      false,
+      false,
+      false,
+      10
+    );
+
+    expect(foodRepository.updateFood).not.toHaveBeenCalled();
+    expect(result.recentFoods[0]).toBe(recentFood);
+    expect(result.topFoods[0]).toBe(topFood);
+  });
+
+  it('returns search results without refreshing provider metadata during search', async () => {
+    const localFood = makeExistingFood({
+      id: 'local-yazio',
+      provider_type: 'yazio',
+      provider_external_id: 'yazio-local',
+      provider_verified: false,
+    });
+    // @ts-expect-error mocked in test
+    foodRepository.searchFoods.mockResolvedValue([localFood]);
+
+    const result = await foodCoreService.searchFoods(
+      TEST_USER_ID,
+      'local',
+      TEST_USER_ID,
+      false,
+      true,
+      false,
+      10
+    );
+
+    expect(foodRepository.updateFood).not.toHaveBeenCalled();
+    expect(result.searchResults[0]).toBe(localFood);
   });
 });
 

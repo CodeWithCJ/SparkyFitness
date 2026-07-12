@@ -204,6 +204,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           brand={food.brand}
           values={displayValues}
           showNetCarbs={showNetCarbs}
+          provider_verified={food.provider_verified}
           customNutrients={selectedCustomNutrients}
         />
 

@@ -31,6 +31,9 @@
     "validationErrorTitle": "Validation Error",
     "nameRequired": "The 'name' field cannot be empty."
   },
+  "foods": {
+    "providerVerified": "Verified food"
+  },
   "medications": {
     "tabs": {
       "log": "Log",

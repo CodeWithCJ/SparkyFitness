@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchFoods } from '../services/api/foodsApi';
 import { foodsQueryKey } from './queryKeys';
+import { useRefetchOnFocus } from './useRefetchOnFocus';
 
 export function useFoods(options?: { enabled?: boolean }) {
   const { enabled = true } = options ?? {};
@@ -11,6 +12,7 @@ export function useFoods(options?: { enabled?: boolean }) {
     staleTime: 1000 * 60 * 5, // 5 minutes
     enabled,
   });
+  useRefetchOnFocus(query.refetch, enabled);
 
   return {
     recentFoods: query.data?.recentFoods ?? [],

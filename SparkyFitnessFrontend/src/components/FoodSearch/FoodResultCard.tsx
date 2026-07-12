@@ -1,8 +1,9 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Edit, Share2, Sparkles } from 'lucide-react';
+import { Edit, Share2, Sparkles } from 'lucide-react';
 import { NutrientGrid } from './NutrientGrid';
+import ProviderVerifiedBadge from './ProviderVerifiedBadge';
 import AllergenBadges from '@/components/AllergenBadges';
 import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
@@ -10,6 +11,7 @@ import type { UserCustomNutrient } from '@/types/customNutrient';
 import { useTranslation } from 'react-i18next';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import { formatServingLabel } from '@/utils/foodServing';
 import {
   CONFIDENCE_TONES,
   OVERALL_CONFIDENCE_LABELS,
@@ -111,13 +113,7 @@ const FoodResultCard = ({
                 </Badge>
               )}
               {isFood && foodItem.provider_verified && (
-                <Badge
-                  variant="outline"
-                  className="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                >
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  {t('enhancedFoodSearch.verified', 'Verified')}
-                </Badge>
+                <ProviderVerifiedBadge />
               )}
               {isFood &&
                 foodItem.default_variant?.source === 'ai_estimate' &&
@@ -192,8 +188,7 @@ const FoodResultCard = ({
                   customNutrients={nutrientConfig.customNutrients}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Per {foodItem.default_variant.serving_size}
-                  {foodItem.default_variant.serving_unit}
+                  Per {formatServingLabel(foodItem.default_variant)}
                 </p>
                 <AllergenBadges
                   allergens={foodItem.default_variant.allergens}

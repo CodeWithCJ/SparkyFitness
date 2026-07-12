@@ -59,6 +59,7 @@ const FOOD_PROVIDER_TYPES = [
   'fatsecret',
   'mealie',
   'tandoor',
+  'yazio',
   'norish',
   'usda',
   'openfoodfacts',
@@ -85,6 +86,147 @@ const NAME_RESOLUTION_WINDOW = 500;
 // Optional inputs and nullable DB columns are treated alike: absent.
 function isSet<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
+}
+
+function normalizeFoodUnit(unit: unknown): string {
+  const normalized = String(unit ?? '')
+    .trim()
+    .toLowerCase();
+  const aliases: Record<string, string> = {
+    gram: 'g',
+    grams: 'g',
+    gr: 'g',
+    milliliter: 'ml',
+    milliliters: 'ml',
+    millilitre: 'ml',
+    millilitres: 'ml',
+    liter: 'l',
+    liters: 'l',
+    litre: 'l',
+    litres: 'l',
+    serving: 'serving',
+    servings: 'serving',
+    piece: 'piece',
+    pieces: 'piece',
+    slice: 'slice',
+    slices: 'slice',
+    portion: 'portion',
+    portions: 'portion',
+    unit: 'unit',
+    units: 'unit',
+    can: 'can',
+    cans: 'can',
+    bottle: 'bottle',
+    bottles: 'bottle',
+    item: 'item',
+    items: 'item',
+    pack: 'pack',
+    packs: 'pack',
+    cup: 'cup',
+    cups: 'cup',
+    tablespoon: 'tbsp',
+    tablespoons: 'tbsp',
+    teaspoon: 'tsp',
+    teaspoons: 'tsp',
+  };
+  return aliases[normalized] ?? normalized;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dedupeVariantsById(variants: any[]) {
+  const seen = new Set<string>();
+  return variants.filter((variant) => {
+    if (!variant?.id) return true;
+    if (seen.has(variant.id)) return false;
+    seen.add(variant.id);
+    return true;
+  });
+}
+
+function resolveQuantityForVariantUnit(args: {
+  requestedQuantity: number;
+  requestedUnit: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  variant: any;
+}): { quantity: number; unit: string } | null {
+  if (!args.variant) {
+    return null;
+  }
+
+  const requestedUnit = normalizeFoodUnit(args.requestedUnit);
+  const variantUnit = normalizeFoodUnit(args.variant.serving_unit);
+  if (requestedUnit && requestedUnit === variantUnit) {
+    return {
+      quantity: args.requestedQuantity,
+      unit: args.variant.serving_unit,
+    };
+  }
+
+  return null;
+}
+
+async function resolveFoodLogVariantAndQuantity(args: {
+  userId: string;
+  foodId: string;
+  variantId?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foodRow?: any;
+  quantity: number;
+  unit: string;
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let explicitVariant: any | undefined;
+  if (args.variantId) {
+    explicitVariant = await foodRepository.getFoodVariantById(
+      args.variantId,
+      args.userId
+    );
+  }
+
+  const food =
+    args.foodRow ??
+    (await foodRepository.getFoodById(args.foodId, args.userId));
+  const defaultVariant = food?.default_variant;
+  const variantsFromDb = await foodRepository.getFoodVariantsByFoodId(
+    args.foodId,
+    args.userId
+  );
+  const candidates = dedupeVariantsById(
+    [
+      explicitVariant,
+      defaultVariant,
+      ...(Array.isArray(variantsFromDb) ? variantsFromDb : []),
+    ].filter(Boolean)
+  );
+
+  const matchingVariant = candidates.find((variant) =>
+    resolveQuantityForVariantUnit({
+      requestedQuantity: args.quantity,
+      requestedUnit: args.unit,
+      variant,
+    })
+  );
+
+  const variant = explicitVariant ?? matchingVariant ?? defaultVariant;
+  const resolved = resolveQuantityForVariantUnit({
+    requestedQuantity: args.quantity,
+    requestedUnit: args.unit,
+    variant,
+  });
+
+  if (!variant?.id || !resolved) {
+    return {
+      ok: false as const,
+      message: `Cannot safely log ${args.quantity} ${args.unit} for this food because no matching serving variant is available.`,
+    };
+  }
+
+  return {
+    ok: true as const,
+    variantId: variant.id,
+    quantity: resolved.quantity,
+    unit: resolved.unit,
+  };
 }
 
 // MCP's date-range defaults: a single `date` overrides start/end; otherwise
@@ -480,7 +622,7 @@ export function buildFoodTools(userId: string, tz: string) {
 
 Actions:
 - search_food(food_name, search_type:"exact"|"broad", limit?, offset?)
-- lookup_food_nutrition(food_name, provider_type?) — AI MUST call this cascade lookup first before creating or estimating a food. Bypasses regular cascade to search specific provider (e.g. openfoodfacts, usda) if provider_type given.
+- lookup_food_nutrition(food_name, provider_type?) — AI MUST call this cascade lookup first before creating or estimating a food. Bypasses regular cascade to search specific provider (e.g. openfoodfacts, usda, yazio) if provider_type given.
 - log_food(food_name, quantity, unit, meal_type:"breakfast"|"lunch"|"dinner"|"snacks", entry_date, food_id?, variant_id?)
 - create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, saturated_fat?, fiber?, sugar?, sodium?, ...) — AI clients should search the web and populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros. ONLY call this if lookup_food_nutrition returns source='ai_estimate'.
 - search_meal(meal_name)
@@ -593,7 +735,7 @@ Actions:
 
             case 'log_food': {
               let foodId = args.food_id;
-              let variantId = args.variant_id;
+              const variantId = args.variant_id;
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               let foodRow: any;
               if (!foodId) {
@@ -605,26 +747,38 @@ Actions:
                 }
                 foodId = foodRow.id;
               }
-              if (!variantId) {
-                const food =
-                  foodRow ?? (await foodRepository.getFoodById(foodId, userId));
-                variantId = food?.default_variant?.id;
+
+              if (!foodId) {
+                return ERRORS.VALIDATION('Food ID could not be resolved.');
               }
+
+              const resolvedLog = await resolveFoodLogVariantAndQuantity({
+                userId,
+                foodId,
+                variantId,
+                foodRow,
+                quantity: args.quantity,
+                unit: args.unit,
+              });
+              if (!resolvedLog.ok) {
+                return ERRORS.VALIDATION(resolvedLog.message);
+              }
+
               const entry = await foodEntryService.createFoodEntry(
                 userId,
                 userId,
                 {
                   user_id: userId,
                   food_id: foodId,
-                  variant_id: variantId,
+                  variant_id: resolvedLog.variantId,
                   entry_date: args.entry_date,
-                  quantity: args.quantity,
-                  unit: args.unit,
+                  quantity: resolvedLog.quantity,
+                  unit: resolvedLog.unit,
                   meal_type: args.meal_type,
                 }
               );
               return formatConfirmation(
-                `Logged "${entry.food_name}" (${args.quantity} ${args.unit}) for ${args.meal_type} on ${args.entry_date}.`
+                `Logged "${entry.food_name}" (${resolvedLog.quantity} ${resolvedLog.unit}) for ${args.meal_type} on ${args.entry_date}.`
               );
             }
 

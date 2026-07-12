@@ -19,6 +19,7 @@ export const foodsSchema = z.object({
   updated_at: z.date().nullable(),
   shared_with_public: z.boolean().nullable(),
   provider_type: z.string().nullable(),
+  provider_verified: z.boolean(),
   is_quick_food: z.boolean(),
 });
 
@@ -34,6 +35,7 @@ export const foodsInitializerSchema = z.object({
   updated_at: z.date().optional().nullable(),
   shared_with_public: z.boolean().optional().nullable(),
   provider_type: z.string().optional().nullable(),
+  provider_verified: z.boolean().optional(),
   is_quick_food: z.boolean().optional(),
 });
 
@@ -49,6 +51,7 @@ export const foodsMutatorSchema = z.object({
   updated_at: z.date().optional().nullable(),
   shared_with_public: z.boolean().optional().nullable(),
   provider_type: z.string().optional().nullable(),
+  provider_verified: z.boolean().optional(),
   is_quick_food: z.boolean().optional(),
 });
 

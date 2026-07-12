@@ -32,6 +32,9 @@ export interface FoodItem {
   is_custom: boolean;
   user_id?: string;
   shared_with_public?: boolean;
+  provider_type?: string | null;
+  provider_external_id?: string | null;
+  provider_verified?: boolean;
   is_quick_food?: boolean;
   default_variant: FoodDefaultVariant;
 }

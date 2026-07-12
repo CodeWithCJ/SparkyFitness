@@ -41,6 +41,10 @@ import {
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
+import {
+  formatQuantityServingLabel,
+  formatServingLabel,
+} from '@/utils/foodServing';
 
 // Confidence tone classes for the saved-AI-variant indicator in the picker dropdown.
 const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
@@ -225,6 +229,7 @@ const FoodUnitSelector = ({
         id: food.default_variant?.id || food.id,
         serving_size: food.default_variant?.serving_size || 100,
         serving_unit: food.default_variant?.serving_unit || 'g',
+        serving_description: food.default_variant?.serving_description,
         calories: food.default_variant?.calories || 0,
         protein: food.default_variant?.protein || 0,
         carbs: food.default_variant?.carbs || 0,
@@ -255,6 +260,7 @@ const FoodUnitSelector = ({
           id: variant.id,
           serving_size: variant.serving_size,
           serving_unit: variant.serving_unit,
+          serving_description: variant.serving_description,
           calories: variant.calories || 0,
           protein: variant.protein || 0,
           carbs: variant.carbs || 0,
@@ -305,6 +311,7 @@ const FoodUnitSelector = ({
         id: food.default_variant?.id || food.id,
         serving_size: food.default_variant?.serving_size || 100,
         serving_unit: food.default_variant?.serving_unit || 'g',
+        serving_description: food.default_variant?.serving_description,
         calories: food.default_variant?.calories || 0,
         protein: food.default_variant?.protein || 0,
         carbs: food.default_variant?.carbs || 0,
@@ -455,6 +462,11 @@ const FoodUnitSelector = ({
   const displayUnit = isConverting
     ? pendingUnit.trim() || '?'
     : selectedVariant?.serving_unit || '';
+  const displayServing = isConverting
+    ? `${quantity} ${displayUnit}`.trim()
+    : selectedVariant
+      ? formatQuantityServingLabel(quantity, selectedVariant)
+      : `${quantity} ${displayUnit}`.trim();
 
   return (
     <Dialog
@@ -513,7 +525,7 @@ const FoodUnitSelector = ({
                             variant.id && (
                               <SelectItem key={variant.id} value={variant.id}>
                                 <span className="flex items-center gap-1.5">
-                                  {variant.serving_unit}
+                                  {formatServingLabel(variant)}
                                   {variant.source === 'ai_estimate' &&
                                     variant.ai_confidence && (
                                       <Sparkles
@@ -782,7 +794,7 @@ const FoodUnitSelector = ({
               {nutrition && (
                 <div className="bg-muted p-3 rounded-lg">
                   <h4 className="font-medium mb-2">
-                    Nutrition for {quantity} {displayUnit}:
+                    Nutrition for {displayServing}:
                   </h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>

@@ -336,6 +336,20 @@ describe('VariantCard', () => {
     expect(screen.getByTestId('ai-estimate-section')).toBeInTheDocument();
   });
 
+  it('shows provider serving descriptions in the nutrition heading', () => {
+    renderVariantCard({
+      variantOverrides: {
+        serving_size: 1,
+        serving_unit: 'glass',
+        serving_description: '1 glass (200 ml)',
+      },
+    });
+
+    expect(
+      screen.getByText('Nutrition per 1 glass (200 ml)')
+    ).toBeInTheDocument();
+  });
+
   it('renders the AI provenance badge wording for each confidence tier', () => {
     const screenHigh = renderVariantCard({
       variantOverrides: {

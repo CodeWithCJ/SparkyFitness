@@ -8,6 +8,7 @@ import type { MealTypeDefinition } from '@/types/diary';
 const mockUpdateFoodEntry = jest.fn();
 const mockCreateVariant = jest.fn();
 let mockVariantsData: unknown[] = [];
+let mockFoodData: unknown;
 
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
@@ -33,20 +34,7 @@ jest.mock('@/hooks/Foods/useCustomNutrients', () => ({
 
 jest.mock('@/hooks/Foods/useFoods', () => ({
   useFoodView: () => ({
-    data: {
-      id: 'food-1',
-      name: 'Cornstarch',
-      is_custom: true,
-      default_variant: {
-        id: 'default-variant',
-        serving_size: 10,
-        serving_unit: 'g',
-        calories: 10,
-        protein: 1,
-        carbs: 1,
-        fat: 1,
-      },
-    },
+    data: mockFoodData,
     isLoading: false,
   }),
 }));
@@ -175,6 +163,20 @@ const entry: FoodEntry = {
 describe('EditFoodEntryDialog', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFoodData = {
+      id: 'food-1',
+      name: 'Cornstarch',
+      is_custom: true,
+      default_variant: {
+        id: 'default-variant',
+        serving_size: 10,
+        serving_unit: 'g',
+        calories: 10,
+        protein: 1,
+        carbs: 1,
+        fat: 1,
+      },
+    };
     mockVariantsData = [];
   });
 
@@ -237,5 +239,43 @@ describe('EditFoodEntryDialog', () => {
 
     const tbspButton = screen.getByRole('button', { name: /^tbsp$/i });
     expect(tbspButton.querySelector('svg.text-green-500')).toBeNull();
+  });
+
+  it('shows provider serving descriptions in the variant picker', async () => {
+    mockFoodData = {
+      id: 'food-1',
+      name: 'Apple',
+      is_custom: true,
+      default_variant: {
+        id: 'default-variant',
+        serving_size: 1,
+        serving_unit: 'Whole',
+        serving_description: '1 Whole (200g)',
+        calories: 50,
+        protein: 1,
+        carbs: 10,
+        fat: 1,
+      },
+    };
+
+    render(
+      <EditFoodEntryDialog
+        entry={{
+          ...entry,
+          food_name: 'Apple',
+          unit: 'Whole',
+          variant_id: 'default-variant',
+        }}
+        open={true}
+        onOpenChange={jest.fn()}
+        availableMealTypes={mealTypes}
+      />
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /1 Whole \(200g\)/i })
+      ).toBeInTheDocument();
+    });
   });
 });

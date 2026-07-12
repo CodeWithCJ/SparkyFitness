@@ -11,6 +11,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import { BarcodeScannerDialog } from './BarcodeScannerDialog';
 import { ProviderNutrientViewer } from './ProviderNutrientViewer';
+import ProviderVerifiedBadge from './ProviderVerifiedBadge';
 import type { Food, FoodVariant } from '@/types/food';
 
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
@@ -163,9 +164,12 @@ const CustomFoodForm = ({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>
-            {food && food.id ? 'Edit Food' : 'Add Custom Food'}
-          </CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle>
+              {food && food.id ? 'Edit Food' : 'Add Custom Food'}
+            </CardTitle>
+            {food?.provider_verified ? <ProviderVerifiedBadge /> : null}
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">

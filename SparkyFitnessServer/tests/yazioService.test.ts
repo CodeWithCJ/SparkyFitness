@@ -101,8 +101,6 @@ describe('yazioService', () => {
         serving_size: 100,
         serving_unit: 'g',
         serving_description: '100 g',
-        serving_weight: 100,
-        serving_weight_unit: 'g',
         calories: 64,
         protein: 15.2,
         carbs: 8.4,
@@ -127,8 +125,6 @@ describe('yazioService', () => {
           serving_size: 100,
           serving_unit: 'g',
           serving_description: '100 g',
-          serving_weight: 100,
-          serving_weight_unit: 'g',
           calories: 64,
           protein: 15.2,
           carbs: 8.4,
@@ -206,8 +202,6 @@ describe('yazioService', () => {
       serving_size: 100,
       serving_unit: 'g',
       serving_description: '100 g',
-      serving_weight: 100,
-      serving_weight_unit: 'g',
       calories: 62,
       carbs: 9.1,
       protein: 1,
@@ -222,8 +216,20 @@ describe('yazioService', () => {
       serving_size: 1,
       serving_unit: 'Frucht, klein',
       serving_description: 'Frucht, klein (70 g)',
-      serving_weight: 70,
-      serving_weight_unit: 'g',
+      calories: 43,
+      carbs: 6.4,
+      protein: 0.7,
+      fat: 0.4,
+      is_default: false,
+    });
+
+    const smallKiwiMetric = result?.variants?.find(
+      (variant) => variant.serving_size === 70 && variant.serving_unit === 'g'
+    );
+    expect(smallKiwiMetric).toMatchObject({
+      serving_size: 70,
+      serving_unit: 'g',
+      serving_description: '70 g',
       calories: 43,
       carbs: 6.4,
       protein: 0.7,
@@ -236,9 +242,13 @@ describe('yazioService', () => {
     ).toEqual([
       '100 g',
       'Frucht, halb (45 g)',
+      '45 g',
       'Frucht, klein (70 g)',
+      '70 g',
       'Frucht, mittel (90 g)',
+      '90 g',
       'Frucht, groß (115 g)',
+      '115 g',
       '1 g',
     ]);
   });
@@ -263,7 +273,11 @@ describe('yazioService', () => {
       },
     });
 
-    expect(result?.variants[1]).toMatchObject({
+    const pieceVariant = result?.variants.find(
+      (variant) =>
+        variant.serving_size === 1 && variant.serving_unit === 'piece'
+    );
+    expect(pieceVariant).toMatchObject({
       serving_size: 1,
       serving_unit: 'piece',
       calories: 250,
@@ -271,9 +285,7 @@ describe('yazioService', () => {
       protein: 10,
       fat: 5,
     });
-    expect(Number.isFinite(result?.variants[1]?.calories ?? Number.NaN)).toBe(
-      true
-    );
+    expect(Number.isFinite(pieceVariant?.calories ?? Number.NaN)).toBe(true);
   });
 
   it('authenticates and searches products with pagination', async () => {
@@ -283,6 +295,7 @@ describe('yazioService', () => {
       producer: 'Molkerei',
       serving_quantity: 100,
       base_unit: 'g',
+      is_verified: true,
       nutrients: {
         'energy.energy': 0.64,
         'nutrient.protein': 0.11,
@@ -299,6 +312,10 @@ describe('yazioService', () => {
       .mockResolvedValueOnce(
         makeFetchResponse({
           ...product,
+          // YAZIO search can mark a candidate verified even when the detail
+          // endpoint omits that field; search results must preserve it for the
+          // Add Food/Search screen.
+          is_verified: undefined,
           nutrients: { ...product.nutrients, 'nutrient.dietaryfiber': 0.004 },
         })
       );
@@ -329,6 +346,7 @@ describe('yazioService', () => {
       })
     );
     expect(result.foods).toHaveLength(1);
+    expect(result.foods[0]?.provider_verified).toBe(true);
     expect(result.pagination).toEqual({
       page: 1,
       pageSize: 1,
@@ -461,6 +479,7 @@ describe('yazioService', () => {
             producer: 'Brand',
             serving_quantity: 100,
             base_unit: 'g',
+            is_verified: true,
           },
         ])
       )
@@ -499,6 +518,7 @@ describe('yazioService', () => {
     expect(result?.provider_external_id).toBe(
       '7c91b431-a2b5-4f11-8f52-f346dc941f2a'
     );
+    expect(result?.provider_verified).toBe(true);
     expect(result?.barcode).toBe('0094395000172');
   });
 

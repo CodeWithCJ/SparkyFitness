@@ -95,7 +95,7 @@ function buildMeal(): Meal {
   };
 }
 
-function buildFood(): FoodItem {
+function buildFood(overrides: Partial<FoodItem> = {}): FoodItem {
   return {
     id: 'food-1',
     name: 'Grilled Chicken',
@@ -109,6 +109,7 @@ function buildFood(): FoodItem {
       carbs: 0,
       fat: 8,
     },
+    ...overrides,
   } as unknown as FoodItem;
 }
 
@@ -245,6 +246,46 @@ describe('FoodSearchScreen', () => {
     expect(screen.getByText('Online Results')).toBeTruthy();
     expect(screen.getByText('FatSecret')).toBeTruthy();
     expect(screen.getByText('Cheddar Cheese')).toBeTruthy();
+  });
+
+  it('renders verified badge for verified local foods in search results', () => {
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: [buildFood({ provider_verified: true })],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+    } as any);
+
+    const screen = renderSearching();
+
+    expect(screen.getByText('Grilled Chicken')).toBeTruthy();
+    expect(screen.getByTestId('verified-badge')).toBeTruthy();
+  });
+
+  it('renders local provider portion units in search result rows', () => {
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: [
+        buildFood({
+          default_variant: {
+            id: 'variant-whole',
+            serving_size: 1,
+            serving_unit: 'whole',
+            serving_description: '1 whole (20 g)',
+            calories: 12,
+            protein: 0,
+            carbs: 3,
+            fat: 0,
+          },
+        }),
+      ],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+    } as any);
+
+    const screen = renderSearching();
+
+    expect(screen.getByText('1 whole')).toBeTruthy();
   });
 
   it('opens FoodEntryAdd when a saved-meal result is tapped', () => {

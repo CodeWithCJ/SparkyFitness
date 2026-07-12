@@ -486,11 +486,9 @@ export function transformNormalizedFood(food: NormalizedFood, providerType: stri
     vitamin_c: v.vitamin_c,
   });
 
-  // FoodEntryAddScreen selects ext-0 (first variant) by default, so the
-  // default variant must come first to keep search/add calories consistent.
-  // If the default is a reference serving (100g/100ml) and a more descriptive
-  // variant exists (e.g. "1 Stück (30 g)"), prefer that one as the display
-  // variant instead.
+  // FoodEntryAddScreen selects ext-0 (first variant) by default. Prefer the
+  // provider's named serving for display, but keep the 100g/100ml reference in
+  // the ordered list so it still imports and remains selectable.
   const { displayVariant, orderedVariants } = selectDisplayVariant(dv, food.variants);
   const variants = orderedVariants?.map(mapVariant);
 
@@ -498,6 +496,10 @@ export function transformNormalizedFood(food: NormalizedFood, providerType: stri
     id: food.provider_external_id ?? food.id ?? '',
     name: food.name,
     brand: food.brand,
+    barcode: food.barcode,
+    provider_type: food.provider_type ?? providerType,
+    provider_external_id: food.provider_external_id,
+    is_custom: food.is_custom,
     ...mapVariant(displayVariant),
     serving_description: displayVariant.serving_description ?? `${displayVariant.serving_size} ${displayVariant.serving_unit}`,
     source: food.provider_type ?? providerType,

@@ -556,11 +556,13 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
         fe.custom_nutrients,
         fe.source,
         COALESCE(fe.allergens, fv.allergens) AS allergens,
-        COALESCE(fe.traces, fv.traces) AS traces
+        COALESCE(fe.traces, fv.traces) AS traces,
+        f.provider_verified
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        LEFT JOIN food_variants fv ON fe.variant_id = fv.id
+       LEFT JOIN foods f ON fe.food_id = f.id
        WHERE fe.user_id = $1 AND fe.entry_date = $2
        ORDER BY mt.sort_order ASC, fe.entry_time ASC NULLS LAST, fe.created_at`,
       [userId, selectedDate]
@@ -616,10 +618,12 @@ async function getFoodEntriesByDateAndMealType(
         fe.calcium,
         fe.iron,
         fe.glycemic_index,
-        fe.custom_nutrients
+        fe.custom_nutrients,
+        f.provider_verified
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
+       LEFT JOIN foods f ON fe.food_id = f.id
        WHERE fe.user_id = $1
           AND fe.entry_date = $2
           AND (LOWER(mt.name) = LOWER($3) OR fe.meal_type_id::text = $3)`,
@@ -680,10 +684,12 @@ async function getFoodEntriesByDateRange(
         fe.calcium, 
         fe.iron, 
         fe.glycemic_index, 
-        fe.custom_nutrients
+        fe.custom_nutrients,
+        f.provider_verified
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
+       LEFT JOIN foods f ON fe.food_id = f.id
        WHERE fe.user_id = $1 AND fe.entry_date BETWEEN $2 AND $3
        ORDER BY fe.entry_date, mt.sort_order ASC`,
       [userId, startDate, endDate]
