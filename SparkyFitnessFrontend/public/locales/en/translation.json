@@ -554,8 +554,8 @@
       "stepCount": "Step {{currentInstructionIndex}} of {{totalInstructions}}"
     },
     "importFit": {
-      "title": "Import Garmin FIT Files",
-      "description": "Upload activity files exported from a Garmin device (up to 10 at a time). Each file becomes a diary entry with heart rate, laps, and other report data. Re-uploading a file updates its entry.",
+      "title": "Import FIT Files",
+      "description": "Upload FIT activity files exported from your device or app (up to 10 at a time). Each file becomes a diary entry with heart rate, laps, and other report data. Re-uploading a file updates its entry.",
       "importButton": "Import {{count}} file(s)",
       "importing": "Importing...",
       "successTitle": "Import complete",

@@ -49,14 +49,14 @@ const ExerciseImportFit = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {t('exercise.importFit.title', 'Import Garmin FIT Files')}
+            {t('exercise.importFit.title', 'Import FIT Files')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {t(
               'exercise.importFit.description',
-              'Upload activity files exported from a Garmin device (up to 10 at a time). Each file becomes a diary entry with heart rate, laps, and other report data. Re-uploading a file updates its entry.'
+              'Upload FIT activity files exported from your device or app (up to 10 at a time). Each file becomes a diary entry with heart rate, laps, and other report data. Re-uploading a file updates its entry.'
             )}
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
