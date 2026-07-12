@@ -29,6 +29,10 @@ export const recentMealsQueryKeyRoot = ['recentMeals'] as const;
 
 export const recentMealsQueryKey = (limit: number) => [...recentMealsQueryKeyRoot, limit] as const;
 
+export const topMealsQueryKeyRoot = ['topMeals'] as const;
+
+export const topMealsQueryKey = (limit: number) => [...topMealsQueryKeyRoot, limit] as const;
+
 export const mealSearchQueryKeyRoot = ['mealSearch'] as const;
 
 export const mealSearchQueryKey = (searchTerm: string) => [...mealSearchQueryKeyRoot, searchTerm] as const;

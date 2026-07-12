@@ -14,7 +14,9 @@ import {
   useMealSearch,
   useMeals,
   usePreferences,
+  useRecentMeals,
   useServerConnection,
+  useTopMeals,
 } from '../../src/hooks';
 import type { Meal } from '../../src/types/meals';
 import type { FoodItem } from '../../src/types/foods';
@@ -28,7 +30,9 @@ jest.mock('../../src/hooks', () => ({
   useMealSearch: jest.fn(),
   useMeals: jest.fn(),
   usePreferences: jest.fn(),
+  useRecentMeals: jest.fn(),
   useServerConnection: jest.fn(),
+  useTopMeals: jest.fn(),
   useDebounce: (value: unknown) => value,
 }));
 
@@ -59,7 +63,9 @@ const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
 const mockUseMealSearch = useMealSearch as jest.MockedFunction<typeof useMealSearch>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
 const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
+const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<typeof useRecentMeals>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
+const mockUseTopMeals = useTopMeals as jest.MockedFunction<typeof useTopMeals>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -184,6 +190,18 @@ describe('FoodSearchScreen', () => {
       isError: false,
       refetch: jest.fn(),
     });
+    mockUseRecentMeals.mockReturnValue({
+      recentMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+    mockUseTopMeals.mockReturnValue({
+      topMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
     mockUseMealSearch.mockReturnValue({
       searchResults: [],
       isSearching: false,

@@ -36,6 +36,18 @@ export const fetchRecentMeals = async (limit = 3): Promise<Meal[]> => {
 };
 
 /**
+ * Fetches the user's most frequently logged meal templates.
+ */
+export const fetchTopMeals = async (limit = 3): Promise<Meal[]> => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return apiFetch<Meal[]>({
+    endpoint: `/api/meals/top?${params.toString()}`,
+    serviceName: 'Meals API',
+    operation: 'fetch top meals',
+  });
+};
+
+/**
  * Searches meals by name.
  */
 export const searchMeals = async (searchTerm: string): Promise<Meal[]> => {

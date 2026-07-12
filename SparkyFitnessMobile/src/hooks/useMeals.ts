@@ -8,6 +8,7 @@ import {
   fetchMealDeletionImpact,
   fetchMeals,
   fetchRecentMeals,
+  fetchTopMeals,
   updateMeal,
 } from '../services/api/mealsApi';
 import {
@@ -16,6 +17,8 @@ import {
   mealsQueryKey,
   recentMealsQueryKey,
   recentMealsQueryKeyRoot,
+  topMealsQueryKey,
+  topMealsQueryKeyRoot,
 } from './queryKeys';
 import type { QueryClient } from '@tanstack/react-query';
 import type { CreateMealPayload, Meal, UpdateMealPayload } from '../types/meals';
@@ -23,6 +26,7 @@ import type { CreateMealPayload, Meal, UpdateMealPayload } from '../types/meals'
 function invalidateMealCaches(queryClient: QueryClient, mealId?: string) {
   queryClient.invalidateQueries({ queryKey: mealsQueryKey });
   queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
+  queryClient.invalidateQueries({ queryKey: topMealsQueryKeyRoot, refetchType: 'all' });
   queryClient.invalidateQueries({ queryKey: mealSearchQueryKeyRoot });
 
   if (mealId) {
@@ -60,6 +64,24 @@ export function useRecentMeals(options?: { enabled?: boolean; limit?: number }) 
 
   return {
     recentMeals: query.data ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+  };
+}
+
+export function useTopMeals(options?: { enabled?: boolean; limit?: number }) {
+  const { enabled = true, limit = 3 } = options ?? {};
+
+  const query = useQuery({
+    queryKey: topMealsQueryKey(limit),
+    queryFn: () => fetchTopMeals(limit),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled,
+  });
+
+  return {
+    topMeals: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,

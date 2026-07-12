@@ -31,6 +31,8 @@ import {
   useFoods,
   useFoodSearch,
   useMealSearch,
+  useRecentMeals,
+  useTopMeals,
   useExternalProviders,
   useExternalFoodSearch,
   useAllProvidersSearch,
@@ -58,16 +60,19 @@ import {
 import { formatServingDescription, formatServingUnit } from '../utils/foodDetails';
 import { useProviderColor } from '../utils/providerColor';
 import { interleaveTopMatches } from '../utils/topMatches';
+import { mergeRecent, mergeFrequent } from '../utils/landingLists';
+import type { LandingEntry } from '../utils/landingLists';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 
-// Landing (empty query) sections: recent / top foods.
+// Landing (empty query) sections: recent / top, each a merged timeline of the
+// user's foods and saved meals (a meal is tagged with a "Meal" badge).
 type LandingSection = {
   title: string;
-  data: (FoodItem | TopFoodItem)[];
+  data: LandingEntry[];
 };
 
 // A row in the unified search results. The local foods + meals and the online
@@ -113,6 +118,10 @@ const ALL_PROVIDERS_VALUE = '__all__';
 // online results are also on screen.
 const LOCAL_RESULT_CAP = 6;
 
+// Fallback cap for each landing section (Recently Logged / Top) when the user's
+// item_display_limit preference is unset. Matches the web food-search landing.
+const LANDING_ITEM_LIMIT = 10;
+
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
@@ -131,6 +140,24 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({
     enabled: isConnected,
+  });
+
+  // Per-section cap for the landing lists (foods + meals merged). Mirrors web,
+  // which caps each landing section at the user's item_display_limit.
+  const landingLimit = preferences?.item_display_limit ?? LANDING_ITEM_LIMIT;
+
+  // Recent + frequently-logged meals for the landing merge. Excluded while
+  // building a meal (a meal cannot contain a meal), mirroring the typed-search
+  // behaviour. Requested at the section cap so the merge with foods is not
+  // starved. Meals stream in and interleave with foods once loaded.
+  const landingMealsEnabled = isConnected && !isMealBuilderMode;
+  const { recentMeals } = useRecentMeals({
+    enabled: landingMealsEnabled,
+    limit: landingLimit,
+  });
+  const { topMeals } = useTopMeals({
+    enabled: landingMealsEnabled,
+    limit: landingLimit,
   });
 
   const [searchText, setSearchText] = useState('');
@@ -543,11 +570,22 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   }, [providerPopoverVisible, onlineHeaderVisible]);
 
   const landingSections = useMemo<LandingSection[]>(() => {
+    // Recently Logged: foods + meals merged into one recency timeline.
+    const recentEntries = mergeRecent(recentMeals, recentFoods, landingLimit);
+    // Top: foods + meals by usage, excluding anything already in Recent so the
+    // two sections never repeat a row.
+    const excludeKeys = new Set(recentEntries.map((entry) => entry.key));
+    const frequentEntries = mergeFrequent(
+      topMeals,
+      topFoods,
+      excludeKeys,
+      landingLimit,
+    );
     return [
-      { title: 'Recently Logged', data: recentFoods.slice(0, 6) },
-      { title: 'Top Foods', data: topFoods },
+      { title: 'Recently Logged', data: recentEntries },
+      { title: 'Top', data: frequentEntries },
     ].filter((section) => section.data.length > 0);
-  }, [recentFoods, topFoods]);
+  }, [recentFoods, topFoods, recentMeals, topMeals, landingLimit]);
 
   const resultSections = useMemo<ResultSection[]>(() => {
     const sections: ResultSection[] = [];
@@ -714,6 +752,22 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       </View>
     </TouchableOpacity>
   );
+
+  // A landing row is either a food or a saved meal (tagged with a "Meal" badge
+  // so it reads as distinct from a food in the merged list).
+  const renderLandingEntry = (entry: LandingEntry) => {
+    if (entry.kind === 'meal') {
+      return (
+        <MealLibraryRow
+          meal={entry.meal}
+          showBadge
+          showDivider
+          onPress={() => showFoodInfo(mealToFoodInfo(entry.meal))}
+        />
+      );
+    }
+    return renderFoodRow(entry.food);
+  };
 
   const renderOnlineRow = (
     item: ExternalFoodItem,
@@ -1253,8 +1307,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     return (
       <SectionList
         sections={landingSections}
-        keyExtractor={(item, index) => `${index}-${item.id}`}
-        renderItem={({ item }) => renderFoodRow(item)}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item }) => renderLandingEntry(item)}
         renderSectionHeader={({ section }) => renderSectionHeaderTitle(section.title)}
         stickySectionHeadersEnabled
         keyboardShouldPersistTaps="handled"

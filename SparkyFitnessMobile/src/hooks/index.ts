@@ -51,7 +51,7 @@ export { useFoods } from './useFoods';
 export { useDebounce } from './useDebounce';
 export { useFoodSearch } from './useFoodSearch';
 export { useFoodsLibrary } from './useFoodsLibrary';
-export { useMeals, useRecentMeals, useMeal, useCreateMeal, useUpdateMeal, useDeleteMeal } from './useMeals';
+export { useMeals, useRecentMeals, useTopMeals, useMeal, useCreateMeal, useUpdateMeal, useDeleteMeal } from './useMeals';
 export { useMealSearch } from './useMealSearch';
 export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';
