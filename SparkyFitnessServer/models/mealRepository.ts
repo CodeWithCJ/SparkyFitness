@@ -170,7 +170,8 @@ async function getMeals(userId: any, filter = 'all') {
     // For 'family' and 'public' filters, separate functions will be called in mealService
     query += ' ORDER BY name ASC';
     const result = await client.query(query, queryParams);
-    return attachFoodsToMeals(client, result.rows);
+    // Await so attachFoodsToMeals' queries finish before finally releases the client.
+    return await attachFoodsToMeals(client, result.rows);
   } finally {
     client.release();
   }
@@ -194,7 +195,8 @@ async function searchMeals(
       queryParams.push(limit);
     }
     const result = await client.query(query, queryParams);
-    return attachFoodsToMeals(client, result.rows);
+    // Await so attachFoodsToMeals' queries finish before finally releases the client.
+    return await attachFoodsToMeals(client, result.rows);
   } finally {
     client.release();
   }
@@ -855,7 +857,8 @@ async function getPublicMeals(userId: any) {
        FROM meals
        WHERE is_public = TRUE
        ORDER BY name ASC`);
-    return attachFoodsToMeals(client, result.rows);
+    // Await so attachFoodsToMeals' queries finish before finally releases the client.
+    return await attachFoodsToMeals(client, result.rows);
   } finally {
     client.release();
   }
@@ -876,7 +879,8 @@ async function getFamilyMeals(userId: any) {
        ORDER BY m.name ASC`,
       [userId]
     );
-    return attachFoodsToMeals(client, result.rows);
+    // Await so attachFoodsToMeals' queries finish before finally releases the client.
+    return await attachFoodsToMeals(client, result.rows);
   } finally {
     client.release();
   }
