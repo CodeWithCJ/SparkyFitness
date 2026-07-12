@@ -533,6 +533,7 @@ describe('chatService', () => {
         {
           ...aiServiceSetting,
           service_type: 'ollama',
+          custom_url: 'http://localhost:11434',
           chat_tool_profile: 'core',
         }
       );
@@ -556,6 +557,7 @@ describe('chatService', () => {
         {
           ...aiServiceSetting,
           service_type: 'ollama',
+          custom_url: 'http://localhost:11434',
           chat_tool_profile: 'full',
         }
       );
@@ -579,6 +581,7 @@ describe('chatService', () => {
         {
           ...aiServiceSetting,
           service_type: 'ollama',
+          custom_url: 'http://localhost:11434',
         }
       );
       scriptModel([textStep('Hi there!')]);
@@ -650,6 +653,33 @@ describe('chatService', () => {
         expect(result.content).toBe('Hello from a local server!');
         expect(createOpenAI).toHaveBeenCalledWith(
           expect.objectContaining({ fetch: expect.any(Function) })
+        );
+      }
+    );
+
+    // Guard: a URL-requiring service (ollama/openai_compatible/custom) with no
+    // custom_url resolves to an undefined baseURL, which would make the AI SDK
+    // silently fall back to OpenAI's default host. Reject it instead.
+    it.each(['ollama', 'openai_compatible', 'custom'])(
+      'rejects a %s service that is missing its custom_url',
+      async (serviceType) => {
+        vi.mocked(
+          chatRepository.getAiServiceSettingForBackend
+        ).mockResolvedValue({
+          ...aiServiceSetting,
+          service_type: serviceType,
+          custom_url: null,
+        });
+
+        await expect(
+          chatService.processChatMessage(
+            [{ role: 'user', content: 'hi' }],
+            'svc-1',
+            activeUserId,
+            actorUserId
+          )
+        ).rejects.toThrow(
+          `Custom URL is required for service type: ${serviceType}`
         );
       }
     );

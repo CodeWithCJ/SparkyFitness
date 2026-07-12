@@ -643,6 +643,16 @@ async function processChatMessage(
         aiService.service_type,
         aiService.custom_url
       );
+      // Providers that need a user-supplied endpoint must have one: an empty
+      // baseURL makes the AI SDK silently fall back to OpenAI's default host.
+      if (
+        requiresUserSuppliedAiUrl(aiService.service_type) &&
+        !baseURL?.trim()
+      ) {
+        throw new Error(
+          `Custom URL is required for service type: ${aiService.service_type}`
+        );
+      }
       const providerOptions: Parameters<typeof createOpenAI>[0] = {
         baseURL,
         apiKey: apiKey || 'no-key',
@@ -1253,6 +1263,16 @@ async function processChatMessageStream(
         aiService.service_type,
         aiService.custom_url
       );
+      // Providers that need a user-supplied endpoint must have one: an empty
+      // baseURL makes the AI SDK silently fall back to OpenAI's default host.
+      if (
+        requiresUserSuppliedAiUrl(aiService.service_type) &&
+        !baseURL?.trim()
+      ) {
+        throw new Error(
+          `Custom URL is required for service type: ${aiService.service_type}`
+        );
+      }
       const providerOptions: Parameters<typeof createOpenAI>[0] = {
         baseURL,
         apiKey: apiKey || 'no-key',
