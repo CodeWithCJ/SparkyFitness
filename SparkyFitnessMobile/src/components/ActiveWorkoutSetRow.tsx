@@ -21,6 +21,7 @@ import CompletionCheck from './CompletionCheck';
 import {
   SetInputAccessoryBar,
   SetSwipeDeleteAction,
+  focusSetCellInput,
   type SetAccessoryAction,
 } from './SetRowChrome';
 import { formatRest } from './RestPeriodChip';
@@ -356,7 +357,7 @@ function ActiveWorkoutSetRow({
         : activeField === 'rpe'
           ? rpeInputRef
           : weightInputRef;
-    ref.current?.focus();
+    return focusSetCellInput(ref);
   }, [isActiveEditRow, activeField]);
 
   // Edit-mode inputs are CONTROLLED by the form reducer (raw draft strings),

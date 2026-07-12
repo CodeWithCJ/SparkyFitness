@@ -333,6 +333,17 @@ jest.mock('react-native-keyboard-controller', () => {
     ),
     // Keyboard-closed shared values; tests render with the rail expanded.
     useReanimatedKeyboardAnimation: () => ({ height: { value: 0 }, progress: { value: 0 } }),
+    // isVisible defaults to true so the Android IME-retry path in
+    // focusSetCellInput stays quiet unless a test opts in.
+    KeyboardController: {
+      setDefaultMode: jest.fn(),
+      setInputMode: jest.fn(),
+      preload: jest.fn(),
+      dismiss: jest.fn(),
+      setFocusTo: jest.fn(),
+      isVisible: jest.fn(() => true),
+      state: jest.fn(() => ({})),
+    },
   };
 });
 

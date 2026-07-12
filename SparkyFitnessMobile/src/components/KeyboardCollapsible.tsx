@@ -15,9 +15,10 @@ import Animated, {
  * header's progress row.
  *
  * The child's natural height is measured on first layout; `keyboardProgress`
- * (a shared value) then drives the collapse on the UI thread. The measured View
- * keeps its content height throughout (RN children default to `flexShrink: 0`),
- * so the clip is purely visual and the measurement never oscillates.
+ * (a shared value) then drives the collapse on the UI thread. On Android the
+ * animated clip re-lays the measured View out at partial heights while the
+ * collapse runs, so layout events are only trusted while the keyboard is
+ * closed (`keyboardProgress` at 0).
  */
 export default function KeyboardCollapsible({ children }: { children: ReactNode }) {
   const { progress: keyboardProgress } = useReanimatedKeyboardAnimation();
@@ -35,9 +36,17 @@ export default function KeyboardCollapsible({ children }: { children: ReactNode 
   });
 
   return (
-    <Animated.View style={collapseStyle}>
+    <Animated.View testID="keyboard-collapsible-clip" style={collapseStyle}>
       <View
+        testID="keyboard-collapsible-content"
         onLayout={(e) => {
+          // On Android the animated clip re-lays this view out at partial
+          // heights mid-animation, so only a keyboard-closed measurement
+          // reflects the child's natural height. Accepting a partial value
+          // would ratchet the restored height down on every keyboard cycle.
+          if (keyboardProgress.value > 0) {
+            return;
+          }
           const h = e.nativeEvent.layout.height;
           setHeight((prev) => (h > 0 && h !== prev ? h : prev));
         }}

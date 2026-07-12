@@ -7,7 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
-import { SetInputAccessoryBar, SetSwipeDeleteAction } from './SetRowChrome';
+import { SetInputAccessoryBar, SetSwipeDeleteAction, focusSetCellInput } from './SetRowChrome';
 import { parseDecimalInput } from '../utils/numericInput';
 
 interface EditableSetRowProps {
@@ -67,7 +67,7 @@ function EditableSetRow({
   useEffect(() => {
     if (!isActive) return;
     const ref = activeField === 'reps' ? repsInputRef : weightInputRef;
-    ref.current?.focus();
+    return focusSetCellInput(ref);
   }, [isActive, activeField]);
 
   const handleUpdateWeight = useCallback((value: string) => {

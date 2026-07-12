@@ -1,13 +1,45 @@
-import { Text, TouchableOpacity, View } from 'react-native';
+import type { RefObject } from 'react';
+import { Platform, Text, TouchableOpacity, View, type TextInput } from 'react-native';
+import { KeyboardController } from 'react-native-keyboard-controller';
 import { useCSSVariable } from 'uniwind';
 
 import LiquidGlassSurface, { createLiquidGlassPillStyle } from './LiquidGlassSurface';
 
 /**
- * Presentation shared by the set rows (ActiveWorkoutSetRow and the activity
- * form's EditableSetRow): the iOS keyboard accessory bar and the right-swipe
- * Delete action.
+ * Presentation and focus plumbing shared by the set rows (ActiveWorkoutSetRow
+ * and the activity form's EditableSetRow): the tap-to-activate focus helper,
+ * the iOS keyboard accessory bar, and the right-swipe Delete action.
  */
+
+/** Spaced to outlast a slow IME bind while keeping the common case snappy. */
+const IME_RETRY_DELAYS_MS = [100, 400];
+
+/**
+ * Focus a set-cell input from a row-activation effect. On Android, focus() on
+ * a just-mounted TextInput can win view focus while the IME's showSoftInput is
+ * silently dropped (OEM-dependent; reported on Samsung), leaving a cursor with
+ * no keyboard — and a plain re-focus() can't repair it because TextInputState
+ * bails out when the field is already focused. The retries instead go through
+ * KeyboardController.setFocusTo('current'), which re-issues the native
+ * showSoftInput for the focused view; when the keyboard came up normally they
+ * are skipped or no-op.
+ *
+ * Returns a cleanup that cancels pending retries, shaped for an effect return.
+ */
+export function focusSetCellInput(
+  ref: RefObject<TextInput | null>,
+): (() => void) | undefined {
+  ref.current?.focus();
+  if (Platform.OS !== 'android') return undefined;
+  const timers = IME_RETRY_DELAYS_MS.map((delay) =>
+    setTimeout(() => {
+      if (ref.current?.isFocused() && !KeyboardController.isVisible()) {
+        KeyboardController.setFocusTo('current');
+      }
+    }, delay),
+  );
+  return () => timers.forEach((timer) => clearTimeout(timer));
+}
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
