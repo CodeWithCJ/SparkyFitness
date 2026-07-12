@@ -6,16 +6,28 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ExerciseDetailScreen from '../../src/screens/ExerciseDetailScreen';
 import {
   useDeleteExerciseLibrary,
+  usePreferences,
   useProfile,
   useServerConnection,
 } from '../../src/hooks';
+import { useExerciseStats } from '../../src/hooks/useExerciseStats';
+import { useExerciseHistory } from '../../src/hooks/useExerciseHistory';
 import { fetchExerciseById } from '../../src/services/api/exerciseApi';
 import type { Exercise } from '../../src/types/exercise';
 
 jest.mock('../../src/hooks', () => ({
   useDeleteExerciseLibrary: jest.fn(),
+  usePreferences: jest.fn(),
   useProfile: jest.fn(),
   useServerConnection: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useExerciseStats', () => ({
+  useExerciseStats: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useExerciseHistory', () => ({
+  useExerciseHistory: jest.fn(),
 }));
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
@@ -59,6 +71,13 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
+const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
+const mockUseExerciseStats = useExerciseStats as jest.MockedFunction<
+  typeof useExerciseStats
+>;
+const mockUseExerciseHistory = useExerciseHistory as jest.MockedFunction<
+  typeof useExerciseHistory
+>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<
   typeof useServerConnection
 >;
@@ -134,6 +153,20 @@ describe('ExerciseDetailScreen', () => {
       isError: false,
       error: null,
     } as any);
+    mockUsePreferences.mockReturnValue({
+      preferences: { default_weight_unit: 'kg' },
+    } as any);
+    mockUseExerciseStats.mockReturnValue({ data: undefined } as any);
+    mockUseExerciseHistory.mockReturnValue({
+      sessions: [],
+      isLoading: false,
+      isLoadingMore: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+      loadMore: jest.fn(),
+      hasMore: false,
+    });
     mockUseDeleteExerciseLibrary.mockReturnValue({
       confirmAndDelete: mockConfirmAndDelete,
       isPending: false,
@@ -332,6 +365,161 @@ describe('ExerciseDetailScreen', () => {
       } as any);
       renderScreen({ id: uuidId });
       expect(mockFetchExerciseById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('records strip', () => {
+    const uuidId = '22222222-2222-4222-8222-222222222222';
+
+    it('renders Best and Last tiles from stats', () => {
+      mockUseExerciseStats.mockReturnValue({
+        data: {
+          bestSet: { entryDate: '2026-01-06', weight: 100, reps: 5, setNumber: 2 },
+          lastSet: { entryDate: '2026-01-08', weight: 95, reps: 8, setNumber: 3 },
+          recentSessions: [],
+        },
+      } as any);
+
+      const screen = renderScreen({ id: uuidId });
+
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(uuidId);
+      expect(screen.getByText('Best (kg)')).toBeTruthy();
+      expect(screen.getByText('100 × 5')).toBeTruthy();
+      expect(screen.getByText('Tue, Jan 6')).toBeTruthy();
+      expect(screen.getByText('Last (kg)')).toBeTruthy();
+      expect(screen.getByText('95 × 8')).toBeTruthy();
+      expect(screen.getByText('Thu, Jan 8')).toBeTruthy();
+    });
+
+    it('converts tile weights to the preferred unit', () => {
+      mockUsePreferences.mockReturnValue({
+        preferences: { default_weight_unit: 'lbs' },
+      } as any);
+      mockUseExerciseStats.mockReturnValue({
+        data: {
+          bestSet: { entryDate: '2026-01-06', weight: 100, reps: 5, setNumber: 1 },
+          lastSet: null,
+          recentSessions: [],
+        },
+      } as any);
+
+      const screen = renderScreen({ id: uuidId });
+
+      expect(screen.getByText('Best (lbs)')).toBeTruthy();
+      expect(screen.getByText('220.5 × 5')).toBeTruthy();
+    });
+
+    it('folds calories per hour into the strip and hides it when empty', () => {
+      const screen = renderScreen({ id: uuidId });
+
+      expect(screen.getByText('Cal / hour')).toBeTruthy();
+      expect(screen.getByText('360')).toBeTruthy();
+
+      const empty = renderScreen({ id: uuidId, calories_per_hour: 0 });
+      expect(empty.queryByText('Cal / hour')).toBeNull();
+      expect(empty.queryByText('Best (kg)')).toBeNull();
+    });
+
+    it('disables the stats query for a non-UUID id', () => {
+      renderScreen({ id: 'not-a-uuid' });
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(null);
+    });
+
+    it('disables the stats query while offline', () => {
+      mockUseServerConnection.mockReturnValue({
+        isConnected: false,
+        isLoading: false,
+        isError: false,
+        error: null,
+      } as any);
+
+      renderScreen({ id: uuidId });
+
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(null);
+    });
+  });
+
+  describe('about/history tabs', () => {
+    const uuidId = '22222222-2222-4222-8222-222222222222';
+
+    it('shows the segmented control only for connected UUID exercises', () => {
+      const screen = renderScreen({ id: uuidId });
+      expect(screen.getByText('About')).toBeTruthy();
+      expect(screen.getByText('History')).toBeTruthy();
+
+      const nonUuid = renderScreen({ id: 'not-a-uuid' });
+      expect(nonUuid.queryByText('History')).toBeNull();
+    });
+
+    it('hides the segmented control while offline', () => {
+      mockUseServerConnection.mockReturnValue({
+        isConnected: false,
+        isLoading: false,
+        isError: false,
+        error: null,
+      } as any);
+
+      const screen = renderScreen({ id: uuidId });
+      expect(screen.queryByText('History')).toBeNull();
+    });
+
+    it('swaps About content for the history list when History is selected', () => {
+      mockUseExerciseHistory.mockReturnValue({
+        sessions: [
+          {
+            type: 'individual',
+            id: 'session-1',
+            exercise_id: uuidId,
+            duration_minutes: 30,
+            calories_burned: 200,
+            entry_date: '2026-01-06',
+            notes: null,
+            distance: null,
+            avg_heart_rate: null,
+            source: null,
+            sets: [
+              {
+                id: 1,
+                set_number: 1,
+                set_type: null,
+                reps: 5,
+                weight: 100,
+                duration: null,
+                rest_time: null,
+                notes: null,
+                rpe: null,
+                completed_at: null,
+                is_pr: false,
+              },
+            ],
+            exercise_snapshot: null,
+            activity_details: [],
+          },
+        ],
+        isLoading: false,
+        isLoadingMore: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+        loadMore: jest.fn(),
+        hasMore: false,
+      } as any);
+
+      const screen = renderScreen({ id: uuidId });
+
+      // About tab content is visible by default.
+      expect(screen.getByText('Equipment')).toBeTruthy();
+
+      fireEvent.press(screen.getByText('History'));
+
+      expect(mockUseExerciseHistory).toHaveBeenCalledWith({ exerciseId: uuidId });
+      expect(screen.getByText('Tue, Jan 6')).toBeTruthy();
+      expect(screen.getByText('100 × 5')).toBeTruthy();
+      expect(screen.queryByText('Equipment')).toBeNull();
+      expect(screen.queryByText('Start Workout')).toBeNull();
+
+      fireEvent.press(screen.getByText('About'));
+      expect(screen.getByText('Equipment')).toBeTruthy();
     });
   });
 });

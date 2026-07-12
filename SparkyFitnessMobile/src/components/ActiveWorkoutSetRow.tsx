@@ -31,6 +31,7 @@ import { weightFromKg, weightToKg } from '../utils/unitConversions';
 import {
   epley1RmKg,
   estimateRepMaxKg,
+  formatRecentSessionSet,
   getRpeTone,
   setVolumeKg,
   type RpeTone,
@@ -72,18 +73,6 @@ export function parseRpeInput(text: string): number | null {
   return Math.min(10, Math.max(1, snapped));
 }
 
-/** PREVIOUS column text, e.g. `W 60 × 8`, `100 × 5`, or `12 reps`. */
-function formatPreviousSet(set: ExerciseRecentSessionSet, weightUnit: 'kg' | 'lbs'): string {
-  const w =
-    set.weight != null
-      ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
-      : null;
-  const prefix = set.setType === 'warmup' ? 'W ' : '';
-  if (w != null && set.reps != null) return `${prefix}${w} × ${set.reps}`;
-  if (w != null) return `${prefix}${w}`; // weight-only
-  return `${prefix}${set.reps} reps`; // reps-only set in a mixed history
-}
-
 export type SetRowMode = 'live' | 'view' | 'edit';
 
 interface ActiveWorkoutSetRowProps {
@@ -97,6 +86,17 @@ interface ActiveWorkoutSetRowProps {
   renderKey?: string;
   /** Working-set number. Warmup rows show the `W` pill instead. */
   displayNumber: number;
+  /**
+   * Live only: this set beat the exercise's historical best (store `prSetIds`).
+   * Tints the set-number pill with the accent, matching the exercise-history
+   * PR chips.
+   */
+  isPr?: boolean;
+  /**
+   * Live only: this set TIED the record instead of beating it. Renders the
+   * outlined variant of the PR pill; `isPr` wins when both are set.
+   */
+  isPrMatch?: boolean;
   state: SetRowState;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
@@ -240,6 +240,8 @@ function ActiveWorkoutSetRow({
   set,
   renderKey,
   displayNumber,
+  isPr = false,
+  isPrMatch = false,
   state: stateProp,
   metricColumn,
   weightUnit,
@@ -537,6 +539,20 @@ function ActiveWorkoutSetRow({
     <View className="h-5 w-5 rounded-md bg-raised items-center justify-center">
       <Text className="text-[11px] font-bold text-text-muted">W</Text>
     </View>
+  ) : isPr || isPrMatch ? (
+    <View
+      testID={isPr ? 'pr-set-badge' : 'pr-match-badge'}
+      className={`h-5 min-w-5 px-1 rounded-md items-center justify-center ${
+        isPr ? 'bg-accent-primary/15' : 'border border-accent-primary/40'
+      }`}
+    >
+      <Text
+        className="text-[11px] font-bold text-accent-primary"
+        style={{ fontVariant: ['tabular-nums'] }}
+      >
+        {displayNumber}
+      </Text>
+    </View>
   ) : (
     <Text
       className="text-sm text-text-muted"
@@ -684,7 +700,7 @@ function ActiveWorkoutSetRow({
           className="text-center text-xs text-text-secondary"
           style={{ fontVariant: ['tabular-nums'] }}
         >
-          {previousSet != null ? formatPreviousSet(previousSet, weightUnit) : '—'}
+          {previousSet != null ? formatRecentSessionSet(previousSet, weightUnit) : '—'}
         </Text>
       </Pressable>
     ) : null;

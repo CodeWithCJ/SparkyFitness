@@ -511,4 +511,16 @@ describe('Exercise entry API schemas', () => {
     const result = runSchema('exerciseHistoryQuerySchema', { pageSzie: '50' });
     expect(result.success).toBe(false);
   });
+
+  it('accepts a UUID exerciseId filter and rejects non-UUID values', () => {
+    const valid = runSchema('exerciseHistoryQuerySchema', {
+      exerciseId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(valid.success).toBe(true);
+
+    const invalid = runSchema('exerciseHistoryQuerySchema', {
+      exerciseId: 'push-ups',
+    });
+    expect(invalid.success).toBe(false);
+  });
 });

@@ -20,6 +20,7 @@ import { weightFromKg } from '../utils/unitConversions';
 import {
   CATEGORY_ICON_MAP,
   compareSetRecords,
+  matchesSetRecord,
   formatVolume,
   getExerciseVolumeKg,
   type WorkoutCardExercise,
@@ -583,12 +584,20 @@ function ActiveWorkoutExerciseCard({
               ? 'current'
               : 'upcoming';
         const nextSet = exercise.sets[index + 1];
+        const isPrFlagged = isLive && prSetIds?.[setId] === true;
         return (
           <React.Fragment key={renderKey}>
             <ActiveWorkoutSetRow
               set={set}
               renderKey={renderKey}
               displayNumber={workingSetNumbers[index]}
+              isPr={isPrFlagged}
+              isPrMatch={
+                isLive &&
+                state === 'done' &&
+                !isPrFlagged &&
+                matchesSetRecord(set, bestDisplay)
+              }
               state={state}
               metricColumn={metricColumn}
               weightUnit={weightUnit}

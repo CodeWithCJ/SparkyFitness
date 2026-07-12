@@ -26,6 +26,7 @@ import {
   setVolumeKg,
   getExerciseVolumeKg,
   formatVolume,
+  formatRecentSessionSet,
   getRpeTone,
   getSupersetRuns,
   buildSupersetColorMap,
@@ -35,6 +36,7 @@ import {
   isWarmupSetType,
   seedPrFromSession,
   compareSetRecords,
+  matchesSetRecord,
   makeSparseExercise,
   exerciseFromDraft,
 } from '../../src/utils/workoutSession';
@@ -1915,6 +1917,29 @@ describe('workoutSession', () => {
     });
   });
 
+  describe('matchesSetRecord', () => {
+    const best = { weight: 100, reps: 5 };
+
+    it('is true only for an exact tie, not a beat or a miss', () => {
+      expect(matchesSetRecord({ weight: 100, reps: 5 }, best)).toBe(true);
+      expect(matchesSetRecord({ weight: 105, reps: 5 }, best)).toBe(false);
+      expect(matchesSetRecord({ weight: 100, reps: 6 }, best)).toBe(false);
+      expect(matchesSetRecord({ weight: 95, reps: 5 }, best)).toBe(false);
+    });
+
+    it('never matches warmups or weightless sets', () => {
+      expect(
+        matchesSetRecord({ weight: 100, reps: 5, set_type: 'Warm-up Set' }, best),
+      ).toBe(false);
+      expect(matchesSetRecord({ weight: null, reps: 5 }, best)).toBe(false);
+    });
+
+    it('is false without a weighted record to tie', () => {
+      expect(matchesSetRecord({ weight: 100, reps: 5 }, null)).toBe(false);
+      expect(matchesSetRecord({ weight: 100, reps: 5 }, { weight: null, reps: 5 })).toBe(false);
+    });
+  });
+
   describe('seedPrFromSession', () => {
     it('stamps only sets whose is_pr is true', () => {
       const session = {
@@ -2200,6 +2225,28 @@ describe('workoutSession', () => {
         expect(formatVolume(1000, 'kg')).toBe(`${fmt(1000)} kg`);
         // 1000 kg ≈ 2204.6 lbs
         expect(formatVolume(1000, 'lbs')).toBe(`${fmt(2205)} lbs`);
+      });
+    });
+
+    describe('formatRecentSessionSet', () => {
+      const recentSet = (
+        weight: number | null,
+        reps: number | null,
+        setType: string | null = null,
+      ) => ({ setNumber: 1, setType, weight, reps });
+
+      it('formats weight × reps, converting for the display unit', () => {
+        expect(formatRecentSessionSet(recentSet(100, 5), 'kg')).toBe('100 × 5');
+        expect(formatRecentSessionSet(recentSet(100, 5), 'lbs')).toBe('220.5 × 5');
+      });
+
+      it('prefixes warmup sets with W', () => {
+        expect(formatRecentSessionSet(recentSet(60, 10, 'warmup'), 'kg')).toBe('W 60 × 10');
+      });
+
+      it('handles weight-only and reps-only sets', () => {
+        expect(formatRecentSessionSet(recentSet(80, null), 'kg')).toBe('80');
+        expect(formatRecentSessionSet(recentSet(null, 12), 'kg')).toBe('12 reps');
       });
     });
 

@@ -1,6 +1,7 @@
 import type {
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
+  ExerciseRecentSessionSet,
   ExerciseSessionResponse,
   ExerciseSnapshotResponse,
   PresetSessionExerciseRequest,
@@ -449,6 +450,21 @@ export function formatVolume(volumeKg: number, weightUnit: string): string {
   return `${Math.round(value).toLocaleString()} ${weightUnit}`;
 }
 
+/** Compact historical-set text, e.g. `W 60 × 8`, `100 × 5`, or `12 reps`; weight is unitless display units. */
+export function formatRecentSessionSet(
+  set: ExerciseRecentSessionSet,
+  weightUnit: 'kg' | 'lbs',
+): string {
+  const w =
+    set.weight != null
+      ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
+      : null;
+  const prefix = set.setType === 'warmup' ? 'W ' : '';
+  if (w != null && set.reps != null) return `${prefix}${w} × ${set.reps}`;
+  if (w != null) return `${prefix}${w}`; // weight-only
+  return `${prefix}${set.reps} reps`; // reps-only set in a mixed history
+}
+
 export type RpeTone = 'easy' | 'moderate' | 'hard' | 'max';
 
 /** Effort bucket for tinting a logged RPE value. */
@@ -618,6 +634,25 @@ export function compareSetRecords(
   const wb = Math.round(b.weight * 100);
   if (wa !== wb) return wa - wb;
   return (a.reps ?? 0) - (b.reps ?? 0);
+}
+
+/**
+ * True when a non-warmup weighted set TIES the record (same weight and reps
+ * under `compareSetRecords`) — the "matched your PR" marker, one step below
+ * beating it. False when either side lacks a weight.
+ */
+export function matchesSetRecord(
+  set: { weight: number | null; reps: number | null; set_type?: string | null },
+  best: { weight: number | null; reps: number | null } | null | undefined,
+): boolean {
+  if (best == null || best.weight == null || set.weight == null) return false;
+  if (isWarmupSetType(set.set_type)) return false;
+  return (
+    compareSetRecords(
+      { weight: set.weight, reps: set.reps },
+      { weight: best.weight, reps: best.reps },
+    ) === 0
+  );
 }
 
 /**

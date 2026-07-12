@@ -2,6 +2,7 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useExerciseHistory } from '../../src/hooks/useExerciseHistory';
 import {
   exerciseHistoryQueryKey,
+  exerciseHistoryForExerciseQueryKey,
   exerciseHistoryResetQueryKey,
 } from '../../src/hooks/queryKeys';
 import { fetchExerciseHistory } from '../../src/services/api/exerciseApi';
@@ -67,8 +68,55 @@ describe('useExerciseHistory', () => {
     });
 
     await waitFor(() => {
-      expect(mockFetchExerciseHistory).toHaveBeenCalledWith(1);
+      expect(mockFetchExerciseHistory).toHaveBeenCalledWith(1, 20, undefined);
     });
+  });
+
+  test('scopes the cache by exercise and forwards the filter to the fetcher', async () => {
+    mockFetchExerciseHistory.mockResolvedValue(makePage([], 1, false));
+
+    renderHook(() => useExerciseHistory({ exerciseId: 'ex-123' }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(mockFetchExerciseHistory).toHaveBeenCalledWith(1, 20, 'ex-123');
+    });
+
+    expect(
+      queryClient.getQueryData(exerciseHistoryForExerciseQueryKey('ex-123')),
+    ).toBeDefined();
+    // The unfiltered key stays untouched, so full-history screens keep their own cache.
+    expect(queryClient.getQueryData(exerciseHistoryQueryKey)).toBeUndefined();
+  });
+
+  test('external history reset also resets a filtered instance', async () => {
+    const page1Session = makeIndividualSession('1', 'Bench Press');
+    mockFetchExerciseHistory.mockResolvedValue(makePage([page1Session], 1, false));
+
+    const { result } = renderHook(
+      () => useExerciseHistory({ exerciseId: 'ex-123' }),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(1);
+    });
+
+    const freshSession = makeIndividualSession('3', 'Overhead Press');
+    mockFetchExerciseHistory.mockResolvedValue(makePage([freshSession], 1, false));
+
+    await act(async () => {
+      queryClient.removeQueries({ queryKey: exerciseHistoryQueryKey });
+      queryClient.setQueryData(exerciseHistoryResetQueryKey, Date.now());
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(1);
+      expect(result.current.sessions[0].id).toBe('3');
+    });
+
+    expect(mockFetchExerciseHistory).toHaveBeenLastCalledWith(1, 20, 'ex-123');
   });
 
   test('does not fetch when enabled is false', async () => {
@@ -169,7 +217,7 @@ describe('useExerciseHistory', () => {
       expect(result.current.sessions[0].id).toBe('3');
     });
 
-    expect(mockFetchExerciseHistory).toHaveBeenLastCalledWith(1);
+    expect(mockFetchExerciseHistory).toHaveBeenLastCalledWith(1, 20, undefined);
   });
 
   test('hasMore reflects pagination response', async () => {
@@ -259,7 +307,7 @@ describe('useExerciseHistory', () => {
       expect(result.current.sessions[0].id).toBe('3');
     });
 
-    expect(mockFetchExerciseHistory).toHaveBeenLastCalledWith(1);
+    expect(mockFetchExerciseHistory).toHaveBeenLastCalledWith(1, 20, undefined);
   });
 
   test('external history reset returns the hook to page 1 without duplicating sessions', async () => {
@@ -299,7 +347,7 @@ describe('useExerciseHistory', () => {
       expect(result.current.sessions[0].id).toBe('3');
     });
 
-    expect(mockFetchExerciseHistory).toHaveBeenLastCalledWith(1);
+    expect(mockFetchExerciseHistory).toHaveBeenLastCalledWith(1, 20, undefined);
   });
 
   test('cache updates to a loaded later page replace sessions without duplicating rows', async () => {

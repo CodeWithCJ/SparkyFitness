@@ -11,7 +11,9 @@
  * created_at, then ee.id DESC) with its weight-or-reps set filtering. These run
  * inside Postgres, so this test drives the real model functions against a real DB,
  * seeding via the superuser client and reading back through the RLS-enforced
- * `getClient(userId)` path the model uses.
+ * `getClient(userId)` path the model uses. The history endpoint's `exerciseId`
+ * session filter (EXISTS over preset children + standalone match) is proven
+ * here too, against the same fixture.
  *
  * It seeds and deletes only its own synthetic `@example.test` rows. The gate does
  * a short-timeout connection probe, so it SKIPS cleanly when no database is
@@ -19,8 +21,10 @@
  */
 import pg from 'pg';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { exerciseHistoryResponseSchema } from '@workspace/shared';
 import { getSystemClient, endPool } from '../db/poolManager.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
+import { getExerciseEntryHistory } from '../services/exerciseEntryHistoryService.js';
 
 async function statsDbReachable(): Promise<boolean> {
   if (process.env.SKIP_RLS_MATRIX === '1') return false;
@@ -129,11 +133,20 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
         entryDate = '2026-07-07',
         createdAt: string | null = null
       ) => {
+        // exercise_name feeds the history response's non-nullable snapshot name.
         await sys.query(
           `INSERT INTO public.exercise_entries
-             (id, user_id, exercise_id, duration_minutes, calories_burned, entry_date, exercise_preset_entry_id, created_at)
-           VALUES ($1, $2, $3, 0, 0, $4, $5, COALESCE($6::timestamptz, now()))`,
-          [id, U, exerciseId, entryDate, presetEntryId, createdAt]
+             (id, user_id, exercise_id, duration_minutes, calories_burned, entry_date, exercise_preset_entry_id, created_at, exercise_name)
+           VALUES ($1, $2, $3, 0, 0, $4, $5, COALESCE($6::timestamptz, now()), $7)`,
+          [
+            id,
+            U,
+            exerciseId,
+            entryDate,
+            presetEntryId,
+            createdAt,
+            'Stats Test Exercise',
+          ]
         );
       };
       const insertSet = async (
@@ -322,5 +335,38 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
     expect(sessions[0].sets).toHaveLength(1);
     expect(sessions[0].sets?.[0]?.set_number).toBe(2);
     expect(Number(sessions[0].sets?.[0]?.weight)).toBe(50);
+  });
+
+  it('filters history to sessions containing the exercise, keeping full preset content', async () => {
+    const result = await getExerciseEntryHistory(U, 1, 20, E2);
+    exerciseHistoryResponseSchema.parse(result);
+
+    // E2 appears in both presets and one standalone entry.
+    expect(result.pagination.totalCount).toBe(3);
+    expect(result.sessions.map((s) => s.id).sort()).toEqual(
+      [EN2_INDIV, PE_CURRENT, PE_OTHER].sort()
+    );
+
+    // The filter is session-level: PE_CURRENT still carries its E3 child.
+    const current = result.sessions.find((s) => s.id === PE_CURRENT);
+    expect(current?.type).toBe('preset');
+    if (current?.type === 'preset') {
+      expect(current.exercises.map((e) => e.exercise_id).sort()).toEqual(
+        [E2, E3].sort()
+      );
+    }
+  });
+
+  it('excludes sessions that do not contain the filtered exercise', async () => {
+    const result = await getExerciseEntryHistory(U, 1, 20, E1);
+    expect(result.pagination.totalCount).toBe(1);
+    expect(result.sessions).toHaveLength(1);
+    expect(result.sessions[0]).toMatchObject({ type: 'individual', id: EN1 });
+  });
+
+  it('paginates the filtered session count', async () => {
+    const result = await getExerciseEntryHistory(U, 1, 2, E2);
+    expect(result.sessions).toHaveLength(2);
+    expect(result.pagination).toMatchObject({ totalCount: 3, hasMore: true });
   });
 });
