@@ -144,6 +144,7 @@ describe('Exercise entry API schemas', () => {
         reps: 8,
         setNumber: 1,
       },
+      recentSessions: [],
     });
     expect(result.success).toBe(true);
     expect(result.data.bestSet.weight).toBe(100);
@@ -154,10 +155,11 @@ describe('Exercise entry API schemas', () => {
     const result = runSchema('exerciseStatsResponseSchema', {
       bestSet: null,
       lastSet: null,
+      recentSessions: [],
     });
     expect(result).toEqual({
       success: true,
-      data: { bestSet: null, lastSet: null },
+      data: { bestSet: null, lastSet: null, recentSessions: [] },
     });
   });
 
@@ -170,6 +172,7 @@ describe('Exercise entry API schemas', () => {
         reps: 10,
         setNumber: 2,
       },
+      recentSessions: [],
     });
     expect(result.success).toBe(true);
     expect(result.data.lastSet.weight).toBeNull();
@@ -184,6 +187,7 @@ describe('Exercise entry API schemas', () => {
         setNumber: 1,
       },
       lastSet: null,
+      recentSessions: [],
     });
     expect(result.success).toBe(false);
   });
@@ -192,6 +196,7 @@ describe('Exercise entry API schemas', () => {
     const result = runSchema('exerciseStatsResponseSchema', {
       bestSet: null,
       lastSet: null,
+      recentSessions: [],
       extra: 'nope',
     });
     expect(result.success).toBe(false);
@@ -206,6 +211,81 @@ describe('Exercise entry API schemas', () => {
         setNumber: 1,
       },
       lastSet: null,
+      recentSessions: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects stats payloads missing recentSessions', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts populated recentSessions incl. warmup and reps-only sets', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [
+        {
+          entryDate: '2026-05-19',
+          sets: [
+            { setNumber: 1, setType: 'warmup', weight: 60, reps: 8 },
+            { setNumber: 2, setType: null, weight: 100, reps: 5 },
+            { setNumber: 3, setType: null, weight: null, reps: 12 },
+          ],
+        },
+        {
+          entryDate: '2026-05-16',
+          sets: [{ setNumber: 1, setType: null, weight: 100, reps: null }],
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.recentSessions[0].sets).toHaveLength(3);
+  });
+
+  it('rejects recent-session sets with unknown keys (strict)', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [
+        {
+          entryDate: '2026-05-19',
+          sets: [
+            { setNumber: 1, setType: null, weight: 100, reps: 5, id: 'nope' },
+          ],
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects recent-session sets with both weight and reps null', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [
+        {
+          entryDate: '2026-05-19',
+          sets: [{ setNumber: 1, setType: null, weight: null, reps: null }],
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects more than 3 recent sessions', () => {
+    const session = {
+      entryDate: '2026-05-19',
+      sets: [{ setNumber: 1, setType: null, weight: 100, reps: 5 }],
+    };
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [session, session, session, session],
     });
     expect(result.success).toBe(false);
   });

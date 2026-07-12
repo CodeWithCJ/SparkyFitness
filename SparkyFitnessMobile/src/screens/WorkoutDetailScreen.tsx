@@ -571,6 +571,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         bottomOffset={20}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
+        // Set-row taps remount the focused input; stop the keyboard-hide
+        // restore scroll so the refocus lands on the tapped cell (see
+        // ActiveWorkoutScreen's scroll view).
+        disableScrollOnKeyboardHide
       >
         {/* Title area */}
         <View className="mb-4">
@@ -619,35 +623,41 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </Button>
         )}
 
-        {/* Exercises */}
-        {isEditing ? (
-          <WorkoutFormExerciseList
-            ref={exerciseListRef}
-            exercises={formState.exercises}
-            weightUnit={weightUnit as 'kg' | 'lbs'}
-            getImageSource={getImageSource}
-            activeSetKey={activeSetKey}
-            activeSetField={activeSetField}
-            onActivateSet={activateSet}
-            onDeactivateSet={deactivateSet}
-            updateSetField={updateSetField}
-            updateSetMeta={updateSetMeta}
-            removeSet={removeSet}
-            onAddSet={handleAddSet}
-            onRemoveExercise={handleRemoveExercise}
-            setExerciseRest={setExerciseRest}
-            supersetWith={supersetWith}
-            ungroupExercise={ungroupExercise}
-            onReorderExercises={reorderExercises}
-            onAddExercisePress={openExerciseSearch}
-            onViewExercise={(exercise) =>
-              navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
-            }
-            isEligibleForPrefill={isEligibleForPrefill}
-            showCompletion
-            removeExerciseOnLastSetDelete
-          />
-        ) : renderViewExercises()}
+        {/* Exercises — full-bleed: cancel the scroll container's px-4 so the
+            card separators reach the screen edges. */}
+        <View className="-mx-4">
+          {isEditing ? (
+            <WorkoutFormExerciseList
+              ref={exerciseListRef}
+              exercises={formState.exercises}
+              weightUnit={weightUnit as 'kg' | 'lbs'}
+              getImageSource={getImageSource}
+              excludePresetEntryId={session.id}
+              activeSetKey={activeSetKey}
+              activeSetField={activeSetField}
+              onActivateSet={activateSet}
+              onDeactivateSet={deactivateSet}
+              updateSetField={updateSetField}
+              updateSetMeta={updateSetMeta}
+              removeSet={removeSet}
+              onAddSet={handleAddSet}
+              onRemoveExercise={handleRemoveExercise}
+              setExerciseRest={setExerciseRest}
+              supersetWith={supersetWith}
+              ungroupExercise={ungroupExercise}
+              onReorderExercises={reorderExercises}
+              onAddExercisePress={openExerciseSearch}
+              onViewExercise={(exercise) =>
+                navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
+              }
+              isEligibleForPrefill={isEligibleForPrefill}
+              showCompletion
+              removeExerciseOnLastSetDelete
+            />
+          ) : (
+            renderViewExercises()
+          )}
+        </View>
 
         {/* Edit controls */}
         {isEditing && (

@@ -1,6 +1,8 @@
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
+import LiquidGlassSurface, { createLiquidGlassPillStyle } from './LiquidGlassSurface';
+
 /**
  * Presentation shared by the set rows (ActiveWorkoutSetRow and the activity
  * form's EditableSetRow): the iOS keyboard accessory bar and the right-swipe
@@ -17,9 +19,43 @@ export interface SetAccessoryAction {
   bold?: boolean;
 }
 
+/** Floating pill button: Liquid Glass on iOS 26+, themed chrome chip elsewhere. */
+function AccessoryPillButton({
+  label,
+  onPress,
+  bold,
+  accentPrimary,
+  chromeBorder,
+}: {
+  label: string;
+  onPress: () => void;
+  bold?: boolean;
+  accentPrimary: string;
+  chromeBorder: string;
+}) {
+  return (
+    <LiquidGlassSurface
+      style={createLiquidGlassPillStyle(chromeBorder, { marginHorizontal: 0, marginBottom: 0 })}
+      isInteractive
+    >
+      <TouchableOpacity
+        onPress={onPress}
+        hitSlop={HIT_SLOP}
+        style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+      >
+        <Text style={{ color: accentPrimary, fontWeight: bold ? '700' : '600', fontSize: 16 }}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    </LiquidGlassSurface>
+  );
+}
+
 /**
- * iOS input-accessory bar: Done on the left (dismisses the keyboard),
- * row-specific actions on the right. Render inside an InputAccessoryView.
+ * iOS input-accessory strip: floating pill buttons on a transparent background
+ * so the app content stays visible against the Liquid Glass keyboard — Done on
+ * the left (dismisses the keyboard), row-specific actions on the right. Render
+ * inside an InputAccessoryView.
  */
 export function SetInputAccessoryBar({
   onDone,
@@ -28,11 +64,10 @@ export function SetInputAccessoryBar({
   onDone: () => void;
   actions: SetAccessoryAction[];
 }) {
-  const [accentPrimary, chromeBg, chromeBorder] = useCSSVariable([
+  const [accentPrimary, chromeBorder] = useCSSVariable([
     '--color-accent-primary',
-    '--color-chrome',
     '--color-chrome-border',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   return (
     <View
@@ -40,29 +75,27 @@ export function SetInputAccessoryBar({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: chromeBg,
-        borderTopWidth: 1,
-        borderTopColor: chromeBorder,
+        paddingHorizontal: 12,
+        paddingTop: 4,
+        paddingBottom: 8,
       }}
     >
-      <TouchableOpacity onPress={onDone} hitSlop={HIT_SLOP}>
-        <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>Done</Text>
-      </TouchableOpacity>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
+      <AccessoryPillButton
+        label="Done"
+        onPress={onDone}
+        accentPrimary={accentPrimary}
+        chromeBorder={chromeBorder}
+      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         {actions.map((action) => (
-          <TouchableOpacity key={action.key} onPress={action.onPress} hitSlop={HIT_SLOP}>
-            <Text
-              style={{
-                color: accentPrimary,
-                fontWeight: action.bold ? '700' : '600',
-                fontSize: 16,
-              }}
-            >
-              {action.label}
-            </Text>
-          </TouchableOpacity>
+          <AccessoryPillButton
+            key={action.key}
+            label={action.label}
+            onPress={action.onPress}
+            bold={action.bold}
+            accentPrimary={accentPrimary}
+            chromeBorder={chromeBorder}
+          />
         ))}
       </View>
     </View>

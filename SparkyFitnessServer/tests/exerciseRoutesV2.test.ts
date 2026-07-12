@@ -319,6 +319,7 @@ describe('GET /v2/exercises/:exerciseId/stats', () => {
         reps: 8,
         setNumber: 1,
       },
+      recentSessions: [],
     });
 
     const res = await request(app).get(`/v2/exercises/${EXERCISE_UUID}/stats`);
@@ -337,6 +338,7 @@ describe('GET /v2/exercises/:exerciseId/stats', () => {
         reps: 8,
         setNumber: 1,
       },
+      recentSessions: [],
     });
     expect(exerciseService.getExerciseStats).toHaveBeenCalledWith(
       'user-123',
@@ -345,12 +347,63 @@ describe('GET /v2/exercises/:exerciseId/stats', () => {
     );
   });
 
+  it('returns 200 echoing populated recentSessions', async () => {
+    const recentSessions = [
+      {
+        entryDate: '2026-05-19',
+        sets: [
+          { setNumber: 1, setType: 'warmup', weight: 60, reps: 8 },
+          { setNumber: 2, setType: null, weight: 100, reps: 5 },
+        ],
+      },
+      {
+        entryDate: '2026-05-16',
+        sets: [{ setNumber: 1, setType: null, weight: null, reps: 12 }],
+      },
+      {
+        entryDate: '2026-05-14',
+        sets: [{ setNumber: 1, setType: null, weight: 95, reps: 5 }],
+      },
+    ];
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseService.getExerciseStats.mockResolvedValue({
+      bestSet: null,
+      lastSet: null,
+      recentSessions,
+    });
+
+    const res = await request(app).get(`/v2/exercises/${EXERCISE_UUID}/stats`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({
+      bestSet: null,
+      lastSet: null,
+      recentSessions,
+    });
+  });
+
+  it('returns 500 when the service payload fails response validation', async () => {
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseService.getExerciseStats.mockResolvedValue({
+      bestSet: null,
+      lastSet: null,
+      // Empty set list violates the schema's .min(1).
+      recentSessions: [{ entryDate: '2026-05-19', sets: [] }],
+    });
+
+    const res = await request(app).get(`/v2/exercises/${EXERCISE_UUID}/stats`);
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body.error).toBe('Internal response validation failed');
+  });
+
   it('forwards a valid excludePresetEntryId query param to the service', async () => {
     const excludeId = '22222222-2222-4222-8222-222222222222';
     // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
     exerciseService.getExerciseStats.mockResolvedValue({
       bestSet: null,
       lastSet: null,
+      recentSessions: [],
     });
 
     const res = await request(app).get(
@@ -380,12 +433,17 @@ describe('GET /v2/exercises/:exerciseId/stats', () => {
     exerciseService.getExerciseStats.mockResolvedValue({
       bestSet: null,
       lastSet: null,
+      recentSessions: [],
     });
 
     const res = await request(app).get(`/v2/exercises/${EXERCISE_UUID}/stats`);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ bestSet: null, lastSet: null });
+    expect(res.body).toEqual({
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [],
+    });
   });
 
   it('returns 400 when exerciseId is not a UUID', async () => {

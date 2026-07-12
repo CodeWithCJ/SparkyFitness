@@ -23,6 +23,7 @@ import {
   SetSwipeDeleteAction,
   type SetAccessoryAction,
 } from './SetRowChrome';
+import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import { formatRest } from './RestPeriodChip';
 import { withAlpha } from '../utils/colors';
 import { parseDecimalInput } from '../utils/numericInput';
@@ -37,6 +38,7 @@ import {
 } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
+import type { ExerciseRecentSessionSet } from '@workspace/shared';
 
 export type SetRowState = 'done' | 'current' | 'upcoming';
 
@@ -70,15 +72,42 @@ export function parseRpeInput(text: string): number | null {
   return Math.min(10, Math.max(1, snapped));
 }
 
+/** PREVIOUS column text, e.g. `W 60 × 8`, `100 × 5`, or `12 reps`. */
+function formatPreviousSet(set: ExerciseRecentSessionSet, weightUnit: 'kg' | 'lbs'): string {
+  const w =
+    set.weight != null
+      ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
+      : null;
+  const prefix = set.setType === 'warmup' ? 'W ' : '';
+  if (w != null && set.reps != null) return `${prefix}${w} × ${set.reps}`;
+  if (w != null) return `${prefix}${w}`; // weight-only
+  return `${prefix}${set.reps} reps`; // reps-only set in a mixed history
+}
+
 export type SetRowMode = 'live' | 'view' | 'edit';
 
 interface ActiveWorkoutSetRowProps {
   set: WorkoutCardSet;
+  /**
+   * Stable React render key for this row (from the store's `setRenderKeys`
+   * map). Defaults to the set id. The iOS input-accessory `nativeID`s derive
+   * from it, so a focused input keeps its accessory attached across an id churn
+   * on autosave (the accessory attachment is fragile — see the `isIOS` block).
+   */
+  renderKey?: string;
   /** Working-set number. Warmup rows show the `W` pill instead. */
   displayNumber: number;
   state: SetRowState;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
+  /**
+   * Hevy-style PREVIOUS column: this set's counterpart (by position) in the
+   * exercise's most recent prior session. `null` renders a dash (no history
+   * or fewer sets last time); leave it `undefined` to omit the column
+   * entirely (view mode). Tapping the value copies its weight/reps into the
+   * row, replacing anything already entered.
+   */
+  previousSet?: ExerciseRecentSessionSet | null;
   /**
    * 'view' renders without logging affordances: static check on done rows, no
    * un-complete control, no swipe-delete, no done-row dim.
@@ -209,10 +238,12 @@ function SetCellInput({
 
 function ActiveWorkoutSetRow({
   set,
+  renderKey,
   displayNumber,
   state: stateProp,
   metricColumn,
   weightUnit,
+  previousSet,
   mode = 'live',
   onComplete,
   onUncomplete,
@@ -284,11 +315,13 @@ function ActiveWorkoutSetRow({
   const [repsDraft, setRepsDraft] = useState(() => (set.reps != null ? String(set.reps) : ''));
   const [rpeDraft, setRpeDraft] = useState(() => (set.rpe != null ? formatRpe(set.rpe) : ''));
 
-  // Re-seed drafts when the underlying set changes (id churn after a recreate
-  // save, unit change, or an external edit). Commits only happen on blur/step,
-  // so a mid-typing clobber can't occur — the store doesn't move under a
-  // focused row.
-  const signature = `${set.id}|${set.weight}|${set.reps}|${set.rpe}|${weightUnit}`;
+  // Re-seed drafts when the underlying set's VALUES change (unit change or an
+  // external edit) — but deliberately NOT on `set.id`. A stable render key keeps
+  // this row's instance alive across an autosave that only reassigns the id, so
+  // keying the re-seed on the id would wipe in-progress text under a still-open
+  // keyboard. Commits only happen on blur/step, so a mid-typing value clobber
+  // can't occur — the store doesn't move under a focused row.
+  const signature = `${set.weight}|${set.reps}|${set.rpe}|${weightUnit}`;
   const [prevSignature, setPrevSignature] = useState(signature);
   if (signature !== prevSignature) {
     setPrevSignature(signature);
@@ -324,7 +357,7 @@ function ActiveWorkoutSetRow({
         : activeField === 'rpe'
           ? rpeInputRef
           : weightInputRef;
-    ref.current?.focus();
+    return focusWithAndroidImeRetry(ref);
   }, [isActiveEditRow, activeField]);
 
   // Edit-mode inputs are CONTROLLED by the form reducer (raw draft strings),
@@ -332,6 +365,18 @@ function ActiveWorkoutSetRow({
   // raw keystrokes like "102.55" survive to save without a kg round-trip.
   const editWeightText = set.editWeightText ?? '';
   const editRepsText = set.editRepsText ?? '';
+
+  // Fill-from-previous replaces whatever the row holds with last time's
+  // values. A field the previous set lacks (e.g. a weight-only set) is left
+  // alone rather than cleared.
+  const canFillFromPrevious = previousSet != null;
+  const handleFillFromPrevious = useCallback(() => {
+    if (previousSet == null) return;
+    const patch: ActiveSetPatch = {};
+    if (previousSet.weight != null) patch.weight = previousSet.weight;
+    if (previousSet.reps != null) patch.reps = previousSet.reps;
+    if (Object.keys(patch).length > 0) onCommitField?.(setId, patch);
+  }, [previousSet, onCommitField, setId]);
 
   // Commit the parsed+clamped value on every keystroke — including empty → null
   // — so WorkoutDetailScreen's header Save, which reads the reducer synchronously
@@ -514,12 +559,14 @@ function ActiveWorkoutSetRow({
     );
   }, [onPressSetType, setId]);
 
-  // A set-type handler takes over the long-press; otherwise fall back to the
-  // consumer's plain long-press (view mode's "Start workout here").
-  const longPress = onPressSetType
-    ? openSetTypeMenu
-    : onLongPress
-      ? () => onLongPress(setId)
+  // A wired long-press wins (live: expand the row's notes/rest detail; view:
+  // "Start workout here"); the set-type menu is otherwise the long-press
+  // fallback for surfaces that only offer the type picker (the edit form). The
+  // set-number tap always opens the type menu independently of this.
+  const longPress = onLongPress
+    ? () => onLongPress(setId)
+    : onPressSetType
+      ? openSetTypeMenu
       : undefined;
 
   const setNumberControl = (
@@ -616,13 +663,42 @@ function ActiveWorkoutSetRow({
 
   const showRpeInput = metricColumn === 'rpe' && (!isEdit || rpeEditable);
 
+  // PREVIOUS column (only when the consumer passes the prop). The value is a
+  // tap target while it can still fill something; otherwise inert gray text.
+  const previousCell =
+    previousSet !== undefined ? (
+      <Pressable
+        className="w-20 items-center py-1"
+        onPress={handleFillFromPrevious}
+        onLongPress={longPress}
+        disabled={!canFillFromPrevious}
+        accessibilityRole={canFillFromPrevious ? 'button' : undefined}
+        accessibilityLabel={
+          canFillFromPrevious ? `Fill set ${set.set_number} from previous` : undefined
+        }
+      >
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+          className="text-center text-xs text-text-secondary"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {previousSet != null ? formatPreviousSet(previousSet, weightUnit) : '—'}
+        </Text>
+      </Pressable>
+    ) : null;
+
   // Each input gets its OWN InputAccessoryView (unique nativeID). iOS attaches a
   // shared accessory to only the first-registered input, so reps/RPE would come
-  // up with a bare keyboard if all three pointed at one id.
+  // up with a bare keyboard if all three pointed at one id. The ids derive from
+  // the render key, not the set id, so they stay stable across an autosave that
+  // churns the id while the keyboard is up.
   const isIOS = Platform.OS === 'ios';
-  const weightAccessoryId = isIOS ? `active-set-${setId}-weight` : undefined;
-  const repsAccessoryId = isIOS ? `active-set-${setId}-reps` : undefined;
-  const rpeAccessoryId = isIOS ? `active-set-${setId}-rpe` : undefined;
+  const accessoryKey = renderKey ?? setId;
+  const weightAccessoryId = isIOS ? `active-set-${accessoryKey}-weight` : undefined;
+  const repsAccessoryId = isIOS ? `active-set-${accessoryKey}-reps` : undefined;
+  const rpeAccessoryId = isIOS ? `active-set-${accessoryKey}-rpe` : undefined;
 
   if (isActiveEditRow) {
     // One bar description, rendered into each input's accessory (only the
@@ -641,7 +717,9 @@ function ActiveWorkoutSetRow({
       ...(isLive && liveHasNextField
         ? [{ key: 'next', label: 'Next', onPress: handleLiveNext }]
         : []),
-      ...(isLive && state === 'current'
+      // Any uncompleted set is loggable (matching its ring), so a focused
+      // upcoming row doesn't dead-end on the last field with only Done.
+      ...(isLive && state !== 'done'
         ? [{ key: 'log', label: 'Log', onPress: handleLog, bold: true }]
         : []),
     ];
@@ -661,10 +739,11 @@ function ActiveWorkoutSetRow({
         <Pressable
           testID="set-row"
           onLongPress={longPress}
-          className={`flex-row items-center py-2 px-3 rounded-xl ${state === 'current' ? '' : 'bg-background'}`}
+          className={`flex-row items-center py-2 px-1 rounded-xl ${state === 'current' ? '' : 'bg-background'}`}
           style={state === 'current' ? { backgroundColor: withAlpha(accentPrimary, 0.12) } : undefined}
         >
           {setNumberControl}
+          {previousCell}
           <View className="flex-1 items-center">
             <SetCellInput
               inputRef={weightInputRef}
@@ -785,7 +864,7 @@ function ActiveWorkoutSetRow({
     <Pressable
       testID="set-row"
       onLongPress={longPress}
-      className={`flex-row items-center py-2.5 px-3 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
+      className={`flex-row items-center py-2.5 px-1 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
       style={isCursor ? { backgroundColor: withAlpha(accentPrimary, 0.12) } : undefined}
     >
       {/* Done rows recede (opacity 0.62), but the completion check lives outside
@@ -796,6 +875,7 @@ function ActiveWorkoutSetRow({
         style={doneDim ? { opacity: 0.62 } : undefined}
       >
         {setNumberControl}
+        {previousCell}
         {editable ? (
           <Pressable
             className="flex-1 py-1"

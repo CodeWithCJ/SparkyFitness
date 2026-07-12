@@ -98,8 +98,10 @@ describe('ActiveWorkoutHeader', () => {
   }
 
   it('renders the name and elapsed clock', () => {
-    const { getByText } = renderHeaderComponent({});
-    expect(getByText('Push Day')).toBeTruthy();
+    const { getAllByText, getByText } = renderHeaderComponent({});
+    // The name renders twice: the header title and the menu sheet's title
+    // (the gorhom mock always renders sheet children).
+    expect(getAllByText('Push Day').length).toBeGreaterThanOrEqual(1);
     expect(getByText('01:02 elapsed')).toBeTruthy();
   });
 
@@ -180,18 +182,18 @@ describe('ActiveWorkoutHeader', () => {
     expect(onAddExercise).toHaveBeenCalledTimes(1);
   });
 
-  it('omits Add exercise and Clear logged sets when their handlers are absent', () => {
+  it('omits Add exercise and Clear all logged sets when their handlers are absent', () => {
     const { getByLabelText, queryByText } = renderHeaderComponent({});
     fireEvent.press(getByLabelText('Workout menu'));
     expect(queryByText('Add exercise')).toBeNull();
-    expect(queryByText('Clear logged sets')).toBeNull();
+    expect(queryByText('Clear all logged sets')).toBeNull();
   });
 
-  it('shows Clear logged sets and fires onClearAllSets when provided', () => {
+  it('shows Clear all logged sets and fires onClearAllSets when provided', () => {
     const onClearAllSets = jest.fn();
     const { getByLabelText, getByText } = renderHeaderComponent({}, { onClearAllSets });
     fireEvent.press(getByLabelText('Workout menu'));
-    fireEvent.press(getByText('Clear logged sets'));
+    fireEvent.press(getByText('Clear all logged sets'));
     expect(onClearAllSets).toHaveBeenCalledTimes(1);
   });
 });

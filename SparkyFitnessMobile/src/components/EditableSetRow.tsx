@@ -8,6 +8,7 @@ import Button from './ui/Button';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
 import { SetInputAccessoryBar, SetSwipeDeleteAction } from './SetRowChrome';
+import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import { parseDecimalInput } from '../utils/numericInput';
 
 interface EditableSetRowProps {
@@ -67,7 +68,7 @@ function EditableSetRow({
   useEffect(() => {
     if (!isActive) return;
     const ref = activeField === 'reps' ? repsInputRef : weightInputRef;
-    ref.current?.focus();
+    return focusWithAndroidImeRetry(ref);
   }, [isActive, activeField]);
 
   const handleUpdateWeight = useCallback((value: string) => {

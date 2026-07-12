@@ -195,47 +195,51 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
         </Text>
 
-        {cardExercises.map(cardExercise => {
-          const isExpanded = !collapsedIds[cardExercise.id];
-          const supersetBorder = supersetBorders.get(cardExercise.id) ?? null;
-          return (
-            // Grouped members carry a flat 3px left rail; interior rails run
-            // to the wrapper's bottom so consecutive members read as one line.
-            <View
-              key={cardExercise.id}
-              style={supersetBorder ? { paddingLeft: 10 } : undefined}
-            >
-              {supersetBorder && (
-                <View
-                  testID={`superset-rail-${cardExercise.id}`}
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: supersetBorder.isLast && isExpanded ? 8 : 0,
-                    width: 3,
-                    backgroundColor: supersetBorder.color,
-                  }}
+        {/* Full-bleed: cancel the scroll container's 16px inset so the card
+            separators reach the screen edges. */}
+        <View className="-mx-4">
+          {cardExercises.map(cardExercise => {
+            const isExpanded = !collapsedIds[cardExercise.id];
+            const supersetBorder = supersetBorders.get(cardExercise.id) ?? null;
+            return (
+              // Grouped members carry a flat 3px left rail; interior rails run
+              // to the wrapper's bottom so consecutive members read as one line.
+              <View
+                key={cardExercise.id}
+                style={supersetBorder ? { paddingLeft: 10 } : undefined}
+              >
+                {supersetBorder && (
+                  <View
+                    testID={`superset-rail-${cardExercise.id}`}
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: supersetBorder.isLast && isExpanded ? 8 : 0,
+                      width: 3,
+                      backgroundColor: supersetBorder.color,
+                    }}
+                  />
+                )}
+                <ActiveWorkoutExerciseCard
+                  exercise={cardExercise}
+                  mode="view"
+                  expanded={isExpanded}
+                  completedSetIds={{}}
+                  activeSetId={null}
+                  metricColumn={metricColumn}
+                  weightUnit={weightUnit}
+                  getImageSource={getImageSource}
+                  showRestChip={cardExercise.sets.length > 0}
+                  onPressThumb={handleViewExercise}
+                  onToggleExpanded={toggleExpanded}
+                  onPressMetricHeader={handlePressMetricHeader}
                 />
-              )}
-              <ActiveWorkoutExerciseCard
-                exercise={cardExercise}
-                mode="view"
-                expanded={isExpanded}
-                completedSetIds={{}}
-                activeSetId={null}
-                metricColumn={metricColumn}
-                weightUnit={weightUnit}
-                getImageSource={getImageSource}
-                showRestChip={cardExercise.sets.length > 0}
-                onPressThumb={handleViewExercise}
-                onToggleExpanded={toggleExpanded}
-                onPressMetricHeader={handlePressMetricHeader}
-              />
-            </View>
-          );
-        })}
+              </View>
+            );
+          })}
+        </View>
 
         <Button
           variant="primary"

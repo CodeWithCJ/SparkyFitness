@@ -53,6 +53,7 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
               metricColumn: props.metricColumn,
               rpeEditable: props.rpeEditable,
               eligibleForPrefill: props.eligibleForPrefill,
+              excludePresetEntryId: props.excludePresetEntryId ?? null,
               editWeight0: props.exercise.sets[0]?.editWeightText ?? null,
               weightKg0: props.exercise.sets[0]?.weight ?? null,
               completed: props.completedSetIds,
@@ -64,7 +65,7 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
           />
           <Pressable
             testID={`card-${id}-overflow`}
-            onPress={() => props.onPressOverflow?.(id, { x: 0, y: 0, width: 0, height: 0 })}
+            onPress={() => props.onPressOverflow?.(id)}
           />
           <Pressable
             testID={`card-${id}-thumb`}
@@ -111,8 +112,8 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
   };
 });
 
-// The real menu closes (onClose) before running the pressed item — mirror
-// that order so the main→pick overflow transition lands like production.
+// Serves the set-type menu (via WorkoutMenus). The real menu closes (onClose)
+// before running the pressed item — mirror that order.
 jest.mock('../../src/components/AnchoredMenu', () => {
   const React = require('react');
   const { View, Pressable, Text } = require('react-native');
@@ -137,6 +138,35 @@ jest.mock('../../src/components/AnchoredMenu', () => {
           ))}
         </View>
       ) : null,
+  };
+});
+
+// Serves the card ⋮ overflow menu. Owner state gates the item list (empty
+// until a card's ⋮ is pressed), so rendering unconditionally is faithful;
+// present/dismiss are inert and onDismiss never fires, matching how the
+// content assertions drive the flow. Same menu-item-* testIDs as the
+// AnchoredMenu mock so the pre-conversion assertions carry over.
+jest.mock('../../src/components/ActionSheet', () => {
+  const React = require('react');
+  const { View, Pressable, Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: React.forwardRef(({ items }: any, ref: any) => {
+      React.useImperativeHandle(ref, () => ({ present: jest.fn(), dismiss: jest.fn() }));
+      return (
+        <View>
+          {items.map((item: any) => (
+            <Pressable
+              key={item.key}
+              testID={`menu-item-${item.key}`}
+              onPress={() => item.onPress()}
+            >
+              <Text>{item.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      );
+    }),
   };
 });
 
@@ -262,6 +292,19 @@ describe('WorkoutFormExerciseList', () => {
       }),
     ]);
     expect(cardInfo(utils, 'a').completed).toEqual({ 'a-s1': Date.parse(completedAt) });
+  });
+
+  it('forwards excludePresetEntryId to every card when editing a saved workout', () => {
+    const utils = renderList([makeExercise('a'), makeExercise('b')], {
+      excludePresetEntryId: 'session-1',
+    });
+    expect(cardInfo(utils, 'a').excludePresetEntryId).toBe('session-1');
+    expect(cardInfo(utils, 'b').excludePresetEntryId).toBe('session-1');
+  });
+
+  it('passes no excludePresetEntryId in create mode', () => {
+    const utils = renderList([makeExercise('a')]);
+    expect(cardInfo(utils, 'a').excludePresetEntryId).toBeNull();
   });
 
   describe('superset rails', () => {

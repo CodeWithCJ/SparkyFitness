@@ -59,6 +59,10 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
         keyboardShouldPersistTaps="handled"
         bottomOffset={20}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
+        // Set-row taps remount the focused input; stop the keyboard-hide
+        // restore scroll so the refocus lands on the tapped cell (see
+        // ActiveWorkoutScreen's scroll view).
+        disableScrollOnKeyboardHide
       >
         {children}
       </KeyboardAwareScrollView>

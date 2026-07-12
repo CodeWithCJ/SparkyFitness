@@ -12,7 +12,8 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import ActiveWorkoutExerciseCard from './ActiveWorkoutExerciseCard';
 import { MetricColumnMenu, SetTypeMenu } from './WorkoutMenus';
-import AnchoredMenu, { type AnchorRect } from './AnchoredMenu';
+import ActionSheet, { type ActionSheetItem, type ActionSheetRef } from './ActionSheet';
+import { type AnchorRect } from './AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from './RestPeriodSheet';
 import WorkoutReorderList from './WorkoutReorderList';
 import { weightFromKg } from '../utils/unitConversions';
@@ -31,6 +32,12 @@ interface WorkoutFormExerciseListProps {
   exercises: WorkoutDraftExercise[];
   weightUnit: 'kg' | 'lbs';
   getImageSource: GetImageSource;
+  /**
+   * When editing a saved workout: its preset-entry id, forwarded to every card
+   * so the stats/history baseline excludes the workout being edited. Absent in
+   * create mode and the preset form.
+   */
+  excludePresetEntryId?: string;
   /** `${exerciseClientId}:${setClientId}` from useExerciseSetEditing. */
   activeSetKey: string | null;
   activeSetField: 'weight' | 'reps' | 'rpe';
@@ -99,6 +106,7 @@ const WorkoutFormExerciseList = forwardRef<
     exercises,
     weightUnit,
     getImageSource,
+    excludePresetEntryId,
     activeSetKey,
     activeSetField,
     onActivateSet,
@@ -313,19 +321,23 @@ const WorkoutFormExerciseList = forwardRef<
     setMetricMenuAnchor(anchor);
   }, []);
 
-  // Card ⋮ menu. 'main' offers grouping + remove; 'pick' swaps in the
-  // candidate list (ungrouped exercises other than the current one) at the
-  // same anchor. This menu is the only place preset supersets can be created.
+  // Card ⋮ menu, presented as a bottom sheet titled with the exercise name.
+  // 'main' offers grouping + remove; 'pick' swaps the candidate list
+  // (ungrouped exercises other than the current one) into the same sheet.
+  // This menu is the only place preset supersets can be created.
   const [overflowMenu, setOverflowMenu] = useState<{
     clientId: string;
-    anchor: AnchorRect;
     mode: 'main' | 'pick';
   } | null>(null);
-  const handlePressOverflow = useCallback((entryId: string, anchor: AnchorRect) => {
-    setOverflowMenu({ clientId: entryId, anchor, mode: 'main' });
+  const overflowSheetRef = useRef<ActionSheetRef>(null);
+  const handlePressOverflow = useCallback((entryId: string) => {
+    // The sheet slides into the keyboard's space — drop the keyboard first.
+    Keyboard.dismiss();
+    setOverflowMenu({ clientId: entryId, mode: 'main' });
+    overflowSheetRef.current?.present();
   }, []);
 
-  const overflowMenuItems = useMemo(() => {
+  const overflowMenuItems = useMemo<ActionSheetItem[]>(() => {
     if (overflowMenu == null) return [];
     const { clientId, mode } = overflowMenu;
     const groupedIds = new Set(supersetRuns.flatMap(run => run.entryIds));
@@ -341,7 +353,7 @@ const WorkoutFormExerciseList = forwardRef<
       }));
     }
 
-    const items: { key: string; label: string; onPress: () => void }[] = [];
+    const items: ActionSheetItem[] = [];
     if (onViewExercise) {
       items.push({
         key: 'view',
@@ -353,10 +365,10 @@ const WorkoutFormExerciseList = forwardRef<
       items.push({
         key: 'superset-with',
         label: 'Superset with…',
+        // Keeps the sheet presented; the candidate list swaps in place.
+        dismissOnPress: false,
         onPress: () => {
-          // Re-open at the same anchor with the candidate list. AnchoredMenu
-          // closes first (onClose), then this runs — both land in one commit.
-          setOverflowMenu({ ...overflowMenu, mode: 'pick' });
+          setOverflowMenu(prev => (prev ? { ...prev, mode: 'pick' } : prev));
         },
       });
     }
@@ -370,6 +382,7 @@ const WorkoutFormExerciseList = forwardRef<
     items.push({
       key: 'remove',
       label: 'Remove exercise',
+      destructive: true,
       onPress: () => {
         const exercise = exercises.find(e => e.clientId === clientId);
         if (exercise) onRemoveExercise(exercise);
@@ -402,6 +415,7 @@ const WorkoutFormExerciseList = forwardRef<
           <ActiveWorkoutExerciseCard
             exercise={cardExercise}
             mode="edit"
+            excludePresetEntryId={excludePresetEntryId}
             expanded={isExpanded}
             completedSetIds={completedSetIds}
             activeSetId={cardActiveSetId}
@@ -483,12 +497,21 @@ const WorkoutFormExerciseList = forwardRef<
         includeRpe={rpeEditable}
       />
 
-      <AnchoredMenu
-        visible={overflowMenu != null}
-        anchor={overflowMenu?.anchor ?? null}
-        onClose={() => setOverflowMenu(null)}
-        minWidth={200}
+      <ActionSheet
+        ref={overflowSheetRef}
+        title={
+          overflowMenu?.mode === 'pick'
+            ? 'Superset with…'
+            : (exercises.find(e => e.clientId === overflowMenu?.clientId)?.exerciseName ??
+              'Exercise')
+        }
         items={overflowMenuItems}
+        onBack={
+          overflowMenu?.mode === 'pick'
+            ? () => setOverflowMenu(prev => (prev ? { ...prev, mode: 'main' } : prev))
+            : undefined
+        }
+        onDismiss={() => setOverflowMenu(null)}
       />
 
       <SetTypeMenu

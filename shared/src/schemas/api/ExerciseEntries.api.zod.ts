@@ -292,10 +292,30 @@ export const exerciseSetStatsSchema = z
   })
   .strict();
 
+export const exerciseRecentSessionSetSchema = z
+  .object({
+    setNumber: z.number().int(),
+    setType: z.string().nullable(),
+    weight: z.number().nullable(),
+    reps: z.number().int().nullable(),
+  })
+  .strict()
+  .refine((s) => s.weight != null || s.reps != null, {
+    message: "Recent-session sets must have weight or reps",
+  });
+
+export const exerciseRecentSessionSchema = z
+  .object({
+    entryDate: dateStringSchema,
+    sets: z.array(exerciseRecentSessionSetSchema).min(1),
+  })
+  .strict();
+
 export const exerciseStatsResponseSchema = z
   .object({
     bestSet: exerciseSetStatsSchema.nullable(),
     lastSet: exerciseSetStatsSchema.nullable(),
+    recentSessions: z.array(exerciseRecentSessionSchema).max(3),
   })
   .strict();
 
@@ -344,4 +364,10 @@ export type ExerciseProgressResponse = z.infer<
   typeof exerciseProgressResponseSchema
 >;
 export type ExerciseSetStats = z.infer<typeof exerciseSetStatsSchema>;
+export type ExerciseRecentSessionSet = z.infer<
+  typeof exerciseRecentSessionSetSchema
+>;
+export type ExerciseRecentSession = z.infer<
+  typeof exerciseRecentSessionSchema
+>;
 export type ExerciseStatsResponse = z.infer<typeof exerciseStatsResponseSchema>;

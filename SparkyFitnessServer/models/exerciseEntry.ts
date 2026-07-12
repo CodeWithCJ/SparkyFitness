@@ -533,7 +533,48 @@ async function _createExerciseEntryWithClient(
         throw new Error('Exercise not found for snapshotting.');
       }
       const snapshot = exerciseSnapshotQuery.rows[0];
-      // 2. Insert the exercise entry with the snapshot data
+      // 2. Insert the exercise entry with the snapshot data. A client-provided
+      // entry id (a new app adds an exercise mid-workout with its own uuid via
+      // create-in-reconcile) is inserted explicitly so the entry keeps its
+      // identity across saves; otherwise the column defaults to
+      // gen_random_uuid(). The id is appended as $31 to keep the base column
+      // list unchanged.
+      const entryValues = [
+        userId,
+        entryData.exercise_id,
+        entryData.duration_minutes || 0, // Ensure duration_minutes is not null
+        entryData.calories_burned || 0,
+        entryData.entry_date,
+        entryData.notes,
+        entryData.workout_plan_assignment_id || null,
+        entryData.image_url || null,
+        createdByUserId,
+        entryData.exercise_name || snapshot.name, // exercise_name
+        snapshot.calories_per_hour,
+        snapshot.category,
+        entrySource,
+        entryData.source_id || snapshot.source_id, // Use entryData.source_id if available (instance ID), fallback to snapshot (def ID)
+        snapshot.force,
+        snapshot.level,
+        snapshot.mechanic,
+        snapshot.equipment,
+        snapshot.primary_muscles,
+        snapshot.secondary_muscles,
+        snapshot.instructions,
+        snapshot.images,
+        entryData.distance || null, // Ensure distance is not undefined
+        entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
+        exercisePresetEntryId, // New parameter
+        entryData.sort_order || 0,
+        entryData.steps || null,
+        entryData.water_estimated || null,
+        entryData.superset_group ?? null,
+        entryData.entry_time ?? null,
+      ];
+      const hasClientId = entryData.id !== undefined && entryData.id !== null;
+      const idColumn = hasClientId ? ', id' : '';
+      const idPlaceholder = hasClientId ? ', $31' : '';
+      if (hasClientId) entryValues.push(entryData.id);
       const entryResult = await client.query(
         `INSERT INTO exercise_entries (
            user_id, exercise_id, duration_minutes, calories_burned, entry_date, notes,
@@ -541,40 +582,9 @@ async function _createExerciseEntryWithClient(
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
            distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated,
-           superset_group, entry_time
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30) RETURNING id`,
-        [
-          userId,
-          entryData.exercise_id,
-          entryData.duration_minutes || 0, // Ensure duration_minutes is not null
-          entryData.calories_burned || 0,
-          entryData.entry_date,
-          entryData.notes,
-          entryData.workout_plan_assignment_id || null,
-          entryData.image_url || null,
-          createdByUserId,
-          entryData.exercise_name || snapshot.name, // exercise_name
-          snapshot.calories_per_hour,
-          snapshot.category,
-          entrySource,
-          entryData.source_id || snapshot.source_id, // Use entryData.source_id if available (instance ID), fallback to snapshot (def ID)
-          snapshot.force,
-          snapshot.level,
-          snapshot.mechanic,
-          snapshot.equipment,
-          snapshot.primary_muscles,
-          snapshot.secondary_muscles,
-          snapshot.instructions,
-          snapshot.images,
-          entryData.distance || null, // Ensure distance is not undefined
-          entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
-          exercisePresetEntryId, // New parameter
-          entryData.sort_order || 0,
-          entryData.steps || null,
-          entryData.water_estimated || null,
-          entryData.superset_group ?? null,
-          entryData.entry_time ?? null,
-        ]
+           superset_group, entry_time${idColumn}
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30${idPlaceholder}) RETURNING id`,
+        entryValues
       );
       newEntryId = entryResult.rows[0].id;
       if (entryData.sets && entryData.sets.length > 0) {
@@ -1252,6 +1262,55 @@ async function getLastSetForExercise(
     client.release();
   }
 }
+export interface RecentSessionRow {
+  entry_date: string;
+  sets:
+    | {
+        id: string;
+        set_number: number;
+        set_type: string | null;
+        weight: number | null;
+        reps: number | null;
+      }[]
+    | null;
+}
+async function getRecentSessionsForExercise(
+  userId: string,
+  exerciseId: string,
+  excludePresetEntryId: string | null = null,
+  limit = 3
+): Promise<RecentSessionRow[]> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT
+         ee.entry_date::TEXT AS entry_date,
+         (SELECT json_agg(set_data ORDER BY set_data.set_number, set_data.id)
+            FROM (
+              SELECT ees.id, ees.set_number, ees.set_type, ees.weight, ees.reps
+                FROM exercise_entry_sets ees
+               WHERE ees.exercise_entry_id = ee.id
+                 AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL)
+            ) AS set_data
+         ) AS sets
+       FROM exercise_entries ee
+       WHERE ee.user_id = $1
+         AND ee.exercise_id = $2
+         AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3)
+         AND EXISTS (
+           SELECT 1 FROM exercise_entry_sets ees
+            WHERE ees.exercise_entry_id = ee.id
+              AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL)
+         )
+       ORDER BY ee.entry_date DESC, ee.created_at DESC, ee.id DESC
+       LIMIT $4`,
+      [userId, exerciseId, excludePresetEntryId, limit]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
 async function deleteExerciseEntriesByEntrySourceAndDate(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1497,6 +1556,7 @@ export { getExerciseProgressData };
 export { getExerciseHistory };
 export { getBestSetForExercise };
 export { getLastSetForExercise };
+export { getRecentSessionsForExercise };
 export { deleteExerciseEntriesByEntrySourceAndDate };
 export { getDailyExerciseTotalsRange };
 export { getExerciseDiaryRange };
@@ -1522,6 +1582,7 @@ export default {
   getExerciseHistory,
   getBestSetForExercise,
   getLastSetForExercise,
+  getRecentSessionsForExercise,
   deleteExerciseEntriesByEntrySourceAndDate,
   getDailyExerciseTotalsRange,
   getExerciseDiaryRange,

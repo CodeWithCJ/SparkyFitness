@@ -2,7 +2,10 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { useCSSVariable } from 'uniwind';
-import type { ExerciseEntrySetResponse } from '@workspace/shared';
+import type {
+  ExerciseEntrySetResponse,
+  ExerciseRecentSessionSet,
+} from '@workspace/shared';
 import ActiveWorkoutSetRow, {
   parseRpeInput,
   type SetRowMode,
@@ -64,6 +67,7 @@ interface RenderOverrides {
   entryId?: string;
   rpeEditable?: boolean;
   completedBadge?: boolean;
+  previousSet?: ExerciseRecentSessionSet | null;
   /** Wire the edit-mode completion toggle (otherwise the check is static). */
   enableToggle?: boolean;
   /** Wire the set-type handler (makes the set number a menu trigger). */
@@ -103,6 +107,7 @@ function renderRow(overrides?: RenderOverrides) {
       entryId={current?.entryId}
       rpeEditable={current?.rpeEditable}
       completedBadge={current?.completedBadge}
+      previousSet={current?.previousSet}
       {...spreadCallbacks}
       onToggleComplete={current?.enableToggle ? onToggleComplete : undefined}
       onPressSetType={current?.enableSetType ? onPressSetType : undefined}
@@ -371,6 +376,24 @@ describe('ActiveWorkoutSetRow', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'upcoming' });
       fireEvent.press(getByLabelText('Edit weight for set 1'));
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
+    });
+
+    it('offers Log in the keyboard accessory while uncompleted', () => {
+      // Out-of-order logging: a focused upcoming row must be loggable from the
+      // accessory too, or the RPE field (last in the Next chain) dead-ends on
+      // Done. One bar per input, so the button appears once per accessory.
+      const { getAllByText, callbacks } = renderRow({
+        state: 'upcoming',
+        isFocused: true,
+        metricColumn: 'rpe',
+      });
+      fireEvent.press(getAllByText('Log')[0]);
+      expect(callbacks.onComplete).toHaveBeenCalledWith('101');
+    });
+
+    it('omits Log from the accessory once the set is completed', () => {
+      const { queryByText } = renderRow({ state: 'done', isFocused: true });
+      expect(queryByText('Log')).toBeNull();
     });
 
     it('is not dimmed', () => {
@@ -748,14 +771,33 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
     });
 
-    it('routes the row long-press to the set-type menu, not onLongPress', () => {
+    it('routes the row long-press to onLongPress (not the set-type menu) when both are wired', () => {
+      // Live wires both: long-press expands the row detail, the set-number tap
+      // still opens the type menu.
       const { getByTestId, callbacks } = renderRow({
         state: 'upcoming',
         enableSetType: true,
       });
       fireEvent(getByTestId('set-row'), 'longPress');
-      expect(callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
-      expect(callbacks.onLongPress).not.toHaveBeenCalled();
+      expect(callbacks.onLongPress).toHaveBeenCalledWith('101');
+      expect(callbacks.onPressSetType).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the set-type menu on long-press when no onLongPress is wired (edit form)', () => {
+      const onPressSetType = jest.fn();
+      const { getByTestId } = render(
+        <ActiveWorkoutSetRow
+          set={makeSet()}
+          displayNumber={1}
+          state="upcoming"
+          metricColumn="rpe"
+          weightUnit="kg"
+          mode="edit"
+          onPressSetType={onPressSetType}
+        />,
+      );
+      fireEvent(getByTestId('set-row'), 'longPress');
+      expect(onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
     });
 
     it('leaves the set number inert without a set-type handler', () => {
@@ -824,6 +866,154 @@ describe('ActiveWorkoutSetRow', () => {
         set: { weight: 0, reps: 10 },
       });
       expect(getByText('–')).toBeTruthy();
+    });
+  });
+
+  describe('previous column', () => {
+    const prev = (o?: Partial<ExerciseRecentSessionSet>): ExerciseRecentSessionSet => ({
+      setNumber: 1,
+      setType: null,
+      weight: 100,
+      reps: 5,
+      ...o,
+    });
+
+    it('renders weight × reps in the display unit', () => {
+      const kg = renderRow({ state: 'upcoming', previousSet: prev() });
+      expect(kg.getByText('100 × 5')).toBeTruthy();
+
+      const lbs = renderRow({ state: 'upcoming', previousSet: prev(), weightUnit: 'lbs' });
+      expect(lbs.getByText('220.5 × 5')).toBeTruthy();
+    });
+
+    it('prefixes warmup sets and handles one-sided values', () => {
+      const warm = renderRow({
+        state: 'upcoming',
+        previousSet: prev({ setType: 'warmup', weight: 50, reps: 8 }),
+      });
+      expect(warm.getByText('W 50 × 8')).toBeTruthy();
+
+      const weightOnly = renderRow({ state: 'upcoming', previousSet: prev({ reps: null }) });
+      expect(weightOnly.getByText('100')).toBeTruthy();
+
+      const repsOnly = renderRow({
+        state: 'upcoming',
+        previousSet: prev({ weight: null, reps: 8 }),
+      });
+      expect(repsOnly.getByText('8 reps')).toBeTruthy();
+    });
+
+    it('renders an em-dash when this row has no previous counterpart', () => {
+      const { getByText } = renderRow({ state: 'upcoming', previousSet: null });
+      expect(getByText('—')).toBeTruthy();
+    });
+
+    it('omits the column when the prop is not passed', () => {
+      const { queryByText } = renderRow({ state: 'upcoming' });
+      expect(queryByText('—')).toBeNull();
+    });
+
+    describe('tap-to-fill', () => {
+      it('replaces already-entered values with the previous ones', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          state: 'upcoming',
+          set: { weight: 60, reps: 10 },
+          previousSet: prev(),
+        });
+
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          weight: 100,
+          reps: 5,
+        });
+      });
+
+      it('fills an empty set in kg regardless of display unit', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          state: 'upcoming',
+          weightUnit: 'lbs',
+          set: { weight: null, reps: null },
+          previousSet: prev(),
+        });
+
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          weight: 100,
+          reps: 5,
+        });
+      });
+
+      it('leaves a field alone when the previous set lacks it', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          state: 'upcoming',
+          set: { weight: 60, reps: 10 },
+          previousSet: prev({ reps: null }),
+        });
+
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+
+        // Weight replaced; reps untouched rather than cleared to null.
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 100 });
+      });
+
+      it('replaces in edit mode through the same kg commit path', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          set: { weight: 70, reps: 3, editWeightText: '70', editRepsText: '3' },
+          previousSet: prev(),
+        });
+
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          weight: 100,
+          reps: 5,
+        });
+      });
+
+      it('offers no fill target on a dash row', () => {
+        const { queryByLabelText } = renderRow({
+          state: 'upcoming',
+          previousSet: null,
+        });
+        expect(queryByLabelText('Fill set 1 from previous')).toBeNull();
+      });
+    });
+  });
+
+  describe('draft re-seed signature (survives an id churn)', () => {
+    it('keeps an in-progress draft when only the set id churns', () => {
+      const { getByLabelText, rerenderRow } = renderRow({
+        state: 'current',
+        isFocused: true,
+        set: { id: -1, weight: 60 },
+      });
+      const input = getByLabelText('Weight');
+      expect(input.props.value).toBe('60'); // seeded from stored weight
+      // Uncommitted edit (no blur) — the local draft holds "105".
+      fireEvent.changeText(input, '105');
+      expect(input.props.value).toBe('105');
+
+      // An autosave churns the id (-1 → 777) while the values are unchanged and
+      // the instance survives (stable render key). The signature dropped set.id,
+      // so the draft must NOT re-seed and wipe the typed text.
+      rerenderRow({ state: 'current', isFocused: true, set: { id: 777, weight: 60 } });
+      expect(getByLabelText('Weight').props.value).toBe('105');
+    });
+
+    it('still re-seeds the draft when the set VALUES change (external edit)', () => {
+      const { getByLabelText, rerenderRow } = renderRow({
+        state: 'current',
+        isFocused: true,
+        set: { id: 101, weight: 60 },
+      });
+      fireEvent.changeText(getByLabelText('Weight'), '105');
+      // A genuine value change still re-seeds — only set.id left the signature.
+      rerenderRow({ state: 'current', isFocused: true, set: { id: 101, weight: 80 } });
+      expect(getByLabelText('Weight').props.value).toBe('80');
     });
   });
 });

@@ -1,14 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import Icon from './Icon';
-import AnchoredMenu, {
-  measureAnchoredMenuTrigger,
-  type AnchorRect,
-  type AnchoredMenuItem,
-} from './AnchoredMenu';
+import KeyboardCollapsible from './KeyboardCollapsible';
+import ActionSheet, { type ActionSheetItem, type ActionSheetRef } from './ActionSheet';
 
 /** Per-exercise completion used by the segmented progress bar. */
 export interface ExerciseProgress {
@@ -57,7 +54,7 @@ interface ActiveWorkoutHeaderProps {
   onAddExercise?: () => void;
   /** When provided, adds a "Reorder exercises" action above Discard. */
   onReorder?: () => void;
-  /** When provided (any set logged), adds a "Clear logged sets" action. */
+  /** When provided (any set logged), adds a "Clear all logged sets" action. */
   onClearAllSets?: () => void;
 }
 
@@ -87,27 +84,18 @@ function ActiveWorkoutHeader({
     '--color-progress-track',
   ]) as [string, string, string, string, string];
 
-  const menuAnchorRef = useRef<View>(null);
-  const [menuAnchor, setMenuAnchor] = useState<AnchorRect | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
-
-  const openMenu = () => {
-    measureAnchoredMenuTrigger(menuAnchorRef.current, (anchor) => {
-      setMenuAnchor(anchor);
-      setMenuVisible(true);
-    });
-  };
+  const menuSheetRef = useRef<ActionSheetRef>(null);
+  const openMenu = () => menuSheetRef.current?.present();
 
   const doneCount = progress.filter(
     (p) => p.totalSets > 0 && p.completedSets >= p.totalSets,
   ).length;
 
-  const menuItems: AnchoredMenuItem[] = [];
+  const menuItems: ActionSheetItem[] = [];
   if (onEndWorkout) {
     menuItems.push({
       key: 'end-workout',
       label: 'End workout',
-      icon: 'checkmark-circle',
       onPress: onEndWorkout,
     });
   }
@@ -115,7 +103,6 @@ function ActiveWorkoutHeader({
     menuItems.push({
       key: 'rename',
       label: 'Rename workout',
-      icon: 'pencil',
       onPress: onRename,
     });
   }
@@ -123,7 +110,6 @@ function ActiveWorkoutHeader({
     menuItems.push({
       key: 'add-exercise',
       label: 'Add exercise',
-      icon: 'add',
       onPress: onAddExercise,
     });
   }
@@ -131,22 +117,21 @@ function ActiveWorkoutHeader({
     menuItems.push({
       key: 'reorder',
       label: 'Reorder exercises',
-      icon: 'swap-vertical',
       onPress: onReorder,
     });
   }
   if (onClearAllSets) {
     menuItems.push({
       key: 'clear-sets',
-      label: 'Clear logged sets',
-      icon: 'arrow-undo',
+      label: 'Clear all logged sets',
+      destructive: true,
       onPress: onClearAllSets,
     });
   }
   menuItems.push({
     key: 'discard',
     label: 'Discard workout',
-    icon: 'trash',
+    destructive: true,
     onPress: onDiscard,
   });
 
@@ -175,57 +160,54 @@ function ActiveWorkoutHeader({
           </Text>
         </View>
 
-        <View ref={menuAnchorRef} collapsable={false}>
-          <Pressable
-            onPress={openMenu}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="Workout menu"
-            className="p-2"
-          >
-            <Icon name="ellipsis-horizontal" size={22} color={textMuted} />
-          </Pressable>
-        </View>
-      </View>
-
-      <View className="flex-row items-center gap-3 px-2 mt-1">
-        <View className="flex-1 flex-row gap-1">
-          {progress.map((p) => {
-            const isDone = p.totalSets > 0 && p.completedSets >= p.totalSets;
-            const fillPct =
-              p.totalSets > 0 ? Math.min(1, p.completedSets / p.totalSets) : 0;
-            return (
-              <View
-                key={p.entryId}
-                testID={isDone ? 'header-segment-done' : 'header-segment'}
-                className="flex-1 h-[5px] rounded-full overflow-hidden"
-                style={{ backgroundColor: isDone ? successColor : trackColor }}
-              >
-                {!isDone && fillPct > 0 && (
-                  <View
-                    testID="header-segment-fill"
-                    className="h-full rounded-full"
-                    style={{ width: `${fillPct * 100}%`, backgroundColor: accentPrimary }}
-                  />
-                )}
-              </View>
-            );
-          })}
-        </View>
-        <Text
-          className="text-xs text-text-secondary"
-          style={{ fontVariant: ['tabular-nums'] }}
+        <Pressable
+          onPress={openMenu}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Workout menu"
+          className="p-2"
         >
-          {doneCount} / {progress.length} exercises
-        </Text>
+          <Icon name="ellipsis-horizontal" size={22} color={textMuted} />
+        </Pressable>
       </View>
 
-      <AnchoredMenu
-        visible={menuVisible}
-        anchor={menuAnchor}
-        onClose={() => setMenuVisible(false)}
-        items={menuItems}
-      />
+      {/* Folds away with the keyboard so the log gets the row's height back;
+          the name + elapsed clock above stay visible. */}
+      <KeyboardCollapsible>
+        <View className="flex-row items-center gap-3 px-2 mt-1">
+          <View className="flex-1 flex-row gap-1">
+            {progress.map((p) => {
+              const isDone = p.totalSets > 0 && p.completedSets >= p.totalSets;
+              const fillPct =
+                p.totalSets > 0 ? Math.min(1, p.completedSets / p.totalSets) : 0;
+              return (
+                <View
+                  key={p.entryId}
+                  testID={isDone ? 'header-segment-done' : 'header-segment'}
+                  className="flex-1 h-[5px] rounded-full overflow-hidden"
+                  style={{ backgroundColor: isDone ? successColor : trackColor }}
+                >
+                  {!isDone && fillPct > 0 && (
+                    <View
+                      testID="header-segment-fill"
+                      className="h-full rounded-full"
+                      style={{ width: `${fillPct * 100}%`, backgroundColor: accentPrimary }}
+                    />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+          <Text
+            className="text-xs text-text-secondary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {doneCount} / {progress.length} exercises
+          </Text>
+        </View>
+      </KeyboardCollapsible>
+
+      <ActionSheet ref={menuSheetRef} title={name} items={menuItems} />
     </View>
   );
 }
