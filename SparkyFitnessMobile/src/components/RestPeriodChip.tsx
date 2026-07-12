@@ -13,6 +13,11 @@ export function formatRest(seconds: number | null | undefined): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+/** Label a configured rest setting: 0 means no rest ("Off"), else the duration. */
+export function formatRestLabel(seconds: number | null | undefined): string {
+  return seconds === 0 ? 'Off' : formatRest(seconds);
+}
+
 interface RestPeriodChipProps {
   value: number | null | undefined;
   onPress?: () => void;
@@ -29,7 +34,7 @@ function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProp
     return (
       <View className="flex-row items-center">
         <Icon name="timer" size={14} color={textSecondary} />
-        <Text className="text-sm text-text-secondary ml-1">Rest · {formatRest(value)}</Text>
+        <Text className="text-sm text-text-secondary ml-1">Rest · {formatRestLabel(value)}</Text>
       </View>
     );
   }
@@ -42,7 +47,7 @@ function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProp
     >
       <Icon name="timer" size={14} color={accentPrimary} />
       <Text className="text-sm ml-1" style={{ color: accentPrimary }}>
-        Rest · {formatRest(value)}
+        Rest · {formatRestLabel(value)}
       </Text>
     </Pressable>
   );

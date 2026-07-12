@@ -450,8 +450,21 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().completeActiveSet(); // 101 done → skips 102
       const state = useActiveWorkoutStore.getState();
       expect(state.activeSetId).toBe('201');
-      // Rest keys off the step actually landed on (Squat's 120s).
-      expect(state.rest.durationSec).toBe(120);
+      // Rest recovers from the set just logged (Bench's 60s), not the step
+      // landed on (Squat's 120s).
+      expect(state.rest.durationSec).toBe(60);
+      await flushPromises();
+    });
+
+    it("uses the finished exercise's rest after its final set", async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101
+      await flushPromises();
+      useActiveWorkoutStore.getState().completeActiveSet(); // 102 → cursor lands on Squat
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('201');
+      expect(state.rest.state).toBe('resting');
+      // Bench's 60s, not Squat's 120s — rest belongs to the work just done.
+      expect(state.rest.durationSec).toBe(60);
       await flushPromises();
     });
 
@@ -698,7 +711,7 @@ describe('activeWorkoutStore', () => {
       // Next-up follows the logged set: the step after 102 is Squat's 201.
       expect(state.activeSetId).toBe('201');
       expect(state.rest.state).toBe('resting');
-      expect(state.rest.durationSec).toBe(120);
+      expect(state.rest.durationSec).toBe(60); // Bench's rest — the exercise just logged
       await flushPromises();
     });
 
@@ -820,7 +833,7 @@ describe('activeWorkoutStore', () => {
       const state = useActiveWorkoutStore.getState();
       expect(state.activeSetId).toBe('201');
       expect(state.rest.state).toBe('resting');
-      expect(state.rest.durationSec).toBe(120);
+      expect(state.rest.durationSec).toBe(60); // Bench's rest — the exercise just logged
       await flushPromises();
     });
 

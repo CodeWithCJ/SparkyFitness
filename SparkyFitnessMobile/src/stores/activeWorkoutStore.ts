@@ -558,7 +558,9 @@ function locateSet(
  * the planned interleaving — out-of-order logging makes the cursor land on an
  * interior partner (baked 0) when a real between-rounds rest is actually owed,
  * so derive the rest from the true relationship between the two sets instead.
- * Rest is per-exercise: the upcoming exercise's `sets[0]` speaks for it.
+ * Rest is per-exercise and recovers from the work just done: the completed
+ * exercise's `sets[0]` speaks for it, so the timer after an exercise's final
+ * set still uses that exercise's rest, not the next one's.
  * Drop sets take no rest before them regardless of what was just logged.
  */
 function restSecBeforeNextSet(
@@ -569,10 +571,9 @@ function restSecBeforeNextSet(
   const to = locateSet(session, nextSetId);
   if (!to) return DEFAULT_REST_SEC;
   if (isDropSetType(to.exercise.sets[to.setIndex]?.set_type)) return 0;
-  const toRest = to.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
 
   const from = locateSet(session, completedSetId);
-  if (!from) return toRest;
+  if (!from) return to.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
 
   // Back-to-back superset partners: same run, different member, same round.
   const toRun = getSupersetRuns(session.exercises).find((r) =>
@@ -586,7 +587,7 @@ function restSecBeforeNextSet(
   ) {
     return 0;
   }
-  return toRest;
+  return from.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
 }
 
 export function seedCompletionFromSession(session: PresetSessionResponse): CompletedSetMap {
