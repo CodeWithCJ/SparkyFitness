@@ -1,8 +1,10 @@
 import express from 'express';
+import { importFitResponseSchema } from '@workspace/shared';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import exerciseService from '../services/exerciseService.js';
 import exerciseEntryService from '../services/exerciseEntryService.js';
+import fitImportService from '../services/fitImportService.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'mult... Remove this comment to see the full error message
 import multer from 'multer';
 import path from 'path';
@@ -1032,5 +1034,114 @@ router.post('/import-history-csv', authenticate, async (req, res, next) => {
     }
     next(error);
   }
+});
+// Memory storage: FIT files are decoded from the buffer and never hit disk.
+// Real activity files are ~0.1-5MB; the limits bound worst-case buffering.
+// No fileFilter — a filter error aborts the whole batch, so non-FIT files are
+// rejected per file inside the service instead.
+const fitUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 10 },
+});
+/**
+ * @swagger
+ * /exercise-entries/import-fit:
+ *   post:
+ *     summary: Import Garmin FIT activity files as exercise diary entries.
+ *     description: >
+ *       Decodes up to 10 uploaded .fit files and creates one exercise entry
+ *       per file, including full activity details for reports. Re-uploading a
+ *       file updates the existing entry. Per-file failures are reported as
+ *       rows in the results array; the response is 200 unless the request
+ *       itself is invalid.
+ *     tags:
+ *       - Exercise Entries
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               files:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: Per-file import results.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 created:
+ *                   type: number
+ *                 updated:
+ *                   type: number
+ *                 failed:
+ *                   type: number
+ *                 results:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       fileName:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                         enum: [created, updated, failed]
+ *                       reason:
+ *                         type: string
+ *                       warning:
+ *                         type: string
+ *                       exerciseEntryId:
+ *                         type: string
+ *                       entryDate:
+ *                         type: string
+ *                         format: date
+ *                       activityName:
+ *                         type: string
+ *                       sport:
+ *                         type: string
+ *       400:
+ *         description: No files uploaded, or the upload exceeded size/count limits.
+ *       500:
+ *         description: Failed to import FIT files.
+ */
+router.post('/import-fit', authenticate, (req, res, next) => {
+  fitUpload.array('files', 10)(req, res, async (uploadError: unknown) => {
+    if (uploadError) {
+      if (uploadError instanceof multer.MulterError) {
+        return res.status(400).json({
+          error: `Upload rejected: ${(uploadError as Error).message}`,
+        });
+      }
+      return next(uploadError);
+    }
+    try {
+      // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{}... Remove this comment to see the full error message
+      const files = req.files;
+      if (!files || !Array.isArray(files) || files.length === 0) {
+        return res.status(400).json({
+          error:
+            'No files uploaded. Attach one or more .fit files in the "files" field.',
+        });
+      }
+      const result = await fitImportService.importFitFiles(
+        req.userId,
+        req.originalUserId || req.userId,
+        files
+      );
+      res.status(200).json(importFitResponseSchema.parse(result));
+    } catch (error) {
+      next(error);
+    }
+  });
 });
 export default router;

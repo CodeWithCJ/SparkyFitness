@@ -22,6 +22,7 @@ import {
   updateExerciseEntriesSnapshot,
   importExercisesFromJson,
   importExerciseHistory,
+  importFitFiles,
   getExerciseById,
   getSuggestedExercises,
   getBodyMapSvg,
@@ -263,6 +264,20 @@ export const useImportExerciseHistoryMutation = () => {
         'exercise.importHistoryCSV.importSuccess',
         'Historical exercise entries imported successfully.'
       ),
+    },
+  });
+};
+
+export const useImportFitFilesMutation = () => {
+  const queryClient = useQueryClient();
+
+  // Success/partial-failure toasts are composed from the per-file results in
+  // useFitImport, so no meta messages here.
+  return useMutation({
+    mutationFn: importFitFiles,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
+      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
     },
   });
 };

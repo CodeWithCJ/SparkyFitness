@@ -1747,14 +1747,15 @@ async function createGroupedExerciseEntriesWithClient(
       avg_heart_rate: exercise.avg_heart_rate,
       entry_time: exercise.entry_time ?? null,
     });
-    const createdEntry = await exerciseEntryDb._createExerciseEntryWithClient(
-      client,
-      userId,
-      preparedEntry,
-      actingUserId,
-      entrySource,
-      presetEntryId
-    );
+    const { entry: createdEntry } =
+      await exerciseEntryDb._createExerciseEntryWithClient(
+        client,
+        userId,
+        preparedEntry,
+        actingUserId,
+        entrySource,
+        presetEntryId
+      );
     createdEntries.push(createdEntry);
   }
   return createdEntries;

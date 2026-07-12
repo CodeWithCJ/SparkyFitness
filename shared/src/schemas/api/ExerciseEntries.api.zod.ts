@@ -281,6 +281,36 @@ export const exerciseHistoryResponseSchema = z
   })
   .strict();
 
+// --- FIT file import endpoint ---
+
+/** Outcome for a single uploaded FIT file within an import batch */
+export const importFitFileResultSchema = z
+  .object({
+    fileName: z.string(),
+    status: z.enum(["created", "updated", "failed"]),
+    reason: z.string().optional(),
+    warning: z.string().optional(),
+    exerciseEntryId: z.string().optional(),
+    entryDate: dateStringSchema.optional(),
+    activityName: z.string().optional(),
+    sport: z.string().optional(),
+  })
+  .strict();
+
+/**
+ * FIT import responses are always 200 with mixed per-file results; per-file
+ * failures are ordinary rows, not HTTP errors.
+ */
+export const importFitResponseSchema = z
+  .object({
+    message: z.string(),
+    created: z.number().int().min(0),
+    updated: z.number().int().min(0),
+    failed: z.number().int().min(0),
+    results: z.array(importFitFileResultSchema),
+  })
+  .strict();
+
 // --- Per-exercise stats endpoint ---
 
 export const exerciseSetStatsSchema = z
@@ -371,3 +401,5 @@ export type ExerciseRecentSession = z.infer<
   typeof exerciseRecentSessionSchema
 >;
 export type ExerciseStatsResponse = z.infer<typeof exerciseStatsResponseSchema>;
+export type ImportFitFileResult = z.infer<typeof importFitFileResultSchema>;
+export type ImportFitResponse = z.infer<typeof importFitResponseSchema>;

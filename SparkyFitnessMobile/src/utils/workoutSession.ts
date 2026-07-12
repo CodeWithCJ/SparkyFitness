@@ -96,6 +96,7 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   healthkit: 'Apple Health',
   'health connect': 'Health Connect',
   garmin: 'Garmin',
+  garmin_fit: 'Garmin',
   strava: 'Strava',
   fitbit: 'Fitbit',
   withings: 'Withings',

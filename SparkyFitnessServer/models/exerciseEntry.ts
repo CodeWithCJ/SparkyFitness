@@ -505,6 +505,7 @@ async function _createExerciseEntryWithClient(
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let newEntryId: any;
+    let operation: 'created' | 'updated';
     if (existingEntryResult && existingEntryResult.rows.length > 0) {
       // Entry exists, update it
       const existingEntryId = existingEntryResult.rows[0].id;
@@ -521,6 +522,7 @@ async function _createExerciseEntryWithClient(
         entrySource
       );
       newEntryId = updatedEntry.id;
+      operation = 'updated';
     } else {
       // No existing entry, create a new one
       // 1. Fetch the exercise details to create the snapshot
@@ -608,8 +610,10 @@ async function _createExerciseEntryWithClient(
         );
         await client.query(setsQuery);
       }
+      operation = 'created';
     }
-    return _getExerciseEntryByIdWithClient(client, newEntryId);
+    const entry = await _getExerciseEntryByIdWithClient(client, newEntryId);
+    return { entry, operation };
   } catch (error) {
     log(
       'error',
@@ -633,7 +637,7 @@ async function createExerciseEntry(
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-    const entry = await _createExerciseEntryWithClient(
+    const { entry } = await _createExerciseEntryWithClient(
       client,
       userId,
       entryData,

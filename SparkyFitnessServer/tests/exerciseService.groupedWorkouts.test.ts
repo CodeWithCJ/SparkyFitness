@@ -155,7 +155,8 @@ describe('exerciseService grouped workouts', () => {
     );
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
-      id: 'new-entry',
+      entry: { id: 'new-entry' },
+      operation: 'created',
     });
 
     await exerciseService.createGroupedWorkoutSession('user-1', 'actor-1', {
@@ -225,7 +226,8 @@ describe('exerciseService grouped workouts', () => {
     );
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
-      id: 'new-entry',
+      entry: { id: 'new-entry' },
+      operation: 'created',
     });
 
     await exerciseService.createGroupedWorkoutSession('user-1', 'actor-1', {
@@ -764,7 +766,8 @@ describe('exerciseService grouped workouts', () => {
       setupExistingSession();
       // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
       exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
-        id: 'new-entry',
+        entry: { id: 'new-entry' },
+        operation: 'created',
       });
 
       await exerciseService.updateGroupedWorkoutSession(
@@ -857,7 +860,8 @@ describe('exerciseService grouped workouts', () => {
       setupExistingSession();
       // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
       exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
-        id: 'new-entry',
+        entry: { id: 'new-entry' },
+        operation: 'created',
       });
 
       const completedAt = '2026-07-06T15:04:05.123Z';
@@ -893,7 +897,8 @@ describe('exerciseService grouped workouts', () => {
       setupExistingSession();
       // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
       exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
-        id: 'new-entry',
+        entry: { id: 'new-entry' },
+        operation: 'created',
       });
 
       await exerciseService.updateGroupedWorkoutSession(
