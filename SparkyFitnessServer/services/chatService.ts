@@ -2,7 +2,7 @@ import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
-import { getDefaultModel } from '../ai/config.js';
+import { getDefaultModel, getOpenAiCompatibleBaseUrl } from '../ai/config.js';
 import {
   dispatchAiRequest,
   requiresApiKey,
@@ -635,20 +635,23 @@ async function processChatMessage(
       aiService.service_type === 'mistral' ||
       aiService.service_type === 'groq' ||
       aiService.service_type === 'openrouter' ||
-      aiService.service_type === 'xai'
+      aiService.service_type === 'xai' ||
+      aiService.service_type === 'meta'
     ) {
       // Connect as OpenAI-compatible
-      let baseURL = aiService.custom_url;
-      if (aiService.service_type === 'ollama') {
-        baseURL = `${aiService.custom_url}/v1`;
-      } else if (aiService.service_type === 'groq') {
-        baseURL = 'https://api.groq.com/openai/v1';
-      } else if (aiService.service_type === 'openrouter') {
-        baseURL = 'https://openrouter.ai/api/v1';
-      } else if (aiService.service_type === 'mistral') {
-        baseURL = 'https://api.mistral.ai/v1';
-      } else if (aiService.service_type === 'xai') {
-        baseURL = 'https://api.x.ai/v1';
+      const baseURL = getOpenAiCompatibleBaseUrl(
+        aiService.service_type,
+        aiService.custom_url
+      );
+      // Providers that need a user-supplied endpoint must have one: an empty
+      // baseURL makes the AI SDK silently fall back to OpenAI's default host.
+      if (
+        requiresUserSuppliedAiUrl(aiService.service_type) &&
+        !baseURL?.trim()
+      ) {
+        throw new Error(
+          `Custom URL is required for service type: ${aiService.service_type}`
+        );
       }
       const providerOptions: Parameters<typeof createOpenAI>[0] = {
         baseURL,
@@ -1253,19 +1256,22 @@ async function processChatMessageStream(
       aiService.service_type === 'mistral' ||
       aiService.service_type === 'groq' ||
       aiService.service_type === 'openrouter' ||
-      aiService.service_type === 'xai'
+      aiService.service_type === 'xai' ||
+      aiService.service_type === 'meta'
     ) {
-      let baseURL = aiService.custom_url;
-      if (aiService.service_type === 'ollama') {
-        baseURL = `${aiService.custom_url}/v1`;
-      } else if (aiService.service_type === 'groq') {
-        baseURL = 'https://api.groq.com/openai/v1';
-      } else if (aiService.service_type === 'openrouter') {
-        baseURL = 'https://openrouter.ai/api/v1';
-      } else if (aiService.service_type === 'mistral') {
-        baseURL = 'https://api.mistral.ai/v1';
-      } else if (aiService.service_type === 'xai') {
-        baseURL = 'https://api.x.ai/v1';
+      const baseURL = getOpenAiCompatibleBaseUrl(
+        aiService.service_type,
+        aiService.custom_url
+      );
+      // Providers that need a user-supplied endpoint must have one: an empty
+      // baseURL makes the AI SDK silently fall back to OpenAI's default host.
+      if (
+        requiresUserSuppliedAiUrl(aiService.service_type) &&
+        !baseURL?.trim()
+      ) {
+        throw new Error(
+          `Custom URL is required for service type: ${aiService.service_type}`
+        );
       }
       const providerOptions: Parameters<typeof createOpenAI>[0] = {
         baseURL,

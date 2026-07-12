@@ -1,7 +1,11 @@
 import undici from 'undici';
 import convert from 'heic-convert';
 import { log } from '../config/logging.js';
-import { getDefaultModel, getDefaultVisionModel } from './config.js';
+import {
+  getDefaultModel,
+  getDefaultVisionModel,
+  getOpenAiCompatibleBaseUrl,
+} from './config.js';
 import {
   createGuardedDispatcher,
   createGuardedFetch,
@@ -145,6 +149,7 @@ function providerFamily(serviceType: string): ProviderFamily | null {
     case 'groq':
     case 'openrouter':
     case 'xai':
+    case 'meta': // Muse Spark's OpenAI-compatible endpoint; see openAiFamilyUrl.
     case 'custom':
       return 'openai';
     case 'anthropic':
@@ -408,23 +413,16 @@ interface BuiltRequest {
 }
 
 function openAiFamilyUrl(provider: ProviderConfig): string {
-  switch (provider.service_type) {
-    case 'openai':
-      return 'https://api.openai.com/v1/chat/completions';
-    case 'openai_compatible':
-      return `${provider.custom_url}/chat/completions`;
-    case 'mistral':
-      return 'https://api.mistral.ai/v1/chat/completions';
-    case 'groq':
-      return 'https://api.groq.com/openai/v1/chat/completions';
-    case 'openrouter':
-      return 'https://openrouter.ai/api/v1/chat/completions';
-    case 'xai':
-      return 'https://api.x.ai/v1/chat/completions';
-    default:
-      // 'custom' uses the user-supplied URL as-is.
-      return provider.custom_url as string;
+  // 'custom' uses the user-supplied URL as-is; every other OpenAI-compatible
+  // provider shares the base-URL map and has `/chat/completions` appended.
+  if (provider.service_type === 'custom') {
+    return provider.custom_url as string;
   }
+  const baseUrl = getOpenAiCompatibleBaseUrl(
+    provider.service_type,
+    provider.custom_url
+  );
+  return baseUrl ? `${baseUrl}/chat/completions` : '';
 }
 
 function buildGoogleRequest(

@@ -565,6 +565,29 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     expect(body.provider).toBeUndefined();
   });
 
+  it('meta routes to api.meta.ai and uses json_object fallback (not strict schema)', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'meta',
+          api_key: 'meta-key',
+          model_name: 'muse-spark-1.1',
+        }),
+      })
+    );
+    const { url, headers, body } = captured(m);
+    expect(url).toBe('https://api.meta.ai/v1/chat/completions');
+    expect(headers['Authorization']).toBe('Bearer meta-key');
+    expect(body.model).toBe('muse-spark-1.1');
+    // Muse Spark mandates extended thinking, which Anthropic-style forced
+    // tool_choice forbids; kept OUT of STRICT_SCHEMA_PROVIDERS so it uses the
+    // json_object fallback with the schema embedded in the prompt instead.
+    expect((body.response_format as { type: string }).type).toBe('json_object');
+    const messages = body.messages as Array<{ content: string }>;
+    expect(messages[0].content).toContain('JSON Schema');
+  });
+
   it('openrouter sends strict json_schema, provider.require_parameters, and attribution headers', async () => {
     const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(

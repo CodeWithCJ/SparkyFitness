@@ -26,6 +26,10 @@ describe('getModelOptions', () => {
   it('returns an empty list for an unknown service type', () => {
     expect(getModelOptions('totally-unknown')).toEqual([]);
   });
+
+  it('returns the Muse Spark preset for meta', () => {
+    expect(getModelOptions('meta')).toEqual(['muse-spark-1.1']);
+  });
 });
 
 describe('requiresApiKey', () => {
@@ -48,6 +52,7 @@ describe('requiresApiKey', () => {
     'groq',
     'openrouter',
     'xai',
+    'meta',
   ])('requires a key for cloud provider %s', (serviceType) => {
     expect(requiresApiKey(serviceType)).toBe(true);
   });

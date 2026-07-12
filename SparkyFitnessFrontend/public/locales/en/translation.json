@@ -1042,6 +1042,7 @@
         "ollama": "Ollama",
         "openrouter": "OpenRouter",
         "xai": "xAI (Grok)",
+        "meta": "Meta",
         "custom": "Custom"
       }
     },
