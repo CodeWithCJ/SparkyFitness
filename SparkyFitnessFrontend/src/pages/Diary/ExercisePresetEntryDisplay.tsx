@@ -20,7 +20,7 @@ import {
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
 import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
-import { toHourMinute } from '@workspace/shared';
+import { earliestEntryTime, toHourMinute } from '@workspace/shared';
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: PresetSessionEntry;
@@ -90,18 +90,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
       : 0;
   })();
 
-  const earliestTime = (() => {
-    if (!presetEntry.exercises || presetEntry.exercises.length === 0)
-      return null;
-    const times = presetEntry.exercises
-      .map((ex) => ex.entry_time)
-      .filter(
-        (time): time is string => typeof time === 'string' && time !== ''
-      );
-    if (times.length === 0) return null;
-    times.sort();
-    return times[0];
-  })();
+  const earliestTime = earliestEntryTime(presetEntry.exercises ?? []);
 
   const totalCalories = Math.round(
     convertEnergy(

@@ -1,3 +1,4 @@
+import { compareByEntryTime, earliestEntryTime } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
@@ -1054,6 +1055,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         preset.exercises.sort(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (a: any, b: any) =>
+            compareByEntryTime(a.entry_time, b.entry_time) ||
             (a.sort_order || 0) - (b.sort_order || 0) ||
             // @ts-expect-error TS(2362): The left-hand side of an arithmetic operation must... Remove this comment to see the full error message
             new Date(a.created_at) - new Date(b.created_at)
@@ -1085,34 +1087,21 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
       if (entry.type === 'individual') {
         return entry.entry_time || null;
       }
-      if (
-        entry.type === 'preset' &&
-        entry.exercises &&
-        entry.exercises.length > 0
-      ) {
-        const times = entry.exercises
-          .map((ex: any) => ex.entry_time)
-          .filter((t: any) => t);
-        if (times.length > 0) {
-          times.sort();
-          return times[0];
-        }
+      if (entry.type === 'preset') {
+        return earliestEntryTime(entry.exercises || []);
       }
       return null;
     };
 
-    // Sort final entries chronologically by entry_time, falling back to created_at
-    finalEntries.sort((a, b) => {
-      const timeA = getEntryTime(a);
-      const timeB = getEntryTime(b);
-      if (timeA && timeB) {
-        return timeA.localeCompare(timeB);
-      }
-      if (timeA) return -1;
-      if (timeB) return 1;
-      // @ts-expect-error TS(2362): Date arithmetic
-      return new Date(a.created_at) - new Date(b.created_at);
-    });
+    // Entries with a time sort chronologically first; the rest keep the old
+    // sort_order + created_at ordering
+    finalEntries.sort(
+      (a, b) =>
+        compareByEntryTime(getEntryTime(a), getEntryTime(b)) ||
+        (a.sort_order || 0) - (b.sort_order || 0) ||
+        // @ts-expect-error TS(2362): Date arithmetic
+        new Date(a.created_at) - new Date(b.created_at)
+    );
     log(
       'debug',
       `getExerciseEntriesByDate: Returning grouped entries for user ${userId} on ${selectedDate}:`,

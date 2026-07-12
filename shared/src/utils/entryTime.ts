@@ -27,6 +27,40 @@ export function toHourMinute(
   return time.slice(0, 5);
 }
 
+/**
+ * Earliest entry_time among a list of entries (e.g. a workout session's
+ * exercises), or null when none has a time set.
+ */
+export function earliestEntryTime(
+  entries: ReadonlyArray<{ entry_time?: string | null }>,
+): string | null {
+  let earliest: string | null = null;
+  for (const entry of entries) {
+    const time = entry.entry_time;
+    if (typeof time !== "string" || time === "") continue;
+    if (earliest === null || time < earliest) earliest = time;
+  }
+  return earliest;
+}
+
+/**
+ * Comparator fragment for ordering diary entries by entry_time: entries with
+ * a time sort chronologically and come before entries without one. Returns 0
+ * when neither has a time (or the times are equal) so callers can chain their
+ * secondary ordering with ||.
+ */
+export function compareByEntryTime(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): number {
+  const timeA = typeof a === "string" && a !== "" ? a : null;
+  const timeB = typeof b === "string" && b !== "" ? b : null;
+  if (timeA && timeB) return timeA < timeB ? -1 : timeA > timeB ? 1 : 0;
+  if (timeA) return -1;
+  if (timeB) return 1;
+  return 0;
+}
+
 interface MealTypeWithDefaultTime {
   name: string;
   default_time?: string | null;

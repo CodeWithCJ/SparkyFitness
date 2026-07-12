@@ -206,7 +206,10 @@ export function useFoodDatabaseManager() {
     }
 
     const nowTime = userHourMinute(timezone);
-    const defaultMeal = defaultMealTypeForTime(mealTypes, nowTime);
+    const defaultMeal = defaultMealTypeForTime(
+      mealTypes.filter((t) => t.is_visible),
+      nowTime
+    );
     const resolvedMealType = selectedMealType || defaultMeal;
     const defaultEntryTime = `${String(nowTime.hour).padStart(2, '0')}:${String(nowTime.minute).padStart(2, '0')}`;
     const entryTime =

@@ -154,7 +154,11 @@ const FoodUnitSelector = ({
       }
     }
     wasOpenRef.current = open;
-  }, [open, initialTime, showMealTypeSelect, availableMealTypes, timezone]);
+    // Initialization must only run on the open transition; initialTime and the
+    // other inputs are snapshotted then (a minute-boundary initialTime change
+    // while open must not re-trigger).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const resolvedDefaultMealTime = (() => {
     if (showMealTypeSelect && availableMealTypes) {

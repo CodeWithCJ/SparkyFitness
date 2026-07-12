@@ -1966,6 +1966,7 @@ async function updateGroupedWorkoutSession(
               duration_minutes: preparedEntry.duration_minutes,
               calories_burned: preparedEntry.calories_burned,
               entry_date: targetEntryDate,
+              entry_time: ex.entry_time ?? null,
             },
             actingUserId,
             existingSession.source
