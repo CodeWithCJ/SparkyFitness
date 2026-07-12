@@ -87,17 +87,6 @@ interface ActiveWorkoutSetRowProps {
   renderKey?: string;
   /** Working-set number. Warmup/drop/failure rows show a `W`/`D`/`F` letter instead. */
   displayNumber: number;
-  /**
-   * Live only: this set beat the exercise's historical best (store `prSetIds`).
-   * Tints the set-number pill with the accent, matching the exercise-history
-   * PR chips.
-   */
-  isPr?: boolean;
-  /**
-   * Live only: this set TIED the record instead of beating it. Renders the
-   * outlined variant of the PR pill; `isPr` wins when both are set.
-   */
-  isPrMatch?: boolean;
   state: SetRowState;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
@@ -241,8 +230,6 @@ function ActiveWorkoutSetRow({
   set,
   renderKey,
   displayNumber,
-  isPr = false,
-  isPrMatch = false,
   state: stateProp,
   metricColumn,
   weightUnit,
@@ -308,7 +295,6 @@ function ActiveWorkoutSetRow({
   );
 
   const setId = String(set.id);
-  const isWarmup = set.set_type === 'warmup';
 
   // Local drafts while the row is current — committed on blur/step/log so the
   // store (kg) isn't rewritten on every keystroke of a decimal in progress.
@@ -538,21 +524,7 @@ function ActiveWorkoutSetRow({
 
   const setLabel = setTypeLetter(set.set_type) ?? String(displayNumber);
 
-  const setIndicator = !isWarmup && (isPr || isPrMatch) ? (
-    <View
-      testID={isPr ? 'pr-set-badge' : 'pr-match-badge'}
-      className={`h-5 min-w-5 px-1 rounded-md items-center justify-center ${
-        isPr ? 'bg-accent-primary/15' : 'border border-accent-primary/40'
-      }`}
-    >
-      <Text
-        className="text-[11px] font-bold text-accent-primary"
-        style={{ fontVariant: ['tabular-nums'] }}
-      >
-        {setLabel}
-      </Text>
-    </View>
-  ) : (
+  const setIndicator = (
     <Text
       className="text-sm text-text-muted"
       style={[

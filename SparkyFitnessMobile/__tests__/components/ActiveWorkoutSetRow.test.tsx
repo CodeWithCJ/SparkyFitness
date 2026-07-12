@@ -68,8 +68,6 @@ interface RenderOverrides {
   rpeEditable?: boolean;
   completedBadge?: boolean;
   previousSet?: ExerciseRecentSessionSet | null;
-  isPr?: boolean;
-  isPrMatch?: boolean;
   /** Wire the edit-mode completion toggle (otherwise the check is static). */
   enableToggle?: boolean;
   /** Wire the set-type handler (makes the set number a menu trigger). */
@@ -110,8 +108,6 @@ function renderRow(overrides?: RenderOverrides) {
       rpeEditable={current?.rpeEditable}
       completedBadge={current?.completedBadge}
       previousSet={current?.previousSet}
-      isPr={current?.isPr}
-      isPrMatch={current?.isPrMatch}
       {...spreadCallbacks}
       onToggleComplete={current?.enableToggle ? onToggleComplete : undefined}
       onPressSetType={current?.enableSetType ? onPressSetType : undefined}
@@ -822,64 +818,6 @@ describe('ActiveWorkoutSetRow', () => {
     });
     expect(getByText(letter)).toBeTruthy();
     expect(queryByText('3')).toBeNull();
-  });
-
-  describe('PR badge', () => {
-    it('tints the set number when the set is a PR', () => {
-      const { getByTestId, getByText } = renderRow({
-        state: 'done',
-        isPr: true,
-        displayNumber: 2,
-      });
-      expect(getByTestId('pr-set-badge')).toBeTruthy();
-      expect(getByText('2')).toBeTruthy();
-    });
-
-    it('renders the plain set number when the set is not a PR', () => {
-      const { queryByTestId } = renderRow({ state: 'done' });
-      expect(queryByTestId('pr-set-badge')).toBeNull();
-    });
-
-    it('keeps the plain W for a warmup even when flagged', () => {
-      const { getByText, queryByTestId } = renderRow({
-        state: 'done',
-        isPr: true,
-        set: { set_type: 'warmup' },
-      });
-      expect(getByText('W')).toBeTruthy();
-      expect(queryByTestId('pr-set-badge')).toBeNull();
-    });
-
-    it('shows the PR badge with the type letter for a flagged failure set', () => {
-      const { getByText, getByTestId } = renderRow({
-        state: 'done',
-        isPr: true,
-        set: { set_type: 'failure' },
-        displayNumber: 2,
-      });
-      expect(getByTestId('pr-set-badge')).toBeTruthy();
-      expect(getByText('F')).toBeTruthy();
-    });
-
-    it('renders the outlined match badge for a record tie', () => {
-      const { getByTestId, queryByTestId } = renderRow({
-        state: 'done',
-        isPrMatch: true,
-        displayNumber: 2,
-      });
-      expect(getByTestId('pr-match-badge')).toBeTruthy();
-      expect(queryByTestId('pr-set-badge')).toBeNull();
-    });
-
-    it('a full PR wins over a match when both are set', () => {
-      const { getByTestId, queryByTestId } = renderRow({
-        state: 'done',
-        isPr: true,
-        isPrMatch: true,
-      });
-      expect(getByTestId('pr-set-badge')).toBeTruthy();
-      expect(queryByTestId('pr-match-badge')).toBeNull();
-    });
   });
 
   describe('metric column display', () => {

@@ -11,6 +11,7 @@ import type { Exercise } from '../types/exercise';
 import {
   DEFAULT_REST_SEC,
   getSupersetRuns,
+  isDropSetType,
   isPrSet,
   moveSessionExerciseItem,
   normalizeSessionSupersetGroups,
@@ -356,7 +357,8 @@ const initialData: Pick<
  * `n` is one set of each member in order (positional — members whose sets
  * are exhausted drop out). `restSec` is the rest taken *before* a step, so
  * each round's first step carries the group rest and the rest of the round
- * carries 0 — rest happens after a full round, not between partners.
+ * carries 0 — rest happens after a full round, not between partners. Drop-set
+ * steps always carry 0: a drop continues the previous set with no pause.
  */
 export function buildStepsFromSession(session: PresetSessionResponse): WorkoutStep[] {
   const steps: WorkoutStep[] = [];
@@ -366,13 +368,17 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
   const byEntryId = new Map(session.exercises.map((e) => [e.id, e]));
   const consumed = new Set<string>();
 
-  const pushStep = (exercise: ExerciseEntryResponse, setId: number, restSec: number) => {
+  const pushStep = (
+    exercise: ExerciseEntryResponse,
+    set: ExerciseEntrySetResponse,
+    restSec: number,
+  ) => {
     steps.push({
       exerciseId: exercise.id,
-      setId: String(setId),
+      setId: String(set.id),
       exerciseName: exercise.exercise_snapshot?.name ?? 'Exercise',
       exerciseImage: exercise.exercise_snapshot?.images?.[0] ?? null,
-      restSec,
+      restSec: isDropSetType(set.set_type) ? 0 : restSec,
     });
   };
 
@@ -383,7 +389,7 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
     if (!run) {
       const restSec = exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
       for (const set of exercise.sets) {
-        pushStep(exercise, set.id, restSec);
+        pushStep(exercise, set, restSec);
       }
       continue;
     }
@@ -400,7 +406,7 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
       for (const member of members) {
         const set = member.sets[round];
         if (!set) continue;
-        pushStep(member, set.id, firstInRound ? groupRest : 0);
+        pushStep(member, set, firstInRound ? groupRest : 0);
         firstInRound = false;
       }
     }
@@ -551,6 +557,7 @@ function locateSet(
  * interior partner (baked 0) when a real between-rounds rest is actually owed,
  * so derive the rest from the true relationship between the two sets instead.
  * Rest is per-exercise: the upcoming exercise's `sets[0]` speaks for it.
+ * Drop sets take no rest before them regardless of what was just logged.
  */
 function restSecBeforeNextSet(
   session: PresetSessionResponse,
@@ -559,6 +566,7 @@ function restSecBeforeNextSet(
 ): number {
   const to = locateSet(session, nextSetId);
   if (!to) return DEFAULT_REST_SEC;
+  if (isDropSetType(to.exercise.sets[to.setIndex]?.set_type)) return 0;
   const toRest = to.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
 
   const from = locateSet(session, completedSetId);

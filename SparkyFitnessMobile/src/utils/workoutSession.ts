@@ -595,6 +595,14 @@ export function buildSessionDurationMinutes(
 export const SET_TYPE_OPTIONS = ['warmup', 'normal', 'drop', 'failure'] as const;
 
 /**
+ * A drop set continues its parent set at a stripped weight with no pause, so
+ * no rest is ever taken before one — the rest timer skips straight to it.
+ */
+export function isDropSetType(setType: string | null | undefined): boolean {
+  return setType === 'drop';
+}
+
+/**
  * Letter shown in the set # column instead of a working-set number, or null
  * for numbered (working) sets.
  */

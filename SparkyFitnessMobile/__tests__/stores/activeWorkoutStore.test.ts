@@ -792,6 +792,48 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('completeSet rest (drop sets)', () => {
+    /** makeSession with set 102 marked as a drop of 101. */
+    function makeDropSession(): PresetSessionResponse {
+      const session = makeSession();
+      session.exercises[0].sets[1].set_type = 'drop';
+      return session;
+    }
+
+    it('bakes 0 rest into drop-set steps and skips the timer going into one', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeDropSession());
+      expect(useActiveWorkoutStore.getState().steps.map((s) => s.restSec)).toEqual([
+        60, 0, 120,
+      ]);
+
+      useActiveWorkoutStore.getState().completeSet('101');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('102');
+      expect(state.rest.state).toBe('ready');
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
+    it('rests normally after the drop set completes', async () => {
+      useActiveWorkoutStore.getState().startWorkout(makeDropSession());
+      useActiveWorkoutStore.getState().completeSet('101');
+      useActiveWorkoutStore.getState().completeSet('102');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('201');
+      expect(state.rest.state).toBe('resting');
+      expect(state.rest.durationSec).toBe(120);
+      await flushPromises();
+    });
+
+    it('honors a mid-workout type change to drop (steps rebuild)', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      useActiveWorkoutStore.getState().updateSetField('102', { set_type: 'drop' });
+      useActiveWorkoutStore.getState().completeActiveSet();
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('102');
+      expect(state.rest.state).toBe('ready');
+    });
+  });
+
   describe('startedAt', () => {
     it('startWorkout stamps startedAt with now', () => {
       useActiveWorkoutStore.getState().startWorkout(makeSession());

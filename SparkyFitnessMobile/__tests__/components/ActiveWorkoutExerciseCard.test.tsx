@@ -50,14 +50,12 @@ jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
       nextSetId,
       entryId,
       previousSet,
-      isPr,
-      isPrMatch,
       displayNumber,
     }: any) => (
       <View
         testID={`set-row-${set.id}`}
         displayNumber={displayNumber}
-        accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}${isFocused ? ' focused' : ''}${isPr ? ' pr' : ''}${isPrMatch ? ' prMatch' : ''}`}
+        accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}${isFocused ? ' focused' : ''}`}
         accessibilityHint={`next:${nextSetId ?? 'none'} entry:${entryId ?? 'none'}`}
         accessibilityValue={{
           text: `prev:${
@@ -571,46 +569,6 @@ describe('ActiveWorkoutExerciseCard', () => {
       // The new record (105 × 5) replaces the historical best (100 × 5).
       expect(getByText('105 × 5')).toBeTruthy();
       expect(queryByText('100 × 5')).toBeNull();
-    });
-
-    it('badges only the flagged set row as a PR', () => {
-      mockUseExerciseStats.mockReturnValue(STATS_WITH_BEST);
-      const twoSets = makeExercise({
-        sets: [
-          { ...makeExercise().sets[0], id: 101, weight: 105, reps: 5 },
-          { ...makeExercise().sets[0], id: 102, set_number: 2 },
-        ],
-      });
-      const { getByTestId } = renderCard(true, {
-        mode: 'live',
-        exercise: twoSets,
-        prSetIds: { '101': true },
-      });
-      expect(getByTestId('set-row-101').props.accessibilityLabel).toContain(' pr');
-      expect(getByTestId('set-row-102').props.accessibilityLabel).not.toContain(' pr');
-    });
-
-    it('marks a completed set that ties the record as a PR match, not a PR', () => {
-      mockUseExerciseStats.mockReturnValue(STATS_WITH_BEST);
-      const tyingExercise = makeExercise({
-        sets: [
-          { ...makeExercise().sets[0], id: 101, weight: 100, reps: 5 },
-          { ...makeExercise().sets[0], id: 102, set_number: 2, weight: 100, reps: 5 },
-        ],
-      });
-      const { getByTestId } = renderCard(true, {
-        mode: 'live',
-        exercise: tyingExercise,
-        completedSetIds: { '101': true },
-        activeSetId: '102',
-      });
-      const label = getByTestId('set-row-101').props.accessibilityLabel;
-      expect(label).toContain(' prMatch');
-      expect(label).not.toContain(' pr ');
-      // An uncompleted set never gets the match badge, even at record numbers.
-      expect(getByTestId('set-row-102').props.accessibilityLabel).not.toContain(
-        ' prMatch',
-      );
     });
 
     it('does not fetch stats or render the Best line in view mode', () => {
