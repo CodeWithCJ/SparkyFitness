@@ -810,13 +810,17 @@ describe('ActiveWorkoutSetRow', () => {
     });
   });
 
-  it('shows the W pill instead of the set number for warmups', () => {
+  it.each([
+    ['warmup', 'W'],
+    ['drop', 'D'],
+    ['failure', 'F'],
+  ])('shows %s sets as a plain %s instead of the set number', (setType, letter) => {
     const { getByText, queryByText } = renderRow({
       state: 'upcoming',
-      set: { set_type: 'warmup', reps: 15, weight: 20 },
+      set: { set_type: setType, reps: 15, weight: 20 },
       displayNumber: 3,
     });
-    expect(getByText('W')).toBeTruthy();
+    expect(getByText(letter)).toBeTruthy();
     expect(queryByText('3')).toBeNull();
   });
 
@@ -836,7 +840,7 @@ describe('ActiveWorkoutSetRow', () => {
       expect(queryByTestId('pr-set-badge')).toBeNull();
     });
 
-    it('keeps the W pill for a warmup even when flagged', () => {
+    it('keeps the plain W for a warmup even when flagged', () => {
       const { getByText, queryByTestId } = renderRow({
         state: 'done',
         isPr: true,
@@ -844,6 +848,17 @@ describe('ActiveWorkoutSetRow', () => {
       });
       expect(getByText('W')).toBeTruthy();
       expect(queryByTestId('pr-set-badge')).toBeNull();
+    });
+
+    it('shows the PR badge with the type letter for a flagged failure set', () => {
+      const { getByText, getByTestId } = renderRow({
+        state: 'done',
+        isPr: true,
+        set: { set_type: 'failure' },
+        displayNumber: 2,
+      });
+      expect(getByTestId('pr-set-badge')).toBeTruthy();
+      expect(getByText('F')).toBeTruthy();
     });
 
     it('renders the outlined match badge for a record tie', () => {

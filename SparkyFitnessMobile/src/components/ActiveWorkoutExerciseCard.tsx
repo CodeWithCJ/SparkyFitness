@@ -23,6 +23,7 @@ import {
   matchesSetRecord,
   formatVolume,
   getExerciseVolumeKg,
+  setTypeLetter,
   type WorkoutCardExercise,
   type WorkoutCardSet,
 } from '../utils/workoutSession';
@@ -38,11 +39,11 @@ export const METRIC_COLUMN_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
 };
 
 
-/** Working-set numbers per set index; warmups repeat the previous number (they render the `W` pill instead). */
+/** Working-set numbers per set index; warmup/drop/failure rows repeat the previous number (they render a letter instead). */
 function buildWorkingSetNumbers(sets: WorkoutCardSet[]): number[] {
   let workingNumber = 0;
   return sets.map((set) => {
-    if (set.set_type !== 'warmup') workingNumber += 1;
+    if (setTypeLetter(set.set_type) == null) workingNumber += 1;
     return workingNumber;
   });
 }

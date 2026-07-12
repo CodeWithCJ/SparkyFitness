@@ -52,9 +52,11 @@ jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
       previousSet,
       isPr,
       isPrMatch,
+      displayNumber,
     }: any) => (
       <View
         testID={`set-row-${set.id}`}
+        displayNumber={displayNumber}
         accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}${isFocused ? ' focused' : ''}${isPr ? ' pr' : ''}${isPrMatch ? ' prMatch' : ''}`}
         accessibilityHint={`next:${nextSetId ?? 'none'} entry:${entryId ?? 'none'}`}
         accessibilityValue={{
@@ -207,6 +209,26 @@ describe('ActiveWorkoutExerciseCard', () => {
   it('offers no overflow trigger while collapsed (expand first)', () => {
     const { queryByLabelText } = renderCard(false);
     expect(queryByLabelText('More options for Bench Press')).toBeNull();
+  });
+
+  it('numbers only working sets; warmup/drop/failure rows repeat the previous number (they render letters)', () => {
+    const base = makeExercise().sets[0];
+    const utils = renderCard(true, {
+      exercise: makeExercise({
+        sets: [
+          { ...base, id: 101, set_number: 1, set_type: 'warmup' },
+          { ...base, id: 102, set_number: 2, set_type: 'normal' },
+          { ...base, id: 103, set_number: 3, set_type: 'drop' },
+          { ...base, id: 104, set_number: 4, set_type: 'failure' },
+          { ...base, id: 105, set_number: 5, set_type: 'normal' },
+        ],
+      }),
+    });
+    const numberOf = (id: number) => utils.getByTestId(`set-row-${id}`).props.displayNumber;
+    expect(numberOf(102)).toBe(1);
+    expect(numberOf(103)).toBe(1);
+    expect(numberOf(104)).toBe(1);
+    expect(numberOf(105)).toBe(2);
   });
 
   it('keeps the thumbnail image mounted across expand/collapse (no reload flash)', () => {

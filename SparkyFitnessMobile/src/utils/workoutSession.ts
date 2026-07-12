@@ -594,6 +594,23 @@ export function buildSessionDurationMinutes(
 /** Set types offered by the long-press set-type pickers. */
 export const SET_TYPE_OPTIONS = ['warmup', 'normal', 'drop', 'failure'] as const;
 
+/**
+ * Letter shown in the set # column instead of a working-set number, or null
+ * for numbered (working) sets.
+ */
+export function setTypeLetter(setType: string | null | undefined): 'W' | 'D' | 'F' | null {
+  switch (setType) {
+    case 'warmup':
+      return 'W';
+    case 'drop':
+      return 'D';
+    case 'failure':
+      return 'F';
+    default:
+      return null;
+  }
+}
+
 // --- Personal record (PR) detection ---
 //
 // A PR is a working set that beats the historical best for its exercise —

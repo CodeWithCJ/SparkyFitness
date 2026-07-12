@@ -33,6 +33,7 @@ import {
   estimateRepMaxKg,
   formatRecentSessionSet,
   getRpeTone,
+  setTypeLetter,
   setVolumeKg,
   type RpeTone,
   type WorkoutCardSet,
@@ -84,7 +85,7 @@ interface ActiveWorkoutSetRowProps {
    * on autosave (the accessory attachment is fragile — see the `isIOS` block).
    */
   renderKey?: string;
-  /** Working-set number. Warmup rows show the `W` pill instead. */
+  /** Working-set number. Warmup/drop/failure rows show a `W`/`D`/`F` letter instead. */
   displayNumber: number;
   /**
    * Live only: this set beat the exercise's historical best (store `prSetIds`).
@@ -535,11 +536,9 @@ function ActiveWorkoutSetRow({
     }
   })();
 
-  const setIndicator = isWarmup ? (
-    <View className="h-5 w-5 rounded-md bg-raised items-center justify-center">
-      <Text className="text-[11px] font-bold text-text-muted">W</Text>
-    </View>
-  ) : isPr || isPrMatch ? (
+  const setLabel = setTypeLetter(set.set_type) ?? String(displayNumber);
+
+  const setIndicator = !isWarmup && (isPr || isPrMatch) ? (
     <View
       testID={isPr ? 'pr-set-badge' : 'pr-match-badge'}
       className={`h-5 min-w-5 px-1 rounded-md items-center justify-center ${
@@ -550,7 +549,7 @@ function ActiveWorkoutSetRow({
         className="text-[11px] font-bold text-accent-primary"
         style={{ fontVariant: ['tabular-nums'] }}
       >
-        {displayNumber}
+        {setLabel}
       </Text>
     </View>
   ) : (
@@ -561,7 +560,7 @@ function ActiveWorkoutSetRow({
         state === 'current' ? { color: accentPrimary, fontWeight: '700' } : null,
       ]}
     >
-      {displayNumber}
+      {setLabel}
     </Text>
   );
 

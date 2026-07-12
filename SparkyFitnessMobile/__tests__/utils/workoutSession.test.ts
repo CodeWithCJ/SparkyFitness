@@ -34,6 +34,7 @@ import {
   moveSessionExerciseItem,
   moveDraftExerciseItem,
   isWarmupSetType,
+  setTypeLetter,
   seedPrFromSession,
   compareSetRecords,
   matchesSetRecord,
@@ -1899,6 +1900,20 @@ describe('workoutSession', () => {
       }
       expect(isWarmupSetType(null)).toBe(false);
       expect(isWarmupSetType(undefined)).toBe(false);
+    });
+  });
+
+  describe('setTypeLetter', () => {
+    it('maps the typed picker options to their column letters', () => {
+      expect(setTypeLetter('warmup')).toBe('W');
+      expect(setTypeLetter('drop')).toBe('D');
+      expect(setTypeLetter('failure')).toBe('F');
+    });
+
+    it('returns null for numbered (working) sets', () => {
+      expect(setTypeLetter('normal')).toBeNull();
+      expect(setTypeLetter(null)).toBeNull();
+      expect(setTypeLetter(undefined)).toBeNull();
     });
   });
 
