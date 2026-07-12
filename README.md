@@ -117,13 +117,19 @@ _Note: For other self-hosted installation methods, refer to the documentation at
 
 ### 2. Cloud (for non-technical users)
 
-If you are not a technical user and do not want to run SparkyFitness on your own server, you can use **[PikaPods](https://pikapods.com/)** to deploy a hosted instance of SparkyFitness in the cloud:
+If you are not a technical user and prefer not to run SparkyFitness on your own server, you can deploy a hosted instance in the cloud using one of the following providers.
 
-[![Run on PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=sparkyfitness)
+<a href="https://www.pikapods.com/pods?run=sparkyfitness">
+  <img src="https://www.pikapods.com/static/run-button.svg" height="70" width="150" alt="Run on PikaPods">
+</a>
+<br>
+<a href="https://zenith.hosting/host/sparkyfitness?ref=gh">
+  <img src="https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg" height="70" width="150" alt="Deploy with Zenith">
+</a>
 
-[![Deploy with Zenith](https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg)](https://zenith.hosting/host/sparkyfitness?ref=gh)
 
-> One-click managed SparkyFitness with storage, backups, email and a free subdomain included. A share of every subscription goes back to SparkyFitness.
+> **Note:** These are independent third-party services. We encourage you to explore features provided by each provider to determine the one that best fits your needs.
+ 
 
 ## 🎥 Video Tutorial
 
