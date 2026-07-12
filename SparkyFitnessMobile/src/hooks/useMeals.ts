@@ -23,6 +23,11 @@ import {
 import type { QueryClient } from '@tanstack/react-query';
 import type { CreateMealPayload, Meal, UpdateMealPayload } from '../types/meals';
 
+// Stable reference for the "no data yet" case. A fresh `[]` on every render
+// would break memoization for consumers (e.g. the landing-list useMemo in
+// FoodSearchScreen) while a query is still loading.
+const EMPTY_MEALS: Meal[] = [];
+
 function invalidateMealCaches(queryClient: QueryClient, mealId?: string) {
   queryClient.invalidateQueries({ queryKey: mealsQueryKey });
   queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
@@ -45,7 +50,7 @@ export function useMeals(options?: { enabled?: boolean }) {
   });
 
   return {
-    meals: query.data ?? [],
+    meals: query.data ?? EMPTY_MEALS,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
@@ -63,7 +68,7 @@ export function useRecentMeals(options?: { enabled?: boolean; limit?: number }) 
   });
 
   return {
-    recentMeals: query.data ?? [],
+    recentMeals: query.data ?? EMPTY_MEALS,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
@@ -81,7 +86,7 @@ export function useTopMeals(options?: { enabled?: boolean; limit?: number }) {
   });
 
   return {
-    topMeals: query.data ?? [],
+    topMeals: query.data ?? EMPTY_MEALS,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,

@@ -149,16 +149,21 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // Recent + frequently-logged meals for the landing merge. Excluded while
   // building a meal (a meal cannot contain a meal), mirroring the typed-search
   // behaviour. Requested at the section cap so the merge with foods is not
-  // starved. Meals stream in and interleave with foods once loaded.
+  // starved.
   const landingMealsEnabled = isConnected && !isMealBuilderMode;
-  const { recentMeals } = useRecentMeals({
+  const { recentMeals, isLoading: isRecentMealsLoading } = useRecentMeals({
     enabled: landingMealsEnabled,
     limit: landingLimit,
   });
-  const { topMeals } = useTopMeals({
+  const { topMeals, isLoading: isTopMealsLoading } = useTopMeals({
     enabled: landingMealsEnabled,
     limit: landingLimit,
   });
+
+  // The landing spinner waits on foods *and* meals. Rendering foods first and
+  // letting meals pop in afterwards shifts rows under the user's thumb mid-tap.
+  const isLandingLoading =
+    isLoading || (landingMealsEnabled && (isRecentMealsLoading || isTopMealsLoading));
 
   const [searchText, setSearchText] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -1274,7 +1279,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }
 
     // Landing (no/short query): recent + top foods.
-    if (isLoading) {
+    if (isLandingLoading) {
       return (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={accentColor} />

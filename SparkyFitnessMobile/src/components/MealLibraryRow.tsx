@@ -40,7 +40,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
               {meal.name}
             </Text>
             {showBadge ? (
-              <View className="px-1.5 py-0.5 rounded border border-border-subtle">
+              <View className="px-1.5 py-0.5 rounded border border-border-subtle flex-shrink-0">
                 <Text className="text-text-secondary text-xs font-semibold uppercase">
                   Meal
                 </Text>
