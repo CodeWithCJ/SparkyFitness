@@ -1,4 +1,4 @@
-import { NativeModules } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { createAuthClient } from 'better-auth/client';
 import { expoClient } from '@better-auth/expo/client';
@@ -566,6 +566,57 @@ export const loginWithOidc = async (
 };
 
 /**
+ * Certain browsers such as Fennec are signed by FDroid
+ * and therefore unavailable to use passkeys on Android.
+ */
+const PASSKEY_CAPABLE_BROWSERS = [
+  'com.android.chrome',
+  'org.mozilla.firefox',
+  'com.sec.android.app.sbrowser',
+  'com.microsoft.emmx',
+];
+
+/**
+ * Picks the Custom Tabs browser for passkey ceremonies. Returns undefined to
+ * use the default browser when it is already passkey-capable, when no capable
+ * browser is installed, or on iOS (where the system browser always works).
+ */
+const getPasskeyBrowserPackage = async (): Promise<string | undefined> => {
+  if (Platform.OS !== 'android') {
+    return undefined;
+  }
+  try {
+    const { defaultBrowserPackage, browserPackages, servicePackages } =
+      await WebBrowser.getCustomTabsSupportingBrowsersAsync();
+    if (defaultBrowserPackage && PASSKEY_CAPABLE_BROWSERS.includes(defaultBrowserPackage)) {
+      return undefined;
+    }
+    // When a default browser is set, Android filters VIEW-intent queries
+    // (browserPackages) down to just that default. The CustomTabsService
+    // query (servicePackages) is not filtered and lists every
+    // Custom-Tabs-capable browser, so check both.
+    const installed = new Set([...servicePackages, ...browserPackages]);
+    const fallback = PASSKEY_CAPABLE_BROWSERS.find((pkg) => installed.has(pkg));
+    if (fallback) {
+      addLog(
+        `[AuthService] Default browser (${defaultBrowserPackage ?? 'none'}) may not support passkeys; opening ceremony in ${fallback}`,
+        'INFO'
+      );
+    } else {
+      addLog(
+        `[AuthService] No allowlisted passkey browser installed; using default (${defaultBrowserPackage ?? 'none'})`,
+        'DEBUG',
+        [...installed]
+      );
+    }
+    return fallback;
+  } catch (err) {
+    addLog(`[AuthService] Could not inspect installed browsers: ${err}`, 'WARNING');
+    return undefined;
+  }
+};
+
+/**
  * Triggers native passkey (WebAuthn/FIDO2) sign-in flow.
  */
 export const loginWithPasskey = async (serverUrl: string): Promise<LoginSuccess> => {
@@ -581,7 +632,9 @@ export const loginWithPasskey = async (serverUrl: string): Promise<LoginSuccess>
   addLog('[AuthService] Initiating browser-based passkey login flow', 'INFO');
 
   const authUrl = `${baseUrl}/api/auth/web-login/passkey`;
-  const result = await WebBrowser.openAuthSessionAsync(authUrl, SSO_CALLBACK_URL);
+  const result = await WebBrowser.openAuthSessionAsync(authUrl, SSO_CALLBACK_URL, {
+    browserPackage: await getPasskeyBrowserPackage(),
+  });
 
   if (result.type !== 'success') {
     addLog('[AuthService] Browser-based passkey login was cancelled or failed.', 'ERROR');
@@ -716,10 +769,9 @@ export const addPasskey = async (
     ticket
   )}&name=${encodeURIComponent(name)}`;
 
-  const result = await WebBrowser.openAuthSessionAsync(
-    registerUrl,
-    SSO_CALLBACK_URL
-  );
+  const result = await WebBrowser.openAuthSessionAsync(registerUrl, SSO_CALLBACK_URL, {
+    browserPackage: await getPasskeyBrowserPackage(),
+  });
 
   if (result.type !== 'success' || !result.url) {
     addLog('[AuthService] Browser-based passkey registration was cancelled or failed.', 'ERROR');
