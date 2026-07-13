@@ -82,6 +82,7 @@ import fitbitService from './services/fitbitService.js';
 import googleHealthService from './services/googleHealthService.js';
 import polarService from './services/polarService.js';
 import stravaService from './services/stravaService.js';
+import hevyService from './integrations/hevy/hevyService.js';
 // @ts-expect-error TS1192
 import dailySummaryRoutes from './routes/dailySummaryRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
@@ -698,6 +699,29 @@ const scheduleGoogleHealthSyncs = async () => {
     }
   });
 };
+const scheduleHevySyncs = async () => {
+  cron.schedule('0 * * * *', async () => {
+    const hevyProviders =
+      await externalProviderRepository.getProvidersByType('hevy');
+    for (const provider of hevyProviders) {
+      if (provider.is_active && provider.sync_frequency !== 'manual') {
+        try {
+          await hevyService.syncHevyData(
+            provider.user_id,
+            provider.user_id,
+            false,
+            provider.id
+          );
+        } catch (error) {
+          console.error(
+            `[CRON] Hevy sync failed for user ${provider.user_id}:`,
+            error
+          );
+        }
+      }
+    }
+  });
+};
 applyMigrations()
   .then(applyRlsPolicies)
   .then(async () => {
@@ -724,6 +748,7 @@ applyMigrations()
     schedulePolarSyncs();
     scheduleStravaSyncs();
     scheduleGoogleHealthSyncs();
+    scheduleHevySyncs();
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const adminUser = await userRepository.findUserByEmail(
         process.env.SPARKY_FITNESS_ADMIN_EMAIL
