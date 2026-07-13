@@ -24,11 +24,15 @@ import {
 import type { PrBaselineEntry } from '../utils/workoutSession';
 import { newUuid } from '../utils/ids';
 import {
+  addNotificationResponseListener,
   cancelScheduledNotification,
+  COMPLETE_SET_ACTION,
+  dismissDeliveredNotification,
   fireRestCompleteHaptic,
   scheduleRestNotification,
 } from '../services/notifications';
 import { fireSelectionHaptic, fireSuccessHaptic } from '../services/haptics';
+import { addLog } from '../services/LogService';
 
 const STORAGE_KEY = '@SparkyFitness/active-workout';
 
@@ -206,6 +210,16 @@ export interface ActiveWorkoutState {
   completeSet: (setId: string) => void;
   /** Complete the current cursor set. Thin wrapper over {@link completeSet}. */
   completeActiveSet: () => void;
+  /**
+   * Guarded {@link completeActiveSet} for lock-screen surfaces (the Live
+   * Activity button and the rest-notification action): a no-op while a rest
+   * is genuinely running or paused, so a press that races — or arrives stale
+   * from — a running rest can't complete the set after next. A rest whose
+   * deadline has passed counts as ready: backgrounding pauses JS timers, so
+   * the resting → ready flip is often still pending when a lock-screen press
+   * wakes the app. Returns whether a set was completed.
+   */
+  completeActiveSetIfReady: () => boolean;
   /**
    * Un-complete a set (undo): drop its completion timestamp and PR stamp. The
    * cursor stays put — every set is independently loggable, so the reopened set
@@ -949,6 +963,18 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
       completeActiveSet: () => {
         const { activeSetId } = get();
         if (activeSetId != null) get().completeSet(activeSetId);
+      },
+
+      completeActiveSetIfReady: () => {
+        const { rest, activeSetId } = get();
+        if (activeSetId == null) return false;
+        // An expired rest can still read 'resting' here: the ready flip runs
+        // on a JS timer, which Android pauses while the app is backgrounded.
+        const restExpired =
+          rest.state === 'resting' && rest.endsAt != null && rest.endsAt <= Date.now();
+        if (rest.state !== 'ready' && !restExpired) return false;
+        get().completeSet(activeSetId);
+        return true;
       },
 
       uncompleteSet: (setId) => {
@@ -1712,6 +1738,25 @@ AppState.addEventListener('change', (status) => {
   }
 });
 
+let notificationActionsSubscription: ReturnType<typeof addNotificationResponseListener> | null =
+  null;
+
+/**
+ * Wires the rest notification's "Complete Set" action to the store. The press
+ * is handled in the background — the app does not open — and the pressed
+ * notification is dismissed explicitly because Android leaves it in the tray
+ * after an action press. Called once from App startup; re-runs are no-ops.
+ */
+export function initWorkoutNotificationActions(): void {
+  if (notificationActionsSubscription != null) return;
+  notificationActionsSubscription = addNotificationResponseListener((response) => {
+    if (response.actionIdentifier !== COMPLETE_SET_ACTION) return;
+    const completed = useActiveWorkoutStore.getState().completeActiveSetIfReady();
+    void addLog(`[WorkoutNotificationAction] complete-set handled=${completed}`, 'DEBUG');
+    void dismissDeliveredNotification(response.notification.request.identifier);
+  });
+}
+
 /**
  * Test-only helper — resets store state to initial data while preserving
  * action references, and clears the persisted AsyncStorage entry.
@@ -1719,6 +1764,8 @@ AppState.addEventListener('change', (status) => {
 export function __resetActiveWorkoutStoreForTests(): void {
   restInstanceCounter = 0;
   prEventCounter = 0;
+  notificationActionsSubscription?.remove();
+  notificationActionsSubscription = null;
   useActiveWorkoutStore.setState({ ...initialData });
   void AsyncStorage.removeItem(STORAGE_KEY);
 }

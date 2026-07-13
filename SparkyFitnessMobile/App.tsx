@@ -20,7 +20,10 @@ import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData } from './src/hooks';
-import { useActiveWorkoutStore } from './src/stores/activeWorkoutStore';
+import {
+  initWorkoutNotificationActions,
+  useActiveWorkoutStore,
+} from './src/stores/activeWorkoutStore';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
@@ -583,6 +586,10 @@ function AppContent() {
     };
 
     initializeApp();
+
+    // Routes the rest notification's "Complete Set" action into the
+    // active-workout store.
+    initWorkoutNotificationActions();
 
     // iOS-only (no-op on Android): keeps the workout Live Activity in sync
     // with the active-workout store.

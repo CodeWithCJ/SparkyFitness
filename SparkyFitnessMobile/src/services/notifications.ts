@@ -14,6 +14,14 @@ const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
 const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
 
+const REST_COMPLETE_CATEGORY = 'rest-complete';
+/**
+ * actionIdentifier of the "Complete Set" button on the rest-complete ping.
+ * Responses are dispatched to the store by `initWorkoutNotificationActions`
+ * in activeWorkoutStore.ts.
+ */
+export const COMPLETE_SET_ACTION = 'complete-set';
+
 let initialized = false;
 let hasShownDeniedToast = false;
 
@@ -56,6 +64,17 @@ export async function initNotifications(): Promise<void> {
         enableVibrate: true,
       });
     }
+
+    // "Complete Set" button on the rest-complete ping. The press is handled
+    // in the background — no app open; iOS reveals it on long-press/pull-down,
+    // Android shows it directly on the notification.
+    await Notifications.setNotificationCategoryAsync(REST_COMPLETE_CATEGORY, [
+      {
+        identifier: COMPLETE_SET_ACTION,
+        buttonTitle: 'Complete Set',
+        options: { opensAppToForeground: false },
+      },
+    ]);
   } catch (err) {
     addLog(`initNotifications failed: ${(err as Error).message}`, 'ERROR');
   }
@@ -138,12 +157,18 @@ export async function scheduleRestNotification(
   const granted = await ensureNotificationPermission();
   if (!granted) return null;
 
+  // Any still-displayed rest ping is stale once the next rest starts.
+  // Fire-and-forget: awaiting would delay the TIME_INTERVAL trigger, which
+  // anchors its fire time at native construction.
+  void dismissDeliveredRestNotifications();
+
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: content?.title ?? 'Rest complete',
         body: content?.body ?? exerciseName,
         sound: true,
+        categoryIdentifier: REST_COMPLETE_CATEGORY,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -156,6 +181,43 @@ export async function scheduleRestNotification(
     addLog(`scheduleRestNotification failed: ${(err as Error).message}`, 'ERROR');
     return null;
   }
+}
+
+/** Dismiss every already-delivered rest ping from the tray. */
+async function dismissDeliveredRestNotifications(): Promise<void> {
+  try {
+    const presented = await Notifications.getPresentedNotificationsAsync();
+    await Promise.all(
+      presented
+        .filter((n) => n.request.content.categoryIdentifier === REST_COMPLETE_CATEGORY)
+        .map((n) => Notifications.dismissNotificationAsync(n.request.identifier)),
+    );
+  } catch (err) {
+    addLog(`dismissDeliveredRestNotifications failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
+/**
+ * Dismiss one delivered notification. Needed after an Android action press —
+ * unlike iOS, Android leaves the notification in the tray.
+ */
+export async function dismissDeliveredNotification(identifier: string): Promise<void> {
+  try {
+    await Notifications.dismissNotificationAsync(identifier);
+  } catch (err) {
+    addLog(`dismissDeliveredNotification failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
+/**
+ * Subscribe to notification action/tap responses. A thin wrapper so the
+ * active-workout store can listen without importing expo-notifications and
+ * without a store ↔ service import cycle.
+ */
+export function addNotificationResponseListener(
+  listener: (response: Notifications.NotificationResponse) => void,
+) {
+  return Notifications.addNotificationResponseReceivedListener(listener);
 }
 
 /**

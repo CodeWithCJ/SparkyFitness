@@ -1,5 +1,13 @@
-import { HStack, Image, Spacer, Text, VStack } from '@expo/ui/swift-ui';
-import { font, foregroundStyle, frame, monospacedDigit, padding } from '@expo/ui/swift-ui/modifiers';
+import { Button, HStack, Image, ProgressView, Spacer, Text, VStack } from '@expo/ui/swift-ui';
+import {
+  buttonStyle,
+  controlSize,
+  font,
+  foregroundStyle,
+  frame,
+  monospacedDigit,
+  padding,
+} from '@expo/ui/swift-ui/modifiers';
 import { createLiveActivity } from 'expo-widgets';
 
 /**
@@ -64,6 +72,11 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
       <Text timerInterval={restInterval} countsDown modifiers={timerModifiers(maxWidth)} />
     ) : null;
 
+  // OS-ticked depleting bar over the rest interval — like the timer Texts, the
+  // system animates it from the absolute dates with no updates from the app.
+  const restProgress = () =>
+    restInterval ? <ProgressView timerInterval={restInterval} /> : null;
+
   const statusLine = () => {
     if (restInterval) {
       return (
@@ -90,6 +103,32 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
 
   const icon = () => <Image systemName="figure.strengthtraining.traditional" />;
 
+  // Phase controls (iOS 17+). A press runs a LiveActivityIntent in the app
+  // process; workoutLiveActivity.ios.ts matches on these target strings and
+  // pushes the repaint, so the targets must stay in sync with that file.
+  const buttonModifiers = [buttonStyle('bordered'), controlSize('small')];
+  const actionButtons = () => {
+    if (restInterval) {
+      return (
+        <HStack spacing={8}>
+          <Button label="+15s" target="rest-add-15" modifiers={buttonModifiers} />
+          <Button label="Skip" target="rest-skip" modifiers={buttonModifiers} />
+        </HStack>
+      );
+    }
+    if (props.phase === 'active' && props.setLine != null) {
+      return (
+        <Button
+          label="Complete"
+          systemImage="checkmark"
+          target="complete-set"
+          modifiers={buttonModifiers}
+        />
+      );
+    }
+    return null;
+  };
+
   return {
     banner: (
       <VStack alignment="leading" spacing={4} modifiers={[padding({ all: 12 })]}>
@@ -98,7 +137,25 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
           <Spacer />
           {elapsedClock()}
         </HStack>
+        <HStack>
+          {statusLine()}
+          <Spacer />
+          {actionButtons()}
+        </HStack>
+        {restProgress()}
+      </VStack>
+    ),
+    // Watch Smart Stack (watchOS 11+) and CarPlay. No buttons: the layout can
+    // render on a remote device, where LiveActivityIntent presses are unproven.
+    bannerSmall: (
+      <VStack alignment="leading" spacing={2} modifiers={[padding({ all: 8 })]}>
+        <HStack>
+          <Text modifiers={[font({ weight: 'bold', size: 13 })]}>{props.workoutName}</Text>
+          <Spacer />
+          {elapsedClock(64)}
+        </HStack>
         {statusLine()}
+        {restProgress()}
       </VStack>
     ),
     compactLeading: icon(),
@@ -114,10 +171,14 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
       <HStack modifiers={[padding({ trailing: 12 })]}>{elapsedClock()}</HStack>
     ),
     expandedBottom: (
-      <HStack modifiers={[padding({ horizontal: 12, bottom: 8 })]}>
-        {statusLine()}
-        <Spacer />
-      </HStack>
+      <VStack spacing={6} modifiers={[padding({ horizontal: 12, bottom: 8 })]}>
+        <HStack>
+          {statusLine()}
+          <Spacer />
+          {actionButtons()}
+        </HStack>
+        {restProgress()}
+      </VStack>
     ),
   };
 };

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PresetSessionResponse } from '@workspace/shared';
+import { addUserInteractionListener } from 'expo-widgets';
 import {
   __resetActiveWorkoutStoreForTests,
   useActiveWorkoutStore,
@@ -34,6 +35,11 @@ jest.mock('../../src/services/WorkoutLiveActivityLayout', () => ({
   default: { start: jest.fn(), getInstances: jest.fn() },
 }));
 
+// expo-widgets requires the ExpoWidgets native module at import time.
+jest.mock('expo-widgets', () => ({
+  addUserInteractionListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
+
 type MockInstance = { update: jest.Mock; end: jest.Mock };
 
 const mockFactory = WorkoutLiveActivityFactory as unknown as {
@@ -41,6 +47,9 @@ const mockFactory = WorkoutLiveActivityFactory as unknown as {
   getInstances: jest.Mock;
 };
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
+const mockAddUserInteractionListener = addUserInteractionListener as jest.MockedFunction<
+  typeof addUserInteractionListener
+>;
 
 const FIXED_NOW = 1_700_000_000_000;
 const ACTIVE_WORKOUT_URL = 'sparkyfitnessmobile://active-workout';
@@ -116,6 +125,18 @@ async function initHydrated(): Promise<void> {
   await flushPromises();
 }
 
+/** Drive the interaction listener the service registered, as a button press would. */
+function fireInteraction(target: string): void {
+  const listener = mockAddUserInteractionListener.mock.calls.at(-1)?.[0];
+  if (!listener) throw new Error('interaction listener not registered');
+  listener({
+    source: 'WorkoutLiveActivity',
+    target,
+    timestamp: Date.now(),
+    type: 'ExpoWidgetsUserInteraction',
+  });
+}
+
 describe('workoutLiveActivity', () => {
   beforeEach(async () => {
     jest.useFakeTimers();
@@ -132,6 +153,7 @@ describe('workoutLiveActivity', () => {
     });
     mockFactory.getInstances.mockReset().mockReturnValue([]);
     mockAddLog.mockClear();
+    mockAddUserInteractionListener.mockClear();
     jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(true);
     await AsyncStorage.clear();
   });
@@ -390,6 +412,96 @@ describe('workoutLiveActivity', () => {
           restEndsAt: FIXED_NOW + 90_000,
         }),
       );
+    });
+  });
+
+  describe('button interactions', () => {
+    it('extends the current rest by 15s on rest-add-15', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      useActiveWorkoutStore.getState().completeSet('101');
+      await flushPromises();
+
+      fireInteraction('rest-add-15');
+      await flushPromises();
+
+      expect(instance.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          phase: 'resting',
+          restEndsAt: FIXED_NOW + 75_000,
+        }),
+      );
+    });
+
+    it('skips the current rest on rest-skip', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      useActiveWorkoutStore.getState().completeSet('101');
+      await flushPromises();
+
+      fireInteraction('rest-skip');
+      await flushPromises();
+
+      expect(instance.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ phase: 'active', restEndsAt: null }),
+      );
+    });
+
+    it('completes the active set on complete-set', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      fireInteraction('complete-set');
+      await flushPromises();
+
+      expect(instance.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          phase: 'resting',
+          restEndsAt: FIXED_NOW + 60_000,
+          setLine: 'Bench Press · Set 2 of 2',
+        }),
+      );
+    });
+
+    it('ignores a stale complete-set press while resting', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      useActiveWorkoutStore.getState().completeSet('101');
+      await flushPromises();
+      const updateCount = instance.update.mock.calls.length;
+
+      fireInteraction('complete-set');
+      await flushPromises();
+
+      expect(instance.update.mock.calls.length).toBe(updateCount);
+      expect(useActiveWorkoutStore.getState().activeSetId).toBe('102');
+    });
+
+    it('ignores unknown interaction targets', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      useActiveWorkoutStore.getState().completeSet('101');
+      await flushPromises();
+      const updateCount = instance.update.mock.calls.length;
+
+      fireInteraction('some-other-widget-button');
+      await flushPromises();
+
+      expect(instance.update.mock.calls.length).toBe(updateCount);
     });
   });
 });

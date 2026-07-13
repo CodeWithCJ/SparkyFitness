@@ -1,4 +1,8 @@
-import type { LiveActivity } from 'expo-widgets';
+import {
+  addUserInteractionListener,
+  type LiveActivity,
+  type UserInteractionEvent,
+} from 'expo-widgets';
 import { useActiveWorkoutStore, type ActiveWorkoutState } from '../stores/activeWorkoutStore';
 import {
   describeActiveSet,
@@ -28,8 +32,20 @@ let initialized = false;
 let reconciled = false;
 let unsubscribeStore: (() => void) | null = null;
 let unsubscribeHydration: (() => void) | null = null;
+let interactionSubscription: ReturnType<typeof addUserInteractionListener> | null = null;
 let activity: LiveActivity<WorkoutLiveActivityProps> | null = null;
 let lastSentProps: WorkoutLiveActivityProps | null = null;
+/** Latency probe for a button press being timed from intent fire to repaint. */
+let pendingPress: { target: string; intentAt: number } | null = null;
+
+/**
+ * Button targets in WorkoutLiveActivityLayout.tsx. The layout can't import
+ * these (its 'widget' body must stay self-contained), so the strings are kept
+ * in sync by hand.
+ */
+const REST_ADD_15_TARGET = 'rest-add-15';
+const REST_SKIP_TARGET = 'rest-skip';
+const COMPLETE_SET_TARGET = 'complete-set';
 
 /**
  * Serial queue for all activity operations. `start`/`update`/`end` are async
@@ -41,6 +57,54 @@ let enqueue = createConcurrencyLimiter(1);
 function logActivityError(context: string, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   void addLog(`[WorkoutLiveActivity] ${context}: ${message}`, 'ERROR');
+}
+
+/**
+ * A button press in the activity runs a LiveActivityIntent in the app process
+ * (iOS launches the app in the background if needed) and lands here as an
+ * interaction event. The activity itself repaints only after the store change
+ * flows back out through {@link applyProps}. `event.timestamp` is stamped
+ * natively when the intent performs, so the two log lines measure the real
+ * intent→JS and press→repaint round-trips.
+ */
+function handleUserInteraction(event: UserInteractionEvent): void {
+  if (!reconciled) return;
+  const receivedAt = Date.now();
+  const store = useActiveWorkoutStore.getState();
+  switch (event.target) {
+    case REST_ADD_15_TARGET:
+      pendingPress = { target: event.target, intentAt: event.timestamp };
+      store.adjustRest(15);
+      break;
+    case REST_SKIP_TARGET:
+      pendingPress = { target: event.target, intentAt: event.timestamp };
+      store.dismissRest();
+      break;
+    case COMPLETE_SET_TARGET:
+      // The guarded variant rejects a press from a stale banner while a rest
+      // is running/paused — it would complete the next set.
+      if (!store.completeActiveSetIfReady()) return;
+      pendingPress = { target: event.target, intentAt: event.timestamp };
+      break;
+    default:
+      return;
+  }
+  void addLog(
+    `[WorkoutLiveActivity] '${event.target}' intent→JS ${receivedAt - event.timestamp}ms`,
+    'DEBUG',
+  );
+}
+
+/** Log the press→repaint total once the update triggered by a press lands. */
+function logPendingPressRepaint(): void {
+  if (pendingPress == null) return;
+  const { target, intentAt } = pendingPress;
+  pendingPress = null;
+  const totalMs = Date.now() - intentAt;
+  // A press that changed nothing (e.g. the rest raced to done) leaves a stale
+  // probe behind; don't attribute the next unrelated update to it.
+  if (totalMs > 10_000) return;
+  void addLog(`[WorkoutLiveActivity] '${target}' press→repaint ${totalMs}ms`, 'DEBUG');
 }
 
 /**
@@ -159,6 +223,7 @@ async function applyProps(props: WorkoutLiveActivityProps | null): Promise<void>
   if (lastSentProps != null && propsEqual(props, lastSentProps)) return;
   await activity.update(props);
   lastSentProps = props;
+  logPendingPressRepaint();
 }
 
 /** Queue a sync that reads the latest store state when it actually runs. */
@@ -234,6 +299,8 @@ export async function initWorkoutLiveActivity(): Promise<void> {
     syncFromState();
   });
 
+  interactionSubscription = addUserInteractionListener(handleUserInteraction);
+
   const persistApi = useActiveWorkoutStore.persist;
   if (persistApi.hasHydrated()) {
     startReconcile();
@@ -255,9 +322,12 @@ export function __resetWorkoutLiveActivityForTests(): void {
   unsubscribeStore = null;
   unsubscribeHydration?.();
   unsubscribeHydration = null;
+  interactionSubscription?.remove();
+  interactionSubscription = null;
   initialized = false;
   reconciled = false;
   activity = null;
   lastSentProps = null;
+  pendingPress = null;
   enqueue = createConcurrencyLimiter(1);
 }
