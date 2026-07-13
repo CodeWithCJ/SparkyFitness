@@ -587,8 +587,6 @@ function AppContent() {
 
     initializeApp();
 
-    // Routes the rest notification's "Complete Set" action into the
-    // active-workout store.
     initWorkoutNotificationActions();
 
     // iOS-only (no-op on Android): keeps the workout Live Activity in sync

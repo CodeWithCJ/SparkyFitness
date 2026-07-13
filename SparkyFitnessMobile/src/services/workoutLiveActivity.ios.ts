@@ -37,8 +37,6 @@ let unsubscribeHydration: (() => void) | null = null;
 let interactionSubscription: ReturnType<typeof addUserInteractionListener> | null = null;
 let activity: LiveActivity<WorkoutLiveActivityProps> | null = null;
 let lastSentProps: WorkoutLiveActivityProps | null = null;
-/** Latency probe for a button press being timed from intent fire to repaint. */
-let pendingPress: { target: string; intentAt: number } | null = null;
 
 /**
  * Button targets in WorkoutLiveActivityLayout.tsx. The layout can't import
@@ -103,48 +101,24 @@ function withAppIcon(props: WorkoutLiveActivityProps): WorkoutLiveActivityProps 
  * A button press in the activity runs a LiveActivityIntent in the app process
  * (iOS launches the app in the background if needed) and lands here as an
  * interaction event. The activity itself repaints only after the store change
- * flows back out through {@link applyProps}. `event.timestamp` is stamped
- * natively when the intent performs, so the two log lines measure the real
- * intent→JS and press→repaint round-trips.
+ * flows back out through {@link applyProps}.
  */
 function handleUserInteraction(event: UserInteractionEvent): void {
   if (!reconciled) return;
-  const receivedAt = Date.now();
   const store = useActiveWorkoutStore.getState();
   switch (event.target) {
     case REST_ADD_15_TARGET:
-      pendingPress = { target: event.target, intentAt: event.timestamp };
       store.adjustRest(15);
       break;
     case REST_SKIP_TARGET:
-      pendingPress = { target: event.target, intentAt: event.timestamp };
       store.dismissRest();
       break;
     case COMPLETE_SET_TARGET:
       // The guarded variant rejects a press from a stale banner while a rest
       // is running/paused — it would complete the next set.
-      if (!store.completeActiveSetIfReady()) return;
-      pendingPress = { target: event.target, intentAt: event.timestamp };
+      store.completeActiveSetIfReady();
       break;
-    default:
-      return;
   }
-  void addLog(
-    `[WorkoutLiveActivity] '${event.target}' intent→JS ${receivedAt - event.timestamp}ms`,
-    'DEBUG',
-  );
-}
-
-/** Log the press→repaint total once the update triggered by a press lands. */
-function logPendingPressRepaint(): void {
-  if (pendingPress == null) return;
-  const { target, intentAt } = pendingPress;
-  pendingPress = null;
-  const totalMs = Date.now() - intentAt;
-  // A press that changed nothing (e.g. the rest raced to done) leaves a stale
-  // probe behind; don't attribute the next unrelated update to it.
-  if (totalMs > 10_000) return;
-  void addLog(`[WorkoutLiveActivity] '${target}' press→repaint ${totalMs}ms`, 'DEBUG');
 }
 
 /**
@@ -265,7 +239,6 @@ async function applyProps(props: WorkoutLiveActivityProps | null): Promise<void>
   if (lastSentProps != null && propsEqual(finalProps, lastSentProps)) return;
   await activity.update(finalProps);
   lastSentProps = finalProps;
-  logPendingPressRepaint();
 }
 
 /** Queue a sync that reads the latest store state when it actually runs. */
@@ -375,7 +348,6 @@ export function __resetWorkoutLiveActivityForTests(): void {
   reconciled = false;
   activity = null;
   lastSentProps = null;
-  pendingPress = null;
   appIconUri = null;
   appIconResolution = null;
   enqueue = createConcurrencyLimiter(1);

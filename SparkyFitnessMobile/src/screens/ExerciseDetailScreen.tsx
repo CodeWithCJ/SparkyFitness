@@ -25,6 +25,7 @@ import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import {
   buildSingleExerciseStartPayload,
   formatRecentSessionSet,
+  normalizeWeightUnit,
 } from '../utils/workoutSession';
 import { formatDateLabel } from '../utils/dateUtils';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -99,7 +100,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const exercise = updatedItem ?? hydratedItem ?? item;
 
   const { preferences } = usePreferences();
-  const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
+  const weightUnit = normalizeWeightUnit(preferences?.default_weight_unit);
   // Same UUID guard as hydration: the stats and history routes 400 on non-UUID
   // ids (e.g. external-provider exercises), so those get no History tab.
   const historyAvailable = isConnected && UUID_REGEX.test(item.id);
