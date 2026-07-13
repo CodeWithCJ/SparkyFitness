@@ -389,14 +389,13 @@ Actions:
           }
         ) as any;
 
-        // Default missing entry_date to 'today' for logging actions
+        // Default missing entry_date to today's date string for logging actions
         const loggingActions = ['log_exercise', 'log_workout_preset'];
         if (
-          !process.env.VITEST &&
-          !normalized.entry_date &&
+          normalized.entry_date === undefined &&
           loggingActions.includes(normalized.action)
         ) {
-          normalized.entry_date = 'today';
+          normalized.entry_date = todayInZone(tz);
         }
 
         const parsed = manageExerciseSchema.safeParse(normalized);

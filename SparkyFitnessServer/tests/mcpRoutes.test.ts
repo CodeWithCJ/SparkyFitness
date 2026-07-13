@@ -219,8 +219,8 @@ describe('POST /mcp', () => {
           name: 'sparky_manage_food',
           arguments: {
             action: 'log_water',
-            amount_ml: 500,
-            entry_date: null,
+            amount_ml: null,
+            entry_date: '2026-06-11',
           },
         },
       });
@@ -228,7 +228,7 @@ describe('POST /mcp', () => {
     expect(res.status).toBe(200);
     const text = res.body.result.content[0].text;
     expect(text).toContain('Error [VALIDATION]');
-    expect(text).toContain('entry_date');
+    expect(text).toContain('amount_ml');
     // ERRORS.* strings are flagged so MCP clients can distinguish failures
     // from results without parsing prose.
     expect(res.body.result.isError).toBe(true);

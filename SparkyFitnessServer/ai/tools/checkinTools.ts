@@ -209,7 +209,7 @@ Actions:
           }
         ) as Record<string, unknown>;
 
-        // Default missing entry_date to 'today' for logging actions
+        // Default missing entry_date to today's date string for logging actions
         const loggingActions = [
           'log_biometrics',
           'log_mood',
@@ -217,11 +217,10 @@ Actions:
           'log_custom_metric',
         ];
         if (
-          !process.env.VITEST &&
-          !normalized.entry_date &&
+          normalized.entry_date === undefined &&
           loggingActions.includes(normalized.action as string)
         ) {
-          normalized.entry_date = 'today';
+          normalized.entry_date = todayInZone(tz);
         }
 
         const parsed = manageCheckinSchema.safeParse(normalized);

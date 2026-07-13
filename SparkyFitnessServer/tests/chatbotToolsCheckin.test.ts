@@ -374,14 +374,24 @@ describe('log_mood', () => {
     );
   });
 
-  it('rejects a missing entry_date', async () => {
+  it("defaults to today's date if entry_date is omitted", async () => {
+    vi.mocked(moodRepository.createOrUpdateMoodEntry).mockResolvedValue({
+      id: 'mood-1',
+    } as any);
+
     const result = await tools.sparky_manage_checkin.execute!(
       { action: 'log_mood', mood_value: 8 } as any,
       opts
     );
 
-    expect(result).toBe(
-      'Error [VALIDATION]: entry_date: Invalid input: expected string, received undefined'
+    const today = todayInZone('UTC');
+    expect(result).toBe(`✅ Mood logged for ${today}: 8/10.`);
+    expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      8,
+      null,
+      today,
+      null
     );
   });
 });

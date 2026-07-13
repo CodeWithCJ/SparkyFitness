@@ -902,13 +902,12 @@ Actions:
           delete normalized.source_date;
           delete normalized.target_date;
         }
-        // Default missing entry_date to 'today' for logging actions
+        // Default missing entry_date to today's date string for logging actions
         if (
-          !process.env.VITEST &&
-          !normalized.entry_date &&
+          normalized.entry_date === undefined &&
           loggingActions.includes(normalized.action)
         ) {
-          normalized.entry_date = 'today';
+          normalized.entry_date = todayInZone(tz);
         }
 
         let parsed = manageFoodSchema.safeParse(normalized);
