@@ -44,6 +44,7 @@ import {
 } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
+import { CONNECTION_CHECK_TIMEOUT_MS, fetchWithTimeout } from '../utils/concurrency';
 
 type AuthTab = 'signIn' | 'apiKey';
 
@@ -462,14 +463,14 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setError('');
 
     try {
-      const response = await fetch(`${url}/api/identity/user`, {
+      const response = await fetchWithTimeout(`${url}/api/identity/user`, {
         method: 'GET',
         cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
         headers: {
           ...proxyHeadersToRecord(cleanedHeaders()),
           Authorization: `Bearer ${apiKey.trim()}`,
         },
-      });
+      }, CONNECTION_CHECK_TIMEOUT_MS);
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');

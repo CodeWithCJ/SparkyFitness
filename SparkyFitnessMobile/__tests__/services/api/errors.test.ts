@@ -1,6 +1,13 @@
 import { ApiError, getApiErrorMessage } from '../../../src/services/api/errors';
+import { TimeoutError } from '../../../src/utils/concurrency';
 
 describe('getApiErrorMessage', () => {
+  it('returns a friendly message for a TimeoutError', () => {
+    expect(getApiErrorMessage(new TimeoutError('Request', 30_000))).toBe(
+      'Request timed out — check your server connection',
+    );
+  });
+
   it('returns the message from an ApiError with an { error } body', () => {
     const error = new ApiError(
       'Bad Gateway',

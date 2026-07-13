@@ -5,6 +5,7 @@ import {
   type AiUnitConversionResponse,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
+import { AI_TIMEOUT_MS } from '../../utils/concurrency';
 
 /**
  * Request an AI-estimated cross-category unit conversion (e.g. cup → g) for
@@ -21,6 +22,7 @@ export async function requestAiUnitConversion(
     operation: 'request unit conversion estimate',
     method: 'POST',
     body: validatedRequest,
+    timeoutMs: AI_TIMEOUT_MS,
   });
   return aiUnitConversionResponseSchema.parse(response);
 }

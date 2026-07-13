@@ -1,5 +1,6 @@
 import { queryClient } from '../../src/hooks/queryClient';
 import { ApiError } from '../../src/services/api/errors';
+import { TimeoutError } from '../../src/utils/concurrency';
 
 type RetryFn = (failureCount: number, err: unknown) => boolean;
 
@@ -24,5 +25,10 @@ describe('queryClient default retry predicate', () => {
     expect(retry(0, new Error('network'))).toBe(true);
     expect(retry(1, new Error('timeout'))).toBe(true);
     expect(retry(2, new Error('network'))).toBe(false);
+  });
+
+  test('does not retry on TimeoutError', () => {
+    expect(retry(0, new TimeoutError('Request', 30_000))).toBe(false);
+    expect(retry(1, new TimeoutError('Request', 30_000))).toBe(false);
   });
 });

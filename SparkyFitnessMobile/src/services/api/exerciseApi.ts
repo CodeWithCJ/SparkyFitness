@@ -3,6 +3,7 @@ import { ApiError } from './errors';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { addLog } from '../LogService';
+import { UPLOAD_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
 import type { Exercise, SuggestedExercisesResponse } from '../../types/exercise';
 import type {
   ExerciseHistoryResponse,
@@ -261,7 +262,7 @@ export async function createExercise(payload: CreateExercisePayload): Promise<Ex
   const form = new FormData();
   form.append('exerciseData', JSON.stringify(exerciseData));
 
-  const response = await fetch(`${baseUrl}/api/exercises/`, {
+  const response = await fetchWithTimeout(`${baseUrl}/api/exercises/`, {
     method: 'POST',
     headers: {
       ...proxyHeadersToRecord(config.proxyHeaders),
@@ -269,7 +270,7 @@ export async function createExercise(payload: CreateExercisePayload): Promise<Ex
       // Do NOT set Content-Type — fetch will add the multipart boundary.
     },
     body: form,
-  });
+  }, UPLOAD_TIMEOUT_MS);
 
   if (!response.ok) {
     if (response.status === 401 && config.authType === 'session') {
@@ -396,14 +397,14 @@ export async function updateExercise(
   const form = new FormData();
   form.append('exerciseData', JSON.stringify(payload));
 
-  const response = await fetch(`${baseUrl}/api/exercises/${id}`, {
+  const response = await fetchWithTimeout(`${baseUrl}/api/exercises/${id}`, {
     method: 'PUT',
     headers: {
       ...proxyHeadersToRecord(config.proxyHeaders),
       ...getAuthHeaders(config),
     },
     body: form,
-  });
+  }, UPLOAD_TIMEOUT_MS);
 
   if (!response.ok) {
     if (response.status === 401 && config.authType === 'session') {
