@@ -310,6 +310,16 @@ export function buildExercisesPayload(
 
 // --- Set metrics (active-workout log column + volume summaries) ---
 
+/**
+ * Snap a set weight to the server's storage precision (`exercise_entry_sets.weight`
+ * is DECIMAL(10,2)) so a saved session echoes back value-identical. Storing an
+ * unrounded lbs→kg conversion would make the autosave echo differ, and
+ * ActiveWorkoutSetRow re-seeds its drafts from stored values.
+ */
+export function quantizeSetWeightKg(kg: number): number {
+  return Math.round(kg * 100) / 100;
+}
+
 /** Epley estimated one-rep max. Returns 0 when weight or reps are missing/zero. */
 export function epley1RmKg(weightKg: number | null, reps: number | null): number {
   if (weightKg == null || reps == null || weightKg <= 0 || reps <= 0) return 0;

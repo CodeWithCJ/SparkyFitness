@@ -34,6 +34,7 @@ import {
   estimateRepMaxKg,
   formatRecentSessionSet,
   getRpeTone,
+  quantizeSetWeightKg,
   setTypeLetter,
   setVolumeKg,
   type RpeTone,
@@ -309,20 +310,26 @@ function ActiveWorkoutSetRow({
   // external edit) — but deliberately NOT on `set.id`. A stable render key keeps
   // this row's instance alive across an autosave that only reassigns the id, so
   // keying the re-seed on the id would wipe in-progress text under a still-open
-  // keyboard. Commits only happen on blur/step, so a mid-typing value clobber
-  // can't occur — the store doesn't move under a focused row.
+  // keyboard.
   const signature = `${set.weight}|${set.reps}|${set.rpe}|${weightUnit}`;
   const [prevSignature, setPrevSignature] = useState(signature);
   if (signature !== prevSignature) {
     setPrevSignature(signature);
-    setWeightDraft(formatDisplayWeight(set.weight, weightUnit));
-    setRepsDraft(set.reps != null ? String(set.reps) : '');
-    // RPE alone commits per keystroke in edit mode, so a re-seed can arrive
-    // mid-typing: leave the draft alone while its parse already matches the
-    // committed value (e.g. "0" clamps to 1 — rewriting would jump the text
-    // under the user's cursor). Blur still snaps the text via commitRpe.
-    if (parseRpeInput(rpeDraft) !== (set.rpe ?? null)) {
-      setRpeDraft(set.rpe != null ? formatRpe(set.rpe) : '');
+    // While this row is the active edit cell its drafts are the source of
+    // truth: a store change landing under the open keyboard (e.g. an autosave
+    // echo normalizing a value) must not rewrite in-progress text. The
+    // deactivation-commit effect below flushes the drafts, and that store
+    // write re-enters this block to snap them to their committed forms.
+    if (!isActiveEditRow) {
+      setWeightDraft(formatDisplayWeight(set.weight, weightUnit));
+      setRepsDraft(set.reps != null ? String(set.reps) : '');
+      // RPE alone commits per keystroke in edit mode, so a re-seed can arrive
+      // mid-typing: leave the draft alone while its parse already matches the
+      // committed value (e.g. "0" clamps to 1 — rewriting would jump the text
+      // under the user's cursor). Blur still snaps the text via commitRpe.
+      if (parseRpeInput(rpeDraft) !== (set.rpe ?? null)) {
+        setRpeDraft(set.rpe != null ? formatRpe(set.rpe) : '');
+      }
     }
   }
 
@@ -365,8 +372,16 @@ function ActiveWorkoutSetRow({
     const patch: ActiveSetPatch = {};
     if (previousSet.weight != null) patch.weight = previousSet.weight;
     if (previousSet.reps != null) patch.reps = previousSet.reps;
-    if (Object.keys(patch).length > 0) onCommitField?.(setId, patch);
-  }, [previousSet, onCommitField, setId]);
+    if (Object.keys(patch).length === 0) return;
+    onCommitField?.(setId, patch);
+    // A focused row skips the store-driven re-seed (drafts win under the
+    // keyboard), so mirror the fill into the drafts here; on an unfocused row
+    // the re-seed writes the same values.
+    if (previousSet.weight != null) {
+      setWeightDraft(formatDisplayWeight(previousSet.weight, weightUnit));
+    }
+    if (previousSet.reps != null) setRepsDraft(String(previousSet.reps));
+  }, [previousSet, onCommitField, setId, weightUnit]);
 
   // Commit the parsed+clamped value on every keystroke — including empty → null
   // — so WorkoutDetailScreen's header Save, which reads the reducer synchronously
@@ -406,9 +421,16 @@ function ActiveWorkoutSetRow({
       // store. This also spares an unedited log a spurious revision bump.
       if (text === formatDisplayWeight(set.weight, weightUnit)) return;
       const value = parseDecimalInput(text);
-      onCommitField?.(setId, {
-        weight: Number.isNaN(value) ? null : weightToKg(value, weightUnit),
-      });
+      // Quantized so the stored kg matches what the server will echo back —
+      // an unrounded lbs conversion would differ post-save and re-seed the
+      // row's drafts (see quantizeSetWeightKg).
+      const weightKg = Number.isNaN(value)
+        ? null
+        : quantizeSetWeightKg(weightToKg(value, weightUnit));
+      // A draft that parses back to the stored kg (e.g. more display decimals
+      // than the seeded form) is also unchanged — skip the spurious write.
+      if (weightKg === (set.weight ?? null)) return;
+      onCommitField?.(setId, { weight: weightKg });
     },
     [onCommitField, setId, weightUnit, set.weight],
   );
