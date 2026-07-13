@@ -23,6 +23,15 @@ export const fetchCheckInPhotos = async (
   return response as CheckInPhoto[];
 };
 
+export const fetchCheckInPhotoDates = async (): Promise<string[]> => {
+  const response = await apiCall('/measurements/check-in-photos/dates', {
+    method: 'GET',
+    suppress404Toast: true,
+  });
+  if (!response || !Array.isArray(response)) return [];
+  return response as string[];
+};
+
 export const uploadCheckInPhoto = async (
   date: string,
   type: PhotoType,

@@ -76,6 +76,33 @@ export const getPhotosByDate = async (
   }
 };
 
+/**
+ * Returns the distinct calendar days (newest first) on which the user has at
+ * least one progress photo. Drives the calendar indicator on the check-in page
+ * so days with photos are easy to find without opening each date. RLS-scoped
+ * through getClient, so a family member only sees dates they may access.
+ */
+export const getPhotoDates = async (userId: string): Promise<string[]> => {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT DISTINCT entry_date
+       FROM check_in_photos
+       WHERE user_id = $1
+       ORDER BY entry_date DESC`,
+      [userId]
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return result.rows.map((r: any) =>
+      r.entry_date instanceof Date
+        ? localDateToDay(r.entry_date)
+        : String(r.entry_date)
+    );
+  } finally {
+    client.release();
+  }
+};
+
 export const upsertPhoto = async (
   userId: string,
   entryDate: string,
@@ -254,4 +281,10 @@ export const deletePhoto = async (
   }
 };
 
-export default { getPhotosByDate, upsertPhoto, getPhotoFileById, deletePhoto };
+export default {
+  getPhotosByDate,
+  getPhotoDates,
+  upsertPhoto,
+  getPhotoFileById,
+  deletePhoto,
+};

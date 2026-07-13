@@ -7,6 +7,7 @@ import type { FoodVariant } from '@/types/food';
 import { CalculatedNutrition } from '@/utils/nutritionCalculations';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import { useTranslation } from 'react-i18next';
+import { formatServingLabel } from '@/utils/foodServing';
 
 interface NutrientGridProps {
   nutrition: CalculatedNutrition;
@@ -91,8 +92,7 @@ export const NutrientGrid = ({
       {baseVariant && (
         <div className="bg-muted p-4 rounded-lg mt-4">
           <h4 className="font-medium mb-2">
-            Base Values (per {baseVariant.serving_size}{' '}
-            {baseVariant.serving_unit}):
+            Base Values (per {formatServingLabel(baseVariant)}):
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>

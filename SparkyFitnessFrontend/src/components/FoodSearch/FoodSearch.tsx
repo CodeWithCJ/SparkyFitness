@@ -45,6 +45,11 @@ import {
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients.ts';
 import { convertNutritionixToFood } from '@/utils/foodSearch.ts';
 import { dedupeAppend } from '@/utils/dedupeAppend.ts';
+import {
+  mergeRecent,
+  mergeFrequent,
+  type LandingEntry,
+} from '@/utils/landingLists.ts';
 import FoodResultCard from './FoodResultCard.tsx';
 import { BarcodeScannerDialog } from './BarcodeScannerDialog.tsx';
 import { CsvImportDialog } from './CsvImportDialog.tsx';
@@ -55,7 +60,10 @@ import {
   searchBarcodeV2Options,
   foodDetailsV2Options,
 } from '@/hooks/Foods/useFoodsV2.ts';
-import { mealSearchOptions } from '@/hooks/Foods/useMeals.ts';
+import {
+  mealSearchOptions,
+  useRecentAndTopMealsQuery,
+} from '@/hooks/Foods/useMeals.ts';
 import {
   useAllProvidersFoodSearch,
   type ExternalResultWrapper,
@@ -184,12 +192,24 @@ const EnhancedFoodSearch = ({
   const { data: customNutrients } = useCustomNutrients();
   const { data: foodDataProviders = EMPTY_PROVIDERS } =
     useExternalProvidersQuery();
-  const { data: recentTopData, isFetching: isFetchingRecent } =
+  // item_display_limit (default 10) is the per-section total cap for the
+  // empty-query landing: each of Recent and Frequent shows up to this many
+  // merged items. It is also the per-source fetch count, so each merged list
+  // can be filled even when one type dominates.
+  const { data: recentTopData, isLoading: isLoadingRecentFoods } =
     useRecentAndTopFoodsQuery(
       itemDisplayLimit,
       mealType,
       showLocalFoods && isSearchEmpty
     );
+  // Recent + frequent meals for the landing quick-pick list, so the landing
+  // (like the typed search) surfaces both foods and meals. Only fetched when
+  // meals are shown and the query is empty.
+  const {
+    recentMeals,
+    topMeals,
+    isLoading: isLoadingRecentMeals,
+  } = useRecentAndTopMealsQuery(itemDisplayLimit, showMeals && isSearchEmpty);
   const { mutateAsync: importCsvMutation } = useImportCsvMutation();
   const { data: searchData, isFetching: isFetchingSearch } =
     useDatabaseFoodSearchQuery(
@@ -202,6 +222,19 @@ const EnhancedFoodSearch = ({
   const recentFoods = recentTopData?.recentFoods || [];
   const topFoods = recentTopData?.topFoods || [];
   const foods = searchData?.searchResults || [];
+
+  // Recent is one merged timeline (meals + foods by last-used date); Frequent is
+  // one merged most-used list (by usage count) with anything already in Recent
+  // removed, so the two sections do not repeat cards. Each capped to
+  // itemDisplayLimit.
+  const recentEntries = mergeRecent(recentMeals, recentFoods, itemDisplayLimit);
+  const recentEntryKeys = new Set(recentEntries.map((e) => e.key));
+  const frequentEntries = mergeFrequent(
+    topMeals,
+    topFoods,
+    recentEntryKeys,
+    itemDisplayLimit
+  );
 
   // Active food-category providers: the only valid options for the provider
   // dropdown, so the resolved default must be drawn from this list (not the raw
@@ -817,7 +850,14 @@ const EnhancedFoodSearch = ({
             providerId
           )
         );
-        setEditingProduct(detailedFood);
+        setEditingProduct({
+          ...detailedFood,
+          provider_type: detailedFood.provider_type ?? food.provider_type,
+          provider_external_id:
+            detailedFood.provider_external_id ?? food.provider_external_id,
+          provider_verified:
+            detailedFood.provider_verified ?? food.provider_verified,
+        });
         setShowEditDialog(true);
       } catch {
         toast({
@@ -901,6 +941,26 @@ const EnhancedFoodSearch = ({
       }}
     />
   );
+
+  // A single Recent/Frequent landing row: a meal card or a food card depending
+  // on the merged entry's kind.
+  const renderLandingEntry = (entry: LandingEntry) =>
+    entry.kind === 'meal' ? (
+      <FoodResultCard
+        key={entry.key}
+        item={entry.meal}
+        isMeal={true}
+        nutrientConfig={nutrientConfig}
+        onCardClick={() => onFoodSelect(entry.meal, 'meal')}
+      />
+    ) : (
+      <FoodResultCard
+        key={entry.key}
+        item={entry.food}
+        nutrientConfig={nutrientConfig}
+        onCardClick={() => onFoodSelect(entry.food, 'food')}
+      />
+    );
 
   return (
     <div className="space-y-4">
@@ -989,39 +1049,46 @@ const EnhancedFoodSearch = ({
       </div>
 
       <div className="space-y-2 max-h-96 overflow-y-auto">
-        {/* Landing: recent + top foods (local mode, empty query) */}
+        {/* Landing: recent + top foods and meals (local mode, empty query) */}
         {showLocalFoods && isSearchEmpty && (
           <>
-            {isFetchingRecent && (
+            {(isLoadingRecentFoods || (showMeals && isLoadingRecentMeals)) && (
               <div className="text-center py-8 text-gray-500">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
                 {t('enhancedFoodSearch.searchingFoods', 'Searching foods...')}
               </div>
             )}
-            {!isFetchingRecent && (
+            {!isLoadingRecentFoods && !(showMeals && isLoadingRecentMeals) && (
               <>
-                {recentFoods.map((food: Food) => (
-                  <FoodResultCard
-                    key={food.id}
-                    item={food}
-                    nutrientConfig={nutrientConfig}
-                    onCardClick={() => onFoodSelect(food, 'food')}
-                  />
-                ))}
-                {topFoods.map((food: Food) => (
-                  <FoodResultCard
-                    key={food.id}
-                    item={food}
-                    nutrientConfig={nutrientConfig}
-                    onCardClick={() => onFoodSelect(food, 'food')}
-                  />
-                ))}
-                {recentFoods.length === 0 && topFoods.length === 0 && (
+                {/* Recent: one timeline of meals + foods by last-used date */}
+                {recentEntries.length > 0 && (
+                  <>
+                    <SectionHeader>
+                      {t('enhancedFoodSearch.recent', 'Recent')}
+                    </SectionHeader>
+                    {recentEntries.map(renderLandingEntry)}
+                  </>
+                )}
+                {/* Frequent: one list of most-used meals + foods (not in Recent) */}
+                {frequentEntries.length > 0 && (
+                  <>
+                    <SectionHeader>
+                      {t('enhancedFoodSearch.frequent', 'Frequent')}
+                    </SectionHeader>
+                    {frequentEntries.map(renderLandingEntry)}
+                  </>
+                )}
+                {recentEntries.length === 0 && frequentEntries.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
-                    {t(
-                      'enhancedFoodSearch.noRecentOrTopFoods',
-                      'No recent or top foods found. Start logging foods to see them here.'
-                    )}
+                    {showMeals
+                      ? t(
+                          'enhancedFoodSearch.noRecentOrTopItems',
+                          'No recent or frequent foods or meals found. Start logging to see them here.'
+                        )
+                      : t(
+                          'enhancedFoodSearch.noRecentOrTopFoods',
+                          'No recent or top foods found. Start logging foods to see them here.'
+                        )}
                   </div>
                 )}
               </>

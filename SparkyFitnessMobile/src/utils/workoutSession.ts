@@ -96,6 +96,7 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   healthkit: 'Apple Health',
   'health connect': 'Health Connect',
   garmin: 'Garmin',
+  garmin_fit: 'Garmin',
   strava: 'Strava',
   fitbit: 'Fitbit',
   withings: 'Withings',
@@ -356,6 +357,7 @@ export interface WorkoutCardSet {
   reps: number | null;
   rpe?: number | null;
   rest_time?: number | null;
+  notes?: string | null;
   duration?: number | null;
   /** Raw draft strings backing the edit-mode controlled inputs (draft mapper only). */
   editWeightText?: string;
@@ -367,6 +369,8 @@ export interface WorkoutCardExercise {
   id: string;
   exercise_id: string;
   superset_group?: number | null;
+  /** Per-exercise note. Present on live entries; absent on draft/preset sources. */
+  notes?: string | null;
   exercise_snapshot: {
     name?: string | null;
     category?: string | null;
@@ -404,6 +408,7 @@ export function draftExerciseToCardExercise(
         reps: isNaN(reps) ? null : reps,
         rpe: set.rpe ?? null,
         rest_time: set.restTime ?? null,
+        notes: set.notes ?? null,
         duration: set.duration ?? null,
         editWeightText: set.weight,
         editRepsText: set.reps,
@@ -433,6 +438,7 @@ export function presetExerciseToCardExercise(
       reps: set.reps ?? null,
       rpe: null,
       rest_time: set.rest_time ?? null,
+      notes: set.notes ?? null,
       duration: set.duration ?? null,
     })),
   };
@@ -451,13 +457,6 @@ export function getRpeTone(rpe: number): RpeTone {
   if (rpe < 9) return 'moderate';
   if (rpe < 10) return 'hard';
   return 'max';
-}
-
-export const TEMP_EXERCISE_ENTRY_ID_PREFIX = 'temp-';
-
-/** Client-added exercise entries carry `temp-` string ids until saved. */
-export function isTempExerciseEntryId(id: string): boolean {
-  return id.startsWith(TEMP_EXERCISE_ENTRY_ID_PREFIX);
 }
 
 /** Client-added sets carry negative placeholder ids until the server assigns real ones. */
@@ -481,11 +480,12 @@ export function isTempSetId(id: number): boolean {
  * set propagates as a clear. `is_pr` is derived the same way from
  * `prSetIds` — a missing key sends `false`, so unchecking a PR set clears it.
  *
- * Ids follow the server's "all or none" rule for exercises: if any exercise
- * is client-added (temp id), every exercise AND set id is stripped so the
- * server takes its delete-and-recreate path. Otherwise exercise ids are kept
- * and only real (non-negative) set ids are sent — temp ids must never reach
- * the server, where an unknown id is a 400.
+ * Every exercise carries a real uuid from birth (client-minted on add), so the
+ * entry `id` is always sent and the server always takes its reconcile path,
+ * creating a client-added entry from its uuid rather than delete-and-recreating
+ * the whole session. Set ids stay server-assigned: a just-added set's negative
+ * temp id is omitted so the server INSERTs it (an unknown id is a 400), and its
+ * real id arrives on the next save.
  *
  * `startedAtMs` (the store's `startedAt`) turns on duration stamping: when a
  * set has been completed after it, each exercise's `duration_minutes` becomes
@@ -503,14 +503,10 @@ export function buildSessionExercisesPayload(
   prSetIds: PrSetMap,
   startedAtMs?: number | null,
 ): PresetSessionExerciseRequest[] {
-  const allExercisesHaveServerId =
-    session.exercises.length > 0 &&
-    session.exercises.every((e) => !isTempExerciseEntryId(e.id));
-
   const durationByEntryId = buildSessionDurationMinutes(session, completedSetIds, startedAtMs);
 
   return session.exercises.map((exercise, index) => ({
-    ...(allExercisesHaveServerId ? { id: exercise.id } : {}),
+    id: exercise.id,
     exercise_id: exercise.exercise_id,
     sort_order: index,
     duration_minutes:
@@ -522,7 +518,7 @@ export function buildSessionExercisesPayload(
     sets: exercise.sets.map((set, setIndex) => {
       const completedMs = completedSetIds[String(set.id)];
       return {
-        ...(allExercisesHaveServerId && !isTempSetId(set.id) ? { id: set.id } : {}),
+        ...(!isTempSetId(set.id) ? { id: set.id } : {}),
         set_number: setIndex + 1,
         set_type: set.set_type ?? null,
         reps: set.reps ?? null,

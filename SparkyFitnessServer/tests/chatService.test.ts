@@ -42,6 +42,7 @@ vi.mock('../models/foodRepository', () => ({
     getFoodsWithPagination: vi.fn(),
     countFoods: vi.fn(),
     getFoodById: vi.fn(),
+    getFoodVariantById: vi.fn(),
     getFoodVariantsByFoodId: vi.fn(),
   },
 }));
@@ -425,8 +426,16 @@ describe('chatService', () => {
 
     it('executes a log_food tool call in-process, derives food_added from call input, and saves history', async () => {
       vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
-        eggsRow,
+        {
+          ...eggsRow,
+          default_variant: {
+            ...eggsRow.default_variant,
+            serving_size: 1,
+            serving_unit: 'serving',
+          },
+        },
       ]);
+      vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue([]);
       vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
         id: 'entry-1',
         food_name: 'Eggs',
@@ -585,6 +594,7 @@ describe('chatService', () => {
         {
           ...aiServiceSetting,
           service_type: 'ollama',
+          custom_url: 'http://localhost:11434',
           chat_tool_profile: 'core',
         }
       );
@@ -617,6 +627,7 @@ describe('chatService', () => {
         {
           ...aiServiceSetting,
           service_type: 'ollama',
+          custom_url: 'http://localhost:11434',
           chat_tool_profile: 'full',
         }
       );
@@ -650,6 +661,7 @@ describe('chatService', () => {
         {
           ...aiServiceSetting,
           service_type: 'ollama',
+          custom_url: 'http://localhost:11434',
         }
       );
       scriptModel([textStep('Hi there!')]);
@@ -735,6 +747,33 @@ describe('chatService', () => {
       }
     );
 
+    // Guard: a URL-requiring service (ollama/openai_compatible/custom) with no
+    // custom_url resolves to an undefined baseURL, which would make the AI SDK
+    // silently fall back to OpenAI's default host. Reject it instead.
+    it.each(['ollama', 'openai_compatible', 'custom'])(
+      'rejects a %s service that is missing its custom_url',
+      async (serviceType) => {
+        vi.mocked(
+          chatRepository.getAiServiceSettingForBackend
+        ).mockResolvedValue({
+          ...aiServiceSetting,
+          service_type: serviceType,
+          custom_url: null,
+        });
+
+        await expect(
+          chatService.processChatMessage(
+            [{ role: 'user', content: 'hi' }],
+            'svc-1',
+            activeUserId,
+            actorUserId
+          )
+        ).rejects.toThrow(
+          `Custom URL is required for service type: ${serviceType}`
+        );
+      }
+    );
+
     it('still rejects a cloud service that is missing its api_key', async () => {
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         {
@@ -791,6 +830,7 @@ describe('chatService', () => {
         {
           ...aiServiceSetting,
           service_type: 'ollama',
+          custom_url: 'http://localhost:11434',
           chat_tool_profile: 'core',
         }
       );

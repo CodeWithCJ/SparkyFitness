@@ -2,7 +2,6 @@ import {
   syncHealthData,
   checkServerConnection,
   HealthDataPayload,
-  fetchWithTimeout,
   fetchWithRetry,
   CHUNK_SIZE,
   SESSION_CHUNK_SIZE,
@@ -54,59 +53,6 @@ describe('healthDataApi', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
-  });
-
-  describe('fetchWithTimeout', () => {
-    test('resolves when fetch completes before timeout', async () => {
-      const mockResponse = { ok: true, status: 200 };
-      mockFetch.mockResolvedValue(mockResponse);
-
-      const result = await fetchWithTimeout(
-        'https://example.com',
-        { method: 'GET' },
-        5000,
-      );
-
-      expect(result).toBe(mockResponse);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
-
-    test('throws when fetch exceeds timeout', async () => {
-      // Signal-aware mock that rejects on abort (like real fetch)
-      mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
-        return new Promise((_resolve, reject) => {
-          options?.signal?.addEventListener('abort', () => {
-            const err = new Error('The operation was aborted');
-            err.name = 'AbortError';
-            reject(err);
-          });
-        });
-      });
-
-      const promise = fetchWithTimeout('https://example.com', {}, 5000);
-      // Attach handler BEFORE advancing timers to avoid unhandled rejection
-      const assertion = expect(promise).rejects.toThrow('Request timed out after 5000ms');
-
-      await jest.advanceTimersByTimeAsync(5000);
-
-      await assertion;
-    });
-
-    test('passes options through to fetch', async () => {
-      mockFetch.mockResolvedValue({ ok: true });
-
-      const headers = { Authorization: 'Bearer token' };
-      await fetchWithTimeout(
-        'https://example.com',
-        { method: 'POST', headers, body: '{}' },
-        5000,
-      );
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com',
-        expect.objectContaining({ method: 'POST', headers, body: '{}' }),
-      );
-    });
   });
 
   describe('fetchWithRetry', () => {
@@ -1071,6 +1017,26 @@ describe('healthDataApi', () => {
       const result = await checkServerConnection();
 
       expect(result).toBe(false);
+    });
+
+    test('returns false when the server never responds (timeout)', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      // Signal-aware mock that rejects on abort (like real fetch)
+      mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+        return new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener('abort', () => {
+            const err = new Error('The operation was aborted');
+            err.name = 'AbortError';
+            reject(err);
+          });
+        });
+      });
+
+      const promise = checkServerConnection();
+
+      await jest.advanceTimersByTimeAsync(10_000);
+
+      await expect(promise).resolves.toBe(false);
     });
 
     test('removes trailing slash from URL', async () => {

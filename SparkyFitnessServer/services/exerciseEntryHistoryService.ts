@@ -1,4 +1,6 @@
 import {
+  compareByEntryTime,
+  earliestEntryTime,
   localDateToDay,
   presetSessionResponseSchema,
   type PresetSessionResponse,
@@ -234,7 +236,7 @@ async function getExerciseEntryHistorySessions(
           `SELECT ee.*, ${SETS_SUBQUERY}
            FROM exercise_entries ee
            WHERE ee.exercise_preset_entry_id = ANY($1::uuid[])
-           ORDER BY ee.sort_order ASC, ee.created_at ASC`,
+           ORDER BY ee.entry_time ASC NULLS LAST, ee.sort_order ASC, ee.created_at ASC`,
           [presetIds]
         )
         .then((r: { rows: Record<string, unknown>[] }) => {
@@ -455,7 +457,7 @@ async function _getExerciseEntriesByDateWithClient(
       `SELECT ee.*, ${SETS_SUBQUERY}
        FROM exercise_entries ee
        WHERE ee.user_id = $1 AND ee.entry_date = $2
-       ORDER BY ee.sort_order ASC, ee.created_at ASC`,
+       ORDER BY ee.entry_time ASC NULLS LAST, ee.sort_order ASC, ee.created_at ASC`,
       [userId, selectedDate]
     ),
   ]);
@@ -570,15 +572,8 @@ async function _getExerciseEntriesByDateWithClient(
     );
   }
 
-  const getPresetEarliestTime = (presetId: string) => {
-    const children = presetChildrenMap.get(presetId) || [];
-    const times = children
-      .map((ch) => ch.entry_time)
-      .filter((t): t is string => typeof t === 'string' && t !== '');
-    if (times.length === 0) return null;
-    times.sort();
-    return times[0];
-  };
+  const getPresetEarliestTime = (presetId: string) =>
+    earliestEntryTime(presetChildrenMap.get(presetId) || []);
 
   // Build a unified stub list for chronological ordering
   const stubs: Array<{
@@ -607,14 +602,11 @@ async function _getExerciseEntriesByDateWithClient(
     });
   }
 
-  stubs.sort((a, b) => {
-    if (a.entryTime && b.entryTime) {
-      return a.entryTime.localeCompare(b.entryTime);
-    }
-    if (a.entryTime) return -1;
-    if (b.entryTime) return 1;
-    return a.createdAt.getTime() - b.createdAt.getTime();
-  });
+  stubs.sort(
+    (a, b) =>
+      compareByEntryTime(a.entryTime, b.entryTime) ||
+      a.createdAt.getTime() - b.createdAt.getTime()
+  );
 
   // Assemble sessions in chronological order
   const sessions: ExerciseSessionResponse[] = [];
@@ -699,7 +691,7 @@ export async function getGroupedExerciseSessionByIdWithClient(
       `SELECT ee.*, ${SETS_SUBQUERY}
        FROM exercise_entries ee
        WHERE ee.user_id = $1 AND ee.exercise_preset_entry_id = $2
-       ORDER BY ee.sort_order ASC, ee.created_at ASC`,
+       ORDER BY ee.entry_time ASC NULLS LAST, ee.sort_order ASC, ee.created_at ASC`,
       [targetUserId, presetEntryId]
     ),
     client.query(

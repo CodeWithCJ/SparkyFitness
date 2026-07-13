@@ -136,8 +136,16 @@ function ReorderItemRow({
         shadowOffset: { width: 0, height: 4 },
       };
     }
+    // Reanimated applies animated styles as diffs — keys omitted from a later
+    // update keep their last value — so the lift shadow must be zeroed
+    // explicitly in every non-dragged branch.
     if (active < 0) {
-      return { transform: [{ translateY: 0 }, { scale: 1 }], zIndex: 0 };
+      return {
+        transform: [{ translateY: 0 }, { scale: 1 }],
+        zIndex: 0,
+        elevation: 0,
+        shadowOpacity: 0,
+      };
     }
     // Others open a gap for the drag by springing exactly one dragged-stride:
     // items between the origin and the current target shift toward the origin.
@@ -149,6 +157,8 @@ function ReorderItemRow({
     return {
       transform: [{ translateY: withSpring(shift, { damping: 44, stiffness: 960 }) }, { scale: 1 }],
       zIndex: 0,
+      elevation: 0,
+      shadowOpacity: 0,
     };
   });
 
@@ -229,6 +239,7 @@ function ReorderItemRow({
 
   return (
     <Animated.View
+      testID={`reorder-item-${item.key}`}
       style={[{ marginBottom: REORDER_ITEM_GAP, paddingLeft: isRun ? 10 : 0 }, animatedStyle]}
     >
       {isRun && railColor ? (

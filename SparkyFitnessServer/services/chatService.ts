@@ -2,7 +2,7 @@ import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
-import { getDefaultModel } from '../ai/config.js';
+import { getDefaultModel, getOpenAiCompatibleBaseUrl } from '../ai/config.js';
 import {
   dispatchAiRequest,
   requiresApiKey,
@@ -888,21 +888,22 @@ function createChatModelInstance(
     aiService.service_type === 'mistral' ||
     aiService.service_type === 'groq' ||
     aiService.service_type === 'openrouter' ||
-    aiService.service_type === 'xai'
+    aiService.service_type === 'xai' ||
+    aiService.service_type === 'meta'
   ) {
-    // Connect as OpenAI-compatible
-    let baseURL = aiService.custom_url ?? undefined;
-    if (aiService.service_type === 'ollama') {
-      baseURL = `${aiService.custom_url}/v1`;
-    } else if (aiService.service_type === 'groq') {
-      baseURL = 'https://api.groq.com/openai/v1';
-    } else if (aiService.service_type === 'openrouter') {
-      baseURL = 'https://openrouter.ai/api/v1';
-    } else if (aiService.service_type === 'mistral') {
-      baseURL = 'https://api.mistral.ai/v1';
-    } else if (aiService.service_type === 'xai') {
-      baseURL = 'https://api.x.ai/v1';
+    if (
+      requiresUserSuppliedAiUrl(aiService.service_type) &&
+      !aiService.custom_url?.trim()
+    ) {
+      throw new Error(
+        `Custom URL is required for service type: ${aiService.service_type}`
+      );
     }
+    // Connect as OpenAI-compatible
+    const baseURL = getOpenAiCompatibleBaseUrl(
+      aiService.service_type,
+      aiService.custom_url
+    );
     const providerOptions: Parameters<typeof createOpenAI>[0] = {
       baseURL,
       apiKey: apiKey || 'no-key',

@@ -766,6 +766,8 @@ describe('FoodFormScreen', () => {
         vitamin_c: undefined,
         glycemic_index: undefined,
         custom_nutrients: undefined,
+        source: undefined,
+        ai_confidence: undefined,
       });
     });
 
@@ -1234,4 +1236,3 @@ describe('FoodFormScreen', () => {
     expect(navigation.dispatch).not.toHaveBeenCalled();
   });
 });
-

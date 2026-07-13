@@ -7,6 +7,7 @@ import {
   HistoryImportEntry,
 } from '@/types/exercises';
 import { exerciseSnapshotResponseSchema } from '@workspace/shared';
+import type { ImportFitResponse } from '@workspace/shared';
 import z from 'zod';
 
 // Helper function to safely parse JSON strings that might be arrays
@@ -262,6 +263,20 @@ export const importExerciseHistory = async (
     method: 'POST',
     body: { entries },
   });
+};
+
+export const importFitFiles = async (
+  files: File[]
+): Promise<ImportFitResponse> => {
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append('files', file);
+  }
+  return apiCall('/exercise-entries/import-fit', {
+    method: 'POST',
+    body: formData,
+    isFormData: true,
+  }) as Promise<ImportFitResponse>;
 };
 
 export const getBodyMapSvg = async (): Promise<string> => {

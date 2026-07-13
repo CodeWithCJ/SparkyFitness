@@ -57,9 +57,10 @@ export function MetricColumnMenu({
 }
 
 /**
- * The set-type picker anchored off a set number (or a long-pressed row):
- * every type with the current one check-marked, plus an optional Delete-set
- * item (the form surfaces — active edit rows have no swipe-to-delete).
+ * The set-type picker anchored off a set number: every type with the current
+ * one check-marked, plus an optional Delete-set item (the form surfaces —
+ * active edit rows have no swipe-to-delete). Callers that omit `onDelete` don't
+ * get its item, so form surfaces stay unchanged.
  */
 export function SetTypeMenu({
   anchor,

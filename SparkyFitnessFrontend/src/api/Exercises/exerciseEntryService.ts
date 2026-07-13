@@ -161,6 +161,12 @@ export const updateExerciseEntry = async (
       }
     });
 
+    // FormData cannot carry null; the server treats entry_time === '' as a
+    // clear, so an explicit null must still be sent on this path.
+    if (entryData.entry_time === null) {
+      formData.append('entry_time', '');
+    }
+
     return apiCall(`/exercise-entries/${entryId}`, {
       method: 'PUT',
       body: formData,

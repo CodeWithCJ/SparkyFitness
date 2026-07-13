@@ -109,6 +109,9 @@ export interface FoodInfoItem {
   name: string;
   brand: string | null;
   barcode?: string | null;
+  provider_type?: string;
+  provider_external_id?: string;
+  is_custom?: boolean;
   userId?: string;
   sharedWithPublic?: boolean;
   servingSize: number;
@@ -154,6 +157,9 @@ export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem 
   barcode: item.barcode ?? null,
   userId: item.user_id,
   sharedWithPublic: item.shared_with_public,
+  provider_type: item.provider_type ?? undefined,
+  provider_external_id: item.provider_external_id ?? undefined,
+  provider_verified: item.provider_verified,
   servingSize: item.default_variant.serving_size,
   servingUnit: item.default_variant.serving_unit,
   calories: item.default_variant.calories,
@@ -181,6 +187,10 @@ export const externalFoodItemToFoodInfo = (item: ExternalFoodItem): FoodInfoItem
   id: item.id,
   name: item.name,
   brand: item.brand,
+  barcode: item.barcode ?? null,
+  provider_type: item.provider_type,
+  provider_external_id: item.provider_external_id,
+  is_custom: item.is_custom,
   servingSize: item.serving_size,
   servingUnit: item.serving_unit,
   servingDescription: item.serving_description,

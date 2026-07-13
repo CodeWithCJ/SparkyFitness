@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -11,6 +11,8 @@ import SafeImage from './SafeImage';
 import CompletionCheck from './CompletionCheck';
 import RestPeriodChip from './RestPeriodChip';
 import ActiveWorkoutSetRow from './ActiveWorkoutSetRow';
+import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
+import WorkoutNotesField from './WorkoutNotesField';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
@@ -62,9 +64,9 @@ interface ActiveWorkoutExerciseCardProps {
    */
   mode?: 'live' | 'view' | 'edit';
   /**
-   * Live only: the active session's preset-entry id, forwarded to the stats
-   * query so today's in-progress/planned sets are excluded from the historical
-   * best/last baseline. View/edit modes pass nothing.
+   * Live/edit: the active (or edited) session's preset-entry id, forwarded to
+   * the stats query so that session's own sets are excluded from the
+   * historical best/last/recent-sessions baseline. View mode passes nothing.
    */
   excludePresetEntryId?: string;
   /**
@@ -80,7 +82,7 @@ interface ActiveWorkoutExerciseCardProps {
   onToggleExpanded: (entryId: string) => void;
   onPressRestChip?: (entryId: string, currentSec: number | null) => void;
   onPressMetricHeader: (anchor: AnchorRect) => void;
-  onPressOverflow?: (entryId: string, anchor: AnchorRect) => void;
+  onPressOverflow?: (entryId: string) => void;
   onComplete?: (setId: string) => void;
   onUncomplete?: (setId: string) => void;
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
@@ -89,6 +91,27 @@ interface ActiveWorkoutExerciseCardProps {
   /** Live/edit only: tap a set number (or long-press the row) to change its type. */
   onPressSetType?: (setId: string, anchor: AnchorRect) => void;
   onAddSet?: (entryId: string) => void;
+  // --- live-only per-set expand + notes (Parts B/C) ---
+  /**
+   * Live only: the render key whose inline note panel is expanded (toggled by
+   * long-pressing the set row). A stale key that matches no row renders nothing,
+   * so it's harmless after a delete/reconcile.
+   */
+  expandedSetKey?: string | null;
+  /**
+   * Live only: the store's set id → stable render key map. Absent in view/edit
+   * (those key rows by set id). Drives the row's React key, the focus/expand
+   * compares, and the id→key translation of activate/long-press callbacks so
+   * set-keyed screen state survives an autosave that churns set ids.
+   */
+  setRenderKeys?: Record<string, string>;
+  /**
+   * Live only: the per-exercise note editor is open (card ⋮ → Notes). The note
+   * field also shows whenever `exercise.notes` is already non-empty.
+   */
+  noteEditorOpen?: boolean;
+  /** Live only: commit the per-exercise note (raw text; the store trims/clears). */
+  onCommitExerciseNote?: (entryId: string, text: string) => void;
   // --- edit + live editing props ---
   /**
    * Focused row's field. Edit: form-owned. Live: the screen-owned focused-cell
@@ -97,10 +120,10 @@ interface ActiveWorkoutExerciseCardProps {
    */
   activeField?: 'weight' | 'reps' | 'rpe';
   /**
-   * Live only: the tap-focused set id (distinct from `activeSetId`, the
+   * Live only: the tap-focused render key (distinct from `activeSetId`, the
    * cursor). Marks which row renders inputs; the cursor still owns the log ring.
    */
-  focusedSetId?: string | null;
+  focusedSetKey?: string | null;
   /** False hides the RPE input on active rows (preset sets store no RPE). */
   rpeEditable?: boolean;
   /** Prefill the first empty set from "last time" once stats arrive. */
@@ -173,8 +196,12 @@ function ActiveWorkoutExerciseCard({
   onLongPressSet,
   onPressSetType,
   onAddSet,
+  expandedSetKey,
+  setRenderKeys,
+  noteEditorOpen = false,
+  onCommitExerciseNote,
   activeField,
-  focusedSetId,
+  focusedSetKey,
   rpeEditable,
   eligibleForPrefill = false,
   onActivateSet,
@@ -195,14 +222,21 @@ function ActiveWorkoutExerciseCard({
 
   const name = exercise.exercise_snapshot?.name ?? 'Exercise';
   // "Last time" / "Best" only make sense while performing or planning — skip
-  // the fetch in view mode (the hook gates on a null id). In live mode the
-  // active session is excluded so today's sets don't pollute the baseline.
+  // the fetch in view mode (the hook gates on a null id). In live and edit
+  // modes the active/edited session is excluded so its own sets don't pollute
+  // the historical baseline.
   const { data: stats } = useExerciseStats(
     readOnly ? null : exercise.exercise_id,
-    isLive ? excludePresetEntryId : undefined,
+    readOnly ? undefined : excludePresetEntryId,
   );
   const lastSet = stats?.lastSet ?? null;
   const bestSet = stats?.bestSet ?? null;
+
+  // PREVIOUS column source: the most recent prior session's sets, matched to
+  // the current rows by position (Hevy-style). Older servers omit
+  // recentSessions; `?? []` covers deploy skew (mobile never Zod-parses), so
+  // the column just shows dashes there.
+  const previousSessionSets = (stats?.recentSessions ?? [])[0]?.sets;
 
   // Capture the historical PR baseline once per exercise. The store no-ops
   // unless a live workout is active and the key is absent, so view/edit renders
@@ -291,30 +325,46 @@ function ActiveWorkoutExerciseCard({
     measureAnchoredMenuTrigger(metricAnchorRef.current, onPressMetricHeader);
   };
 
-  const overflowAnchorRef = useRef<View>(null);
-  const openOverflowMenu = () => {
-    measureAnchoredMenuTrigger(overflowAnchorRef.current, (anchor) =>
-      onPressOverflow?.(exercise.id, anchor),
-    );
-  };
+  const openOverflowMenu = () => onPressOverflow?.(exercise.id);
+  // Live-only long-press opens the same overflow menu (the collapsed row has
+  // no ⋮ of its own, so this is its only entry point).
+  const longPressMenu = isLive && onPressOverflow ? openOverflowMenu : undefined;
 
-  // Live-only long-press opens the same overflow menu. The collapsed row has no
-  // ⋮ anchor, so it measures its own ref; the expanded card reuses the ⋮ anchor.
-  const collapsedRowRef = useRef<View>(null);
-  const openMenuFromCollapsedRow = () => {
-    measureAnchoredMenuTrigger(collapsedRowRef.current, (anchor) =>
-      onPressOverflow?.(exercise.id, anchor),
-    );
-  };
-  const longPressMenu = isLive && onPressOverflow ? openMenuFromCollapsedRow : undefined;
-  const longPressExpandedMenu = isLive && onPressOverflow ? openOverflowMenu : undefined;
+  // Row callbacks that feed set-keyed SCREEN state (focus, note expand) must
+  // hand back render keys, not raw set ids — the screen stores and compares
+  // keys. The row passes raw ids (tap, within-row Next, long-press), so
+  // translate here, once, in stable memoized wrappers: per-row memoization
+  // survives because a wrapper only changes identity when the map or its
+  // handler does (not while typing). When `setRenderKeys` is absent (view/edit)
+  // the translation is identity. Commit/complete/delete callbacks are NOT
+  // wrapped — they must keep passing ids to the store.
+  const translateSetKey = useCallback(
+    (id: string) => setRenderKeys?.[id] ?? id,
+    [setRenderKeys],
+  );
+  const onActivateSetKeyed = useMemo(
+    () =>
+      onActivateSet
+        ? (id: string, field: 'weight' | 'reps') =>
+            onActivateSet(translateSetKey(id), field)
+        : undefined,
+    [onActivateSet, translateSetKey],
+  );
+  const onActivateRpeKeyed = useMemo(
+    () => (onActivateRpe ? (id: string) => onActivateRpe(translateSetKey(id)) : undefined),
+    [onActivateRpe, translateSetKey],
+  );
+  const onLongPressSetKeyed = useMemo(
+    () => (onLongPressSet ? (id: string) => onLongPressSet(translateSetKey(id)) : undefined),
+    [onLongPressSet, translateSetKey],
+  );
 
   // Exercise thumbnail with a completion badge, shared by the collapsed and
   // expanded rows so the image stays visible when the card is collapsed. The
   // done-badge is suppressed in edit mode, where per-set badges convey state.
   const thumb = (
     <View>
-      <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={34} />
+      <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={42} />
       {isDone && !isEdit && (
         <View className="absolute" style={{ right: -3, top: -3 }}>
           <CompletionCheck size={15} iconSize={9} />
@@ -340,7 +390,7 @@ function ActiveWorkoutExerciseCard({
     // target expands here; the labeled "Expand" affordance is the row body.
     return (
       <View className="border-b border-border-subtle">
-        <View className="flex-row items-center gap-3 px-4 py-3">
+        <View className="flex-row items-center gap-3 px-2 py-3">
           <Pressable
             onPress={() => onToggleExpanded(exercise.id)}
             onLongPress={longPressMenu}
@@ -348,13 +398,16 @@ function ActiveWorkoutExerciseCard({
           >
             {thumb}
           </Pressable>
+          {/* self-stretch fills the row's content height and hitSlop reaches
+              into the row's py-3 padding, so the expand target spans the whole
+              row height instead of just the text box. */}
           <Pressable
-            ref={collapsedRowRef}
             onPress={() => onToggleExpanded(exercise.id)}
             onLongPress={longPressMenu}
+            hitSlop={{ top: 10, bottom: 10 }}
             accessibilityRole="button"
             accessibilityLabel={`Expand ${name}`}
-            className="flex-1 flex-row items-center gap-3"
+            className="flex-1 self-stretch flex-row items-center gap-3"
           >
             <Text
               numberOfLines={2}
@@ -375,7 +428,7 @@ function ActiveWorkoutExerciseCard({
   const workingSetNumbers = buildWorkingSetNumbers(exercise.sets);
 
   return (
-    <View className="border-b border-border-subtle px-4 pt-3 pb-2">
+    <View className="border-b border-border-subtle px-2 pt-3 pb-2">
       <View className="flex-row items-center gap-3">
         {/* Always a <Pressable> so the thumb subtree matches the collapsed
             render and the <Image> is preserved rather than remounted. Inert
@@ -388,10 +441,14 @@ function ActiveWorkoutExerciseCard({
         >
           {thumb}
         </Pressable>
+        {/* self-stretch + justify-center make the whole header-row height
+            tappable (not just the text box), so the collapse target around the
+            name matches the chevron's generous hit area. */}
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
-          onLongPress={longPressExpandedMenu}
-          className="flex-1"
+          onLongPress={longPressMenu}
+          hitSlop={{ top: 10, bottom: 4 }}
+          className="flex-1 self-stretch justify-center"
           accessibilityRole="button"
           accessibilityLabel={`Collapse ${name}`}
         >
@@ -400,17 +457,15 @@ function ActiveWorkoutExerciseCard({
           </Text>
         </Pressable>
         {!readOnly && (
-          <View ref={overflowAnchorRef} collapsable={false}>
-            <Pressable
-              onPress={openOverflowMenu}
-              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-              accessibilityRole="button"
-              accessibilityLabel={`More options for ${name}`}
-              className="p-1"
-            >
-              <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={openOverflowMenu}
+            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel={`More options for ${name}`}
+            className="p-1"
+          >
+            <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
+          </Pressable>
         )}
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
@@ -425,9 +480,24 @@ function ActiveWorkoutExerciseCard({
         </Pressable>
       </View>
 
-      {(showRestChip || lastSet != null || bestDisplay != null) && (
-        // flex-wrap + gap-y so the rest chip, "Last time", and "Best" stack
-        // gracefully on narrow screens instead of shifting off the edge.
+      {/* Per-exercise note (live only): a subtle line under the name, shown when
+          a note already exists or the card ⋮ "Notes" editor was opened. */}
+      {isLive && (!!exercise.notes || noteEditorOpen) && (
+        <View className="mt-2 px-1">
+          <WorkoutNotesField
+            value={exercise.notes}
+            onCommit={(text) => onCommitExerciseNote?.(exercise.id, text)}
+            label=""
+            placeholder="Add a note for this exercise…"
+            accessibilityLabel={`Notes for ${name}`}
+          />
+        </View>
+      )}
+
+      {(showRestChip || bestDisplay != null) && (
+        // flex-wrap + gap-y so the rest chip and "Best" stack gracefully on
+        // narrow screens instead of shifting off the edge. "Last" lives in the
+        // per-set PREVIOUS column, not here.
         <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1 px-1">
           {showRestChip && (
             <RestPeriodChip
@@ -439,17 +509,6 @@ function ActiveWorkoutExerciseCard({
                   : () => onPressRestChip?.(exercise.id, exercise.sets[0]?.rest_time ?? null)
               }
             />
-          )}
-          {lastSet && lastSet.weight != null && lastSet.reps != null && (
-            <View className="flex-row items-baseline gap-1.5">
-              <Text className="text-sm uppercase tracking-wide text-text-muted">Last</Text>
-              <Text
-                className="text-sm text-text-secondary"
-                style={{ fontVariant: ['tabular-nums'] }}
-              >
-                {parseFloat(weightFromKg(lastSet.weight, weightUnit).toFixed(1))} × {lastSet.reps}
-              </Text>
-            </View>
           )}
           {bestDisplay != null && (
             <View className="flex-row items-baseline gap-1.5">
@@ -470,10 +529,15 @@ function ActiveWorkoutExerciseCard({
       )}
 
       {exercise.sets.length > 0 && (
-        <View className="flex-row items-center px-3 py-1.5">
+        <View className="flex-row items-center px-1 py-1.5">
           <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
             Set
           </Text>
+          {!readOnly && (
+            <Text className="w-20 text-center text-xs font-semibold uppercase text-text-muted">
+              Previous
+            </Text>
+          )}
           <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
             {weightUnit === 'kg' ? 'KG' : 'LBS'}
           </Text>
@@ -503,6 +567,10 @@ function ActiveWorkoutExerciseCard({
 
       {exercise.sets.map((set, index) => {
         const setId = String(set.id);
+        // Stable across an autosave id churn (view/edit: keyed by id). Used for
+        // the React key + focus/expand compares so the row instance — and its
+        // keyboard/draft — survives the set's id being reassigned.
+        const renderKey = setRenderKeys?.[setId] ?? setId;
         // Edit mode never surfaces 'done' — completed sets stay editable and
         // show the static completedBadge instead.
         const state = isEdit
@@ -516,33 +584,41 @@ function ActiveWorkoutExerciseCard({
               : 'upcoming';
         const nextSet = exercise.sets[index + 1];
         return (
-          <ActiveWorkoutSetRow
-            key={setId}
-            set={set}
-            displayNumber={workingSetNumbers[index]}
-            state={state}
-            metricColumn={metricColumn}
-            weightUnit={weightUnit}
-            mode={mode}
-            onComplete={onComplete}
-            onUncomplete={onUncomplete}
-            onCommitField={onCommitField}
-            onDelete={onDeleteSet}
-            onLongPress={onLongPressSet}
-            onPressSetType={onPressSetType}
-            activeField={activeField}
-            isFocused={isLive && focusedSetId === setId}
-            nextSetId={nextSet != null ? String(nextSet.id) : null}
-            entryId={exercise.id}
-            rpeEditable={rpeEditable}
-            completedBadge={isEdit && !!completedSetIds[setId]}
-            onToggleComplete={onToggleComplete}
-            onActivateSet={onActivateSet}
-            onActivateRpe={onActivateRpe}
-            onDeactivate={onDeactivateSet}
-            onEditFieldChange={onEditFieldChange}
-            onAddSet={onAddSet}
-          />
+          <React.Fragment key={renderKey}>
+            <ActiveWorkoutSetRow
+              set={set}
+              renderKey={renderKey}
+              displayNumber={workingSetNumbers[index]}
+              state={state}
+              metricColumn={metricColumn}
+              weightUnit={weightUnit}
+              previousSet={readOnly ? undefined : (previousSessionSets?.[index] ?? null)}
+              mode={mode}
+              onComplete={onComplete}
+              onUncomplete={onUncomplete}
+              onCommitField={onCommitField}
+              onDelete={onDeleteSet}
+              onLongPress={onLongPressSetKeyed}
+              onPressSetType={onPressSetType}
+              activeField={activeField}
+              isFocused={isLive && focusedSetKey === renderKey}
+              nextSetId={nextSet != null ? String(nextSet.id) : null}
+              entryId={exercise.id}
+              rpeEditable={rpeEditable}
+              completedBadge={isEdit && !!completedSetIds[setId]}
+              onToggleComplete={onToggleComplete}
+              onActivateSet={onActivateSetKeyed}
+              onActivateRpe={onActivateRpeKeyed}
+              onDeactivate={onDeactivateSet}
+              onEditFieldChange={onEditFieldChange}
+              onAddSet={onAddSet}
+            />
+            {/* Per-set note expand — live only, toggled by long-pressing the
+                set row. */}
+            {isLive && expandedSetKey === renderKey && onCommitField != null && (
+              <ActiveWorkoutSetDetail set={set} onCommitField={onCommitField} />
+            )}
+          </React.Fragment>
         );
       })}
 

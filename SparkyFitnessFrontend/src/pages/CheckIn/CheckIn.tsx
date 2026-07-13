@@ -9,6 +9,7 @@ import { CheckInTopRow } from './CheckInTopRow';
 import { useCheckInLogic } from '@/hooks/CheckIn/useCheckInLogic';
 import { useSearchParams } from 'react-router-dom';
 import { CheckInPhotos } from './CheckInPhotos';
+import { useCheckInPhotoDates } from '@/hooks/CheckIn/useCheckInPhotos';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -70,6 +71,7 @@ const CheckIn = () => {
   const [, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
   const [importOpen, setImportOpen] = useState(false);
+  const photoDates = useCheckInPhotoDates();
 
   return (
     <div className="container mx-auto space-y-6">
@@ -80,6 +82,11 @@ const CheckIn = () => {
             setSelectedDate(dateString);
             setSearchParams({ date: dateString });
           }}
+          markedDates={photoDates}
+          markedDatesLabel={t(
+            'checkIn.photos.calendarLegend',
+            'Progress photos'
+          )}
         />
         <Dialog open={importOpen} onOpenChange={setImportOpen}>
           <DialogTrigger asChild>

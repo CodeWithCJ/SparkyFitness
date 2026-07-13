@@ -35,6 +35,10 @@ export interface ExternalFoodItem {
   id: string;
   name: string;
   brand: string | null;
+  barcode?: string | null;
+  provider_type?: string;
+  provider_external_id?: string;
+  is_custom?: boolean;
   calories: number;
   protein: number;
   carbs: number;

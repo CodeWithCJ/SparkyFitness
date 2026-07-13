@@ -2,6 +2,7 @@ import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
+import { DEFAULT_API_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
 
 export interface ActiveAiServiceSetting {
   id: string;
@@ -22,14 +23,14 @@ export async function fetchUserAiConfigAllowed(): Promise<boolean> {
   }
 
   try {
-    const response = await fetch(`${baseUrl}/api/global-settings/allow-user-ai-config`, {
+    const response = await fetchWithTimeout(`${baseUrl}/api/global-settings/allow-user-ai-config`, {
       method: 'GET',
       cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
       headers: {
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
       },
-    });
+    }, DEFAULT_API_TIMEOUT_MS);
     if (!response.ok) {
       if (response.status === 401 && config.authType === 'session') {
         notifySessionExpired(config.id);
@@ -65,14 +66,14 @@ export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSett
   }
 
   try {
-    const response = await fetch(`${baseUrl}/api/chat/ai-service-settings/active`, {
+    const response = await fetchWithTimeout(`${baseUrl}/api/chat/ai-service-settings/active`, {
       method: 'GET',
       cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
       headers: {
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
       },
-    });
+    }, DEFAULT_API_TIMEOUT_MS);
     if (!response.ok) {
       if (response.status === 401 && config.authType === 'session') {
         notifySessionExpired(config.id);

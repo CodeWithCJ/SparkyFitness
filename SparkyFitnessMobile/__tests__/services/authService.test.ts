@@ -18,6 +18,7 @@ import {
   _setTrustedOriginCache,
 } from '../../src/services/api/authService';
 import { clearSessionToken, ServerConfig } from '../../src/services/storage';
+import { TimeoutError } from '../../src/utils/concurrency';
 import * as WebBrowser from 'expo-web-browser';
 
 jest.mock('../../src/services/storage', () => ({
@@ -171,6 +172,34 @@ describe('authService', () => {
       const result = await login(serverUrl, 'user@test.com', 'password123');
 
       expect(result).toEqual({ type: 'mfa_required' });
+    });
+
+    // Representative timeout test for the authService fetch sites: they all
+    // go through the same fetchWithTimeout wrapper.
+    test('throws TimeoutError when the server never responds', async () => {
+      jest.useFakeTimers();
+      try {
+        // Signal-aware mock that rejects on abort (like real fetch)
+        mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+          return new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener('abort', () => {
+              const err = new Error('The operation was aborted');
+              err.name = 'AbortError';
+              reject(err);
+            });
+          });
+        });
+
+        const promise = login(serverUrl, 'user@test.com', 'password123');
+        // Attach handler BEFORE advancing timers to avoid unhandled rejection
+        const assertion = expect(promise).rejects.toThrow(TimeoutError);
+
+        await jest.advanceTimersByTimeAsync(30_000);
+
+        await assertion;
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     test('throws LoginError on non-OK response with JSON error body', async () => {

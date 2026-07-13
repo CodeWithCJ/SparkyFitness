@@ -39,6 +39,15 @@ describe('FoodNutritionSummary — Total Carbs row', () => {
       );
       expect(queryByText('Total Carbs')).toBeNull();
     });
+
+    it('renders the compact verified badge when provider_verified is set', () => {
+      const { getByLabelText, getByTestId } = render(
+        <FoodNutritionSummary name="Verified YAZIO food" values={baseValues} provider_verified />,
+      );
+
+      expect(getByTestId('verified-badge')).toBeTruthy();
+      expect(getByLabelText('Verified food')).toBeTruthy();
+    });
   });
 
   describe('showNetCarbs on (with fiber available)', () => {

@@ -50,6 +50,9 @@
     "validationErrorTitle": "Validation Error",
     "nameRequired": "The 'name' field cannot be empty."
   },
+  "foods": {
+    "providerVerified": "Verified food"
+  },
   "medications": {
     "tabs": {
       "log": "Log",
@@ -361,6 +364,7 @@
       "onlineTab": "Online",
       "addCustomTab": "Add Custom",
       "importCSVTab": "Import Exercises",
+      "importFitTab": "Import FIT",
       "nameLabel": "Name",
       "categoryLabel": "Category",
       "selectCategoryPlaceholder": "Select a category",
@@ -570,6 +574,25 @@
       "voiceLabel": "Voice:",
       "selectVoicePlaceholder": "Select a voice",
       "stepCount": "Step {{currentInstructionIndex}} of {{totalInstructions}}"
+    },
+    "importFit": {
+      "title": "Import FIT Files",
+      "description": "Upload FIT activity files exported from your device or app (up to 10 at a time). Each file becomes a diary entry with heart rate, laps, and other report data. Re-uploading a file updates its entry.",
+      "importButton": "Import {{count}} file(s)",
+      "importing": "Importing...",
+      "successTitle": "Import complete",
+      "successDescription": "{{count}} activities imported.",
+      "partialTitle": "Import finished with errors",
+      "partialDescription": "{{imported}} imported, {{failed}} failed. See the results below.",
+      "resultsTitle": "Import Results",
+      "fileColumn": "File",
+      "statusColumn": "Status",
+      "activityColumn": "Activity",
+      "dateColumn": "Date",
+      "detailsColumn": "Details",
+      "statusCreated": "Imported",
+      "statusUpdated": "Updated",
+      "statusFailed": "Failed"
     }
   },
   "workoutPresetsManager": {
@@ -718,6 +741,9 @@
     "family": "Family",
     "topFoods": "Top Foods",
     "noRecentOrTopFoods": "No recent or top foods found. Start logging foods to see them here.",
+    "noRecentOrTopItems": "No recent or frequent foods or meals found. Start logging to see them here.",
+    "recent": "Recent",
+    "frequent": "Frequent",
     "noItemsFoundInDatabase": "No items found in your database for \"{{searchTerm}}\".",
     "clickSearchIconOnline": "Click the search icon to search online.",
     "noFoodsFoundOnline": "No foods found from the selected online provider.",
@@ -1066,6 +1092,7 @@
         "ollama": "Ollama",
         "openrouter": "OpenRouter",
         "xai": "xAI (Grok)",
+        "meta": "Meta",
         "custom": "Custom"
       }
     },
@@ -1662,6 +1689,8 @@
   },
   "mealManagement": {
     "failedToLoadMeals": "Failed to load meals.",
+    "failedToLoadRecentMeals": "Failed to load recent meals.",
+    "failedToLoadTopMeals": "Failed to load top meals.",
     "failedToDeleteMeal": "Failed to delete meal: {{errorMessage}}",
     "couldNotCheckMealUsage": "Could not check meal usage.",
     "mealSavedSuccessfully": "Meal \"{{mealName}}\" saved successfully.",
@@ -2009,8 +2038,7 @@
       "lapTableMaxHRBpmHeader": "Max HR (bpm)",
       "lapTableCaloriesHeader": "Calories",
       "heartRateTimeInZonesTitle": "Heart Rate Time in Zones",
-      "timeInZoneSLabel": "Time in Zone (s)",
-      "cadence": "Cadence"
+      "timeInZoneSLabel": "Time in Zone (s)"
     },
     "bodyBattery": "Body Battery",
     "charged": "Charged",

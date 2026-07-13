@@ -1134,6 +1134,7 @@ export function useCustomFoodForm({
         barcode: formData.barcode.trim() || null,
         provider_external_id: food?.provider_external_id,
         provider_type: food?.provider_type,
+        provider_verified: food?.provider_verified,
       };
 
       const expandedVariants: FormFoodVariant[] = [];

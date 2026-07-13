@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
+  LayoutAnimation,
   Modal,
   Pressable,
   Text,
@@ -26,9 +27,14 @@ import ActiveWorkoutHeader, {
 } from '../components/ActiveWorkoutHeader';
 import ActiveWorkoutRail, { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
+import KeyboardCollapsible from '../components/KeyboardCollapsible';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
 import ActiveWorkoutRestBar from '../components/ActiveWorkoutRestBar';
-import AnchoredMenu, { type AnchorRect } from '../components/AnchoredMenu';
+import ActionSheet, {
+  type ActionSheetItem,
+  type ActionSheetRef,
+} from '../components/ActionSheet';
+import { type AnchorRect } from '../components/AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
 import WorkoutReorderList from '../components/WorkoutReorderList';
 import Button from '../components/ui/Button';
@@ -137,6 +143,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const startedAt = useActiveWorkoutStore((s) => s.startedAt);
   const completedSetIds = useActiveWorkoutStore((s) => s.completedSetIds);
   const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
+  const setRenderKeys = useActiveWorkoutStore((s) => s.setRenderKeys);
   const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
   const restState = useActiveWorkoutStore((s) => s.rest.state);
   const restEndsAt = useActiveWorkoutStore((s) => s.rest.endsAt);
@@ -396,7 +403,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const handleClearAllSets = useCallback(() => {
     Alert.alert(
-      'Clear logged sets?',
+      'Clear all logged sets?',
       'Un-checks every logged set in this workout. Your set weights and reps are kept.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -452,22 +459,61 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setRenameVisible(false);
   }, []);
 
-  // Card ⋮ menu. 'main' offers the superset actions; 'pick' swaps in the
-  // candidate list (ungrouped exercises other than the current one) at the
-  // same anchor.
+  // Per-set note inline expand, toggled by long-pressing the set row. Keyed by
+  // render key (the card translates the row's set id) so the panel stays with
+  // the same logical set across an autosave id churn. A stale key after a
+  // delete/reconcile is harmless — no matching row renders.
+  const [expandedSetKey, setExpandedSetKey] = useState<string | null>(null);
+  const handleToggleSetDetail = useCallback((setKey: string) => {
+    // Animate the panel (and the rows it pushes) in/out. easeInEaseOut matches
+    // the card wrapper's 300ms LinearTransition, so the internal reflow and the
+    // card's frame grow/shrink together. Same idiom as CollapsibleSection.
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedSetKey((prev) => (prev === setKey ? null : setKey));
+  }, []);
+
+  // Per-exercise note editor: which exercise's note field the card ⋮ "Notes"
+  // item revealed. Selecting "Notes" again toggles the empty editor back off; a
+  // saved (non-empty) note stays visible regardless — the card also shows the
+  // field whenever `exercise.notes` is set.
+  const [noteEditorEntryId, setNoteEditorEntryId] = useState<string | null>(null);
+  const handleToggleExerciseNote = useCallback(
+    (entryId: string) => {
+      const opening = noteEditorEntryId !== entryId;
+      setNoteEditorEntryId(opening ? entryId : null);
+      // Opening reveals the field — make sure the card is expanded to show it.
+      if (opening) {
+        setUserExpandedIds((prev) => {
+          if (prev.has(entryId)) return prev;
+          const next = new Set(prev);
+          next.add(entryId);
+          return next;
+        });
+      }
+    },
+    [noteEditorEntryId],
+  );
+  const handleCommitExerciseNote = useCallback((entryId: string, text: string) => {
+    useActiveWorkoutStore.getState().setExerciseNotes(entryId, text);
+  }, []);
+
+  // Card ⋮ menu, presented as a bottom sheet titled with the exercise name.
+  // 'main' offers the exercise actions; 'pick' swaps the superset candidate
+  // list (ungrouped exercises other than the current one) into the same sheet.
   const [overflowMenu, setOverflowMenu] = useState<{
     entryId: string;
-    anchor: AnchorRect;
     mode: 'main' | 'pick';
   } | null>(null);
-  const handlePressOverflow = useCallback(
-    (entryId: string, anchor: AnchorRect) => {
-      setOverflowMenu({ entryId, anchor, mode: 'main' });
-    },
-    [],
-  );
+  const overflowSheetRef = useRef<ActionSheetRef>(null);
+  const handlePressOverflow = useCallback((entryId: string) => {
+    // The sheet slides into the keyboard's space — drop the keyboard first,
+    // mirroring what logging a set does.
+    Keyboard.dismiss();
+    setOverflowMenu({ entryId, mode: 'main' });
+    overflowSheetRef.current?.present();
+  }, []);
 
-  const overflowMenuItems = useMemo(() => {
+  const overflowMenuItems = useMemo<ActionSheetItem[]>(() => {
     if (overflowMenu == null || session == null) return [];
     const { entryId, mode } = overflowMenu;
     const groupedIds = new Set(supersetRuns.flatMap((run) => run.entryIds));
@@ -489,20 +535,25 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const entryHasCompleted =
       entry?.sets.some((s) => completedSetIds[String(s.id)] != null) ?? false;
 
-    const items: { key: string; label: string; onPress: () => void }[] = [];
+    const items: ActionSheetItem[] = [];
     items.push({
       key: 'view',
       label: 'View exercise',
       onPress: () => handlePressThumb(entryId),
     });
+    items.push({
+      key: 'notes',
+      label: 'Notes',
+      onPress: () => handleToggleExerciseNote(entryId),
+    });
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
         label: 'Superset with…',
+        // Keeps the sheet presented; the candidate list swaps in place.
+        dismissOnPress: false,
         onPress: () => {
-          // Re-open at the same anchor with the candidate list. AnchoredMenu
-          // closes first (onClose), then this runs — both land in one commit.
-          setOverflowMenu({ ...overflowMenu, mode: 'pick' });
+          setOverflowMenu((prev) => (prev ? { ...prev, mode: 'pick' } : prev));
         },
       });
     }
@@ -528,19 +579,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       items.push({
         key: 'clear',
         label: 'Clear logged sets',
+        destructive: true,
         onPress: () => handleClearExerciseSets(entryId),
-      });
-    }
-    if (reorderItemCount >= 2) {
-      items.push({
-        key: 'reorder',
-        label: 'Reorder exercises',
-        onPress: handleOpenReorder,
       });
     }
     items.push({
       key: 'remove',
       label: 'Remove exercise',
+      destructive: true,
       onPress: () => handleRemoveExercise(entryId),
     });
     return items;
@@ -548,39 +594,40 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     overflowMenu,
     session,
     supersetRuns,
-    reorderItemCount,
-    handleOpenReorder,
     completedSetIds,
     handlePressThumb,
+    handleToggleExerciseNote,
     handleReplaceExercise,
     handleClearExerciseSets,
     handleRemoveExercise,
   ]);
 
-  // Live editing: which set cell is tap-focused (the keyboard target). Distinct
-  // from activeSetId (the cursor / log ring), so tapping an earlier set to fix a
-  // value doesn't move the cursor.
-  const [focusedSetId, setFocusedSetId] = useState<string | null>(null);
+  // Live editing: which set cell is tap-focused (the keyboard target). Keyed by
+  // render key (the card translates the row's set id) so focus survives an
+  // autosave id churn. Distinct from activeSetId (the cursor / log ring), so
+  // tapping an earlier set to fix a value doesn't move the cursor.
+  const [focusedSetKey, setFocusedSetKey] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<'weight' | 'reps' | 'rpe'>('weight');
-  const handleActivateSet = useCallback((setId: string, field: 'weight' | 'reps') => {
+  const handleActivateSet = useCallback((setKey: string, field: 'weight' | 'reps') => {
     setFocusedField(field);
-    setFocusedSetId(setId);
+    setFocusedSetKey(setKey);
   }, []);
   // Tapping the RPE column focuses that row's RPE input directly (the row's
   // focus effect reads `focusedField`).
-  const handleActivateRpe = useCallback((setId: string) => {
+  const handleActivateRpe = useCallback((setKey: string) => {
     setFocusedField('rpe');
-    setFocusedSetId(setId);
+    setFocusedSetKey(setKey);
   }, []);
   const handleDeactivateSet = useCallback(() => {
-    setFocusedSetId(null);
+    setFocusedSetKey(null);
   }, []);
 
   const handleCompleteSet = useCallback((setId: string) => {
     useActiveWorkoutStore.getState().completeSet(setId);
     // Logging advances the cursor and (usually) starts a rest — drop the
     // keyboard so the rest bar is unobstructed and the logged inputs collapse.
-    setFocusedSetId(null);
+    setFocusedSetKey(null);
+    setExpandedSetKey(null);
     Keyboard.dismiss();
     // When that was the last unlogged set, the cursor has nowhere to advance,
     // so the follow-cursor scroll won't fire. Surface the End Workout button
@@ -735,6 +782,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   }, [flush, navigation]);
 
   const handleConfirmEnd = useCallback(() => {
+    // Commit any focused-but-unblurred input (a set value or a note) into the
+    // store before the finish flush reads it. keyboardShouldPersistTaps keeps
+    // the field focused when End Workout is tapped, so blur it explicitly — the
+    // commit lands well before the user confirms the dialog. On iOS the alert
+    // would blur it anyway; this closes the same gap on Android.
+    Keyboard.dismiss();
     const totalSets =
       session?.exercises.reduce((sum, e) => sum + e.sets.length, 0) ?? 0;
     const doneSets =
@@ -824,16 +877,19 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onClearAllSets={hasAnyCompletedSets ? handleClearAllSets : undefined}
       />
 
-      <ActiveWorkoutRail
-        exercises={session.exercises}
-        completedSetIds={completedSetIds}
-        focusedEntryId={focusedExerciseId}
-        activeEntryId={activeExerciseId}
-        supersetBorders={supersetBorders}
-        getImageSource={getImageSource}
-        onPressExercise={handleRailPress}
-        onPressAdd={handleAddExercise}
-      />
+      {/* Collapses while the keyboard is up to hand its ~105px back to the log. */}
+      <KeyboardCollapsible>
+        <ActiveWorkoutRail
+          exercises={session.exercises}
+          completedSetIds={completedSetIds}
+          focusedEntryId={focusedExerciseId}
+          activeEntryId={activeExerciseId}
+          supersetBorders={supersetBorders}
+          getImageSource={getImageSource}
+          onPressExercise={handleRailPress}
+          onPressAdd={handleAddExercise}
+        />
+      </KeyboardCollapsible>
 
       <KeyboardAwareScrollView
         ref={scrollRef}
@@ -847,6 +903,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         }}
         keyboardShouldPersistTaps="handled"
         bottomOffset={80}
+        // Tapping a cell in another row remounts the focused TextInput
+        // (unmount-blur → keyboard hide → refocus). Without this, the hide leg
+        // scrolls back to a stale pre-keyboard position and the refocus then
+        // measures against it, landing the tapped input off-screen.
+        disableScrollOnKeyboardHide
       >
         {session.exercises.map((exercise) => {
           const isExpanded =
@@ -860,7 +921,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               prSetIds={prSetIds}
               excludePresetEntryId={sessionId ?? undefined}
               activeSetId={activeSetId}
-              focusedSetId={focusedSetId}
+              focusedSetKey={focusedSetKey}
+              setRenderKeys={setRenderKeys}
               activeField={focusedField}
               metricColumn={metricColumn}
               weightUnit={weightUnit}
@@ -875,7 +937,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onCommitField={handleCommitField}
               onDeleteSet={handleDeleteSet}
               onPressSetType={handlePressSetType}
+              onLongPressSet={handleToggleSetDetail}
               onAddSet={handleAddSet}
+              expandedSetKey={expandedSetKey}
+              noteEditorOpen={noteEditorEntryId === exercise.id}
+              onCommitExerciseNote={handleCommitExerciseNote}
               onActivateSet={handleActivateSet}
               onActivateRpe={handleActivateRpe}
               onDeactivateSet={handleDeactivateSet}
@@ -963,12 +1029,21 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onClose={() => setMetricMenuAnchor(null)}
       />
 
-      <AnchoredMenu
-        visible={overflowMenu != null && overflowMenuItems.length > 0}
-        anchor={overflowMenu?.anchor ?? null}
-        onClose={() => setOverflowMenu(null)}
-        minWidth={200}
+      <ActionSheet
+        ref={overflowSheetRef}
+        title={
+          overflowMenu?.mode === 'pick'
+            ? 'Superset with…'
+            : (session.exercises.find((e) => e.id === overflowMenu?.entryId)
+                ?.exercise_snapshot?.name ?? 'Exercise')
+        }
         items={overflowMenuItems}
+        onBack={
+          overflowMenu?.mode === 'pick'
+            ? () => setOverflowMenu((prev) => (prev ? { ...prev, mode: 'main' } : prev))
+            : undefined
+        }
+        onDismiss={() => setOverflowMenu(null)}
       />
 
       <SetTypeMenu

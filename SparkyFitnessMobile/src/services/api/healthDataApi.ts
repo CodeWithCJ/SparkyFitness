@@ -4,6 +4,7 @@ import { normalizeUrl } from './apiClient';
 import { ApiError } from './errors';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ensureTimezoneBootstrapped } from './preferencesApi';
+import { CONNECTION_CHECK_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
 import type { SleepStageEvent } from '../../types/mobileHealthData';
 
 interface BaseHealthDataPayloadItem {
@@ -86,30 +87,6 @@ export const RETRY_BASE_DELAY_MS = 1_000;
 // --- Internal helpers ---
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Wraps fetch with an AbortController that auto-aborts after timeoutMs.
- */
-export const fetchWithTimeout = async (
-  url: string,
-  options: RequestInit,
-  timeoutMs: number,
-): Promise<Response> => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    return response;
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Request timed out after ${timeoutMs}ms`);
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
-};
 
 interface RetryConfig {
   timeoutMs: number;
@@ -414,14 +391,18 @@ export const checkServerConnection = async (): Promise<boolean> => {
   }
 
   try {
-    const response = await fetch(`${url}/api/identity/user`, {
-      method: 'GET',
-      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
-      headers: {
-        ...proxyHeadersToRecord(config.proxyHeaders),
-        ...getAuthHeaders(config),
+    const response = await fetchWithTimeout(
+      `${url}/api/identity/user`,
+      {
+        method: 'GET',
+        cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
+        headers: {
+          ...proxyHeadersToRecord(config.proxyHeaders),
+          ...getAuthHeaders(config),
+        },
       },
-    });
+      CONNECTION_CHECK_TIMEOUT_MS,
+    );
     if (response.ok) {
       return true;
     } else {

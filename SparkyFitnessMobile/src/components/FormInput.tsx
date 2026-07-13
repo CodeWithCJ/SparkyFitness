@@ -1,6 +1,8 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import { TextInput, type TextInputProps } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+
+import { scheduleAndroidImeShowRetry } from '../utils/keyboardFocus';
 
 type FormInputProps = Omit<TextInputProps, 'placeholderTextColor'> & {
   placeholderTextColor?: string;
@@ -20,9 +22,27 @@ const FormInput = forwardRef<TextInput, FormInputProps>(
     ]) as [string, string, string, string];
     const [isFocused, setIsFocused] = useState(false);
 
+    const innerRef = useRef<TextInput>(null);
+    const { autoFocus } = props;
+
+    // autoFocus takes focus natively as the view attaches, which on Android
+    // can leave the keyboard behind (see scheduleAndroidImeShowRetry) — back
+    // it up the same way the tap-to-edit activation effects do.
+    useEffect(() => {
+      if (!autoFocus) return;
+      return scheduleAndroidImeShowRetry(innerRef);
+    }, [autoFocus]);
+
     return (
       <TextInput
-        ref={ref}
+        ref={(node) => {
+          innerRef.current = node;
+          if (typeof ref === 'function') {
+            ref(node);
+          } else if (ref) {
+            ref.current = node;
+          }
+        }}
         className={`text-base text-text-primary rounded-lg ${className}`}
         placeholderTextColor={placeholderTextColor ?? textMuted}
         onFocus={(e) => {

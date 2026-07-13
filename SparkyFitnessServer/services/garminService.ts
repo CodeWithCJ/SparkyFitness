@@ -1331,6 +1331,7 @@ export {
   syncGarminData,
   mapGarminExerciseCategory,
   formatExerciseName,
+  getOrCreateGarminExercise,
 };
 export default {
   processActivitiesAndWorkouts,

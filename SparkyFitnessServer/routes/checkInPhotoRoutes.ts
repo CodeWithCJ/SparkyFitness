@@ -16,6 +16,44 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /measurements/check-in-photos/dates:
+ *   get:
+ *     summary: List the dates on which the user has progress photos
+ *     description: >
+ *       Returns the distinct calendar days (YYYY-MM-DD, newest first) that have
+ *       at least one progress photo. Used to mark those days on the check-in
+ *       calendar. Registered before /:date so it is not shadowed by it.
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of YYYY-MM-DD date strings.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: string
+ *                 format: date
+ */
+router.get(
+  '/dates',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res) => {
+    try {
+      const dates = await checkInPhotoService.getPhotoDates(req.userId);
+      res.json(dates);
+    } catch (err) {
+      log('error', 'Failed to fetch check-in photo dates', err);
+      res.status(500).json({ error: 'Failed to fetch check-in photo dates' });
+    }
+  }
+);
+
+/**
+ * @swagger
  * /measurements/check-in-photos/{date}:
  *   get:
  *     summary: Get progress photos for a check-in date

@@ -712,6 +712,107 @@ describe('FoodEntryAddScreen', () => {
     expect(mockSetPendingMealIngredientSelection).not.toHaveBeenCalled();
   });
 
+  it('shows grams for a grouped local portion instead of only the named unit', () => {
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [
+        {
+          id: 'variant-piece',
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'piece',
+          calories: 100,
+          protein: 15,
+          carbs: 6,
+          fat: 0,
+        },
+        {
+          id: 'variant-grams',
+          food_id: 'food-1',
+          serving_size: 15,
+          serving_unit: 'g',
+          calories: 100,
+          protein: 15,
+          carbs: 6,
+          fat: 0,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const screen = renderScreen({
+      item: {
+        ...baseLocalItem,
+        servingUnit: 'piece',
+        variantId: 'variant-piece',
+      },
+      date: '2026-04-23',
+    });
+
+    expect(screen.getByText('piece (15 g)')).toBeTruthy();
+    expect(screen.getByText(/piece \(15 g\) per serving/)).toBeTruthy();
+  });
+
+  it('keeps a 100 g reference available alongside a named local portion', () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-portion',
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'portion',
+          serving_description: 'portion (150 g)',
+          calories: 180,
+          protein: 15,
+          carbs: 6,
+          fat: 0,
+        },
+        {
+          id: 'variant-reference',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          serving_description: '100 g',
+          calories: 120,
+          protein: 10,
+          carbs: 4,
+          fat: 0,
+        },
+        {
+          id: 'variant-portion-grams',
+          food_id: 'food-1',
+          serving_size: 150,
+          serving_unit: 'g',
+          serving_description: '150 g',
+          calories: 180,
+          protein: 15,
+          carbs: 6,
+          fat: 0,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const screen = renderScreen({
+      item: {
+        ...baseLocalItem,
+        servingSize: 100,
+        servingUnit: 'g',
+        servingDescription: '100 g',
+        calories: 120,
+        protein: 10,
+        carbs: 4,
+        fat: 0,
+        variantId: 'variant-reference',
+      },
+      date: '2026-04-23',
+    });
+
+    expect(screen.getByText('1 portion (150 g) (180 cal)')).toBeTruthy();
+    expect(screen.getByText('100 g (120 cal)')).toBeTruthy();
+  });
+
   it('keeps converted local units in the adjust flow and logs the returned variant', async () => {
     const screen = renderScreen({
       item: baseLocalItem,
@@ -881,6 +982,8 @@ describe('FoodEntryAddScreen', () => {
         vitamin_c: undefined,
         glycemic_index: undefined,
         custom_nutrients: undefined,
+        source: undefined,
+        ai_confidence: undefined,
       });
     });
 
@@ -952,7 +1055,7 @@ describe('FoodEntryAddScreen', () => {
 
     await waitFor(() => {
       expect(mockAddEntryAsync).toHaveBeenCalledWith({
-        saveFoodPayload: {
+        saveFoodPayload: expect.objectContaining({
           name: 'Protein Bar',
           brand: 'Remote Brand',
           serving_size: 1,
@@ -961,41 +1064,15 @@ describe('FoodEntryAddScreen', () => {
           protein: 20,
           carbs: 22,
           fat: 7,
-          dietary_fiber: undefined,
-          saturated_fat: undefined,
-          sodium: undefined,
-          sugars: undefined,
-          trans_fat: undefined,
-          potassium: undefined,
-          calcium: undefined,
-          iron: undefined,
-          cholesterol: undefined,
-          vitamin_a: undefined,
-          vitamin_c: undefined,
-        },
-        saveThenCreateVariantPayload: {
+        }),
+        saveThenCreateVariantPayload: expect.objectContaining({
           serving_size: 1,
           serving_unit: 'oz',
           calories: 120,
           protein: 10,
           carbs: 8,
           fat: 4,
-          dietary_fiber: undefined,
-          saturated_fat: undefined,
-          polyunsaturated_fat: undefined,
-          monounsaturated_fat: undefined,
-          sodium: undefined,
-          sugars: undefined,
-          trans_fat: undefined,
-          potassium: undefined,
-          calcium: undefined,
-          iron: undefined,
-          cholesterol: undefined,
-          vitamin_a: undefined,
-          vitamin_c: undefined,
-          glycemic_index: undefined,
-          custom_nutrients: undefined,
-        },
+        }),
         createEntryPayload: {
           meal_type_id: 'meal-1',
           quantity: 1,

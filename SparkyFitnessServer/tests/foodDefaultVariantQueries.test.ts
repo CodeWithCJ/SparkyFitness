@@ -50,6 +50,7 @@ describe('preferred default variant queries', () => {
     await getRecentFoods(userId, 10, undefined);
 
     const queryStr = mockClient.query.mock.calls[0][0];
+    expect(queryStr).toContain('f.provider_verified');
     expect(queryStr).toContain("'source', fv.source");
     expect(queryStr).toContain("'ai_confidence', fv.ai_confidence");
     expect(queryStr).not.toContain('ai_reasoning');
@@ -60,6 +61,7 @@ describe('preferred default variant queries', () => {
     await getTopFoods(userId, 10, undefined);
 
     const queryStr = mockClient.query.mock.calls[0][0];
+    expect(queryStr).toContain('f.provider_verified');
     expect(queryStr).toContain("'source', fv.source");
     expect(queryStr).toContain("'ai_confidence', fv.ai_confidence");
     expect(queryStr).not.toContain('ai_reasoning');

@@ -35,18 +35,46 @@ jest.mock('../../src/components/SafeImage', () => {
 });
 
 // Surface state/mode/badge on the stub so tests can assert what the card
-// derived for each row.
+// derived for each row. accessibilityValue carries the PREVIOUS-column prop:
+// 'hidden' = column omitted (undefined), 'dash' = no previous (null).
 jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ set, state, mode, completedBadge, isFocused, nextSetId, entryId }: any) => (
+    default: ({
+      set,
+      state,
+      mode,
+      completedBadge,
+      isFocused,
+      nextSetId,
+      entryId,
+      previousSet,
+    }: any) => (
       <View
         testID={`set-row-${set.id}`}
         accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}${isFocused ? ' focused' : ''}`}
         accessibilityHint={`next:${nextSetId ?? 'none'} entry:${entryId ?? 'none'}`}
+        accessibilityValue={{
+          text: `prev:${
+            previousSet === undefined
+              ? 'hidden'
+              : previousSet === null
+                ? 'dash'
+                : `${previousSet.weight}x${previousSet.reps}`
+          }`,
+        }}
       />
     ),
+  };
+});
+
+// Surface which set the note expand rendered for.
+jest.mock('../../src/components/ActiveWorkoutSetDetail', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ set }: any) => <View testID={`set-detail-${set.id}`} />,
   };
 });
 
@@ -171,15 +199,7 @@ describe('ActiveWorkoutExerciseCard', () => {
     fireEvent.press(getByLabelText('More options for Bench Press'));
 
     expect(callbacks.onPressOverflow).toHaveBeenCalledTimes(1);
-    expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
-      'ex-uuid-1',
-      expect.objectContaining({
-        x: expect.any(Number),
-        y: expect.any(Number),
-        width: expect.any(Number),
-        height: expect.any(Number),
-      }),
-    );
+    expect(callbacks.onPressOverflow).toHaveBeenCalledWith('ex-uuid-1');
   });
 
   it('offers no overflow trigger while collapsed (expand first)', () => {
@@ -220,19 +240,13 @@ describe('ActiveWorkoutExerciseCard', () => {
     it('opens the overflow menu from a collapsed row long-press', () => {
       const { getByLabelText, callbacks } = renderCard(false);
       fireEvent(getByLabelText('Expand Bench Press'), 'longPress');
-      expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
-        'ex-uuid-1',
-        expect.objectContaining({ x: expect.any(Number) }),
-      );
+      expect(callbacks.onPressOverflow).toHaveBeenCalledWith('ex-uuid-1');
     });
 
     it('opens the overflow menu from an expanded name long-press', () => {
       const { getAllByLabelText, callbacks } = renderCard(true);
       fireEvent(getAllByLabelText('Collapse Bench Press')[0], 'longPress');
-      expect(callbacks.onPressOverflow).toHaveBeenCalledWith(
-        'ex-uuid-1',
-        expect.objectContaining({ x: expect.any(Number) }),
-      );
+      expect(callbacks.onPressOverflow).toHaveBeenCalledWith('ex-uuid-1');
     });
 
     it('does not wire long-press in edit mode (screen-scoped to live)', () => {
@@ -473,17 +487,31 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
     });
 
-    it('marks the tap-focused row from focusedSetId (distinct from the cursor)', () => {
-      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetId: '101' });
+    it('marks the tap-focused row from focusedSetKey (distinct from the cursor)', () => {
+      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetKey: '101' });
       // Cursor (activeSetId) still drives 'current'; focus is an added flag.
       expect(getByTestId('set-row-101').props.accessibilityLabel).toBe(
         'row 101 current focused',
       );
     });
 
-    it('marks no row focused when focusedSetId is null', () => {
-      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetId: null });
+    it('marks no row focused when focusedSetKey is null', () => {
+      const { getByTestId } = renderCard(true, { mode: 'live', focusedSetKey: null });
       expect(getByTestId('set-row-101').props.accessibilityLabel).toBe('row 101 current');
+    });
+
+    it('translates the focus render key back to the churned server set id', () => {
+      // A just-added set churned -1 → 101 on save; its birth key "-1" lives in
+      // setRenderKeys and is what focus is keyed on. The row must still light up
+      // even though its set id is now 101.
+      const { getByTestId } = renderCard(true, {
+        mode: 'live',
+        focusedSetKey: '-1',
+        setRenderKeys: { '101': '-1' },
+      });
+      expect(getByTestId('set-row-101').props.accessibilityLabel).toBe(
+        'row 101 current focused',
+      );
     });
 
     it('captures the PR baseline once from the resolved best set', () => {
@@ -527,6 +555,141 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
       expect(mockCapturePrBaseline).not.toHaveBeenCalled();
       expect(queryByText('Best')).toBeNull();
+    });
+  });
+
+  describe('previous column', () => {
+    const STATS_WITH_HISTORY = {
+      data: {
+        bestSet: null,
+        lastSet: { entryDate: '2026-01-05', weight: 100, reps: 5, setNumber: 2 },
+        recentSessions: [
+          {
+            entryDate: '2026-01-05',
+            sets: [
+              { setNumber: 1, setType: 'warmup', weight: 60, reps: 8 },
+              { setNumber: 2, setType: null, weight: 100, reps: 5 },
+            ],
+          },
+          {
+            entryDate: '2026-01-03',
+            sets: [{ setNumber: 1, setType: null, weight: 90, reps: 5 }],
+          },
+        ],
+      },
+    };
+    /** Bench Press with three sets (ids 101–103) to exercise positional matching. */
+    const threeSets = () =>
+      makeExercise({
+        sets: [
+          ...makeExercise().sets,
+          { ...makeExercise().sets[0], id: 102, set_number: 2 },
+          { ...makeExercise().sets[0], id: 103, set_number: 3 },
+        ],
+      });
+    const prevOf = (utils: ReturnType<typeof renderCard>, id: number) =>
+      utils.getByTestId(`set-row-${id}`).props.accessibilityValue.text;
+
+    it('shows the PREVIOUS header in live and edit modes but not view', () => {
+      const live = renderCard(true, { mode: 'live' });
+      expect(live.getByText('Previous')).toBeTruthy();
+
+      const edit = renderCard(true, { mode: 'edit' });
+      expect(edit.getByText('Previous')).toBeTruthy();
+
+      const view = renderCard(true, { mode: 'view' });
+      expect(view.queryByText('Previous')).toBeNull();
+    });
+
+    it('matches the most recent session to rows by position, dashing the overflow', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      const utils = renderCard(true, { mode: 'live', exercise: threeSets() });
+
+      // recentSessions[0] has two sets; the third current row has no previous.
+      expect(prevOf(utils, 101)).toBe('prev:60x8');
+      expect(prevOf(utils, 102)).toBe('prev:100x5');
+      expect(prevOf(utils, 103)).toBe('prev:dash');
+    });
+
+    it('dashes every row against an old server without recentSessions', () => {
+      mockUseExerciseStats.mockReturnValue({
+        data: {
+          bestSet: null,
+          lastSet: { entryDate: '2026-01-05', weight: 100, reps: 5, setNumber: 2 },
+        },
+      });
+      const utils = renderCard(true, { mode: 'live' });
+      expect(prevOf(utils, 101)).toBe('prev:dash');
+    });
+
+    it('omits the column entirely in view mode', () => {
+      const utils = renderCard(true, { mode: 'view' });
+      expect(prevOf(utils, 101)).toBe('prev:hidden');
+    });
+
+    it('renders no Last stat line (superseded by the column)', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      const { queryByText } = renderCard(true, { mode: 'live' });
+      expect(queryByText('Last')).toBeNull();
+    });
+
+    it('feeds the column in edit mode with the edited session excluded', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      const utils = renderCard(true, {
+        mode: 'edit',
+        excludePresetEntryId: 'session-9',
+      });
+
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-9');
+      expect(prevOf(utils, 101)).toBe('prev:60x8');
+    });
+  });
+
+  describe('per-set note expand (live)', () => {
+    it('renders the detail panel under the matching expandedSetKey', () => {
+      const { getByTestId } = renderCard(true, { mode: 'live', expandedSetKey: '101' });
+      expect(getByTestId('set-detail-101')).toBeTruthy();
+    });
+
+    it('renders no detail panel when expandedSetKey matches no row', () => {
+      const { queryByTestId } = renderCard(true, { mode: 'live', expandedSetKey: null });
+      expect(queryByTestId('set-detail-101')).toBeNull();
+    });
+
+    it('keeps the note panel open under a churned set via its render key', () => {
+      // expandedSetKey holds the birth key "-1"; after churn the set's id is 101
+      // but its render key is still "-1", so the panel stays attached.
+      const { getByTestId } = renderCard(true, {
+        mode: 'live',
+        expandedSetKey: '-1',
+        setRenderKeys: { '101': '-1' },
+      });
+      expect(getByTestId('set-detail-101')).toBeTruthy();
+    });
+
+    it('does not render the expand in view mode', () => {
+      const { queryByTestId } = renderCard(true, { mode: 'view', expandedSetKey: '101' });
+      expect(queryByTestId('set-detail-101')).toBeNull();
+    });
+  });
+
+  describe('per-exercise note (live)', () => {
+    it('shows the note field when the exercise already has a note', () => {
+      const { getByLabelText } = renderCard(true, {
+        mode: 'live',
+        exercise: makeExercise({ notes: 'go slow' }),
+      });
+      expect(getByLabelText('Notes for Bench Press').props.value).toBe('go slow');
+    });
+
+    it('shows the note field when the editor is opened even with no note', () => {
+      const { getByLabelText } = renderCard(true, { mode: 'live', noteEditorOpen: true });
+      expect(getByLabelText('Notes for Bench Press')).toBeTruthy();
+    });
+
+    it('hides the note field when empty and the editor is closed', () => {
+      const { queryByLabelText } = renderCard(true, { mode: 'live' });
+      expect(queryByLabelText('Notes for Bench Press')).toBeNull();
     });
   });
 });

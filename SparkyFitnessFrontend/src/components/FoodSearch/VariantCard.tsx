@@ -29,6 +29,7 @@ import { NutrientGrid } from './NutrientFormGrid';
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
 import { NumericInput } from '../NumericInput';
+import { formatServingLabel } from '@/utils/foodServing';
 
 // Tone classes for the AI provenance badge ("Good/Fair/Rough estimate").
 // `green` (true grass-green, hue ~142°) replaces `emerald` (~160°,
@@ -513,9 +514,7 @@ export function VariantCard({
       )}
 
       <h4 className="text-md font-medium mb-2 flex items-center gap-2">
-        <span>
-          Nutrition per {variant.serving_size} {variant.serving_unit}
-        </span>
+        <span>Nutrition per {formatServingLabel(variant)}</span>
         {showAiEstimateBadge && (
           <span
             className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${AI_BADGE_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}

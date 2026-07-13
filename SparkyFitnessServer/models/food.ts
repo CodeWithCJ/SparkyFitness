@@ -126,7 +126,7 @@ async function searchFoods(
   try {
     let query = `
       SELECT
-        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -161,8 +161,8 @@ async function createFood(foodData: any) {
     // 1. Create the food entry
     const foodResult = await client.query(
       `INSERT INTO foods (
-        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, is_quick_food, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type`,
+        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified`,
       [
         foodData.name,
         sanitizeBoolean(foodData.is_custom) ?? true,
@@ -174,6 +174,7 @@ async function createFood(foodData: any) {
         foodData.provider_external_id,
         sanitizeBoolean(foodData.shared_with_public) ?? false,
         foodData.provider_type,
+        sanitizeBoolean(foodData.provider_verified) ?? false,
         sanitizeBoolean(foodData.is_quick_food) ?? false,
       ]
     );
@@ -265,7 +266,7 @@ async function findFoodByBarcode(barcode: any, userId: any) {
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -284,7 +285,7 @@ async function getFoodById(foodId: any, userId: any) {
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -335,9 +336,10 @@ async function updateFood(id: any, userId: any, foodData: any) {
         provider_external_id = COALESCE($6, provider_external_id),
         shared_with_public = COALESCE($7, shared_with_public),
         provider_type = COALESCE($8, provider_type),
-        is_quick_food = COALESCE($9, is_quick_food),
+        provider_verified = COALESCE($9, provider_verified),
+        is_quick_food = COALESCE($10, is_quick_food),
         updated_at = now()
-      WHERE id = $10
+      WHERE id = $11
       RETURNING *`,
       [
         foodData.name,
@@ -348,6 +350,7 @@ async function updateFood(id: any, userId: any, foodData: any) {
         foodData.provider_external_id,
         foodData.shared_with_public,
         foodData.provider_type,
+        foodData.provider_verified,
         foodData.is_quick_food,
         id,
       ]
@@ -397,7 +400,7 @@ async function getFoodsWithPagination(
     // RLS will handle ownership filtering
     let query = `
       SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -703,6 +706,7 @@ interface BulkImportFoodData {
   barcode?: string | null;
   provider_external_id?: string | null;
   provider_type?: string | null;
+  provider_verified?: BooleanInput;
   serving_size?: NumericInput;
   serving_unit?: string | null;
   is_default?: BooleanInput;
@@ -741,6 +745,7 @@ interface GroupedImportFood {
   barcode?: string | null;
   provider_external_id?: string | null;
   provider_type?: string | null;
+  provider_verified?: BooleanInput;
   variants: BulkImportFoodData[];
 }
 
@@ -778,8 +783,15 @@ async function createFoodsInBulk(
           user_id: userId,
           shared_with_public: variant.shared_with_public || false,
           is_quick_food: variant.is_quick_food || false,
+          barcode: variant.barcode || null,
+          provider_external_id: variant.provider_external_id || null,
+          provider_type: variant.provider_type || null,
+          provider_verified: variant.provider_verified,
           variants: [],
         };
+      }
+      if (sanitizeBoolean(variant.provider_verified) === true) {
+        acc[key].provider_verified = true;
       }
       acc[key].variants.push(variant);
       return acc;
@@ -855,6 +867,7 @@ async function createFoodsInBulk(
              is_custom = $2,
              shared_with_public = $3,
              is_quick_food = $4,
+             provider_verified = CASE WHEN $5 THEN TRUE ELSE provider_verified END,
              updated_at = now()
            WHERE id = $1`,
           [
@@ -862,14 +875,15 @@ async function createFoodsInBulk(
             sanitizeBoolean(food.is_custom) ?? true,
             sanitizeBoolean(food.shared_with_public) ?? false,
             sanitizeBoolean(food.is_quick_food) ?? false,
+            sanitizeBoolean(food.provider_verified) ?? false,
           ]
         );
         foodId = existingFoodId;
         totalFoodsUpdated++;
       } else {
         const foodResult = await client.query(
-          `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
+          `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type,provider_verified, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
            RETURNING id`,
           [
             food.name,
@@ -881,6 +895,7 @@ async function createFoodsInBulk(
             (food.barcode && normalizeBarcode(food.barcode)) || null,
             food.provider_external_id || null,
             food.provider_type || null,
+            sanitizeBoolean(food.provider_verified) ?? false,
           ]
         );
         foodId = foodResult.rows[0].id;
@@ -953,8 +968,8 @@ async function createFoodsInBulk(
               vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients,
               source, ai_confidence, allergens, traces, created_at, updated_at
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-              $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, now(), now()
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+              $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, now(), now()
             )`,
             [
               foodId,
@@ -1060,10 +1075,11 @@ async function findFoodByProviderExternalId(
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT f.id, f.name, f.brand, f.provider_external_id, f.provider_type,
-              fv.id as default_variant_id, fv.serving_size, fv.serving_unit
+      `SELECT f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
+              fv.id AS default_variant_id, fv.serving_size, fv.serving_unit,
+              ${DEFAULT_VARIANT_JSON_SQL}
        FROM foods f
-       LEFT JOIN food_variants fv ON fv.food_id = f.id AND fv.is_default = TRUE
+       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
        WHERE f.provider_external_id = $1
          AND f.provider_type = $2
          AND f.user_id = $3

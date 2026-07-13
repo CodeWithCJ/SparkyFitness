@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { ExerciseEntryResponse } from '@workspace/shared';
@@ -80,6 +81,15 @@ describe('WorkoutReorderList', () => {
     expect(getByText('2 sets')).toBeTruthy();
     expect(getByText('4 sets')).toBeTruthy();
     expect(getByText('1 set')).toBeTruthy();
+  });
+
+  // Reanimated applies animated styles as diffs, so the idle branch must
+  // explicitly zero the drag lift shadow or a dropped item keeps it forever.
+  it('zeroes the lift shadow on idle rows', () => {
+    const { getByTestId } = renderList(exercises);
+    const style = StyleSheet.flatten(getByTestId('reorder-item-a').props.style);
+    expect(style.shadowOpacity).toBe(0);
+    expect(style.elevation).toBe(0);
   });
 
   it('invokes onDone when Done is pressed', () => {

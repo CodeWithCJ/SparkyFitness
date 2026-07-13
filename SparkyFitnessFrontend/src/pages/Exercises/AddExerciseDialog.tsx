@@ -13,6 +13,7 @@ import ExerciseSearch from './ExerciseSearch';
 import WorkoutPresetSelector from './WorkoutPresetSelector';
 import ExerciseImportCSV, { type ExerciseCSVData } from './ExerciseImportCSV';
 import ExerciseEntryHistoryImportCSV from './ExerciseEntryHistoryImportCSV';
+import ExerciseImportFit from './ExerciseImportFit';
 import type { WorkoutPreset } from '@/types/workout';
 import { toast } from '@/hooks/use-toast';
 import { useImportExercisesJsonMutation } from '@/hooks/Exercises/useExercises';
@@ -42,7 +43,8 @@ interface AddExerciseDialogProps {
     | 'online'
     | 'custom'
     | 'import-csv'
-    | 'import-history-csv';
+    | 'import-history-csv'
+    | 'import-fit';
 }
 
 type AddExerciseDialogTab = NonNullable<AddExerciseDialogProps['initialTab']>;
@@ -62,6 +64,17 @@ const AddExerciseDialog = ({
   );
   const { mutateAsync: importExerciseFromJson } =
     useImportExercisesJsonMutation();
+
+  // Diary mode shows 7 tabs, which can't fit on one 800px row. Triggers are
+  // flex-1, so a plain wrap stretches the last tab across a full second row;
+  // a 12-column grid gives balanced rows of 4 (browse) + 3 (import) instead.
+  // Below sm the flex wrap is fine because everything wraps anyway.
+  const isDiary = mode === 'diary';
+  const tabsListClass = isDiary
+    ? 'h-auto min-h-10 flex w-full justify-center flex-wrap sm:grid sm:grid-cols-12'
+    : 'h-10 flex w-full justify-center flex-wrap';
+  const browseTabClass = isDiary ? 'sm:col-span-3' : undefined;
+  const importTabClass = isDiary ? 'sm:col-span-4' : undefined;
 
   const handleExerciseSelect = (
     exercise: Exercise,
@@ -133,35 +146,43 @@ const AddExerciseDialog = ({
           defaultValue={activeTab}
           onValueChange={(value) => setActiveTab(value as AddExerciseDialogTab)}
         >
-          <TabsList className="h-10 flex w-full justify-center flex-wrap">
+          <TabsList className={tabsListClass}>
             {mode !== 'database-manager' && (
-              <TabsTrigger value="my-exercises">
+              <TabsTrigger value="my-exercises" className={browseTabClass}>
                 {t('exercise.addExerciseDialog.myExercisesTab', 'My Exercises')}
               </TabsTrigger>
             )}
             {(mode === 'diary' || mode === 'workout-plan') && (
-              <TabsTrigger value="workout-preset">
+              <TabsTrigger value="workout-preset" className={browseTabClass}>
                 {t(
                   'exercise.addExerciseDialog.workoutPresetTab',
                   'Workout Preset'
                 )}
               </TabsTrigger>
             )}
-            <TabsTrigger value="online">
+            <TabsTrigger value="online" className={browseTabClass}>
               {t('exercise.addExerciseDialog.onlineTab', 'Online')}
             </TabsTrigger>
-            <TabsTrigger value="custom">
+            <TabsTrigger value="custom" className={browseTabClass}>
               {t('exercise.addExerciseDialog.addCustomTab', 'Add Custom')}
             </TabsTrigger>
-            <TabsTrigger value="import-csv">
+            <TabsTrigger value="import-csv" className={importTabClass}>
               {t('exercise.addExerciseDialog.importCSVTab', 'Import Exercises')}
             </TabsTrigger>
             {mode === 'diary' && (
-              <TabsTrigger value="import-history-csv">
+              <TabsTrigger
+                value="import-history-csv"
+                className={importTabClass}
+              >
                 {t(
                   'exercise.addExerciseDialog.importHistoryCSVTab',
                   'Import History'
                 )}
+              </TabsTrigger>
+            )}
+            {mode === 'diary' && (
+              <TabsTrigger value="import-fit" className={importTabClass}>
+                {t('exercise.addExerciseDialog.importFitTab', 'Import FIT')}
               </TabsTrigger>
             )}
           </TabsList>
@@ -208,6 +229,13 @@ const AddExerciseDialog = ({
                     onExerciseAdded(); // Trigger refresh in parent without passing a full exercise object
                   }}
                 />
+              </div>
+            </TabsContent>
+          )}
+          {mode === 'diary' && (
+            <TabsContent value="import-fit">
+              <div className="pt-4">
+                <ExerciseImportFit />
               </div>
             </TabsContent>
           )}

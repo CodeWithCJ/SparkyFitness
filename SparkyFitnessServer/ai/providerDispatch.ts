@@ -1,5 +1,11 @@
 import undici from 'undici';
-import { getDefaultModel, getDefaultVisionModel } from './config.js';
+import convert from 'heic-convert';
+import { log } from '../config/logging.js';
+import {
+  getDefaultModel,
+  getDefaultVisionModel,
+  getOpenAiCompatibleBaseUrl,
+} from './config.js';
 import {
   createGuardedDispatcher,
   createGuardedFetch,
@@ -112,8 +118,14 @@ function parseRetryAfterMs(body: string): number | null {
 
 type ProviderFamily = 'google' | 'openai' | 'anthropic' | 'ollama';
 
-// Providers whose vision APIs reject HEIC/HEIF (only Gemini accepts them).
-// Surfaced as `unsupported_media` so it doesn't masquerade as an opaque 502.
+// iPhones default to HEIC/HEIF, and provider support for it is inconsistent and
+// shifts as providers and models change. Rather than track which providers
+// accept it, we transcode HEIC/HEIF to JPEG for every provider (see
+// normalizeImagesForDispatch), which they all accept, so uploads "just work"
+// regardless of provider or client; only if transcoding fails do we surface
+// `unsupported_media` rather than an opaque provider 502. This set is the
+// fallback signal when byte-sniffing can't identify an image (see
+// normalizeImagesForDispatch); the primary HEIC decision is made from the bytes.
 const HEIC_MIME_TYPES = new Set(['image/heic', 'image/heif']);
 
 // OpenAI-family providers that reliably support strict `response_format.json_schema`.
@@ -137,6 +149,7 @@ function providerFamily(serviceType: string): ProviderFamily | null {
     case 'groq':
     case 'openrouter':
     case 'xai':
+    case 'meta': // Muse Spark's OpenAI-compatible endpoint; see openAiFamilyUrl.
     case 'custom':
       return 'openai';
     case 'anthropic':
@@ -168,10 +181,155 @@ export function requiresApiKey(serviceType: string): boolean {
   );
 }
 
-// Anthropic's Messages API rejects the non-standard 'image/jpg'; normalize it
-// to the canonical 'image/jpeg'. Shared transport concern, so it lives here.
-function normalizeMimeType(mimeType: string): string {
-  return mimeType === 'image/jpg' ? 'image/jpeg' : mimeType;
+// Canonicalize an image MIME type before it drives any downstream decision.
+// MIME types are case-insensitive and may carry stray whitespace (RFC 2045), so
+// lowercase and trim first — otherwise `image/HEIC` would slip past both the
+// HEIC transcode check and its unsupported_media fallback and reach a provider
+// that rejects it opaquely. Also map the non-standard 'image/jpg' to the
+// canonical 'image/jpeg', which Anthropic's Messages API requires. This is the
+// single normalization point for every provider builder, so it lives here.
+// dispatch is reached via untyped external JSON (api-fitness, MCP), so guard
+// against a non-string mimeType rather than trusting the static type — a bare
+// .trim() on null/undefined would crash the request.
+function normalizeMimeType(mimeType: string | undefined | null): string {
+  if (typeof mimeType !== 'string') return '';
+  const normalized = mimeType.trim().toLowerCase();
+  return normalized === 'image/jpg' ? 'image/jpeg' : normalized;
+}
+
+// JPEG re-encode quality for transcoded HEIC. High enough to be invisible to a
+// vision model, low enough to keep the base64 payload modest.
+const HEIC_JPEG_QUALITY = 0.9;
+
+// ISO-BMFF `ftyp` brands that denote a HEIF-family still image (HEIC/HEIF).
+const HEIF_BRANDS = new Set([
+  'heic',
+  'heix',
+  'heim',
+  'heis',
+  'hevc',
+  'hevx',
+  'hevm',
+  'hevs',
+  'mif1',
+  'msf1',
+  'heif',
+]);
+
+/**
+ * Identify an image's real format from its leading magic bytes, independent of
+ * any client-declared mime type. Returns a canonical mime, or null if the bytes
+ * are unrecognized. Only the first bytes are inspected, so a small prefix of the
+ * decoded image is enough.
+ */
+function sniffImageMime(head: Buffer): string | null {
+  if (
+    head.length >= 3 &&
+    head[0] === 0xff &&
+    head[1] === 0xd8 &&
+    head[2] === 0xff
+  ) {
+    return 'image/jpeg';
+  }
+  if (
+    head.length >= 8 &&
+    head[0] === 0x89 &&
+    head[1] === 0x50 &&
+    head[2] === 0x4e &&
+    head[3] === 0x47 &&
+    head[4] === 0x0d &&
+    head[5] === 0x0a &&
+    head[6] === 0x1a &&
+    head[7] === 0x0a
+  ) {
+    return 'image/png';
+  }
+  if (
+    head.length >= 12 &&
+    head.toString('ascii', 0, 4) === 'RIFF' &&
+    head.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  if (
+    head.length >= 12 &&
+    head.toString('ascii', 4, 8) === 'ftyp' &&
+    HEIF_BRANDS.has(head.toString('ascii', 8, 12).toLowerCase())
+  ) {
+    return 'image/heic';
+  }
+  return null;
+}
+
+/**
+ * Normalize each image for dispatch, trusting the actual bytes over the
+ * client-declared mime type. Client mimes are unreliable — Android's photo
+ * picker in particular hands the app a decoded JPEG while still labelling it
+ * `image/heic`, which would send a valid photo down the HEIC decode path and
+ * fail. So we sniff the real format: transcode true HEIC/HEIF to JPEG (which
+ * every provider accepts) and pass everything else through with a corrected
+ * mime. Only genuine HEIC that fails to decode is left as HEIC, so the caller
+ * detects the leftover mime and fails loud with `unsupported_media`.
+ */
+async function normalizeImagesForDispatch(
+  images: DispatchImage[]
+): Promise<DispatchImage[]> {
+  return Promise.all(
+    images.map(async (img) => {
+      // 48 bytes (64 base64 chars, a whole-quantum slice) covers every magic
+      // number we check, including the HEIF `ftyp` brand at offset 8.
+      const sniffed = sniffImageMime(
+        Buffer.from(img.base64.slice(0, 64), 'base64')
+      );
+
+      // Treat as HEIC when the bytes say so, or when we cannot identify the
+      // bytes but the client flagged HEIC (covers exotic HEIF brands we do not
+      // enumerate). A JPEG mislabeled as HEIC sniffs as JPEG and skips this.
+      const looksHeic =
+        sniffed === 'image/heic' ||
+        (sniffed === null && HEIC_MIME_TYPES.has(img.mimeType));
+
+      if (!looksHeic) {
+        // Prefer the sniffed real format so a mislabeled image reaches the
+        // provider with an accurate media type; otherwise keep the client mime.
+        return sniffed ? { base64: img.base64, mimeType: sniffed } : img;
+      }
+
+      const input = Buffer.from(img.base64, 'base64');
+      const startedAt = Date.now();
+      try {
+        const output = await convert({
+          buffer: input,
+          format: 'JPEG',
+          quality: HEIC_JPEG_QUALITY,
+        });
+        const jpeg = Buffer.from(output);
+        // Log the decode cost: this WASM transcode runs on the main thread, so
+        // the timing here is the signal to watch if offloading to a worker pool
+        // is ever warranted under concurrent load.
+        log(
+          'info',
+          `providerDispatch: HEIC->JPEG transcode ok in ${Date.now() - startedAt}ms (${input.length}B HEIC -> ${jpeg.length}B JPEG)`
+        );
+        return {
+          base64: jpeg.toString('base64'),
+          mimeType: 'image/jpeg',
+        };
+      } catch (error) {
+        log(
+          'warn',
+          `providerDispatch: HEIC->JPEG transcode failed, falling back to unsupported_media: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        // Correct the mime to what the bytes actually are (HEIC when sniffed,
+        // else the client's HEIC label) so the leftover-HEIC check below catches
+        // it and returns unsupported_media. Returning img unchanged would keep a
+        // mislabeled `image/jpeg` and let undecodable bytes reach the provider.
+        return { base64: img.base64, mimeType: sniffed ?? img.mimeType };
+      }
+    })
+  );
 }
 
 function isBlank(value: string | undefined | null): boolean {
@@ -255,23 +413,16 @@ interface BuiltRequest {
 }
 
 function openAiFamilyUrl(provider: ProviderConfig): string {
-  switch (provider.service_type) {
-    case 'openai':
-      return 'https://api.openai.com/v1/chat/completions';
-    case 'openai_compatible':
-      return `${provider.custom_url}/chat/completions`;
-    case 'mistral':
-      return 'https://api.mistral.ai/v1/chat/completions';
-    case 'groq':
-      return 'https://api.groq.com/openai/v1/chat/completions';
-    case 'openrouter':
-      return 'https://openrouter.ai/api/v1/chat/completions';
-    case 'xai':
-      return 'https://api.x.ai/v1/chat/completions';
-    default:
-      // 'custom' uses the user-supplied URL as-is.
-      return provider.custom_url as string;
+  // 'custom' uses the user-supplied URL as-is; every other OpenAI-compatible
+  // provider shares the base-URL map and has `/chat/completions` appended.
+  if (provider.service_type === 'custom') {
+    return provider.custom_url as string;
   }
+  const baseUrl = getOpenAiCompatibleBaseUrl(
+    provider.service_type,
+    provider.custom_url
+  );
+  return baseUrl ? `${baseUrl}/chat/completions` : '';
 }
 
 function buildGoogleRequest(
@@ -874,21 +1025,30 @@ export async function dispatchAiRequest(
     }
   }
 
-  const images = (req.images ?? []).map((img) => ({
-    base64: img.base64,
-    mimeType: normalizeMimeType(img.mimeType),
+  let images = (req.images ?? []).map((img) => ({
+    // dispatch is reached via untyped external JSON (api-fitness, MCP), so a
+    // malformed element (null, or a non-string base64) must not crash the map.
+    base64: img && typeof img.base64 === 'string' ? img.base64 : '',
+    mimeType: normalizeMimeType(img?.mimeType),
   }));
   const hasImages = images.length > 0;
 
-  if (
-    serviceType !== 'google' &&
-    images.some((img) => HEIC_MIME_TYPES.has(img.mimeType))
-  ) {
-    return {
-      ok: false,
-      category: 'unsupported_media',
-      detail: `AI service type '${serviceType}' does not support HEIC/HEIF images. Use JPEG, PNG, or WebP.`,
-    };
+  // Normalize images by their real bytes: transcode true HEIC/HEIF to JPEG for
+  // every provider (rather than tracking which ones accept HEIC) and correct the
+  // mime for anything the client mislabeled. The sub-second decode runs on an
+  // upload already awaiting a multi second vision call. If a genuine HEIC fails
+  // to convert the image stays HEIC and we fail loud below rather than shipping
+  // bytes the provider might reject.
+  if (hasImages) {
+    images = await normalizeImagesForDispatch(images);
+    if (images.some((img) => HEIC_MIME_TYPES.has(img.mimeType))) {
+      return {
+        ok: false,
+        category: 'unsupported_media',
+        detail:
+          'HEIC/HEIF images are not supported and automatic conversion to JPEG failed. Use JPEG, PNG, or WebP.',
+      };
+    }
   }
 
   const model =

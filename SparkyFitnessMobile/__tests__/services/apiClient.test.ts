@@ -1,6 +1,7 @@
 import { normalizeUrl, apiFetch } from '../../src/services/api/apiClient';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 import { notifySessionExpired } from '../../src/services/api/authService';
+import { TimeoutError, fetchWithTimeout } from '../../src/utils/concurrency';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
@@ -36,6 +37,82 @@ describe('apiClient', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  // Signal-aware mock that rejects on abort (like real fetch)
+  const mockFetchThatNeverResponds = () => {
+    mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener('abort', () => {
+          const err = new Error('The operation was aborted');
+          err.name = 'AbortError';
+          reject(err);
+        });
+      });
+    });
+  };
+
+  describe('fetchWithTimeout', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test('resolves when fetch completes before timeout', async () => {
+      const mockResponse = { ok: true, status: 200 };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await fetchWithTimeout(
+        'https://example.com',
+        { method: 'GET' },
+        5000,
+      );
+
+      expect(result).toBe(mockResponse);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    test('throws TimeoutError when fetch exceeds timeout', async () => {
+      mockFetchThatNeverResponds();
+
+      const promise = fetchWithTimeout('https://example.com', {}, 5000);
+      // Attach handler BEFORE advancing timers to avoid unhandled rejection
+      const assertion = expect(promise).rejects.toThrow(TimeoutError);
+
+      await jest.advanceTimersByTimeAsync(5000);
+
+      await assertion;
+    });
+
+    test('timeout message includes the timeout budget', async () => {
+      mockFetchThatNeverResponds();
+
+      const promise = fetchWithTimeout('https://example.com', {}, 5000);
+      const assertion = expect(promise).rejects.toThrow('Request timed out after 5000ms');
+
+      await jest.advanceTimersByTimeAsync(5000);
+
+      await assertion;
+    });
+
+    test('passes options through to fetch', async () => {
+      mockFetch.mockResolvedValue({ ok: true });
+
+      const headers = { Authorization: 'Bearer token' };
+      await fetchWithTimeout(
+        'https://example.com',
+        { method: 'POST', headers, body: '{}' },
+        5000,
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com',
+        expect.objectContaining({ method: 'POST', headers, body: '{}' }),
+      );
+    });
   });
 
   describe('normalizeUrl', () => {
@@ -120,6 +197,52 @@ describe('apiClient', () => {
           operation: 'fetch test',
         })
       ).rejects.toThrow('Network request failed');
+    });
+
+    test('throws TimeoutError after the default 30s timeout when the server never responds', async () => {
+      jest.useFakeTimers();
+      try {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetchThatNeverResponds();
+
+        const promise = apiFetch({
+          endpoint: '/api/test',
+          serviceName: 'Test API',
+          operation: 'fetch test',
+        });
+        const assertion = expect(promise).rejects.toThrow(TimeoutError);
+
+        await jest.advanceTimersByTimeAsync(30_000);
+
+        await assertion;
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    test('honors a caller-provided timeoutMs', async () => {
+      jest.useFakeTimers();
+      try {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetchThatNeverResponds();
+
+        const promise = apiFetch({
+          endpoint: '/api/test',
+          serviceName: 'Test API',
+          operation: 'fetch test',
+          timeoutMs: 120_000,
+        });
+        const assertion = expect(promise).rejects.toThrow('Request timed out after 120000ms');
+
+        // Still pending after the default budget…
+        await jest.advanceTimersByTimeAsync(30_000);
+        // …and it only aborts once the caller's budget elapses.
+        await jest.advanceTimersByTimeAsync(90_000);
+
+        await assertion;
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     test('sends GET request by default', async () => {
