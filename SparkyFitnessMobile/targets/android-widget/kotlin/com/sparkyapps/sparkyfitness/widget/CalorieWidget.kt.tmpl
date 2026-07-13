@@ -65,7 +65,7 @@ class CalorieWidget : GlanceAppWidget() {
         val remainingText: String
         val progress: Float
         if (snapshot == null) {
-            remainingText = "—"
+            remainingText = "-"
             progress = 0f
         } else {
             remainingText = "${formatInt(snapshot.remaining)} kcal left"

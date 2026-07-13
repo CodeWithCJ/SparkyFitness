@@ -1,0 +1,16 @@
+diff --git a/build/with-xcode-changes.js b/build/with-xcode-changes.js
+index 15a7aa237f41a7fb01fcf74b3e0ec4d933f95597..e06e65520564149e4d8af1e40414cc829334b8da 100644
+--- a/build/with-xcode-changes.js
++++ b/build/with-xcode-changes.js
+@@ -60,7 +60,10 @@ async function applyXcodeChanges(config, project, props) {
+     }
+     const targets = getExtensionTargets();
+     const productName = props.productName;
+-    let targetToUpdate = (_a = targets.find((target) => target.props.productName === productName)) !== null && _a !== void 0 ? _a : targets[0];
++    // Match strictly by product name: falling back to any same-type target
++    // would adopt (and clobber) extension targets owned by other config
++    // plugins, e.g. the expo-widgets ExpoWidgetsTarget.
++    let targetToUpdate = targets.find((target) => target.props.productName === productName);
+     if (targetToUpdate) {
+         (0, util_1.warnOnce)(`Target "${targetToUpdate.props.productName}" already exists, updating instead of creating a new one`);
+     }

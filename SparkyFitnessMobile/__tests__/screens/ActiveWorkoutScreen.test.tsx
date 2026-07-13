@@ -1,8 +1,10 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, render, act } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ActiveWorkoutScreen from '../../src/screens/ActiveWorkoutScreen';
+import { useActiveWorkoutAutosave } from '../../src/hooks/useActiveWorkoutAutosave';
 import {
   __resetActiveWorkoutStoreForTests,
   useActiveWorkoutStore,
@@ -305,5 +307,185 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     fireEvent.press(getByTestId('card-ex-b-overflow'));
     expect(mockSheet.present).toHaveBeenCalledTimes(2);
     expect(mockSheet.props?.title).toBe('Squat');
+  });
+});
+
+describe('ActiveWorkoutScreen persistent rest bar', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+    useActiveWorkoutStore.getState().startWorkout(makeSession());
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('keeps the bar up while no rest is running, showing the on-deck set', () => {
+    const { getByText, getByLabelText } = renderScreen();
+
+    // Set 101 is server-completed, so the cursor starts on Bench Press set 2
+    // with the rest state 'ready' — the bar must still be there.
+    expect(getByText('Bench Press · Set 2')).toBeTruthy();
+    expect(getByLabelText('Complete set')).toBeTruthy();
+  });
+
+  it('completes the cursor set from the bar and starts the next rest', () => {
+    const { getByLabelText } = renderScreen();
+
+    fireEvent.press(getByLabelText('Complete set'));
+
+    const store = useActiveWorkoutStore.getState();
+    expect(store.completedSetIds['102']).toBeTruthy();
+    expect(store.activeSetId).toBe('201');
+    expect(store.rest.state).toBe('resting');
+  });
+
+  it('hides the bar once every set is complete', () => {
+    // Completing the final set leaves no next step, so the store lands on
+    // 'ready' with a null cursor rather than starting a last rest.
+    act(() => {
+      const store = useActiveWorkoutStore.getState();
+      store.completeSet('102');
+      store.completeSet('201');
+      store.completeSet('301');
+    });
+
+    const { queryByLabelText } = renderScreen();
+
+    expect(queryByLabelText('Complete set')).toBeNull();
+    expect(queryByLabelText('Skip rest')).toBeNull();
+  });
+});
+
+describe('ActiveWorkoutScreen finish flow with a failing flush', () => {
+  let alertSpy: jest.SpyInstance;
+
+  function lastAlertButton(label: string): { onPress?: () => void } {
+    const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+    const button = (call?.[2] ?? []).find((b: { text?: string }) => b.text === label);
+    expect(button).toBeDefined();
+    return button;
+  }
+
+  function lastAlertTitle(): string | undefined {
+    return alertSpy.mock.calls[alertSpy.mock.calls.length - 1]?.[0];
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+    useActiveWorkoutStore.getState().startWorkout(makeSession());
+    (useActiveWorkoutAutosave as jest.Mock).mockReturnValue({
+      flush: jest.fn(async () => false),
+    });
+    alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  async function endWorkoutIntoFailedSaveAlert(getByText: (text: string) => unknown) {
+    fireEvent.press(getByText('End Workout') as any);
+    expect(lastAlertTitle()).toBe('End workout?');
+    await act(async () => {
+      lastAlertButton('End Workout').onPress?.();
+    });
+    expect(lastAlertTitle()).toBe('Could not save your workout');
+  }
+
+  it('asks for a second confirmation before discarding unsaved changes', async () => {
+    const { getByText } = renderScreen();
+    await endWorkoutIntoFailedSaveAlert(getByText);
+
+    act(() => lastAlertButton('Discard changes').onPress?.());
+
+    // The mis-tap-prone button must not clear anything on its own.
+    expect(lastAlertTitle()).toBe('Discard unsaved changes?');
+    expect(useActiveWorkoutStore.getState().session).not.toBeNull();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+
+    act(() => lastAlertButton('Discard').onPress?.());
+    expect(useActiveWorkoutStore.getState().session).toBeNull();
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+
+  it('keeps the workout when the second confirmation is cancelled', async () => {
+    const { getByText } = renderScreen();
+    await endWorkoutIntoFailedSaveAlert(getByText);
+
+    act(() => lastAlertButton('Discard changes').onPress?.());
+    const cancel = lastAlertButton('Cancel');
+    act(() => cancel.onPress?.());
+
+    expect(useActiveWorkoutStore.getState().session).not.toBeNull();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+});
+
+describe('ActiveWorkoutScreen stale deep link guard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it('auto-pops when the hydrated store has no session', () => {
+    jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(true);
+
+    renderScreen();
+
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+
+  it('waits for hydration before popping, and keeps a restored session', () => {
+    jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(false);
+    let finishHydration: (() => void) | undefined;
+    jest
+      .spyOn(useActiveWorkoutStore.persist, 'onFinishHydration')
+      .mockImplementation(((cb: () => void) => {
+        finishHydration = cb;
+        return () => {};
+      }) as any);
+
+    // A cold-start Live Activity tap lands here before rehydration finishes.
+    renderScreen();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+
+    // Hydration restores the live workout — the screen must stay put.
+    act(() => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      finishHydration?.();
+    });
+    expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('pops once hydration completes with no session', () => {
+    jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(false);
+    let finishHydration: (() => void) | undefined;
+    jest
+      .spyOn(useActiveWorkoutStore.persist, 'onFinishHydration')
+      .mockImplementation(((cb: () => void) => {
+        finishHydration = cb;
+        return () => {};
+      }) as any);
+
+    renderScreen();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+
+    act(() => finishHydration?.());
+    expect(navigation.goBack).toHaveBeenCalled();
   });
 });

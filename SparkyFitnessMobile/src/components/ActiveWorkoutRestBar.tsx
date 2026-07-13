@@ -4,20 +4,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
 import Icon from './Icon';
-
-export function formatRestCountdown(remainingMs: number): string {
-  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
+import LiquidGlassSurface, { createLiquidGlassPillStyle } from './LiquidGlassSurface';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { formatRestCountdown } from '../utils/workoutSession';
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
+/**
+ * Scroll clearance the workout log needs above the floating glass variant so
+ * the last card and the End Workout button can scroll out from under the pill
+ * (content height ≈ 112 + the pill's bottom gap + breathing room).
+ */
+export const REST_BAR_GLASS_CLEARANCE = 128;
+
+/**
+ * Taller than the HUD's stadium pill, so a matching 999 radius would curve
+ * into the progress track's corners; this keeps the same glass language with
+ * corners the content clears.
+ */
+const GLASS_BORDER_RADIUS = 28;
+
 interface ActiveWorkoutRestBarProps {
   remainingMs: number;
-  durationSec: number;
-  paused: boolean;
+  /** Fraction of the rest remaining, 0..1 (see `useRestCountdown`). */
+  progress: number;
+  state: 'ready' | 'resting' | 'paused';
   /** What's up next, e.g. "Incline DB Press · Set 3". */
   label: string;
   /** Target load for the on-deck set, e.g. "135 lbs × 8". Null hides the line. */
@@ -26,46 +37,95 @@ interface ActiveWorkoutRestBarProps {
   onSkip: () => void;
   onPause: () => void;
   onResume: () => void;
+  /** Completes the on-deck set — the ready state's primary action. */
+  onCompleteSet: () => void;
+  /** Taps on the bar outside its controls (the buttons claim their own). */
+  onPressBar?: () => void;
 }
 
 /**
- * Bottom-docked rest bar, visible only while a rest timer exists (resting or
- * paused). A thin progress track on top, then a single control row —
- * pause/resume + −15s on the left, the countdown centered, +15s + skip on the
- * right — with the on-deck set + target centered beneath.
+ * Persistent bottom bar for the active-workout screen. While a rest timer
+ * exists (resting or paused): a thin progress track on top, then a single
+ * control row — pause/resume + −15s on the left, the countdown centered,
+ * +15s + skip on the right — with the on-deck set + target centered beneath.
+ * When no timer is running (ready) it collapses to a compact on-deck row —
+ * set + target on the left, a Complete Set button on the right — giving a
+ * fixed thumb target between rests; the screen hides the bar entirely once
+ * no on-deck set remains.
  *
- * The side clusters are `flex-1` around a fixed-width centered countdown so the
- * timer stays dead-center while the controls sit at the reachable edges. Sized
- * to keep every control on one row down to a ~320pt (iPhone SE) width.
+ * The timer row's side clusters are `flex-1` around a fixed-width centered
+ * countdown so the timer stays dead-center while the controls sit at the
+ * reachable edges. Sized to keep every control on one row down to a ~320pt
+ * (iPhone SE) width.
+ *
+ * Chrome follows the workout HUD's: with Liquid Glass tabs active the bar is a
+ * floating glass pill overlaying the log (the screen reserves
+ * `REST_BAR_GLASS_CLEARANCE` of scroll padding for it); otherwise it is a
+ * bottom-docked strip in normal flow.
  */
 function ActiveWorkoutRestBar({
   remainingMs,
-  durationSec,
-  paused,
+  progress,
+  state,
   label,
   nextSetText,
   onAdjust,
   onSkip,
   onPause,
   onResume,
+  onCompleteSet,
+  onPressBar,
 }: ActiveWorkoutRestBarProps) {
   const insets = useSafeAreaInsets();
-  const [accentPrimary, textMuted, trackColor] = useCSSVariable([
+  const usesGlass = useNativeIOSTabsActive();
+  const [accentPrimary, textMuted, trackColor, chromeBorder] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-progress-track',
-  ]) as [string, string, string];
+    '--color-chrome-border',
+  ]) as [string, string, string, string];
 
-  const progress =
-    durationSec > 0 ? Math.max(0, Math.min(1, remainingMs / (durationSec * 1000))) : 0;
-
+  const paused = state === 'paused';
   const timerColor = paused ? textMuted : accentPrimary;
 
-  return (
-    <View
-      className="bg-surface border-t border-border-subtle px-4 pt-2"
-      style={{ paddingBottom: Math.max(insets.bottom, 8) }}
-    >
+  const content = state === 'ready' ? (
+    <View className="flex-row items-center py-1">
+      <View className="flex-1 pr-3">
+        <Text
+          numberOfLines={1}
+          className="text-sm font-semibold text-text-primary"
+        >
+          {label}
+        </Text>
+        {nextSetText != null && nextSetText.length > 0 && (
+          <Text
+            numberOfLines={1}
+            className="text-xs text-text-secondary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            Target {nextSetText}
+          </Text>
+        )}
+      </View>
+      <Pressable
+        onPress={onCompleteSet}
+        hitSlop={HIT_SLOP}
+        accessibilityRole="button"
+        accessibilityLabel="Complete set"
+        className="flex-row items-center rounded-full px-4 py-2.5"
+        style={{ backgroundColor: accentPrimary, gap: 6 }}
+      >
+        <Icon name="checkmark" size={16} color="#ffffff" weight="bold" />
+        <Text
+          className="text-sm font-semibold"
+          style={{ color: '#ffffff' }}
+        >
+          Complete Set
+        </Text>
+      </Pressable>
+    </View>
+  ) : (
+    <>
       <View
         className="h-1 rounded-full overflow-hidden mb-2"
         style={{ backgroundColor: trackColor }}
@@ -167,6 +227,49 @@ function ActiveWorkoutRestBar({
           )}
         </View>
       )}
+    </>
+  );
+
+  // Nested pressables claim their own touches, so this only sees taps on the
+  // bar's dead space (label, countdown, gaps). accessible={false} keeps the
+  // inner buttons individually reachable for screen readers.
+  const body = (
+    <Pressable testID="rest-bar-body" onPress={onPressBar} accessible={false}>
+      {content}
+    </Pressable>
+  );
+
+  if (usesGlass) {
+    return (
+      <View
+        pointerEvents="box-none"
+        className="absolute inset-x-0 bottom-0"
+        style={{ paddingBottom: insets.bottom }}
+      >
+        <LiquidGlassSurface
+          testID="rest-bar-glass"
+          style={createLiquidGlassPillStyle(chromeBorder, {
+            borderRadius: GLASS_BORDER_RADIUS,
+            paddingHorizontal: 16,
+            paddingTop: 8,
+            paddingBottom: 12,
+          })}
+          colorScheme="auto"
+          glassEffectStyle="regular"
+          isInteractive
+        >
+          {body}
+        </LiquidGlassSurface>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      className="bg-surface border-t border-border-subtle px-4 pt-2"
+      style={{ paddingBottom: Math.max(insets.bottom, 8) }}
+    >
+      {body}
     </View>
   );
 }

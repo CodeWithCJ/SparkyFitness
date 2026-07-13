@@ -2,10 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PresetSessionResponse } from '@workspace/shared';
 import {
   __resetActiveWorkoutStoreForTests,
+  initWorkoutNotificationActions,
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
 import {
+  addNotificationResponseListener,
   cancelScheduledNotification,
+  dismissDeliveredNotification,
   fireRestCompleteHaptic,
   scheduleRestNotification,
 } from '../../src/services/notifications';
@@ -16,6 +19,13 @@ jest.mock('../../src/services/notifications', () => ({
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
   cancelScheduledNotification: jest.fn(async () => undefined),
   fireRestCompleteHaptic: jest.fn(),
+  COMPLETE_SET_ACTION: 'complete-set',
+  addNotificationResponseListener: jest.fn(() => ({ remove: jest.fn() })),
+  dismissDeliveredNotification: jest.fn(async () => undefined),
+}));
+
+jest.mock('../../src/services/LogService', () => ({
+  addLog: jest.fn(async () => undefined),
 }));
 
 jest.mock('../../src/services/haptics', () => ({
@@ -417,6 +427,110 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('completeActiveSetIfReady', () => {
+    beforeEach(() => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+    });
+
+    it('completes the cursor set and returns true when no rest is running', async () => {
+      expect(useActiveWorkoutStore.getState().completeActiveSetIfReady()).toBe(true);
+      const state = useActiveWorkoutStore.getState();
+      expect(state.completedSetIds['101']).toBe(FIXED_NOW);
+      expect(state.activeSetId).toBe('102');
+      await flushPromises();
+    });
+
+    it('rejects a press while a rest is running', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done, rest running
+      expect(useActiveWorkoutStore.getState().completeActiveSetIfReady()).toBe(false);
+      expect(useActiveWorkoutStore.getState().completedSetIds['102']).toBeUndefined();
+      await flushPromises();
+    });
+
+    it('rejects a press while the rest is paused', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet();
+      useActiveWorkoutStore.getState().pauseRest();
+      expect(useActiveWorkoutStore.getState().completeActiveSetIfReady()).toBe(false);
+      await flushPromises();
+    });
+
+    it('completes when the rest deadline passed while JS timers were paused', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done, rest 60s
+      // Advance the clock past the deadline WITHOUT running timers — the
+      // backgrounded-app state where the ready flip is still pending.
+      jest.setSystemTime(new Date(FIXED_NOW + 61_000));
+      expect(useActiveWorkoutStore.getState().completeActiveSetIfReady()).toBe(true);
+      expect(useActiveWorkoutStore.getState().completedSetIds['102']).toBe(FIXED_NOW + 61_000);
+      await flushPromises();
+    });
+
+    it('rejects a press once the workout is finished', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101
+      useActiveWorkoutStore.getState().completeActiveSet(); // 102 — workout done
+      expect(useActiveWorkoutStore.getState().completeActiveSetIfReady()).toBe(false);
+      await flushPromises();
+    });
+  });
+
+  describe('initWorkoutNotificationActions', () => {
+    const mockAddResponseListener = addNotificationResponseListener as jest.MockedFunction<
+      typeof addNotificationResponseListener
+    >;
+    const mockDismissDelivered = dismissDeliveredNotification as jest.MockedFunction<
+      typeof dismissDeliveredNotification
+    >;
+
+    beforeEach(() => {
+      mockAddResponseListener.mockClear();
+      mockDismissDelivered.mockClear();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      initWorkoutNotificationActions();
+    });
+
+    function fireResponse(actionIdentifier: string, notificationId = 'delivered-1'): void {
+      const listener = mockAddResponseListener.mock.calls.at(-1)?.[0];
+      if (!listener) throw new Error('response listener not registered');
+      listener({
+        actionIdentifier,
+        notification: { request: { identifier: notificationId } },
+      } as any);
+    }
+
+    it('completes the active set and dismisses the pressed notification', async () => {
+      fireResponse('complete-set', 'delivered-9');
+      expect(useActiveWorkoutStore.getState().completedSetIds['101']).toBe(FIXED_NOW);
+      expect(mockDismissDelivered).toHaveBeenCalledWith('delivered-9');
+      await flushPromises();
+    });
+
+    it('does not complete the next set while a rest is running', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done, resting
+      fireResponse('complete-set');
+      expect(useActiveWorkoutStore.getState().completedSetIds['102']).toBeUndefined();
+      await flushPromises();
+    });
+
+    it('completes via a press arriving after the rest expired on a locked phone', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done, resting
+      jest.setSystemTime(new Date(FIXED_NOW + 61_000));
+      fireResponse('complete-set');
+      expect(useActiveWorkoutStore.getState().completedSetIds['102']).toBe(FIXED_NOW + 61_000);
+      await flushPromises();
+    });
+
+    it('ignores plain notification taps', () => {
+      fireResponse('expo.modules.notifications.actions.DEFAULT');
+      expect(useActiveWorkoutStore.getState().completedSetIds['101']).toBeUndefined();
+      expect(mockDismissDelivered).not.toHaveBeenCalled();
+    });
+
+    it('registers a single listener across repeated init calls', () => {
+      initWorkoutNotificationActions();
+      initWorkoutNotificationActions();
+      expect(mockAddResponseListener).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('completeActiveSet', () => {
     beforeEach(() => {
       useActiveWorkoutStore.getState().startWorkout(makeSession());
@@ -450,8 +564,21 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().completeActiveSet(); // 101 done → skips 102
       const state = useActiveWorkoutStore.getState();
       expect(state.activeSetId).toBe('201');
-      // Rest keys off the step actually landed on (Squat's 120s).
-      expect(state.rest.durationSec).toBe(120);
+      // Rest recovers from the set just logged (Bench's 60s), not the step
+      // landed on (Squat's 120s).
+      expect(state.rest.durationSec).toBe(60);
+      await flushPromises();
+    });
+
+    it("uses the finished exercise's rest after its final set", async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101
+      await flushPromises();
+      useActiveWorkoutStore.getState().completeActiveSet(); // 102 → cursor lands on Squat
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('201');
+      expect(state.rest.state).toBe('resting');
+      // Bench's 60s, not Squat's 120s — rest belongs to the work just done.
+      expect(state.rest.durationSec).toBe(60);
       await flushPromises();
     });
 
@@ -698,7 +825,7 @@ describe('activeWorkoutStore', () => {
       // Next-up follows the logged set: the step after 102 is Squat's 201.
       expect(state.activeSetId).toBe('201');
       expect(state.rest.state).toBe('resting');
-      expect(state.rest.durationSec).toBe(120);
+      expect(state.rest.durationSec).toBe(60); // Bench's rest — the exercise just logged
       await flushPromises();
     });
 
@@ -788,6 +915,48 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().completeSet('302');
       const state = useActiveWorkoutStore.getState();
       expect(state.activeSetId).toBe('402');
+      expect(state.rest.state).toBe('ready');
+    });
+  });
+
+  describe('completeSet rest (drop sets)', () => {
+    /** makeSession with set 102 marked as a drop of 101. */
+    function makeDropSession(): PresetSessionResponse {
+      const session = makeSession();
+      session.exercises[0].sets[1].set_type = 'drop';
+      return session;
+    }
+
+    it('bakes 0 rest into drop-set steps and skips the timer going into one', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeDropSession());
+      expect(useActiveWorkoutStore.getState().steps.map((s) => s.restSec)).toEqual([
+        60, 0, 120,
+      ]);
+
+      useActiveWorkoutStore.getState().completeSet('101');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('102');
+      expect(state.rest.state).toBe('ready');
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
+    it('rests normally after the drop set completes', async () => {
+      useActiveWorkoutStore.getState().startWorkout(makeDropSession());
+      useActiveWorkoutStore.getState().completeSet('101');
+      useActiveWorkoutStore.getState().completeSet('102');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('201');
+      expect(state.rest.state).toBe('resting');
+      expect(state.rest.durationSec).toBe(60); // Bench's rest — the exercise just logged
+      await flushPromises();
+    });
+
+    it('honors a mid-workout type change to drop (steps rebuild)', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      useActiveWorkoutStore.getState().updateSetField('102', { set_type: 'drop' });
+      useActiveWorkoutStore.getState().completeActiveSet();
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('102');
       expect(state.rest.state).toBe('ready');
     });
   });
@@ -1021,6 +1190,70 @@ describe('activeWorkoutStore', () => {
       const before = useActiveWorkoutStore.getState().activeSetId;
       useActiveWorkoutStore.getState().markRestReady();
       expect(useActiveWorkoutStore.getState().activeSetId).toBe(before);
+    });
+  });
+
+  describe('rest deadline timer', () => {
+    beforeEach(async () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      mockSchedule.mockResolvedValueOnce('notif-deadline');
+      useActiveWorkoutStore.getState().completeActiveSet(); // rest 60s before set 102
+      await flushPromises();
+    });
+
+    it('flips resting → ready by itself when the deadline passes', () => {
+      mockHaptic.mockClear();
+      jest.advanceTimersByTime(59_999);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
+
+      jest.advanceTimersByTime(1);
+      const { rest } = useActiveWorkoutStore.getState();
+      expect(rest.state).toBe('ready');
+      expect(rest.endsAt).toBeNull();
+      expect(mockCancel).toHaveBeenCalledWith('notif-deadline');
+      expect(mockHaptic).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not fire while paused', () => {
+      useActiveWorkoutStore.getState().pauseRest();
+      mockHaptic.mockClear();
+      jest.advanceTimersByTime(120_000);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('paused');
+      expect(mockHaptic).not.toHaveBeenCalled();
+    });
+
+    it('follows an adjustRest extension to the new deadline', async () => {
+      mockSchedule.mockResolvedValueOnce('notif-extended');
+      useActiveWorkoutStore.getState().adjustRest(15); // deadline now +75s
+      await flushPromises();
+
+      jest.advanceTimersByTime(60_000);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
+
+      jest.advanceTimersByTime(15_000);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+    });
+
+    it('reschedules from the resumed deadline after pause → resume', async () => {
+      jest.advanceTimersByTime(10_000); // 50s remaining
+      useActiveWorkoutStore.getState().pauseRest();
+      jest.advanceTimersByTime(30_000);
+      mockSchedule.mockResolvedValueOnce('notif-resumed');
+      useActiveWorkoutStore.getState().resumeRest();
+      await flushPromises();
+
+      jest.advanceTimersByTime(49_999);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
+      jest.advanceTimersByTime(1);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+    });
+
+    it('is cancelled when the workout is cleared', () => {
+      useActiveWorkoutStore.getState().clearWorkout();
+      mockHaptic.mockClear();
+      jest.advanceTimersByTime(120_000);
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      expect(mockHaptic).not.toHaveBeenCalled();
     });
   });
 

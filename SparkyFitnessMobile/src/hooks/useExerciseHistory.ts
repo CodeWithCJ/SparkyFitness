@@ -2,11 +2,17 @@ import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { fetchExerciseHistory } from '../services/api/exerciseApi';
-import { exerciseHistoryQueryKey, exerciseHistoryResetQueryKey } from './queryKeys';
+import {
+  exerciseHistoryQueryKey,
+  exerciseHistoryForExerciseQueryKey,
+  exerciseHistoryResetQueryKey,
+} from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 
 interface UseExerciseHistoryOptions {
   enabled?: boolean;
+  /** Only sessions containing this exercise (server-side filter). */
+  exerciseId?: string;
 }
 
 interface UseExerciseHistoryReturn {
@@ -23,13 +29,21 @@ interface UseExerciseHistoryReturn {
 export function useExerciseHistory(
   options: UseExerciseHistoryOptions = {},
 ): UseExerciseHistoryReturn {
-  const { enabled = true } = options;
+  const { enabled = true, exerciseId } = options;
   const queryClient = useQueryClient();
   const lastResetTokenRef = useRef(0);
 
+  const queryKey = useMemo(
+    () =>
+      exerciseId
+        ? exerciseHistoryForExerciseQueryKey(exerciseId)
+        : exerciseHistoryQueryKey,
+    [exerciseId],
+  );
+
   const query = useInfiniteQuery({
-    queryKey: exerciseHistoryQueryKey,
-    queryFn: ({ pageParam }) => fetchExerciseHistory(pageParam),
+    queryKey,
+    queryFn: ({ pageParam }) => fetchExerciseHistory(pageParam, 20, exerciseId),
     enabled,
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
@@ -53,18 +67,18 @@ export function useExerciseHistory(
     if (resetToken === lastResetTokenRef.current) return;
 
     lastResetTokenRef.current = resetToken;
-    void queryClient.resetQueries({ queryKey: exerciseHistoryQueryKey, exact: true });
-  }, [queryClient, resetTokenQuery.data]);
+    void queryClient.resetQueries({ queryKey, exact: true });
+  }, [queryClient, queryKey, resetTokenQuery.data]);
 
   const refetch = useCallback(async () => {
     try {
-      await queryClient.resetQueries({ queryKey: exerciseHistoryQueryKey, exact: true });
+      await queryClient.resetQueries({ queryKey, exact: true });
     } catch {
       // Error state is captured by the useQuery hook — no need to rethrow.
       // Swallowing here prevents unhandled rejections from pull-to-refresh
       // and useRefetchOnFocus callers.
     }
-  }, [queryClient]);
+  }, [queryClient, queryKey]);
 
   const loadMore = useCallback(() => {
     if (query.hasNextPage && !query.isFetching) {

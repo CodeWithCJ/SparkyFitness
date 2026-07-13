@@ -45,7 +45,10 @@ import {
   useActiveWorkoutStore,
 } from '../stores/activeWorkoutStore';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import { ensureNotificationPermission } from '../services/notifications';
+import {
+  ensureNotificationPermission,
+  maybePromptForExactAlarmPermission,
+} from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
@@ -83,7 +86,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // store's session snapshot).
   const completedSetIds = useMemo(() => seedCompletionFromSession(session), [session]);
 
-  // Metric column is shared with the active-workout screen — changing it on
+  // Metric column is shared with the active-workout screen; changing it on
   // either screen changes both (intended).
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
   const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
@@ -91,7 +94,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setMetricMenuAnchor(anchor);
   }, []);
 
-  // Active workout state (narrow selectors — avoid re-rendering on unrelated changes)
+  // Active workout state (narrow selectors to avoid re-rendering on unrelated changes)
   const activeSessionId = useActiveWorkoutStore((s) => s.sessionId);
   const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -102,7 +105,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   }, []);
 
   // Auto-expand the exercise containing the active set while the workout is
-  // running for this session — so opening the detail page mid-workout (e.g.
+  // running for this session, so opening the detail page mid-workout (e.g.
   // from the Diary) lands with the current exercise already open. Never
   // auto-collapses; the user can still close it manually, and it re-expands
   // only when the active set advances into a different exercise.
@@ -156,6 +159,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     updateSetField,
     updateSetMeta,
     setExerciseRest,
+    setExerciseCalories,
     supersetWith,
     ungroupExercise,
     reorderExercises,
@@ -226,7 +230,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Reverse direction: while this session is the live workout, the store's
   // snapshot is the source of truth (the active-workout screen autosaves it,
   // and a recreate save replaces every exercise/set id). Refresh the local
-  // copy on focus — otherwise edit-saves built from the stale
+  // copy on focus; otherwise edit-saves built from the stale
   // route.params.session would send dead ids and 400.
   useFocusEffect(
     useCallback(() => {
@@ -241,7 +245,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // starts the cursor on a specific set (the "Start workout here" long-press).
   const enterLiveWorkout = useCallback(
     (atSetId?: string) => {
-      void ensureNotificationPermission();
+      // Chained so the exact-alarm prompt never stacks on top of the OS
+      // notification-permission dialog.
+      void ensureNotificationPermission().then(() =>
+        maybePromptForExactAlarmPermission(),
+      );
       const store = useActiveWorkoutStore.getState();
       if (atSetId != null) store.startWorkoutAtSet(session, atSetId);
       else store.startWorkout(session);
@@ -259,7 +267,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       if (useActiveWorkoutStore.getState().sessionId !== null) {
         Alert.alert(
           'Replace current workout?',
-          'You already have a workout in progress. Starting this one clears it here — any sets already saved stay in your diary.',
+          'You already have a workout in progress. Starting this one clears it here. Any sets already saved stay in your diary.',
           [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -465,6 +473,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           return s + (isNaN(w) || isNaN(r) ? 0 : w * r);
         }, sum), 0)
       : session.exercises.reduce((sum, ex) => sum + getExerciseVolumeKg(ex), 0);
+    const totalCalories = isEditing
+      ? formState.exercises.reduce((sum, ex) => {
+          const cal = parseDecimalInput(ex.calories ?? '');
+          return sum + (isNaN(cal) ? 0 : cal);
+        }, 0)
+      : session.exercises.reduce((sum, ex) => sum + (ex.calories_burned ?? 0), 0);
 
     const summaryItems: { value: string; label: string }[] = [];
     summaryItems.push({
@@ -477,6 +491,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         ? `${Math.round(totalVolume).toLocaleString()} ${weightUnit}`
         : formatVolume(totalVolume, weightUnit);
       summaryItems.push({ value: volumeLabel, label: 'Volume' });
+    }
+    if (totalCalories > 0) {
+      summaryItems.push({
+        value: Math.round(totalCalories).toLocaleString(),
+        label: 'Calories',
+      });
     }
     if (summaryItems.length === 0) return null;
 
@@ -623,8 +643,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </Button>
         )}
 
-        {/* Exercises — full-bleed: cancel the scroll container's px-4 so the
-            card separators reach the screen edges. */}
+        {/* Exercises render full-bleed: cancel the scroll container's px-4 so
+            the card separators reach the screen edges. */}
         <View className="-mx-4">
           {isEditing ? (
             <WorkoutFormExerciseList
@@ -643,6 +663,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               onAddSet={handleAddSet}
               onRemoveExercise={handleRemoveExercise}
               setExerciseRest={setExerciseRest}
+              setExerciseCalories={setExerciseCalories}
               supersetWith={supersetWith}
               ungroupExercise={ungroupExercise}
               onReorderExercises={reorderExercises}

@@ -121,6 +121,12 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           images: exercise.exercise_snapshot?.images ?? [],
           supersetGroup: exercise.superset_group ?? null,
           snapshot: exercise.exercise_snapshot ?? null,
+          durationMinutes: exercise.duration_minutes ?? 0,
+          calories:
+            (exercise.calories_burned ?? 0) > 0
+              ? String(Math.round(exercise.calories_burned))
+              : '',
+          caloriesManuallySet: false,
           sets: exercise.sets.map(set => ({
             clientId: generateClientId(),
             serverId: set.id,
@@ -201,6 +207,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     updateSetField,
     updateSetMeta,
     setExerciseRest,
+    setExerciseCalories,
     supersetWith,
     ungroupExercise,
     reorderExercises,
@@ -263,6 +270,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     updateSetField,
     updateSetMeta,
     setExerciseRest,
+    setExerciseCalories,
     supersetWith,
     ungroupExercise,
     reorderExercises,

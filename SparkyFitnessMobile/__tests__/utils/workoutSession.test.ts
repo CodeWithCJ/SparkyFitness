@@ -26,6 +26,11 @@ import {
   setVolumeKg,
   getExerciseVolumeKg,
   formatVolume,
+  formatRecentSessionSet,
+  describeActiveSet,
+  formatSetLoad,
+  formatRestCountdown,
+  normalizeWeightUnit,
   getRpeTone,
   getSupersetRuns,
   buildSupersetColorMap,
@@ -33,8 +38,10 @@ import {
   moveSessionExerciseItem,
   moveDraftExerciseItem,
   isWarmupSetType,
+  setTypeLetter,
   seedPrFromSession,
   compareSetRecords,
+  matchesSetRecord,
   makeSparseExercise,
   exerciseFromDraft,
 } from '../../src/utils/workoutSession';
@@ -405,7 +412,22 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('2 exercises · 3 sets');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('2 exercises · 3 sets · 300 Cal');
+      });
+
+      it('omits calories when zero', () => {
+        const session = makePreset({
+          exercises: [
+            {
+              exercise_id: 'ex-1',
+              exercise_snapshot: null as any,
+              sets: [{ weight: null, reps: null }],
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+          ],
+        });
+        expect(buildSessionSubtitle(session, 60, 0)).toBe('1 exercise · 1 sets');
       });
 
       it('shows singular "exercise" for one exercise', () => {
@@ -439,7 +461,7 @@ describe('workoutSession', () => {
           ],
         });
         // 500 + 640 = 1140 kg
-        expect(buildSessionSubtitle(session, 60, 300)).toBe(`1 exercise · 2 sets · ${fmt(1140)} kg`);
+        expect(buildSessionSubtitle(session, 60, 300)).toBe(`1 exercise · 2 sets · ${fmt(1140)} kg · 300 Cal`);
       });
 
       it('converts volume to lbs when weightUnit is lbs', () => {
@@ -472,7 +494,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 2 sets');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 2 sets · 300 Cal');
       });
 
       it('omits sets count when no sets exist', () => {
@@ -487,7 +509,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 300 Cal');
       });
     });
 
@@ -861,9 +883,39 @@ describe('workoutSession', () => {
       expect(payload[1].sort_order).toBe(1);
     });
 
-    it('sets duration_minutes to 0 for each exercise', () => {
+    it('defaults duration_minutes to 0 when the draft has none', () => {
       const payload = buildExercisesPayload([makeDraftExercise()], 'kg');
       expect(payload[0].duration_minutes).toBe(0);
+    });
+
+    it('round-trips durationMinutes so edit-saves cannot zero stored durations', () => {
+      const payload = buildExercisesPayload(
+        [makeDraftExercise({ durationMinutes: 23.5 })],
+        'kg',
+      );
+      expect(payload[0].duration_minutes).toBe(23.5);
+    });
+
+    it('omits calories_burned unless the user edited the field', () => {
+      const seeded = buildExercisesPayload(
+        [makeDraftExercise({ calories: '150', caloriesManuallySet: false })],
+        'kg',
+      );
+      expect(seeded[0]).not.toHaveProperty('calories_burned');
+
+      const edited = buildExercisesPayload(
+        [makeDraftExercise({ calories: '150', caloriesManuallySet: true })],
+        'kg',
+      );
+      expect(edited[0].calories_burned).toBe(150);
+    });
+
+    it('omits calories_burned when the user cleared the field', () => {
+      const payload = buildExercisesPayload(
+        [makeDraftExercise({ calories: '', caloriesManuallySet: true })],
+        'kg',
+      );
+      expect(payload[0]).not.toHaveProperty('calories_burned');
     });
 
     it('maps sets with 1-based set_number', () => {
@@ -1900,6 +1952,20 @@ describe('workoutSession', () => {
     });
   });
 
+  describe('setTypeLetter', () => {
+    it('maps the typed picker options to their column letters', () => {
+      expect(setTypeLetter('warmup')).toBe('W');
+      expect(setTypeLetter('drop')).toBe('D');
+      expect(setTypeLetter('failure')).toBe('F');
+    });
+
+    it('returns null for numbered (working) sets', () => {
+      expect(setTypeLetter('normal')).toBeNull();
+      expect(setTypeLetter(null)).toBeNull();
+      expect(setTypeLetter(undefined)).toBeNull();
+    });
+  });
+
   describe('compareSetRecords', () => {
     it('orders by weight at hundredths precision, then reps', () => {
       expect(compareSetRecords({ weight: 100, reps: 5 }, { weight: 90, reps: 8 })).toBeGreaterThan(0);
@@ -1912,6 +1978,29 @@ describe('workoutSession', () => {
     it('rounds sub-cent differences to equality (numeric(10,2) round-trip)', () => {
       // 100 vs 100.004 → both round to 10000 hundredths → tie on weight.
       expect(compareSetRecords({ weight: 100, reps: 5 }, { weight: 100.004, reps: 5 })).toBe(0);
+    });
+  });
+
+  describe('matchesSetRecord', () => {
+    const best = { weight: 100, reps: 5 };
+
+    it('is true only for an exact tie, not a beat or a miss', () => {
+      expect(matchesSetRecord({ weight: 100, reps: 5 }, best)).toBe(true);
+      expect(matchesSetRecord({ weight: 105, reps: 5 }, best)).toBe(false);
+      expect(matchesSetRecord({ weight: 100, reps: 6 }, best)).toBe(false);
+      expect(matchesSetRecord({ weight: 95, reps: 5 }, best)).toBe(false);
+    });
+
+    it('never matches warmups or weightless sets', () => {
+      expect(
+        matchesSetRecord({ weight: 100, reps: 5, set_type: 'Warm-up Set' }, best),
+      ).toBe(false);
+      expect(matchesSetRecord({ weight: null, reps: 5 }, best)).toBe(false);
+    });
+
+    it('is false without a weighted record to tie', () => {
+      expect(matchesSetRecord({ weight: 100, reps: 5 }, null)).toBe(false);
+      expect(matchesSetRecord({ weight: 100, reps: 5 }, { weight: null, reps: 5 })).toBe(false);
     });
   });
 
@@ -2203,6 +2292,28 @@ describe('workoutSession', () => {
       });
     });
 
+    describe('formatRecentSessionSet', () => {
+      const recentSet = (
+        weight: number | null,
+        reps: number | null,
+        setType: string | null = null,
+      ) => ({ setNumber: 1, setType, weight, reps });
+
+      it('formats weight × reps, converting for the display unit', () => {
+        expect(formatRecentSessionSet(recentSet(100, 5), 'kg')).toBe('100 × 5');
+        expect(formatRecentSessionSet(recentSet(100, 5), 'lbs')).toBe('220.5 × 5');
+      });
+
+      it('prefixes warmup sets with W', () => {
+        expect(formatRecentSessionSet(recentSet(60, 10, 'warmup'), 'kg')).toBe('W 60 × 10');
+      });
+
+      it('handles weight-only and reps-only sets', () => {
+        expect(formatRecentSessionSet(recentSet(80, null), 'kg')).toBe('80');
+        expect(formatRecentSessionSet(recentSet(null, 12), 'kg')).toBe('12 reps');
+      });
+    });
+
     describe('getRpeTone', () => {
       it('buckets RPE into easy/moderate/hard/max', () => {
         expect(getRpeTone(6)).toBe('easy');
@@ -2212,6 +2323,156 @@ describe('workoutSession', () => {
         expect(getRpeTone(9)).toBe('hard');
         expect(getRpeTone(9.5)).toBe('hard');
         expect(getRpeTone(10)).toBe('max');
+      });
+    });
+
+    describe('describeActiveSet', () => {
+      const sessionWithSets = makePreset({
+        exercises: [
+          {
+            id: 'entry-1',
+            exercise_id: 'ex-1',
+            duration_minutes: 20,
+            calories_burned: 150,
+            entry_date: '2026-03-20',
+            notes: null,
+            distance: null,
+            avg_heart_rate: null,
+            source: null,
+            superset_group: null,
+            exercise_snapshot: {
+              id: 'ex-1',
+              name: 'Bench Press',
+              category: 'Strength',
+              calories_per_hour: 400,
+              source: 'system',
+              images: [],
+            },
+            activity_details: [],
+            sets: [
+              {
+                id: 101,
+                set_number: 1,
+                set_type: 'normal',
+                reps: 10,
+                weight: 60,
+                duration: null,
+                rest_time: 90,
+                notes: null,
+                rpe: null,
+                completed_at: null,
+              },
+              {
+                id: 102,
+                set_number: 2,
+                set_type: 'normal',
+                reps: 8,
+                weight: 70,
+                duration: null,
+                rest_time: 90,
+                notes: null,
+                rpe: null,
+                completed_at: null,
+              },
+            ],
+          },
+          {
+            id: 'entry-2',
+            exercise_id: 'ex-2',
+            duration_minutes: 15,
+            calories_burned: 120,
+            entry_date: '2026-03-20',
+            notes: null,
+            distance: null,
+            avg_heart_rate: null,
+            source: null,
+            superset_group: null,
+            exercise_snapshot: null,
+            activity_details: [],
+            sets: [
+              {
+                id: 201,
+                set_number: 1,
+                set_type: 'normal',
+                reps: null,
+                weight: null,
+                duration: null,
+                rest_time: 120,
+                notes: null,
+                rpe: null,
+                completed_at: null,
+              },
+            ],
+          },
+        ] as PresetSession['exercises'],
+      });
+
+      it('finds the set across exercises and returns its structured fields', () => {
+        expect(describeActiveSet(sessionWithSets, '102')).toEqual({
+          exerciseName: 'Bench Press',
+          setNumber: 2,
+          setCount: 2,
+          reps: 8,
+          weightKg: 70,
+        });
+      });
+
+      it('returns a null exerciseName when the exercise has no snapshot', () => {
+        expect(describeActiveSet(sessionWithSets, '201')).toEqual({
+          exerciseName: null,
+          setNumber: 1,
+          setCount: 1,
+          reps: null,
+          weightKg: null,
+        });
+      });
+
+      it('returns null for a null session, null setId, or an unknown setId', () => {
+        expect(describeActiveSet(null, '101')).toBeNull();
+        expect(describeActiveSet(sessionWithSets, null)).toBeNull();
+        expect(describeActiveSet(sessionWithSets, '999')).toBeNull();
+      });
+    });
+
+    describe('formatSetLoad', () => {
+      it('formats weight × reps with the display unit, converting for lbs', () => {
+        expect(formatSetLoad({ weightKg: 60, reps: 8 }, 'kg')).toBe('60 kg × 8');
+        expect(formatSetLoad({ weightKg: 60, reps: 8 }, 'lbs')).toBe('132.3 lbs × 8');
+      });
+
+      it('handles reps-only and weight-only sets', () => {
+        expect(formatSetLoad({ weightKg: null, reps: 12 }, 'kg')).toBe('12 reps');
+        expect(formatSetLoad({ weightKg: 80, reps: null }, 'kg')).toBe('80 kg');
+      });
+
+      it('returns null when the set has neither weight nor reps', () => {
+        expect(formatSetLoad({ weightKg: null, reps: null }, 'kg')).toBeNull();
+      });
+    });
+
+    describe('normalizeWeightUnit', () => {
+      it('maps kg to kg and everything else to lbs', () => {
+        expect(normalizeWeightUnit('kg')).toBe('kg');
+        expect(normalizeWeightUnit('lbs')).toBe('lbs');
+        expect(normalizeWeightUnit('st_lbs')).toBe('lbs');
+      });
+
+      it('defaults a missing preference to kg', () => {
+        expect(normalizeWeightUnit(undefined)).toBe('kg');
+      });
+    });
+
+    describe('formatRestCountdown', () => {
+      it('formats M:SS, rounding partial seconds up', () => {
+        expect(formatRestCountdown(0)).toBe('0:00');
+        expect(formatRestCountdown(1_000)).toBe('0:01');
+        expect(formatRestCountdown(59_001)).toBe('1:00');
+        expect(formatRestCountdown(65_500)).toBe('1:06');
+        expect(formatRestCountdown(90_000)).toBe('1:30');
+      });
+
+      it('clamps negative remaining time to zero', () => {
+        expect(formatRestCountdown(-5_000)).toBe('0:00');
       });
     });
   });

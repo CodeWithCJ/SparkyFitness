@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type {
@@ -10,7 +11,9 @@ import type {
 import type { Exercise } from '../types/exercise';
 import {
   DEFAULT_REST_SEC,
+  describeActiveSet,
   getSupersetRuns,
+  isDropSetType,
   isPrSet,
   moveSessionExerciseItem,
   normalizeSessionSupersetGroups,
@@ -21,11 +24,15 @@ import {
 import type { PrBaselineEntry } from '../utils/workoutSession';
 import { newUuid } from '../utils/ids';
 import {
+  addNotificationResponseListener,
   cancelScheduledNotification,
+  COMPLETE_SET_ACTION,
+  dismissDeliveredNotification,
   fireRestCompleteHaptic,
   scheduleRestNotification,
 } from '../services/notifications';
 import { fireSelectionHaptic, fireSuccessHaptic } from '../services/haptics';
+import { addLog } from '../services/LogService';
 
 const STORAGE_KEY = '@SparkyFitness/active-workout';
 
@@ -204,6 +211,16 @@ export interface ActiveWorkoutState {
   /** Complete the current cursor set. Thin wrapper over {@link completeSet}. */
   completeActiveSet: () => void;
   /**
+   * Guarded {@link completeActiveSet} for lock-screen surfaces (the Live
+   * Activity button and the rest-notification action): a no-op while a rest
+   * is genuinely running or paused, so a press that races — or arrives stale
+   * from — a running rest can't complete the set after next. A rest whose
+   * deadline has passed counts as ready: backgrounding pauses JS timers, so
+   * the resting → ready flip is often still pending when a lock-screen press
+   * wakes the app. Returns whether a set was completed.
+   */
+  completeActiveSetIfReady: () => boolean;
+  /**
    * Un-complete a set (undo): drop its completion timestamp and PR stamp. The
    * cursor stays put — every set is independently loggable, so the reopened set
    * is re-logged from its own row control — except when the workout had already
@@ -356,7 +373,8 @@ const initialData: Pick<
  * `n` is one set of each member in order (positional — members whose sets
  * are exhausted drop out). `restSec` is the rest taken *before* a step, so
  * each round's first step carries the group rest and the rest of the round
- * carries 0 — rest happens after a full round, not between partners.
+ * carries 0 — rest happens after a full round, not between partners. Drop-set
+ * steps always carry 0: a drop continues the previous set with no pause.
  */
 export function buildStepsFromSession(session: PresetSessionResponse): WorkoutStep[] {
   const steps: WorkoutStep[] = [];
@@ -366,13 +384,17 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
   const byEntryId = new Map(session.exercises.map((e) => [e.id, e]));
   const consumed = new Set<string>();
 
-  const pushStep = (exercise: ExerciseEntryResponse, setId: number, restSec: number) => {
+  const pushStep = (
+    exercise: ExerciseEntryResponse,
+    set: ExerciseEntrySetResponse,
+    restSec: number,
+  ) => {
     steps.push({
       exerciseId: exercise.id,
-      setId: String(setId),
+      setId: String(set.id),
       exerciseName: exercise.exercise_snapshot?.name ?? 'Exercise',
       exerciseImage: exercise.exercise_snapshot?.images?.[0] ?? null,
-      restSec,
+      restSec: isDropSetType(set.set_type) ? 0 : restSec,
     });
   };
 
@@ -383,7 +405,7 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
     if (!run) {
       const restSec = exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
       for (const set of exercise.sets) {
-        pushStep(exercise, set.id, restSec);
+        pushStep(exercise, set, restSec);
       }
       continue;
     }
@@ -400,7 +422,7 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
       for (const member of members) {
         const set = member.sets[round];
         if (!set) continue;
-        pushStep(member, set.id, firstInRound ? groupRest : 0);
+        pushStep(member, set, firstInRound ? groupRest : 0);
         firstInRound = false;
       }
     }
@@ -550,7 +572,10 @@ function locateSet(
  * the planned interleaving — out-of-order logging makes the cursor land on an
  * interior partner (baked 0) when a real between-rounds rest is actually owed,
  * so derive the rest from the true relationship between the two sets instead.
- * Rest is per-exercise: the upcoming exercise's `sets[0]` speaks for it.
+ * Rest is per-exercise and recovers from the work just done: the completed
+ * exercise's `sets[0]` speaks for it, so the timer after an exercise's final
+ * set still uses that exercise's rest, not the next one's.
+ * Drop sets take no rest before them regardless of what was just logged.
  */
 function restSecBeforeNextSet(
   session: PresetSessionResponse,
@@ -559,10 +584,10 @@ function restSecBeforeNextSet(
 ): number {
   const to = locateSet(session, nextSetId);
   if (!to) return DEFAULT_REST_SEC;
-  const toRest = to.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
+  if (isDropSetType(to.exercise.sets[to.setIndex]?.set_type)) return 0;
 
   const from = locateSet(session, completedSetId);
-  if (!from) return toRest;
+  if (!from) return to.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
 
   // Back-to-back superset partners: same run, different member, same round.
   const toRun = getSupersetRuns(session.exercises).find((r) =>
@@ -576,7 +601,7 @@ function restSecBeforeNextSet(
   ) {
     return 0;
   }
-  return toRest;
+  return from.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
 }
 
 export function seedCompletionFromSession(session: PresetSessionResponse): CompletedSetMap {
@@ -685,18 +710,14 @@ function buildRestNotificationContent(
   setId: string | null,
   fallbackExerciseName: string,
 ): { title: string; body: string } {
-  if (session != null && setId != null) {
-    for (const exercise of session.exercises) {
-      const set = exercise.sets.find((s) => String(s.id) === setId);
-      if (set != null) {
-        const name = exercise.exercise_snapshot?.name ?? fallbackExerciseName;
-        let body = `${name} · Set ${set.set_number} of ${exercise.sets.length}`;
-        if (set.reps != null) {
-          body += ` · ${set.reps} rep${set.reps === 1 ? '' : 's'} target`;
-        }
-        return { title: 'Rest complete — next set up', body };
-      }
+  const desc = describeActiveSet(session, setId);
+  if (desc != null) {
+    const name = desc.exerciseName ?? fallbackExerciseName;
+    let body = `${name} · Set ${desc.setNumber} of ${desc.setCount}`;
+    if (desc.reps != null) {
+      body += ` · ${desc.reps} rep${desc.reps === 1 ? '' : 's'} target`;
     }
+    return { title: 'Rest complete: next set up', body };
   }
   return { title: 'Rest complete', body: fallbackExerciseName };
 }
@@ -942,6 +963,18 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
       completeActiveSet: () => {
         const { activeSetId } = get();
         if (activeSetId != null) get().completeSet(activeSetId);
+      },
+
+      completeActiveSetIfReady: () => {
+        const { rest, activeSetId } = get();
+        if (activeSetId == null) return false;
+        // An expired rest can still read 'resting' here: the ready flip runs
+        // on a JS timer, which Android pauses while the app is backgrounded.
+        const restExpired =
+          rest.state === 'resting' && rest.endsAt != null && rest.endsAt <= Date.now();
+        if (rest.state !== 'ready' && !restExpired) return false;
+        get().completeSet(activeSetId);
+        return true;
       },
 
       uncompleteSet: (setId) => {
@@ -1664,6 +1697,66 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
   ),
 );
 
+let restDeadlineTimerId: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Keep exactly one JS timer pointed at the current rest deadline so the
+ * resting → ready flip (notification cancel + haptic) happens in the store,
+ * independent of which screens are mounted. The callback re-checks live state:
+ * a timer that fires early (clock drift) reschedules for the remainder instead
+ * of stranding the rest in 'resting'.
+ */
+function syncRestDeadlineTimer(rest: Rest): void {
+  if (restDeadlineTimerId != null) {
+    clearTimeout(restDeadlineTimerId);
+    restDeadlineTimerId = null;
+  }
+  if (rest.state !== 'resting' || rest.endsAt == null) return;
+  restDeadlineTimerId = setTimeout(() => {
+    restDeadlineTimerId = null;
+    const current = useActiveWorkoutStore.getState().rest;
+    if (current.state !== 'resting' || current.endsAt == null) return;
+    if (Date.now() < current.endsAt) {
+      syncRestDeadlineTimer(current);
+      return;
+    }
+    useActiveWorkoutStore.getState().markRestReady();
+  }, Math.max(0, rest.endsAt - Date.now()));
+}
+
+// Every rest transition replaces the `rest` object, so a reference check is
+// enough to keep the deadline timer in sync (including persist rehydration).
+useActiveWorkoutStore.subscribe((state, prevState) => {
+  if (state.rest !== prevState.rest) syncRestDeadlineTimer(state.rest);
+});
+
+// JS timers pause while the app is backgrounded; re-sync on foreground return
+// so an expired rest flips promptly even if the queued timer lags.
+AppState.addEventListener('change', (status) => {
+  if (status === 'active') {
+    syncRestDeadlineTimer(useActiveWorkoutStore.getState().rest);
+  }
+});
+
+let notificationActionsSubscription: ReturnType<typeof addNotificationResponseListener> | null =
+  null;
+
+/**
+ * Wires the rest notification's "Complete Set" action to the store. The press
+ * is handled in the background — the app does not open — and the pressed
+ * notification is dismissed explicitly because Android leaves it in the tray
+ * after an action press. Called once from App startup; re-runs are no-ops.
+ */
+export function initWorkoutNotificationActions(): void {
+  if (notificationActionsSubscription != null) return;
+  notificationActionsSubscription = addNotificationResponseListener((response) => {
+    if (response.actionIdentifier !== COMPLETE_SET_ACTION) return;
+    const completed = useActiveWorkoutStore.getState().completeActiveSetIfReady();
+    void addLog(`[WorkoutNotificationAction] complete-set handled=${completed}`, 'DEBUG');
+    void dismissDeliveredNotification(response.notification.request.identifier);
+  });
+}
+
 /**
  * Test-only helper — resets store state to initial data while preserving
  * action references, and clears the persisted AsyncStorage entry.
@@ -1671,6 +1764,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
 export function __resetActiveWorkoutStoreForTests(): void {
   restInstanceCounter = 0;
   prEventCounter = 0;
+  notificationActionsSubscription?.remove();
+  notificationActionsSubscription = null;
   useActiveWorkoutStore.setState({ ...initialData });
   void AsyncStorage.removeItem(STORAGE_KEY);
 }

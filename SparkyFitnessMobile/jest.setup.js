@@ -126,6 +126,10 @@ jest.mock('expo-notifications', () => {
     scheduleNotificationAsync: jest.fn(async () => `mock-notif-${nextId++}`),
     cancelScheduledNotificationAsync: jest.fn().mockResolvedValue(undefined),
     cancelAllScheduledNotificationsAsync: jest.fn().mockResolvedValue(undefined),
+    setNotificationCategoryAsync: jest.fn().mockResolvedValue(undefined),
+    getPresentedNotificationsAsync: jest.fn().mockResolvedValue([]),
+    dismissNotificationAsync: jest.fn().mockResolvedValue(undefined),
+    addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
     AndroidImportance: { HIGH: 4, DEFAULT: 3, LOW: 2, MIN: 1, NONE: 0 },
     SchedulableTriggerInputTypes: {
       CALENDAR: 'calendar',
@@ -343,6 +347,11 @@ jest.mock('react-native-keyboard-controller', () => {
       setFocusTo: jest.fn(),
       isVisible: jest.fn(() => true),
       state: jest.fn(() => ({})),
+    },
+    // Subscriptions are inert; tests drive a listener by pulling the callback
+    // out of addListener.mock.calls.
+    KeyboardEvents: {
+      addListener: jest.fn(() => ({ remove: jest.fn() })),
     },
   };
 });

@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
+import { formatElapsed } from '../utils/workoutSession';
 import Icon from './Icon';
 import KeyboardCollapsible from './KeyboardCollapsible';
 import ActionSheet, { type ActionSheetItem, type ActionSheetRef } from './ActionSheet';
@@ -23,19 +24,6 @@ export function buildExerciseProgress(
     totalSets: exercise.sets.length,
     completedSets: exercise.sets.filter((s) => completedSetIds[String(s.id)]).length,
   }));
-}
-
-export function formatElapsed(startedAt: number | null, now: number): string {
-  const totalSeconds = startedAt == null ? 0 : Math.max(0, Math.floor((now - startedAt) / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  // Drop the hours segment until the workout actually crosses an hour, so a
-  // one-minute set reads "01:00" rather than "00:01:00".
-  return hours > 0
-    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
-    : `${pad(minutes)}:${pad(seconds)}`;
 }
 
 interface ActiveWorkoutHeaderProps {

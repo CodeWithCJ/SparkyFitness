@@ -20,7 +20,10 @@ import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData } from './src/hooks';
-import { useActiveWorkoutStore } from './src/stores/activeWorkoutStore';
+import {
+  initWorkoutNotificationActions,
+  useActiveWorkoutStore,
+} from './src/stores/activeWorkoutStore';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
@@ -94,6 +97,7 @@ import { initializeTheme } from './src/services/themeService';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
+import { initWorkoutLiveActivity } from './src/services/workoutLiveActivity';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -583,6 +587,15 @@ function AppContent() {
 
     initializeApp();
 
+    initWorkoutNotificationActions();
+
+    // iOS-only (no-op on Android): keeps the workout Live Activity in sync
+    // with the active-workout store.
+    initWorkoutLiveActivity().catch(error => {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to initialize workout Live Activity: ${message}`, 'ERROR');
+    });
+
     // Initialize log service (warms cache, prunes old logs, registers AppState listener)
     initLogService().catch(error => {
       const message = error instanceof Error ? error.message : String(error);
@@ -765,6 +778,8 @@ function AppContent() {
         },
         FoodScan: 'scan',
         FoodSearch: 'search',
+        // Tapping the workout Live Activity opens its associated URL.
+        ActiveWorkout: 'active-workout',
       },
     },
   }), []);
@@ -874,7 +889,13 @@ function AppContent() {
           <Stack.Screen
             name="ExerciseDetail"
             component={SafeExerciseDetail}
-            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, { headerBackTitle: 'Exercises' })}
+            options={({ route }) => createStackScreenOptions(route.params.updatedItem?.name ?? route.params.item.name, {
+              headerBackTitle: 'Exercises',
+              // iOS 26 defaults the pop gesture to full-screen swipes; keep it
+              // edge-only here so interior right-swipes switch tabs instead of
+              // navigating back.
+              fullScreenGestureEnabled: false,
+            })}
           />
           <Stack.Screen
             name="FoodSearch"

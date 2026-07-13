@@ -27,9 +27,13 @@ export const fetchExerciseEntries = async (date: string): Promise<ExerciseSessio
 export const fetchExerciseHistory = async (
   page: number = 1,
   pageSize: number = 20,
+  exerciseId?: string,
 ): Promise<ExerciseHistoryResponse> => {
+  const exerciseFilter = exerciseId
+    ? `&exerciseId=${encodeURIComponent(exerciseId)}`
+    : '';
   return apiFetch<ExerciseHistoryResponse>({
-    endpoint: `/api/v2/exercise-entries/history?page=${page}&pageSize=${pageSize}`,
+    endpoint: `/api/v2/exercise-entries/history?page=${page}&pageSize=${pageSize}${exerciseFilter}`,
     serviceName: 'Exercise API',
     operation: 'fetch exercise history',
   });

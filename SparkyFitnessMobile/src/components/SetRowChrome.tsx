@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
@@ -8,6 +9,30 @@ import LiquidGlassSurface, { createLiquidGlassPillStyle } from './LiquidGlassSur
  * form's EditableSetRow): the iOS keyboard accessory bar and the right-swipe
  * Delete action.
  */
+
+let accessoryEpochCounter = 0;
+
+/**
+ * Salt for a set row's iOS input-accessory nativeIDs, fresh on each activation
+ * of the row's editing state. Fabric recycles native TextInputs into a pool:
+ * `prepareForRecycle` clears the backing field's `inputAccessoryViewID` but
+ * the pooled instance keeps its last-committed props, so remounting an input
+ * with the exact same ID string diffs as unchanged, never re-applies it, and
+ * the InputAccessoryView can't find its input — the keyboard comes up bare on
+ * the second edit of the same cell. A never-repeating epoch in the ID defeats
+ * that stale diff. The epoch changes only when `active` flips on, so the
+ * accessory attachment survives re-renders while the keyboard is up.
+ */
+export function useAccessoryEpoch(active: boolean): number {
+  // Discarded renders may burn counter values; only uniqueness matters.
+  const [epoch, setEpoch] = useState(() => (active ? ++accessoryEpochCounter : 0));
+  const [prevActive, setPrevActive] = useState(active);
+  if (active !== prevActive) {
+    setPrevActive(active);
+    if (active) setEpoch(++accessoryEpochCounter);
+  }
+  return epoch;
+}
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 

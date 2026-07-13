@@ -123,7 +123,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
       }
 
       setTooltipText(
-        `${formatTooltipWeight(point.weight)} ${unit} — ${formatTooltipDate(
+        `${formatTooltipWeight(point.weight)} ${unit} · ${formatTooltipDate(
           point.day,
         )}`,
       );

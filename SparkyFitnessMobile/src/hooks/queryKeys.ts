@@ -55,6 +55,10 @@ export const measurementsRangeQueryKey = (startDate: string, endDate: string) =>
 
 export const exerciseHistoryQueryKey = ['exerciseHistory'] as const;
 
+/** Per-exercise filtered history; extends the root so prefix invalidation covers it. */
+export const exerciseHistoryForExerciseQueryKey = (exerciseId: string) =>
+  [...exerciseHistoryQueryKey, exerciseId] as const;
+
 export const exerciseHistoryResetQueryKey = ['exerciseHistoryReset'] as const;
 
 export const exerciseStatsQueryKeyRoot = ['exerciseStats'] as const;

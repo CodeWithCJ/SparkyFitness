@@ -156,8 +156,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   }, [navigation, preset, route.key]);
 
   const header = useScreenHeader({
-    // Name lives in the header; the in-body heading stays only for the fallback
-    // (non-native) header, which renders no center title.
+    title: preset.name,
     nativeTitle: preset.name,
     borderless: true,
     left: { kind: 'back' },
@@ -185,9 +184,6 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           paddingBottom: insets.bottom + activeWorkoutBarPadding + 16,
         }}
       >
-        {!usesNativeHeader && (
-          <Text className="text-2xl font-bold text-text-primary">{preset.name}</Text>
-        )}
         {preset.description ? (
           <Text className="text-base text-text-secondary mt-2">{preset.description}</Text>
         ) : null}

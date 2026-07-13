@@ -108,10 +108,22 @@ async function estimateCaloriesBurnedPerHour(
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const totalReps = sets.reduce((acc: any, set: any) => acc + set.reps, 0);
-    if (totalReps > 0) {
+    // Brzycki formula for 1RM estimation, applied per set (it is only valid
+    // for sets below ~37 reps). The strongest set defines the ceiling that
+    // the session's average weight is measured against.
+    const estimated1RM = sets.reduce(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (max: any, set: any) => {
+        const denominator = 1.0278 - 0.0278 * set.reps;
+        if (!(set.reps > 0) || !(set.weight > 0) || denominator <= 0) {
+          return max;
+        }
+        return Math.max(max, set.weight / denominator);
+      },
+      0
+    );
+    if (totalReps > 0 && estimated1RM > 0) {
       const avgWeight = totalVolume / totalReps;
-      // Brzycki formula for 1RM estimation
-      const estimated1RM = avgWeight / (1.0278 - 0.0278 * totalReps);
       // METs for strength training can be estimated based on intensity relative to 1RM
       // This is a simplified model. For a more accurate one, more research would be needed.
       const intensity = avgWeight / estimated1RM;

@@ -238,12 +238,12 @@ describe('WorkoutDetailScreen', () => {
   it('hides the rest chip on imported (non-Sparky) workouts', () => {
     const sparky = renderScreen(buildSession());
     fireEvent.press(sparky.getByLabelText('Expand Bench Press'));
-    expect(sparky.getByText('Rest · 1:30')).toBeTruthy();
+    expect(sparky.getByText('Rest 1:30')).toBeTruthy();
     sparky.unmount();
 
     const imported = renderScreen(buildSession({ source: 'healthkit' }));
     fireEvent.press(imported.getByLabelText('Expand Bench Press'));
-    expect(imported.queryByText('Rest · 1:30')).toBeNull();
+    expect(imported.queryByText('Rest 1:30')).toBeNull();
   });
 
   describe('edit mode', () => {

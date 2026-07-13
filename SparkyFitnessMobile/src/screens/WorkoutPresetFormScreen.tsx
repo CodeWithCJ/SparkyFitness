@@ -318,7 +318,7 @@ export function buildPresetEditPayload(args: {
     payload.description = trimmedDesc;
   }
 
-  // is_public is intentionally never sent — the form has no UI; sending false
+  // is_public is intentionally never sent: the form has no UI, and sending false
   // would unshare a previously-public preset (server uses COALESCE).
 
   if (exercisesModified) {
@@ -415,7 +415,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     }
 
     // Edit mode intentionally skips the "at least one set" check that create
-    // mode enforces — the server allows preset exercises with no sets, and a
+    // mode enforces: the server allows preset exercises with no sets, and a
     // user editing only the name/description should not be forced to add one.
 
     const payload = buildPresetEditPayload({

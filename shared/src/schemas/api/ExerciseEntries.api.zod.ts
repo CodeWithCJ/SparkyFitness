@@ -20,6 +20,8 @@ export const exerciseHistoryQuerySchema = z
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
     userId: z.string().uuid().optional(),
+    /** Only sessions containing this exercise (standalone entries or preset children). */
+    exerciseId: z.string().uuid().optional(),
     // RN's fetch (whatwg-fetch) appends `_=<timestamp>` to GET URLs when a
     // caller passes `cache: 'no-store'`, so the strict schema must tolerate it.
     _: z.string().optional(),
@@ -110,6 +112,9 @@ export const presetSessionExerciseRequestSchema = z
     exercise_id: z.string().uuid(),
     sort_order: z.number().int().min(0).default(0),
     duration_minutes: z.number().min(0).default(0),
+    // Manual per-exercise override; when omitted the server recomputes
+    // calories from duration and sets.
+    calories_burned: z.number().min(0).optional(),
     notes: z.string().nullable().optional(),
     superset_group: z.number().int().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).default([]),

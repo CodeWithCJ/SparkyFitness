@@ -615,6 +615,16 @@ describe('workoutFormReducer', () => {
       expect(set.completedAt).toBe('2026-03-15T10:30:00.000Z');
     });
 
+    it('seeds duration and calories from the session for payload round-trip', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession();
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
+
+      expect(result.exercises[0].durationMinutes).toBe(20);
+      expect(result.exercises[0].calories).toBe('150');
+      expect(result.exercises[0].caloriesManuallySet).toBe(false);
+    });
+
     it('converts weight from kg to lbs', () => {
       const state = makeEmptyDraft();
       const session = makeSession();

@@ -3,8 +3,8 @@ import { render, fireEvent } from '@testing-library/react-native';
 import type { PresetSessionResponse } from '@workspace/shared';
 import ActiveWorkoutHeader, {
   buildExerciseProgress,
-  formatElapsed,
 } from '../../src/components/ActiveWorkoutHeader';
+import { formatElapsed } from '../../src/utils/workoutSession';
 
 function makeSession(): PresetSessionResponse {
   return {

@@ -139,16 +139,24 @@ function _buildExerciseEntryWithSnapshot(
 async function countExerciseEntrySessions(
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   client: { query: Function },
-  userId: string
+  userId: string,
+  exerciseId: string | null
 ): Promise<number> {
   const result = await client.query(
     `WITH sessions AS (
-       SELECT id FROM exercise_preset_entries WHERE user_id = $1
+       SELECT epe.id FROM exercise_preset_entries epe
+       WHERE epe.user_id = $1
+         AND ($2::uuid IS NULL OR EXISTS (
+           SELECT 1 FROM exercise_entries ce
+           WHERE ce.exercise_preset_entry_id = epe.id AND ce.exercise_id = $2
+         ))
        UNION ALL
-       SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_preset_entry_id IS NULL
+       SELECT id FROM exercise_entries
+       WHERE user_id = $1 AND exercise_preset_entry_id IS NULL
+         AND ($2::uuid IS NULL OR exercise_id = $2)
      )
      SELECT COUNT(*)::int AS count FROM sessions`,
-    [userId]
+    [userId, exerciseId]
   );
   return result.rows[0].count;
 }
@@ -159,21 +167,29 @@ async function getExerciseEntryHistorySessions(
   client: { query: Function },
   userId: string,
   limit: number,
-  offset: number
+  offset: number,
+  exerciseId: string | null
 ): Promise<ExerciseSessionResponse[]> {
   // Phase 1: Get paginated session stubs
   const stubsResult = await client.query(
     `WITH sessions AS (
-       SELECT id, entry_date, created_at, 'preset' AS session_type
-       FROM exercise_preset_entries WHERE user_id = $1
+       SELECT epe.id, epe.entry_date, epe.created_at, 'preset' AS session_type
+       FROM exercise_preset_entries epe
+       WHERE epe.user_id = $1
+         AND ($4::uuid IS NULL OR EXISTS (
+           SELECT 1 FROM exercise_entries ce
+           WHERE ce.exercise_preset_entry_id = epe.id AND ce.exercise_id = $4
+         ))
        UNION ALL
        SELECT id, entry_date, created_at, 'individual' AS session_type
-       FROM exercise_entries WHERE user_id = $1 AND exercise_preset_entry_id IS NULL
+       FROM exercise_entries
+       WHERE user_id = $1 AND exercise_preset_entry_id IS NULL
+         AND ($4::uuid IS NULL OR exercise_id = $4)
      )
      SELECT id, entry_date, created_at, session_type
      FROM sessions ORDER BY entry_date DESC, created_at DESC
      LIMIT $2 OFFSET $3`,
-    [userId, limit, offset]
+    [userId, limit, offset, exerciseId]
   );
   const stubs = stubsResult.rows as Array<{
     id: string;
@@ -384,18 +400,27 @@ async function getExerciseEntryHistorySessions(
 /**
  * Get paginated exercise entry history for a user.
  * Returns sessions (preset groups and standalone entries) sorted by date DESC.
+ * With `exerciseId`, only sessions containing that exercise are returned;
+ * preset sessions still include all of their child exercises.
  */
 export async function getExerciseEntryHistory(
   targetUserId: string,
   page: number,
-  pageSize: number
+  pageSize: number,
+  exerciseId: string | null = null
 ): Promise<ExerciseHistoryResponse> {
   const offset = (page - 1) * pageSize;
   const client = await getClient(targetUserId);
   try {
     const [sessions, totalCount] = await Promise.all([
-      getExerciseEntryHistorySessions(client, targetUserId, pageSize, offset),
-      countExerciseEntrySessions(client, targetUserId),
+      getExerciseEntryHistorySessions(
+        client,
+        targetUserId,
+        pageSize,
+        offset,
+        exerciseId
+      ),
+      countExerciseEntrySessions(client, targetUserId, exerciseId),
     ]);
 
     return {

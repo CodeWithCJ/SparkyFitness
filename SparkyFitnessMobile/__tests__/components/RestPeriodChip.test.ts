@@ -1,5 +1,6 @@
-import { formatRest } from '../../src/components/RestPeriodChip';
+import { formatRest, formatRestLabel } from '../../src/components/RestPeriodChip';
 import { clampRestSeconds, MIN_REST_SEC, MAX_REST_SEC } from '../../src/components/RestPeriodSheet';
+import { DEFAULT_REST_SEC } from '../../src/utils/workoutSession';
 
 describe('formatRest', () => {
   it('formats values under a minute as Ns', () => {
@@ -31,11 +32,30 @@ describe('formatRest', () => {
   });
 });
 
+describe('formatRestLabel', () => {
+  it('labels 0 as Off', () => {
+    expect(formatRestLabel(0)).toBe('Off');
+  });
+
+  it('passes non-zero durations through to formatRest', () => {
+    expect(formatRestLabel(5)).toBe('5s');
+    expect(formatRestLabel(45)).toBe('45s');
+    expect(formatRestLabel(90)).toBe('1:30');
+  });
+
+  it('falls back to the default rest for null', () => {
+    expect(formatRestLabel(null)).toBe('1:30');
+  });
+});
+
 describe('clampRestSeconds', () => {
-  it('clamps values below the minimum up to MIN_REST_SEC', () => {
-    expect(clampRestSeconds(0)).toBe(MIN_REST_SEC);
+  it('allows no rest (0) and clamps negatives up to MIN_REST_SEC', () => {
+    expect(clampRestSeconds(0)).toBe(0);
     expect(clampRestSeconds(-10)).toBe(MIN_REST_SEC);
-    expect(clampRestSeconds(5)).toBe(MIN_REST_SEC);
+  });
+
+  it('allows short rests down to 5 seconds', () => {
+    expect(clampRestSeconds(5)).toBe(5);
   });
 
   it('clamps values above the maximum down to MAX_REST_SEC', () => {
@@ -55,7 +75,7 @@ describe('clampRestSeconds', () => {
     expect(clampRestSeconds(300)).toBe(300);
   });
 
-  it('handles NaN by returning MIN_REST_SEC', () => {
-    expect(clampRestSeconds(NaN)).toBe(MIN_REST_SEC);
+  it('handles NaN by returning the default rest', () => {
+    expect(clampRestSeconds(NaN)).toBe(DEFAULT_REST_SEC);
   });
 });

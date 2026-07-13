@@ -4,7 +4,7 @@ import { TimeoutError } from '../../../src/utils/concurrency';
 describe('getApiErrorMessage', () => {
   it('returns a friendly message for a TimeoutError', () => {
     expect(getApiErrorMessage(new TimeoutError('Request', 30_000))).toBe(
-      'Request timed out — check your server connection',
+      'Request timed out. Check your server connection.',
     );
   });
 

@@ -148,7 +148,7 @@ private struct MacroRingWithLabel: View {
     let numberFontSize: CGFloat
 
     private var centerText: String {
-        guard snapshot.hasData else { return "—" }
+        guard snapshot.hasData else { return "-" }
         return Self.numberFormatter.string(from: NSNumber(value: Int(snapshot.caloriesConsumed.rounded()))) ?? "0"
     }
 

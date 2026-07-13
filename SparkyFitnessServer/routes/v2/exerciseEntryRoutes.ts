@@ -45,6 +45,11 @@ router.use(checkPermissionMiddleware('diary'));
  *         schema:
  *           type: string
  *         description: Optional user ID for family access
+ *       - in: query
+ *         name: exerciseId
+ *         schema:
+ *           type: string
+ *         description: Only return sessions containing this exercise
  *     responses:
  *       200:
  *         description: Paginated exercise history
@@ -64,7 +69,12 @@ const historyHandler: RequestHandler = async (req, res, next) => {
       return;
     }
 
-    const { page, pageSize, userId: queryUserId } = parsedQuery.data;
+    const {
+      page,
+      pageSize,
+      userId: queryUserId,
+      exerciseId,
+    } = parsedQuery.data;
 
     // Family access permission check
 
@@ -84,7 +94,12 @@ const historyHandler: RequestHandler = async (req, res, next) => {
       }
     }
 
-    const result = await getExerciseEntryHistory(targetUserId, page, pageSize);
+    const result = await getExerciseEntryHistory(
+      targetUserId,
+      page,
+      pageSize,
+      exerciseId ?? null
+    );
     const response = exerciseHistoryResponseSchema.parse(result);
     res.status(200).json(response);
   } catch (error: unknown) {

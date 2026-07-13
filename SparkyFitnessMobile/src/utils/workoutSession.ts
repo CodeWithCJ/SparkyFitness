@@ -1,6 +1,7 @@
 import type {
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
+  ExerciseRecentSessionSet,
   ExerciseSessionResponse,
   ExerciseSnapshotResponse,
   PresetSessionExerciseRequest,
@@ -228,6 +229,7 @@ export function buildSessionSubtitle(
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
       parts.push(`${vol.toLocaleString()} ${weightUnit}`);
     }
+    if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
     return parts.join(' \u00b7 ');
   }
 
@@ -272,42 +274,66 @@ export function buildExercisesPayload(
   const allExercisesHaveServerId =
     exercises.length > 0 && exercises.every(e => e.serverId !== undefined);
 
-  return exercises.map((exercise, index) => ({
-    ...(allExercisesHaveServerId && exercise.serverId !== undefined
-      ? { id: exercise.serverId }
-      : {}),
-    exercise_id: exercise.exerciseId,
-    sort_order: index,
-    duration_minutes: 0,
-    // The form has no superset UI; round-trip the value opaquely so manual
-    // edits don't flatten grouping (the server nulls omitted fields).
-    superset_group: exercise.supersetGroup ?? null,
-    sets: exercise.sets.map((set, setIndex) => {
-      const weight = parseDecimalInput(set.weight);
-      const reps = parseInt(set.reps, 10);
-      // The server set UPDATE writes all nine columns with `set.x ?? null`,
-      // so fields the form has no UI for must still be round-tripped
-      // explicitly — omitting them silently wipes the stored values.
-      return {
-        ...(allExercisesHaveServerId && set.serverId !== undefined
-          ? { id: set.serverId }
-          : {}),
-        set_number: setIndex + 1,
-        set_type: set.setType ?? null,
-        weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
-        reps: isNaN(reps) ? null : reps,
-        duration: set.duration ?? null,
-        ...(set.restTime != null ? { rest_time: set.restTime } : {}),
-        notes: set.notes ?? null,
-        rpe: set.rpe ?? null,
-        completed_at: set.completedAt ?? null,
-        is_pr: set.isPr ?? false,
-      };
-    }),
-  }));
+  return exercises.map((exercise, index) => {
+    // The server recomputes calories from duration and sets whenever
+    // calories_burned is omitted; a user-edited value is sent as a manual
+    // override for this save only.
+    const caloriesOverride = exercise.caloriesManuallySet
+      ? parseDecimalInput(exercise.calories ?? '')
+      : NaN;
+
+    return {
+      ...(allExercisesHaveServerId && exercise.serverId !== undefined
+        ? { id: exercise.serverId }
+        : {}),
+      exercise_id: exercise.exerciseId,
+      sort_order: index,
+      // Round-tripped from the session (the form has no duration UI); sending 0
+      // would zero the stored duration and the calories derived from it.
+      duration_minutes: exercise.durationMinutes ?? 0,
+      ...(!isNaN(caloriesOverride) && caloriesOverride >= 0
+        ? { calories_burned: caloriesOverride }
+        : {}),
+      // The form has no superset UI; round-trip the value opaquely so manual
+      // edits don't flatten grouping (the server nulls omitted fields).
+      superset_group: exercise.supersetGroup ?? null,
+      sets: exercise.sets.map((set, setIndex) => {
+        const weight = parseDecimalInput(set.weight);
+        const reps = parseInt(set.reps, 10);
+        // The server set UPDATE writes all nine columns with `set.x ?? null`,
+        // so fields the form has no UI for must still be round-tripped
+        // explicitly — omitting them silently wipes the stored values.
+        return {
+          ...(allExercisesHaveServerId && set.serverId !== undefined
+            ? { id: set.serverId }
+            : {}),
+          set_number: setIndex + 1,
+          set_type: set.setType ?? null,
+          weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
+          reps: isNaN(reps) ? null : reps,
+          duration: set.duration ?? null,
+          ...(set.restTime != null ? { rest_time: set.restTime } : {}),
+          notes: set.notes ?? null,
+          rpe: set.rpe ?? null,
+          completed_at: set.completedAt ?? null,
+          is_pr: set.isPr ?? false,
+        };
+      }),
+    };
+  });
 }
 
 // --- Set metrics (active-workout log column + volume summaries) ---
+
+/**
+ * Snap a set weight to the server's storage precision (`exercise_entry_sets.weight`
+ * is DECIMAL(10,2)) so a saved session echoes back value-identical. Storing an
+ * unrounded lbs→kg conversion would make the autosave echo differ, and
+ * ActiveWorkoutSetRow re-seeds its drafts from stored values.
+ */
+export function quantizeSetWeightKg(kg: number): number {
+  return Math.round(kg * 100) / 100;
+}
 
 /** Epley estimated one-rep max. Returns 0 when weight or reps are missing/zero. */
 export function epley1RmKg(weightKg: number | null, reps: number | null): number {
@@ -371,12 +397,16 @@ export interface WorkoutCardExercise {
   superset_group?: number | null;
   /** Per-exercise note. Present on live entries; absent on draft/preset sources. */
   notes?: string | null;
+  /** Present on session entries; absent on draft/preset sources. */
+  calories_burned?: number | null;
   exercise_snapshot: {
     name?: string | null;
     category?: string | null;
     images?: string[] | null;
   } | null;
   sets: WorkoutCardSet[];
+  /** Raw draft string backing the edit-mode calories input (draft mapper only). */
+  editCaloriesText?: string;
 }
 
 /**
@@ -392,6 +422,7 @@ export function draftExerciseToCardExercise(
     id: exercise.clientId,
     exercise_id: exercise.exerciseId,
     superset_group: exercise.supersetGroup ?? null,
+    editCaloriesText: exercise.calories ?? '',
     exercise_snapshot: exercise.snapshot ?? {
       name: exercise.exerciseName,
       category: exercise.exerciseCategory,
@@ -447,6 +478,105 @@ export function presetExerciseToCardExercise(
 export function formatVolume(volumeKg: number, weightUnit: string): string {
   const value = weightFromKg(volumeKg, weightUnit as 'kg' | 'lbs');
   return `${Math.round(value).toLocaleString()} ${weightUnit}`;
+}
+
+/** Compact historical-set text, e.g. `W 60 × 8`, `100 × 5`, or `12 reps`; weight is unitless display units. */
+export function formatRecentSessionSet(
+  set: ExerciseRecentSessionSet,
+  weightUnit: 'kg' | 'lbs',
+): string {
+  const w =
+    set.weight != null
+      ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
+      : null;
+  const prefix = set.setType === 'warmup' ? 'W ' : '';
+  if (w != null && set.reps != null) return `${prefix}${w} × ${set.reps}`;
+  if (w != null) return `${prefix}${w}`; // weight-only
+  return `${prefix}${set.reps} reps`; // reps-only set in a mixed history
+}
+
+/**
+ * Structured description of the set the active-workout cursor points at.
+ * Shared by the workout HUD, the active-workout screen, and the rest-complete
+ * notification so their labels can't drift apart; each consumer applies its
+ * own name fallback and formatting.
+ */
+export interface ActiveSetDescription {
+  /** Snapshot name; null when the exercise carries no snapshot name. */
+  exerciseName: string | null;
+  setNumber: number;
+  setCount: number;
+  reps: number | null;
+  weightKg: number | null;
+}
+
+/** Look up the session set matching the active-set cursor id. */
+export function describeActiveSet(
+  session: PresetSessionResponse | null,
+  setId: string | null,
+): ActiveSetDescription | null {
+  if (session == null || setId == null) return null;
+  for (const exercise of session.exercises) {
+    const set = exercise.sets.find((s) => String(s.id) === setId);
+    if (!set) continue;
+    return {
+      exerciseName: exercise.exercise_snapshot?.name ?? null,
+      setNumber: set.set_number,
+      setCount: exercise.sets.length,
+      reps: set.reps ?? null,
+      weightKg: set.weight ?? null,
+    };
+  }
+  return null;
+}
+
+/**
+ * Collapse the three-way preference unit to the two display units the workout
+ * formatters understand: `st_lbs` (and anything unexpected) renders as lbs,
+ * while a missing preference defaults to kg (the server-side storage unit).
+ */
+export function normalizeWeightUnit(unit: string | undefined): 'kg' | 'lbs' {
+  if (unit == null || unit === 'kg') return 'kg';
+  return 'lbs';
+}
+
+/** Elapsed workout clock as `MM:SS`, growing to `HH:MM:SS` past an hour. */
+export function formatElapsed(startedAt: number | null, now: number): string {
+  const totalSeconds = startedAt == null ? 0 : Math.max(0, Math.floor((now - startedAt) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  // Drop the hours segment until the workout actually crosses an hour, so a
+  // one-minute set reads "01:00" rather than "00:01:00".
+  return hours > 0
+    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
+}
+
+/** Rest countdown as `M:SS`, rounding partial seconds up and clamping at zero. */
+export function formatRestCountdown(remainingMs: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Target-load text for a set, e.g. `135 lbs × 8`, `8 reps`, or `60 kg`;
+ * null when the set has neither weight nor reps.
+ */
+export function formatSetLoad(
+  set: Pick<ActiveSetDescription, 'weightKg' | 'reps'>,
+  weightUnit: 'kg' | 'lbs',
+): string | null {
+  const w =
+    set.weightKg != null
+      ? `${parseFloat(weightFromKg(set.weightKg, weightUnit).toFixed(1))} ${weightUnit}`
+      : null;
+  if (w != null && set.reps != null) return `${w} × ${set.reps}`;
+  if (set.reps != null) return `${set.reps} reps`;
+  return w;
 }
 
 export type RpeTone = 'easy' | 'moderate' | 'hard' | 'max';
@@ -578,6 +708,31 @@ export function buildSessionDurationMinutes(
 /** Set types offered by the long-press set-type pickers. */
 export const SET_TYPE_OPTIONS = ['warmup', 'normal', 'drop', 'failure'] as const;
 
+/**
+ * A drop set continues its parent set at a stripped weight with no pause, so
+ * no rest is ever taken before one — the rest timer skips straight to it.
+ */
+export function isDropSetType(setType: string | null | undefined): boolean {
+  return setType === 'drop';
+}
+
+/**
+ * Letter shown in the set # column instead of a working-set number, or null
+ * for numbered (working) sets.
+ */
+export function setTypeLetter(setType: string | null | undefined): 'W' | 'D' | 'F' | null {
+  switch (setType) {
+    case 'warmup':
+      return 'W';
+    case 'drop':
+      return 'D';
+    case 'failure':
+      return 'F';
+    default:
+      return null;
+  }
+}
+
 // --- Personal record (PR) detection ---
 //
 // A PR is a working set that beats the historical best for its exercise —
@@ -618,6 +773,25 @@ export function compareSetRecords(
   const wb = Math.round(b.weight * 100);
   if (wa !== wb) return wa - wb;
   return (a.reps ?? 0) - (b.reps ?? 0);
+}
+
+/**
+ * True when a non-warmup weighted set TIES the record (same weight and reps
+ * under `compareSetRecords`) — the "matched your PR" marker, one step below
+ * beating it. False when either side lacks a weight.
+ */
+export function matchesSetRecord(
+  set: { weight: number | null; reps: number | null; set_type?: string | null },
+  best: { weight: number | null; reps: number | null } | null | undefined,
+): boolean {
+  if (best == null || best.weight == null || set.weight == null) return false;
+  if (isWarmupSetType(set.set_type)) return false;
+  return (
+    compareSetRecords(
+      { weight: set.weight, reps: set.reps },
+      { weight: best.weight, reps: best.reps },
+    ) === 0
+  );
 }
 
 /**

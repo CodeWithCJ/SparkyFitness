@@ -1,8 +1,10 @@
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import { fireSuccessHaptic } from './haptics';
+import { ExactAlarmBridge } from './ExactAlarmBridge';
 import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
@@ -10,6 +12,15 @@ import {
 
 const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
+const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
+
+const REST_COMPLETE_CATEGORY = 'rest-complete';
+/**
+ * actionIdentifier of the "Complete Set" button on the rest-complete ping.
+ * Responses are dispatched to the store by `initWorkoutNotificationActions`
+ * in activeWorkoutStore.ts.
+ */
+export const COMPLETE_SET_ACTION = 'complete-set';
 
 let initialized = false;
 let hasShownDeniedToast = false;
@@ -53,6 +64,17 @@ export async function initNotifications(): Promise<void> {
         enableVibrate: true,
       });
     }
+
+    // "Complete Set" button on the rest-complete ping. The press is handled
+    // in the background — no app open; iOS reveals it on long-press/pull-down,
+    // Android shows it directly on the notification.
+    await Notifications.setNotificationCategoryAsync(REST_COMPLETE_CATEGORY, [
+      {
+        identifier: COMPLETE_SET_ACTION,
+        buttonTitle: 'Complete Set',
+        options: { opensAppToForeground: false },
+      },
+    ]);
   } catch (err) {
     addLog(`initNotifications failed: ${(err as Error).message}`, 'ERROR');
   }
@@ -82,6 +104,49 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   }
 }
 
+/**
+ * One-time Android prompt for the "Alarms & reminders" special access.
+ * Without it, expo-notifications schedules inexact alarms that the OS batches
+ * ~15s late, so the rest-complete ping lags the actual deadline. Denied by
+ * default on Android 13+; only the user can grant it, via system settings.
+ */
+export async function maybePromptForExactAlarmPermission(): Promise<void> {
+  if (!ExactAlarmBridge.isAvailable) return;
+  if (!useAppPreferencesStore.getState().notificationsEnabled) return;
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.status !== 'granted') return;
+    if (await ExactAlarmBridge.canScheduleExactAlarms()) return;
+    if ((await AsyncStorage.getItem(EXACT_ALARM_PROMPT_KEY)) === 'true') return;
+    await AsyncStorage.setItem(EXACT_ALARM_PROMPT_KEY, 'true');
+    Alert.alert(
+      'On-time rest alerts',
+      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers ring on time.',
+      [
+        { text: 'Not Now', style: 'cancel' },
+        {
+          text: 'Open Settings',
+          onPress: () => {
+            void ExactAlarmBridge.openExactAlarmSettings().catch(
+              (err: unknown) => {
+                addLog(
+                  `openExactAlarmSettings failed: ${(err as Error).message}`,
+                  'ERROR',
+                );
+              },
+            );
+          },
+        },
+      ],
+    );
+  } catch (err) {
+    addLog(
+      `maybePromptForExactAlarmPermission failed: ${(err as Error).message}`,
+      'ERROR',
+    );
+  }
+}
+
 export async function scheduleRestNotification(
   exerciseName: string,
   seconds: number,
@@ -92,12 +157,18 @@ export async function scheduleRestNotification(
   const granted = await ensureNotificationPermission();
   if (!granted) return null;
 
+  // Any still-displayed rest ping is stale once the next rest starts.
+  // Fire-and-forget: awaiting would delay the TIME_INTERVAL trigger, which
+  // anchors its fire time at native construction.
+  void dismissDeliveredRestNotifications();
+
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: content?.title ?? 'Rest complete',
         body: content?.body ?? exerciseName,
         sound: true,
+        categoryIdentifier: REST_COMPLETE_CATEGORY,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -110,6 +181,43 @@ export async function scheduleRestNotification(
     addLog(`scheduleRestNotification failed: ${(err as Error).message}`, 'ERROR');
     return null;
   }
+}
+
+/** Dismiss every already-delivered rest ping from the tray. */
+async function dismissDeliveredRestNotifications(): Promise<void> {
+  try {
+    const presented = await Notifications.getPresentedNotificationsAsync();
+    await Promise.all(
+      presented
+        .filter((n) => n.request.content.categoryIdentifier === REST_COMPLETE_CATEGORY)
+        .map((n) => Notifications.dismissNotificationAsync(n.request.identifier)),
+    );
+  } catch (err) {
+    addLog(`dismissDeliveredRestNotifications failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
+/**
+ * Dismiss one delivered notification. Needed after an Android action press —
+ * unlike iOS, Android leaves the notification in the tray.
+ */
+export async function dismissDeliveredNotification(identifier: string): Promise<void> {
+  try {
+    await Notifications.dismissNotificationAsync(identifier);
+  } catch (err) {
+    addLog(`dismissDeliveredNotification failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
+/**
+ * Subscribe to notification action/tap responses. A thin wrapper so the
+ * active-workout store can listen without importing expo-notifications and
+ * without a store ↔ service import cycle.
+ */
+export function addNotificationResponseListener(
+  listener: (response: Notifications.NotificationResponse) => void,
+) {
+  return Notifications.addNotificationResponseReceivedListener(listener);
 }
 
 /**

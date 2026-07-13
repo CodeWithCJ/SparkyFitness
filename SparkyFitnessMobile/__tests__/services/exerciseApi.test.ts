@@ -316,6 +316,21 @@ describe('exerciseApi', () => {
       );
     });
 
+    test('appends the exerciseId filter when provided', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ sessions: [], pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
+      });
+
+      await fetchExerciseHistory(1, 20, 'exercise-uuid-1');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/v2/exercise-entries/history?page=1&pageSize=20&exerciseId=exercise-uuid-1',
+        expect.anything()
+      );
+    });
+
     test('returns parsed JSON response on success', async () => {
       const responseData = {
         sessions: [{ id: '1', type: 'individual', calories_burned: 250 }],

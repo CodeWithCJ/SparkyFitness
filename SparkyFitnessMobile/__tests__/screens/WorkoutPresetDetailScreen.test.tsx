@@ -207,8 +207,8 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    // The name lives in the (native) header title now; the body keeps the
-    // description, exercise count, and the exercise card.
+    // The name lives in the header title; the body keeps the description,
+    // exercise count, and the exercise card.
     expect(navigation.setOptions).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Push Day' }),
     );
@@ -303,9 +303,9 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('Rest · 45s')).toBeTruthy();
-    expect(screen.queryByText('Rest · 1:30')).toBeNull();
-    expect(screen.queryByText('Rest · 2:00')).toBeNull();
+    expect(screen.getByText('Rest 45s')).toBeTruthy();
+    expect(screen.queryByText('Rest 1:30')).toBeNull();
+    expect(screen.queryByText('Rest 2:00')).toBeNull();
   });
 
   it('renders a superset rail on each grouped exercise', () => {

@@ -264,10 +264,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || duration > 0) {
       stats.push({
         value: isEditing
-          ? (formState.duration || '—')
+          ? (formState.duration || '-')
           : (duration > 0
               ? String(Number(duration.toFixed(2)))
-              : '—'),
+              : '-'),
         label: 'Duration',
         editKey: 'duration',
         editSuffix: 'min',
@@ -277,10 +277,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || calories > 0) {
       stats.push({
         value: isEditing
-          ? (formState.calories || '—')
+          ? (formState.calories || '-')
           : (calories > 0
               ? (calories % 1 === 0 ? String(calories) : calories.toFixed(1))
-              : '—'),
+              : '-'),
         label: 'Calories',
         editKey: 'calories',
         editSuffix: 'cal',
@@ -290,10 +290,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || (session.distance != null && session.distance > 0)) {
       stats.push({
         value: isEditing
-          ? (formState.distance || '—')
+          ? (formState.distance || '-')
           : (session.distance != null && session.distance > 0
               ? String(distanceFromKm(session.distance, distanceUnit).toFixed(1))
-              : '—'),
+              : '-'),
         label: 'Distance',
         editKey: 'distance',
         editSuffix: distLabel,
@@ -303,8 +303,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || session.avg_heart_rate != null) {
       stats.push({
         value: isEditing
-          ? (formState.avgHeartRate || '—')
-          : (session.avg_heart_rate != null ? String(session.avg_heart_rate) : '—'),
+          ? (formState.avgHeartRate || '-')
+          : (session.avg_heart_rate != null ? String(session.avg_heart_rate) : '-'),
         label: 'Avg Heart Rate',
         editKey: 'avgHeartRate',
         editSuffix: 'bpm',
@@ -581,8 +581,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               {session.sets.map(set => {
                 const displayWeight = set.weight != null
                   ? `${parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1))} ${weightUnit}`
-                  : '\u2014';
-                const displayReps = set.reps != null ? String(set.reps) : '\u2014';
+                  : '-';
+                const displayReps = set.reps != null ? String(set.reps) : '-';
                 return (
                   <View key={set.id} className="flex-row py-1.5">
                     <Text className="text-sm text-text-muted w-10 text-center">{set.set_number}</Text>

@@ -229,7 +229,9 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 105 });
     });
 
-    it('converts a typed lbs weight to kg on commit', () => {
+    it('converts a typed lbs weight to kg quantized to the server precision', () => {
+      // DECIMAL(10,2) storage: committing the raw conversion (61.23496995…)
+      // would make the autosave echo differ and re-seed the row's drafts.
       const { getByLabelText, callbacks } = renderRow({
         state: 'current',
         isFocused: true,
@@ -239,8 +241,26 @@ describe('ActiveWorkoutSetRow', () => {
       expect(input.props.value).toBe('132.3');
       fireEvent.changeText(input, '135');
       fireEvent(input, 'blur');
-      const patch = callbacks.onCommitField.mock.calls[0][1];
-      expect(patch.weight).toBeCloseTo(61.235, 3);
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 61.23 });
+    });
+
+    it('does not re-commit a draft that parses back to the stored weight', () => {
+      // The draft can legally hold more decimals than the seeded display form
+      // (it survives under focus without re-seeding). If it still quantizes to
+      // the stored kg, committing it would only bump the revision.
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+        weightUnit: 'lbs',
+        set: { weight: 61.26 },
+      });
+      const input = getByLabelText('Weight');
+      fireEvent.changeText(input, '135.05'); // 61.2576… kg → quantizes to 61.26
+      fireEvent(input, 'blur');
+      const weightCommits = callbacks.onCommitField.mock.calls.filter(
+        ([, patch]) => 'weight' in patch,
+      );
+      expect(weightCommits).toHaveLength(0);
     });
 
     it('commits a cleared weight as null', () => {
@@ -358,6 +378,27 @@ describe('ActiveWorkoutSetRow', () => {
       ];
       expect(ids.every(Boolean)).toBe(true);
       expect(new Set(ids).size).toBe(3);
+    });
+
+    it('issues a fresh accessory id on each activation but holds it while active', () => {
+      // Fabric recycles native TextInputs with their last props retained, so a
+      // remount that reuses a prior activation's exact id string is treated as
+      // unchanged and the accessory bar never reattaches (bare keyboard on the
+      // second edit of the same cell). Re-renders during one activation must
+      // NOT change the id, or the live attachment breaks under the open
+      // keyboard (e.g. autosave churn).
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, rerenderRow } = renderRow({ ...base, isFocused: true });
+      const firstId = getByLabelText('Weight').props.inputAccessoryViewID;
+
+      rerenderRow({ ...base, isFocused: true, weightUnit: 'lbs' });
+      expect(getByLabelText('Weight').props.inputAccessoryViewID).toBe(firstId);
+
+      rerenderRow({ ...base, isFocused: false });
+      rerenderRow({ ...base, isFocused: true });
+      const secondId = getByLabelText('Weight').props.inputAccessoryViewID;
+      expect(secondId).toBeTruthy();
+      expect(secondId).not.toBe(firstId);
     });
   });
 
@@ -806,13 +847,17 @@ describe('ActiveWorkoutSetRow', () => {
     });
   });
 
-  it('shows the W pill instead of the set number for warmups', () => {
+  it.each([
+    ['warmup', 'W'],
+    ['drop', 'D'],
+    ['failure', 'F'],
+  ])('shows %s sets as a plain %s instead of the set number', (setType, letter) => {
     const { getByText, queryByText } = renderRow({
       state: 'upcoming',
-      set: { set_type: 'warmup', reps: 15, weight: 20 },
+      set: { set_type: setType, reps: 15, weight: 20 },
       displayNumber: 3,
     });
-    expect(getByText('W')).toBeTruthy();
+    expect(getByText(letter)).toBeTruthy();
     expect(queryByText('3')).toBeNull();
   });
 
@@ -903,14 +948,14 @@ describe('ActiveWorkoutSetRow', () => {
       expect(repsOnly.getByText('8 reps')).toBeTruthy();
     });
 
-    it('renders an em-dash when this row has no previous counterpart', () => {
+    it('renders a dash when this row has no previous counterpart', () => {
       const { getByText } = renderRow({ state: 'upcoming', previousSet: null });
-      expect(getByText('—')).toBeTruthy();
+      expect(getByText('-')).toBeTruthy();
     });
 
     it('omits the column when the prop is not passed', () => {
       const { queryByText } = renderRow({ state: 'upcoming' });
-      expect(queryByText('—')).toBeNull();
+      expect(queryByText('-')).toBeNull();
     });
 
     describe('tap-to-fill', () => {
@@ -1004,16 +1049,67 @@ describe('ActiveWorkoutSetRow', () => {
       expect(getByLabelText('Weight').props.value).toBe('105');
     });
 
-    it('still re-seeds the draft when the set VALUES change (external edit)', () => {
+    it('re-seeds an unfocused row when the set VALUES change (external edit)', () => {
+      const base = { state: 'current' as const };
       const { getByLabelText, rerenderRow } = renderRow({
-        state: 'current',
-        isFocused: true,
+        ...base,
+        isFocused: false,
         set: { id: 101, weight: 60 },
       });
-      fireEvent.changeText(getByLabelText('Weight'), '105');
-      // A genuine value change still re-seeds — only set.id left the signature.
-      rerenderRow({ state: 'current', isFocused: true, set: { id: 101, weight: 80 } });
+      // The value changes while the row shows display cells; the next focus
+      // must seed the input from the fresh store value, not a stale draft.
+      rerenderRow({ ...base, isFocused: false, set: { id: 101, weight: 80 } });
+      rerenderRow({ ...base, isFocused: true, set: { id: 101, weight: 80 } });
       expect(getByLabelText('Weight').props.value).toBe('80');
+    });
+
+    it('does not rewrite drafts under a focused row when a store value changes', () => {
+      // THE mid-edit clobber: fill-from-previous, edit lbs (blur commits a kg
+      // the server rounds), then type reps — the autosave echo adopts the
+      // rounded weight while reps is still an uncommitted draft. The re-seed
+      // must not snap the typed reps back to the previous value.
+      const base = { state: 'current' as const, weightUnit: 'lbs' as const };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { id: 101, weight: 45.36, reps: 10 }, // filled from previous
+      });
+      const weight = getByLabelText('Weight');
+      fireEvent.changeText(weight, '135');
+      fireEvent(weight, 'blur');
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 61.23 });
+
+      fireEvent.changeText(getByLabelText('Reps'), '12');
+
+      // Autosave echo lands mid-typing: the committed weight flows back (any
+      // server normalization would change the signature the same way).
+      rerenderRow({ ...base, isFocused: true, set: { id: 101, weight: 61.23, reps: 10 } });
+      expect(getByLabelText('Reps').props.value).toBe('12');
+      expect(getByLabelText('Weight').props.value).toBe('135');
+
+      // Deactivating flushes the surviving draft to the store.
+      rerenderRow({ ...base, isFocused: false, set: { id: 101, weight: 61.23, reps: 10 } });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 12 });
+      const weightCommits = callbacks.onCommitField.mock.calls.filter(
+        ([, patch]) => 'weight' in patch,
+      );
+      expect(weightCommits).toHaveLength(1);
+    });
+
+    it('fill-from-previous updates the visible inputs on a focused row', () => {
+      // The focused row skips the store-driven re-seed, so the fill handler
+      // mirrors the values into the drafts itself.
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+        set: { id: 101, weight: 60, reps: 10 },
+        previousSet: { setNumber: 1, setType: null, weight: 100, reps: 5 },
+      });
+      fireEvent.changeText(getByLabelText('Reps'), '12'); // typed, then overridden by fill
+      fireEvent.press(getByLabelText('Fill set 1 from previous'));
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 100, reps: 5 });
+      expect(getByLabelText('Weight').props.value).toBe('100');
+      expect(getByLabelText('Reps').props.value).toBe('5');
     });
   });
 });
