@@ -31,16 +31,17 @@ const SERVER_VERSION = versionService.getAppVersion();
  * This is used to normalize optional parameters sent as null by LLM clients
  * (e.g. start_date: null) into undefined (omitted) so they satisfy Zod's .optional() validation.
  */
-function stripNulls(val: any): any {
+function stripNulls(val: unknown): unknown {
   if (Array.isArray(val)) {
-    return val.map((item) =>
+    return val.map((item: unknown) =>
       item && typeof item === 'object' ? stripNulls(item) : item
     );
   }
   if (val && typeof val === 'object') {
-    const clean: Record<string, any> = {};
-    for (const key of Object.keys(val)) {
-      const cleanedVal = val[key];
+    const obj = val as Record<string, unknown>;
+    const clean: Record<string, unknown> = {};
+    for (const key of Object.keys(obj)) {
+      const cleanedVal = obj[key];
       if (cleanedVal !== null) {
         clean[key] =
           cleanedVal && typeof cleanedVal === 'object'

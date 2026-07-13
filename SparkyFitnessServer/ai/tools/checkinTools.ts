@@ -16,6 +16,57 @@ import {
   type ManageCheckinInput,
 } from './schemas/checkin.js';
 
+interface BiometricsRow {
+  entry_date: string;
+  weight?: number | string | null;
+  height?: number | string | null;
+  neck?: number | string | null;
+  waist?: number | string | null;
+  hips?: number | string | null;
+  steps?: number | null;
+  body_fat_percentage?: number | string | null;
+  [key: string]: unknown;
+}
+
+interface CustomCategoryRow {
+  id: string;
+  name: string;
+  measurement_type: string;
+  created_at?: string | Date;
+}
+
+interface SleepEntryRow {
+  created_at: string | Date;
+  duration_in_seconds?: number;
+  bedtime?: string | null;
+  wake_time?: string | null;
+  source?: string;
+  sleep_score?: number | null;
+  [key: string]: unknown;
+}
+
+interface FastingLogRow {
+  id: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  status?: string;
+  fasting_type?: string | null;
+  [key: string]: unknown;
+}
+
+interface CustomMeasurementEntryRow {
+  id: string;
+  custom_categories?: {
+    name?: string;
+    measurement_type?: string;
+  } | null;
+  value?: string | number;
+  notes?: string;
+  entry_date?: string;
+  created_at?: string | Date;
+  [key: string]: unknown;
+}
+
 const VALID_ACTIONS = [
   'log_biometrics',
   'log_custom_metric',
@@ -54,7 +105,7 @@ export async function getBiometricsHistoryRows(
   userId: string,
   startDate?: string,
   endDate?: string
-) {
+): Promise<BiometricsRow[]> {
   const prefs = await preferenceService.getUserPreferences(userId, userId);
   const wUnit = prefs.default_weight_unit || 'kg';
   const mUnit = prefs.default_measurement_unit || 'cm';
@@ -66,8 +117,7 @@ export async function getBiometricsHistoryRows(
     endDate || '9999-12-31'
   );
   // The repository returns newest-first; MCP rendered oldest-first.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return [...rows].reverse().map((row: any) => ({
+  return [...rows].reverse().map((row: BiometricsRow) => ({
     ...row,
     weight: isSet(row.weight)
       ? convertWeight(Number(row.weight), 'kg', wUnit)
@@ -157,7 +207,7 @@ Actions:
             }
             return 'list_checkin_diary'; // fallback
           }
-        ) as any;
+        ) as Record<string, unknown>;
 
         // Default missing entry_date to 'today' for logging actions
         const loggingActions = [
@@ -169,7 +219,7 @@ Actions:
         if (
           !process.env.VITEST &&
           !normalized.entry_date &&
-          loggingActions.includes(normalized.action)
+          loggingActions.includes(normalized.action as string)
         ) {
           normalized.entry_date = 'today';
         }
@@ -267,7 +317,7 @@ Actions:
                 userId
               );
               const category = categories.find(
-                (cat: any) =>
+                (cat: CustomCategoryRow) =>
                   String(cat.name).toLowerCase() ===
                   args.category_name.toLowerCase()
               );
@@ -296,20 +346,27 @@ Actions:
                 userId,
                 userId
               );
+              interface MappedCategoryRow {
+                id: string;
+                category_name: string;
+                measurement_type: string;
+                created_at?: string | Date;
+              }
               const categories = rows
-                .map((row: any) => ({
+                .map((row: CustomCategoryRow) => ({
                   id: row.id,
                   category_name: row.name,
                   measurement_type: row.measurement_type,
                   created_at: row.created_at,
                 }))
-                .sort((a: any, b: any) =>
+                .sort((a: MappedCategoryRow, b: MappedCategoryRow) =>
                   String(a.category_name).localeCompare(String(b.category_name))
                 );
               return formatList(
                 categories,
                 'Custom Measurement Categories',
-                (c: any) => `**${c.category_name}**\n  ID: ${c.id}`
+                (c: MappedCategoryRow) =>
+                  `**${c.category_name}**\n  ID: ${c.id}`
               );
             }
 
@@ -447,8 +504,10 @@ Actions:
               const wUnit = prefs.default_weight_unit || 'kg';
               const mUnit = prefs.default_measurement_unit || 'cm';
 
-              let bio: Record<string, any> | null =
-                bioRow && Object.keys(bioRow).length > 0 ? bioRow : null;
+              let bio: BiometricsRow | null =
+                bioRow && Object.keys(bioRow).length > 0
+                  ? (bioRow as BiometricsRow)
+                  : null;
               if (bio) {
                 bio = {
                   ...bio,
@@ -475,11 +534,11 @@ Actions:
               const moods = moodEntry ? [moodEntry] : [];
               const sleeps = [...sleepRows]
                 .sort(
-                  (a: any, b: any) =>
+                  (a: SleepEntryRow, b: SleepEntryRow) =>
                     new Date(a.created_at).getTime() -
                     new Date(b.created_at).getTime()
                 )
-                .map((row: any) => ({
+                .map((row: SleepEntryRow) => ({
                   ...row,
                   duration_seconds: row.duration_in_seconds,
                   bedtime: row.bedtime
@@ -489,7 +548,7 @@ Actions:
                     ? new Date(row.wake_time).toISOString()
                     : null,
                 }));
-              const fasts = fastRows.map((row: any) => ({
+              const fasts = fastRows.map((row: FastingLogRow) => ({
                 id: row.id,
                 start_time: row.start_time
                   ? new Date(row.start_time).toISOString()
@@ -500,23 +559,34 @@ Actions:
                 fasting_status: row.status,
                 fasting_type: row.fasting_type,
               }));
+              interface MappedCustomMetric {
+                id: string;
+                category_name?: string;
+                value?: string | number;
+                measurement_type?: string;
+                notes?: string;
+                entry_date?: string;
+                created_at?: string | Date;
+              }
               const customs = [...customRows]
-                .map((row: any) => ({
-                  id: row.id,
-                  category_name: row.custom_categories?.name,
-                  value: row.value,
-                  measurement_type: row.custom_categories?.measurement_type,
-                  notes: row.notes,
-                  entry_date: row.entry_date,
-                  created_at: row.created_at,
-                }))
+                .map(
+                  (row: CustomMeasurementEntryRow): MappedCustomMetric => ({
+                    id: row.id,
+                    category_name: row.custom_categories?.name,
+                    value: row.value,
+                    measurement_type: row.custom_categories?.measurement_type,
+                    notes: row.notes,
+                    entry_date: row.entry_date,
+                    created_at: row.created_at,
+                  })
+                )
                 .sort(
-                  (a: any, b: any) =>
+                  (a: MappedCustomMetric, b: MappedCustomMetric) =>
                     String(a.category_name).localeCompare(
                       String(b.category_name)
                     ) ||
-                    new Date(a.created_at).getTime() -
-                      new Date(b.created_at).getTime()
+                    new Date(a.created_at || 0).getTime() -
+                      new Date(b.created_at || 0).getTime()
                 );
 
               let text = `### Check-in Diary: ${dateLabel}\n\n`;
@@ -634,22 +704,27 @@ Actions:
                 args.start_date,
                 args.end_date
               );
-              return formatList(history, 'Biometrics History', (h: any) => {
-                const hw = h.weight_unit || 'kg';
-                let text = `**${h.entry_date}**: `;
-                if (h.weight) text += `Weight: ${h.weight}${hw} `;
-                if (h.body_fat_percentage)
-                  text += `| BF: ${h.body_fat_percentage}% `;
-                if (h.steps) text += `| Steps: ${h.steps}`;
-                return text;
-              });
+              return formatList(
+                history,
+                'Biometrics History',
+                (h: BiometricsRow) => {
+                  const hw = h.weight_unit || 'kg';
+                  let text = `**${h.entry_date}**: `;
+                  if (h.weight) text += `Weight: ${h.weight}${hw} `;
+                  if (h.body_fat_percentage)
+                    text += `| BF: ${h.body_fat_percentage}% `;
+                  if (h.steps) text += `| Steps: ${h.steps}`;
+                  return text;
+                }
+              );
             }
 
-            default:
-              return ERRORS.INVALID_ACTION(
-                String((args as any).action),
-                VALID_ACTIONS
+            default: {
+              const actionStr = String(
+                (args as Record<string, unknown>).action || 'unknown'
               );
+              return ERRORS.INVALID_ACTION(actionStr, VALID_ACTIONS);
+            }
           }
         } catch (error) {
           log('error', '[Checkin Tool] Error:', error);
