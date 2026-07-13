@@ -1052,7 +1052,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     ) {
       Toast.show({
         type: 'error',
-        text1: 'Still loading food details — try again in a moment.',
+        text1: 'Still loading food details. Try again in a moment.',
       });
       return;
     }
@@ -1618,7 +1618,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       // row would be misclassified as a create and duplicate the existing variant.
       Toast.show({
         type: 'error',
-        text1: 'Still loading food details — try again in a moment.',
+        text1: 'Still loading food details. Try again in a moment.',
       });
       return;
     }

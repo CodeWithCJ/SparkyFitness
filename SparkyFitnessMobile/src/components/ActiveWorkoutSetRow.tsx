@@ -694,7 +694,7 @@ function ActiveWorkoutSetRow({
           className="text-center text-xs text-text-secondary"
           style={{ fontVariant: ['tabular-nums'] }}
         >
-          {previousSet != null ? formatRecentSessionSet(previousSet, weightUnit) : '—'}
+          {previousSet != null ? formatRecentSessionSet(previousSet, weightUnit) : '-'}
         </Text>
       </Pressable>
     ) : null;

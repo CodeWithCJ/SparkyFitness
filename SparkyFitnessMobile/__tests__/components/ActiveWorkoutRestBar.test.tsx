@@ -41,6 +41,7 @@ function renderBar(
     onPause: jest.fn(),
     onResume: jest.fn(),
     onCompleteSet: jest.fn(),
+    onPressBar: jest.fn(),
     ...overrides,
   };
   const utils = render(
@@ -120,6 +121,28 @@ describe('ActiveWorkoutRestBar', () => {
     fireEvent.press(getByLabelText('Resume rest'));
     expect(props.onResume).toHaveBeenCalledTimes(1);
     expect(props.onPause).not.toHaveBeenCalled();
+  });
+
+  it('fires onPressBar when tapping the bar outside the controls', () => {
+    const { getByTestId, props } = renderBar();
+    fireEvent.press(getByTestId('rest-bar-body'));
+    expect(props.onPressBar).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fire onPressBar when a control is pressed', () => {
+    const { getByLabelText, props } = renderBar();
+    fireEvent.press(getByLabelText('Skip rest'));
+    fireEvent.press(getByLabelText('Pause rest'));
+    fireEvent.press(getByLabelText('Extend rest by 15 seconds'));
+    expect(props.onPressBar).not.toHaveBeenCalled();
+  });
+
+  it('fires onPressBar from the ready-state on-deck row', () => {
+    const { getByTestId, getByLabelText, props } = renderBar({ state: 'ready' });
+    fireEvent.press(getByTestId('rest-bar-body'));
+    expect(props.onPressBar).toHaveBeenCalledTimes(1);
+    fireEvent.press(getByLabelText('Complete set'));
+    expect(props.onPressBar).toHaveBeenCalledTimes(1);
   });
 
   it('renders the docked chrome when Liquid Glass tabs are off', () => {

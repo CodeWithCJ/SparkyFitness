@@ -128,7 +128,7 @@ class MacroWidget : GlanceAppWidget() {
         val text = if (snapshot?.hasData == true && calories != null) {
             "${formatInt(calories)} kcal left"
         } else {
-            "— kcal left"
+            "- kcal left"
         }
         Text(
             text = text,

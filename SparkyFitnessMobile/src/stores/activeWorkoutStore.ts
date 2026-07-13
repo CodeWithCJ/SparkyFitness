@@ -717,7 +717,7 @@ function buildRestNotificationContent(
     if (desc.reps != null) {
       body += ` · ${desc.reps} rep${desc.reps === 1 ? '' : 's'} target`;
     }
-    return { title: 'Rest complete — next set up', body };
+    return { title: 'Rest complete: next set up', body };
   }
   return { title: 'Rest complete', body: fallbackExerciseName };
 }

@@ -39,6 +39,8 @@ interface ActiveWorkoutRestBarProps {
   onResume: () => void;
   /** Completes the on-deck set — the ready state's primary action. */
   onCompleteSet: () => void;
+  /** Taps on the bar outside its controls (the buttons claim their own). */
+  onPressBar?: () => void;
 }
 
 /**
@@ -72,6 +74,7 @@ function ActiveWorkoutRestBar({
   onPause,
   onResume,
   onCompleteSet,
+  onPressBar,
 }: ActiveWorkoutRestBarProps) {
   const insets = useSafeAreaInsets();
   const usesGlass = useNativeIOSTabsActive();
@@ -227,6 +230,15 @@ function ActiveWorkoutRestBar({
     </>
   );
 
+  // Nested pressables claim their own touches, so this only sees taps on the
+  // bar's dead space (label, countdown, gaps). accessible={false} keeps the
+  // inner buttons individually reachable for screen readers.
+  const body = (
+    <Pressable testID="rest-bar-body" onPress={onPressBar} accessible={false}>
+      {content}
+    </Pressable>
+  );
+
   if (usesGlass) {
     return (
       <View
@@ -246,7 +258,7 @@ function ActiveWorkoutRestBar({
           glassEffectStyle="regular"
           isInteractive
         >
-          {content}
+          {body}
         </LiquidGlassSurface>
       </View>
     );
@@ -257,7 +269,7 @@ function ActiveWorkoutRestBar({
       className="bg-surface border-t border-border-subtle px-4 pt-2"
       style={{ paddingBottom: Math.max(insets.bottom, 8) }}
     >
-      {content}
+      {body}
     </View>
   );
 }

@@ -103,7 +103,7 @@ function RenameWorkoutDialog({
       onShow={() => inputRef.current?.focus()}
     >
       {/* A native Modal renders in its own window, so the root KeyboardProvider
-          doesn't reach it — mount a local one so KeyboardAvoidingView tracks the
+          doesn't reach it; mount a local one so KeyboardAvoidingView tracks the
           keyboard on both platforms (RN's own KAV is a no-op on Android). */}
       <KeyboardProvider>
         <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
@@ -233,7 +233,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     [session],
   );
   const handleOpenReorder = useCallback(() => {
-    // Live set inputs commit on blur — dismiss the keyboard so a focused edit
+    // Live set inputs commit on blur; dismiss the keyboard so a focused edit
     // lands before the overlay covers the list.
     Keyboard.dismiss();
     setReorderVisible(true);
@@ -246,7 +246,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     useSupersetBorders(exercisesForBorders);
 
   // Expanded state: the cursor's exercise auto-expands as the workout
-  // advances, auto-collapsing only the previously auto-expanded card — cards
+  // advances, auto-collapsing only the previously auto-expanded card; cards
   // the user opened by hand stay open.
   const [userExpandedIds, setUserExpandedIds] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
@@ -273,7 +273,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   if (activeExerciseId !== prevActiveExerciseId) {
     // Keep a just-finished exercise expanded instead of auto-collapsing it as
     // the cursor moves on: promote it into the user-expanded set (still
-    // collapsible by hand). Only when it's fully logged — a jump that leaves
+    // collapsible by hand). Only when it's fully logged; a jump that leaves
     // holes shouldn't pin it open.
     const leaving = prevActiveExerciseId;
     if (leaving != null) {
@@ -338,6 +338,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     },
     [autoExpandedId, scrollToExercise],
   );
+
+  // Tapping the rest bar outside its controls brings the on-deck set back
+  // into view (same expand/focus/scroll as tapping the exercise's rail thumb).
+  const handlePressRestBar = useCallback(() => {
+    if (activeExerciseId != null) handleRailPress(activeExerciseId);
+  }, [activeExerciseId, handleRailPress]);
 
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (Date.now() < programmaticScrollUntilRef.current) return;
@@ -482,7 +488,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // Per-set note inline expand, toggled by long-pressing the set row. Keyed by
   // render key (the card translates the row's set id) so the panel stays with
   // the same logical set across an autosave id churn. A stale key after a
-  // delete/reconcile is harmless — no matching row renders.
+  // delete/reconcile is harmless: no matching row renders.
   const [expandedSetKey, setExpandedSetKey] = useState<string | null>(null);
   const handleToggleSetDetail = useCallback((setKey: string) => {
     // Animate the panel (and the rows it pushes) in/out. easeInEaseOut matches
@@ -494,14 +500,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   // Per-exercise note editor: which exercise's note field the card ⋮ "Notes"
   // item revealed. Selecting "Notes" again toggles the empty editor back off; a
-  // saved (non-empty) note stays visible regardless — the card also shows the
-  // field whenever `exercise.notes` is set.
+  // saved (non-empty) note stays visible regardless, because the card also
+  // shows the field whenever `exercise.notes` is set.
   const [noteEditorEntryId, setNoteEditorEntryId] = useState<string | null>(null);
   const handleToggleExerciseNote = useCallback(
     (entryId: string) => {
       const opening = noteEditorEntryId !== entryId;
       setNoteEditorEntryId(opening ? entryId : null);
-      // Opening reveals the field — make sure the card is expanded to show it.
+      // Opening reveals the field, so make sure the card is expanded to show it.
       if (opening) {
         setUserExpandedIds((prev) => {
           if (prev.has(entryId)) return prev;
@@ -526,7 +532,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   } | null>(null);
   const overflowSheetRef = useRef<ActionSheetRef>(null);
   const handlePressOverflow = useCallback((entryId: string) => {
-    // The sheet slides into the keyboard's space — drop the keyboard first,
+    // The sheet slides into the keyboard's space, so drop the keyboard first,
     // mirroring what logging a set does.
     Keyboard.dismiss();
     setOverflowMenu({ entryId, mode: 'main' });
@@ -587,7 +593,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       });
     }
     // handleReplaceExercise writes replaceTargetEntryIdRef only inside this
-    // deferred onPress (on menu tap), never during render — the linter can't
+    // deferred onPress (on menu tap), never during render, but the linter can't
     // see that through the memo. Same pattern as BottomSheetPicker's trigger.
     // eslint-disable-next-line react-hooks/refs
     items.push({
@@ -644,7 +650,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const handleCompleteSet = useCallback((setId: string) => {
     useActiveWorkoutStore.getState().completeSet(setId);
-    // Logging advances the cursor and (usually) starts a rest — drop the
+    // Logging advances the cursor and (usually) starts a rest; drop the
     // keyboard so the rest bar is unobstructed and the logged inputs collapse.
     setFocusedSetKey(null);
     setExpandedSetKey(null);
@@ -783,7 +789,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const handleFinish = useCallback(async () => {
     // "Discard changes" sits one tap from "Retry", and a mis-tap would
-    // silently lose every set logged since the last successful save — so the
+    // silently lose every set logged since the last successful save, so the
     // destructive exit gets its own confirm.
     function confirmDiscardChanges(): void {
       Alert.alert(
@@ -830,7 +836,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const handleConfirmEnd = useCallback(() => {
     // Commit any focused-but-unblurred input (a set value or a note) into the
     // store before the finish flush reads it. keyboardShouldPersistTaps keeps
-    // the field focused when End Workout is tapped, so blur it explicitly — the
+    // the field focused when End Workout is tapped, so blur it explicitly; the
     // commit lands well before the user confirms the dialog. On iOS the alert
     // would blur it anyway; this closes the same gap on Android.
     Keyboard.dismiss();
@@ -1039,6 +1045,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onPause={() => useActiveWorkoutStore.getState().pauseRest()}
           onResume={() => useActiveWorkoutStore.getState().resumeRest()}
           onCompleteSet={handleCompleteActiveSet}
+          onPressBar={handlePressRestBar}
         />
       )}
 

@@ -104,12 +104,12 @@ export function formatLastFast(log: FastingLog | null | undefined): string | nul
 }
 
 export interface FastingStatsDisplay {
-  /** Average fast length, e.g. "15.8"; "—" when there are no completed fasts. */
+  /** Average fast length, e.g. "15.8"; "-" when there are no completed fasts. */
   avgFastValue: string;
   avgFastUnit: string;
   /** Completed fast count, e.g. "47"; "0" when none. */
   fastsCount: string;
-  /** Total hours fasted, e.g. "742"; "—" when none. */
+  /** Total hours fasted, e.g. "742"; "-" when none. */
   totalValue: string;
   totalUnit: string;
 }
@@ -133,10 +133,10 @@ export function formatFastingStats(
   const count = toFiniteNumber(stats?.total_completed_fasts);
 
   return {
-    avgFastValue: avgMin != null ? (avgMin / 60).toFixed(1) : '—',
+    avgFastValue: avgMin != null ? (avgMin / 60).toFixed(1) : '-',
     avgFastUnit: avgMin != null ? 'h' : '',
     fastsCount: count != null ? String(Math.round(count)) : '0',
-    totalValue: totalMin != null ? String(Math.round(totalMin / 60)) : '—',
+    totalValue: totalMin != null ? String(Math.round(totalMin / 60)) : '-',
     totalUnit: totalMin != null ? 'h' : '',
   };
 }

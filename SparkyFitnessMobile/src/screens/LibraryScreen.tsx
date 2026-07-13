@@ -267,7 +267,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           >
             <Text className="text-base font-semibold text-text-primary">Foods</Text>
             <View className="flex-row items-center">
-              <Text className="text-text-secondary text-base mr-2">{foodsCount ?? '—'}</Text>
+              <Text className="text-text-secondary text-base mr-2">{foodsCount ?? '-'}</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </View>
           </Pressable>
@@ -290,7 +290,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           >
             <Text className="text-base font-semibold text-text-primary">Exercises</Text>
             <View className="flex-row items-center">
-              <Text className="text-text-secondary text-base mr-2">{exercisesCount ?? '—'}</Text>
+              <Text className="text-text-secondary text-base mr-2">{exercisesCount ?? '-'}</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </View>
           </Pressable>
@@ -301,7 +301,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           >
             <Text className="text-base font-semibold text-text-primary">Workout presets</Text>
             <View className="flex-row items-center">
-              <Text className="text-text-secondary text-base mr-2">{presetsCount ?? '—'}</Text>
+              <Text className="text-text-secondary text-base mr-2">{presetsCount ?? '-'}</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </View>
           </Pressable>

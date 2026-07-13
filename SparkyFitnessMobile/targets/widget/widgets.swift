@@ -115,7 +115,7 @@ private struct RingWithLabel: View {
     let numberFontSize: CGFloat
 
     private var remainingText: String {
-        guard snapshot.hasData else { return "—" }
+        guard snapshot.hasData else { return "-" }
         return Self.numberFormatter.string(from: NSNumber(value: Int(snapshot.remaining.rounded()))) ?? "0"
     }
 

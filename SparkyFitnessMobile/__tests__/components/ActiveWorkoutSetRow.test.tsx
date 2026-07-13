@@ -948,14 +948,14 @@ describe('ActiveWorkoutSetRow', () => {
       expect(repsOnly.getByText('8 reps')).toBeTruthy();
     });
 
-    it('renders an em-dash when this row has no previous counterpart', () => {
+    it('renders a dash when this row has no previous counterpart', () => {
       const { getByText } = renderRow({ state: 'upcoming', previousSet: null });
-      expect(getByText('—')).toBeTruthy();
+      expect(getByText('-')).toBeTruthy();
     });
 
     it('omits the column when the prop is not passed', () => {
       const { queryByText } = renderRow({ state: 'upcoming' });
-      expect(queryByText('—')).toBeNull();
+      expect(queryByText('-')).toBeNull();
     });
 
     describe('tap-to-fill', () => {

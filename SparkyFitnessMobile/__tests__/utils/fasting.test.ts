@@ -112,17 +112,17 @@ describe('formatFastingStats', () => {
       average_duration_minutes: null,
     });
     expect(display.fastsCount).toBe('0');
-    expect(display.avgFastValue).toBe('—');
+    expect(display.avgFastValue).toBe('-');
     expect(display.avgFastUnit).toBe('');
-    expect(display.totalValue).toBe('—');
+    expect(display.totalValue).toBe('-');
     expect(display.totalUnit).toBe('');
   });
 
   test('handles a fully undefined stats object', () => {
     const display = formatFastingStats(undefined);
     expect(display.fastsCount).toBe('0');
-    expect(display.avgFastValue).toBe('—');
-    expect(display.totalValue).toBe('—');
+    expect(display.avgFastValue).toBe('-');
+    expect(display.totalValue).toBe('-');
   });
 
   test('formats populated stats (string count, minutes to hours)', () => {

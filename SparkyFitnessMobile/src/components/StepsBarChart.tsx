@@ -123,7 +123,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
       }
 
       setTooltipText(
-        `${point.steps.toLocaleString()} steps — ${formatTooltipDate(
+        `${point.steps.toLocaleString()} steps · ${formatTooltipDate(
           point.day,
         )}`,
       );

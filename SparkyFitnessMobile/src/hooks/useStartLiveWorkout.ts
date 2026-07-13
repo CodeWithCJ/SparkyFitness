@@ -110,7 +110,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
       if (useActiveWorkoutStore.getState().sessionId !== null) {
         Alert.alert(
           'Replace current workout?',
-          'You already have a workout in progress. Starting a new one clears it here — any sets already saved stay in your diary.',
+          'You already have a workout in progress. Starting a new one clears it here. Any sets already saved stay in your diary.',
           [
             { text: 'Cancel', style: 'cancel' },
             {
