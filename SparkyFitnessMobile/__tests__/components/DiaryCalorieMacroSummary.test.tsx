@@ -158,15 +158,15 @@ describe('DiaryCalorieMacroSummary', () => {
     expect(queryByText(/cal$/)).toBeNull();
   });
 
-  it('does not render a Fiber bar', () => {
+  it('renders a Fiber bar, matching the Dashboard macro grid', () => {
     useAppPreferencesStore.setState({
       diaryCalorieSummaryVisible: false,
       diaryMacroSummaryVisible: true,
     });
-    const { queryByText } = render(
+    const { getByText } = render(
       <DiaryCalorieMacroSummary summary={buildSummary()} showNetCarbs={false} />,
     );
-    expect(queryByText('Fiber')).toBeNull();
+    expect(getByText('Fiber')).toBeTruthy();
   });
 
   it('shows total carbs labeled "Carbs" when showNetCarbs is false', () => {

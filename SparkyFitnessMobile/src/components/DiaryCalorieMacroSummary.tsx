@@ -71,7 +71,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
           </Text>
         </Text>
         {hasGoal && (
-          <Text className="text-base font-semibold text-text-primary">
+          <Text className="text-sm font-semibold text-text-primary">
             {Math.abs(Math.round(remaining)).toLocaleString()}
             <Text className="text-sm font-normal text-text-secondary">
               {' '}
@@ -120,12 +120,13 @@ interface DiaryCalorieMacroSummaryProps {
 const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({ summary, showNetCarbs }) => {
   const diaryCalorieSummaryVisible = useAppPreferencesStore((s) => s.diaryCalorieSummaryVisible);
   const diaryMacroSummaryVisible = useAppPreferencesStore((s) => s.diaryMacroSummaryVisible);
-  const [proteinColor, carbsColor, fatColor, progressOverfillColor] = useCSSVariable([
+  const [proteinColor, carbsColor, fatColor, fiberColor, progressOverfillColor] = useCSSVariable([
     '--color-macro-protein',
     '--color-macro-carbs',
     '--color-macro-fat',
+    '--color-macro-fiber',
     '--color-progress-overfill',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string, string, string];
 
   if (!diaryCalorieSummaryVisible && !diaryMacroSummaryVisible) {
     return null;
@@ -166,6 +167,13 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({ sum
               consumed={summary.protein.consumed}
               goal={summary.protein.goal || undefined}
               color={proteinColor}
+              overfillColor={progressOverfillColor}
+            />
+            <MacroCard
+              label="Fiber"
+              consumed={summary.fiber.consumed}
+              goal={summary.fiber.goal || undefined}
+              color={fiberColor}
               overfillColor={progressOverfillColor}
             />
           </View>
