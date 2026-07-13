@@ -23,7 +23,7 @@ export type ManageWizardInput = z.infer<typeof manageWizardSchema>;
 // Flat shape published to the LLM as `inputSchema`. Strict validation still
 // runs in the tool handler via `manageWizardSchema.safeParse`.
 export const manageWizardInput = z.object({
-  action: z.enum(['daily_checkin']).describe('Action to perform.'),
+  action: z.enum(['daily_checkin']).optional().describe('Action to perform.'),
   step: z
     .enum(['start', 'weight', 'steps', 'sleep', 'mood', 'habits', 'complete'])
     .optional()

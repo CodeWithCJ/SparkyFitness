@@ -73,6 +73,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'food_name',
         'food_id',
         'variant_id',
+        'external_id',
         'update_existing_entries',
         'serving_size',
         'serving_unit',
@@ -81,6 +82,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'unit',
         'meal_type',
         'entry_date',
+        'entry_time',
         'meal_id',
         'meal_name',
         'search_type',
@@ -118,6 +120,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'search_food',
         'lookup_food_nutrition',
         'log_food',
+        'log_external_food',
         'create_food',
         'search_meal',
         'log_meal',
@@ -151,6 +154,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'calories_per_hour',
         'description',
         'entry_date',
+        'entry_time',
         'duration_minutes',
         'calories_burned',
         'notes',
@@ -200,6 +204,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'notes',
         'data_type',
         'mood_value',
+        'mood_tags',
         'start_time',
         'end_time',
         'fasting_status',
@@ -460,11 +465,11 @@ describe('strict discriminated-union validation schemas', () => {
     }
   });
 
-  it('manageGoalsSchema requires start_date for set_goals', () => {
+  it('manageGoalsSchema accepts set_goals without start_date (defaults to today)', () => {
     expect(
       manageGoalsSchema.safeParse({ action: 'set_goals', calories: 2200 })
         .success
-    ).toBe(false);
+    ).toBe(true);
     expect(
       manageGoalsSchema.safeParse({
         action: 'set_goals',

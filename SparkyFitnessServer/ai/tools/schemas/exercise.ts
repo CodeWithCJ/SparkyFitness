@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   dateSchema,
+  optionalEntryTimeSchema,
   setTypeEnum,
   paginationSchema,
   uuidSchema,
@@ -88,6 +89,7 @@ const logExerciseSchema = z
       .optional()
       .describe('Name of the exercise (alternative to ID)'),
     entry_date: dateSchema,
+    entry_time: optionalEntryTimeSchema,
     duration_minutes: z.coerce
       .number()
       .min(0)
@@ -160,6 +162,7 @@ const updateExerciseEntrySchema = z
     entry_date: dateSchema
       .optional()
       .describe('New date for the entry (YYYY-MM-DD)'),
+    entry_time: optionalEntryTimeSchema,
     duration_minutes: z.coerce
       .number()
       .min(0)
@@ -282,15 +285,24 @@ export const manageExerciseInput = z.object({
       'create_workout_preset',
       'get_exercise_progress',
     ])
-    .describe('Action to perform; see tool description for per-action fields.'),
+    .optional()
+    .describe(
+      'Optional action to perform (server infers if omitted); see tool description for per-action fields.'
+    ),
   // identity
-  exercise_id: uuidSchema.optional().describe('Exercise UUID'),
+  exercise_id: uuidSchema
+    .optional()
+    .describe(
+      'Exercise UUID. REQUIRED for "log_exercise" if exercise_name is not provided.'
+    ),
   exercise_name: z
     .string()
     .min(1)
     .max(200)
     .optional()
-    .describe('Exercise name (alternative to exercise_id)'),
+    .describe(
+      'Exercise name (e.g. "Walking", "Running", "Squats"). REQUIRED for "log_exercise" if exercise_id is not provided.'
+    ),
   exercise_ids: z
     .array(uuidSchema)
     .optional()
@@ -346,6 +358,7 @@ export const manageExerciseInput = z.object({
     .describe('Description of the exercise'),
   // log
   entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
+  entry_time: optionalEntryTimeSchema,
   duration_minutes: z.coerce
     .number()
     .min(0)

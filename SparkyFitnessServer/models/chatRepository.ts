@@ -219,7 +219,7 @@ async function getActiveAiServiceSetting(userId: string) {
     if (prefResult.rows.length > 0 && prefResult.rows[0].active_ai_service_id) {
       const activeId = prefResult.rows[0].active_ai_service_id;
       const settingResult = await client.query(
-        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, u.name as creator_name
+        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, ai.chat_tool_profile, u.name as creator_name
          FROM ai_service_settings ai
          LEFT JOIN public."user" u ON ai.user_id = u.id
          WHERE ai.id = $1 AND ai.is_active = TRUE`,
@@ -238,7 +238,7 @@ async function getActiveAiServiceSetting(userId: string) {
 
     // Priority 1: User-specific active setting
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id FROM ai_service_settings WHERE is_active = TRUE AND is_public = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile FROM ai_service_settings WHERE is_active = TRUE AND is_public = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
       [userId]
     );
     if (userResult.rows.length > 0) {
@@ -251,7 +251,7 @@ async function getActiveAiServiceSetting(userId: string) {
     }
     // Priority 2: Database global active setting
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id FROM ai_service_settings WHERE is_active = TRUE AND is_public = TRUE ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile FROM ai_service_settings WHERE is_active = TRUE AND is_public = TRUE ORDER BY created_at DESC LIMIT 1',
       []
     );
     if (globalResult.rows.length > 0) {
@@ -289,7 +289,7 @@ async function getActiveVisionAiServiceSetting(userId: string) {
     if (prefs && prefs.active_vision_ai_service_id) {
       const visionId = prefs.active_vision_ai_service_id;
       const settingResult = await client.query(
-        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, u.name as creator_name
+        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, ai.chat_tool_profile, u.name as creator_name
          FROM ai_service_settings ai
          LEFT JOIN public."user" u ON ai.user_id = u.id
          WHERE ai.id = $1 AND ai.is_active = TRUE`,

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Save, X, Plug, Loader2 } from 'lucide-react';
+import { Save, X, Plug, Loader2, AlertTriangle } from 'lucide-react';
 import {
   getServiceTypes,
   getModelOptions,
@@ -116,6 +116,9 @@ export const ServiceForm = ({
                 // Types without preset models (openai_compatible/custom/ollama)
                 // have no dropdown, so reveal the custom-model input directly.
                 showCustomModelInput: getModelOptions(value).length === 0,
+                // Default all services to the 'full' tool profile.
+                // Users can manually select 'core' if they wish to optimize
+                // their local system performance, and are guided by warnings.
                 chat_tool_profile: 'full',
               })
             }
@@ -179,35 +182,75 @@ export const ServiceForm = ({
         </div>
       )}
 
-      {formData.service_type === 'ollama' && (
-        <div>
-          <Label htmlFor="chat_tool_profile">
-            {t(`${translationPrefix}.chatToolProfile`)}
-          </Label>
-          <Select
-            value={formData.chat_tool_profile ?? 'full'}
-            onValueChange={(value) =>
-              onFormDataChange({
-                chat_tool_profile: value as 'full' | 'core',
-              })
-            }
-          >
-            <SelectTrigger id="chat_tool_profile">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="full">
-                {t(`${translationPrefix}.chatToolProfileFull`)}
-              </SelectItem>
-              <SelectItem value="core">
-                {t(`${translationPrefix}.chatToolProfileCore`)}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t(`${translationPrefix}.chatToolProfileDescription`)}
-          </p>
-        </div>
+      {/* Self-hosted types (ollama/openai_compatible/custom) can point at
+          small local models with no prompt cache, where the full 35-tool
+          block is the dominant per-turn token cost — offer the leaner 'core'
+          profile for all of them. The server only honors 'core' for these
+          types (see chatService.prepareChatContext). */}
+      {requiresCustomUrl && (
+        <>
+          <div>
+            <Label htmlFor="chat_tool_profile">
+              {t(`${translationPrefix}.chatToolProfile`)}
+            </Label>
+            <Select
+              value={formData.chat_tool_profile ?? 'full'}
+              onValueChange={(value) =>
+                onFormDataChange({
+                  chat_tool_profile: value as 'full' | 'core',
+                })
+              }
+            >
+              <SelectTrigger id="chat_tool_profile">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="full">
+                  {t(`${translationPrefix}.chatToolProfileFull`)}
+                </SelectItem>
+                <SelectItem value="core">
+                  {t(`${translationPrefix}.chatToolProfileCore`)}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t(`${translationPrefix}.chatToolProfileDescription`)}
+            </p>
+          </div>
+
+          {formData.service_type === 'ollama' &&
+            (formData.chat_tool_profile === 'full' ||
+              !formData.chat_tool_profile) && (
+              <div className="flex gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <div className="text-xs">
+                  <p className="font-medium">
+                    {t(`${translationPrefix}.ollamaFullProfileWarningTitle`)}
+                  </p>
+                  <p className="mt-1">
+                    {t(`${translationPrefix}.ollamaFullProfileWarningHint`)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+          {/* Ollama silently truncates prompts past its default 4096-token
+              context, which corrupts tool calls. Surface this prominently so
+              users raise it before blaming the model. */}
+          {formData.service_type === 'ollama' && (
+            <div className="flex gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="text-xs">
+                <p className="font-medium">
+                  {t(`${translationPrefix}.ollamaContextTitle`)}
+                </p>
+                <p className="mt-1">
+                  {t(`${translationPrefix}.ollamaContextHint`)}
+                </p>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="flex items-center space-x-2 mb-4">

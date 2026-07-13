@@ -22,7 +22,7 @@ vi.mock('../config/logging', () => ({
 
 const opts = { toolCallId: 'tc-1', messages: [] };
 const DB_ERROR_TEXT =
-  'Error [DB_ERROR]: A database error occurred. Please try again.\n\nSuggestion: If the issue persists, contact support.';
+  'Error [DB_ERROR]: A database error occurred.\n\nSuggestion: Do NOT retry the same call — it will fail the same way. Tell the user what failed and stop.';
 
 let tools: ReturnType<typeof buildProfileTools>;
 
@@ -217,7 +217,6 @@ describe('sparky_manage_profile', () => {
     expect(result).toBe("Error [VALIDATION]: Invalid timezone: 'Mars/Olympus'");
     expect(preferenceService.upsertUserPreferences).not.toHaveBeenCalled();
   });
-
   it('returns DB_ERROR when the repository throws', async () => {
     vi.mocked(userRepository.getAuthUserProfile).mockRejectedValue(
       new Error('boom')
@@ -229,5 +228,51 @@ describe('sparky_manage_profile', () => {
     );
 
     expect(result).toBe(DB_ERROR_TEXT);
+  });
+
+  it('normalizes nested action parameters and infers action', async () => {
+    vi.mocked(preferenceService.updateUserPreferences).mockResolvedValue({});
+
+    const result = await tools.sparky_manage_profile.execute!(
+      { update_preferences: { default_weight_unit: 'lbs' } } as any,
+      opts
+    );
+
+    expect(result).toBe('✅ Preferences updated.');
+    expect(preferenceService.updateUserPreferences).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      {
+        timezone: null,
+        energy_unit: null,
+        default_weight_unit: 'lbs',
+        default_measurement_unit: null,
+        default_distance_unit: null,
+        water_display_unit: null,
+      }
+    );
+  });
+
+  it('infers action when action is missing from flat parameters', async () => {
+    vi.mocked(preferenceService.updateUserPreferences).mockResolvedValue({});
+
+    const result = await tools.sparky_manage_profile.execute!(
+      { default_weight_unit: 'lbs' } as any,
+      opts
+    );
+
+    expect(result).toBe('✅ Preferences updated.');
+    expect(preferenceService.updateUserPreferences).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      {
+        timezone: null,
+        energy_unit: null,
+        default_weight_unit: 'lbs',
+        default_measurement_unit: null,
+        default_distance_unit: null,
+        water_display_unit: null,
+      }
+    );
   });
 });

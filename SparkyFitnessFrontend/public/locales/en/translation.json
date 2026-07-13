@@ -1,4 +1,23 @@
 {
+  "chat": {
+    "toolCategories": {
+      "tooltip": "Choose chatbot tools",
+      "title": "Chatbot tools",
+      "description": "Fewer tools help smaller local models respond reliably.",
+      "presetFull": "Full",
+      "presetCore": "Core",
+      "clearAll": "Clear all",
+      "emptyHint": "No categories selected — the chatbot will use its default tool set.",
+      "food": "Food & Water",
+      "exercise": "Exercise",
+      "checkin": "Body & Check-ins",
+      "goals": "Goals",
+      "reports": "Reports & Analytics",
+      "coaching": "Coaching",
+      "vision": "Vision",
+      "profile": "Profile & Habits"
+    }
+  },
   "foodCsvImport": {
     "title": "Import Food Data",
     "addRow": "Add Row",
@@ -916,6 +935,10 @@
         "chatToolProfileFull": "Full (all tools)",
         "chatToolProfileCore": "Core (faster, fewer tools)",
         "chatToolProfileDescription": "Core trims the chatbot to the food, exercise, and measurement logging essentials, meant for local or low resource environments. Full enables every tool.",
+        "ollamaContextTitle": "Important: increase Ollama's context window",
+        "ollamaContextHint": "Ollama defaults to a 4096-token context and silently truncates anything larger, which corrupts tool definitions and makes the chatbot unreliable. Set OLLAMA_CONTEXT_LENGTH=16384 on the Ollama server (or add PARAMETER num_ctx 16384 to the model's Modelfile), then restart Ollama. On an 8GB machine, start at 8192.",
+        "ollamaFullProfileWarningTitle": "Potential Performance Impact for Local Models",
+        "ollamaFullProfileWarningHint": "Running a local model with the Full tool set can cause significant latency or errors unless you have a highly powerful system (e.g. high VRAM GPU). If performance is slow or the model gets confused, switch to the Core tool set.",
         "useCustomModel": "Use Custom Model Name",
         "model": "Model",
         "selectModel": "Select a model",
@@ -998,6 +1021,10 @@
         "chatToolProfileFull": "Full (all tools)",
         "chatToolProfileCore": "Core (faster, fewer tools)",
         "chatToolProfileDescription": "Core trims the chatbot to the food, exercise, and measurement logging essentials, meant for local or low resource environments. Full enables every tool.",
+        "ollamaContextTitle": "Important: increase Ollama's context window",
+        "ollamaContextHint": "Ollama defaults to a 4096-token context and silently truncates anything larger, which corrupts tool definitions and makes the chatbot unreliable. Set OLLAMA_CONTEXT_LENGTH=16384 on the Ollama server (or add PARAMETER num_ctx 16384 to the model's Modelfile), then restart Ollama. On an 8GB machine, start at 8192.",
+        "ollamaFullProfileWarningTitle": "Potential Performance Impact for Local Models",
+        "ollamaFullProfileWarningHint": "Running a local model with the Full tool set can cause significant latency or errors unless you have a highly powerful system (e.g. high VRAM GPU). If performance is slow or the model gets confused, switch to the Core tool set.",
         "useCustomModel": "Use Custom Model Name",
         "model": "Model",
         "selectModel": "Select a model",

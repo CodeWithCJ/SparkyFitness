@@ -21,7 +21,7 @@ vi.mock('../config/logging', () => ({
 
 const opts = { toolCallId: 'tc-1', messages: [] };
 const DB_ERROR_TEXT =
-  'Error [DB_ERROR]: A database error occurred. Please try again.\n\nSuggestion: If the issue persists, contact support.';
+  'Error [DB_ERROR]: A database error occurred.\n\nSuggestion: Do NOT retry the same call — it will fail the same way. Tell the user what failed and stop.';
 
 let tools: ReturnType<typeof buildGoalTools>;
 
@@ -56,7 +56,9 @@ describe('sparky_manage_goals', () => {
     );
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
-      '2026-06-01'
+      '2026-06-01',
+      undefined,
+      true
     );
   });
 
@@ -84,7 +86,9 @@ describe('sparky_manage_goals', () => {
     );
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
-      todayInZone('UTC')
+      todayInZone('UTC'),
+      undefined,
+      true
     );
   });
 
@@ -130,17 +134,30 @@ describe('sparky_manage_goals', () => {
     });
   });
 
-  it('set_goals without start_date returns a validation error', async () => {
+  it('set_goals without start_date defaults to today', async () => {
+    vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+      message: 'ok',
+    });
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      protein: 150,
+      carbs: 250,
+      fat: 67,
+      water_goal_ml: 2000,
+    });
+
     const result = await tools.sparky_manage_goals.execute!(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { action: 'set_goals' } as any,
+      { action: 'set_goals', calories: 2200 } as any,
       opts
     );
 
-    expect(result).toBe(
-      'Error [VALIDATION]: start_date: Invalid input: expected string, received undefined'
+    const today = todayInZone('UTC');
+    expect(result).toBe(`✅ Goals set successfully starting from ${today}.`);
+    expect(goalService.manageGoalTimeline).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ p_start_date: today, p_calories: 2200 })
     );
-    expect(goalService.manageGoalTimeline).not.toHaveBeenCalled();
   });
 
   it('rejects unknown actions', async () => {
@@ -282,7 +299,9 @@ describe('sparky_get_goal_snapshot', () => {
     expect(result).toBe(JSON.stringify(snapshotFields));
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
-      '2026-06-01'
+      '2026-06-01',
+      undefined,
+      true
     );
   });
 
@@ -294,7 +313,9 @@ describe('sparky_get_goal_snapshot', () => {
     expect(result).toBe(JSON.stringify({ calories: 2000 }));
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
-      todayInZone('UTC')
+      todayInZone('UTC'),
+      undefined,
+      true
     );
   });
 
@@ -320,7 +341,7 @@ describe('sparky_get_goal_snapshot', () => {
     );
 
     expect(result).toBe(
-      'Error [VALIDATION]: target_date: Invalid string: must match pattern /^\\d{4}-\\d{2}-\\d{2}$/'
+      'Error [VALIDATION]: target_date: Date must be in YYYY-MM-DD format (or "today", "yesterday", "tomorrow")'
     );
   });
 

@@ -769,14 +769,20 @@ router.post(
           .status(400)
           .json({ error: 'mime_type is required.', code: 'INVALID_REQUEST' });
       }
-      if (img.length > MAX_BASE64_IMAGE_LENGTH) {
+      const currentMaxLen = process.env.TEST_MAX_BASE64_IMAGE_LENGTH
+        ? parseInt(process.env.TEST_MAX_BASE64_IMAGE_LENGTH, 10)
+        : MAX_BASE64_IMAGE_LENGTH;
+      if (img.length > currentMaxLen) {
         return res.status(400).json({
           error: 'image exceeds the maximum allowed size of 8MB (base64).',
           code: 'IMAGE_TOO_LARGE',
         });
       }
       totalBase64Length += img.length;
-      if (totalBase64Length > MAX_TOTAL_BASE64_LENGTH) {
+      const currentMaxTotalLen = process.env.TEST_MAX_TOTAL_BASE64_LENGTH
+        ? parseInt(process.env.TEST_MAX_TOTAL_BASE64_LENGTH, 10)
+        : MAX_TOTAL_BASE64_LENGTH;
+      if (totalBase64Length > currentMaxTotalLen) {
         return res.status(400).json({
           error:
             'The combined size of all images exceeds the allowed limit of 24MB (base64).',

@@ -26,18 +26,26 @@ export default defineConfig(({ mode }) => {
           target: target,
           changeOrigin: true,
           rewrite: (path) => `/api${path}`, // Add /api/ prefix
+          timeout: 120000,
+          proxyTimeout: 120000,
         },
         '/api': {
           target: target,
           changeOrigin: true,
+          timeout: 120000,
+          proxyTimeout: 120000,
         },
         '/mcp': {
           target: target,
           changeOrigin: true,
+          timeout: 120000,
+          proxyTimeout: 120000,
         },
         '/uploads': {
           target: target,
           changeOrigin: true,
+          timeout: 120000,
+          proxyTimeout: 120000,
         },
       },
     },

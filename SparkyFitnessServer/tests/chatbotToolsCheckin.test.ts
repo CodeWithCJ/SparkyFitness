@@ -49,7 +49,7 @@ vi.mock('../config/logging', () => ({
 
 const opts = { toolCallId: 'tc-1', messages: [] };
 const DB_ERROR_TEXT =
-  'Error [DB_ERROR]: A database error occurred. Please try again.\n\nSuggestion: If the issue persists, contact support.';
+  'Error [DB_ERROR]: A database error occurred.\n\nSuggestion: Do NOT retry the same call — it will fail the same way. Tell the user what failed and stop.';
 
 let tools: ReturnType<typeof buildCheckinTools>;
 
@@ -349,7 +349,8 @@ describe('log_mood', () => {
       'user-1',
       8,
       'Feeling good',
-      '2026-06-01'
+      '2026-06-01',
+      null
     );
   });
 
@@ -368,18 +369,29 @@ describe('log_mood', () => {
       'user-1',
       5,
       null,
-      '2026-06-01'
+      '2026-06-01',
+      null
     );
   });
 
-  it('rejects a missing entry_date', async () => {
+  it("defaults to today's date if entry_date is omitted", async () => {
+    vi.mocked(moodRepository.createOrUpdateMoodEntry).mockResolvedValue({
+      id: 'mood-1',
+    } as any);
+
     const result = await tools.sparky_manage_checkin.execute!(
       { action: 'log_mood', mood_value: 8 } as any,
       opts
     );
 
-    expect(result).toBe(
-      'Error [VALIDATION]: entry_date: Invalid input: expected string, received undefined'
+    const today = todayInZone('UTC');
+    expect(result).toBe(`✅ Mood logged for ${today}: 8/10.`);
+    expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      8,
+      null,
+      today,
+      null
     );
   });
 });
@@ -646,6 +658,28 @@ describe('list_checkin_diary', () => {
     );
   });
 
+  it('renders checkin diary mood section with tags', async () => {
+    mockEmptyDiary();
+    vi.mocked(moodRepository.getMoodEntryByDate).mockResolvedValue({
+      id: 'mood-1',
+      mood_value: 7,
+      notes: 'Feeling okay',
+      mood_tags: ['anxious', 'worried'],
+      entry_date: '2026-06-01',
+    } as any);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'list_checkin_diary', entry_date: '2026-06-01' },
+      opts
+    );
+
+    expect(result).toBe(
+      '### Check-in Diary: 2026-06-01\n\n' +
+        '## Mood\n' +
+        '- 7/10 [😰 Anxious, 😟 Worried] — Feeling okay\n\n'
+    );
+  });
+
   it('defaults to today and reports an empty diary', async () => {
     mockEmptyDiary();
 
@@ -801,5 +835,73 @@ describe('error handling', () => {
     );
 
     expect(result).toBe(DB_ERROR_TEXT);
+  });
+
+  it('normalizes nested log_mood and defaults mood_value to 5', async () => {
+    vi.mocked(moodRepository.createOrUpdateMoodEntry).mockResolvedValue({
+      id: 'mood-1',
+    });
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { log_mood: { notes: 'Anxious today', entry_date: '2026-06-01' } } as any,
+      opts
+    );
+
+    expect(result).toBe('✅ Mood logged for 2026-06-01: 5/10 — Anxious today.');
+    expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      5,
+      'Anxious today',
+      '2026-06-01',
+      null
+    );
+  });
+
+  it('infers log_mood from notes only and defaults mood_value to 5', async () => {
+    vi.mocked(moodRepository.createOrUpdateMoodEntry).mockResolvedValue({
+      id: 'mood-1',
+    });
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { notes: 'Anxious today', entry_date: '2026-06-01' } as any,
+      opts
+    );
+
+    expect(result).toBe('✅ Mood logged for 2026-06-01: 5/10 — Anxious today.');
+    expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      5,
+      'Anxious today',
+      '2026-06-01',
+      null
+    );
+  });
+
+  it('logs mood with explicit mood_tags', async () => {
+    vi.mocked(moodRepository.createOrUpdateMoodEntry).mockResolvedValue({
+      id: 'mood-1',
+    });
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'log_mood',
+        mood_value: 8,
+        notes: 'Feeling good',
+        mood_tags: ['anxious', 'tired'],
+        entry_date: '2026-06-01',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Mood logged for 2026-06-01: 8/10 [😰 Anxious, 😴 Tired] — Feeling good.'
+    );
+    expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      8,
+      'Feeling good',
+      '2026-06-01',
+      ['anxious', 'tired']
+    );
   });
 });

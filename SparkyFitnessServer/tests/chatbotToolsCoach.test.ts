@@ -26,7 +26,7 @@ vi.mock('../config/logging', () => ({
 
 const opts = { toolCallId: 'tc-1', messages: [] };
 const DB_ERROR_TEXT =
-  'Error [DB_ERROR]: A database error occurred. Please try again.\n\nSuggestion: If the issue persists, contact support.';
+  'Error [DB_ERROR]: A database error occurred.\n\nSuggestion: Do NOT retry the same call — it will fail the same way. Tell the user what failed and stop.';
 
 let tools: ReturnType<typeof buildCoachTools>;
 
@@ -210,16 +210,32 @@ describe('sparky_get_health_summary', () => {
     );
   });
 
-  it('returns a validation error when start_date is missing', async () => {
+  it('defaults to today when start_date is missing', async () => {
+    vi.mocked(coachRepository.getNutritionAggregates).mockResolvedValue({
+      calories: 2000,
+      protein: 150,
+      carbs: 200,
+      fat: 70,
+    });
+    vi.mocked(coachRepository.getExerciseAggregates).mockResolvedValue({
+      workouts: 1,
+      active_calories: 300,
+      duration_minutes: 45,
+    });
+    vi.mocked(coachRepository.getLatestWeightInRange).mockResolvedValue({
+      weight: 75,
+    });
+    vi.mocked(coachRepository.getWaterIntakeTotal).mockResolvedValue({
+      water_ml: 2000,
+    });
+
     const result = await tools.sparky_get_health_summary.execute!(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {} as any,
       opts
     );
 
-    expect(result).toBe(
-      'Error [VALIDATION]: start_date: Invalid input: expected string, received undefined'
-    );
+    expect(result).toContain('Health Summary');
   });
 
   it('maps repository failures to DB_ERROR', async () => {

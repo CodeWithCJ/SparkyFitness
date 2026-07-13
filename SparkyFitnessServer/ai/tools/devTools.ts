@@ -26,7 +26,7 @@ async function assertDevAccess(userId: string): Promise<string | null> {
   return null;
 }
 
-// The 4 admin/debug tools, kept out of buildChatbotTools so the chatbot never
+// The admin/debug tools, kept out of buildChatbotTools so the chatbot never
 // sees them; registered only for an admin when DEV_TOOLS_ENABLED=true. Each
 // execute() returns a plain string — registerToolMap does the MCP wrapping.
 export function buildDevTools(userId: string) {
@@ -80,7 +80,7 @@ export function buildDevTools(userId: string) {
           );
         } catch (error) {
           log('error', '[Dev Tool] inspectSchema error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         } finally {
           client.release();
         }
@@ -115,7 +115,7 @@ export function buildDevTools(userId: string) {
           );
         } catch (error) {
           log('error', '[Dev Tool] getUserInfo error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         } finally {
           client.release();
         }
@@ -134,27 +134,8 @@ export function buildDevTools(userId: string) {
           return formatSuccess(getPoolStats(), 'Database Pool Stats');
         } catch (error) {
           log('error', '[Dev Tool] getDbStats error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
-      },
-    }),
-
-    sparky_run_project_tests: tool({
-      description:
-        "Run the project's test suite to verify nutrition and fitness logic. Requires admin access and DEV_TOOLS_ENABLED=true.",
-      inputSchema: emptyInput,
-      execute: async () => {
-        const denied = await assertDevAccess(userId);
-        if (denied) return denied;
-
-        return formatSuccess(
-          {
-            status: 'scheduled',
-            message:
-              'Tests would be executed via child_process in a real environment.',
-          },
-          'Project Tests'
-        );
       },
     }),
   };

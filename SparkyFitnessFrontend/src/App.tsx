@@ -6,6 +6,7 @@ import {
   usePreferences,
 } from '@/contexts/PreferencesContext';
 import { ChatbotVisibilityProvider } from '@/contexts/ChatbotVisibilityContext';
+import { ChatToolCategoriesProvider } from '@/contexts/ChatToolCategoriesContext';
 import LanguageHandler from '@/components/LanguageHandler';
 import { WaterContainerProvider } from '@/contexts/WaterContainerContext';
 import {
@@ -420,7 +421,9 @@ const App = () => {
     <>
       <ReactQueryDevtools buttonPosition="top-left" initialIsOpen={false} />
       <ChatbotVisibilityProvider>
-        <RouterProvider router={router} />
+        <ChatToolCategoriesProvider>
+          <RouterProvider router={router} />
+        </ChatToolCategoriesProvider>
       </ChatbotVisibilityProvider>
     </>
   );

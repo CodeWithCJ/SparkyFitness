@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { dateSchema, optionalDateSchema } from './common.js';
+import { optionalDateSchema } from './common.js';
 
 export const GetHealthSummarySchema = z
   .object({
-    start_date: dateSchema,
+    start_date: optionalDateSchema,
     end_date: optionalDateSchema,
   })
   .strict();

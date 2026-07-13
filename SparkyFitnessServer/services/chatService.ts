@@ -10,6 +10,7 @@ import {
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { TtlCache } from '../utils/ttlCache.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
   createGuardedFetch,
@@ -24,10 +25,15 @@ import {
   SparkyChatHistory,
   SparkyChatHistoryMutator,
   TestAiServiceConnectionRequest,
+  ChatToolCategorySlug,
+  CHAT_TOOL_CATEGORY_SLUGS,
+  isChatToolCategorySlug,
 } from '@workspace/shared';
 
 interface ChatMessagePart {
-  type: 'text' | 'image' | 'image_url' | 'file';
+  // AI SDK tool parts arrive as `tool-<toolName>`; only sparky_ask_user is
+  // interpreted (see mapMessagePart), the rest fall through to text.
+  type: 'text' | 'image' | 'image_url' | 'file' | string;
   text?: string;
   content?: string;
   mimeType?: string;
@@ -35,6 +41,8 @@ interface ChatMessagePart {
   url?: string;
   image?: string;
   image_url?: { url: string };
+  input?: unknown;
+  output?: unknown;
 }
 
 interface ProcessedMessagePart {
@@ -49,19 +57,57 @@ interface ChatMessage {
   parts?: ChatMessagePart[];
 }
 
-import { generateText, streamText, stepCountIs } from 'ai';
+import { generateText, streamText, stepCountIs, hasToolCall } from 'ai';
 import type { JSONValue, LanguageModelUsage, UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { buildChatbotTools, type ChatToolProfile } from '../ai/tools/index.js';
+import {
+  buildChatbotTools,
+  buildChatToolSurface,
+  resolveCategories,
+  ENABLE_TOOLS_TOOL_NAME,
+  ASK_USER_TOOL_NAME,
+  type ChatToolProfile,
+} from '../ai/tools/index.js';
+import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
+import { readFileSync, existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const MAX_AGENTIC_STEPS = 15;
+// Tighter agent-loop ceiling for the 'core' profile (small/local models with
+// no prompt cache): every step re-processes the full prefix from scratch, so
+// 15 runaway steps on a confused 3B model is pure token burn. Core-profile
+// flows are simple log/read round-trips; 8 steps covers lookup → log → confirm
+// with room to spare.
+const CORE_PROFILE_MAX_AGENTIC_STEPS = 8;
+
+// Sampling temperature for the 'core' tool profile — resolved only for
+// self-hosted services the user flagged as small/local (see
+// prepareChatContext). Small models emit noticeably steadier tool-call JSON at
+// a low temperature, and this chat is tool-orchestration first, prose second.
+// Cloud providers and full-profile self-hosted services keep their
+// provider-tuned defaults (no temperature set).
+const CORE_PROFILE_CHAT_TEMPERATURE = 0.2;
 
 // Retries per chat request on persistent provider errors. Each retry re-sends the
 // full request (system + tools + history), so a high count multiplies token cost
 // on a hard provider outage. 3 covers transient blips without a runaway 5×.
 const MAX_PROVIDER_RETRIES = 3;
+// A single retry for core-profile (cache-less local) backends: with no prompt
+// cache each retry re-processes the entire prefix, and a struggling local
+// server rarely recovers on the 3rd identical attempt anyway.
+const CORE_PROFILE_MAX_PROVIDER_RETRIES = 1;
+
+// Hard wall-clock cap on one chat request (the agent loop as a whole is
+// unbounded otherwise — the chat path never had a timeout, unlike
+// providerDispatch.ts). Generous: a slow local model streaming a long answer
+// with several tool round-trips can legitimately take minutes.
+const CHAT_REQUEST_TIMEOUT_MS = 5 * 60_000;
 
 async function handleAiServiceSettings(
   action: string,
@@ -371,91 +417,309 @@ async function saveSparkyChatHistory(
  * registry. Everything is scoped to the authenticated user — chat tool calls
  * always act as the logged-in actor, matching the previous MCP behavior.
  */
+// Per-user cache of the two DB lookups behind every chat turn. Timezone and
+// custom categories change rarely (settings edits), so a short TTL keeps a
+// multi-turn conversation from re-querying both on each message while a
+// settings change still lands within a minute. Never cache auth/permission
+// state or secrets here.
+const chatContextInputsCache = new TtlCache<{
+  chatTz: string;
+  customCategoriesList: string;
+}>(60_000);
+
+// The agent loop's stop conditions, shared by the streaming and non-streaming
+// chat paths so they can't drift.
+//
+// - Step ceiling: tighter for cache-less core-profile backends, where every
+//   step re-processes the full prefix.
+// - sparky_ask_user: the model is offering the user quick-reply chips, so the
+//   turn is over — without this the echoed tool result would come straight back
+//   and the model would answer its own question. Harmless on the non-streaming
+//   path (no chip UI there): the question simply degrades to plain text.
+export function buildChatStopConditions(toolProfile: ChatToolProfile) {
+  return [
+    stepCountIs(
+      toolProfile === 'core'
+        ? CORE_PROFILE_MAX_AGENTIC_STEPS
+        : MAX_AGENTIC_STEPS
+    ),
+    hasToolCall(ASK_USER_TOOL_NAME),
+  ];
+}
+
+// Builds the prepareStep callback that implements the sparky_enable_tools
+// escalation: if a prior step in this request called it with category slugs,
+// widen activeTools for the next step to include those categories' tools (on
+// top of the turn's base selection). Returning {} when nothing was requested
+// lets the outer generateText/streamText-level activeTools apply unchanged.
+// Exported for unit testing; only wired into the auto-classification path
+// (manual category selections are a strict ceiling — see prepareChatContext).
+export function buildEscalationPrepareStep(
+  toolNamesByCategory: Record<ChatToolCategorySlug, string[]>,
+  baseActiveTools: string[]
+) {
+  return ({
+    steps,
+  }: {
+    steps: Array<{
+      toolCalls?: Array<{ toolName: string; input?: unknown }>;
+    }>;
+  }) => {
+    const requested = new Set<ChatToolCategorySlug>();
+    for (const step of steps) {
+      for (const call of step.toolCalls ?? []) {
+        if (call.toolName !== ENABLE_TOOLS_TOOL_NAME) continue;
+        const categories = (call.input as { categories?: unknown })?.categories;
+        if (!Array.isArray(categories)) continue;
+        for (const c of categories) {
+          if (isChatToolCategorySlug(c)) requested.add(c);
+        }
+      }
+    }
+    if (requested.size === 0) return {};
+    const extra = [...requested].flatMap((slug) => toolNamesByCategory[slug]);
+    return { activeTools: [...new Set([...baseActiveTools, ...extra])] };
+  };
+}
+
 async function prepareChatContext(
   authenticatedUserId: string,
   serviceType: string,
-  chatToolProfile?: string | null
+  chatToolProfile?: string | null,
+  toolCategories?: readonly string[],
+  // True when toolCategories came from the user's explicit in-chat selector
+  // (not from auto-classification). A manual selection is a strict ceiling:
+  // no escalation tool, and the prompt tells the model to send the user to
+  // the selector rather than attempt or fake a dormant capability. An
+  // auto-classified selection stays self-healing (escalation tool + widening
+  // prepareStep) since there's no human-set limit to respect.
+  categoriesAreManual = false
 ) {
-  const [customCategories, chatTz] = await Promise.all([
-    measurementRepository.getCustomCategories(authenticatedUserId),
-    loadUserTimezone(authenticatedUserId),
-  ]);
-
-  const customCategoriesList =
-    customCategories.length > 0
-      ? customCategories
-          .map(
-            (cat: DatabaseCustomCategories) =>
-              `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
-          )
-          .join('\n')
-      : 'None';
+  const { chatTz, customCategoriesList } =
+    await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
+      const [customCategories, tz] = await Promise.all([
+        measurementRepository.getCustomCategories(authenticatedUserId),
+        loadUserTimezone(authenticatedUserId),
+      ]);
+      return {
+        chatTz: tz,
+        customCategoriesList:
+          customCategories.length > 0
+            ? customCategories
+                .map(
+                  (cat: DatabaseCustomCategories) =>
+                    `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
+                )
+                .join('\n')
+            : 'None',
+      };
+    });
 
   // Per-service chat tool profile. 'core' trims the tool surface for small/local
-  // models and is only offered for Ollama; every other backend always gets the
-  // full set, so a stale 'core' on a non-Ollama service can never trim it.
+  // models and is honored for every self-hosted service type (ollama,
+  // openai_compatible, custom) — the backends with weak models and no prompt
+  // cache, where the 35-tool block is the dominant per-turn token cost. Cloud
+  // provider types always get the full set, so a stale 'core' there can never
+  // trim it. The default stays 'full' everywhere: openai_compatible/custom can
+  // point at powerful endpoints, and silently dropping 15 tools would degrade
+  // answer quality for those users.
   const toolProfile: ChatToolProfile =
-    serviceType === 'ollama' && chatToolProfile === 'core' ? 'core' : 'full';
-  const tools = buildChatbotTools(authenticatedUserId, chatTz, toolProfile);
+    requiresUserSuppliedAiUrl(serviceType) && chatToolProfile === 'core'
+      ? 'core'
+      : 'full';
+
+  const selectedCategories = resolveCategories(toolProfile, toolCategories);
+
+  // Two tool-loading modes:
+  //
+  // - Manual selection (categoriesAreManual): a strict ceiling. Compose the
+  //   exact narrow set with buildChatbotTools — its own last tool carries the
+  //   Anthropic cache breakpoint — and expose no escalation tool. The prompt
+  //   tells the model to point the user at the tool selector for anything
+  //   outside the chosen categories instead of attempting or faking it.
+  //
+  // - Auto-classification: self-healing. Compose the full surface once and
+  //   narrow what's *sent* per turn via activeTools; the always-present
+  //   sparky_enable_tools (+ widening prepareStep) lets a capable model pull
+  //   in a category the classifier missed. The breakpoint sits on the
+  //   escalation tool, which is always in activeTools, so caching stays stable.
+  let tools: ReturnType<typeof buildChatbotTools>;
+  let activeToolNames: string[] | undefined;
+  let prepareStep: ReturnType<typeof buildEscalationPrepareStep> | undefined;
+
+  if (categoriesAreManual) {
+    tools = buildChatbotTools(
+      authenticatedUserId,
+      chatTz,
+      toolProfile,
+      true,
+      toolCategories,
+      // Quick-reply chips: full profile only (the small local models 'core'
+      // exists for pick tools unreliably from a wider surface).
+      toolProfile === 'full'
+    );
+    activeToolNames = undefined; // every composed tool is sent
+    prepareStep = undefined; // no mid-request widening
+  } else {
+    const surface = buildChatToolSurface(authenticatedUserId, chatTz);
+    tools = surface.tools;
+    activeToolNames = [
+      ...new Set(
+        [...selectedCategories].flatMap(
+          (slug: ChatToolCategorySlug) => surface.toolNamesByCategory[slug]
+        )
+      ),
+      ENABLE_TOOLS_TOOL_NAME,
+      // Quick-reply chips: full profile only. The tool belongs to no category,
+      // so it is never pulled in by the classifier — it has to be added here.
+      ...(toolProfile === 'full' ? [ASK_USER_TOOL_NAME] : []),
+    ];
+    prepareStep = buildEscalationPrepareStep(
+      surface.toolNamesByCategory,
+      activeToolNames
+    );
+  }
+
+  const sentToolCount = activeToolNames?.length ?? Object.keys(tools).length;
   log(
     'info',
-    `Loaded ${Object.keys(tools).length} ${toolProfile} tools for chatbot: ${Object.keys(tools).join(', ')}`
+    `Loaded ${sentToolCount}/${Object.keys(tools).length} active tools for chatbot (profile=${toolProfile}, mode=${
+      categoriesAreManual ? 'manual' : 'auto'
+    }${
+      toolCategories && toolCategories.length > 0
+        ? `, categories=${toolCategories.join(',')}`
+        : ''
+    }): ${(activeToolNames ?? Object.keys(tools)).join(', ')}`
   );
+
+  // Ollama's default server-side context window is 4096 tokens and overflow is
+  // truncated *silently* (it chops the prompt head, mangling tool schemas and
+  // the system prompt — looks like a "dumb model"). We connect over the
+  // OpenAI-compatible endpoint, which ignores a per-request num_ctx, so we can
+  // only warn. The 'full' profile is the risky combo; 'core' is the mitigation.
+  if (serviceType === 'ollama' && toolProfile === 'full') {
+    log(
+      'warn',
+      `Ollama chat is using the 'full' tool profile (${sentToolCount} active tools), which plus the system prompt and history usually exceeds Ollama's default 4096-token context and gets truncated silently. Raise it (OLLAMA_CONTEXT_LENGTH=16384 or num_ctx in the Modelfile) and/or switch this service to the 'core' tool profile.`
+    );
+  }
 
   return {
     systemPromptContent: getSystemPrompt(
       chatTz,
       customCategoriesList,
-      toolProfile
+      toolProfile,
+      [...selectedCategories],
+      // Auto mode advertises the escalation tool; manual mode advertises the
+      // tool selector as the way to widen.
+      !categoriesAreManual
     ),
     tools,
+    activeToolNames,
+    prepareStep,
+    toolProfile,
   };
 }
 
+// INVARIANT — keep the request prefix (system prompt + tool schemas) stable
+// across turns. Prompt caching (Anthropic breakpoint, OpenAI cache key, Gemini
+// auto-cache) and Ollama's KV-cache reuse only kick in when a new request is a
+// byte-for-byte prefix extension of the previous one. So this prompt must NOT
+// embed per-request values (timestamps, request ids, live totals, entry
+// counts). The only inputs here are the day string (changes at most once a day)
+// and the user's custom-category list (changes only when they edit categories);
+// both are acceptable. If a future feature needs per-turn context, inject it as
+// a message, never into this system prompt.
 export function getSystemPrompt(
   chatTz: string,
   customCategoriesList: string,
-  profile: ChatToolProfile = 'full'
+  profile: ChatToolProfile = 'full',
+  activeCategories?: readonly string[],
+  // When true (auto-classification), dormant domains are reachable via the
+  // sparky_enable_tools escalation tool. When false (a manual selection), the
+  // dormant domains are a hard limit and the model is told to send the user to
+  // the tool selector instead of attempting or claiming a dormant capability.
+  allowEscalation = true
 ): string {
-  // Vision tools (sparky_analyze_food_image, sparky_scan_label) are dropped
-  // from the 'core' profile, so omit their guidance there — keeping the prompt
-  // a strict subset of the full one and never pointing small/local models at
-  // tools they don't have.
-  const visionSupport =
-    profile === 'full'
-      ? `
+  const suffix = profile === 'core' ? 'core' : 'full';
+  const filePath = path.join(__dirname, '../prompts', `chatbot-${suffix}.md`);
+  let content = readFileSync(filePath, 'utf-8').trim();
 
-## VISION SUPPORT
-You are a multimodal AI. When the user provides an image (photo of food, meal, or nutrition label):
-1. **Analyze it directly** using your built-in vision capabilities. You can see the images in the conversation history.
-2. If you need a more structured nutritional estimate or if the image is a complex meal, you can use the 'sparky_analyze_food_image' tool as a secondary step.
-3. For nutrition labels, you can use 'sparky_scan_label' to ensure high accuracy in data extraction.
-4. Based on your analysis, proceed to log the entry using the appropriate tools (e.g., 'sparky_manage_food').`
-      : '';
+  // Read modular sub-templates based on activeCategories
+  // If activeCategories is empty/undefined, default to all categories
+  const categories =
+    activeCategories && activeCategories.length > 0
+      ? new Set(activeCategories)
+      : new Set<string>([
+          'food',
+          'exercise',
+          'checkin',
+          'goals',
+          'reports',
+          'coaching',
+          'vision',
+          'profile',
+        ]);
 
-  return `You are Sparky, an AI nutrition and wellness coach. Your primary goal is to help users track their food, exercise, and measurements, and provide helpful advice and motivation based on their data and general health knowledge.
+  if (categories.has('checkin')) {
+    const checkinPath = path.join(
+      __dirname,
+      '../prompts',
+      `chatbot-${suffix}-checkin.md`
+    );
+    if (existsSync(checkinPath)) {
+      content += '\n\n' + readFileSync(checkinPath, 'utf-8').trim();
+    }
+  }
 
-The current local date is ${todayInZone(chatTz)}.
+  if (categories.has('food')) {
+    const foodPath = path.join(
+      __dirname,
+      '../prompts',
+      `chatbot-${suffix}-food.md`
+    );
+    if (existsSync(foodPath)) {
+      content += '\n\n' + readFileSync(foodPath, 'utf-8').trim();
+    }
+  }
 
-When the user mentions logging food, exercise, or measurements, prioritize using the matching tools.
+  if (categories.has('vision') && suffix === 'full') {
+    const visionPath = path.join(
+      __dirname,
+      '../prompts',
+      `chatbot-${suffix}-vision.md`
+    );
+    if (existsSync(visionPath)) {
+      content += '\n\n' + readFileSync(visionPath, 'utf-8').trim();
+    }
+  }
 
-Here are the user's existing custom measurement categories:
-${customCategoriesList}
+  // List any domains this turn's tool selection left dormant. In auto mode the
+  // model can pull them in itself via sparky_enable_tools; in manual mode they
+  // are a hard limit set by the user, so the model must instead point the user
+  // at the tool selector and never attempt or fake the capability. Omitted
+  // entirely when nothing is dormant (the common case: full set active).
+  const dormant = CHAT_TOOL_CATEGORY_SLUGS.filter(
+    (slug) => !categories.has(slug)
+  );
+  if (dormant.length > 0) {
+    const dormantList = dormant
+      .map((slug) => `- ${slug}: ${CATEGORY_SUMMARIES[slug]}`)
+      .join('\n');
+    content += allowEscalation
+      ? '\n\n## Additional capabilities available on request\n' +
+        "The following tool categories are not currently loaded, but you can enable them mid-conversation by calling sparky_enable_tools if the user's request needs them:\n" +
+        dormantList
+      : '\n\n## Restricted tool set\n' +
+        'The user has limited you to the categories above using the in-chat tool selector. You do NOT have tools for the following, and you cannot enable them yourself:\n' +
+        dormantList +
+        '\n\nIf the user asks for something in one of these areas, do NOT attempt it and do NOT claim you did it. Tell them to enable that category using the tool selector in the chat, then retry.';
+  }
 
-When logging measurements or custom categories, compare user inputs to the list above. If you find a match or variations (synonyms, capitalization), use the exact category name.
-
-For solid food items or beverages that are not water, use the 'sparky_manage_food' tool. Do NOT classify water as food. Use the 'sparky_manage_food' tool with the 'log_water' action for water intake.
-
-## MANDATORY FOOD LOOKUP RULE
-BEFORE creating any new food entry or logging food that may not exist in the database, you MUST call the 'sparky_manage_food' tool with the 'lookup_food_nutrition' action first to search for verified nutritional data. This searches internal database, user food providers, OpenFoodFacts, and other verified sources.
-
-- If 'lookup_food_nutrition' returns nutrition data (calories > 0), use that data when calling 'sparky_manage_food' with the 'log_food' action. Do NOT override it with your own estimates.
-- Only use AI-estimated nutrition if 'lookup_food_nutrition' explicitly returns no data or a zero-calorie result.
-- Always tell the user the source of nutrition data (e.g., "from OpenFoodFacts", "from internal database", "AI estimate").
-- If the user explicitly asks for internet search or a specific source, pass that preference to 'lookup_food_nutrition' using the provider_type parameter.
-- **Nutritional detail**: When creating a food via the 'create_food' action, include any micronutrients (saturated_fat, fiber, sugar, sodium, etc.) the looked-up source provides or that you can confidently derive. Don't fabricate values you can't reasonably estimate, and don't pad unknown fields with zeros.${visionSupport}
-
-Be precise with data extraction and call the correct tools in the correct order.`;
+  // Replace placeholders dynamically
+  return content
+    .replace(/\${today}/g, todayInZone(chatTz))
+    .replace(/\${customCategories}/g, customCategoriesList);
 }
 
 // OpenAI's 24h extended retention is only supported on the gpt-5.1+ families
@@ -532,6 +796,12 @@ function stripHistoricalImages(messages: LlmMessage[]): LlmMessage[] {
 // than a fixed message count: 20 short turns and 20 turns full of long pastes or
 // tool dumps cost wildly different amounts, and a count can't tell them apart.
 const CONTEXT_TOKEN_BUDGET = 6000;
+// Tighter history window for the 'core' profile, which is only resolved for
+// Ollama services the user has flagged as small/local (see prepareChatContext).
+// Their context window is often just 4096-8192 tokens, so a smaller *intact*
+// history beats a larger one that Ollama silently truncates. Cloud providers
+// and full-profile Ollama keep the full CONTEXT_TOKEN_BUDGET.
+const CORE_PROFILE_CONTEXT_TOKEN_BUDGET = 2000;
 // Flat per-image cost. A base64 data URL is tens of KB of characters but bills as
 // roughly a fixed number of vision tokens, so char-based estimation would
 // massively overcount it. Past images are already stripped, so in practice this
@@ -579,12 +849,457 @@ function trimToTokenBudget(
   return messages.slice(startIndex);
 }
 
+// ---------------------------------------------------------------------------
+// Helpers shared by the blocking (processChatMessage) and streaming
+// (processChatMessageStream) paths. These blocks used to be duplicated in
+// both functions and drifted; keep changes here so both paths stay in sync.
+// ---------------------------------------------------------------------------
+
+// The service-setting fields the provider factory needs.
+interface ChatAiServiceConfig {
+  service_type: string;
+  api_key?: string | null;
+  custom_url?: string | null;
+}
+
+// Resolves the AI SDK model instance for a chat service: native adapters for
+// openai/anthropic/google, and the OpenAI-compatible base-URL ladder for
+// everything else. Self-hosted types get the SSRF-guarded fetch.
+function createChatModelInstance(
+  aiService: ChatAiServiceConfig,
+  modelName: string,
+  networkPolicy: ReturnType<typeof deriveAiNetworkPolicy>
+): Parameters<typeof generateText>[0]['model'] {
+  const apiKey = aiService.api_key ?? undefined;
+
+  if (aiService.service_type === 'openai') {
+    return createOpenAI({ apiKey })(modelName);
+  }
+  if (aiService.service_type === 'anthropic') {
+    return createAnthropic({ apiKey })(modelName);
+  }
+  if (aiService.service_type === 'google') {
+    return createGoogleGenerativeAI({ apiKey })(modelName);
+  }
+  if (
+    aiService.service_type === 'ollama' ||
+    aiService.service_type === 'openai_compatible' ||
+    aiService.service_type === 'custom' ||
+    aiService.service_type === 'mistral' ||
+    aiService.service_type === 'groq' ||
+    aiService.service_type === 'openrouter' ||
+    aiService.service_type === 'xai' ||
+    aiService.service_type === 'meta'
+  ) {
+    if (
+      requiresUserSuppliedAiUrl(aiService.service_type) &&
+      !aiService.custom_url?.trim()
+    ) {
+      throw new Error(
+        `Custom URL is required for service type: ${aiService.service_type}`
+      );
+    }
+    // Connect as OpenAI-compatible
+    const baseURL = getOpenAiCompatibleBaseUrl(
+      aiService.service_type,
+      aiService.custom_url
+    );
+    const providerOptions: Parameters<typeof createOpenAI>[0] = {
+      baseURL,
+      apiKey: apiKey || 'no-key',
+    };
+    if (requiresUserSuppliedAiUrl(aiService.service_type)) {
+      providerOptions.fetch = createGuardedFetch(networkPolicy);
+    }
+    return createOpenAI(providerOptions).chat(modelName);
+  }
+  throw new Error(`Unsupported service type: ${aiService.service_type}`);
+}
+
+// The AI SDK part type for a sparky_ask_user tool call, as it comes back from
+// the client (and out of saved history).
+const ASK_USER_PART_TYPE = `tool-${ASK_USER_TOOL_NAME}`;
+
+// Replays a quick-reply tool call as plain text so the model remembers the
+// question it asked and what the chips meant.
+//
+// Tool parts are stripped from the LLM window (only text and image survive
+// mapMessagePart), which is what keeps an unanswered tool_use from ever
+// reaching a provider. But an assistant turn whose only content was the ask
+// tool call then collapses to nothing, and the model sees a bare "75g each"
+// with no idea what it answered — it re-asks, or invents what happened. Turning
+// the call into text keeps the transcript valid AND keeps the context intact.
+function askUserPartToText(part: ChatMessagePart): string | null {
+  const input = part.input as
+    | { question?: unknown; options?: unknown }
+    | undefined;
+  const question = typeof input?.question === 'string' ? input.question : '';
+  const options = Array.isArray(input?.options)
+    ? input.options.filter((o): o is string => typeof o === 'string')
+    : [];
+  if (!question && options.length === 0) return null;
+  const asked = question || 'Offered the user these options';
+  return options.length > 0
+    ? `${asked} (options offered: ${options.join(' | ')})`
+    : asked;
+}
+
+// How much of a past tool result to replay. Enough to carry the identifiers a
+// follow-up turn needs (a food's id, the matched name, its serving units)
+// without dragging whole diaries back into every subsequent request.
+const REPLAYED_TOOL_RESULT_CHARS = 600;
+
+// Replays a completed tool call from an earlier turn as plain text.
+//
+// Tool parts are stripped from the LLM window (only text and image survive this
+// mapper), which is what keeps an unanswered tool_use from ever reaching a
+// provider. The cost is amnesia: the model could not see what it had already
+// looked up or logged, so on the next turn it would re-ask, re-log, invent a
+// result it never got, or — after the user answered a quick reply — emit a
+// half-formed call because the food id from the previous turn's lookup was
+// gone. Replaying the call as text restores that memory while keeping the
+// transcript provider-safe (there is no tool_use block, just prose).
+function toolPartToText(part: ChatMessagePart): string | null {
+  const toolName = part.type.slice('tool-'.length);
+  if (!toolName) return null;
+
+  const input =
+    part.input === undefined ? '' : JSON.stringify(part.input).slice(0, 300);
+  const rawOutput =
+    typeof part.output === 'string'
+      ? part.output
+      : part.output === undefined
+        ? ''
+        : JSON.stringify(part.output);
+  const output =
+    rawOutput.length > REPLAYED_TOOL_RESULT_CHARS
+      ? `${rawOutput.slice(0, REPLAYED_TOOL_RESULT_CHARS)}…[truncated]`
+      : rawOutput;
+
+  if (!input && !output) return null;
+  return `[Earlier this conversation you called ${toolName}(${input}) and it returned: ${output || '(no output)'}]`;
+}
+
+// Maps one client message part to a CoreMessage part; unknown parts fall back
+// to text.
+function mapMessagePart(part: ChatMessagePart): ProcessedMessagePart {
+  if (part.type === 'text') {
+    return { type: 'text' as const, text: part.text || part.content || '' };
+  }
+  if (part.type === ASK_USER_PART_TYPE) {
+    return { type: 'text' as const, text: askUserPartToText(part) ?? '' };
+  }
+  if (part.type.startsWith('tool-')) {
+    return { type: 'text' as const, text: toolPartToText(part) ?? '' };
+  }
+  if (
+    part.type === 'image' ||
+    part.type === 'image_url' ||
+    (part.type === 'file' &&
+      (part.mimeType?.startsWith('image/') ||
+        part.mediaType?.startsWith('image/') ||
+        part.url?.startsWith('data:image/')))
+  ) {
+    // Handle both base64 data URLs and remote URLs
+    const url = part.image_url?.url || part.image || part.url || '';
+    return { type: 'image' as const, image: url };
+  }
+  // Fallback: treat unknown parts as text
+  return { type: 'text' as const, text: String(part.text || '') };
+}
+
+// Maps client chat messages (parts arrays or plain strings) to CoreMessages.
+function toCoreMessages(messages: ChatMessage[]): LlmMessage[] {
+  return messages.map((msg) => {
+    const role = msg.role === 'assistant' ? 'assistant' : 'user';
+    const partsSource = Array.isArray(msg.parts)
+      ? msg.parts
+      : Array.isArray(msg.content)
+        ? (msg.content as ChatMessagePart[])
+        : null;
+
+    if (partsSource) {
+      const parts = partsSource
+        .map(mapMessagePart)
+        .filter(
+          (p) =>
+            p.type === 'image' ||
+            (p.type === 'text' && p.text && p.text.trim() !== '')
+        );
+      if (parts.length > 0) {
+        return { role, content: parts };
+      }
+    }
+
+    if (typeof msg.content === 'string' && msg.content.trim() !== '') {
+      return { role, content: msg.content };
+    }
+    return { role, content: '' };
+  });
+}
+
+// Applies the context-window controls in order: drop trailing empty assistant
+// messages some clients send, strip historical images, trim to the profile's
+// token budget, and ensure the window starts with a user message (some models
+// reject assistant-first history).
+function buildLlmWindow(
+  conversationMessages: LlmMessage[],
+  toolProfile: ChatToolProfile
+): LlmMessage[] {
+  const msgs = [...conversationMessages];
+  while (
+    msgs.length > 0 &&
+    msgs[msgs.length - 1].role === 'assistant' &&
+    (!msgs[msgs.length - 1].content ||
+      (Array.isArray(msgs[msgs.length - 1].content) &&
+        msgs[msgs.length - 1].content.length === 0))
+  ) {
+    msgs.pop();
+  }
+
+  const llmMessages = trimToTokenBudget(
+    stripHistoricalImages(msgs),
+    toolProfile === 'core'
+      ? CORE_PROFILE_CONTEXT_TOKEN_BUDGET
+      : CONTEXT_TOKEN_BUDGET
+  );
+
+  while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
+    llmMessages.shift();
+  }
+  return llmMessages;
+}
+
+// Derives the display text and parts for saving a user message to history.
+function describeUserMessage(msg?: LlmMessage): {
+  content: string;
+  parts: ChatMessagePart[];
+} {
+  const content = Array.isArray(msg?.content)
+    ? msg.content
+        .filter((p: ChatMessagePart) => p.type === 'text')
+        .map((p: ChatMessagePart) => p.text || '')
+        .join(' ') || '[Image message]'
+    : (msg?.content as string) || 'Message sent';
+  const parts: ChatMessagePart[] = Array.isArray(msg?.content)
+    ? msg.content
+    : [{ type: 'text' as const, text: String(msg?.content || '') }];
+  return { content, parts };
+}
+
+// Keyword rules for instant classification. Kept deliberately moderate
+// (stems and a handful of high-signal synonyms) rather than exhaustive:
+// wide-net keyword lists trade recall for false positives ("I ran out of
+// milk" would match exercise), and vocabulary is unbounded across users and
+// languages anyway. The LLM fallback (below) and the sparky_enable_tools
+// escalation tool (see ai/tools/metaTools.ts) exist specifically to catch
+// what this tier misses, so this list does not need to be — and should not
+// try to be — complete.
+const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
+  {
+    category: 'exercise',
+    keywords:
+      /\b(run|ran|running|walk|walked|walking|jog|jogged|jogging|lift|lifted|lifting|workout|workouts|exercise|exercises|reps|sets|cardio|strength|gym|heart rate|bpm|treadmill|squats?|bench press|swim|swam|swimming|bike|biking|cycling|cycled|yoga|hike[ds]?|hiking|steps|push-?ups?|pull-?ups?|training|trained|worked out)\b/i,
+  },
+  {
+    category: 'food',
+    keywords:
+      /\b(eat|ate|eating|food|foods|meal|meals|water|drink|drank|drinking|ml|oz|cup|cups|breakfast|lunch|dinner|snack|snacks|calories?|kcal|macro|macros|protein|carbs|fat|banana|apple|chicken|nutrition|nutrients?|coffee|tea|juice|smoothie|recipe)\b/i,
+  },
+  {
+    category: 'checkin',
+    keywords:
+      /\b(weigh(?:t|ts|ed|ing|s)?|height|waist|hips|neck|body fat|fat%|percentage|checkin|check-in|scale|bmi|mood|sleep|slept|nap|fasting|fasted|measurements?|measured)\b/i,
+  },
+  {
+    category: 'goals',
+    keywords:
+      /\b(goal|goals|target|targets|set goal|set goals|objectives?|milestones?)\b/i,
+  },
+  {
+    category: 'reports',
+    keywords:
+      /\b(report|reports|summar(?:y|ies|ize|ise|ized|ised|izing)|progress|tdee|chart|charts|analytics|recap|overview|trends?|graphs?|stats?|statistics|analy(?:ze|sis|tics)|averages?|compare|comparison|how (?:am|did|was|have) i)\b/i,
+  },
+  {
+    category: 'coaching',
+    keywords:
+      /\b(advice|advise|tips?|motivat\w*|recommend\w*|suggest\w*|coach(?:ing)?|plan)\b/i,
+  },
+  {
+    category: 'vision',
+    keywords: /\b(photo|picture|image|label|scan|barcode)\b/i,
+  },
+  {
+    category: 'profile',
+    keywords:
+      /\b(profile|habit|habits|preference|preferences|settings|timezone|unit|units)\b/i,
+  },
+];
+
+function extractMessageText(msg: ChatMessage): string {
+  const partsSource = Array.isArray(msg.parts)
+    ? msg.parts
+    : Array.isArray(msg.content)
+      ? (msg.content as ChatMessagePart[])
+      : null;
+
+  if (partsSource) {
+    return partsSource
+      .filter((p) => p.type === 'text')
+      .map((p) => p.text || p.content || '')
+      .join(' ');
+  }
+
+  if (typeof msg.content === 'string') {
+    return msg.content;
+  }
+
+  return '';
+}
+
+// True when a message carries an image part. Deterministic signal (unlike
+// text keywords or the LLM fallback, an attached image is unambiguous), so
+// it's applied directly rather than routed through classification.
+function hasImageParts(msg: ChatMessage): boolean {
+  const partsSource = Array.isArray(msg.parts)
+    ? msg.parts
+    : Array.isArray(msg.content)
+      ? (msg.content as ChatMessagePart[])
+      : null;
+  return (
+    partsSource?.some((p) => p.type === 'image' || p.type === 'image_url') ??
+    false
+  );
+}
+
+// Pure keyword classification step, exported for unit testing. Intentionally
+// moderate (see KEYWORD_RULES comment): it favors precision over exhaustive
+// recall, and readily returns multiple categories for one message (e.g.
+// "summarize what I ate" -> food + reports) since an extra loaded category is
+// cheap but a missing one is fatal.
+export function classifyByKeywords(text: string): ChatToolCategorySlug[] {
+  const matched = new Set<ChatToolCategorySlug>();
+  for (const rule of KEYWORD_RULES) {
+    if (rule.keywords.test(text)) {
+      matched.add(rule.category);
+    }
+  }
+  return Array.from(matched);
+}
+
+async function classifyUserIntent(
+  messages: ChatMessage[],
+  modelInstance: any
+): Promise<ChatToolCategorySlug[]> {
+  const lastUserMessage = [...messages]
+    .reverse()
+    .find((m) => m.role === 'user');
+  if (!lastUserMessage) return [];
+
+  const text = extractMessageText(lastUserMessage);
+
+  // 1. Deterministic + keyword signals (instant, 0ms). An attached image
+  // always implies vision (+ food, the dominant meal-photo case) regardless
+  // of accompanying text.
+  const matchedCategories = new Set<ChatToolCategorySlug>(
+    classifyByKeywords(text)
+  );
+  if (hasImageParts(lastUserMessage)) {
+    matchedCategories.add('vision');
+    matchedCategories.add('food');
+  }
+
+  // If we matched multiple clear keywords (e.g. food + exercise), return them immediately.
+  if (matchedCategories.size > 0) {
+    log(
+      'info',
+      `[chatService] Keyword classifier matched: ${Array.from(matchedCategories).join(', ')}`
+    );
+    return Array.from(matchedCategories);
+  }
+
+  // 2. LLM Fallback (if keyword classifier is unsure/empty)
+  try {
+    // Look at last 2 turns to see context (e.g. user answering a question from assistant)
+    const contextMessages = messages.slice(-2).map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: extractMessageText(m),
+    }));
+
+    const classificationPrompt = `Analyze the conversation history (especially the user's latest reply) and determine which of the following health tracking domains are relevant. Choose all that apply.
+
+Available domains:
+- exercise: tracking workouts, logging sets/reps, running, cardio, strength, steps.
+- food: logging meals, lookup foods/nutrition, tracking water intake.
+- checkin: logging daily check-ins, weight, height, body fat, or other body measurements.
+- goals: viewing or changing goals/targets.
+- reports: viewing progress charts, summaries, TDEE, or reports.
+- coaching: general coaching advice, guidance, tips, or motivation.
+- profile: changing settings, preferences, timezone, habits, or profile details.
+
+Your response must contain ONLY the matched domain names as a comma-separated list (e.g., "exercise, food" or "checkin" or "none"). Do not include any other text.`;
+
+    const { text: resultText } = await generateText({
+      model: modelInstance,
+      system: classificationPrompt,
+      messages: contextMessages,
+      temperature: 0,
+      maxRetries: 0,
+      abortSignal: AbortSignal.timeout(10000), // 10s timeout to prevent hanging the chat turn
+    });
+
+    log(
+      'info',
+      `[chatService] LLM intent classifier output: "${resultText.trim()}"`
+    );
+
+    const parts = resultText
+      .toLowerCase()
+      .split(',')
+      .map((t) => t.trim().replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, ''));
+
+    const categoriesList: ChatToolCategorySlug[] = [];
+    const validCategories: ChatToolCategorySlug[] = [
+      'exercise',
+      'food',
+      'checkin',
+      'goals',
+      'reports',
+      'coaching',
+      'profile',
+      'vision',
+    ];
+    for (const cat of validCategories) {
+      if (parts.includes(cat)) {
+        categoriesList.push(cat);
+      }
+    }
+
+    if (categoriesList.length > 0) {
+      return categoriesList;
+    }
+    // LLM classified confidently as "none of the above" (general chit-chat).
+    // Load the cheap coaching surface; sparky_enable_tools rescues the model
+    // mid-turn if it turns out to need something else.
+    return ['coaching'];
+  } catch (error) {
+    log('error', '[chatService] Error in LLM intent classification:', error);
+  }
+
+  // Classification itself failed (not just "no match") — we know nothing, so
+  // defer to the profile's default set (resolveCategories in ai/tools/index.ts)
+  // rather than guessing a fixed subset. sparky_enable_tools covers any gap.
+  return [];
+}
+
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
   userId: string,
   authenticatedUserId: string,
-  actorIsAdmin = false
+  actorIsAdmin = false,
+  toolCategories?: readonly string[]
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -615,61 +1330,34 @@ async function processChatMessage(
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = deriveAiNetworkPolicy(aiService, actorIsAdmin);
 
-    // Initialize Vercel AI SDK Model based on service_type
-    let modelInstance: Parameters<typeof generateText>[0]['model'];
-    const apiKey = aiService.api_key;
+    const modelInstance = createChatModelInstance(
+      aiService,
+      modelName,
+      networkPolicy
+    );
 
-    if (aiService.service_type === 'openai') {
-      const provider = createOpenAI({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (aiService.service_type === 'anthropic') {
-      const provider = createAnthropic({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (aiService.service_type === 'google') {
-      const provider = createGoogleGenerativeAI({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (
-      aiService.service_type === 'ollama' ||
-      aiService.service_type === 'openai_compatible' ||
-      aiService.service_type === 'custom' ||
-      aiService.service_type === 'mistral' ||
-      aiService.service_type === 'groq' ||
-      aiService.service_type === 'openrouter' ||
-      aiService.service_type === 'xai' ||
-      aiService.service_type === 'meta'
-    ) {
-      // Connect as OpenAI-compatible
-      const baseURL = getOpenAiCompatibleBaseUrl(
-        aiService.service_type,
-        aiService.custom_url
-      );
-      // Providers that need a user-supplied endpoint must have one: an empty
-      // baseURL makes the AI SDK silently fall back to OpenAI's default host.
-      if (
-        requiresUserSuppliedAiUrl(aiService.service_type) &&
-        !baseURL?.trim()
-      ) {
-        throw new Error(
-          `Custom URL is required for service type: ${aiService.service_type}`
-        );
-      }
-      const providerOptions: Parameters<typeof createOpenAI>[0] = {
-        baseURL,
-        apiKey: apiKey || 'no-key',
-      };
-      if (requiresUserSuppliedAiUrl(aiService.service_type)) {
-        providerOptions.fetch = createGuardedFetch(networkPolicy);
-      }
-      const provider = createOpenAI(providerOptions);
-      modelInstance = provider.chat(modelName);
-    } else {
-      throw new Error(`Unsupported service type: ${aiService.service_type}`);
+    // A non-empty toolCategories here is the user's explicit in-chat selection
+    // (a strict ceiling); an empty one falls through to auto-classification.
+    const categoriesAreManual = Boolean(
+      toolCategories && toolCategories.length > 0
+    );
+    let activeCategories: readonly string[] | undefined = toolCategories;
+    if (!process.env.VITEST && !categoriesAreManual) {
+      activeCategories = await classifyUserIntent(messages, modelInstance);
     }
 
-    const { systemPromptContent, tools } = await prepareChatContext(
+    const {
+      systemPromptContent,
+      tools,
+      activeToolNames,
+      prepareStep,
+      toolProfile,
+    } = await prepareChatContext(
       authenticatedUserId,
       aiService.service_type,
-      aiService.chat_tool_profile
+      aiService.chat_tool_profile,
+      activeCategories,
+      categoriesAreManual
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -678,137 +1366,16 @@ async function processChatMessage(
       modelName
     );
 
-    // Map conversation history messages to CoreMessage format
-    const conversationMessages = messages.map((msg: ChatMessage) => {
-      // If parts or content is an array of parts (text + images), pass them through
-      const partsSource =
-        msg.parts && Array.isArray(msg.parts)
-          ? msg.parts
-          : Array.isArray(msg.content)
-            ? msg.content
-            : null;
-
-      if (partsSource) {
-        const parts = (partsSource as ChatMessagePart[])
-          .map((part: ChatMessagePart) => {
-            if (part.type === 'text') {
-              return { type: 'text' as const, text: part.text || '' };
-            }
-            if (
-              part.type === 'image' ||
-              part.type === 'image_url' ||
-              (part.type === 'file' &&
-                (part.mimeType?.startsWith('image/') ||
-                  part.mediaType?.startsWith('image/') ||
-                  part.url?.startsWith('data:image/')))
-            ) {
-              // Handle both base64 data URLs and remote URLs
-              const url = part.image_url?.url || part.image || part.url || '';
-              return { type: 'image' as const, image: url };
-            }
-            // Fallback: treat unknown parts as text
-            return { type: 'text' as const, text: String(part.text || '') };
-          })
-          .filter(
-            (p: ProcessedMessagePart) =>
-              p.type === 'image' ||
-              (p.type === 'text' && p.text && p.text.trim() !== '')
-          );
-
-        if (parts.length > 0) {
-          return {
-            role: (msg.role === 'assistant' ? 'assistant' : 'user') as
-              | 'assistant'
-              | 'user',
-            content: parts,
-          };
-        }
-      }
-
-      return {
-        role: (msg.role === 'assistant' ? 'assistant' : 'user') as
-          | 'assistant'
-          | 'user',
-        content: typeof msg.content === 'string' ? msg.content : '',
-      };
-    });
-
-    // Add the incoming message(s) to the history
-    const incomingMessages = messages.map((msg: ChatMessage) => {
-      if (Array.isArray(msg.parts) || Array.isArray(msg.content)) {
-        const partsSource = (
-          Array.isArray(msg.parts) ? msg.parts : msg.content
-        ) as ChatMessagePart[];
-        const parts = partsSource
-          .map((part: ChatMessagePart) => {
-            if (part.type === 'text') {
-              return {
-                type: 'text' as const,
-                text: part.text || part.content || '',
-              };
-            }
-            if (
-              part.type === 'image' ||
-              part.type === 'image_url' ||
-              (part.type === 'file' &&
-                (part.mimeType?.startsWith('image/') ||
-                  part.mediaType?.startsWith('image/') ||
-                  part.url?.startsWith('data:image/')))
-            ) {
-              const url = part.image_url?.url || part.image || part.url || '';
-              return { type: 'image' as const, image: url };
-            }
-            return { type: 'text' as const, text: String(part.text || '') };
-          })
-          .filter(
-            (p: ProcessedMessagePart) =>
-              p.type === 'image' ||
-              (p.type === 'text' && p.text && p.text.trim() !== '')
-          );
-
-        return {
-          role: (msg.role === 'assistant' ? 'assistant' : 'user') as
-            | 'assistant'
-            | 'user',
-          content: parts,
-        };
-      }
-
-      return {
-        role: (msg.role === 'assistant' ? 'assistant' : 'user') as
-          | 'assistant'
-          | 'user',
-        content: typeof msg.content === 'string' ? msg.content : '',
-      };
-    });
-
-    // Filter out trailing empty assistant messages if sent by the client
-    while (
-      conversationMessages.length > 0 &&
-      conversationMessages[conversationMessages.length - 1].role ===
-        'assistant' &&
-      !conversationMessages[conversationMessages.length - 1].content
-    ) {
-      conversationMessages.pop();
-    }
-
-    // Mirror the streaming path's context-window controls so the non-streaming
-    // route doesn't resend historical images or overflow the context budget.
-    const strippedMessages = stripHistoricalImages(conversationMessages);
-    const llmMessages = trimToTokenBudget(
-      strippedMessages,
-      CONTEXT_TOKEN_BUDGET
-    );
-
-    // Ensure the window starts with a user message (some models reject assistant-first history)
-    while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
-      llmMessages.shift();
-    }
+    // Map conversation history messages to CoreMessage format, then apply the
+    // shared context-window controls (image strip, token budget, user-first).
+    const conversationMessages = toCoreMessages(messages);
+    const llmMessages = buildLlmWindow(conversationMessages, toolProfile);
 
     const executedToolsList: Array<{
       name: string;
       args: Record<string, unknown>;
     }> = [];
+    const toolOutputs: string[] = [];
 
     const result = await generateText({
       model: modelInstance,
@@ -817,9 +1384,25 @@ async function processChatMessage(
         Parameters<typeof generateText>[0]['messages']
       >,
       tools,
+      // Narrows the published/sent tool schemas to this turn's classified
+      // categories; sparky_enable_tools lets the model escalate mid-request
+      // via prepareStep if it turns out to need a dormant category.
+      activeTools: activeToolNames,
+      prepareStep,
       providerOptions: chatProviderOptions,
-      stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
-      maxRetries: MAX_PROVIDER_RETRIES,
+      // Low temperature only for small local models (core profile); cloud and
+      // full-profile Ollama keep provider defaults.
+      ...(toolProfile === 'core' && {
+        temperature: CORE_PROFILE_CHAT_TEMPERATURE,
+      }),
+      // Tighter retry ceiling for cache-less core-profile backends, where every
+      // retry re-processes the full prefix.
+      stopWhen: buildChatStopConditions(toolProfile),
+      maxRetries:
+        toolProfile === 'core'
+          ? CORE_PROFILE_MAX_PROVIDER_RETRIES
+          : MAX_PROVIDER_RETRIES,
+      abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
       onStepFinish({ toolCalls, toolResults }) {
         if (toolCalls && toolCalls.length > 0) {
           toolCalls.forEach((call) => {
@@ -834,6 +1417,11 @@ async function processChatMessage(
           });
         }
         if (toolResults && toolResults.length > 0) {
+          toolResults.forEach((r) => {
+            if (r.output && typeof r.output === 'string') {
+              toolOutputs.push(r.output);
+            }
+          });
           const sizes = toolResults
             .map((r) => `${r.toolName}=${String(r.output ?? '').length}c`)
             .join(' ');
@@ -849,17 +1437,10 @@ async function processChatMessage(
     );
 
     // Save history dynamically to DB (replacing frontend client-side saves)
-    const lastUserMsg = incomingMessages[incomingMessages.length - 1];
-    const userMessageContent = Array.isArray(lastUserMsg?.content)
-      ? lastUserMsg.content
-          .filter((p: ChatMessagePart) => p.type === 'text')
-          .map((p: ChatMessagePart) => p.text || '')
-          .join(' ') || '[Image message]'
-      : (lastUserMsg?.content as string) || 'Message sent';
-
-    const userMessageParts = Array.isArray(lastUserMsg?.content)
-      ? lastUserMsg.content
-      : [{ type: 'text' as const, text: String(lastUserMsg?.content || '') }];
+    const { content: userMessageContent, parts: userMessageParts } =
+      describeUserMessage(
+        conversationMessages[conversationMessages.length - 1]
+      );
 
     await chatRepository
       .saveChatHistory({
@@ -872,22 +1453,53 @@ async function processChatMessage(
         log('error', 'Failed to save user chat history:', err)
       );
 
-    if (result.text.trim()) {
+    let finalContent = result.text.trim();
+    if (!finalContent) {
+      if (executedToolsList.length > 0) {
+        const lastTool = executedToolsList[executedToolsList.length - 1];
+        if (lastTool.name === 'sparky_manage_food') {
+          if (lastTool.args?.action === 'log_water') {
+            finalContent = "I've logged your water intake.";
+          } else {
+            finalContent = "I've logged that food for you.";
+          }
+        } else if (lastTool.name === 'sparky_manage_exercise') {
+          finalContent = "I've logged your exercise.";
+        } else if (lastTool.name === 'sparky_manage_checkin') {
+          if (lastTool.args?.action === 'log_mood') {
+            finalContent = "I've recorded your mood.";
+          } else if (lastTool.args?.action === 'log_sleep') {
+            finalContent = "I've logged your sleep.";
+          } else if (lastTool.args?.action === 'log_biometrics') {
+            finalContent = "I've updated your biometrics.";
+          } else if (lastTool.args?.action === 'log_fasting') {
+            finalContent = "I've logged your fasting window.";
+          } else {
+            finalContent = "I've updated your wellness diary.";
+          }
+        } else {
+          finalContent = "I've recorded that for you!";
+        }
+        log(
+          'info',
+          `[chat] LLM returned empty text; generated generic fallback confirmation: "${finalContent}"`
+        );
+      } else {
+        finalContent = EMPTY_RESPONSE_ERROR_TEXT;
+      }
+    }
+
+    if (finalContent) {
       await chatRepository
         .saveChatHistory({
           user_id: userId,
-          content: result.text,
+          content: finalContent,
           messageType: 'assistant',
-          parts: [{ type: 'text', text: result.text }],
+          parts: [{ type: 'text', text: finalContent }],
         })
         .catch((err: unknown) =>
           log('error', 'Failed to save assistant chat history:', err)
         );
-    } else {
-      log(
-        'warn',
-        `Skipping empty assistant chat history for user ${userId} (finishReason: ${result.finishReason})`
-      );
     }
 
     // Determine the general action type based on executed tools
@@ -931,7 +1543,7 @@ async function processChatMessage(
     }
 
     return {
-      content: result.text,
+      content: finalContent,
       action: actionType,
       executedTools: executedToolsList,
     };
@@ -1212,7 +1824,8 @@ async function processChatMessageStream(
   serviceConfigId: string,
   userId: string,
   authenticatedUserId: string,
-  actorIsAdmin = false
+  actorIsAdmin = false,
+  toolCategories?: readonly string[]
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -1229,7 +1842,6 @@ async function processChatMessageStream(
       throw new Error('AI service setting not found for the provided ID.');
     }
 
-    const apiKey = aiService.api_key;
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = deriveAiNetworkPolicy(aiService, actorIsAdmin);
@@ -1239,57 +1851,34 @@ async function processChatMessageStream(
       `Streaming chat message with service: ${aiService.service_type}, model: ${modelName}`
     );
 
-    let modelInstance: Parameters<typeof streamText>[0]['model'];
-    if (aiService.service_type === 'openai') {
-      const provider = createOpenAI({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (aiService.service_type === 'anthropic') {
-      const provider = createAnthropic({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (aiService.service_type === 'google') {
-      const provider = createGoogleGenerativeAI({ apiKey });
-      modelInstance = provider(modelName);
-    } else if (
-      aiService.service_type === 'ollama' ||
-      aiService.service_type === 'openai_compatible' ||
-      aiService.service_type === 'custom' ||
-      aiService.service_type === 'mistral' ||
-      aiService.service_type === 'groq' ||
-      aiService.service_type === 'openrouter' ||
-      aiService.service_type === 'xai' ||
-      aiService.service_type === 'meta'
-    ) {
-      const baseURL = getOpenAiCompatibleBaseUrl(
-        aiService.service_type,
-        aiService.custom_url
-      );
-      // Providers that need a user-supplied endpoint must have one: an empty
-      // baseURL makes the AI SDK silently fall back to OpenAI's default host.
-      if (
-        requiresUserSuppliedAiUrl(aiService.service_type) &&
-        !baseURL?.trim()
-      ) {
-        throw new Error(
-          `Custom URL is required for service type: ${aiService.service_type}`
-        );
-      }
-      const providerOptions: Parameters<typeof createOpenAI>[0] = {
-        baseURL,
-        apiKey: apiKey || 'no-key',
-      };
-      if (requiresUserSuppliedAiUrl(aiService.service_type)) {
-        providerOptions.fetch = createGuardedFetch(networkPolicy);
-      }
-      const provider = createOpenAI(providerOptions);
-      modelInstance = provider.chat(modelName);
-    } else {
-      throw new Error(`Unsupported service type: ${aiService.service_type}`);
+    const modelInstance = createChatModelInstance(
+      aiService,
+      modelName,
+      networkPolicy
+    );
+
+    // A non-empty toolCategories here is the user's explicit in-chat selection
+    // (a strict ceiling); an empty one falls through to auto-classification.
+    const categoriesAreManual = Boolean(
+      toolCategories && toolCategories.length > 0
+    );
+    let activeCategories: readonly string[] | undefined = toolCategories;
+    if (!process.env.VITEST && !categoriesAreManual) {
+      activeCategories = await classifyUserIntent(messages, modelInstance);
     }
 
-    const { systemPromptContent, tools } = await prepareChatContext(
+    const {
+      systemPromptContent,
+      tools,
+      activeToolNames,
+      prepareStep,
+      toolProfile,
+    } = await prepareChatContext(
       authenticatedUserId,
       aiService.service_type,
-      aiService.chat_tool_profile
+      aiService.chat_tool_profile,
+      activeCategories,
+      categoriesAreManual
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -1298,107 +1887,19 @@ async function processChatMessageStream(
       modelName
     );
 
-    const conversationMessages = messages.map((msg: ChatMessage) => {
-      // If parts or content is an array of parts (text + images), pass them through
-      const partsSource = Array.isArray(msg.parts)
-        ? msg.parts
-        : Array.isArray(msg.content)
-          ? msg.content
-          : null;
-
-      if (partsSource) {
-        const parts = (partsSource as ChatMessagePart[])
-          .map((part: ChatMessagePart) => {
-            if (part.type === 'text') {
-              return { type: 'text' as const, text: part.text || '' };
-            }
-            if (
-              part.type === 'image' ||
-              part.type === 'image_url' ||
-              (part.type === 'file' &&
-                (part.mimeType?.startsWith('image/') ||
-                  part.mediaType?.startsWith('image/') ||
-                  part.url?.startsWith('data:image/')))
-            ) {
-              // Handle both base64 data URLs and remote URLs
-              const url = part.image_url?.url || part.image || part.url || '';
-              return { type: 'image' as const, image: url };
-            }
-            // Fallback: treat unknown parts as text
-            return { type: 'text' as const, text: String(part.text || '') };
-          })
-          .filter(
-            (p: ProcessedMessagePart) =>
-              p.type === 'image' ||
-              (p.type === 'text' && p.text && p.text.trim() !== '')
-          );
-
-        if (parts.length > 0) {
-          return {
-            role: msg.role === 'assistant' ? 'assistant' : 'user',
-            content: parts,
-          };
-        }
-      }
-
-      // If content is a plain string, use as-is
-      if (typeof msg.content === 'string' && msg.content.trim() !== '') {
-        return {
-          role: msg.role === 'assistant' ? 'assistant' : 'user',
-          content: msg.content,
-        };
-      }
-
-      return {
-        role: msg.role === 'assistant' ? 'assistant' : 'user',
-        content: '',
-      };
-    });
-
-    // Filter out trailing empty assistant messages if sent by the client
-    while (
-      conversationMessages.length > 0 &&
-      conversationMessages[conversationMessages.length - 1].role ===
-        'assistant' &&
-      (!conversationMessages[conversationMessages.length - 1].content ||
-        (Array.isArray(
-          conversationMessages[conversationMessages.length - 1].content
-        ) &&
-          conversationMessages[conversationMessages.length - 1].content
-            .length === 0))
-    ) {
-      conversationMessages.pop();
-    }
-
-    // Drop images from earlier turns first so the token budget reflects what is
-    // actually sent; the current user turn keeps its image so live vision
-    // analysis still works.
-    const strippedMessages = stripHistoricalImages(conversationMessages);
-
-    // Token-budgeted sliding window of recent messages to give the LLM multi-turn
-    // context without an unpredictable, count-based blow-up.
-    const llmMessages = trimToTokenBudget(
-      strippedMessages,
-      CONTEXT_TOKEN_BUDGET
-    );
+    // Map client messages to CoreMessage format, then apply the shared
+    // context-window controls (image strip, token budget, user-first).
+    const conversationMessages = toCoreMessages(messages);
+    const llmMessages = buildLlmWindow(conversationMessages, toolProfile);
 
     log(
       'debug',
       `[DEBUG] AI Transmission: Preparing ${llmMessages.length} messages. Last message content structure: ${JSON.stringify(llmMessages[llmMessages.length - 1]?.content || '').substring(0, 200)}`
     );
 
-    // Ensure the window starts with a user message (some models reject assistant-first history)
-    while (llmMessages.length > 0 && llmMessages[0].role !== 'user') {
-      llmMessages.shift();
-    }
-
-    const lastMsg = llmMessages[llmMessages.length - 1];
-    const userMessageContent = Array.isArray(lastMsg?.content)
-      ? lastMsg.content
-          .filter((p: ChatMessagePart) => p.type === 'text')
-          .map((p: ChatMessagePart) => p.text || '')
-          .join(' ') || '[Image message]'
-      : (lastMsg?.content as string) || 'Message sent';
+    const { content: userMessageContent } = describeUserMessage(
+      llmMessages[llmMessages.length - 1]
+    );
 
     const result = streamText({
       model: modelInstance,
@@ -1407,9 +1908,25 @@ async function processChatMessageStream(
         Parameters<typeof streamText>[0]['messages']
       >,
       tools,
+      // Narrows the published/sent tool schemas to this turn's classified
+      // categories; sparky_enable_tools lets the model escalate mid-request
+      // via prepareStep if it turns out to need a dormant category.
+      activeTools: activeToolNames,
+      prepareStep,
       providerOptions: chatProviderOptions,
-      stopWhen: stepCountIs(MAX_AGENTIC_STEPS),
-      maxRetries: MAX_PROVIDER_RETRIES,
+      // Low temperature only for small local models (core profile); cloud and
+      // full-profile Ollama keep provider defaults.
+      ...(toolProfile === 'core' && {
+        temperature: CORE_PROFILE_CHAT_TEMPERATURE,
+      }),
+      // Tighter retry ceiling for cache-less core-profile backends, where every
+      // retry re-processes the full prefix.
+      stopWhen: buildChatStopConditions(toolProfile),
+      maxRetries:
+        toolProfile === 'core'
+          ? CORE_PROFILE_MAX_PROVIDER_RETRIES
+          : MAX_PROVIDER_RETRIES,
+      abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
       onStepFinish({ toolResults }) {
         if (toolResults && toolResults.length > 0) {
           const sizes = toolResults
@@ -1418,7 +1935,13 @@ async function processChatMessageStream(
           log('info', `[chat] tool result sizes: ${sizes}`);
         }
       },
-      onFinish: async ({ text, finishReason, usage, totalUsage }) => {
+      onFinish: async ({
+        text,
+        finishReason,
+        usage,
+        totalUsage,
+        toolCalls,
+      }) => {
         const observedUsage = totalUsage ?? usage;
         log(
           'info',
@@ -1451,7 +1974,15 @@ async function processChatMessageStream(
             log('error', 'Failed to save user chat history:', err)
           );
 
-        if (!text.trim()) {
+        // A turn that ends on a quick-reply call carries the question in the
+        // tool call, so it must be persisted too — otherwise the chips (and the
+        // question they answer) vanish on reload, and the reloaded transcript
+        // reads as if the user answered a question nobody asked.
+        const askCall = toolCalls?.find(
+          (call) => call.toolName === ASK_USER_TOOL_NAME
+        );
+
+        if (!text.trim() && !askCall) {
           log(
             'warn',
             `Skipping empty assistant chat history for user ${userId} (finishReason: ${finishReason})`
@@ -1459,12 +1990,32 @@ async function processChatMessageStream(
           return;
         }
 
+        const assistantParts: Record<string, unknown>[] = [];
+        if (text.trim()) assistantParts.push({ type: 'text', text });
+        if (askCall) {
+          assistantParts.push({
+            type: ASK_USER_PART_TYPE,
+            toolCallId: askCall.toolCallId,
+            state: 'output-available',
+            input: askCall.input,
+            output: '',
+          });
+        }
+
         await chatRepository
           .saveChatHistory({
             user_id: userId,
-            content: text,
+            // The question is the user-visible content when the model let the
+            // chips speak for it.
+            content:
+              text.trim() ||
+              askUserPartToText({
+                type: ASK_USER_PART_TYPE,
+                input: askCall?.input,
+              }) ||
+              '',
             messageType: 'assistant',
-            parts: [{ type: 'text', text }],
+            parts: assistantParts,
           })
           .catch((err: unknown) =>
             log('error', 'Failed to save assistant chat history:', err)

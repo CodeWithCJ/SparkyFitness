@@ -4,6 +4,7 @@ import userRepository from '../../models/userRepository.js';
 import preferenceService from '../../services/preferenceService.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { formatConfirmation } from './formatting.js';
+import { normalizeActionArgs } from './dates.js';
 import {
   manageProfileSchema,
   manageProfileInput,
@@ -21,15 +22,42 @@ export function buildProfileTools(userId: string) {
   return {
     sparky_manage_profile: tool({
       description: `User settings: update display name, timezone, and measurement units.
-      
+
+This tool takes a FLAT object with an "action" field. Do NOT nest fields under the action name.
+
 Actions:
-- get_profile() — returns user account details
-- update_profile(display_name?, email?, image?) — updates account details
-- get_preferences() — returns user preferences (timezone, units)
-- update_preferences(timezone?, energy_unit?, default_weight_unit?, default_distance_unit?) — updates preferences`,
+- action: 'get_profile' — returns user account details
+- action: 'update_profile' (fields: display_name?, email?, image?) — updates account details
+- action: 'get_preferences' — returns user preferences (timezone, units)
+- action: 'update_preferences' (fields: timezone?, energy_unit?, default_weight_unit?, default_distance_unit?, default_measurement_unit?, water_display_unit?) — updates preferences`,
       inputSchema: manageProfileInput,
       execute: async (rawArgs) => {
-        const parsed = manageProfileSchema.safeParse(rawArgs);
+        const normalized = normalizeActionArgs(
+          rawArgs,
+          'UTC',
+          VALID_ACTIONS,
+          (args) => {
+            if (
+              args.timezone !== undefined ||
+              args.energy_unit !== undefined ||
+              args.default_weight_unit !== undefined ||
+              args.default_measurement_unit !== undefined ||
+              args.default_distance_unit !== undefined ||
+              args.water_display_unit !== undefined
+            ) {
+              return 'update_preferences';
+            }
+            if (
+              args.display_name !== undefined ||
+              args.email !== undefined ||
+              args.image !== undefined
+            ) {
+              return 'update_profile';
+            }
+            return undefined;
+          }
+        );
+        const parsed = manageProfileSchema.safeParse(normalized);
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -114,7 +142,7 @@ Actions:
           }
         } catch (error) {
           log('error', '[Profile Tool] Error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

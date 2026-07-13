@@ -6,7 +6,8 @@ import exerciseEntryDb from '../../models/exerciseEntry.js';
 import measurementRepository from '../../models/measurementRepository.js';
 import reportRepository from '../../models/reportRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
-import { dayString } from './formatting.js';
+import { normalizeDayKeywords } from './dates.js';
+import { dayString, formatJsonResult } from './formatting.js';
 import { getNutritionalSummaryRows, getWaterHistoryRows } from './foodTools.js';
 import { getBiometricsHistoryRows } from './checkinTools.js';
 import {
@@ -149,7 +150,9 @@ export function buildReportTools(userId: string, tz: string) {
       description: 'Generates consolidated health and fitness reports.',
       inputSchema: manageReportInput,
       execute: async (rawArgs) => {
-        const parsed = manageReportSchema.safeParse(rawArgs);
+        const parsed = manageReportSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -168,7 +171,7 @@ export function buildReportTools(userId: string, tz: string) {
           }
         } catch (error) {
           log('error', '[Report Tool] Error:', error);
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
@@ -178,13 +181,15 @@ export function buildReportTools(userId: string, tz: string) {
         'Returns daily report data across nutrition, exercise, and water for a specific date or range.',
       inputSchema: dailyReportSchema,
       execute: async (rawArgs) => {
-        const parsed = dailyReportSchema.safeParse(rawArgs);
+        const parsed = dailyReportSchema.safeParse(
+          normalizeDayKeywords(rawArgs, tz)
+        );
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
         try {
           const data = await getDailyReport(userId, tz, parsed.data);
-          return JSON.stringify(data);
+          return formatJsonResult(data);
         } catch (error) {
           log('error', '[Report Tool] sparky_get_daily_report error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
@@ -193,7 +198,7 @@ export function buildReportTools(userId: string, tz: string) {
               parsed.data.date || parsed.data.start_date || 'unknown'
             );
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),

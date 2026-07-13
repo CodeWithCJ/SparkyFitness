@@ -10,6 +10,7 @@ import {
   diaryReportKeys,
   foodEntryKeys,
   foodEntryMealKeys,
+  waterIntakeKeys,
 } from '@/api/keys/diary';
 import { checkInKeys, sleepKeys } from '@/api/keys/checkin';
 import { chatbotKeys } from '@/api/keys/ai';
@@ -27,6 +28,7 @@ export const useDiaryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: presetKeys.all });
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
+    queryClient.invalidateQueries({ queryKey: waterIntakeKeys.all });
     queryClient.invalidateQueries({ queryKey: checkInKeys.all });
     queryClient.invalidateQueries({ queryKey: sleepKeys.all });
     queryClient.invalidateQueries({ queryKey: goalKeys.all });

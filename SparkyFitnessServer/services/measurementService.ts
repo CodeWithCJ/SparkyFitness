@@ -471,17 +471,6 @@ async function upsertWaterIntake(
   containerId: number | null
 ) {
   try {
-    // 1. Get current MANUAL water intake for the day to avoid mixing with syncs
-    const currentManualRecord =
-      await measurementRepository.getWaterIntakeByDate(
-        authenticatedUserId,
-        entryDate,
-        // @ts-expect-error TS(2345): Argument of type '"manual"' is not assignable to p... Remove this comment to see the full error message
-        'manual'
-      );
-    const currentManualMl = currentManualRecord
-      ? Number(currentManualRecord.water_ml)
-      : 0;
     // 2. Determine amount per drink based on container
     let amountPerDrink;
     let containerName: string | null = null;
@@ -510,14 +499,10 @@ async function upsertWaterIntake(
     // 5. Log individual drink(s) into water_intake_entries.
     if (changeDrinks > 0) {
       // 5a. Additions: insert new log entries and update daily total
-      const newManualTotalWaterMl = Math.max(
-        0,
-        currentManualMl + changeDrinks * amountPerDrink
-      );
-      await measurementRepository.upsertWaterData(
+      await measurementRepository.incrementWaterData(
         authenticatedUserId,
         actingUserId,
-        newManualTotalWaterMl,
+        changeDrinks * amountPerDrink,
         entryDate,
         'manual'
       );
@@ -555,14 +540,10 @@ async function upsertWaterIntake(
           );
         }
       }
-      const newManualTotalWaterMl = Math.max(
-        0,
-        currentManualMl - actualMlRemoved
-      );
-      await measurementRepository.upsertWaterData(
+      await measurementRepository.incrementWaterData(
         authenticatedUserId,
         actingUserId,
-        newManualTotalWaterMl,
+        -actualMlRemoved,
         entryDate,
         'manual'
       );
@@ -579,6 +560,48 @@ async function upsertWaterIntake(
     log(
       'error',
       `Error upserting water intake for user ${authenticatedUserId} by ${actingUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+// Logs a raw ml amount into the itemized water_intake_entries log AND keeps the
+// aggregated water_intake row (the daily total read by the dashboard) in sync.
+// Used by callers that log a plain amount rather than a container-based drink
+// count (e.g. the AI chat log_water tool), mirroring how upsertWaterIntake keeps
+// both tables reconciled for the manual "+" button.
+async function logWaterIntakeAmount(
+  authenticatedUserId: string,
+  actingUserId: string,
+  entryDate: string,
+  waterMl: number,
+  source = 'manual'
+) {
+  try {
+    // 1. Insert the itemized log entry.
+    const logEntry = await measurementRepository.insertWaterIntakeLog(
+      authenticatedUserId,
+      actingUserId,
+      entryDate,
+      waterMl,
+      null,
+      null,
+      source
+    );
+    // 2. Add the amount to the aggregated daily total for this source so the
+    //    dashboard (which SUMs water_intake) reflects the logged water.
+    await measurementRepository.incrementWaterData(
+      authenticatedUserId,
+      actingUserId,
+      waterMl,
+      entryDate,
+      source
+    );
+    return logEntry;
+  } catch (error) {
+    log(
+      'error',
+      `Error logging water intake amount for user ${authenticatedUserId} by ${actingUserId}:`,
       error
     );
     throw error;
@@ -1666,6 +1689,7 @@ export const deleteSleepEntry = sleepRepository.deleteSleepEntry;
 export { processHealthData };
 export { getWaterIntake };
 export { upsertWaterIntake };
+export { logWaterIntakeAmount };
 export { getWaterIntakeEntryById };
 export { updateWaterIntake };
 export { deleteWaterIntake };
@@ -1744,22 +1768,13 @@ async function deleteWaterIntakeLogEntry(
     }
 
     // 3. Subtract the deleted amount from the daily total
-    const currentRecord = await measurementRepository.getWaterIntakeByDate(
+    await measurementRepository.incrementWaterData(
       authenticatedUserId,
+      actingUserId,
+      -Number(deleted.water_ml),
       deleted.entry_date,
       deleted.source || 'manual'
     );
-    if (currentRecord) {
-      const currentMl = Number(currentRecord.water_ml);
-      const newTotalMl = Math.max(0, currentMl - Number(deleted.water_ml));
-      await measurementRepository.upsertWaterData(
-        authenticatedUserId,
-        actingUserId,
-        newTotalMl,
-        deleted.entry_date,
-        deleted.source || 'manual'
-      );
-    }
 
     return { message: 'Water intake log entry deleted successfully.' };
   } catch (error) {
@@ -1801,6 +1816,7 @@ export default {
   processHealthData,
   getWaterIntake,
   upsertWaterIntake,
+  logWaterIntakeAmount,
   getWaterIntakeEntryById,
   updateWaterIntake,
   deleteWaterIntake,

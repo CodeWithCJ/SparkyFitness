@@ -95,12 +95,20 @@ const logMoodSchema = z
       .int()
       .min(1)
       .max(10)
-      .describe('Mood score (1-10)'),
+      .optional()
+      .default(5)
+      .describe('Mood score (1-10); defaults to 5 if omitted'),
     notes: z
       .string()
       .max(2000)
       .optional()
       .describe('Optional notes about the mood'),
+    mood_tags: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Optional list of mood tags/emotions (e.g. ["anxious", "tired", "sad"])'
+      ),
     entry_date: dateSchema,
   })
   .strict();
@@ -207,6 +215,7 @@ export const manageCheckinInput = z.object({
       'get_fasting_status',
       'get_biometrics_history',
     ])
+    .optional()
     .describe('Action to perform; see tool description for per-action fields.'),
   entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
   // biometrics
@@ -249,6 +258,12 @@ export const manageCheckinInput = z.object({
     .max(10)
     .optional()
     .describe('Mood score (1-10)'),
+  mood_tags: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Optional mood tags for log_mood (e.g. ["anxious", "tired", "sad"])'
+    ),
   // fasting
   start_time: z
     .string()

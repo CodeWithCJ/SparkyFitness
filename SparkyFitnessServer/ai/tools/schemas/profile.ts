@@ -75,6 +75,7 @@ export const manageProfileInput = z.object({
       'get_preferences',
       'update_preferences',
     ])
+    .optional()
     .describe(
       'Action to perform; see the tool description for the fields each action needs.'
     ),

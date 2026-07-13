@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { dayToUtcRange, todayInZone } from '@workspace/shared';
+import { dayToUtcRange, todayInZone, BUILT_IN_MOODS } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import measurementService from '../../services/measurementService.js';
 import preferenceService from '../../services/preferenceService.js';
@@ -7,6 +7,7 @@ import moodRepository from '../../models/moodRepository.js';
 import fastingRepository from '../../models/fastingRepository.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
+import { normalizeActionArgs } from './dates.js';
 import { formatConfirmation, formatList, formatSuccess } from './formatting.js';
 import { convertWeight, convertMeasurement } from './unitConversion.js';
 import {
@@ -14,6 +15,57 @@ import {
   manageCheckinInput,
   type ManageCheckinInput,
 } from './schemas/checkin.js';
+
+interface BiometricsRow {
+  entry_date: string;
+  weight?: number | string | null;
+  height?: number | string | null;
+  neck?: number | string | null;
+  waist?: number | string | null;
+  hips?: number | string | null;
+  steps?: number | null;
+  body_fat_percentage?: number | string | null;
+  [key: string]: unknown;
+}
+
+interface CustomCategoryRow {
+  id: string;
+  name: string;
+  measurement_type: string;
+  created_at?: string | Date;
+}
+
+interface SleepEntryRow {
+  created_at: string | Date;
+  duration_in_seconds?: number;
+  bedtime?: string | null;
+  wake_time?: string | null;
+  source?: string;
+  sleep_score?: number | null;
+  [key: string]: unknown;
+}
+
+interface FastingLogRow {
+  id: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  status?: string;
+  fasting_type?: string | null;
+  [key: string]: unknown;
+}
+
+interface CustomMeasurementEntryRow {
+  id: string;
+  custom_categories?: {
+    name?: string;
+    measurement_type?: string;
+  } | null;
+  value?: string | number;
+  notes?: string;
+  entry_date?: string;
+  created_at?: string | Date;
+  [key: string]: unknown;
+}
 
 const VALID_ACTIONS = [
   'log_biometrics',
@@ -33,13 +85,27 @@ function isSet<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
 
+function formatMoodTags(tags?: string[] | null): string {
+  if (!tags || !tags.length) return '';
+  const formatted = tags.map((t) => {
+    const matched = BUILT_IN_MOODS.find(
+      (m) => m.name.toLowerCase() === t.toLowerCase()
+    );
+    if (matched) {
+      return `${matched.emoji} ${matched.displayName}`;
+    }
+    return t; // fallback if it is a custom tag or not found
+  });
+  return ` [${formatted.join(', ')}]`;
+}
+
 // Biometrics rows converted into the user's preferred units, oldest-first —
 // MCP's getBiometricsHistory row shape. Shared with the report tools.
 export async function getBiometricsHistoryRows(
   userId: string,
   startDate?: string,
   endDate?: string
-) {
+): Promise<BiometricsRow[]> {
   const prefs = await preferenceService.getUserPreferences(userId, userId);
   const wUnit = prefs.default_weight_unit || 'kg';
   const mUnit = prefs.default_measurement_unit || 'cm';
@@ -51,8 +117,7 @@ export async function getBiometricsHistoryRows(
     endDate || '9999-12-31'
   );
   // The repository returns newest-first; MCP rendered oldest-first.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return [...rows].reverse().map((row: any) => ({
+  return [...rows].reverse().map((row: BiometricsRow) => ({
     ...row,
     weight: isSet(row.weight)
       ? convertWeight(Number(row.weight), 'kg', wUnit)
@@ -92,7 +157,73 @@ Actions:
 - get_biometrics_history(start_date?, end_date?) — returns weight and measurements history`,
       inputSchema: manageCheckinInput,
       execute: async (rawArgs) => {
-        const parsed = manageCheckinSchema.safeParse(rawArgs);
+        const normalized = normalizeActionArgs(
+          rawArgs,
+          tz,
+          VALID_ACTIONS,
+          (args) => {
+            if (
+              args.mood_value !== undefined ||
+              (args.notes !== undefined && args.category_name === undefined)
+            ) {
+              return 'log_mood';
+            }
+            if (
+              args.sleep_score !== undefined ||
+              args.duration_seconds !== undefined ||
+              args.bedtime !== undefined ||
+              args.wake_time !== undefined
+            ) {
+              return 'log_sleep';
+            }
+            if (
+              args.start_time !== undefined ||
+              args.fasting_status !== undefined
+            ) {
+              return 'log_fasting';
+            }
+            if (args.category_name !== undefined && args.value !== undefined) {
+              return 'log_custom_metric';
+            }
+            if (
+              args.weight !== undefined ||
+              args.steps !== undefined ||
+              args.height !== undefined ||
+              args.body_fat !== undefined ||
+              args.neck !== undefined ||
+              args.waist !== undefined ||
+              args.hips !== undefined
+            ) {
+              return 'log_biometrics';
+            }
+            if (args.category_name !== undefined) {
+              return 'create_category';
+            }
+            if (args.start_date || args.end_date) {
+              return 'get_biometrics_history';
+            }
+            if (args.entry_date) {
+              return 'list_checkin_diary';
+            }
+            return 'list_checkin_diary'; // fallback
+          }
+        ) as Record<string, unknown>;
+
+        // Default missing entry_date to today's date string for logging actions
+        const loggingActions = [
+          'log_biometrics',
+          'log_mood',
+          'log_sleep',
+          'log_custom_metric',
+        ];
+        if (
+          normalized.entry_date === undefined &&
+          loggingActions.includes(normalized.action as string)
+        ) {
+          normalized.entry_date = todayInZone(tz);
+        }
+
+        const parsed = manageCheckinSchema.safeParse(normalized);
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
@@ -185,7 +316,7 @@ Actions:
                 userId
               );
               const category = categories.find(
-                (cat: any) =>
+                (cat: CustomCategoryRow) =>
                   String(cat.name).toLowerCase() ===
                   args.category_name.toLowerCase()
               );
@@ -214,20 +345,27 @@ Actions:
                 userId,
                 userId
               );
+              interface MappedCategoryRow {
+                id: string;
+                category_name: string;
+                measurement_type: string;
+                created_at?: string | Date;
+              }
               const categories = rows
-                .map((row: any) => ({
+                .map((row: CustomCategoryRow) => ({
                   id: row.id,
                   category_name: row.name,
                   measurement_type: row.measurement_type,
                   created_at: row.created_at,
                 }))
-                .sort((a: any, b: any) =>
+                .sort((a: MappedCategoryRow, b: MappedCategoryRow) =>
                   String(a.category_name).localeCompare(String(b.category_name))
                 );
               return formatList(
                 categories,
                 'Custom Measurement Categories',
-                (c: any) => `**${c.category_name}**\n  ID: ${c.id}`
+                (c: MappedCategoryRow) =>
+                  `**${c.category_name}**\n  ID: ${c.id}`
               );
             }
 
@@ -248,10 +386,12 @@ Actions:
                 userId,
                 args.mood_value,
                 args.notes || null,
-                args.entry_date
+                args.entry_date,
+                args.mood_tags || null
               );
+              const tagsStr = formatMoodTags(args.mood_tags);
               return formatConfirmation(
-                `Mood logged for ${args.entry_date}: ${args.mood_value}/10${args.notes ? ' — ' + args.notes : ''}.`
+                `Mood logged for ${args.entry_date}: ${args.mood_value}/10${tagsStr}${args.notes ? ' — ' + args.notes : ''}.`
               );
             }
 
@@ -363,8 +503,10 @@ Actions:
               const wUnit = prefs.default_weight_unit || 'kg';
               const mUnit = prefs.default_measurement_unit || 'cm';
 
-              let bio: Record<string, any> | null =
-                bioRow && Object.keys(bioRow).length > 0 ? bioRow : null;
+              let bio: BiometricsRow | null =
+                bioRow && Object.keys(bioRow).length > 0
+                  ? (bioRow as BiometricsRow)
+                  : null;
               if (bio) {
                 bio = {
                   ...bio,
@@ -391,11 +533,11 @@ Actions:
               const moods = moodEntry ? [moodEntry] : [];
               const sleeps = [...sleepRows]
                 .sort(
-                  (a: any, b: any) =>
+                  (a: SleepEntryRow, b: SleepEntryRow) =>
                     new Date(a.created_at).getTime() -
                     new Date(b.created_at).getTime()
                 )
-                .map((row: any) => ({
+                .map((row: SleepEntryRow) => ({
                   ...row,
                   duration_seconds: row.duration_in_seconds,
                   bedtime: row.bedtime
@@ -405,7 +547,7 @@ Actions:
                     ? new Date(row.wake_time).toISOString()
                     : null,
                 }));
-              const fasts = fastRows.map((row: any) => ({
+              const fasts = fastRows.map((row: FastingLogRow) => ({
                 id: row.id,
                 start_time: row.start_time
                   ? new Date(row.start_time).toISOString()
@@ -416,23 +558,34 @@ Actions:
                 fasting_status: row.status,
                 fasting_type: row.fasting_type,
               }));
+              interface MappedCustomMetric {
+                id: string;
+                category_name?: string;
+                value?: string | number;
+                measurement_type?: string;
+                notes?: string;
+                entry_date?: string;
+                created_at?: string | Date;
+              }
               const customs = [...customRows]
-                .map((row: any) => ({
-                  id: row.id,
-                  category_name: row.custom_categories?.name,
-                  value: row.value,
-                  measurement_type: row.custom_categories?.measurement_type,
-                  notes: row.notes,
-                  entry_date: row.entry_date,
-                  created_at: row.created_at,
-                }))
+                .map(
+                  (row: CustomMeasurementEntryRow): MappedCustomMetric => ({
+                    id: row.id,
+                    category_name: row.custom_categories?.name,
+                    value: row.value,
+                    measurement_type: row.custom_categories?.measurement_type,
+                    notes: row.notes,
+                    entry_date: row.entry_date,
+                    created_at: row.created_at,
+                  })
+                )
                 .sort(
-                  (a: any, b: any) =>
+                  (a: MappedCustomMetric, b: MappedCustomMetric) =>
                     String(a.category_name).localeCompare(
                       String(b.category_name)
                     ) ||
-                    new Date(a.created_at).getTime() -
-                      new Date(b.created_at).getTime()
+                    new Date(a.created_at || 0).getTime() -
+                      new Date(b.created_at || 0).getTime()
                 );
 
               let text = `### Check-in Diary: ${dateLabel}\n\n`;
@@ -459,7 +612,8 @@ Actions:
               if (moods.length > 0) {
                 text += '## Mood\n';
                 for (const m of moods) {
-                  text += `- ${m.mood_value}/10`;
+                  const tagsStr = formatMoodTags(m.mood_tags);
+                  text += `- ${m.mood_value}/10${tagsStr}`;
                   if (m.notes) text += ` — ${m.notes}`;
                   text += '\n';
                 }
@@ -549,29 +703,34 @@ Actions:
                 args.start_date,
                 args.end_date
               );
-              return formatList(history, 'Biometrics History', (h: any) => {
-                const hw = h.weight_unit || 'kg';
-                let text = `**${h.entry_date}**: `;
-                if (h.weight) text += `Weight: ${h.weight}${hw} `;
-                if (h.body_fat_percentage)
-                  text += `| BF: ${h.body_fat_percentage}% `;
-                if (h.steps) text += `| Steps: ${h.steps}`;
-                return text;
-              });
+              return formatList(
+                history,
+                'Biometrics History',
+                (h: BiometricsRow) => {
+                  const hw = h.weight_unit || 'kg';
+                  let text = `**${h.entry_date}**: `;
+                  if (h.weight) text += `Weight: ${h.weight}${hw} `;
+                  if (h.body_fat_percentage)
+                    text += `| BF: ${h.body_fat_percentage}% `;
+                  if (h.steps) text += `| Steps: ${h.steps}`;
+                  return text;
+                }
+              );
             }
 
-            default:
-              return ERRORS.INVALID_ACTION(
-                String((args as any).action),
-                VALID_ACTIONS
+            default: {
+              const actionStr = String(
+                (args as Record<string, unknown>).action || 'unknown'
               );
+              return ERRORS.INVALID_ACTION(actionStr, VALID_ACTIONS);
+            }
           }
         } catch (error) {
           log('error', '[Checkin Tool] Error:', error);
           if (error instanceof Error && error.message.includes('not found')) {
             return ERRORS.VALIDATION(error.message);
           }
-          return ERRORS.DB_ERROR();
+          return ERRORS.DB_ERROR(error);
         }
       },
     }),
