@@ -40,6 +40,7 @@ export const ChatToolCategoriesSelector: FC = () => {
 
   const selectedSet = new Set(selected);
   const count = selected.length;
+  const isTrimmed = count > 0 && count < allCategories.length;
 
   return (
     <Popover>
@@ -54,8 +55,8 @@ export const ChatToolCategoriesSelector: FC = () => {
           aria-label={t('chat.toolCategories.tooltip', 'Choose chatbot tools')}
         >
           <SlidersHorizontalIcon className="size-4" />
-          {count > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+          {isTrimmed && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-medium text-white">
               {count}
             </span>
           )}

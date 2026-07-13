@@ -1245,6 +1245,8 @@ Your response must contain ONLY the matched domain names as a comma-separated li
       system: classificationPrompt,
       messages: contextMessages,
       temperature: 0,
+      maxRetries: 0,
+      abortSignal: AbortSignal.timeout(10000), // 10s timeout to prevent hanging the chat turn
     });
 
     log(
@@ -1252,7 +1254,11 @@ Your response must contain ONLY the matched domain names as a comma-separated li
       `[chatService] LLM intent classifier output: "${resultText.trim()}"`
     );
 
-    const result = resultText.toLowerCase();
+    const parts = resultText
+      .toLowerCase()
+      .split(',')
+      .map((t) => t.trim().replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, ''));
+
     const categoriesList: ChatToolCategorySlug[] = [];
     const validCategories: ChatToolCategorySlug[] = [
       'exercise',
@@ -1265,7 +1271,7 @@ Your response must contain ONLY the matched domain names as a comma-separated li
       'vision',
     ];
     for (const cat of validCategories) {
-      if (result.includes(cat)) {
+      if (parts.includes(cat)) {
         categoriesList.push(cat);
       }
     }

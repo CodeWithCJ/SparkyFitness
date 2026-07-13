@@ -89,10 +89,10 @@ function findDominantArray(data: unknown): DominantArray | null {
  */
 export function truncateJsonRecords(
   data: unknown,
-  serialize: Serialize = (value) => JSON.stringify(value),
+  serialize: Serialize = (value) => JSON.stringify(value) ?? '',
   profile: 'full' | 'core' = 'full'
 ): string {
-  const full = serialize(data);
+  const full = serialize(data) ?? '';
   const limit = getCharacterLimit(profile);
   if (full.length <= limit) return full;
 

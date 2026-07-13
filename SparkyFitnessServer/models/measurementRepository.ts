@@ -132,6 +132,32 @@ async function upsertWaterData(
     client.release();
   }
 }
+
+async function incrementWaterData(
+  userId: string,
+  actingUserId: string,
+  waterMl: number,
+  date: string,
+  source = 'manual'
+) {
+  const client = await getClient(actingUserId);
+  try {
+    const query = `
+      INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $5, now(), now())
+      ON CONFLICT (user_id, entry_date, source)
+      DO UPDATE SET 
+        water_ml = GREATEST(0, water_intake.water_ml + $3),
+        updated_at = now(),
+        updated_by_user_id = $5
+      RETURNING *`;
+    const values = [userId, date, waterMl, source, actingUserId];
+    const result = await client.query(query, values);
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWaterIntakeByDate(userId: any, date: any, source = null) {
   const client = await getClient(userId);
@@ -1364,6 +1390,7 @@ async function getMostRecentMeasurement(userId: any, measurementType: any) {
 }
 export { upsertStepData };
 export { upsertWaterData };
+export { incrementWaterData };
 export { getWaterIntakesByDates };
 export { getWaterIntakeEntryById };
 export { getWaterIntakeEntryOwnerId };
@@ -1543,6 +1570,7 @@ async function getWaterTotalsByDateRange(
 export default {
   upsertStepData,
   upsertWaterData,
+  incrementWaterData,
   getWaterIntakeByDate,
   getWaterIntakesByDates,
   getWaterIntakeEntryById,

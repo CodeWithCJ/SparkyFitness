@@ -74,6 +74,7 @@ vi.mock('../models/measurementRepository', () => ({
     insertWaterIntakeLog: vi.fn(),
     getWaterIntakeByDate: vi.fn(),
     upsertWaterData: vi.fn(),
+    incrementWaterData: vi.fn(),
     getWaterTotalsByDateRange: vi.fn(),
   },
 }));
@@ -2202,9 +2203,9 @@ describe('log_water', () => {
     vi.mocked(measurementRepository.insertWaterIntakeLog).mockResolvedValue({
       id: ENTRY_ID,
     });
-    vi.mocked(measurementRepository.getWaterIntakeByDate).mockResolvedValue({
-      water_ml: 250,
-    });
+    vi.mocked(measurementRepository.incrementWaterData).mockResolvedValue({
+      water_ml: 750,
+    } as any);
 
     const result = await tools.sparky_manage_food.execute!(
       { action: 'log_water', amount_ml: 500, entry_date: '2026-06-11' },
@@ -2221,12 +2222,12 @@ describe('log_water', () => {
       null,
       'manual'
     );
-    // The aggregated water_intake row (read by the dashboard) must be updated
-    // to include the newly logged amount: existing 250ml + 500ml = 750ml.
-    expect(measurementRepository.upsertWaterData).toHaveBeenCalledWith(
+    // The aggregated water_intake row (read by the dashboard) must be atomically
+    // incremented by the newly logged amount: 500ml.
+    expect(measurementRepository.incrementWaterData).toHaveBeenCalledWith(
       'user-1',
       'user-1',
-      750,
+      500,
       '2026-06-11',
       'manual'
     );
