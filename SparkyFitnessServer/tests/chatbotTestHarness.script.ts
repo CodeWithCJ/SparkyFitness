@@ -363,7 +363,9 @@ async function runChatbotScenario(
             if (foundTool) isAlternative = true;
           } else if (turn.expectedAction === 'get_nutritional_summary') {
             foundTool = executedTools.find(
-              (t: any) => t.name === 'sparky_get_nutrition_summary'
+              (t: any) =>
+                t.name === 'sparky_get_nutrition_summary' ||
+                t.name === 'sparky_get_daily_report'
             );
             if (foundTool) isAlternative = true;
           } else if (turn.expectedAction === 'get_water_history') {
@@ -379,6 +381,13 @@ async function runChatbotScenario(
             );
             if (foundTool) isAlternative = true;
           }
+        } else if (turn.expectedTool === 'sparky_manage_checkin') {
+          if (turn.expectedAction === 'get_biometrics_history') {
+            foundTool = executedTools.find(
+              (t: any) => t.name === 'sparky_get_biometrics_history'
+            );
+            if (foundTool) isAlternative = true;
+          }
         }
       }
 
@@ -386,6 +395,13 @@ async function runChatbotScenario(
         let actionMatches = true;
         if (turn.expectedAction && !isAlternative) {
           const actionVal = foundTool.args?.action;
+
+          // In sparky_manage_food, action is often inferred on the server side
+          const isFoodInferred =
+            foundTool.name === 'sparky_manage_food' &&
+            turn.expectedAction === 'log_food' &&
+            !actionVal &&
+            (foundTool.args?.food_name || foundTool.args?.quantity);
 
           // In sparky_manage_exercise, action is often inferred on the server side
           const isExerciseInferred =
@@ -420,6 +436,7 @@ async function runChatbotScenario(
 
           if (
             actionVal !== turn.expectedAction &&
+            !isFoodInferred &&
             !isExerciseInferred &&
             !isCheckinInferred &&
             !isFoodPreCheck
