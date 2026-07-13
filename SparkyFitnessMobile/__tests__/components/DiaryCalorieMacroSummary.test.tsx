@@ -122,7 +122,7 @@ describe('DiaryCalorieMacroSummary', () => {
     expect(queryByText(/1,500/)).toBeNull();
   });
 
-  it('renders the "Macros" section label', () => {
+  it('renders the "Macronutrients" section label', () => {
     useAppPreferencesStore.setState({
       diaryCalorieSummaryVisible: false,
       diaryMacroSummaryVisible: true,
@@ -130,7 +130,7 @@ describe('DiaryCalorieMacroSummary', () => {
     const { getByText } = render(
       <DiaryCalorieMacroSummary summary={buildSummary()} showNetCarbs={false} />,
     );
-    expect(getByText('Macros')).toBeTruthy();
+    expect(getByText('Macronutrients')).toBeTruthy();
   });
 
   it('shows the macro card on a day with no logged food when the toggle is on', () => {
@@ -141,7 +141,7 @@ describe('DiaryCalorieMacroSummary', () => {
     const { getByText } = render(
       <DiaryCalorieMacroSummary summary={buildSummary({ foodEntries: [] })} showNetCarbs={false} />,
     );
-    expect(getByText('Macros')).toBeTruthy();
+    expect(getByText('Macronutrients')).toBeTruthy();
   });
 
   it('renders only the macro row when calories are off', () => {

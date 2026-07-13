@@ -63,17 +63,15 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
       <Text className="text-md font-bold text-text-secondary mb-2">Calories</Text>
       <View className="flex-row justify-between items-end mb-3">
-        <Text className="text-xl font-bold text-text-primary">
-          {Math.round(eaten).toLocaleString()} kcal
-          {hasGoal && (
-            <Text className="text-sm font-normal text-text-secondary">
-              {' '}
-              / {Math.round(goal).toLocaleString()}
-            </Text>
-          )}
+        <Text className="text-lg font-bold text-text-primary">
+          {Math.round(eaten).toLocaleString()}
+          <Text className="text-sm font-normal text-text-secondary">
+            {' '}
+            kcal{hasGoal ? ` / ${Math.round(goal).toLocaleString()}` : ''}
+          </Text>
         </Text>
         {hasGoal && (
-          <Text className="text-xl font-bold text-text-primary">
+          <Text className="text-base font-semibold text-text-primary">
             {Math.abs(Math.round(remaining)).toLocaleString()}
             <Text className="text-sm font-normal text-text-secondary">
               {' '}
@@ -146,17 +144,15 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({ sum
         <CalorieBar eaten={eaten} goal={goal} remaining={remaining} progressPercent={progress / 100} />
       )}
       {diaryMacroSummaryVisible && (
-        <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-          <Text className="text-md font-bold text-text-secondary mb-3">Macros</Text>
-          <View className="flex-row justify-between">
+        <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
+          <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
+          <View className="flex-row flex-wrap justify-between">
             <MacroCard
               label={carbsLabel}
               consumed={carbsConsumed}
               goal={summary.carbs.goal || undefined}
               color={carbsColor}
               overfillColor={progressOverfillColor}
-              compact
-              widthClassName="w-[31%]"
             />
             <MacroCard
               label="Fat"
@@ -164,8 +160,6 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({ sum
               goal={summary.fat.goal || undefined}
               color={fatColor}
               overfillColor={progressOverfillColor}
-              compact
-              widthClassName="w-[31%]"
             />
             <MacroCard
               label="Protein"
@@ -173,8 +167,6 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({ sum
               goal={summary.protein.goal || undefined}
               color={proteinColor}
               overfillColor={progressOverfillColor}
-              compact
-              widthClassName="w-[31%]"
             />
           </View>
         </View>
