@@ -79,9 +79,10 @@ describe('DiaryCalorieMacroSummary', () => {
       />,
     );
     expect(getByText('Calories')).toBeTruthy();
-    expect(getByText(/cal \/ 2,000/)).toBeTruthy();
+    expect(getByText(/500 kcal/)).toBeTruthy();
+    expect(getByText(/2,000/)).toBeTruthy();
     expect(getByText(/1,500/)).toBeTruthy();
-    expect(getByText(/left/)).toBeTruthy();
+    expect(getByText(/remaining/)).toBeTruthy();
     expect(queryByText('Carbs')).toBeNull();
   });
 
@@ -128,6 +129,17 @@ describe('DiaryCalorieMacroSummary', () => {
     });
     const { getByText } = render(
       <DiaryCalorieMacroSummary summary={buildSummary()} showNetCarbs={false} />,
+    );
+    expect(getByText('Macros')).toBeTruthy();
+  });
+
+  it('shows the macro card on a day with no logged food when the toggle is on', () => {
+    useAppPreferencesStore.setState({
+      diaryCalorieSummaryVisible: false,
+      diaryMacroSummaryVisible: true,
+    });
+    const { getByText } = render(
+      <DiaryCalorieMacroSummary summary={buildSummary({ foodEntries: [] })} showNetCarbs={false} />,
     );
     expect(getByText('Macros')).toBeTruthy();
   });

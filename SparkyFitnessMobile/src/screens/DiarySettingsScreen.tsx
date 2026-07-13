@@ -45,7 +45,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
         <SettingsRowGroup>
           <SettingsRow
             title="Show Calories"
-            subtitle="Show a calories summary at the top of the Diary"
+            subtitle="Calories summary at the top of the Diary"
             rightAccessory={
               <Switch
                 value={diaryCalorieSummaryVisible}
@@ -57,7 +57,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
           />
           <SettingsRow
             title="Show Macros"
-            subtitle="Show a macros summary at the top of the Diary"
+            subtitle="Macros summary at the top of the Diary"
             rightAccessory={
               <Switch
                 value={diaryMacroSummaryVisible}
