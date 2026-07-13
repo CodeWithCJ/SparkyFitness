@@ -58,6 +58,11 @@ interface WorkoutFormExerciseListProps {
   onAddSet: (exerciseClientId: string) => void;
   onRemoveExercise: (exercise: WorkoutDraftExercise) => void;
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
+  /**
+   * Enables the per-exercise inline calories field (workout edit). Absent for
+   * the create and preset forms, which have no stored calories to override.
+   */
+  setExerciseCalories?: (exerciseClientId: string, calories: string) => void;
   supersetWith: (currentClientId: string, pickedClientId: string) => void;
   ungroupExercise: (clientId: string) => void;
   /** Move a draggable item (solo or whole run) from one item index to another. */
@@ -117,6 +122,7 @@ const WorkoutFormExerciseList = forwardRef<
     onAddSet,
     onRemoveExercise,
     setExerciseRest,
+    setExerciseCalories,
     supersetWith,
     ungroupExercise,
     onReorderExercises,
@@ -427,6 +433,7 @@ const WorkoutFormExerciseList = forwardRef<
             eligibleForPrefill={isEligibleForPrefill?.(clientId) ?? false}
             onPressThumb={onViewExercise ? handleViewExercise : undefined}
             onToggleExpanded={toggleExpanded}
+            onChangeCalories={setExerciseCalories}
             onPressRestChip={handlePressRestChip}
             onPressMetricHeader={handlePressMetricHeader}
             onPressOverflow={handlePressOverflow}

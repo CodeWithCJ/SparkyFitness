@@ -229,6 +229,7 @@ export function buildSessionSubtitle(
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
       parts.push(`${vol.toLocaleString()} ${weightUnit}`);
     }
+    if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
     return parts.join(' \u00b7 ');
   }
 
@@ -273,39 +274,53 @@ export function buildExercisesPayload(
   const allExercisesHaveServerId =
     exercises.length > 0 && exercises.every(e => e.serverId !== undefined);
 
-  return exercises.map((exercise, index) => ({
-    ...(allExercisesHaveServerId && exercise.serverId !== undefined
-      ? { id: exercise.serverId }
-      : {}),
-    exercise_id: exercise.exerciseId,
-    sort_order: index,
-    duration_minutes: 0,
-    // The form has no superset UI; round-trip the value opaquely so manual
-    // edits don't flatten grouping (the server nulls omitted fields).
-    superset_group: exercise.supersetGroup ?? null,
-    sets: exercise.sets.map((set, setIndex) => {
-      const weight = parseDecimalInput(set.weight);
-      const reps = parseInt(set.reps, 10);
-      // The server set UPDATE writes all nine columns with `set.x ?? null`,
-      // so fields the form has no UI for must still be round-tripped
-      // explicitly — omitting them silently wipes the stored values.
-      return {
-        ...(allExercisesHaveServerId && set.serverId !== undefined
-          ? { id: set.serverId }
-          : {}),
-        set_number: setIndex + 1,
-        set_type: set.setType ?? null,
-        weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
-        reps: isNaN(reps) ? null : reps,
-        duration: set.duration ?? null,
-        ...(set.restTime != null ? { rest_time: set.restTime } : {}),
-        notes: set.notes ?? null,
-        rpe: set.rpe ?? null,
-        completed_at: set.completedAt ?? null,
-        is_pr: set.isPr ?? false,
-      };
-    }),
-  }));
+  return exercises.map((exercise, index) => {
+    // The server recomputes calories from duration and sets whenever
+    // calories_burned is omitted; a user-edited value is sent as a manual
+    // override for this save only.
+    const caloriesOverride = exercise.caloriesManuallySet
+      ? parseDecimalInput(exercise.calories ?? '')
+      : NaN;
+
+    return {
+      ...(allExercisesHaveServerId && exercise.serverId !== undefined
+        ? { id: exercise.serverId }
+        : {}),
+      exercise_id: exercise.exerciseId,
+      sort_order: index,
+      // Round-tripped from the session (the form has no duration UI); sending 0
+      // would zero the stored duration and the calories derived from it.
+      duration_minutes: exercise.durationMinutes ?? 0,
+      ...(!isNaN(caloriesOverride) && caloriesOverride >= 0
+        ? { calories_burned: caloriesOverride }
+        : {}),
+      // The form has no superset UI; round-trip the value opaquely so manual
+      // edits don't flatten grouping (the server nulls omitted fields).
+      superset_group: exercise.supersetGroup ?? null,
+      sets: exercise.sets.map((set, setIndex) => {
+        const weight = parseDecimalInput(set.weight);
+        const reps = parseInt(set.reps, 10);
+        // The server set UPDATE writes all nine columns with `set.x ?? null`,
+        // so fields the form has no UI for must still be round-tripped
+        // explicitly — omitting them silently wipes the stored values.
+        return {
+          ...(allExercisesHaveServerId && set.serverId !== undefined
+            ? { id: set.serverId }
+            : {}),
+          set_number: setIndex + 1,
+          set_type: set.setType ?? null,
+          weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
+          reps: isNaN(reps) ? null : reps,
+          duration: set.duration ?? null,
+          ...(set.restTime != null ? { rest_time: set.restTime } : {}),
+          notes: set.notes ?? null,
+          rpe: set.rpe ?? null,
+          completed_at: set.completedAt ?? null,
+          is_pr: set.isPr ?? false,
+        };
+      }),
+    };
+  });
 }
 
 // --- Set metrics (active-workout log column + volume summaries) ---
@@ -382,12 +397,16 @@ export interface WorkoutCardExercise {
   superset_group?: number | null;
   /** Per-exercise note. Present on live entries; absent on draft/preset sources. */
   notes?: string | null;
+  /** Present on session entries; absent on draft/preset sources. */
+  calories_burned?: number | null;
   exercise_snapshot: {
     name?: string | null;
     category?: string | null;
     images?: string[] | null;
   } | null;
   sets: WorkoutCardSet[];
+  /** Raw draft string backing the edit-mode calories input (draft mapper only). */
+  editCaloriesText?: string;
 }
 
 /**
@@ -403,6 +422,7 @@ export function draftExerciseToCardExercise(
     id: exercise.clientId,
     exercise_id: exercise.exerciseId,
     superset_group: exercise.supersetGroup ?? null,
+    editCaloriesText: exercise.calories ?? '',
     exercise_snapshot: exercise.snapshot ?? {
       name: exercise.exerciseName,
       category: exercise.exerciseCategory,

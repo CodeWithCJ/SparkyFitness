@@ -412,7 +412,22 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('2 exercises · 3 sets');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('2 exercises · 3 sets · 300 Cal');
+      });
+
+      it('omits calories when zero', () => {
+        const session = makePreset({
+          exercises: [
+            {
+              exercise_id: 'ex-1',
+              exercise_snapshot: null as any,
+              sets: [{ weight: null, reps: null }],
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+          ],
+        });
+        expect(buildSessionSubtitle(session, 60, 0)).toBe('1 exercise · 1 sets');
       });
 
       it('shows singular "exercise" for one exercise', () => {
@@ -446,7 +461,7 @@ describe('workoutSession', () => {
           ],
         });
         // 500 + 640 = 1140 kg
-        expect(buildSessionSubtitle(session, 60, 300)).toBe(`1 exercise · 2 sets · ${fmt(1140)} kg`);
+        expect(buildSessionSubtitle(session, 60, 300)).toBe(`1 exercise · 2 sets · ${fmt(1140)} kg · 300 Cal`);
       });
 
       it('converts volume to lbs when weightUnit is lbs', () => {
@@ -479,7 +494,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 2 sets');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 2 sets · 300 Cal');
       });
 
       it('omits sets count when no sets exist', () => {
@@ -494,7 +509,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 300 Cal');
       });
     });
 
@@ -868,9 +883,39 @@ describe('workoutSession', () => {
       expect(payload[1].sort_order).toBe(1);
     });
 
-    it('sets duration_minutes to 0 for each exercise', () => {
+    it('defaults duration_minutes to 0 when the draft has none', () => {
       const payload = buildExercisesPayload([makeDraftExercise()], 'kg');
       expect(payload[0].duration_minutes).toBe(0);
+    });
+
+    it('round-trips durationMinutes so edit-saves cannot zero stored durations', () => {
+      const payload = buildExercisesPayload(
+        [makeDraftExercise({ durationMinutes: 23.5 })],
+        'kg',
+      );
+      expect(payload[0].duration_minutes).toBe(23.5);
+    });
+
+    it('omits calories_burned unless the user edited the field', () => {
+      const seeded = buildExercisesPayload(
+        [makeDraftExercise({ calories: '150', caloriesManuallySet: false })],
+        'kg',
+      );
+      expect(seeded[0]).not.toHaveProperty('calories_burned');
+
+      const edited = buildExercisesPayload(
+        [makeDraftExercise({ calories: '150', caloriesManuallySet: true })],
+        'kg',
+      );
+      expect(edited[0].calories_burned).toBe(150);
+    });
+
+    it('omits calories_burned when the user cleared the field', () => {
+      const payload = buildExercisesPayload(
+        [makeDraftExercise({ calories: '', caloriesManuallySet: true })],
+        'kg',
+      );
+      expect(payload[0]).not.toHaveProperty('calories_burned');
     });
 
     it('maps sets with 1-based set_number', () => {

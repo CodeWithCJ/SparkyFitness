@@ -301,13 +301,22 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('renders the rest chip read-only so it cannot open the rest sheet', () => {
       const { getByText, callbacks } = renderCard(true, { mode: 'view' });
-      fireEvent.press(getByText('Rest · 1:30'));
+      fireEvent.press(getByText('Rest 1:30'));
       expect(callbacks.onPressRestChip).not.toHaveBeenCalled();
     });
 
     it('hides the rest chip entirely with showRestChip={false}', () => {
       const { queryByText } = renderCard(true, { mode: 'view', showRestChip: false });
-      expect(queryByText('Rest · 1:30')).toBeNull();
+      expect(queryByText('Rest 1:30')).toBeNull();
+    });
+
+    it('shows read-only calories, hidden in live mode', () => {
+      const view = renderCard(true, { mode: 'view' });
+      expect(view.getByText('150 Cal')).toBeTruthy();
+      expect(view.queryByLabelText('Edit calories burned for Bench Press')).toBeNull();
+
+      const live = renderCard(true, { mode: 'live' });
+      expect(live.queryByText('150 Cal')).toBeNull();
     });
 
     it('skips the exercise stats fetch', () => {
@@ -401,6 +410,39 @@ describe('ActiveWorkoutExerciseCard', () => {
     it('fetches exercise stats so "Last time" works for drafts', () => {
       renderCard(true, { mode: 'edit' });
       expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', undefined);
+    });
+
+    describe('calories chip', () => {
+      it('renders a tappable chip that swaps to a focused input on press', () => {
+        const onChangeCalories = jest.fn();
+        const { getByText, getByLabelText, queryByLabelText } = renderCard(true, {
+          mode: 'edit',
+          onChangeCalories,
+          exercise: { ...makeExercise(), editCaloriesText: '150' },
+        });
+
+        expect(getByText('150 Cal')).toBeTruthy();
+        expect(queryByLabelText('Calories burned for Bench Press')).toBeNull();
+
+        fireEvent.press(getByLabelText('Edit calories burned for Bench Press'));
+        const input = getByLabelText('Calories burned for Bench Press');
+        fireEvent.changeText(input, '200');
+        expect(onChangeCalories).toHaveBeenCalledWith('ex-uuid-1', '200');
+      });
+
+      it('shows a dash placeholder chip when the draft has no calories', () => {
+        const { getByText } = renderCard(true, {
+          mode: 'edit',
+          onChangeCalories: jest.fn(),
+          exercise: { ...makeExercise(), editCaloriesText: '' },
+        });
+        expect(getByText('– Cal')).toBeTruthy();
+      });
+
+      it('is absent without an onChangeCalories handler', () => {
+        const { queryByLabelText } = renderCard(true, { mode: 'edit' });
+        expect(queryByLabelText('Edit calories burned for Bench Press')).toBeNull();
+      });
     });
 
     it('never labels a collapsed draft as planned', () => {

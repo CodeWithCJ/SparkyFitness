@@ -35,6 +35,12 @@ export interface WorkoutDraftExercise {
   exerciseCategory: string | null;
   images: string[];
   sets: WorkoutDraftSet[];
+  /** Round-tripped from the session on edit; the form has no duration UI. */
+  durationMinutes?: number | null;
+  /** Calories input text; seeded from the session's calories_burned on edit. */
+  calories?: string;
+  /** Sent as a manual server override only when the user edited the field. */
+  caloriesManuallySet?: boolean;
   /** Superset group id; edited via the form lists' grouping actions. */
   supersetGroup?: number | null;
   /** Present only when editing an existing session — not persisted to drafts. */

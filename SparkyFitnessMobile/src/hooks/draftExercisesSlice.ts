@@ -39,6 +39,7 @@ export type DraftExercisesAction =
     }
   | { type: 'UPDATE_SET_META'; exerciseClientId: string; setClientId: string; patch: WorkoutSetMetaPatch }
   | { type: 'SET_EXERCISE_REST'; exerciseClientId: string; seconds: number }
+  | { type: 'SET_EXERCISE_CALORIES'; exerciseClientId: string; calories: string }
   | { type: 'SUPERSET_WITH'; currentClientId: string; pickedClientId: string }
   | { type: 'UNGROUP_EXERCISE'; clientId: string }
   | { type: 'REORDER_EXERCISES'; fromItemIndex: number; toItemIndex: number };
@@ -123,6 +124,12 @@ export function draftExercisesReducer(
         };
       });
 
+    case 'SET_EXERCISE_CALORIES':
+      return exercises.map(exercise => {
+        if (exercise.clientId !== action.exerciseClientId) return exercise;
+        return { ...exercise, calories: action.calories, caloriesManuallySet: true };
+      });
+
     case 'SUPERSET_WITH':
       return supersetDraftExercises(exercises, action.currentClientId, action.pickedClientId);
 
@@ -165,6 +172,7 @@ export function useDraftExerciseActions(
     patch: WorkoutSetMetaPatch,
   ) => void;
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
+  setExerciseCalories: (exerciseClientId: string, calories: string) => void;
   supersetWith: (currentClientId: string, pickedClientId: string) => void;
   ungroupExercise: (clientId: string) => void;
   reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
@@ -214,6 +222,10 @@ export function useDraftExerciseActions(
       setExerciseRest: (exerciseClientId: string, seconds: number) => {
         exercisesModifiedRef.current = true;
         dispatch({ type: 'SET_EXERCISE_REST', exerciseClientId, seconds });
+      },
+      setExerciseCalories: (exerciseClientId: string, calories: string) => {
+        exercisesModifiedRef.current = true;
+        dispatch({ type: 'SET_EXERCISE_CALORIES', exerciseClientId, calories });
       },
       supersetWith: (currentClientId: string, pickedClientId: string) => {
         exercisesModifiedRef.current = true;

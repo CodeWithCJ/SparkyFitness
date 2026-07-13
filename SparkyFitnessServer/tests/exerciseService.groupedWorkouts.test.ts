@@ -187,6 +187,57 @@ describe('exerciseService grouped workouts', () => {
     expect(createCalls[1][2]).toMatchObject({ superset_group: null });
     expect(client.query).toHaveBeenCalledWith('COMMIT');
   });
+  it('honors client-provided calories_burned on freeform grouped workout creation', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exercisePresetEntryRepository.createExercisePresetEntryWithClient.mockResolvedValue(
+      { id: 'preset-entry-1' }
+    );
+    // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist on ty... Remove this comment to see the full error message
+    resolveExerciseIdToUuid.mockImplementation(async (id: string) => id);
+    // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist on ty... Remove this comment to see the full error message
+    exerciseDb.getExerciseById.mockImplementation(async (id: string) => ({
+      id,
+      name: 'Test Exercise',
+      calories_per_hour: 300,
+    }));
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValue(
+      300
+    );
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
+      entry: { id: 'new-entry' },
+      operation: 'created',
+    });
+
+    await exerciseService.createGroupedWorkoutSession('user-1', 'actor-1', {
+      name: 'Manual Cal Day',
+      entry_date: '2026-03-12',
+      source: 'manual',
+      exercises: [
+        {
+          exercise_id: '11111111-1111-4111-8111-111111111111',
+          sort_order: 0,
+          duration_minutes: 0,
+          calories_burned: 250,
+          sets: [],
+        },
+        {
+          exercise_id: '22222222-2222-4222-8222-222222222222',
+          sort_order: 1,
+          duration_minutes: 0,
+          sets: [],
+        },
+      ],
+    });
+
+    const createCalls = vi.mocked(
+      exerciseEntryDb._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(createCalls[0][2]).toMatchObject({ calories_burned: 250 });
+    expect(createCalls[1][2]).toMatchObject({ calories_burned: 0 });
+    expect(client.query).toHaveBeenCalledWith('COMMIT');
+  });
   it('copies superset_group from preset exercises when starting from a preset', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     workoutPresetRepository.getWorkoutPresetById.mockResolvedValue({
@@ -498,6 +549,48 @@ describe('exerciseService grouped workouts', () => {
         duration_minutes: 15,
         calories_burned: 150,
       });
+    });
+
+    it('honors a client-provided calories_burned instead of recomputing', async () => {
+      setupExistingSession();
+      vi.mocked(
+        calorieCalculationService.estimateCaloriesBurnedPerHour
+      ).mockResolvedValue(600);
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 30,
+              calories_burned: 123,
+              sets: [],
+            },
+            {
+              id: 'entry-b',
+              exercise_id: exerciseBId,
+              sort_order: 1,
+              duration_minutes: 15,
+              sets: [],
+            },
+          ],
+        }
+      );
+
+      const [firstCall, secondCall] = vi.mocked(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).mock.calls;
+      expect(firstCall[3]).toMatchObject({ calories_burned: 123 });
+      expect(secondCall[3]).toMatchObject({ calories_burned: 150 });
+      // Only the exercise without an override hits the estimator.
+      expect(
+        calorieCalculationService.estimateCaloriesBurnedPerHour
+      ).toHaveBeenCalledTimes(1);
     });
 
     it('omits sets from the update payload so the model skips its internal sets branch', async () => {

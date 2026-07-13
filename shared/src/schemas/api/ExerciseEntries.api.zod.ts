@@ -112,6 +112,9 @@ export const presetSessionExerciseRequestSchema = z
     exercise_id: z.string().uuid(),
     sort_order: z.number().int().min(0).default(0),
     duration_minutes: z.number().min(0).default(0),
+    // Manual per-exercise override; when omitted the server recomputes
+    // calories from duration and sets.
+    calories_burned: z.number().min(0).optional(),
     notes: z.string().nullable().optional(),
     superset_group: z.number().int().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).default([]),

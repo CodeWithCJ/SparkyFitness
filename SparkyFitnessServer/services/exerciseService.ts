@@ -1740,6 +1740,11 @@ async function createGroupedExerciseEntriesWithClient(
       notes: exercise.notes ?? null,
       sets: exercise.sets || [],
       duration_minutes: durationMinutes,
+      // A client-provided value is a manual override; omitting it lets
+      // prepareExerciseEntryForCreate recompute from duration and sets.
+      ...(typeof exercise.calories_burned === 'number'
+        ? { calories_burned: exercise.calories_burned }
+        : {}),
       sort_order: exercise.sort_order ?? 0,
       superset_group: exercise.superset_group ?? null,
       workout_plan_assignment_id: workoutPlanAssignmentId,
@@ -1993,6 +1998,9 @@ async function updateGroupedWorkoutSession(
             notes: ex.notes ?? null,
             sets: ex.sets || [],
             duration_minutes: deriveDurationMinutes(ex),
+            ...(typeof ex.calories_burned === 'number'
+              ? { calories_burned: ex.calories_burned }
+              : {}),
             sort_order: ex.sort_order ?? 0,
             superset_group: ex.superset_group ?? null,
             distance: ex.distance,

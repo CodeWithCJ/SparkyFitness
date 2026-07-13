@@ -159,6 +159,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     updateSetField,
     updateSetMeta,
     setExerciseRest,
+    setExerciseCalories,
     supersetWith,
     ungroupExercise,
     reorderExercises,
@@ -472,6 +473,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           return s + (isNaN(w) || isNaN(r) ? 0 : w * r);
         }, sum), 0)
       : session.exercises.reduce((sum, ex) => sum + getExerciseVolumeKg(ex), 0);
+    const totalCalories = isEditing
+      ? formState.exercises.reduce((sum, ex) => {
+          const cal = parseDecimalInput(ex.calories ?? '');
+          return sum + (isNaN(cal) ? 0 : cal);
+        }, 0)
+      : session.exercises.reduce((sum, ex) => sum + (ex.calories_burned ?? 0), 0);
 
     const summaryItems: { value: string; label: string }[] = [];
     summaryItems.push({
@@ -484,6 +491,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         ? `${Math.round(totalVolume).toLocaleString()} ${weightUnit}`
         : formatVolume(totalVolume, weightUnit);
       summaryItems.push({ value: volumeLabel, label: 'Volume' });
+    }
+    if (totalCalories > 0) {
+      summaryItems.push({
+        value: Math.round(totalCalories).toLocaleString(),
+        label: 'Calories',
+      });
     }
     if (summaryItems.length === 0) return null;
 
@@ -650,6 +663,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               onAddSet={handleAddSet}
               onRemoveExercise={handleRemoveExercise}
               setExerciseRest={setExerciseRest}
+              setExerciseCalories={setExerciseCalories}
               supersetWith={supersetWith}
               ungroupExercise={ungroupExercise}
               onReorderExercises={reorderExercises}

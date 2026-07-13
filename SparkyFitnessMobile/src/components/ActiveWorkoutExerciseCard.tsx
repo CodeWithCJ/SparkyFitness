@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -9,6 +9,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
 import CompletionCheck from './CompletionCheck';
+import FormInput from './FormInput';
 import RestPeriodChip from './RestPeriodChip';
 import ActiveWorkoutSetRow from './ActiveWorkoutSetRow';
 import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
@@ -78,6 +79,12 @@ interface ActiveWorkoutExerciseCardProps {
   prSetIds?: PrSetMap;
   /** Hide the rest chip entirely (e.g. imported workouts without rest data). */
   showRestChip?: boolean;
+  /**
+   * Edit only: enables the inline calories field in the chip row. The text
+   * comes from `exercise.editCaloriesText`; view mode instead shows
+   * `calories_burned` read-only when present.
+   */
+  onChangeCalories?: (entryId: string, text: string) => void;
   /** Tapping the exercise thumbnail opens its library detail. */
   onPressThumb?: (entryId: string) => void;
   onToggleExpanded: (entryId: string) => void;
@@ -185,6 +192,7 @@ function ActiveWorkoutExerciseCard({
   excludePresetEntryId,
   prSetIds,
   showRestChip = true,
+  onChangeCalories,
   onPressThumb,
   onToggleExpanded,
   onPressRestChip,
@@ -279,6 +287,17 @@ function ActiveWorkoutExerciseCard({
         : { weight: bestSet.weight, reps: bestSet.reps }
       : null;
   const bestIsPr = stampedBest != null && bestDisplay === stampedBest;
+
+  // Chip-row calories: an editable field in edit mode (when the form wires a
+  // handler), a read-only value in view mode. Live mode shows neither — the
+  // value churns with every autosave recompute. The edit field renders as a
+  // tappable accent chip until activated, matching the screen's other cells.
+  const caloriesField = isEdit && onChangeCalories != null;
+  const [caloriesEditing, setCaloriesEditing] = useState(false);
+  const caloriesText =
+    readOnly && exercise.calories_burned != null && exercise.calories_burned > 0
+      ? String(Math.round(exercise.calories_burned))
+      : null;
 
   // Edit-only: seed the first still-empty set from "last time" once, when
   // stats arrive. Weight and reps fill independently — a null lastSet field
@@ -495,7 +514,7 @@ function ActiveWorkoutExerciseCard({
         </View>
       )}
 
-      {(showRestChip || bestDisplay != null) && (
+      {(showRestChip || bestDisplay != null || caloriesField || caloriesText != null) && (
         // flex-wrap + gap-y so the rest chip and "Best" stack gracefully on
         // narrow screens instead of shifting off the edge. "Last" lives in the
         // per-set PREVIOUS column, not here.
@@ -510,6 +529,52 @@ function ActiveWorkoutExerciseCard({
                   : () => onPressRestChip?.(exercise.id, exercise.sets[0]?.rest_time ?? null)
               }
             />
+          )}
+          {caloriesField && (caloriesEditing ? (
+            <View className="flex-row items-center gap-1">
+              <Icon name="flame" size={14} color={accentPrimary} />
+              <FormInput
+                value={exercise.editCaloriesText ?? ''}
+                onChangeText={(text) => onChangeCalories?.(exercise.id, text)}
+                onBlur={() => setCaloriesEditing(false)}
+                keyboardType="decimal-pad"
+                autoFocus
+                selectTextOnFocus
+                placeholder="–"
+                accessibilityLabel={`Calories burned for ${name}`}
+                className="text-center"
+                style={{
+                  paddingTop: 4,
+                  paddingBottom: 4,
+                  paddingLeft: 6,
+                  paddingRight: 6,
+                  fontSize: 14,
+                  lineHeight: 18,
+                  minWidth: 52,
+                }}
+              />
+              <Text className="text-sm text-text-secondary">Cal</Text>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setCaloriesEditing(true)}
+              className="flex-row items-center gap-1"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit calories burned for ${name}`}
+            >
+              <Icon name="flame" size={14} color={accentPrimary} />
+              <Text className="text-sm" style={{ color: accentPrimary }}>
+                {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} Cal
+              </Text>
+              <Icon name="chevron-down" size={10} color={accentPrimary} />
+            </Pressable>
+          ))}
+          {caloriesText != null && (
+            <View className="flex-row items-center">
+              <Icon name="flame" size={14} color={textSecondary} />
+              <Text className="text-sm text-text-secondary ml-1">{caloriesText} Cal</Text>
+            </View>
           )}
           {bestDisplay != null && (
             <View className="flex-row items-baseline gap-1.5">
