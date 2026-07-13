@@ -71,7 +71,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
           </Text>
         </Text>
         {hasGoal && (
-          <Text className="text-sm font-semibold text-text-primary">
+          <Text className="text-sm font-bold text-text-primary">
             {Math.abs(Math.round(remaining)).toLocaleString()}
             <Text className="text-sm font-normal text-text-secondary">
               {' '}
