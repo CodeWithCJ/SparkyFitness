@@ -87,6 +87,11 @@ export function useFoodDatabaseManager() {
 
   const canEdit = (food: Food) => food.user_id === user?.id;
 
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    setCurrentPage(1);
+  };
+
   const handlePageChange = (page: number, pageSize?: number) => {
     if (pageSize !== undefined && pageSize !== itemsPerPage) {
       setItemsPerPage(pageSize);
@@ -255,7 +260,7 @@ export function useFoodDatabaseManager() {
     isMobile,
     visibleNutrients,
     searchTerm,
-    setSearchTerm,
+    setSearchTerm: handleSearchChange,
     itemsPerPage,
     setItemsPerPage,
     currentPage,
