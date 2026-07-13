@@ -376,4 +376,43 @@ describe('FoodSearchScreen', () => {
       }),
     );
   });
+
+  it('retries the meals queries as well as foods from the landing error state', () => {
+    // An outage fails foods and meals together, so a retry that only refetches
+    // foods would clear the error screen and leave the meals half empty.
+    const refetchFoods = jest.fn();
+    const refetchRecentMeals = jest.fn();
+    const refetchTopMeals = jest.fn();
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchFoods,
+    } as any);
+    mockUseRecentMeals.mockReturnValue({
+      recentMeals: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchRecentMeals,
+    } as any);
+    mockUseTopMeals.mockReturnValue({
+      topMeals: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchTopMeals,
+    } as any);
+
+    const screen = render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodSearchScreen navigation={navigation} route={route} />
+      </SafeAreaProvider>,
+    );
+
+    fireEvent.press(screen.getByText('Retry'));
+
+    expect(refetchFoods).toHaveBeenCalled();
+    expect(refetchRecentMeals).toHaveBeenCalled();
+    expect(refetchTopMeals).toHaveBeenCalled();
+  });
 });

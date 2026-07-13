@@ -10,8 +10,8 @@ import {
   dailySummaryQueryKey,
   foodEntryMealDetailQueryKey,
   foodsQueryKey,
-  recentMealsQueryKeyRoot,
 } from './queryKeys';
+import { invalidateMealUsageCaches } from './useMeals';
 
 interface UseUpdateFoodEntryMealOptions {
   mealId: string;
@@ -46,7 +46,7 @@ export function useUpdateFoodEntryMeal({
       queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(newDate), refetchType: 'all' });
     }
     queryClient.invalidateQueries({ queryKey: foodEntryMealDetailQueryKey(mealId) });
-    queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
+    invalidateMealUsageCaches(queryClient);
     queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
   };
 

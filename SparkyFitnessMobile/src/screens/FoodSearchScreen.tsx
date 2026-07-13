@@ -151,11 +151,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // behaviour. Requested at the section cap so the merge with foods is not
   // starved.
   const landingMealsEnabled = isConnected && !isMealBuilderMode;
-  const { recentMeals, isLoading: isRecentMealsLoading } = useRecentMeals({
+  const {
+    recentMeals,
+    isLoading: isRecentMealsLoading,
+    refetch: refetchRecentMeals,
+  } = useRecentMeals({
     enabled: landingMealsEnabled,
     limit: landingLimit,
   });
-  const { topMeals, isLoading: isTopMealsLoading } = useTopMeals({
+  const {
+    topMeals,
+    isLoading: isTopMealsLoading,
+    refetch: refetchTopMeals,
+  } = useTopMeals({
     enabled: landingMealsEnabled,
     limit: landingLimit,
   });
@@ -164,6 +172,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // letting meals pop in afterwards shifts rows under the user's thumb mid-tap.
   const isLandingLoading =
     isLoading || (landingMealsEnabled && (isRecentMealsLoading || isTopMealsLoading));
+
+  // The landing error state is driven by the foods query, but a failure is
+  // usually shared: an outage takes down foods and meals together. Retrying
+  // foods alone would clear the error screen and leave the meals half of the
+  // list silently empty, since nothing else refetches it while the screen
+  // stays mounted.
+  const retryLanding = useCallback(() => {
+    refetch();
+    if (landingMealsEnabled) {
+      refetchRecentMeals();
+      refetchTopMeals();
+    }
+  }, [refetch, refetchRecentMeals, refetchTopMeals, landingMealsEnabled]);
 
   const [searchText, setSearchText] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -1293,7 +1314,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <Text className="text-text-secondary text-base mt-4 text-center">
             Failed to load foods
           </Text>
-          <Button variant="secondary" onPress={() => refetch()} className="mt-4 px-6">
+          <Button variant="secondary" onPress={retryLanding} className="mt-4 px-6">
             Retry
           </Button>
         </View>

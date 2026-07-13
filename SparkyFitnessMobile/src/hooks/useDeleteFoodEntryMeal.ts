@@ -7,8 +7,8 @@ import {
   dailySummaryQueryKey,
   foodEntryMealDetailQueryKey,
   foodsQueryKey,
-  recentMealsQueryKeyRoot,
 } from './queryKeys';
+import { invalidateMealUsageCaches } from './useMeals';
 
 interface UseDeleteFoodEntryMealOptions {
   mealId: string;
@@ -46,7 +46,7 @@ export function useDeleteFoodEntryMeal({
   const invalidateCache = () => {
     queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(normalizedDate) });
     queryClient.invalidateQueries({ queryKey: foodEntryMealDetailQueryKey(mealId) });
-    queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
+    invalidateMealUsageCaches(queryClient);
     queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
   };
 

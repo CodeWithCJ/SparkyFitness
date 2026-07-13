@@ -8,7 +8,8 @@ import {
   type SaveFoodPayload,
 } from '../services/api/foodsApi';
 import { createFoodEntry, type CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
-import { dailySummaryQueryKey, foodsQueryKey, recentMealsQueryKeyRoot } from './queryKeys';
+import { dailySummaryQueryKey, foodsQueryKey } from './queryKeys';
+import { invalidateMealUsageCaches } from './useMeals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { ExternalFoodVariant } from '../types/externalFoods';
 import { persistExternalVariants } from '../utils/persistExternalVariants';
@@ -114,7 +115,7 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
     },
     onSuccess: (entry) => {
       if (entry.meal_id) {
-        queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
+        invalidateMealUsageCaches(queryClient);
       }
       options?.onSuccess?.(entry);
     },

@@ -28,10 +28,20 @@ import type { CreateMealPayload, Meal, UpdateMealPayload } from '../types/meals'
 // FoodSearchScreen) while a query is still loading.
 const EMPTY_MEALS: Meal[] = [];
 
-function invalidateMealCaches(queryClient: QueryClient, mealId?: string) {
-  queryClient.invalidateQueries({ queryKey: mealsQueryKey });
+/**
+ * Invalidates the caches derived from meal *usage* (recency and frequency).
+ * Call this from any mutation that logs, edits or removes a meal entry: both
+ * lists feed the food-search landing, so refreshing one without the other
+ * leaves the landing internally inconsistent.
+ */
+export function invalidateMealUsageCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
   queryClient.invalidateQueries({ queryKey: topMealsQueryKeyRoot, refetchType: 'all' });
+}
+
+function invalidateMealCaches(queryClient: QueryClient, mealId?: string) {
+  queryClient.invalidateQueries({ queryKey: mealsQueryKey });
+  invalidateMealUsageCaches(queryClient);
   queryClient.invalidateQueries({ queryKey: mealSearchQueryKeyRoot });
 
   if (mealId) {
