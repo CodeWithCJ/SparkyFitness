@@ -1,12 +1,21 @@
 import { Button, HStack, Image, ProgressView, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import {
+  accessibilityLabel,
+  buttonBorderShape,
   buttonStyle,
+  clipped,
+  clipShape,
   controlSize,
   font,
   foregroundStyle,
   frame,
+  layoutPriority,
+  lineLimit,
+  minimumScaleFactor,
   monospacedDigit,
+  multilineTextAlignment,
   padding,
+  resizable,
 } from '@expo/ui/swift-ui/modifiers';
 import { createLiveActivity } from 'expo-widgets';
 
@@ -36,6 +45,12 @@ export type WorkoutLiveActivityProps = {
   setLine: string | null;
   /** Static elapsed clock captured when the last set completed — freezes the timer. */
   elapsedLabel: string | null;
+  /**
+   * file:// URI of the app icon in the shared app group container. The widget
+   * process can't read the app's asset catalog or bundle, so the service
+   * copies the icon there and injects the URI; absent until that resolves.
+   */
+  appIconUri?: string | null;
 };
 
 const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
@@ -50,11 +65,10 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
       ? { lower: new Date(props.restStartedAt), upper: new Date(props.restEndsAt) }
       : null;
 
-  // OS-ticked timer Texts report an unbounded ideal width, which inflates the
-  // compact Dynamic Island until it covers the status bar clock and battery.
-  // The compact slot passes a cap; other regions lay out fine uncapped. The
-  // elapsed cap must fit "H:MM:SS" from the start — nothing re-renders the
-  // activity when the workout crosses the one-hour mark.
+  // OS-ticked timer Texts report an unbounded ideal width, which inflates
+  // whatever slot holds them. The small watch/CarPlay banner passes a fixed
+  // cap that must fit "H:MM:SS" from the start — the format can grow between
+  // repaints, and a too-small cap truncates the digits.
   const timerModifiers = (maxWidth?: number) =>
     maxWidth != null ? [monospacedDigit(), frame({ maxWidth })] : [monospacedDigit()];
 
@@ -72,47 +86,157 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
       <Text timerInterval={restInterval} countsDown modifiers={timerModifiers(maxWidth)} />
     ) : null;
 
-  // OS-ticked depleting bar over the rest interval — like the timer Texts, the
-  // system animates it from the absolute dates with no updates from the app.
-  const restProgress = () =>
-    restInterval ? <ProgressView timerInterval={restInterval} /> : null;
-
-  const statusLine = () => {
+  // The single labeled timer slot: rest countdown while resting (the frozen
+  // remainder while paused), elapsed clock otherwise — never both at once.
+  // Two live timers tick on different subsecond boundaries and read as
+  // glitchy side by side, so only one is ever visible.
+  //
+  // OS-ticked timer Texts greedily claim all leftover row width (an uncapped
+  // one strands a sibling label far from the digits), so ticking digits get
+  // a trailing-aligned width cap with multilineTextAlignment pinning them to
+  // the right edge. Nested-Text concatenation is no escape — the widget
+  // renderer rebuilds children as WidgetsDynamicView, which TextView's `+`
+  // reduce silently drops, rendering nothing at all.
+  const labeledTimer = () => {
+    const valueFont = [font({ weight: 'semibold', size: 16 }), monospacedDigit()];
+    const labelStyle = [secondaryText(), font({ size: 16 })];
     if (restInterval) {
+      // Cap sized from the rest length at push time: the countdown only
+      // shrinks between repaints, so the format can't outgrow it. The scale
+      // factor is a parachute for font-metric drift — slightly smaller digits
+      // beat a truncated "…".
+      const restCap = (props.restEndsAt ?? 0) - (props.restStartedAt ?? 0) >= 600_000 ? 50 : 40;
       return (
-        <HStack spacing={4}>
-          <Text modifiers={[secondaryText()]}>Rest</Text>
-          {restCountdown()}
+        <HStack spacing={5} modifiers={[layoutPriority(1)]}>
+          <Text modifiers={labelStyle}>Rest</Text>
+          <Text
+            timerInterval={restInterval}
+            countsDown
+            modifiers={[
+              ...valueFont,
+              multilineTextAlignment('trailing'),
+              minimumScaleFactor(0.9),
+              frame({ maxWidth: restCap, alignment: 'trailing' }),
+            ]}
+          />
         </HStack>
       );
     }
-    if (props.phase === 'paused') {
+    if (props.phase === 'paused' || props.phase === 'complete') {
       return (
-        <Text modifiers={[secondaryText()]}>
-          Paused · {props.pausedRemainingLabel ?? ''}
-        </Text>
+        <HStack spacing={5} modifiers={[layoutPriority(1)]}>
+          <Text modifiers={labelStyle}>{props.phase === 'paused' ? 'Paused' : 'Elapsed'}</Text>
+          <Text modifiers={valueFont}>
+            {(props.phase === 'paused' ? props.pausedRemainingLabel : props.elapsedLabel) ?? ''}
+          </Text>
+        </HStack>
       );
     }
+    // The ticking elapsed clock keeps a stacked caption instead of an inline
+    // label: its format grows across the one-hour boundary between repaints,
+    // so a snug inline cap could truncate the digits while a safe wide one
+    // leaves a floating gap after the label.
+    return (
+      <VStack alignment="trailing" spacing={1} modifiers={[layoutPriority(1)]}>
+        <Text modifiers={[secondaryText(), font({ size: 12 })]}>Elapsed</Text>
+        <Text
+          date={new Date(props.startedAt)}
+          dateStyle="timer"
+          modifiers={[
+            ...valueFont,
+            multilineTextAlignment('trailing'),
+            minimumScaleFactor(0.9),
+            frame({ maxWidth: 64, alignment: 'trailing' }),
+          ]}
+        />
+      </VStack>
+    );
+  };
+
+  // OS-ticked depleting bar over the rest interval — like the timer Texts, the
+  // system animates it from the absolute dates with no updates from the app.
+  // @expo/ui exposes no way to suppress the bar's built-in remaining-time
+  // label (SwiftUI needs an explicit empty currentValueLabel), and it would
+  // duplicate the rest countdown above — pin the frame to the bar's own
+  // height and clip the label away.
+  const restProgress = () =>
+    restInterval ? (
+      <ProgressView
+        timerInterval={restInterval}
+        modifiers={[frame({ height: 6, alignment: 'top' }), clipped()]}
+      />
+    ) : null;
+
+  // Primary label color, matching notification body text — the hierarchical
+  // secondary style washes out against the Lock Screen material.
+  const statusLine = () => {
     if (props.phase === 'complete') {
-      return <Text modifiers={[secondaryText()]}>Workout complete</Text>;
+      return <Text>Workout complete</Text>;
     }
     return props.setLine != null ? (
-      <Text modifiers={[secondaryText()]}>{props.setLine}</Text>
+      <Text modifiers={[lineLimit(1)]}>{props.setLine}</Text>
     ) : null;
   };
 
   const icon = () => <Image systemName="figure.strengthtraining.traditional" />;
 
+  // App-icon identity for the island slots; null (→ SF-symbol or empty
+  // fallback) until the service has copied the icon into the app group.
+  const appIcon = (size: number) =>
+    props.appIconUri != null ? (
+      <Image
+        uiImage={props.appIconUri}
+        modifiers={[resizable(), frame({ width: size, height: size }), clipShape('circle')]}
+      />
+    ) : null;
+
+  // The compact Dynamic Island pill hugs its content, so a width cap sized
+  // for the widest possible format reads as dead space beside the digits.
+  // The system controls the ticking format (M:SS → MM:SS → H:MM:SS; hours
+  // can't be dropped), so instead the cap is tiered from the actual value —
+  // this code re-runs in the widget process on every repaint. Crossing a
+  // format boundary mid-set (10:00 or 1:00:00 with no state change to
+  // repaint) lands on the scale factor, which shrinks the digits slightly
+  // until the next repaint re-tiers the cap.
+  const compactTimer = () => {
+    const tickingModifiers = (maxWidth: number) => [
+      monospacedDigit(),
+      minimumScaleFactor(0.75),
+      frame({ maxWidth }),
+    ];
+    if (restInterval) {
+      const cap = (props.restEndsAt ?? 0) - (props.restStartedAt ?? 0) >= 600_000 ? 48 : 38;
+      return <Text timerInterval={restInterval} countsDown modifiers={tickingModifiers(cap)} />;
+    }
+    if (props.phase === 'complete') {
+      return <Text modifiers={[monospacedDigit()]}>{props.elapsedLabel ?? ''}</Text>;
+    }
+    const elapsedMs = Date.now() - props.startedAt;
+    const cap = elapsedMs >= 3_300_000 ? 64 : elapsedMs >= 570_000 ? 48 : 38;
+    return <Text date={new Date(props.startedAt)} dateStyle="timer" modifiers={tickingModifiers(cap)} />;
+  };
+
   // Phase controls (iOS 17+). A press runs a LiveActivityIntent in the app
   // process; workoutLiveActivity.ios.ts matches on these target strings and
   // pushes the repaint, so the targets must stay in sync with that file.
-  const buttonModifiers = [buttonStyle('bordered'), controlSize('small')];
+  //
+  // Bare tinted icon buttons — no background wash. goforward.15 is the
+  // system's own "skip forward 15s" glyph.
+  const restButtonModifiers = (label: string) => [
+    buttonStyle('borderless'),
+    controlSize('large'),
+    accessibilityLabel(label),
+  ];
   const actionButtons = () => {
     if (restInterval) {
       return (
         <HStack spacing={8}>
-          <Button label="+15s" target="rest-add-15" modifiers={buttonModifiers} />
-          <Button label="Skip" target="rest-skip" modifiers={buttonModifiers} />
+          <Button target="rest-add-15" modifiers={restButtonModifiers('Add 15 seconds')}>
+            <Image systemName="goforward.15" />
+          </Button>
+          <Button target="rest-skip" modifiers={restButtonModifiers('Skip rest')}>
+            <Image systemName="forward.end.fill" />
+          </Button>
         </HStack>
       );
     }
@@ -122,7 +246,7 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
           label="Complete"
           systemImage="checkmark"
           target="complete-set"
-          modifiers={buttonModifiers}
+          modifiers={[buttonStyle('bordered'), buttonBorderShape('capsule'), controlSize('regular')]}
         />
       );
     }
@@ -131,11 +255,13 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
 
   return {
     banner: (
-      <VStack alignment="leading" spacing={4} modifiers={[padding({ all: 12 })]}>
+      <VStack alignment="leading" spacing={6} modifiers={[padding({ all: 16 })]}>
         <HStack>
-          <Text modifiers={[font({ weight: 'bold', size: 16 })]}>{props.workoutName}</Text>
+          <Text modifiers={[font({ weight: 'bold', size: 16 }), lineLimit(1)]}>
+            {props.workoutName}
+          </Text>
           <Spacer />
-          {elapsedClock()}
+          {labeledTimer()}
         </HStack>
         <HStack>
           {statusLine()}
@@ -150,25 +276,27 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
     bannerSmall: (
       <VStack alignment="leading" spacing={2} modifiers={[padding({ all: 8 })]}>
         <HStack>
-          <Text modifiers={[font({ weight: 'bold', size: 13 })]}>{props.workoutName}</Text>
+          <Text modifiers={[font({ weight: 'bold', size: 13 }), lineLimit(1)]}>
+            {props.workoutName}
+          </Text>
           <Spacer />
-          {elapsedClock(64)}
+          {restInterval ? restCountdown(48) : elapsedClock(64)}
         </HStack>
         {statusLine()}
         {restProgress()}
       </VStack>
     ),
-    compactLeading: icon(),
-    compactTrailing: restInterval ? restCountdown(48) : elapsedClock(64),
-    minimal: icon(),
+    compactLeading: appIcon(24),
+    compactTrailing: compactTimer(),
+    minimal: appIcon(22) ?? icon(),
     expandedLeading: (
       <HStack spacing={6} modifiers={[padding({ leading: 12 })]}>
-        {icon()}
+        {appIcon(22) ?? icon()}
         <Text modifiers={[font({ weight: 'bold' })]}>{props.workoutName}</Text>
       </HStack>
     ),
     expandedTrailing: (
-      <HStack modifiers={[padding({ trailing: 12 })]}>{elapsedClock()}</HStack>
+      <HStack modifiers={[padding({ trailing: 12 })]}>{labeledTimer()}</HStack>
     ),
     expandedBottom: (
       <VStack spacing={6} modifiers={[padding({ horizontal: 12, bottom: 8 })]}>

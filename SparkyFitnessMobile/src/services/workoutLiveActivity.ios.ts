@@ -1,3 +1,5 @@
+import { Asset } from 'expo-asset';
+import { File, Paths } from 'expo-file-system';
 import {
   addUserInteractionListener,
   type LiveActivity,
@@ -57,6 +59,44 @@ let enqueue = createConcurrencyLimiter(1);
 function logActivityError(context: string, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   void addLog(`[WorkoutLiveActivity] ${context}: ${message}`, 'ERROR');
+}
+
+/**
+ * file:// URI of the app icon inside the shared app group container. The
+ * widget process can't read the app's asset catalog or metro bundle, so the
+ * icon is copied where both processes can reach it. Best-effort: while null,
+ * the layout falls back to its SF-symbol / empty slots.
+ */
+let appIconUri: string | null = null;
+let appIconResolution: Promise<void> | null = null;
+
+async function resolveAppIcon(): Promise<void> {
+  try {
+    const container = Object.values(Paths.appleSharedContainers)[0];
+    if (container == null) return;
+    // Must stay small: WidgetKit rejects oversized Live Activity images
+    // ("widget archival failed") and renders a grey placeholder shape, so the
+    // full-resolution icon art cannot be used directly.
+    const asset = Asset.fromModule(require('../../assets/icons/live-activity-icon.png'));
+    await asset.downloadAsync();
+    if (asset.localUri == null) return;
+    const destination = new File(container, 'workout-live-activity-icon.png');
+    // Overwrite so an icon change ships with the next app update.
+    if (destination.exists) destination.delete();
+    new File(asset.localUri).copy(destination);
+    appIconUri = destination.uri;
+  } catch (error) {
+    logActivityError('app icon resolve failed', error);
+  }
+}
+
+function ensureAppIcon(): Promise<void> {
+  appIconResolution ??= resolveAppIcon();
+  return appIconResolution;
+}
+
+function withAppIcon(props: WorkoutLiveActivityProps): WorkoutLiveActivityProps {
+  return appIconUri != null ? { ...props, appIconUri } : props;
 }
 
 /**
@@ -194,7 +234,8 @@ function propsEqual(a: WorkoutLiveActivityProps, b: WorkoutLiveActivityProps): b
     a.restEndsAt === b.restEndsAt &&
     a.pausedRemainingLabel === b.pausedRemainingLabel &&
     a.setLine === b.setLine &&
-    a.elapsedLabel === b.elapsedLabel
+    a.elapsedLabel === b.elapsedLabel &&
+    a.appIconUri === b.appIconUri
   );
 }
 
@@ -215,14 +256,15 @@ async function applyProps(props: WorkoutLiveActivityProps | null): Promise<void>
     lastSentProps = null;
     return;
   }
+  const finalProps = withAppIcon(props);
   if (activity == null) {
-    activity = WorkoutLiveActivityFactory.start(props, ACTIVE_WORKOUT_URL);
-    lastSentProps = props;
+    activity = WorkoutLiveActivityFactory.start(finalProps, ACTIVE_WORKOUT_URL);
+    lastSentProps = finalProps;
     return;
   }
-  if (lastSentProps != null && propsEqual(props, lastSentProps)) return;
-  await activity.update(props);
-  lastSentProps = props;
+  if (lastSentProps != null && propsEqual(finalProps, lastSentProps)) return;
+  await activity.update(finalProps);
+  lastSentProps = finalProps;
   logPendingPressRepaint();
 }
 
@@ -239,6 +281,9 @@ function syncFromState(): void {
  * store would end a force-quit user's legitimate activity.
  */
 async function reconcileInstances(): Promise<void> {
+  // Resolved before the first paint so it doesn't need a repaint of its own;
+  // never throws, and a failure just leaves the icon slots on their fallbacks.
+  await ensureAppIcon();
   const instances = WorkoutLiveActivityFactory.getInstances();
   const props = computeWorkoutLiveActivityProps(useActiveWorkoutStore.getState());
 
@@ -251,11 +296,13 @@ async function reconcileInstances(): Promise<void> {
     for (const extra of instances.slice(1)) {
       await extra.end('immediate');
     }
-    await activity.update(props);
-    lastSentProps = props;
+    const finalProps = withAppIcon(props);
+    await activity.update(finalProps);
+    lastSentProps = finalProps;
   } else {
-    activity = WorkoutLiveActivityFactory.start(props, ACTIVE_WORKOUT_URL);
-    lastSentProps = props;
+    const finalProps = withAppIcon(props);
+    activity = WorkoutLiveActivityFactory.start(finalProps, ACTIVE_WORKOUT_URL);
+    lastSentProps = finalProps;
   }
   reconciled = true;
 }
@@ -329,5 +376,7 @@ export function __resetWorkoutLiveActivityForTests(): void {
   activity = null;
   lastSentProps = null;
   pendingPress = null;
+  appIconUri = null;
+  appIconResolution = null;
   enqueue = createConcurrencyLimiter(1);
 }

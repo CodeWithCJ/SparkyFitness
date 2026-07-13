@@ -40,6 +40,35 @@ jest.mock('expo-widgets', () => ({
   addUserInteractionListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
+// The service copies the app icon into the shared app group before the first
+// paint. Empty containers (the default) leave the icon unresolved, so cases
+// that don't opt in see props without `appIconUri`.
+const mockSharedContainers: Record<string, string> = {};
+jest.mock('expo-asset', () => ({
+  Asset: {
+    fromModule: jest.fn(() => ({
+      localUri: 'file:///bundle/appstore.png',
+      downloadAsync: jest.fn(async () => undefined),
+    })),
+  },
+}));
+jest.mock('expo-file-system', () => ({
+  Paths: {
+    get appleSharedContainers() {
+      return mockSharedContainers;
+    },
+  },
+  File: class {
+    uri: string;
+    exists = false;
+    constructor(...parts: string[]) {
+      this.uri = parts.join('/');
+    }
+    delete(): void {}
+    copy(): void {}
+  },
+}));
+
 type MockInstance = { update: jest.Mock; end: jest.Mock };
 
 const mockFactory = WorkoutLiveActivityFactory as unknown as {
@@ -146,6 +175,9 @@ describe('workoutLiveActivity', () => {
     __resetWorkoutLiveActivityForTests();
     __resetActiveWorkoutStoreForTests();
     createdInstances.length = 0;
+    for (const key of Object.keys(mockSharedContainers)) {
+      delete mockSharedContainers[key];
+    }
     mockFactory.start.mockReset().mockImplementation(() => {
       const instance = makeInstance();
       createdInstances.push(instance);
@@ -502,6 +534,28 @@ describe('workoutLiveActivity', () => {
       await flushPromises();
 
       expect(instance.update.mock.calls.length).toBe(updateCount);
+    });
+  });
+
+  describe('app icon', () => {
+    it('injects the shared-container icon uri into activity props', async () => {
+      mockSharedContainers['group.test'] = 'file:///shared/group.test';
+
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+
+      const [props] = mockFactory.start.mock.calls[0];
+      expect(props.appIconUri).toBe('file:///shared/group.test/workout-live-activity-icon.png');
+    });
+
+    it('omits the icon uri when no shared container is available', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+
+      const [props] = mockFactory.start.mock.calls[0];
+      expect(props.appIconUri).toBeUndefined();
     });
   });
 });
