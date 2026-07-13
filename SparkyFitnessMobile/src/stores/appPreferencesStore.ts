@@ -34,8 +34,8 @@ export const PREFERENCE_DEFAULTS = {
   askSparkyVisible: true,
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
-  diaryCalorieSummaryVisible: true,
-  diaryMacroSummaryVisible: true,
+  diaryCalorieSummaryVisible: false,
+  diaryMacroSummaryVisible: false,
 } as const;
 
 export type AppPreferencesData = {
