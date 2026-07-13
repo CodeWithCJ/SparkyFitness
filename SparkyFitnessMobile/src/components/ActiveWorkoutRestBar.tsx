@@ -28,7 +28,7 @@ interface ActiveWorkoutRestBarProps {
   remainingMs: number;
   /** Fraction of the rest remaining, 0..1 (see `useRestCountdown`). */
   progress: number;
-  paused: boolean;
+  state: 'ready' | 'resting' | 'paused';
   /** What's up next, e.g. "Incline DB Press · Set 3". */
   label: string;
   /** Target load for the on-deck set, e.g. "135 lbs × 8". Null hides the line. */
@@ -37,17 +37,24 @@ interface ActiveWorkoutRestBarProps {
   onSkip: () => void;
   onPause: () => void;
   onResume: () => void;
+  /** Completes the on-deck set — the ready state's primary action. */
+  onCompleteSet: () => void;
 }
 
 /**
- * Rest bar, visible only while a rest timer exists (resting or paused). A thin
- * progress track on top, then a single control row — pause/resume + −15s on
- * the left, the countdown centered, +15s + skip on the right — with the
- * on-deck set + target centered beneath.
+ * Persistent bottom bar for the active-workout screen. While a rest timer
+ * exists (resting or paused): a thin progress track on top, then a single
+ * control row — pause/resume + −15s on the left, the countdown centered,
+ * +15s + skip on the right — with the on-deck set + target centered beneath.
+ * When no timer is running (ready) it collapses to a compact on-deck row —
+ * set + target on the left, a Complete Set button on the right — giving a
+ * fixed thumb target between rests; the screen hides the bar entirely once
+ * no on-deck set remains.
  *
- * The side clusters are `flex-1` around a fixed-width centered countdown so the
- * timer stays dead-center while the controls sit at the reachable edges. Sized
- * to keep every control on one row down to a ~320pt (iPhone SE) width.
+ * The timer row's side clusters are `flex-1` around a fixed-width centered
+ * countdown so the timer stays dead-center while the controls sit at the
+ * reachable edges. Sized to keep every control on one row down to a ~320pt
+ * (iPhone SE) width.
  *
  * Chrome follows the workout HUD's: with Liquid Glass tabs active the bar is a
  * floating glass pill overlaying the log (the screen reserves
@@ -57,13 +64,14 @@ interface ActiveWorkoutRestBarProps {
 function ActiveWorkoutRestBar({
   remainingMs,
   progress,
-  paused,
+  state,
   label,
   nextSetText,
   onAdjust,
   onSkip,
   onPause,
   onResume,
+  onCompleteSet,
 }: ActiveWorkoutRestBarProps) {
   const insets = useSafeAreaInsets();
   const usesGlass = useNativeIOSTabsActive();
@@ -74,9 +82,46 @@ function ActiveWorkoutRestBar({
     '--color-chrome-border',
   ]) as [string, string, string, string];
 
+  const paused = state === 'paused';
   const timerColor = paused ? textMuted : accentPrimary;
 
-  const content = (
+  const content = state === 'ready' ? (
+    <View className="flex-row items-center py-1">
+      <View className="flex-1 pr-3">
+        <Text
+          numberOfLines={1}
+          className="text-sm font-semibold text-text-primary"
+        >
+          {label}
+        </Text>
+        {nextSetText != null && nextSetText.length > 0 && (
+          <Text
+            numberOfLines={1}
+            className="text-xs text-text-secondary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            Target {nextSetText}
+          </Text>
+        )}
+      </View>
+      <Pressable
+        onPress={onCompleteSet}
+        hitSlop={HIT_SLOP}
+        accessibilityRole="button"
+        accessibilityLabel="Complete set"
+        className="flex-row items-center rounded-full px-4 py-2.5"
+        style={{ backgroundColor: accentPrimary, gap: 6 }}
+      >
+        <Icon name="checkmark" size={16} color="#ffffff" weight="bold" />
+        <Text
+          className="text-sm font-semibold"
+          style={{ color: '#ffffff' }}
+        >
+          Complete Set
+        </Text>
+      </Pressable>
+    </View>
+  ) : (
     <>
       <View
         className="h-1 rounded-full overflow-hidden mb-2"

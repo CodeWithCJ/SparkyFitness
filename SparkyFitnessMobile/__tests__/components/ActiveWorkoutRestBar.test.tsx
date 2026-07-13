@@ -34,12 +34,13 @@ function renderBar(
   const props = {
     remainingMs: 45_000,
     progress: 0.5,
-    paused: false,
+    state: 'resting' as const,
     label: 'Incline DB Press · Set 3',
     onAdjust: jest.fn(),
     onSkip: jest.fn(),
     onPause: jest.fn(),
     onResume: jest.fn(),
+    onCompleteSet: jest.fn(),
     ...overrides,
   };
   const utils = render(
@@ -81,13 +82,13 @@ describe('ActiveWorkoutRestBar', () => {
   });
 
   it('uses the accent color while resting', () => {
-    const { getByTestId, getByText } = renderBar({ paused: false });
+    const { getByTestId, getByText } = renderBar({ state: 'resting' });
     expect(fillStyle(getByTestId).backgroundColor).toBe(ACCENT);
     expect(StyleSheet.flatten(getByText('0:45').props.style).color).toBe(ACCENT);
   });
 
   it('renders muted colors while paused', () => {
-    const { getByTestId, getByText } = renderBar({ paused: true });
+    const { getByTestId, getByText } = renderBar({ state: 'paused' });
     expect(fillStyle(getByTestId).backgroundColor).toBe(MUTED);
     expect(StyleSheet.flatten(getByText('0:45').props.style).color).toBe(MUTED);
   });
@@ -108,14 +109,14 @@ describe('ActiveWorkoutRestBar', () => {
   });
 
   it('fires onPause from the pause control while resting', () => {
-    const { getByLabelText, props } = renderBar({ paused: false });
+    const { getByLabelText, props } = renderBar({ state: 'resting' });
     fireEvent.press(getByLabelText('Pause rest'));
     expect(props.onPause).toHaveBeenCalledTimes(1);
     expect(props.onResume).not.toHaveBeenCalled();
   });
 
   it('fires onResume from the pause control while paused', () => {
-    const { getByLabelText, props } = renderBar({ paused: true });
+    const { getByLabelText, props } = renderBar({ state: 'paused' });
     fireEvent.press(getByLabelText('Resume rest'));
     expect(props.onResume).toHaveBeenCalledTimes(1);
     expect(props.onPause).not.toHaveBeenCalled();
@@ -141,5 +142,35 @@ describe('ActiveWorkoutRestBar', () => {
     fireEvent.press(getByLabelText('Shorten rest by 15 seconds'));
     expect(props.onSkip).toHaveBeenCalledTimes(1);
     expect(props.onAdjust).toHaveBeenCalledWith(-15);
+  });
+
+  describe('ready state', () => {
+    it('collapses to the on-deck row: label, target, and a Complete Set button', () => {
+      const { getByText, getByLabelText, queryByText, queryByTestId, queryByLabelText } =
+        renderBar({ state: 'ready', nextSetText: '135 lbs × 8' });
+      expect(getByText('Incline DB Press · Set 3')).toBeTruthy();
+      expect(getByText('Target 135 lbs × 8')).toBeTruthy();
+      expect(getByLabelText('Complete set')).toBeTruthy();
+      // Timer chrome is gone: no countdown, track, or rest controls.
+      expect(queryByText('0:45')).toBeNull();
+      expect(queryByTestId('rest-progress-fill')).toBeNull();
+      expect(queryByLabelText('Skip rest')).toBeNull();
+      expect(queryByLabelText('Pause rest')).toBeNull();
+      expect(queryByLabelText('Shorten rest by 15 seconds')).toBeNull();
+    });
+
+    it('fires onCompleteSet from the Complete Set button', () => {
+      const { getByLabelText, props } = renderBar({ state: 'ready' });
+      fireEvent.press(getByLabelText('Complete set'));
+      expect(props.onCompleteSet).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders the on-deck row inside the glass pill when Liquid Glass tabs are active', () => {
+      mockUseNativeIOSTabsActive.mockReturnValue(true);
+      const { getByTestId, getByLabelText, props } = renderBar({ state: 'ready' });
+      expect(getByTestId('rest-bar-glass')).toBeTruthy();
+      fireEvent.press(getByLabelText('Complete set'));
+      expect(props.onCompleteSet).toHaveBeenCalledTimes(1);
+    });
   });
 });

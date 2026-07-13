@@ -662,6 +662,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 350);
     }
   }, []);
+  // The rest bar's ready-state Complete button targets the cursor set; the id
+  // is read at press time so the handler can't act on a stale cursor.
+  const handleCompleteActiveSet = useCallback(() => {
+    const id = useActiveWorkoutStore.getState().activeSetId;
+    if (id != null) handleCompleteSet(id);
+  }, [handleCompleteSet]);
   const handleUncomplete = useCallback((setId: string) => {
     useActiveWorkoutStore.getState().uncompleteSet(setId);
   }, []);
@@ -770,6 +776,26 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   }, [createdByLiveStart, sessionId, session, queryClient, navigation]);
 
   const handleFinish = useCallback(async () => {
+    // "Discard changes" sits one tap from "Retry", and a mis-tap would
+    // silently lose every set logged since the last successful save — so the
+    // destructive exit gets its own confirm.
+    function confirmDiscardChanges(): void {
+      Alert.alert(
+        'Discard unsaved changes?',
+        "Sets and edits that haven't reached the server will be lost. Changes already saved are kept.",
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              useActiveWorkoutStore.getState().clearWorkout();
+              navigation.goBack();
+            },
+          },
+        ],
+      );
+    }
     // Named so the failure alert's Retry can re-run the same attempt.
     async function attempt(): Promise<void> {
       const ok = await flush();
@@ -782,10 +808,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             {
               text: 'Discard changes',
               style: 'destructive',
-              onPress: () => {
-                useActiveWorkoutStore.getState().clearWorkout();
-                navigation.goBack();
-              },
+              onPress: confirmDiscardChanges,
             },
             { text: 'Cancel', style: 'cancel' },
           ],
@@ -837,7 +860,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const progress = buildExerciseProgress(session, completedSetIds);
   const hasAnyCompletedSets = Object.keys(completedSetIds).length > 0;
 
-  const restVisible = restState !== 'ready';
+  // The bar stays up through 'ready' (compact on-deck row with a Complete
+  // button) as long as a set remains to complete; it only leaves once the
+  // workout is done.
+  const restBarVisible = restState !== 'ready' || activeSetId != null;
   // With Liquid Glass tabs active the rest bar floats over the log instead of
   // docking below it, so the scroll content reserves clearance for the pill.
   const restBarPadding = usesGlassRestBar
@@ -888,7 +914,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         className="flex-1"
         contentContainerClassName="px-3 pt-2"
         contentContainerStyle={{
-          paddingBottom: restVisible ? restBarPadding : insets.bottom + 16,
+          paddingBottom: restBarVisible ? restBarPadding : insets.bottom + 16,
         }}
         onScroll={handleScroll}
         scrollEventThrottle={32}
@@ -995,17 +1021,18 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         </Button>
       </KeyboardAwareScrollView>
 
-      {restVisible && (
+      {restBarVisible && (
         <ActiveWorkoutRestBar
           remainingMs={restRemainingMs}
           progress={restProgress}
-          paused={restState === 'paused'}
+          state={restState}
           label={restLabel}
           nextSetText={restNextSetText}
           onAdjust={(deltaSec) => useActiveWorkoutStore.getState().adjustRest(deltaSec)}
           onSkip={() => useActiveWorkoutStore.getState().dismissRest()}
           onPause={() => useActiveWorkoutStore.getState().pauseRest()}
           onResume={() => useActiveWorkoutStore.getState().resumeRest()}
+          onCompleteSet={handleCompleteActiveSet}
         />
       )}
 
