@@ -220,22 +220,25 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
   // process; workoutLiveActivity.ios.ts matches on these target strings and
   // pushes the repaint, so the targets must stay in sync with that file.
   //
-  // Bare tinted icon buttons — no background wash. goforward.15 is the
-  // system's own "skip forward 15s" glyph.
+  // Bare tinted buttons — no background wash. The add-rest label is text
+  // ("+15s", matching the in-app rest bar) because SF Symbols' goforward.15
+  // family means media seek, which reads as skipping rest, not extending it.
   const restButtonModifiers = (label: string) => [
     buttonStyle('borderless'),
     controlSize('large'),
     accessibilityLabel(label),
   ];
+  // Both labels share one font so the SF Symbol scales to match the text.
+  const restButtonFont = font({ weight: 'semibold', size: 17 });
   const actionButtons = () => {
     if (restInterval) {
       return (
         <HStack spacing={8}>
           <Button target="rest-add-15" modifiers={restButtonModifiers('Add 15 seconds')}>
-            <Image systemName="goforward.15" />
+            <Text modifiers={[restButtonFont, monospacedDigit()]}>+15s</Text>
           </Button>
           <Button target="rest-skip" modifiers={restButtonModifiers('Skip rest')}>
-            <Image systemName="forward.end.fill" />
+            <Image systemName="forward.end.fill" modifiers={[restButtonFont]} />
           </Button>
         </HStack>
       );
