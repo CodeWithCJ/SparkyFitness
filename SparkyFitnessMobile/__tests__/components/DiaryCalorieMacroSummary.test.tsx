@@ -72,13 +72,64 @@ describe('DiaryCalorieMacroSummary', () => {
     });
     const { getByText, queryByText } = render(
       <DiaryCalorieMacroSummary
-        summary={buildSummary({ calorieBalance: { ...buildSummary().calorieBalance, eaten: 500, goal: 2000 } })}
+        summary={buildSummary({
+          calorieBalance: { ...buildSummary().calorieBalance, eaten: 500, goal: 2000, remaining: 1500 },
+        })}
         showNetCarbs={false}
       />,
     );
-    expect(getByText(/500/)).toBeTruthy();
-    expect(getByText(/2,000/)).toBeTruthy();
+    expect(getByText('Calories')).toBeTruthy();
+    expect(getByText(/cal \/ 2,000/)).toBeTruthy();
+    expect(getByText(/1,500/)).toBeTruthy();
+    expect(getByText(/left/)).toBeTruthy();
     expect(queryByText('Carbs')).toBeNull();
+  });
+
+  it('shows "over" instead of "left" when remaining is negative', () => {
+    useAppPreferencesStore.setState({
+      diaryCalorieSummaryVisible: true,
+      diaryMacroSummaryVisible: false,
+    });
+    const { getByText } = render(
+      <DiaryCalorieMacroSummary
+        summary={buildSummary({
+          calorieBalance: { ...buildSummary().calorieBalance, eaten: 2500, goal: 2000, remaining: -500 },
+        })}
+        showNetCarbs={false}
+      />,
+    );
+    expect(getByText(/over/)).toBeTruthy();
+  });
+
+  it('uses calorieBalance.remaining rather than deriving goal - eaten, so exercise/BMR-aware calorie modes stay correct', () => {
+    // Simulates a dynamic/TDEE calorie mode where remaining includes an
+    // exercise credit, so it diverges from a naive goal - eaten calculation
+    // (2000 - 500 would be 1500, but the server-computed remaining is 1800).
+    useAppPreferencesStore.setState({
+      diaryCalorieSummaryVisible: true,
+      diaryMacroSummaryVisible: false,
+    });
+    const { getByText, queryByText } = render(
+      <DiaryCalorieMacroSummary
+        summary={buildSummary({
+          calorieBalance: { ...buildSummary().calorieBalance, eaten: 500, goal: 2000, remaining: 1800 },
+        })}
+        showNetCarbs={false}
+      />,
+    );
+    expect(getByText(/1,800/)).toBeTruthy();
+    expect(queryByText(/1,500/)).toBeNull();
+  });
+
+  it('renders the "Macros" section label', () => {
+    useAppPreferencesStore.setState({
+      diaryCalorieSummaryVisible: false,
+      diaryMacroSummaryVisible: true,
+    });
+    const { getByText } = render(
+      <DiaryCalorieMacroSummary summary={buildSummary()} showNetCarbs={false} />,
+    );
+    expect(getByText('Macros')).toBeTruthy();
   });
 
   it('renders only the macro row when calories are off', () => {

@@ -12,17 +12,18 @@ import type { DailySummary } from '../types/dailySummary';
 interface CalorieBarProps {
   eaten: number;
   goal: number;
+  remaining: number;
   progressPercent: number;
 }
 
-const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, progressPercent }) => {
+const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progressPercent }) => {
   const [barWidth, setBarWidth] = useState(0);
   const [trackColor, fillColor] = useCSSVariable([
     '--color-progress-track',
     '--color-calories',
   ]) as [string, string];
-  const barHeight = 8;
-  const borderRadius = 4;
+  const barHeight = 10;
+  const borderRadius = 5;
   const hasGoal = goal > 0;
 
   const animatedProgress = useSharedValue(0);
@@ -59,17 +60,28 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, progressPercent })
   const overflowStyle = useAnimatedStyle(() => ({ left: overflowX.value, width: overflowWidth.value }));
 
   return (
-    <View className="mb-1">
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-sm font-medium text-text-primary">
-          {Math.round(eaten).toLocaleString()} cal
-          {hasGoal && (
-            <Text className="text-xs text-text-secondary"> / {Math.round(goal).toLocaleString()}</Text>
-          )}
+    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+      <Text className="text-md font-bold text-text-secondary mb-2">Calories</Text>
+      <View className="flex-row justify-between items-end mb-3">
+        <Text className="text-2xl font-bold text-text-primary">
+          {Math.round(eaten).toLocaleString()}
+          <Text className="text-sm font-normal text-text-secondary">
+            {' '}
+            cal{hasGoal ? ` / ${Math.round(goal).toLocaleString()}` : ''}
+          </Text>
         </Text>
+        {hasGoal && (
+          <Text className="text-sm font-semibold text-text-primary">
+            {Math.abs(Math.round(remaining)).toLocaleString()}
+            <Text className="text-xs font-normal text-text-secondary">
+              {' '}
+              {remaining >= 0 ? 'left' : 'over'}
+            </Text>
+          </Text>
+        )}
       </View>
       {hasGoal && (
-        <View className="h-2" onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
+        <View className="h-2.5" onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
           {barWidth > 0 && (
             <View
               style={{
@@ -119,7 +131,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({ sum
     return null;
   }
 
-  const { eaten, goal, progress } = summary.calorieBalance;
+  const { eaten, goal, remaining, progress } = summary.calorieBalance;
 
   const carbsConsumed = showNetCarbs
     ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
@@ -127,42 +139,45 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({ sum
   const carbsLabel = showNetCarbs ? 'Net Carbs' : 'Carbs';
 
   return (
-    <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
+    <>
       {diaryCalorieSummaryVisible && (
-        <CalorieBar eaten={eaten} goal={goal} progressPercent={progress / 100} />
+        <CalorieBar eaten={eaten} goal={goal} remaining={remaining} progressPercent={progress / 100} />
       )}
       {diaryMacroSummaryVisible && (
-        <View className={`flex-row justify-between ${diaryCalorieSummaryVisible ? 'mt-2' : ''}`}>
-          <MacroCard
-            label={carbsLabel}
-            consumed={carbsConsumed}
-            goal={summary.carbs.goal || undefined}
-            color={carbsColor}
-            overfillColor={progressOverfillColor}
-            compact
-            widthClassName="w-[31%]"
-          />
-          <MacroCard
-            label="Fat"
-            consumed={summary.fat.consumed}
-            goal={summary.fat.goal || undefined}
-            color={fatColor}
-            overfillColor={progressOverfillColor}
-            compact
-            widthClassName="w-[31%]"
-          />
-          <MacroCard
-            label="Protein"
-            consumed={summary.protein.consumed}
-            goal={summary.protein.goal || undefined}
-            color={proteinColor}
-            overfillColor={progressOverfillColor}
-            compact
-            widthClassName="w-[31%]"
-          />
+        <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+          <Text className="text-md font-bold text-text-secondary mb-3">Macros</Text>
+          <View className="flex-row justify-between">
+            <MacroCard
+              label={carbsLabel}
+              consumed={carbsConsumed}
+              goal={summary.carbs.goal || undefined}
+              color={carbsColor}
+              overfillColor={progressOverfillColor}
+              compact
+              widthClassName="w-[31%]"
+            />
+            <MacroCard
+              label="Fat"
+              consumed={summary.fat.consumed}
+              goal={summary.fat.goal || undefined}
+              color={fatColor}
+              overfillColor={progressOverfillColor}
+              compact
+              widthClassName="w-[31%]"
+            />
+            <MacroCard
+              label="Protein"
+              consumed={summary.protein.consumed}
+              goal={summary.protein.goal || undefined}
+              color={proteinColor}
+              overfillColor={progressOverfillColor}
+              compact
+              widthClassName="w-[31%]"
+            />
+          </View>
         </View>
       )}
-    </View>
+    </>
   );
 };
 
