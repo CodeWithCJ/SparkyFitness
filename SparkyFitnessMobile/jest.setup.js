@@ -348,6 +348,11 @@ jest.mock('react-native-keyboard-controller', () => {
       isVisible: jest.fn(() => true),
       state: jest.fn(() => ({})),
     },
+    // Subscriptions are inert; tests drive a listener by pulling the callback
+    // out of addListener.mock.calls.
+    KeyboardEvents: {
+      addListener: jest.fn(() => ({ remove: jest.fn() })),
+    },
   };
 });
 

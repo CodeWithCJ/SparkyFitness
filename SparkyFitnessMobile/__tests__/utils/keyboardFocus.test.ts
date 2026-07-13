@@ -1,12 +1,14 @@
 import { Platform, type TextInput } from 'react-native';
-import { KeyboardController } from 'react-native-keyboard-controller';
+import { KeyboardController, KeyboardEvents } from 'react-native-keyboard-controller';
 import {
   focusWithAndroidImeRetry,
+  runAfterKeyboardSettles,
   scheduleAndroidImeShowRetry,
 } from '../../src/utils/keyboardFocus';
 
 const mockedIsVisible = KeyboardController.isVisible as jest.Mock;
 const mockedSetFocusTo = KeyboardController.setFocusTo as jest.Mock;
+const mockedAddListener = KeyboardEvents.addListener as jest.Mock;
 
 const makeRef = ({ focused = true } = {}) => {
   const input = {
@@ -21,6 +23,7 @@ describe('keyboardFocus', () => {
     jest.useFakeTimers();
     mockedIsVisible.mockReturnValue(true);
     mockedSetFocusTo.mockClear();
+    mockedAddListener.mockClear();
   });
 
   afterEach(() => {
@@ -34,6 +37,63 @@ describe('keyboardFocus', () => {
       focusWithAndroidImeRetry(ref);
 
       expect(input.focus).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('runAfterKeyboardSettles', () => {
+    it('runs after the settle delay when no keyboard is up', () => {
+      mockedIsVisible.mockReturnValue(false);
+      const action = jest.fn();
+
+      runAfterKeyboardSettles(action, 350);
+
+      expect(mockedAddListener).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(349);
+      expect(action).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(1);
+      expect(action).toHaveBeenCalledTimes(1);
+    });
+
+    it('waits for keyboardDidHide instead of the timer while the keyboard is up', () => {
+      mockedIsVisible.mockReturnValue(true);
+      const remove = jest.fn();
+      mockedAddListener.mockReturnValue({ remove });
+      const action = jest.fn();
+
+      runAfterKeyboardSettles(action, 350);
+
+      expect(mockedAddListener).toHaveBeenCalledWith('keyboardDidHide', expect.any(Function));
+      jest.runAllTimers();
+      expect(action).not.toHaveBeenCalled();
+
+      const listener = mockedAddListener.mock.calls[0][1] as () => void;
+      listener();
+      expect(action).toHaveBeenCalledTimes(1);
+      expect(remove).toHaveBeenCalled();
+    });
+
+    it('cancel removes the hide listener before it fires', () => {
+      mockedIsVisible.mockReturnValue(true);
+      const remove = jest.fn();
+      mockedAddListener.mockReturnValue({ remove });
+      const action = jest.fn();
+
+      const cancel = runAfterKeyboardSettles(action, 350);
+      cancel();
+
+      expect(remove).toHaveBeenCalled();
+      expect(action).not.toHaveBeenCalled();
+    });
+
+    it('cancel clears the pending timer', () => {
+      mockedIsVisible.mockReturnValue(false);
+      const action = jest.fn();
+
+      const cancel = runAfterKeyboardSettles(action, 350);
+      cancel();
+      jest.runAllTimers();
+
+      expect(action).not.toHaveBeenCalled();
     });
   });
 

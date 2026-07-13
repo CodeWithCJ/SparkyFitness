@@ -53,6 +53,7 @@ import { addLog } from '../services/LogService';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutStore, type ActiveSetPatch } from '../stores/activeWorkoutStore';
 import { normalizeDate } from '../utils/dateUtils';
+import { runAfterKeyboardSettles } from '../utils/keyboardFocus';
 import {
   buildExerciseReorderItems,
   describeActiveSet,
@@ -299,9 +300,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (activeExerciseId == null) return;
-    // Defer so the newly expanded card has a measured offset before scrolling.
-    const id = setTimeout(() => scrollToExercise(activeExerciseId), 350);
-    return () => clearTimeout(id);
+    // Logging a set dismisses the keyboard as the cursor advances; starting
+    // the follow scroll mid-hide makes the two motions fight, so wait for the
+    // hide to finish. With no keyboard up, defer so the newly expanded card
+    // has a measured offset before scrolling.
+    return runAfterKeyboardSettles(() => scrollToExercise(activeExerciseId), 350);
   }, [activeExerciseId, scrollToExercise]);
 
   const handleToggleExpanded = useCallback(
@@ -648,8 +651,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     Keyboard.dismiss();
     // When that was the last unlogged set, the cursor has nowhere to advance,
     // so the follow-cursor scroll won't fire. Surface the End Workout button
-    // instead. Deferred so the just-logged card's collapse/layout settles;
-    // guarded so handleScroll doesn't re-home the focused exercise mid-scroll.
+    // instead. Deferred past the keyboard hide and the just-logged card's
+    // layout settle; guarded so handleScroll doesn't re-home the focused
+    // exercise mid-scroll.
     const store = useActiveWorkoutStore.getState();
     const completed = store.completedSetIds;
     const remaining =
@@ -658,8 +662,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         0,
       ) ?? 0;
     if (remaining === 0) {
-      programmaticScrollUntilRef.current = Date.now() + 600;
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 350);
+      runAfterKeyboardSettles(() => {
+        programmaticScrollUntilRef.current = Date.now() + 600;
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 350);
     }
   }, []);
   // The rest bar's ready-state Complete button targets the cursor set; the id

@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { Platform, type TextInput } from 'react-native';
-import { KeyboardController } from 'react-native-keyboard-controller';
+import { KeyboardController, KeyboardEvents } from 'react-native-keyboard-controller';
 
 /** Spaced to outlast a slow IME bind while keeping the common case snappy. */
 const IME_RETRY_DELAYS_MS = [100, 400];
@@ -30,6 +30,29 @@ export function scheduleAndroidImeShowRetry(
     }, delay),
   );
   return () => timers.forEach((timer) => clearTimeout(timer));
+}
+
+/**
+ * Defers a programmatic scroll (or similar viewport move) until the keyboard
+ * is out of the way. With the keyboard up — typically because the caller just
+ * dismissed it — the action runs when the hide finishes, so the two motions
+ * don't fight; otherwise it runs after `delayMsWhenHidden` (time for a
+ * sibling layout animation to settle). Returns a cancel function, shaped for
+ * an effect return.
+ */
+export function runAfterKeyboardSettles(
+  action: () => void,
+  delayMsWhenHidden: number,
+): () => void {
+  if (KeyboardController.isVisible()) {
+    const subscription = KeyboardEvents.addListener('keyboardDidHide', () => {
+      subscription.remove();
+      action();
+    });
+    return () => subscription.remove();
+  }
+  const timer = setTimeout(action, delayMsWhenHidden);
+  return () => clearTimeout(timer);
 }
 
 /**
