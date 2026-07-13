@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 
 interface ProviderSpecificFieldsProps {
@@ -22,6 +23,7 @@ export const ProviderSpecificFields = ({
   setFullSyncOnConnect,
   onCopy,
 }: ProviderSpecificFieldsProps) => {
+  const { t } = useTranslation();
   const needsBaseUrl = ['mealie', 'tandoor', 'norish'].includes(
     provider.provider_type || ''
   );
@@ -124,6 +126,26 @@ export const ProviderSpecificFields = ({
 
       {provider.provider_type === 'openfoodfacts' && (
         <>
+          <div>
+            <Label htmlFor="add-openfoodfacts-base-url">
+              {t(
+                'settings.foodExerciseDataProviders.openFoodFacts.baseUrlLabel'
+              )}
+            </Label>
+            <Input
+              id="add-openfoodfacts-base-url"
+              type="text"
+              value={provider.base_url || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({ ...prev, base_url: e.target.value }))
+              }
+              placeholder="https://world.openfoodfacts.org"
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            {t('settings.foodExerciseDataProviders.openFoodFacts.baseUrlHelp')}
+          </p>
           <div>
             <Label htmlFor="add-openfoodfacts-username">
               Open Food Facts Username (Optional)

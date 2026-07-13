@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { toast } from '@/hooks/use-toast';
 import { useExternalProviderTypesQuery } from '@/hooks/Settings/useExternalProviderSettings';
@@ -35,6 +36,7 @@ export const EditProviderForm = ({
   loading,
   isAdminMode = false,
 }: EditProviderFormProps) => {
+  const { t } = useTranslation();
   const { data: providerTypes } = useExternalProviderTypesQuery();
   return (
     <form
@@ -96,6 +98,28 @@ export const EditProviderForm = ({
       </div>
       {editData.provider_type === 'openfoodfacts' && (
         <>
+          <div>
+            <Label>
+              {t(
+                'settings.foodExerciseDataProviders.openFoodFacts.baseUrlLabel'
+              )}
+            </Label>
+            <Input
+              type="text"
+              value={editData.base_url || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  base_url: e.target.value,
+                }))
+              }
+              placeholder="https://world.openfoodfacts.org"
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            {t('settings.foodExerciseDataProviders.openFoodFacts.baseUrlHelp')}
+          </p>
           <div>
             <Label>Open Food Facts Username (Optional)</Label>
             <Input

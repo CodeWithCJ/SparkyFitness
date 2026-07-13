@@ -49,11 +49,12 @@ export interface ProviderCredentials {
   is_active?: boolean;
 }
 
-// Resolve an OFF providerId for session-cookie auth. Unlike other providers,
-// OFF does not need credentials to function — this just opts into the
-// authenticated request path when the user has configured an OFF account.
-// Returns the provided id (validated for ownership) or the user's first
-// credentialed OFF provider, or null.
+// Resolve an OFF providerId for session-cookie auth and base_url resolution.
+// Unlike other providers, OFF does not need credentials to function — a
+// provider row may carry login credentials, a custom base_url, both, or
+// neither (the seeded public default). Returns the provided id (validated
+// for ownership and active status) or the user's first active OFF provider,
+// or null.
 export async function resolveOpenFoodFactsProviderId(
   userId: string,
   providerId: string | undefined
@@ -68,9 +69,7 @@ export async function resolveOpenFoodFactsProviderId(
       if (
         details &&
         details.is_active &&
-        details.provider_type === 'openfoodfacts' &&
-        details.app_id &&
-        details.app_key
+        details.provider_type === 'openfoodfacts'
       ) {
         return providerId;
       }
