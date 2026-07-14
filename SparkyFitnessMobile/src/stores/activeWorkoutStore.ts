@@ -269,6 +269,16 @@ export interface ActiveWorkoutState {
    */
   setExerciseRest: (entryId: string, seconds: number) => void;
   /**
+   * Rebase `startedAt` so the wall-clock span from start to the last completed
+   * set equals `minutes` — the end-of-workout "adjust duration" path for a
+   * workout left open across a long break. Duration stamping (and the calories
+   * the server derives from it) reads `startedAt` at flush time, so this one
+   * field is the whole correction. Marks the session dirty so the finish flush
+   * rewrites the server durations. No-op without a live session or a
+   * post-start completion.
+   */
+  setWorkoutDurationMinutes: (minutes: number) => void;
+  /**
    * Rename the live session. A no-op for an empty or unchanged name; otherwise
    * marks the session dirty so autosave persists the new name to the server.
    */
@@ -1409,6 +1419,21 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           ),
         };
         set(buildSessionEditState(state, next));
+      },
+
+      setWorkoutDurationMinutes: (minutes) => {
+        const state = get();
+        if (state.sessionId == null || state.startedAt == null) return;
+        let lastCompletedMs = 0;
+        for (const ms of Object.values(state.completedSetIds)) {
+          if (ms > lastCompletedMs) lastCompletedMs = ms;
+        }
+        if (lastCompletedMs <= state.startedAt) return;
+        set({
+          startedAt: lastCompletedMs - Math.max(1, Math.round(minutes)) * 60_000,
+          sessionRevision: state.sessionRevision + 1,
+          hasUnsavedChanges: true,
+        });
       },
 
       renameSession: (name) => {

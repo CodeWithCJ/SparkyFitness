@@ -88,6 +88,31 @@ jest.mock('../../src/components/WorkoutReorderList', () => ({
   default: () => null,
 }));
 
+// Captures the custom-duration sheet's props and present args so tests can
+// assert the long-workout adjust wiring and drive onSave directly.
+const mockDurationSheet: {
+  present: jest.Mock;
+  dismiss: jest.Mock;
+  props: { onSave: (minutes: number) => void } | null;
+} = { present: jest.fn(), dismiss: jest.fn(), props: null };
+
+jest.mock('../../src/components/WorkoutDurationSheet', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: React.forwardRef((props: any, ref: any) => {
+      React.useEffect(() => {
+        mockDurationSheet.props = props;
+      });
+      React.useImperativeHandle(ref, () => ({
+        present: mockDurationSheet.present,
+        dismiss: mockDurationSheet.dismiss,
+      }));
+      return null;
+    }),
+  };
+});
+
 // Captures the sheet's props each render and exposes present/dismiss spies,
 // so tests can assert the imperative wiring and drive owner callbacks
 // (onBack/onDismiss) directly. The present-lifecycle behavior itself is
@@ -426,6 +451,133 @@ describe('ActiveWorkoutScreen finish flow with a failing flush', () => {
 
     expect(useActiveWorkoutStore.getState().session).not.toBeNull();
     expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+});
+
+describe('ActiveWorkoutScreen long-workout duration adjust', () => {
+  const MIN = 60_000;
+  let alertSpy: jest.SpyInstance;
+  let startedAtAtFlush: number | null | undefined;
+
+  function lastAlertButton(label: string): { onPress?: () => void } {
+    const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+    const button = (call?.[2] ?? []).find((b: { text?: string }) => b.text === label);
+    expect(button).toBeDefined();
+    return button;
+  }
+
+  function lastAlertTitle(): string | undefined {
+    return alertSpy.mock.calls[alertSpy.mock.calls.length - 1]?.[0];
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+    useActiveWorkoutStore.getState().startWorkout(makeSession());
+    startedAtAtFlush = undefined;
+    (useActiveWorkoutAutosave as jest.Mock).mockReturnValue({
+      // Snapshots startedAt at flush time — the finish flow clears the store
+      // right after, so this is the value the duration payload was built from.
+      flush: jest.fn(async () => {
+        startedAtAtFlush = useActiveWorkoutStore.getState().startedAt;
+        return true;
+      }),
+    });
+    alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  /** Complete '102' 5 min in, then '201' 12 h later: active 5 min, span 12h 5m. */
+  function completeSetsAroundLongBreak(): { start: number; lastCompletedAt: number } {
+    const start = useActiveWorkoutStore.getState().startedAt!;
+    const lastCompletedAt = start + 725 * MIN;
+    act(() => {
+      jest.setSystemTime(start + 5 * MIN);
+      useActiveWorkoutStore.getState().completeSet('102');
+      jest.setSystemTime(lastCompletedAt);
+      useActiveWorkoutStore.getState().completeSet('201');
+    });
+    return { start, lastCompletedAt };
+  }
+
+  async function endWorkout(getByText: (text: string) => unknown) {
+    fireEvent.press(getByText('End Workout') as any);
+    expect(lastAlertTitle()).toBe('End workout?');
+    await act(async () => {
+      lastAlertButton('End Workout').onPress?.();
+    });
+  }
+
+  it('finishes directly when the workout has no long gap', async () => {
+    const start = useActiveWorkoutStore.getState().startedAt!;
+    act(() => {
+      jest.setSystemTime(start + 2 * MIN);
+      useActiveWorkoutStore.getState().completeSet('102');
+      jest.setSystemTime(start + 4 * MIN);
+      useActiveWorkoutStore.getState().completeSet('201');
+    });
+    const { getByText } = renderScreen();
+
+    await endWorkout(getByText);
+
+    expect(lastAlertTitle()).toBe('End workout?');
+    expect(startedAtAtFlush).toBe(start);
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+
+  it('offers the gap-clamped active time and rebases on accept', async () => {
+    const { lastCompletedAt } = completeSetsAroundLongBreak();
+    const { getByText } = renderScreen();
+
+    await endWorkout(getByText);
+    expect(lastAlertTitle()).toBe('Adjust workout duration?');
+
+    await act(async () => {
+      lastAlertButton('Log 5 min').onPress?.();
+    });
+
+    expect(startedAtAtFlush).toBe(lastCompletedAt - 5 * MIN);
+    expect(useActiveWorkoutStore.getState().session).toBeNull();
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+
+  it('keeps the full span when the user declines', async () => {
+    const { start } = completeSetsAroundLongBreak();
+    const { getByText } = renderScreen();
+
+    await endWorkout(getByText);
+
+    await act(async () => {
+      lastAlertButton('Keep 12h 5m').onPress?.();
+    });
+
+    expect(startedAtAtFlush).toBe(start);
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+
+  it('opens the custom sheet capped at the span and finishes with the picked value', async () => {
+    const { lastCompletedAt } = completeSetsAroundLongBreak();
+    const { getByText } = renderScreen();
+
+    await endWorkout(getByText);
+
+    act(() => {
+      lastAlertButton('Custom…').onPress?.();
+    });
+    expect(mockDurationSheet.present).toHaveBeenCalledWith(5, 725);
+
+    await act(async () => {
+      mockDurationSheet.props?.onSave(20);
+    });
+
+    expect(startedAtAtFlush).toBe(lastCompletedAt - 20 * MIN);
+    expect(navigation.goBack).toHaveBeenCalled();
   });
 });
 

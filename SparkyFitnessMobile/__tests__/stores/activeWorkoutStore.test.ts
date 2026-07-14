@@ -1154,6 +1154,53 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('setWorkoutDurationMinutes', () => {
+    it('rebases startedAt so the span to the last completion equals the given minutes', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      jest.setSystemTime(new Date(FIXED_NOW + 5 * 60_000));
+      useActiveWorkoutStore.getState().completeSet('101');
+      const lastCompletedAt = FIXED_NOW + 12 * 60 * 60_000;
+      jest.setSystemTime(new Date(lastCompletedAt));
+      useActiveWorkoutStore.getState().completeSet('102');
+      const revisionBefore = useActiveWorkoutStore.getState().sessionRevision;
+
+      useActiveWorkoutStore.getState().setWorkoutDurationMinutes(10);
+
+      const state = useActiveWorkoutStore.getState();
+      expect(state.startedAt).toBe(lastCompletedAt - 10 * 60_000);
+      expect(state.sessionRevision).toBe(revisionBefore + 1);
+      expect(state.hasUnsavedChanges).toBe(true);
+    });
+
+    it('is a no-op without a completed set', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      const revisionBefore = useActiveWorkoutStore.getState().sessionRevision;
+
+      useActiveWorkoutStore.getState().setWorkoutDurationMinutes(10);
+
+      const state = useActiveWorkoutStore.getState();
+      expect(state.startedAt).toBe(FIXED_NOW);
+      expect(state.sessionRevision).toBe(revisionBefore);
+    });
+
+    it('is a no-op without a live session', () => {
+      useActiveWorkoutStore.getState().setWorkoutDurationMinutes(10);
+      expect(useActiveWorkoutStore.getState().startedAt).toBeNull();
+    });
+
+    it('never rebases to less than one minute', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      jest.setSystemTime(new Date(FIXED_NOW + 60 * 60_000));
+      useActiveWorkoutStore.getState().completeSet('101');
+
+      useActiveWorkoutStore.getState().setWorkoutDurationMinutes(0);
+
+      expect(useActiveWorkoutStore.getState().startedAt).toBe(
+        FIXED_NOW + 60 * 60_000 - 60_000,
+      );
+    });
+  });
+
   describe('adjustRest', () => {
     beforeEach(async () => {
       useActiveWorkoutStore.getState().startWorkout(makeSession());
