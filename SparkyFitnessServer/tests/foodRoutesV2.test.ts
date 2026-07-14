@@ -218,7 +218,8 @@ describe('GET /v2/foods/search/:providerType', () => {
       'user-123',
       'openfoodfacts',
       'oat milk',
-      { page: 2, pageSize: 10, providerId: undefined, autoScale: false }
+      { page: 2, pageSize: 10, providerId: undefined, autoScale: false },
+      'user-123'
     );
     expect(res.body).toEqual({
       foods: [

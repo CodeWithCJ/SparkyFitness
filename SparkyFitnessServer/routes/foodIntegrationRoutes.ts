@@ -32,7 +32,7 @@ router.use('/fatsecret', authenticate, async (req, res, next) => {
   try {
     // This call will eventually go through the generic dataIntegrationService
     const providerDetails = await foodService.getFoodDataProviderDetails(
-      req.userId,
+      req.authenticatedUserId,
       providerId
     );
     if (
@@ -66,7 +66,7 @@ router.use('/mealie', authenticate, async (req, res, next) => {
   }
   try {
     const providerDetails = await foodService.getFoodDataProviderDetails(
-      req.userId,
+      req.authenticatedUserId,
       providerId
     );
     if (
@@ -107,7 +107,7 @@ router.use('/tandoor', authenticate, async (req, res, next) => {
   }
   try {
     const providerDetails = await foodService.getFoodDataProviderDetails(
-      req.userId,
+      req.authenticatedUserId,
       // @ts-expect-error TS(2339): Property 'providerId' does not exist on type 'Requ... Remove this comment to see the full error message
       req.providerId
     );
@@ -166,7 +166,7 @@ router.use('/norish', authenticate, async (req, res, next) => {
   }
   try {
     const providerDetails = await foodService.getFoodDataProviderDetails(
-      req.userId,
+      req.authenticatedUserId,
       // @ts-expect-error TS(2339): Property 'providerId' does not exist on type 'Requ... Remove this comment to see the full error message
       req.providerId
     );
@@ -198,7 +198,7 @@ router.use('/usda', authenticate, async (req, res, next) => {
   }
   try {
     const providerDetails = await foodService.getFoodDataProviderDetails(
-      req.userId,
+      req.authenticatedUserId,
       providerId
     );
     if (!providerDetails || !providerDetails.app_key) {
@@ -419,14 +419,14 @@ router.get('/openfoodfacts/search', authenticate, async (req, res, next) => {
     const providerId =
       req.headers['x-provider-id'] ||
       (await externalProviderService.getActiveOpenFoodFactsProviderId(
-        req.userId
+        req.authenticatedUserId
       ));
     const data = await searchOpenFoodFacts(
       query,
       page,
       language,
 
-      providerId ? req.userId : undefined,
+      providerId ? req.authenticatedUserId : undefined,
       providerId || undefined
     );
     res.json(data);
@@ -472,14 +472,14 @@ router.get(
       const providerId =
         req.headers['x-provider-id'] ||
         (await externalProviderService.getActiveOpenFoodFactsProviderId(
-          req.userId
+          req.authenticatedUserId
         ));
       const data = await searchOpenFoodFactsByBarcodeFields(
         barcode,
         undefined,
         language,
 
-        providerId ? req.userId : undefined,
+        providerId ? req.authenticatedUserId : undefined,
         providerId || undefined
       );
       res.json(data);

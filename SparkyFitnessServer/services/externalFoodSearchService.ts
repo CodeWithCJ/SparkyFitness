@@ -55,14 +55,14 @@ export interface ProviderCredentials {
 // Returns the provided id (validated for ownership) or the user's first
 // credentialed OFF provider, or null.
 export async function resolveOpenFoodFactsProviderId(
-  userId: string,
+  credentialUserId: string,
   providerId: string | undefined
 ): Promise<string | null> {
   if (providerId) {
     try {
       const details =
         await externalProviderService.getExternalDataProviderDetails(
-          userId,
+          credentialUserId,
           providerId
         );
       if (
@@ -79,11 +79,13 @@ export async function resolveOpenFoodFactsProviderId(
     }
     return null;
   }
-  return externalProviderService.getActiveOpenFoodFactsProviderId(userId);
+  return externalProviderService.getActiveOpenFoodFactsProviderId(
+    credentialUserId
+  );
 }
 
 export async function resolveProviderCredentials(
-  userId: string,
+  credentialUserId: string,
   providerId: string | undefined,
   providerType: ProviderType
 ): Promise<ProviderCredentials> {
@@ -102,7 +104,7 @@ export async function resolveProviderCredentials(
   }
 
   const details = await externalProviderService.getExternalDataProviderDetails(
-    userId,
+    credentialUserId,
     providerId
   );
 
@@ -256,11 +258,17 @@ export async function enrichFatSecretResults(
   return [...enrichedTop, ...enrichedRest];
 }
 
+// `userId` is the active (possibly switched) data context — used for
+// preferences and provider-specific caching. `credentialUserId` is the real
+// authenticated actor whose stored provider secrets and OpenFoodFacts session
+// are used; a delegate must never search with a family member's credentials.
+// It defaults to `userId` for non-delegated callers (chatbot, single-user).
 export async function searchProviderFoods(
   userId: string,
   providerType: ProviderType,
   query: string,
-  opts: ProviderSearchOptions = {}
+  opts: ProviderSearchOptions = {},
+  credentialUserId: string = userId
 ): Promise<ProviderSearchResult> {
   const page = opts.page ?? 1;
   const pageSize = opts.pageSize ?? 20;
@@ -268,7 +276,7 @@ export async function searchProviderFoods(
   const autoScale = opts.autoScale ?? true;
 
   const credentials = await resolveProviderCredentials(
-    userId,
+    credentialUserId,
     providerId,
     providerType
   );
@@ -281,7 +289,7 @@ export async function searchProviderFoods(
   switch (providerType) {
     case 'openfoodfacts': {
       const offProviderId = await resolveOpenFoodFactsProviderId(
-        userId,
+        credentialUserId,
         providerId
       );
       const result = await searchOpenFoodFacts(
@@ -289,7 +297,7 @@ export async function searchProviderFoods(
         page,
         language,
 
-        offProviderId ? userId : undefined,
+        offProviderId ? credentialUserId : undefined,
         offProviderId || undefined
       );
       const products = (result.products || []).filter(
