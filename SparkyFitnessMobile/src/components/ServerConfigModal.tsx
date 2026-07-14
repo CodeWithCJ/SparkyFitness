@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,15 @@ import {
   Platform,
   LayoutAnimation,
   Alert,
-  Image,
+  type TextInput,
 } from 'react-native';
 import Button from './ui/Button';
-import Clipboard from '@react-native-clipboard/clipboard';
 import { useCSSVariable } from 'uniwind';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Icon from './Icon';
 import FormInput from './FormInput';
 import SegmentedControl from './SegmentedControl';
-import MfaForm, { ErrorBanner, PrimaryButton } from './MfaForm';
+import MfaForm, { ErrorBanner, OidcProviderLogo, PrimaryButton } from './MfaForm';
 import {
   login,
   LoginError,
@@ -44,6 +43,7 @@ import {
 } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
+import { pasteFromClipboard } from '../utils/keyboardFocus';
 import { CONNECTION_CHECK_TIMEOUT_MS, fetchWithTimeout } from '../utils/concurrency';
 
 type AuthTab = 'signIn' | 'apiKey';
@@ -77,6 +77,8 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   }));
 
   // Form state
+  const serverUrlInputRef = useRef<TextInput>(null);
+  const apiKeyInputRef = useRef<TextInput>(null);
   const [serverUrl, setServerUrl] = useState('');
   const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
   const [authTab, setAuthTab] = useState<AuthTab>('signIn');
@@ -607,6 +609,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           <Text className="text-sm mb-2 text-text-secondary">Frontend URL</Text>
           <View className="flex-row items-center">
             <FormInput
+              ref={serverUrlInputRef}
               className="flex-1 rounded-lg"
               placeholder="https://your-server-url.com"
               value={serverUrl}
@@ -617,7 +620,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
             />
             <Button
               variant="ghost"
-              onPress={async () => setServerUrl(await Clipboard.getString())}
+              onPress={() => pasteFromClipboard(serverUrlInputRef, setServerUrl)}
               accessibilityLabel="Paste URL from clipboard"
               className="absolute right-1 p-2 py-2 px-2 rounded-lg"
             >
@@ -704,17 +707,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                           className="w-full flex-row items-center justify-center p-2.5 mb-2 rounded-lg border border-border-subtle bg-raised"
                         >
                           <View className="flex-row items-center">
-                            {provider.logo_url && (
-                              <Image
-                                source={{
-                                  uri: provider.logo_url.startsWith('http')
-                                    ? provider.logo_url
-                                    : `${normalizeUrl(serverUrl)}${provider.logo_url}`,
-                                }}
-                                className="w-5 h-5 mr-2"
-                                resizeMode="contain"
-                              />
-                            )}
+                            <OidcProviderLogo logoUrl={provider.logo_url} serverUrl={serverUrl} />
                             <Text className="text-base font-semibold text-text-primary">
                               {provider.display_name || `Sign in with ${provider.id}`}
                             </Text>
@@ -759,6 +752,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
                 <View className="flex-row items-center">
                   <FormInput
+                    ref={apiKeyInputRef}
                     className="flex-1 rounded-lg"
                     placeholder="Uds3d8i..."
                     value={apiKey}
@@ -768,7 +762,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   />
                   <Button
                     variant="ghost"
-                    onPress={async () => setApiKey(await Clipboard.getString())}
+                    onPress={() => pasteFromClipboard(apiKeyInputRef, setApiKey)}
                     accessibilityLabel="Paste API key from clipboard"
                     className="absolute right-9 p-2 py-2 px-2 rounded-lg"
                   >

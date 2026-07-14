@@ -1,7 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import FormInput from './FormInput';
+import Icon from './Icon';
+import SafeImage from './SafeImage';
+import { normalizeUrl } from '../utils/serverUrl';
 import type { MfaFactors } from '../services/api/authService';
 
 // --- Shared auth sub-components ---
@@ -12,6 +16,41 @@ export const ErrorBanner = ({ message }: { message: string }) =>
       <Text className="text-sm text-text-danger">{message}</Text>
     </View>
   ) : null;
+
+/**
+ * Logo slot for an OIDC provider sign-in button. Server-relative logo paths
+ * are resolved against the server URL; a missing or unloadable logo falls
+ * back to a generic globe so the button keeps its icon slot either way.
+ */
+export const OidcProviderLogo = ({
+  logoUrl,
+  serverUrl,
+}: {
+  logoUrl?: string;
+  serverUrl: string;
+}) => {
+  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+  const fallback = (
+    <View style={{ marginRight: 8 }}>
+      <Icon name="globe" size={20} color={accentPrimary} />
+    </View>
+  );
+
+  if (!logoUrl) return fallback;
+
+  return (
+    <SafeImage
+      source={{
+        uri: logoUrl.startsWith('http')
+          ? logoUrl
+          : `${normalizeUrl(serverUrl)}${logoUrl}`,
+        headers: {},
+      }}
+      style={{ width: 20, height: 20, marginRight: 8, resizeMode: 'contain' }}
+      fallback={fallback}
+    />
+  );
+};
 
 export const PrimaryButton = ({
   label,

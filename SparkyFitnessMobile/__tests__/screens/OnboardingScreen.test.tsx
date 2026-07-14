@@ -82,6 +82,22 @@ describe('OnboardingScreen', () => {
       expect(getByText('Later')).toBeTruthy();
     });
 
+    test('unfocused URL field echoes the value as plain text', () => {
+      // iOS wraps overflowing text in unfocused TextInputs (RN #29068),
+      // hiding everything after "https://"; the echo Text is what keeps the
+      // URL readable.
+      const { getByPlaceholderText, getByText } = renderScreen();
+
+      fireEvent.changeText(
+        getByPlaceholderText('https://your-sparky-app.com'),
+        'https://a-long-enough-server-url.example.com',
+      );
+
+      expect(
+        getByText('https://a-long-enough-server-url.example.com'),
+      ).toBeTruthy();
+    });
+
     test('learn more section toggles on press', () => {
       const { getByText, queryByText } = renderScreen();
 
