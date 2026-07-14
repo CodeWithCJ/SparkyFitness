@@ -603,9 +603,18 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // Favorites: the first landing section, starred foods and meals intermixed,
   // most recently starred first. Modelled as LandingEntry so every landing
   // section shares one row renderer and one key space.
+  //
+  // Meals are withheld in meal-builder mode, matching the rest of the screen:
+  // recent/top meals and meal search are both disabled there. Not because a
+  // meal cannot contain a meal — the model supports that (item_type/
+  // child_meal_id) — but because this picker cannot yet EMIT one, and
+  // handleMealBuilderAdd rejects a 'meal' source outright. Without this gate
+  // Favorites is the only surface that offers a meal and then refuses it two
+  // screens later. Drop the gate once the picker learns to emit child_meal_id.
   const favoriteEntries = useMemo<LandingEntry[]>(() => {
+    const selectableMeals = isMealBuilderMode ? [] : favoriteMeals;
     const tagged = [
-      ...favoriteMeals.map((meal) => ({
+      ...selectableMeals.map((meal) => ({
         entry: {
           kind: 'meal' as const,
           key: landingKey('meal', meal.id),
@@ -637,7 +646,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         return bt - at;
       })
       .map((t) => t.entry);
-  }, [favoriteFoods, favoriteMeals]);
+  }, [favoriteFoods, favoriteMeals, isMealBuilderMode]);
 
   // One notion of "starred", shared by the landing (which excludes favorites
   // from the sections below Favorites) and the search results (which float them

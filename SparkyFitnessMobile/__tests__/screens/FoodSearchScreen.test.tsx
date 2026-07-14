@@ -456,6 +456,61 @@ describe('FoodSearchScreen', () => {
     );
   });
 
+  // The Favorites section lives on the LANDING, so the meal-builder test below
+  // (which types a query) never sees it — that gap is exactly how favorited
+  // meals stayed visible in builder mode.
+  function renderLanding(routeOverride: typeof route = route) {
+    return render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodSearchScreen navigation={navigation} route={routeOverride} />
+      </SafeAreaProvider>,
+    );
+  }
+
+  const builderRoute = {
+    key: 'FoodSearch-key',
+    name: 'FoodSearch' as const,
+    params: { pickerMode: 'meal-builder' as const },
+  };
+
+  function favoriteOneFoodAndOneMeal() {
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [
+        { ...buildFood({ id: 'food-1', name: 'Starred Food' }), favorited_at: '2026-07-01T00:00:00.000Z' },
+      ],
+      favoriteMeals: [
+        { ...buildMeal(), id: 'meal-1', name: 'Starred Meal', favorited_at: '2026-07-02T00:00:00.000Z' },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+  }
+
+  it('withholds favorited MEALS from the Favorites landing in meal-builder mode', () => {
+    // This picker cannot emit a meal ingredient (handleMealBuilderAdd rejects a
+    // 'meal' source), and recent/top meals + meal search are already disabled
+    // here. Without this, Favorites is the one surface that offers a meal and
+    // then refuses it two screens later. Favorited FOODS must still show.
+    favoriteOneFoodAndOneMeal();
+
+    const screen = renderLanding(builderRoute);
+
+    expect(screen.queryByText('Starred Meal')).toBeNull();
+    expect(screen.getByText('Starred Food')).toBeTruthy();
+  });
+
+  it('shows favorited meals on the Favorites landing outside meal-builder mode', () => {
+    // The control for the test above: the gate is scoped to builder mode, not a
+    // blanket "favorites cannot hold meals".
+    favoriteOneFoodAndOneMeal();
+
+    const screen = renderLanding();
+
+    expect(screen.getByText('Starred Meal')).toBeTruthy();
+    expect(screen.getByText('Starred Food')).toBeTruthy();
+  });
+
   it('does not show saved meals in meal-builder mode', () => {
     mockUseMealSearch.mockReturnValue({
       searchResults: [buildMeal()],

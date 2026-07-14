@@ -233,9 +233,14 @@ const EnhancedFoodSearch = ({
   // Favorites: the first landing section, foods and meals intermixed, most
   // recently starred first. Modelled as LandingEntry so all three sections
   // share one card renderer and one key space.
+  //
+  // Meals are withheld wherever the rest of the search already hides them
+  // (`showMeals` covers both hideMealTab and onlineOnly), so Favorites cannot
+  // become the one surface that offers a meal a caller has explicitly excluded.
   const favoriteEntries: LandingEntry[] = useMemo(() => {
+    const selectableMeals = showMeals ? favoritesData?.favoriteMeals || [] : [];
     const tagged = [
-      ...(favoritesData?.favoriteMeals || []).map((meal) => ({
+      ...selectableMeals.map((meal) => ({
         entry: {
           kind: 'meal' as const,
           key: landingKey('meal', meal.id),
@@ -267,7 +272,7 @@ const EnhancedFoodSearch = ({
         return bt - at;
       })
       .map((t) => t.entry);
-  }, [favoritesData]);
+  }, [favoritesData, showMeals]);
 
   // Recent is one merged timeline (meals + foods by last-used date); Frequent is
   // one merged most-used list (by usage count). Each section excludes what the
