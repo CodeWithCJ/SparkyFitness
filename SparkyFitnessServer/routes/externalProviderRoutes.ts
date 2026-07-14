@@ -427,7 +427,17 @@ router.get('/:id', authenticate, async (req, res, next) => {
         req.userId,
         id
       );
-    res.status(200).json(providerDetails);
+    // Visibility (RLS) let this row through, but decrypted secrets must only
+    // reach the row's owner — redact them for family/public viewers and for a
+    // delegate switched into the owner's context (real actor != owner).
+    res
+      .status(200)
+      .json(
+        externalProviderService.redactProviderDetailsForNonOwner(
+          providerDetails,
+          req.authenticatedUserId
+        )
+      );
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     if (error.message.startsWith('Forbidden')) {

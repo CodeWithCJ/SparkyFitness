@@ -534,8 +534,12 @@ async function copyFoodEntriesFromUser(
       'info',
       `copyFoodEntriesFromUser: Copying from user ${sourceUserId} (${sourceDate} ${sourceMealType}) to user ${authenticatedUserId} (${targetDate} ${targetMealType}) by actor ${actingUserId}`
     );
+    // Copy authorization must be evaluated for the real actor performing the
+    // request, not the active/switched user (authenticatedUserId here is the
+    // active-context user). Otherwise a delegate acting in another user's
+    // context could copy a third party's diary using that user's grants.
     const hasAccess = await familyAccessRepository.checkCopyPermissions(
-      authenticatedUserId,
+      actingUserId,
       sourceUserId
     );
     if (!hasAccess) {
@@ -680,8 +684,10 @@ async function copyFoodEntriesToUser(
       'info',
       `copyFoodEntriesToUser: Copying from user ${authenticatedUserId} (${sourceDate} ${sourceMealType}) to user ${targetUserId} (${targetDate} ${targetMealType}) by actor ${actingUserId}`
     );
+    // Authorize the real actor, not the active/switched user — see
+    // copyFoodEntriesFromUser.
     const hasAccess = await familyAccessRepository.checkCopyPermissions(
-      authenticatedUserId,
+      actingUserId,
       targetUserId
     );
     if (!hasAccess) {

@@ -4,6 +4,14 @@ import request from 'supertest';
 import express from 'express';
 import googleHealthRoutes from '../routes/googleHealthRoutes.js';
 
+// Toggle used by the mocked permission middleware so a test can assert the 403
+// path (delegate lacking diary access to the switched-into user) without
+// re-registering the route. The real middleware logic is covered by
+// checkPermissionMiddleware.test.ts.
+const { permissionState } = vi.hoisted(() => ({
+  permissionState: { allow: true },
+}));
+
 vi.mock('../integrations/googlehealth/googleHealthService.js', () => ({
   default: {
     getAuthorizationUrl: vi.fn(),
@@ -30,6 +38,16 @@ vi.mock('../middleware/authMiddleware.js', () => ({
   },
 }));
 
+vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  default: vi.fn(
+    () => (_req: any, res: any, next: any) =>
+      permissionState.allow
+        ? next()
+        : res.status(403).json({ error: 'Forbidden' })
+  ),
+}));
+
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 import googleHealthIntegrationService from '../integrations/googlehealth/googleHealthService.js';
@@ -45,6 +63,38 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  permissionState.allow = true;
+});
+
+describe('permission gating (switched-context delegate without diary access)', () => {
+  it('returns 403 from /disconnect and does not touch tokens', async () => {
+    permissionState.allow = false;
+    const res = await request(app).post(
+      '/api/integrations/googlehealth/disconnect'
+    );
+    expect(res.statusCode).toBe(403);
+    expect(googleHealthService.disconnectGoogleHealth).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 from /callback and does not exchange tokens', async () => {
+    permissionState.allow = false;
+    const res = await request(app)
+      .post('/api/integrations/googlehealth/callback')
+      .send({ code: 'auth-code-abc' });
+    expect(res.statusCode).toBe(403);
+    expect(
+      googleHealthIntegrationService.exchangeCodeForTokens
+    ).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 from /sync and does not start a sync', async () => {
+    permissionState.allow = false;
+    const res = await request(app)
+      .post('/api/integrations/googlehealth/sync')
+      .send({});
+    expect(res.statusCode).toBe(403);
+    expect(googleHealthService.syncGoogleHealthData).not.toHaveBeenCalled();
+  });
 });
 
 describe('GET /api/integrations/googlehealth/authorize', () => {

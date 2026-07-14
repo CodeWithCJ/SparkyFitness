@@ -277,9 +277,10 @@ const auth = betterAuth({
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     },
+    // Email changes must go through the step-up-protected
+    // /identity/update-email route, which this built-in endpoint would bypass.
     changeEmail: {
-      enabled: true,
-      updateEmailWithoutVerification: true,
+      enabled: false,
     },
     additionalFields: {
       mfaTotpEnabled: {

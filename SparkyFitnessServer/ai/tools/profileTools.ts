@@ -27,7 +27,7 @@ This tool takes a FLAT object with an "action" field. Do NOT nest fields under t
 
 Actions:
 - action: 'get_profile' — returns user account details
-- action: 'update_profile' (fields: display_name?, email?, image?) — updates account details
+- action: 'update_profile' (fields: display_name?, image?) — updates account details
 - action: 'get_preferences' — returns user preferences (timezone, units)
 - action: 'update_preferences' (fields: timezone?, energy_unit?, default_weight_unit?, default_distance_unit?, default_measurement_unit?, water_display_unit?) — updates preferences`,
       inputSchema: manageProfileInput,
@@ -47,11 +47,7 @@ Actions:
             ) {
               return 'update_preferences';
             }
-            if (
-              args.display_name !== undefined ||
-              args.email !== undefined ||
-              args.image !== undefined
-            ) {
+            if (args.display_name !== undefined || args.image !== undefined) {
               return 'update_profile';
             }
             return undefined;
@@ -78,7 +74,7 @@ Actions:
               await userRepository.updateAuthUserProfile(
                 userId,
                 args.display_name ?? null,
-                args.email ?? null,
+                null,
                 args.image ?? null
               );
               return formatConfirmation('Profile updated.');

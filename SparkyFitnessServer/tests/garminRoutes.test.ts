@@ -6,12 +6,29 @@ import garminRoutes from '../routes/garminRoutes.js';
 import garminService from '../services/garminService.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 
+// Toggle used by the mocked permission middleware so a test can assert the 403
+// path (a switched-context delegate lacking diary access). The real middleware
+// logic is covered by checkPermissionMiddleware.test.ts.
+const { permissionState } = vi.hoisted(() => ({
+  permissionState: { allow: true },
+}));
+
 vi.mock('../middleware/authMiddleware.js', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticate: vi.fn((req: any, _res: any, next: any) => {
     req.userId = 'user-123';
     next();
   }),
+}));
+
+vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  default: vi.fn(
+    () => (_req: any, res: any, next: any) =>
+      permissionState.allow
+        ? next()
+        : res.status(403).json({ error: 'Forbidden' })
+  ),
 }));
 
 vi.mock('../integrations/garminconnect/garminConnectService.js', () => ({
@@ -63,12 +80,39 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  permissionState.allow = true;
   (
     externalProviderRepository.getExternalDataProviderByUserIdAndProviderName as any
   ).mockResolvedValue({ id: 'provider-1' });
   (externalProviderRepository.updateProviderLastSync as any).mockResolvedValue(
     true
   );
+});
+
+describe('permission gating (switched-context delegate without diary access)', () => {
+  it('returns 403 from /sync and does not run the sync', async () => {
+    permissionState.allow = false;
+    const res = await request(app)
+      .post('/integrations/garmin/sync')
+      .send({ startDate: '2026-06-01', endDate: '2026-06-07' });
+    expect(res.statusCode).toBe(403);
+    expect(garminService.syncGarminData).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 from /sync/nutrition_diary and does not fetch nutrition', async () => {
+    permissionState.allow = false;
+    const res = await request(app)
+      .post('/integrations/garmin/sync/nutrition_diary')
+      .send({ startDate: '2026-06-01', endDate: '2026-06-07' });
+    expect(res.statusCode).toBe(403);
+    expect(garminService.processGarminNutritionData).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 from /unlink and does not delete the provider', async () => {
+    permissionState.allow = false;
+    const res = await request(app).post('/integrations/garmin/unlink');
+    expect(res.statusCode).toBe(403);
+  });
 });
 
 describe('POST /integrations/garmin/sync', () => {

@@ -97,13 +97,15 @@ describe('sparky_manage_profile', () => {
     );
   });
 
-  it('update_profile rejects an invalid email', async () => {
+  it('update_profile does not accept an email field (cannot change account email)', async () => {
     const result = await tools.sparky_manage_profile.execute!(
-      { action: 'update_profile', email: 'not-an-email' },
+      { action: 'update_profile', email: 'admin@example.com' } as any,
       opts
     );
 
-    expect(result).toBe('Error [VALIDATION]: email: Invalid email address');
+    // Email was dropped from the tool; a strict-parse rejects the unknown key
+    // and nothing is written, so the account email can't be set from chat.
+    expect(result).toMatch(/^Error \[VALIDATION\]/);
     expect(userRepository.updateAuthUserProfile).not.toHaveBeenCalled();
   });
 

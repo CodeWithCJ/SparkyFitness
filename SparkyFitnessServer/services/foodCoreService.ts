@@ -819,8 +819,21 @@ async function updateFoodEntriesSnapshot(
     throw error;
   }
 }
+// `userId` is the active (possibly switched) data context — used to search the
+// local food library and load preferences. `credentialUserId` is the real
+// authenticated actor whose stored provider secrets and OpenFoodFacts session
+// are used, so a delegate can't decrypt a family member's provider keys.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function lookupBarcode(barcode: any, userId: any, providerId: any) {
+async function lookupBarcode(
+  barcode: any,
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  providerId: any,
+  // Defaults to the data-context user for non-delegated callers; routes pass
+  // the real authenticated actor so a delegate can't use a family member's keys.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  credentialUserId: any = userId
+) {
   // Providers are tried in turn, each failure caught so the next can run.
   // Capture the first failure carrying an HTTP status (a surfaceable
   // misconfiguration, e.g. FatSecret's IP error) to report instead of a
@@ -851,7 +864,7 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
       if (resolvedProviderId) {
         const details =
           await externalProviderService.getExternalDataProviderDetails(
-            userId,
+            credentialUserId,
             resolvedProviderId
           );
         if (details?.is_active) {
@@ -965,7 +978,7 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
           barcode,
           undefined,
           language,
-          userId,
+          credentialUserId,
           provider.id
         );
         if (offData?.status === 1 && offData.product) {
@@ -1005,7 +1018,7 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
         try {
           offProviderId =
             await externalProviderService.getActiveOpenFoodFactsProviderId(
-              userId
+              credentialUserId
             );
         } catch (fallbackError) {
           log(
@@ -1020,7 +1033,7 @@ async function lookupBarcode(barcode: any, userId: any, providerId: any) {
           barcode,
           undefined,
           language,
-          offProviderId ? userId : undefined,
+          offProviderId ? credentialUserId : undefined,
           offProviderId || undefined
         );
         if (offData?.status === 1 && offData.product) {

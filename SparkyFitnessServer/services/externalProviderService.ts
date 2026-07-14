@@ -69,6 +69,30 @@ function redactCredentialsForNonOwner(provider: any, authenticatedUserId: any) {
   return rest;
 }
 
+// Strip every decrypted secret from a single provider's detail row before it
+// leaves the server to a non-owner. Unlike `redactCredentialsForNonOwner`
+// (which only sheds `app_id`/`app_key`), the by-id detail row also carries the
+// decrypted Garmin session dump and the provider's base URL / external user id,
+// so the detail endpoint needs a wider net. Owners get the row untouched.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function redactProviderDetailsForNonOwner(
+  provider: any,
+  authenticatedUserId: any
+) {
+  if (!provider || provider.user_id === authenticatedUserId) {
+    return provider;
+  }
+  const {
+    app_id: _appId,
+    app_key: _appKey,
+    garth_dump: _garthDump,
+    external_user_id: _externalUserId,
+    base_url: _baseUrl,
+    ...rest
+  } = provider;
+  return rest;
+}
+
 // Keep misconfigured YAZIO rows visible in Settings while preventing clients
 // from offering them as usable search providers.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -495,6 +519,7 @@ export { getExternalDataProvidersForUser };
 export { createExternalDataProvider };
 export { updateExternalDataProvider };
 export { getExternalDataProviderDetails };
+export { redactProviderDetailsForNonOwner };
 export { deleteExternalDataProvider };
 export { getExternalProviderTypes };
 export default {
@@ -503,6 +528,7 @@ export default {
   createExternalDataProvider,
   updateExternalDataProvider,
   getExternalDataProviderDetails,
+  redactProviderDetailsForNonOwner,
   deleteExternalDataProvider,
   getActiveOpenFoodFactsProviderId,
   getExternalProviderTypes,

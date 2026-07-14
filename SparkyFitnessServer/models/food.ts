@@ -530,15 +530,9 @@ async function getFoodDeletionImpact(
       })
     );
 
-    const otherUserFoodEntries = otherUserEntriesResult.rows.map(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (row: any) => ({
-        id: row.id,
-        entry_date: row.entry_date,
-        meal_type_id: row.meal_type_id,
-        isCurrentUser: false,
-      })
-    );
+    // Other users' diary rows are counted for the impact warning but never
+    // returned — their entry ids/dates belong to those users, not the caller.
+    const otherUserFoodEntriesCount = otherUserEntriesResult.rows.length;
 
     // Structural reference counts (meals, plans, templates)
     const [
@@ -586,14 +580,14 @@ async function getFoodDeletionImpact(
       parseInt(otherUserTemplatesResult.rows[0].count, 10);
 
     const foodEntriesCount =
-      currentUserFoodEntries.length + otherUserFoodEntries.length;
+      currentUserFoodEntries.length + otherUserFoodEntriesCount;
     const currentUserReferences =
       currentUserFoodEntries.length +
       parseInt(currentUserMealFoodsResult.rows[0].count, 10) +
       parseInt(currentUserMealPlansResult.rows[0].count, 10) +
       parseInt(currentUserTemplatesResult.rows[0].count, 10);
     const otherUserReferences =
-      otherUserFoodEntries.length +
+      otherUserFoodEntriesCount +
       parseInt(otherUserMealFoodsResult.rows[0].count, 10) +
       parseInt(otherUserMealPlansResult.rows[0].count, 10) +
       parseInt(otherUserTemplatesResult.rows[0].count, 10);
@@ -616,7 +610,7 @@ async function getFoodDeletionImpact(
     }
 
     return {
-      foodEntries: [...currentUserFoodEntries, ...otherUserFoodEntries],
+      foodEntries: currentUserFoodEntries,
       foodEntriesCount,
       mealFoodsCount,
       mealPlansCount,

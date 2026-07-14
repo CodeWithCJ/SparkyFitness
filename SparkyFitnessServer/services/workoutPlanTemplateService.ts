@@ -2,14 +2,7 @@ import workoutPlanTemplateRepository from '../models/workoutPlanTemplateReposito
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import exerciseRepository from '../models/exerciseRepository.js';
 import { log } from '../config/logging.js';
-import { loadUserTimezone } from '../utils/timezoneLoader.js';
-import { todayInZone } from '@workspace/shared';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveToday(userId: any, clientDate: any) {
-  if (clientDate) return clientDate;
-  const tz = await loadUserTimezone(userId);
-  return todayInZone(tz);
-}
+import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createWorkoutPlanTemplate(userId: any, planData: any) {
   log(
@@ -60,7 +53,10 @@ async function createWorkoutPlanTemplate(userId: any, planData: any) {
         'info',
         `createWorkoutPlanTemplate service - New plan is active, creating exercise entries from template ${newPlan.id}`
       );
-      const today = await resolveToday(userId, planData.currentClientDate);
+      const today = await resolveTemplateStartDay(
+        userId,
+        planData.currentClientDate
+      );
       await exerciseRepository.createExerciseEntriesFromTemplate(
         newPlan.id,
         userId,
@@ -163,7 +159,10 @@ async function updateWorkoutPlanTemplate(
     }
   }
   try {
-    const today = await resolveToday(userId, updateData.currentClientDate);
+    const today = await resolveTemplateStartDay(
+      userId,
+      updateData.currentClientDate
+    );
     // When a plan is updated, remove the old exercise entries that were created from it.
     log(
       'info',
@@ -236,8 +235,7 @@ async function deleteWorkoutPlanTemplate(userId: any, templateId: any) {
       'info',
       `deleteWorkoutPlanTemplate service - Deleting future associated exercise entries for template ${templateId}`
     );
-    // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
-    const today = await resolveToday(userId);
+    const today = await resolveTemplateStartDay(userId);
     await exerciseRepository.deleteExerciseEntriesByTemplateId(
       templateId,
       userId,

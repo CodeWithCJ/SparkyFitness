@@ -371,18 +371,27 @@ router.post('/update-password', authenticate, async (req, res, next) => {
  *         description: Server error.
  */
 router.post('/update-email', authenticate, async (req, res, next) => {
-  const { newEmail } = req.body;
+  const { newEmail, currentPassword } = req.body;
   if (!newEmail) {
     return res.status(400).json({ error: 'New email is required.' });
   }
   try {
     // Security: Email updates must always apply to the authenticated user
 
-    await authService.updateUserEmail(req.authenticatedUserId, newEmail);
+    await authService.updateUserEmail(
+      req.authenticatedUserId,
+      newEmail,
+      currentPassword
+    );
     res.status(200).json({
       message: 'Email update initiated. User will need to verify new email.',
     });
   } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (typeof error.statusCode === 'number') {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     if (error.constructor.name === 'ConflictError') {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
