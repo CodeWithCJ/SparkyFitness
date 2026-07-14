@@ -1068,7 +1068,33 @@ async function lookupBarcode(
     throw error;
   }
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getFavoriteFoods(authenticatedUserId: any) {
+  return foodRepository.getFavoriteFoods(authenticatedUserId);
+}
+async function addFoodFavorite(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foodId: any
+) {
+  // Ensure the food exists and is accessible to this user before starring it.
+  // getFoodById throws 'Food not found.' for inaccessible/invalid ids.
+  await getFoodById(authenticatedUserId, foodId);
+  await foodRepository.addFoodFavorite(authenticatedUserId, foodId);
+  return { food_id: foodId, is_favorite: true };
+}
+async function removeFoodFavorite(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foodId: any
+) {
+  await foodRepository.removeFoodFavorite(authenticatedUserId, foodId);
+  return { food_id: foodId, is_favorite: false };
+}
 export { searchFoods };
+export { getFavoriteFoods, addFoodFavorite, removeFoodFavorite };
 export { createFood };
 export { getFoodById };
 export { updateFood };
@@ -1090,6 +1116,9 @@ export { mapFatSecretFood };
 export { mapUsdaBarcodeProduct };
 export default {
   searchFoods,
+  getFavoriteFoods,
+  addFoodFavorite,
+  removeFoodFavorite,
   createFood,
   getFoodById,
   updateFood,

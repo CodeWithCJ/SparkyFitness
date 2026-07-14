@@ -13,6 +13,7 @@ import { log } from './config/logging.js';
 import { authenticate } from './middleware/authMiddleware.js';
 import { applySignOutCookieCleanup } from './middleware/signOutCookieCleanup.js';
 import foodRoutes from './routes/foodRoutes.js';
+import favoritesRoutes from './routes/favoritesRoutes.js';
 // @ts-expect-error TS1192
 import v2FoodRoutes from './routes/v2/foodRoutes.js';
 // @ts-expect-error TS1192
@@ -476,6 +477,7 @@ app.get('/api/ping', (_req, res) =>
 app.use('/api/chat', chatRoutes);
 app.use('/api/ai', aiUnitConversionRoutes);
 app.use('/api/foods', foodRoutes);
+app.use('/api/favorites', favoritesRoutes);
 app.use('/api/v2/foods', v2FoodRoutes);
 app.use('/api/v2/exercise-entries', v2ExerciseEntryRoutes);
 app.use('/api/v2/exercises', v2ExerciseRoutes);

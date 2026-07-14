@@ -36,6 +36,7 @@ BEGIN
     'family_access',
     'food_entries',
     'food_entry_meals',
+    'food_favorites',
     'food_variants',
     'foods',
     'goal_presets',
@@ -895,3 +896,6 @@ CREATE POLICY modify_policy ON public.user_medication_display_preferences FOR AL
 -- RLS). Deny the app role entirely as defense-in-depth so a stray GRANT can
 -- never expose session material to user-scoped queries.
 CREATE POLICY deny_all_policy ON public.passkey_registration_tickets FOR ALL TO PUBLIC USING (false) WITH CHECK (false);
+
+-- Food favorites: a user's starred foods/meals are strictly private to them (Tier 1)
+SELECT create_owner_policy('food_favorites');
