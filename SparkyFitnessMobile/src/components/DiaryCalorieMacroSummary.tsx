@@ -23,11 +23,10 @@ const CORE_MACROS = ['protein', 'carbs', 'fat', 'dietary_fiber'] as const;
 interface CalorieBarProps {
   eaten: number;
   goal: number;
-  remaining: number;
   progressPercent: number;
 }
 
-const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progressPercent }) => {
+const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, progressPercent }) => {
   const [barWidth, setBarWidth] = useState(0);
   const [trackColor, fillColor] = useCSSVariable([
     '--color-progress-track',
@@ -72,7 +71,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
 
   return (
     <View>
-      <View className="flex-row justify-between items-baseline mb-3">
+      <View className="mb-3">
         <Text className="text-lg font-bold text-text-primary">
           {Math.round(eaten).toLocaleString()}
           {hasGoal && (
@@ -82,15 +81,6 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
           )}
           <Text className="text-sm font-normal text-text-muted"> kcal</Text>
         </Text>
-        {hasGoal && (
-          <Text className="text-sm font-bold text-text-primary">
-            {Math.abs(Math.round(remaining)).toLocaleString()}
-            <Text className="text-sm font-normal text-text-muted">
-              {' '}
-              {remaining >= 0 ? 'remaining' : 'over'}
-            </Text>
-          </Text>
-        )}
       </View>
       {hasGoal && (
         <View className="h-[7px]" onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
@@ -158,13 +148,12 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   const { eaten, goal, remaining, progress } = summary.calorieBalance;
 
   const handleToggleExpanded = () => {
-    // Custom config (rather than Presets.easeInEaseOut) so the height change
-    // animates without the default create/delete opacity fade on the pills.
+    // Only animate `update` (the height/position shift as the card resizes).
+    // Omitting `create`/`delete` means the pills themselves pop in/out
+    // instantly with no fade or scale-in effect of their own.
     LayoutAnimation.configureNext({
       duration: 200,
       update: { type: LayoutAnimation.Types.easeInEaseOut },
-      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.scaleXY },
-      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.scaleXY },
     });
     setDiarySummaryExpanded(!diarySummaryExpanded);
   };
@@ -198,16 +187,24 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
         accessibilityState={{ expanded: diarySummaryExpanded }}
         accessibilityHint={diarySummaryExpanded ? 'Collapse this section' : 'Expand this section'}
       >
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-md font-bold text-text-secondary">Calories</Text>
+        <View className="flex-row justify-end items-center mb-2">
+          {goal > 0 && (
+            <Text className="text-sm font-bold text-text-primary mr-2">
+              {Math.abs(Math.round(remaining)).toLocaleString()}
+              <Text className="text-sm font-normal text-text-muted">
+                {' '}
+                {remaining >= 0 ? 'remaining' : 'over'}
+              </Text>
+            </Text>
+          )}
           <Animated.View style={chevronStyle}>
             <Icon name="chevron-down" size={20} color={textSecondary} />
           </Animated.View>
         </View>
-        <CalorieBar eaten={eaten} goal={goal} remaining={remaining} progressPercent={progress / 100} />
+        <CalorieBar eaten={eaten} goal={goal} progressPercent={progress / 100} />
       </TouchableOpacity>
       {diarySummaryExpanded && (
-        <View className="flex-row flex-wrap justify-between mt-3">
+        <View className="flex-row flex-wrap justify-between gap-y-2 mt-3">
           {CORE_MACROS.map((key) => {
             const { label, consumed, goal: macroGoal } = resolveCoreMacro(key);
             return (
