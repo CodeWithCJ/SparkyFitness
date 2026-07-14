@@ -11,10 +11,9 @@ const checkPermissionMiddleware = (permissionType: any) => {
     // Every user this request could act on: the validated active context
     // (req.userId, which authMiddleware/onBehalfOfMiddleware already vetted the
     // switch for) plus any user named in a client-supplied query/body param.
-    // The caller must be authorized for ALL of them. Authorizing only the first
-    // client-supplied target lets a delegate switched into a victim name a
-    // different user (e.g. ?userId=<their own id>) to satisfy a self-access
-    // check while the handler still operates on the victim's req.userId.
+    // The caller must be authorized for ALL of them, not just one — a
+    // client-supplied target that happens to be self must not stand in for the
+    // active context the handler actually operates on.
     const candidateTargets = [
       ...new Set(
         [

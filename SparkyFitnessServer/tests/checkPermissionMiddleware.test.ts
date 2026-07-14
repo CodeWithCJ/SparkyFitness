@@ -82,10 +82,10 @@ describe('checkPermissionMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('cannot be bypassed by spoofing the query userId back to self (finding #2)', async () => {
-    // Delegate is switched into the victim (req.userId=victim) and appends
-    // ?userId=<their own id> to trigger the self-access path. The victim context
-    // must still be authorized.
+  it('authorizes the active context even when a client-supplied target names self', async () => {
+    // A switched delegate whose query names their own id must not shortcut the
+    // self-access path — the active context (req.userId) still has to pass the
+    // permission check.
     mockedCanAccess.mockResolvedValue(false);
     const mw = checkPermissionMiddleware('medications');
     const { promise, res, next } = run(mw, {
