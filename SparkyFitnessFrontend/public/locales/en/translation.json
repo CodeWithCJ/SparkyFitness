@@ -1118,7 +1118,7 @@
       "currentEmail": "Current Email",
       "enterNewEmail": "Enter new email address",
       "updateEmail": "Update Email",
-      "updateEmailHint": "Your email address will be updated immediately.",
+      "updateEmailHint": "Confirm your current password to change your email. Leave blank if you sign in with SSO.",
       "emailUpdateSuccess": "Email updated successfully.",
       "emailUpdateError": "Failed to update email",
       "changePassword": "Change Password",

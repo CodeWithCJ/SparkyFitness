@@ -45,14 +45,31 @@ describe('POST /api/identity/update-email', () => {
 
     const res = await request(app)
       .post('/api/identity/update-email')
-      .send({ newEmail: 'new@example.com' });
+      .send({ newEmail: 'new@example.com', currentPassword: 'pw' });
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveProperty('message');
     expect(authService.updateUserEmail).toHaveBeenCalledWith(
       'test-user-id',
-      'new@example.com'
+      'new@example.com',
+      'pw'
     );
+  });
+
+  it('maps a statusCode-bearing service error (step-up failure) to that status', async () => {
+    // @ts-expect-error TS(2339)
+    authService.updateUserEmail.mockRejectedValue(
+      Object.assign(new Error('Current password is incorrect.'), {
+        statusCode: 401,
+      })
+    );
+
+    const res = await request(app)
+      .post('/api/identity/update-email')
+      .send({ newEmail: 'new@example.com', currentPassword: 'wrong' });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body).toHaveProperty('error', 'Current password is incorrect.');
   });
 
   it('returns 400 when newEmail is missing', async () => {
@@ -75,7 +92,8 @@ describe('POST /api/identity/update-email', () => {
 
     expect(authService.updateUserEmail).toHaveBeenCalledWith(
       'test-user-id',
-      'taken@example.com'
+      'taken@example.com',
+      undefined
     );
     expect(res.statusCode).toBe(500);
   });

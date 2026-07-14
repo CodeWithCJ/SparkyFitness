@@ -1,14 +1,7 @@
 import mealPlanTemplateRepository from '../models/mealPlanTemplateRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import { log } from '../config/logging.js';
-import { loadUserTimezone } from '../utils/timezoneLoader.js';
-import { todayInZone } from '@workspace/shared';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveToday(userId: any, clientDate: any) {
-  if (clientDate) return clientDate;
-  const tz = await loadUserTimezone(userId);
-  return todayInZone(tz);
-}
+import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createMealPlanTemplate(userId: any, planData: any) {
   log('info', 'createMealPlanTemplate service - received planData:', planData);
@@ -30,7 +23,10 @@ async function createMealPlanTemplate(userId: any, planData: any) {
         'info',
         `createMealPlanTemplate service - New plan is active, creating food entries from template ${newPlan.id}`
       );
-      const today = await resolveToday(userId, planData.currentClientDate);
+      const today = await resolveTemplateStartDay(
+        userId,
+        planData.currentClientDate
+      );
       await foodRepository.createFoodEntriesFromTemplate(
         newPlan.id,
         userId,
@@ -87,7 +83,10 @@ async function updateMealPlanTemplate(planId: any, userId: any, planData: any) {
     planData
   );
   try {
-    const today = await resolveToday(userId, planData.currentClientDate);
+    const today = await resolveTemplateStartDay(
+      userId,
+      planData.currentClientDate
+    );
     // When a plan is updated, remove the old food entries that were created from it.
     // The new entries will be generated on-the-fly when the diary is viewed.
     log(
@@ -144,7 +143,7 @@ async function deleteMealPlanTemplate(
   currentClientDate: any
 ) {
   try {
-    const today = await resolveToday(userId, currentClientDate);
+    const today = await resolveTemplateStartDay(userId, currentClientDate);
     log(
       'info',
       `deleteMealPlanTemplate service - Deleting food entries for template ${planId} starting from ${today}`

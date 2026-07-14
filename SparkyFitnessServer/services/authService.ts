@@ -8,6 +8,7 @@ import { canAccessUserData } from '../utils/permissionUtils.js';
 import adminActivityLogRepository from '../models/adminActivityLogRepository.js';
 
 const hashAsync = promisify(bcrypt.hash);
+const compareAsync = promisify(bcrypt.compare);
 /**
  * Gets consistent user data by ID.
  * Used internally by various app services.
@@ -206,8 +207,36 @@ async function updateUserPassword(authenticatedUserId: any, newPassword: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserEmail(authenticatedUserId: any, newEmail: any) {
+async function updateUserEmail(
+  authenticatedUserId: any,
+  newEmail: any,
+  currentPassword?: string
+) {
   try {
+    // The configured admin email is the bootstrap admin identity; it may only
+    // be held by registering with it, never adopted through an email change.
+    const adminEmail = process.env.SPARKY_FITNESS_ADMIN_EMAIL;
+    if (adminEmail && newEmail === adminEmail) {
+      throw Object.assign(new Error('This email address is not available.'), {
+        statusCode: 400,
+      });
+    }
+    // Step-up: re-verify the current password before changing this identity
+    // field. SSO-only accounts have no local password and change email on their
+    // authenticated session alone.
+    const passwordHash =
+      await userRepository.getCredentialPasswordHash(authenticatedUserId);
+    if (passwordHash) {
+      const verified =
+        typeof currentPassword === 'string' &&
+        currentPassword.length > 0 &&
+        (await compareAsync(currentPassword, passwordHash));
+      if (!verified) {
+        throw Object.assign(new Error('Current password is incorrect.'), {
+          statusCode: 401,
+        });
+      }
+    }
     const existingUser = await userRepository.findUserByEmail(newEmail);
     if (existingUser && existingUser.id !== authenticatedUserId) {
       throw new Error('Email already in use by another account.');
