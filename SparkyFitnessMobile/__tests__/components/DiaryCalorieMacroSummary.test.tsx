@@ -80,6 +80,7 @@ describe('DiaryCalorieMacroSummary', () => {
         calorieBalance: { ...buildSummary().calorieBalance, eaten: 500, goal: 2000, remaining: 1500 },
       }),
     });
+    expect(getByText('Summary')).toBeTruthy();
     expect(getByText(/500 \/ 2,000 kcal/)).toBeTruthy();
     expect(getByText(/1,500/)).toBeTruthy();
     expect(getByText(/remaining/)).toBeTruthy();
