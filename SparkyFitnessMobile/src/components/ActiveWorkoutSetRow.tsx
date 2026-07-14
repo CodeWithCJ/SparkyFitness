@@ -650,10 +650,10 @@ function ActiveWorkoutSetRow({
     );
   }, [onPressSetType, setId]);
 
-  // A wired long-press wins (live: expand the row's notes/rest detail; view:
+  // A wired long-press wins (live/edit: expand the row's note panel; view:
   // "Start workout here"); the set-type menu is otherwise the long-press
-  // fallback for surfaces that only offer the type picker (the edit form). The
-  // set-number tap always opens the type menu independently of this.
+  // fallback for surfaces that only offer the type picker (the preset form).
+  // The set-number tap always opens the type menu independently of this.
   const longPress = onLongPress
     ? () => onLongPress(setId)
     : onPressSetType

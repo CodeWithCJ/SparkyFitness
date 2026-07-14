@@ -160,6 +160,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     updateSetMeta,
     setExerciseRest,
     setExerciseCalories,
+    setExerciseNotes,
     supersetWith,
     ungroupExercise,
     reorderExercises,
@@ -664,6 +665,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               onRemoveExercise={handleRemoveExercise}
               setExerciseRest={setExerciseRest}
               setExerciseCalories={setExerciseCalories}
+              setExerciseNotes={setExerciseNotes}
               supersetWith={supersetWith}
               ungroupExercise={ungroupExercise}
               onReorderExercises={reorderExercises}

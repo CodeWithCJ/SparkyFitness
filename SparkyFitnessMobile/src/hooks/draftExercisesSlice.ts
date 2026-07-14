@@ -40,6 +40,7 @@ export type DraftExercisesAction =
   | { type: 'UPDATE_SET_META'; exerciseClientId: string; setClientId: string; patch: WorkoutSetMetaPatch }
   | { type: 'SET_EXERCISE_REST'; exerciseClientId: string; seconds: number }
   | { type: 'SET_EXERCISE_CALORIES'; exerciseClientId: string; calories: string }
+  | { type: 'SET_EXERCISE_NOTES'; exerciseClientId: string; notes: string }
   | { type: 'SUPERSET_WITH'; currentClientId: string; pickedClientId: string }
   | { type: 'UNGROUP_EXERCISE'; clientId: string }
   | { type: 'REORDER_EXERCISES'; fromItemIndex: number; toItemIndex: number };
@@ -130,6 +131,20 @@ export function draftExercisesReducer(
         return { ...exercise, calories: action.calories, caloriesManuallySet: true };
       });
 
+    // Mirrors the live store's setExerciseNotes: trim, empty → null, identity
+    // return when nothing changes.
+    case 'SET_EXERCISE_NOTES': {
+      const trimmed = action.notes.trim();
+      const nextNotes = trimmed.length > 0 ? trimmed : null;
+      const target = exercises.find(e => e.clientId === action.exerciseClientId);
+      if (target == null || (target.notes ?? null) === nextNotes) return exercises;
+      return exercises.map(exercise =>
+        exercise.clientId === action.exerciseClientId
+          ? { ...exercise, notes: nextNotes }
+          : exercise,
+      );
+    }
+
     case 'SUPERSET_WITH':
       return supersetDraftExercises(exercises, action.currentClientId, action.pickedClientId);
 
@@ -173,6 +188,7 @@ export function useDraftExerciseActions(
   ) => void;
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
   setExerciseCalories: (exerciseClientId: string, calories: string) => void;
+  setExerciseNotes: (exerciseClientId: string, notes: string) => void;
   supersetWith: (currentClientId: string, pickedClientId: string) => void;
   ungroupExercise: (clientId: string) => void;
   reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
@@ -226,6 +242,10 @@ export function useDraftExerciseActions(
       setExerciseCalories: (exerciseClientId: string, calories: string) => {
         exercisesModifiedRef.current = true;
         dispatch({ type: 'SET_EXERCISE_CALORIES', exerciseClientId, calories });
+      },
+      setExerciseNotes: (exerciseClientId: string, notes: string) => {
+        exercisesModifiedRef.current = true;
+        dispatch({ type: 'SET_EXERCISE_NOTES', exerciseClientId, notes });
       },
       supersetWith: (currentClientId: string, pickedClientId: string) => {
         exercisesModifiedRef.current = true;

@@ -59,8 +59,9 @@ interface ActiveWorkoutExerciseCardProps {
   getImageSource: GetImageSource;
   /**
    * 'view' renders the read-only variant (workout detail): no logging,
-   * editing, overflow menu, add-set, or "Last time" stats fetch. The metric
-   * column and its picker stay live in all modes. 'edit' renders form-draft
+   * editing, overflow menu, add-set, or "Last time" stats fetch; saved
+   * exercise/set notes render as plain text. The metric column and its picker
+   * stay live in all modes. 'edit' renders form-draft
    * rows (see ActiveWorkoutSetRow) with the overflow menu, add-set, rest chip,
    * and stats line active; completion state is display-only (completedBadge)
    * so completed sets stay editable.
@@ -100,9 +101,9 @@ interface ActiveWorkoutExerciseCardProps {
   /** Live/edit only: tap a set number (or long-press the row) to change its type. */
   onPressSetType?: (setId: string, anchor: AnchorRect) => void;
   onAddSet?: (entryId: string) => void;
-  // --- live-only per-set expand + notes (Parts B/C) ---
+  // --- per-set expand + notes (live and edit; view renders notes as plain text) ---
   /**
-   * Live only: the render key whose inline note panel is expanded (toggled by
+   * Live/edit: the render key whose inline note panel is expanded (toggled by
    * long-pressing the set row). A stale key that matches no row renders nothing,
    * so it's harmless after a delete/reconcile.
    */
@@ -115,11 +116,14 @@ interface ActiveWorkoutExerciseCardProps {
    */
   setRenderKeys?: Record<string, string>;
   /**
-   * Live only: the per-exercise note editor is open (card ⋮ → Notes). The note
+   * Live/edit: the per-exercise note editor is open (card ⋮ → Notes). The note
    * field also shows whenever `exercise.notes` is already non-empty.
    */
   noteEditorOpen?: boolean;
-  /** Live only: commit the per-exercise note (raw text; the store trims/clears). */
+  /**
+   * Live/edit: commit the per-exercise note (raw text; the owner trims/clears).
+   * The editable note field only renders when this is wired.
+   */
   onCommitExerciseNote?: (entryId: string, text: string) => void;
   // --- edit + live editing props ---
   /**
@@ -526,17 +530,26 @@ function ActiveWorkoutExerciseCard({
         </Pressable>
       </View>
 
-      {/* Per-exercise note (live only): a subtle line under the name, shown when
-          a note already exists or the card ⋮ "Notes" editor was opened. */}
-      {isLive && (!!exercise.notes || noteEditorOpen) && (
+      {/* Per-exercise note: a subtle line under the name, shown when a note
+          already exists or the card ⋮ "Notes" editor was opened. Editable
+          wherever a commit handler is wired (live + workout forms); view mode
+          shows the saved note as plain text. */}
+      {!readOnly && onCommitExerciseNote != null && (!!exercise.notes || noteEditorOpen) && (
         <View className="mt-2 px-1">
           <WorkoutNotesField
             value={exercise.notes}
-            onCommit={(text) => onCommitExerciseNote?.(exercise.id, text)}
+            onCommit={(text) => onCommitExerciseNote(exercise.id, text)}
             label=""
             placeholder="Add a note for this exercise…"
             accessibilityLabel={`Notes for ${name}`}
           />
+        </View>
+      )}
+      {readOnly && !!exercise.notes && (
+        <View className="mt-2 px-1">
+          <Text className="text-sm text-text-secondary" accessibilityLabel={`Notes for ${name}`}>
+            {exercise.notes}
+          </Text>
         </View>
       )}
 
@@ -707,10 +720,20 @@ function ActiveWorkoutExerciseCard({
               onAddSet={onAddSet}
               onRegisterAccessoryHandle={onRegisterAccessoryHandle}
             />
-            {/* Per-set note expand — live only, toggled by long-pressing the
-                set row. */}
-            {isLive && expandedSetKey === renderKey && onCommitField != null && (
+            {/* Per-set note expand — live and edit, toggled by long-pressing
+                the set row. View mode shows a saved note as plain text. */}
+            {!readOnly && expandedSetKey === renderKey && onCommitField != null && (
               <ActiveWorkoutSetDetail set={set} onCommitField={onCommitField} />
+            )}
+            {readOnly && !!set.notes && (
+              <View className="px-1 pb-2">
+                <Text
+                  className="text-xs text-text-secondary"
+                  accessibilityLabel={`Notes for set ${set.set_number}`}
+                >
+                  {set.notes}
+                </Text>
+              </View>
             )}
           </React.Fragment>
         );
