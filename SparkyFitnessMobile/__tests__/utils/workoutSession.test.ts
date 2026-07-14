@@ -43,6 +43,8 @@ import {
   moveDraftExerciseItem,
   isWarmupSetType,
   setTypeLetter,
+  summarizeWorkoutSpan,
+  WORKOUT_LONG_GAP_MINUTES,
   seedPrFromSession,
   compareSetRecords,
   matchesSetRecord,
@@ -1930,6 +1932,70 @@ describe('workoutSession', () => {
       expect(payload[0].sets[0].is_pr).toBe(true);
       expect(payload[1].sets[0]).not.toHaveProperty('id');
       expect(payload[1].sets[0].is_pr).toBe(true);
+    });
+  });
+
+  describe('summarizeWorkoutSpan', () => {
+    const MIN = 60_000;
+    const start = 1_000_000;
+
+    it('returns null without a start time', () => {
+      expect(summarizeWorkoutSpan({ '1': start + MIN }, null)).toBeNull();
+    });
+
+    it('returns null with no completions after the start', () => {
+      expect(summarizeWorkoutSpan({}, start)).toBeNull();
+      // Seeded completions predating the start (resumed session) are ignored.
+      expect(summarizeWorkoutSpan({ '1': start - 5 * MIN }, start)).toBeNull();
+    });
+
+    it('reports a steady workout with no long gap', () => {
+      const span = summarizeWorkoutSpan(
+        { '1': start + 2 * MIN, '2': start + 5 * MIN, '3': start + 8 * MIN },
+        start,
+      );
+      expect(span).toEqual({ totalMinutes: 8, activeMinutes: 8, hasLongGap: false });
+    });
+
+    it('excludes long gaps from active time', () => {
+      const span = summarizeWorkoutSpan(
+        { '1': start + 5 * MIN, '2': start + 10 * MIN, '3': start + 720 * MIN },
+        start,
+      );
+      expect(span).toEqual({ totalMinutes: 720, activeMinutes: 10, hasLongGap: true });
+    });
+
+    it('flags a long start-to-first-set gap', () => {
+      const span = summarizeWorkoutSpan(
+        { '1': start + 45 * MIN, '2': start + 47 * MIN },
+        start,
+      );
+      expect(span).toEqual({ totalMinutes: 47, activeMinutes: 2, hasLongGap: true });
+    });
+
+    it('treats a gap exactly at the threshold as active time', () => {
+      const span = summarizeWorkoutSpan(
+        { '1': start + WORKOUT_LONG_GAP_MINUTES * MIN },
+        start,
+      );
+      expect(span).toEqual({
+        totalMinutes: WORKOUT_LONG_GAP_MINUTES,
+        activeMinutes: WORKOUT_LONG_GAP_MINUTES,
+        hasLongGap: false,
+      });
+    });
+
+    it('never reports less than one active minute', () => {
+      const span = summarizeWorkoutSpan({ '1': start + 10_000 }, start);
+      expect(span?.activeMinutes).toBe(1);
+    });
+
+    it('walks completions in timestamp order regardless of key order', () => {
+      const span = summarizeWorkoutSpan(
+        { b: start + 700 * MIN, a: start + 3 * MIN },
+        start,
+      );
+      expect(span).toEqual({ totalMinutes: 700, activeMinutes: 3, hasLongGap: true });
     });
   });
 

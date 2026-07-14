@@ -45,6 +45,9 @@ import ActionSheet, {
 } from '../components/ActionSheet';
 import { type AnchorRect } from '../components/AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
+import WorkoutDurationSheet, {
+  type WorkoutDurationSheetRef,
+} from '../components/WorkoutDurationSheet';
 import WorkoutReorderList from '../components/WorkoutReorderList';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
@@ -65,7 +68,9 @@ import {
   buildExerciseReorderItems,
   describeActiveSet,
   exerciseFromSnapshot,
+  formatDuration,
   formatSetLoad,
+  summarizeWorkoutSpan,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -871,6 +876,51 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     await attempt();
   }, [flush, navigation]);
 
+  // Long-gap guard on the way out: a workout left open across a long break
+  // (forgotten overnight, one straggler set the next morning) would stamp the
+  // whole wall-clock span as exercise duration — and the server derives
+  // calories from duration. Offer the gap-clamped active time before finishing.
+  const durationSheetRef = useRef<WorkoutDurationSheetRef>(null);
+  const maybeAdjustDurationThenFinish = useCallback(() => {
+    const { completedSetIds: completed, startedAt } = useActiveWorkoutStore.getState();
+    const span = summarizeWorkoutSpan(completed, startedAt);
+    if (span == null || !span.hasLongGap) {
+      void handleFinish();
+      return;
+    }
+    const activeLabel = formatDuration(span.activeMinutes);
+    Alert.alert(
+      'Adjust workout duration?',
+      `This workout spans ${formatDuration(span.totalMinutes)}, including a long break. Log ${activeLabel} of active time instead?`,
+      [
+        {
+          text: `Log ${activeLabel}`,
+          onPress: () => {
+            useActiveWorkoutStore.getState().setWorkoutDurationMinutes(span.activeMinutes);
+            void handleFinish();
+          },
+        },
+        {
+          text: `Keep ${formatDuration(span.totalMinutes)}`,
+          onPress: () => void handleFinish(),
+        },
+        {
+          text: 'Custom…',
+          onPress: () =>
+            durationSheetRef.current?.present(span.activeMinutes, Math.floor(span.totalMinutes)),
+        },
+      ],
+    );
+  }, [handleFinish]);
+
+  const handleDurationSave = useCallback(
+    (minutes: number) => {
+      useActiveWorkoutStore.getState().setWorkoutDurationMinutes(minutes);
+      void handleFinish();
+    },
+    [handleFinish],
+  );
+
   const handleConfirmEnd = useCallback(() => {
     // Commit any focused-but-unblurred input (a set value or a note) into the
     // store before the finish flush reads it. keyboardShouldPersistTaps keeps
@@ -892,9 +942,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         : `All ${totalSets} sets logged. Nice work!`;
     Alert.alert('End workout?', message, [
       { text: 'Keep going', style: 'cancel' },
-      { text: 'End Workout', style: 'default', onPress: () => void handleFinish() },
+      { text: 'End Workout', style: 'default', onPress: maybeAdjustDurationThenFinish },
     ]);
-  }, [session, completedSetIds, handleFinish]);
+  }, [session, completedSetIds, maybeAdjustDurationThenFinish]);
 
   if (session == null || sessionId == null) {
     return (
@@ -1148,6 +1198,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       )}
 
       <RestPeriodSheet ref={restSheetRef} onChange={handleRestChanged} />
+
+      <WorkoutDurationSheet ref={durationSheetRef} onSave={handleDurationSave} />
 
       <RenameWorkoutDialog
         visible={renameVisible}

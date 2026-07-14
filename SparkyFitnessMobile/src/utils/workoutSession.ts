@@ -797,6 +797,58 @@ export function buildSessionDurationMinutes(
   return byEntryId;
 }
 
+/** A gap between set completions longer than this reads as a break, not workout time. */
+export const WORKOUT_LONG_GAP_MINUTES = 30;
+
+export interface WorkoutSpanSummary {
+  /** Wall-clock minutes from workout start to the last completed set. */
+  totalMinutes: number;
+  /**
+   * `totalMinutes` with every long gap removed — the duration the workout
+   * plausibly took, offered by the end-of-workout adjust prompt. At least 1.
+   */
+  activeMinutes: number;
+  /** True when any completion gap exceeds {@link WORKOUT_LONG_GAP_MINUTES}. */
+  hasLongGap: boolean;
+}
+
+/**
+ * Gap analysis over the same span `buildSessionDurationMinutes` stamps
+ * (workout start → last completed set), which the server turns into exercise
+ * duration and calories. Walks the completion timestamps in order; a gap
+ * longer than {@link WORKOUT_LONG_GAP_MINUTES} counts as a break and
+ * contributes nothing to `activeMinutes`. Completions at or before
+ * `startedAtMs` are ignored, matching the duration stamper's resumed-session
+ * guard. Returns null when there is no started workout or nothing completed
+ * after it.
+ */
+export function summarizeWorkoutSpan(
+  completedSetIds: CompletedSetMap,
+  startedAtMs: number | null | undefined,
+): WorkoutSpanSummary | null {
+  if (startedAtMs == null) return null;
+  const times = Object.values(completedSetIds)
+    .filter((ms): ms is number => ms != null && ms > startedAtMs)
+    .sort((a, b) => a - b);
+  if (times.length === 0) return null;
+
+  const gapLimitMs = WORKOUT_LONG_GAP_MINUTES * 60_000;
+  let activeMs = 0;
+  let hasLongGap = false;
+  let prev = startedAtMs;
+  for (const ms of times) {
+    const gap = ms - prev;
+    if (gap > gapLimitMs) hasLongGap = true;
+    else activeMs += gap;
+    prev = ms;
+  }
+  return {
+    totalMinutes: (times[times.length - 1] - startedAtMs) / 60_000,
+    activeMinutes: Math.max(1, Math.round(activeMs / 60_000)),
+    hasLongGap,
+  };
+}
+
 /** Set types offered by the long-press set-type pickers. */
 export const SET_TYPE_OPTIONS = ['warmup', 'normal', 'drop', 'failure'] as const;
 
