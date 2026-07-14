@@ -32,6 +32,16 @@ describe('OidcProviderLogo', () => {
     );
   });
 
+  it('resolves a relative logo path missing its leading slash', () => {
+    const { UNSAFE_getByType } = render(
+      <OidcProviderLogo logoUrl="uploads/logo.png" serverUrl={SERVER_URL} />,
+    );
+
+    expect(UNSAFE_getByType(Image).props.source.uri).toBe(
+      `${SERVER_URL}/uploads/logo.png`,
+    );
+  });
+
   it('uses an absolute logo URL as-is', () => {
     const { UNSAFE_getByType } = render(
       <OidcProviderLogo logoUrl="https://cdn.example.com/logo.png" serverUrl={SERVER_URL} />,

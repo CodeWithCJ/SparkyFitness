@@ -109,6 +109,30 @@ describe('ReauthModal', () => {
     expect(result.queryByText('Or sign in with')).toBeNull();
   });
 
+  it('shows only the expired server when other session configs exist', async () => {
+    const otherConfig: ServerConfig = {
+      id: 'config-2',
+      url: 'https://other-server.com',
+      apiKey: '',
+      authType: 'session',
+      sessionToken: 'valid-token',
+    };
+    mockGetAllServerConfigs.mockResolvedValue([otherConfig, sessionConfig]);
+
+    const result = renderModal();
+    await flushAsync();
+
+    expect(result.getByText('https://my-server.com')).toBeTruthy();
+    expect(result.queryByText('https://other-server.com')).toBeNull();
+  });
+
+  it('falls back to the first session config when the expired id is unknown', async () => {
+    const result = renderModal({ expiredConfigId: null });
+    await flushAsync();
+
+    expect(result.getByText('https://my-server.com')).toBeTruthy();
+  });
+
   it('shows OIDC provider buttons from the server auth settings', async () => {
     mockFetchAuthSettings.mockResolvedValue(oidcAuthSettings);
 

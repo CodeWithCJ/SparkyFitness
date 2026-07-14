@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Modal,
-  TouchableOpacity,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
@@ -62,8 +61,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
 
   // Config state
   const scrollViewRef = useRef<ScrollView>(null);
-  const [configs, setConfigs] = useState<ServerConfig[]>([]);
-  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  const [config, setConfig] = useState<ServerConfig | null>(null);
   const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
 
   // Form state
@@ -91,21 +89,21 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
     setMfaCode('');
     setEmailOtpSent(false);
 
-    const loadConfigs = async () => {
+    const loadConfig = async () => {
       const allConfigs = await getAllServerConfigs();
-      // Only show session-auth configs (API key configs don't have session expiry)
+      // Only session-auth configs can have an expired session; the fallback
+      // covers callers without a real config id (e.g. dev tools).
       const sessionConfigs = allConfigs.filter((c) => c.authType === 'session');
-      setConfigs(sessionConfigs);
-
-      const preferred =
+      const resolved =
         (expiredConfigId && sessionConfigs.find((c) => c.id === expiredConfigId)) ||
-        sessionConfigs[0];
-      if (preferred) {
-        setSelectedConfigId(preferred.id);
-        setPendingProxyHeaders(proxyHeadersToRecord(preferred.proxyHeaders));
+        sessionConfigs[0] ||
+        null;
+      setConfig(resolved);
+      if (resolved) {
+        setPendingProxyHeaders(proxyHeadersToRecord(resolved.proxyHeaders));
       }
     };
-    loadConfigs();
+    loadConfig();
   }, [visible, expiredConfigId]);
 
   // On small screens the error banner can push the primary action below the
@@ -119,14 +117,13 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
     return () => clearTimeout(timer);
   }, [error]);
 
-  const selectedConfig = configs.find((c) => c.id === selectedConfigId);
-  const currentUrl = selectedConfig?.url ?? '';
+  const currentUrl = config?.url ?? '';
 
-  // The selected server's auth settings decide which sign-in methods to offer
+  // The server's auth settings decide which sign-in methods to offer
   // (email fields, OIDC providers). A failed fetch falls back to email-only so
   // the user can always attempt credentials.
   useEffect(() => {
-    if (!visible || !selectedConfig) {
+    if (!visible || !config) {
       setAuthSettings(null);
       return;
     }
@@ -135,8 +132,8 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
     const fetchSettings = async () => {
       try {
         const settings = await fetchAuthSettings(
-          selectedConfig.url,
-          proxyHeadersToRecord(selectedConfig.proxyHeaders),
+          config.url,
+          proxyHeadersToRecord(config.proxyHeaders),
         );
         if (isMounted) {
           setAuthSettings(settings);
@@ -156,26 +153,17 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [visible, selectedConfig]);
-
-  const handleSelectConfig = (configId: string) => {
-    setSelectedConfigId(configId);
-    setError('');
-    const config = configs.find((c) => c.id === configId);
-    if (config) {
-      setPendingProxyHeaders(proxyHeadersToRecord(config.proxyHeaders));
-    }
-  };
+  }, [visible, config]);
 
   const saveSessionConfig = async (sessionToken: string) => {
-    if (!selectedConfig) return;
+    if (!config) return;
     await saveServerConfig({
-      id: selectedConfig.id,
-      url: selectedConfig.url,
-      apiKey: selectedConfig.apiKey,
+      id: config.id,
+      url: config.url,
+      apiKey: config.apiKey,
       authType: 'session',
       sessionToken,
-      proxyHeaders: selectedConfig.proxyHeaders,
+      proxyHeaders: config.proxyHeaders,
     });
   };
 
@@ -356,9 +344,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
   };
 
   const handleSwitchToApiKey = () => {
-    if (!selectedConfig || !onSwitchToApiKey) return;
+    if (!config || !onSwitchToApiKey) return;
     clearPendingProxyHeaders();
-    onSwitchToApiKey(selectedConfig);
+    onSwitchToApiKey(config);
   };
 
   const handleDismiss = () => {
@@ -409,50 +397,11 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
 
             {step === 'credentials' ? (
               <>
-                {/* Server picker (only if multiple session configs) */}
-                {configs.length > 1 && (
-                  <View className="mb-3">
-                    <Text className="text-sm mb-2 text-text-secondary">Server</Text>
-                    {configs.map((config) => (
-                      <TouchableOpacity
-                        key={config.id}
-                        className={`flex-row items-center p-3 rounded-lg mb-1.5 border ${
-                          selectedConfigId === config.id
-                            ? 'border-accent-primary bg-raised'
-                            : 'border-border-subtle bg-raised'
-                        }`}
-                        onPress={() => handleSelectConfig(config.id)}
-                      >
-                        <Icon
-                          name={
-                            selectedConfigId === config.id
-                              ? 'radio-button-on'
-                              : 'radio-button-off'
-                          }
-                          size={20}
-                          color={
-                            selectedConfigId === config.id
-                              ? accentPrimary
-                              : textMuted
-                          }
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text
-                          className="flex-1 text-base text-text-primary"
-                          numberOfLines={1}
-                        >
-                          {config.url}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                {/* Server label (single config) */}
-                {configs.length === 1 && (
+                {/* Server label */}
+                {config && (
                   <View className="mb-3">
                     <Text className="text-sm text-text-muted text-center" numberOfLines={1}>
-                      {configs[0].url}
+                      {config.url}
                     </Text>
                   </View>
                 )}
