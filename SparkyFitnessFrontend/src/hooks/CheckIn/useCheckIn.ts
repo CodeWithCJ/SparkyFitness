@@ -7,7 +7,8 @@ import {
   fetchRecentStandardMeasurements,
   deleteCustomMeasurement,
   updateCheckInMeasurementField,
-  loadExistingCheckInMeasurements,
+  loadLatestCheckInMeasurements,
+  loadCheckInMeasurementsForDate,
   loadExistingCustomMeasurements,
   saveCheckInMeasurements,
   saveCustomMeasurement,
@@ -61,10 +62,23 @@ export const useRecentStandardMeasurements = (
   });
 };
 
-export const useExistingCheckInMeasurements = (date: string) => {
+export const useLatestCheckInMeasurements = (date: string) => {
   return useQuery({
-    queryKey: checkInKeys.existingCheckIn(date),
-    queryFn: () => loadExistingCheckInMeasurements(date),
+    queryKey: checkInKeys.latestCheckIn(date),
+    queryFn: () => loadLatestCheckInMeasurements(date),
+    meta: {
+      errorMessage: i18n.t(
+        'checkIn.failedToLoadExistingCheckIn',
+        'Failed to load existing check-in data.'
+      ),
+    },
+  });
+};
+
+export const useCheckInMeasurementsForDate = (date: string) => {
+  return useQuery({
+    queryKey: checkInKeys.dayCheckIn(date),
+    queryFn: () => loadCheckInMeasurementsForDate(date),
     meta: {
       errorMessage: i18n.t(
         'checkIn.failedToLoadExistingCheckIn',

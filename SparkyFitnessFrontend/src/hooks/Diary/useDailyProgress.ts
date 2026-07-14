@@ -9,7 +9,7 @@ import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
 import { userManagementService } from '@/api/Admin/userManagementService';
 import {
   getMostRecentMeasurement,
-  loadExistingCheckInMeasurements,
+  loadLatestCheckInMeasurements,
 } from '@/api/CheckIn/checkInService';
 import { adaptiveTdeeService } from '@/api/Settings/adaptiveTdeeService';
 import { calculateBmr, BmrAlgorithm } from '@/services/bmrService';
@@ -132,7 +132,7 @@ export const useDailyExerciseStats = (date: string) => {
 export const useDailySteps = (date: string) => {
   return useQuery({
     queryKey: dailyProgressKeys.steps(date),
-    queryFn: () => loadExistingCheckInMeasurements(date),
+    queryFn: () => loadLatestCheckInMeasurements(date),
     enabled: !!date,
     select: (data) => {
       const steps = data?.steps || 0;

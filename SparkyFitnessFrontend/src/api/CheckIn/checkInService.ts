@@ -67,7 +67,13 @@ export const updateCheckInMeasurementField = async (payload: {
   });
 };
 
-export const loadExistingCheckInMeasurements = async (
+/**
+ * Loads measurements with carry-forward semantics: each field holds the
+ * latest value recorded on or before the date (steps are same-day only).
+ * For only what was actually recorded on the date itself, use
+ * loadCheckInMeasurementsForDate.
+ */
+export const loadLatestCheckInMeasurements = async (
   selectedDate: string
 ): Promise<CheckInMeasurementsResponse | null> => {
   const response = await apiCall(`/measurements/check-in/${selectedDate}`, {
@@ -79,6 +85,20 @@ export const loadExistingCheckInMeasurements = async (
     return null;
   }
   return checkInMeasurementsResponseSchema.parse(response);
+};
+
+/**
+ * Loads only the measurements recorded on the given date — no carry-forward
+ * from earlier days.
+ */
+export const loadCheckInMeasurementsForDate = async (
+  selectedDate: string
+): Promise<CheckInMeasurementsResponse | null> => {
+  const rows = await fetchRecentStandardMeasurements(
+    selectedDate,
+    selectedDate
+  );
+  return rows[0] ?? null;
 };
 
 export const loadExistingCustomMeasurements = async (

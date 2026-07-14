@@ -1,5 +1,16 @@
 import { CustomCategoriesResponse } from '@workspace/shared';
 
+// Latest recorded value per standard measurement (metric), shown as input
+// placeholders on the check-in form.
+export interface CheckInPlaceholders {
+  weight: number | null;
+  neck: number | null;
+  waist: number | null;
+  hips: number | null;
+  height: number | null;
+  bodyFatPercentage: number | null;
+}
+
 export interface CombinedMeasurement {
   id: string;
   entry_date: string;
