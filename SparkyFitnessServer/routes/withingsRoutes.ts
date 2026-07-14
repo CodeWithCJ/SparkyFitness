@@ -2,6 +2,7 @@ import express from 'express';
 import withingsService from '../integrations/withings/withingsService.js';
 import { log } from '../config/logging.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import withingsServiceCentral from '../services/withingsService.js';
 const router = express.Router();
 /**
@@ -22,21 +23,27 @@ const router = express.Router();
  *               properties:
  *                 authUrl: { type: 'string' }
  */
-router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
-  try {
-    const userId = req.userId; // Assuming user ID is available from authentication
-    const authorizationUrl = await withingsService.getAuthorizationUrl(userId);
-    res.json({ authUrl: authorizationUrl });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error initiating Withings authorization: ${error.message}`);
-    res.status(500).json({
-      message: 'Error initiating Withings authorization',
+router.get(
+  '/authorize',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const userId = req.userId; // Assuming user ID is available from authentication
+      const authorizationUrl =
+        await withingsService.getAuthorizationUrl(userId);
+      res.json({ authUrl: authorizationUrl });
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
-    });
+      log('error', `Error initiating Withings authorization: ${error.message}`);
+      res.status(500).json({
+        message: 'Error initiating Withings authorization',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 /**
  * @swagger
  * /withings/callback:
@@ -126,37 +133,42 @@ router.post('/callback', async (req, res) => {
  *       200:
  *         description: Sync completed successfully.
  */
-router.post('/sync', authMiddleware.authenticate, async (req, res) => {
-  log('info', 'Received request to /withings/sync');
-  try {
-    const userId = req.userId;
-    const { startDate, endDate } = req.body || {};
-    const result = await withingsServiceCentral.syncWithingsData(
-      userId,
-      'manual',
-      startDate,
-      endDate
-    );
-    log(
-      'info',
-      `Withings data sync completed for user ${userId}. Source: ${result.source}`
-    );
-    res.status(200).json({
-      message: 'Withings data sync completed successfully.',
-      source: result.source,
-      // @ts-expect-error TS(2339): Property 'cached_date' does not exist on type '{ s... Remove this comment to see the full error message
-      cached_date: result.cached_date,
-    });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error initiating manual Withings sync: ${error.message}`);
-    res.status(500).json({
-      message: 'Error initiating manual Withings sync',
+router.post(
+  '/sync',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    log('info', 'Received request to /withings/sync');
+    try {
+      const userId = req.userId;
+      const { startDate, endDate } = req.body || {};
+      const result = await withingsServiceCentral.syncWithingsData(
+        userId,
+        'manual',
+        startDate,
+        endDate
+      );
+      log(
+        'info',
+        `Withings data sync completed for user ${userId}. Source: ${result.source}`
+      );
+      res.status(200).json({
+        message: 'Withings data sync completed successfully.',
+        source: result.source,
+        // @ts-expect-error TS(2339): Property 'cached_date' does not exist on type '{ s... Remove this comment to see the full error message
+        cached_date: result.cached_date,
+      });
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
-    });
+      log('error', `Error initiating manual Withings sync: ${error.message}`);
+      res.status(500).json({
+        message: 'Error initiating manual Withings sync',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 /**
  * @swagger
  * /withings/disconnect:
@@ -169,23 +181,28 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
  *       200:
  *         description: Disconnected successfully.
  */
-router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
-  try {
-    const userId = req.userId;
-    await withingsService.disconnectWithings(userId);
-    res
-      .status(200)
-      .json({ message: 'Withings account disconnected successfully.' });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error disconnecting Withings account: ${error.message}`);
-    res.status(500).json({
-      message: 'Error disconnecting Withings account',
+router.post(
+  '/disconnect',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const userId = req.userId;
+      await withingsService.disconnectWithings(userId);
+      res
+        .status(200)
+        .json({ message: 'Withings account disconnected successfully.' });
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
-    });
+      log('error', `Error disconnecting Withings account: ${error.message}`);
+      res.status(500).json({
+        message: 'Error disconnecting Withings account',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 /**
  * @swagger
  * /withings/status:
@@ -202,18 +219,24 @@ router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/WithingsStatus'
  */
-router.get('/status', authMiddleware.authenticate, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const status = await withingsService.getStatus(userId);
-    res.status(200).json(status);
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error getting Withings status: ${error.message}`);
-    res
-      .status(500)
+router.get(
+  '/status',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const userId = req.userId;
+      const status = await withingsService.getStatus(userId);
+      res.status(200).json(status);
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      .json({ message: 'Error getting Withings status', error: error.message });
+      log('error', `Error getting Withings status: ${error.message}`);
+      res.status(500).json({
+        message: 'Error getting Withings status',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 export default router;

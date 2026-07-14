@@ -6,6 +6,13 @@ import measurementService from '../services/measurementService.js';
 import errorHandler from '../middleware/errorHandler.js';
 import healthDataRoutes from '../integrations/healthData/healthDataRoutes.js';
 
+// Toggle for the mocked permission middleware so a test can assert the 403 path
+// (a switched-context delegate lacking diary access to the active user). The
+// real middleware logic is covered by checkPermissionMiddleware.test.ts.
+const { permissionState } = vi.hoisted(() => ({
+  permissionState: { allow: true },
+}));
+
 vi.mock('../services/measurementService.js', () => ({
   default: {
     processHealthData: vi.fn(),
@@ -17,6 +24,16 @@ vi.mock('../models/sleepRepository.js', () => ({
   default: {
     getSleepEntriesByUserIdAndDateRange: vi.fn(),
   },
+}));
+
+vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  default: vi.fn(
+    () => (_req: any, res: any, next: any) =>
+      permissionState.allow
+        ? next()
+        : res.status(403).json({ error: 'Forbidden' })
+  ),
 }));
 
 import type { Request, Response, NextFunction } from 'express';
@@ -32,6 +49,21 @@ app.use(express.json());
 app.use(injectUser);
 app.use('/api/health-data', healthDataRoutes);
 app.use(errorHandler);
+
+beforeEach(() => {
+  permissionState.allow = true;
+});
+
+describe('Health Data Routes - permission gating', () => {
+  it('returns 403 from POST / and does not process health data when permission is denied', async () => {
+    permissionState.allow = false;
+    const res = await request(app)
+      .post('/api/health-data')
+      .send([{ type: 'step', value: 1000, date: '2026-05-05' }]);
+    expect(res.statusCode).toBe(403);
+    expect(measurementService.processHealthData).not.toHaveBeenCalled();
+  });
+});
 
 describe('Health Data Routes - POST /api/health-data', () => {
   beforeEach(() => {
