@@ -180,6 +180,7 @@ function renderCard(expanded: boolean, props?: Partial<CardProps>) {
     onComplete: jest.fn(),
     onUncomplete: jest.fn(),
     onCommitField: jest.fn(),
+    onCommitExerciseNote: jest.fn(),
     onDeleteSet: jest.fn(),
     onLongPressSet: jest.fn(),
     onAddSet: jest.fn(),
@@ -785,9 +786,14 @@ describe('ActiveWorkoutExerciseCard', () => {
     });
   });
 
-  describe('per-set note expand (live)', () => {
+  describe('per-set note expand (live/edit)', () => {
     it('renders the detail panel under the matching expandedSetKey', () => {
       const { getByTestId } = renderCard(true, { mode: 'live', expandedSetKey: '101' });
+      expect(getByTestId('set-detail-101')).toBeTruthy();
+    });
+
+    it('renders the detail panel in edit mode', () => {
+      const { getByTestId } = renderCard(true, { mode: 'edit', expandedSetKey: '101' });
       expect(getByTestId('set-detail-101')).toBeTruthy();
     });
 
@@ -813,7 +819,7 @@ describe('ActiveWorkoutExerciseCard', () => {
     });
   });
 
-  describe('per-exercise note (live)', () => {
+  describe('per-exercise note (live/edit)', () => {
     it('shows the note field when the exercise already has a note', () => {
       const { getByLabelText } = renderCard(true, {
         mode: 'live',
@@ -830,6 +836,48 @@ describe('ActiveWorkoutExerciseCard', () => {
     it('hides the note field when empty and the editor is closed', () => {
       const { queryByLabelText } = renderCard(true, { mode: 'live' });
       expect(queryByLabelText('Notes for Bench Press')).toBeNull();
+    });
+
+    it('shows the editable field for an edit draft with a note', () => {
+      const { getByLabelText } = renderCard(true, {
+        mode: 'edit',
+        exercise: makeExercise({ notes: 'go slow' }),
+      });
+      expect(getByLabelText('Notes for Bench Press').props.value).toBe('go slow');
+    });
+
+    it('stays hidden without a commit handler (the preset form)', () => {
+      const { queryByLabelText } = renderCard(true, {
+        mode: 'edit',
+        onCommitExerciseNote: undefined,
+        exercise: makeExercise({ notes: 'go slow' }),
+      });
+      expect(queryByLabelText('Notes for Bench Press')).toBeNull();
+    });
+  });
+
+  describe('notes in view mode', () => {
+    it('renders a saved exercise note as plain text, not an input', () => {
+      const { getByLabelText } = renderCard(true, {
+        mode: 'view',
+        exercise: makeExercise({ notes: 'go slow' }),
+      });
+      const note = getByLabelText('Notes for Bench Press');
+      expect(note.props.children).toBe('go slow');
+      expect(note.props.value).toBeUndefined();
+    });
+
+    it('renders a saved set note as plain text', () => {
+      const base = makeExercise();
+      const exercise = { ...base, sets: [{ ...base.sets[0], notes: 'slow tempo' }] };
+      const { getByLabelText } = renderCard(true, { mode: 'view', exercise });
+      expect(getByLabelText('Notes for set 1').props.children).toBe('slow tempo');
+    });
+
+    it('renders nothing when the notes are empty', () => {
+      const { queryByLabelText } = renderCard(true, { mode: 'view' });
+      expect(queryByLabelText('Notes for Bench Press')).toBeNull();
+      expect(queryByLabelText('Notes for set 1')).toBeNull();
     });
   });
 });

@@ -120,6 +120,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           exerciseCategory: exercise.exercise_snapshot?.category ?? null,
           images: exercise.exercise_snapshot?.images ?? [],
           supersetGroup: exercise.superset_group ?? null,
+          notes: exercise.notes,
           snapshot: exercise.exercise_snapshot ?? null,
           durationMinutes: exercise.duration_minutes ?? 0,
           calories:
@@ -208,6 +209,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     updateSetMeta,
     setExerciseRest,
     setExerciseCalories,
+    setExerciseNotes,
     supersetWith,
     ungroupExercise,
     reorderExercises,
@@ -271,6 +273,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     updateSetMeta,
     setExerciseRest,
     setExerciseCalories,
+    setExerciseNotes,
     supersetWith,
     ungroupExercise,
     reorderExercises,

@@ -294,6 +294,10 @@ export function buildExercisesPayload(
       ...(!isNaN(caloriesOverride) && caloriesOverride >= 0
         ? { calories_burned: caloriesOverride }
         : {}),
+      // The server nulls omitted entry fields, so the note must always be
+      // sent — otherwise an edit-save wipes notes recorded during a live
+      // workout.
+      notes: exercise.notes ?? null,
       // The form has no superset UI; round-trip the value opaquely so manual
       // edits don't flatten grouping (the server nulls omitted fields).
       superset_group: exercise.supersetGroup ?? null,
@@ -395,7 +399,7 @@ export interface WorkoutCardExercise {
   id: string;
   exercise_id: string;
   superset_group?: number | null;
-  /** Per-exercise note. Present on live entries; absent on draft/preset sources. */
+  /** Per-exercise note. Present on live/session entries and workout drafts; absent on preset sources. */
   notes?: string | null;
   /** Present on session entries; absent on draft/preset sources. */
   calories_burned?: number | null;
@@ -422,6 +426,7 @@ export function draftExerciseToCardExercise(
     id: exercise.clientId,
     exercise_id: exercise.exerciseId,
     superset_group: exercise.supersetGroup ?? null,
+    notes: exercise.notes ?? null,
     editCaloriesText: exercise.calories ?? '',
     exercise_snapshot: exercise.snapshot ?? {
       name: exercise.exerciseName,

@@ -9,8 +9,9 @@ export interface WorkoutDraftSet {
   /** Editable in the card forms via long-press (set type) and the RPE column. */
   setType?: string;
   rpe?: number | null;
-  /** Round-tripped from the preset/session on edit; the form has no UI for these. */
+  /** Round-tripped from the preset/session on edit; the form has no UI for this. */
   duration?: number | null;
+  /** Edited in the workout card forms via the long-press set-note panel. */
   notes?: string | null;
   /** Round-tripped opaquely; the form has no completion UI. */
   completedAt?: string | null;
@@ -22,6 +23,7 @@ export interface WorkoutDraftSet {
 export interface WorkoutSetMetaPatch {
   setType?: string;
   rpe?: number | null;
+  notes?: string | null;
   /** ISO string to mark the set complete, null to clear it. */
   completedAt?: string | null;
 }
@@ -41,6 +43,8 @@ export interface WorkoutDraftExercise {
   calories?: string;
   /** Sent as a manual server override only when the user edited the field. */
   caloriesManuallySet?: boolean;
+  /** Per-exercise note; edited in the workout card forms via the ⋮ "Notes" field. */
+  notes?: string | null;
   /** Superset group id; edited via the form lists' grouping actions. */
   supersetGroup?: number | null;
   /** Present only when editing an existing session — not persisted to drafts. */

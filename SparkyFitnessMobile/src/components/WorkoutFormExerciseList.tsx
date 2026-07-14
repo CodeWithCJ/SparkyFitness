@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Keyboard, Text, TouchableOpacity, View } from 'react-native';
+import { Keyboard, LayoutAnimation, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -63,6 +63,13 @@ interface WorkoutFormExerciseListProps {
    * the create and preset forms, which have no stored calories to override.
    */
   setExerciseCalories?: (exerciseClientId: string, calories: string) => void;
+  /**
+   * Enables the notes UI (workout forms): a ⋮ "Notes" item revealing the
+   * per-exercise note field, and a long-press per-set note panel. Absent for
+   * the preset form, whose exercises store no notes — its set long-press keeps
+   * the set-type-menu fallback instead.
+   */
+  setExerciseNotes?: (exerciseClientId: string, notes: string) => void;
   supersetWith: (currentClientId: string, pickedClientId: string) => void;
   ungroupExercise: (clientId: string) => void;
   /** Move a draggable item (solo or whole run) from one item index to another. */
@@ -123,6 +130,7 @@ const WorkoutFormExerciseList = forwardRef<
     onRemoveExercise,
     setExerciseRest,
     setExerciseCalories,
+    setExerciseNotes,
     supersetWith,
     ungroupExercise,
     onReorderExercises,
@@ -238,6 +246,9 @@ const WorkoutFormExerciseList = forwardRef<
       if (patch.rpe !== undefined) {
         updateSetMeta(owner, setId, { rpe: patch.rpe });
       }
+      if (patch.notes !== undefined) {
+        updateSetMeta(owner, setId, { notes: patch.notes });
+      }
     },
     [setOwnerByClientId, updateSetField, updateSetMeta, weightUnit],
   );
@@ -256,6 +267,43 @@ const WorkoutFormExerciseList = forwardRef<
       removeSet(owner, setId);
     },
     [setOwnerByClientId, removeSet, removeExerciseOnLastSetDelete, exercises, onRemoveExercise],
+  );
+
+  // Notes (workout forms only, gated on `setExerciseNotes`): which exercise's
+  // note field the ⋮ "Notes" item revealed, and which set's inline note panel
+  // is expanded (toggled by long-pressing its row). Mirrors the live screen.
+  const [noteEditorClientId, setNoteEditorClientId] = useState<string | null>(null);
+  const [expandedSetClientId, setExpandedSetClientId] = useState<string | null>(null);
+  const handleToggleSetDetail = useCallback((setId: string) => {
+    // Animate the panel and the rows it pushes, matching the card wrapper's
+    // 300ms LinearTransition (same idiom as the live screen).
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedSetClientId(prev => (prev === setId ? null : setId));
+  }, []);
+  const handleToggleExerciseNote = useCallback(
+    (clientId: string) => {
+      const opening = noteEditorClientId !== clientId;
+      setNoteEditorClientId(opening ? clientId : null);
+      // Opening reveals the field, so make sure the card is expanded to show it.
+      if (opening) {
+        setCollapsedIds(prev => (prev[clientId] ? { ...prev, [clientId]: false } : prev));
+      }
+    },
+    [noteEditorClientId],
+  );
+  const handleCommitExerciseNote = useCallback(
+    (clientId: string, text: string) => {
+      if (!setExerciseNotes) return;
+      // Skip an unchanged commit (e.g. a blur without an edit, or the field's
+      // unmount flush) so a mere focus can't mark the exercises as modified
+      // and force the save to send an identical payload.
+      const trimmed = text.trim();
+      const nextNotes = trimmed.length > 0 ? trimmed : null;
+      const draft = exercises.find(e => e.clientId === clientId);
+      if (draft == null || (draft.notes ?? null) === nextNotes) return;
+      setExerciseNotes(clientId, text);
+    },
+    [exercises, setExerciseNotes],
   );
 
   // Toggle a set's completion (stamp/clear completedAt), which round-trips to
@@ -367,6 +415,13 @@ const WorkoutFormExerciseList = forwardRef<
         onPress: () => handleViewExercise(clientId),
       });
     }
+    if (setExerciseNotes) {
+      items.push({
+        key: 'notes',
+        label: 'Notes',
+        onPress: () => handleToggleExerciseNote(clientId),
+      });
+    }
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
@@ -404,6 +459,8 @@ const WorkoutFormExerciseList = forwardRef<
     onRemoveExercise,
     onViewExercise,
     handleViewExercise,
+    setExerciseNotes,
+    handleToggleExerciseNote,
   ]);
 
   return (
@@ -434,6 +491,10 @@ const WorkoutFormExerciseList = forwardRef<
             onPressThumb={onViewExercise ? handleViewExercise : undefined}
             onToggleExpanded={toggleExpanded}
             onChangeCalories={setExerciseCalories}
+            noteEditorOpen={noteEditorClientId === clientId}
+            onCommitExerciseNote={setExerciseNotes ? handleCommitExerciseNote : undefined}
+            expandedSetKey={expandedSetClientId}
+            onLongPressSet={setExerciseNotes ? handleToggleSetDetail : undefined}
             onPressRestChip={handlePressRestChip}
             onPressMetricHeader={handlePressMetricHeader}
             onPressOverflow={handlePressOverflow}

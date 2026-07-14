@@ -57,6 +57,10 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
               editWeight0: props.exercise.sets[0]?.editWeightText ?? null,
               weightKg0: props.exercise.sets[0]?.weight ?? null,
               completed: props.completedSetIds,
+              noteEditorOpen: props.noteEditorOpen ?? false,
+              expandedSetKey: props.expandedSetKey ?? null,
+              hasLongPressSet: !!props.onLongPressSet,
+              hasCommitExerciseNote: !!props.onCommitExerciseNote,
             })}
           </Text>
           <Pressable
@@ -105,6 +109,18 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
           <Pressable
             testID={`card-${id}-toggle-complete`}
             onPress={() => props.onToggleComplete?.(firstSetId)}
+          />
+          <Pressable
+            testID={`card-${id}-longpress-set`}
+            onPress={() => props.onLongPressSet?.(firstSetId)}
+          />
+          <Pressable
+            testID={`card-${id}-commit-exnote`}
+            onPress={() => props.onCommitExerciseNote?.(id, '  felt heavy  ')}
+          />
+          <Pressable
+            testID={`card-${id}-commit-set-note`}
+            onPress={() => props.onCommitField?.(firstSetId, { notes: 'slow tempo' })}
           />
         </View>
       );
@@ -408,6 +424,72 @@ describe('WorkoutFormExerciseList', () => {
       expect(onViewExercise).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'x-a', name: 'A' }),
       );
+    });
+  });
+
+  describe('notes (workout forms, gated on setExerciseNotes)', () => {
+    it('offers a Notes menu item that toggles the exercise note editor', () => {
+      const utils = renderList([makeExercise('a')], { setExerciseNotes: jest.fn() });
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      expect(utils.getByText('Notes')).toBeTruthy();
+
+      fireEvent.press(utils.getByTestId('menu-item-notes'));
+      expect(cardInfo(utils, 'a').noteEditorOpen).toBe(true);
+      fireEvent.press(utils.getByTestId('menu-item-notes'));
+      expect(cardInfo(utils, 'a').noteEditorOpen).toBe(false);
+    });
+
+    it('expands a collapsed card when its note editor opens', () => {
+      const utils = renderList([makeExercise('a')], { setExerciseNotes: jest.fn() });
+      fireEvent.press(utils.getByTestId('card-a-toggle'));
+      expect(cardInfo(utils, 'a').expanded).toBe(false);
+
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      fireEvent.press(utils.getByTestId('menu-item-notes'));
+      expect(cardInfo(utils, 'a').expanded).toBe(true);
+      expect(cardInfo(utils, 'a').noteEditorOpen).toBe(true);
+    });
+
+    it('omits the Notes item and note wiring without the prop (the preset form)', () => {
+      const utils = renderList([makeExercise('a')]);
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      expect(utils.queryByTestId('menu-item-notes')).toBeNull();
+      expect(cardInfo(utils, 'a').hasLongPressSet).toBe(false);
+      expect(cardInfo(utils, 'a').hasCommitExerciseNote).toBe(false);
+    });
+
+    it('toggles the per-set note panel from a row long-press', () => {
+      const utils = renderList([makeExercise('a')], { setExerciseNotes: jest.fn() });
+      expect(cardInfo(utils, 'a').hasLongPressSet).toBe(true);
+
+      fireEvent.press(utils.getByTestId('card-a-longpress-set'));
+      expect(cardInfo(utils, 'a').expandedSetKey).toBe('a-s1');
+      fireEvent.press(utils.getByTestId('card-a-longpress-set'));
+      expect(cardInfo(utils, 'a').expandedSetKey).toBeNull();
+    });
+
+    it('routes an exercise-note commit through setExerciseNotes', () => {
+      const setExerciseNotes = jest.fn();
+      const utils = renderList([makeExercise('a')], { setExerciseNotes });
+      fireEvent.press(utils.getByTestId('card-a-commit-exnote'));
+      expect(setExerciseNotes).toHaveBeenCalledWith('a', '  felt heavy  ');
+    });
+
+    it('skips an unchanged exercise-note commit so a mere blur cannot mark the draft modified', () => {
+      const setExerciseNotes = jest.fn();
+      const utils = renderList([makeExercise('a', { notes: 'felt heavy' })], {
+        setExerciseNotes,
+      });
+      fireEvent.press(utils.getByTestId('card-a-commit-exnote'));
+      expect(setExerciseNotes).not.toHaveBeenCalled();
+    });
+
+    it('routes a set-note commit through updateSetMeta', () => {
+      const utils = renderList([makeExercise('a')], { setExerciseNotes: jest.fn() });
+      fireEvent.press(utils.getByTestId('card-a-commit-set-note'));
+      expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', {
+        notes: 'slow tempo',
+      });
     });
   });
 
