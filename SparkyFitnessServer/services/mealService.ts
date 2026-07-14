@@ -878,7 +878,11 @@ async function searchMeals(
   limit: number | null = null
 ) {
   try {
-    const meals = await mealRepository.searchMeals(searchTerm, userId, limit);
+    const meals = await mealRepository.searchMeals(
+      searchTerm as string | null | undefined,
+      userId,
+      limit
+    );
     await attachResolvedMealNutrition(userId, meals);
     return meals;
   } catch (error) {

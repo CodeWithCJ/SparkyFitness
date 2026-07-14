@@ -59,6 +59,7 @@ import {
 } from '@/utils/nutrientUtils';
 import { useMealInvalidation } from '@/hooks/useInvalidateKeys';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { filterAndSortByTerms } from '@workspace/shared';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkActionToolbar from '@/components/BulkActionToolbar';
@@ -104,11 +105,7 @@ const MealManagement: React.FC = () => {
 
   const filteredMeals = React.useMemo(
     () =>
-      meals
-        ? meals.filter((meal) =>
-            meal.name.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-        : [],
+      meals ? filterAndSortByTerms(meals, (meal) => meal.name, searchTerm) : [],
     [meals, searchTerm]
   );
 

@@ -1,5 +1,9 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import {
+  buildSqlSearch,
+  buildSqlExactMatchOrder,
+} from '../utils/dbSearchHelper.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getExerciseById(id: any, userId: any) {
   const client = await getClient(userId);
@@ -101,33 +105,27 @@ async function getOrCreateActiveCaloriesExercise(
   return exercise.id;
 }
 async function getExercisesWithPagination(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  searchTerm: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  categoryFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ownershipFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  equipmentFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  muscleGroupFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  limit: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  offset: any
+  targetUserId: string | null | undefined,
+  searchTerm: string | null | undefined,
+  categoryFilter: string | null | undefined,
+  ownershipFilter: string | null | undefined,
+  equipmentFilter: string[] | null | undefined,
+  muscleGroupFilter: string[] | null | undefined,
+  limit: number,
+  offset: number
 ) {
   const client = await getClient(targetUserId);
   try {
     const whereClauses = ['is_quick_exercise = FALSE'];
-    const queryParams = [];
-    let paramIndex = 1;
-    if (searchTerm) {
-      whereClauses.push(`name ILIKE $${paramIndex}`);
-      queryParams.push(`%${searchTerm}%`);
-      paramIndex++;
-    }
+    const {
+      whereClauses: searchClauses,
+      queryParams: searchParams,
+      nextParamIndex,
+    } = buildSqlSearch('name', searchTerm, 1);
+    whereClauses.push(...searchClauses);
+    const queryParams: any[] = [...searchParams];
+    let paramIndex = nextParamIndex;
+
     if (categoryFilter && categoryFilter !== 'all') {
       whereClauses.push(`category = $${paramIndex}`);
       queryParams.push(categoryFilter);
@@ -151,6 +149,15 @@ async function getExercisesWithPagination(
       queryParams.push(...muscleGroupFilter); // Push twice for primary and secondary muscles
       paramIndex += muscleGroupFilter.length * 2;
     }
+    let orderClause = 'name ASC';
+    const selectQueryParams = [...queryParams];
+    let selectParamIndex = paramIndex;
+    if (searchTerm) {
+      const exactMatchParamIndex = selectParamIndex;
+      selectQueryParams.push(`%${searchTerm}%`);
+      selectParamIndex++;
+      orderClause = `${buildSqlExactMatchOrder('name', exactMatchParamIndex)}, name ASC`;
+    }
     const query = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
              primary_muscles, secondary_muscles, instructions, category, images,
@@ -158,11 +165,11 @@ async function getExercisesWithPagination(
              created_at, updated_at
       FROM exercises
       WHERE ${whereClauses.join(' AND ')}
-      ORDER BY name ASC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      ORDER BY ${orderClause}
+      LIMIT $${selectParamIndex} OFFSET $${selectParamIndex + 1}
     `;
-    queryParams.push(limit, offset);
-    const result = await client.query(query, queryParams);
+    selectQueryParams.push(limit, offset);
+    const result = await client.query(query, selectQueryParams);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return result.rows.map((row: any) => {
       if (row.images) {
@@ -180,29 +187,24 @@ async function getExercisesWithPagination(
   }
 }
 async function countExercises(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  searchTerm: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  categoryFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ownershipFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  equipmentFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  muscleGroupFilter: any
+  targetUserId: string | null | undefined,
+  searchTerm: string | null | undefined,
+  categoryFilter: string | null | undefined,
+  ownershipFilter: string | null | undefined,
+  equipmentFilter: string[] | null | undefined,
+  muscleGroupFilter: string[] | null | undefined
 ) {
   const client = await getClient(targetUserId);
   try {
     const whereClauses = ['is_quick_exercise = FALSE'];
-    const queryParams = [];
-    let paramIndex = 1;
-    if (searchTerm) {
-      whereClauses.push(`name ILIKE $${paramIndex}`);
-      queryParams.push(`%${searchTerm}%`);
-      paramIndex++;
-    }
+    const {
+      whereClauses: searchClauses,
+      queryParams: searchParams,
+      nextParamIndex,
+    } = buildSqlSearch('name', searchTerm, 1);
+    whereClauses.push(...searchClauses);
+    const queryParams: any[] = [...searchParams];
+    let paramIndex = nextParamIndex;
     if (categoryFilter && categoryFilter !== 'all') {
       whereClauses.push(`category = $${paramIndex}`);
       queryParams.push(categoryFilter);
@@ -310,25 +312,22 @@ async function getDistinctMuscleGroups() {
   }
 }
 async function searchExercises(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  name: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  equipmentFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  muscleGroupFilter: any
+  name: string | null | undefined,
+  userId: string | null | undefined,
+  equipmentFilter: string[] | null | undefined,
+  muscleGroupFilter: string[] | null | undefined
 ) {
   const client = await getClient(userId);
   try {
     const whereClauses = ['is_quick_exercise = FALSE'];
-    const queryParams = [];
-    let paramIndex = 1;
-    if (name) {
-      whereClauses.push(`name ILIKE $${paramIndex}`);
-      queryParams.push(`%${name}%`);
-      paramIndex++;
-    }
+    const {
+      whereClauses: searchClauses,
+      queryParams: searchParams,
+      nextParamIndex,
+    } = buildSqlSearch('name', name, 1);
+    whereClauses.push(...searchClauses);
+    const queryParams: any[] = [...searchParams];
+    let paramIndex = nextParamIndex;
     if (equipmentFilter && equipmentFilter.length > 0) {
       whereClauses.push(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -356,13 +355,24 @@ async function searchExercises(
       queryParams.push(...muscleGroupFilter); // Push twice for primary and secondary muscles
       paramIndex += muscleGroupFilter.length * 2;
     }
+    let orderClause = 'name ASC';
+    const selectQueryParams = [...queryParams];
+    let selectParamIndex = paramIndex;
+    if (name) {
+      const exactMatchParamIndex = selectParamIndex;
+      selectQueryParams.push(`%${name}%`);
+      selectParamIndex++;
+      orderClause = `${buildSqlExactMatchOrder('name', exactMatchParamIndex)}, name ASC`;
+    }
     const finalQuery = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public
        FROM exercises
-  WHERE ${whereClauses.join(' AND ')} LIMIT 50`; // Added a limit to prevent too many results
-    const result = await client.query(finalQuery, queryParams);
+       WHERE ${whereClauses.join(' AND ')}
+       ORDER BY ${orderClause}
+       LIMIT 50`;
+    const result = await client.query(finalQuery, selectQueryParams);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return result.rows.map((row: any) => {
       // Helper function to safely parse JSONB fields into arrays
@@ -391,29 +401,24 @@ async function searchExercises(
   }
 }
 async function searchExercisesPaginated(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  name: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  equipmentFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  muscleGroupFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  limit: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  offset: any
+  name: string | null | undefined,
+  userId: string | null | undefined,
+  equipmentFilter: string[] | null | undefined,
+  muscleGroupFilter: string[] | null | undefined,
+  limit: number,
+  offset: number
 ) {
   const client = await getClient(userId);
   try {
     const whereClauses = ['is_quick_exercise = FALSE'];
-    const queryParams = [];
-    let paramIndex = 1;
-    if (name) {
-      whereClauses.push(`name ILIKE $${paramIndex}`);
-      queryParams.push(`%${name}%`);
-      paramIndex++;
-    }
+    const {
+      whereClauses: searchClauses,
+      queryParams: searchParams,
+      nextParamIndex,
+    } = buildSqlSearch('name', name, 1);
+    whereClauses.push(...searchClauses);
+    const queryParams: any[] = [...searchParams];
+    let paramIndex = nextParamIndex;
     if (equipmentFilter && equipmentFilter.length > 0) {
       whereClauses.push(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -446,18 +451,27 @@ async function searchExercisesPaginated(
       queryParams
     );
     const totalCount = countResult.rows[0]?.count ?? 0;
-    const limitParamIndex = paramIndex;
-    const offsetParamIndex = paramIndex + 1;
+    let orderClause = 'name ASC';
+    const selectQueryParams = [...queryParams];
+    let selectParamIndex = paramIndex;
+    if (name) {
+      const exactMatchParamIndex = selectParamIndex;
+      selectQueryParams.push(`%${name}%`);
+      selectParamIndex++;
+      orderClause = `${buildSqlExactMatchOrder('name', exactMatchParamIndex)}, name ASC`;
+    }
+    const limitParamIndex = selectParamIndex;
+    const offsetParamIndex = selectParamIndex + 1;
     const finalQuery = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public
        FROM exercises
        WHERE ${whereSql}
-       ORDER BY name ASC
+       ORDER BY ${orderClause}
        LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`;
     const result = await client.query(finalQuery, [
-      ...queryParams,
+      ...selectQueryParams,
       limit,
       offset,
     ]);

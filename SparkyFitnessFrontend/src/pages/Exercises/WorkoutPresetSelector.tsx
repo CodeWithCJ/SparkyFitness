@@ -3,10 +3,14 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Search, Layers, ChevronRight } from 'lucide-react';
+import { Search, Layers, ChevronRight, Loader2 } from 'lucide-react';
 import type { WorkoutPreset } from '@/types/workout';
-import { useWorkoutPresets } from '@/hooks/Exercises/useWorkoutPresets';
+import {
+  useWorkoutPresets,
+  useSearchWorkoutPresets,
+} from '@/hooks/Exercises/useWorkoutPresets';
 import { useAuth } from '@/hooks/useAuth';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface WorkoutPresetSelectorProps {
   onPresetSelected: (preset: WorkoutPreset) => void;
@@ -17,30 +21,39 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
 }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { user } = useAuth();
 
   const { data: presetData } = useWorkoutPresets(user?.id);
+  const {
+    data: searchResults,
+    isLoading: isSearchLoading,
+    isFetching: isSearchFetching,
+  } = useSearchWorkoutPresets(debouncedSearchTerm, user?.id);
 
   const allPresets = useMemo(
     () => presetData?.pages.flatMap((page) => page.presets) ?? [],
     [presetData]
   );
 
-  const filteredPresets = useMemo(
-    () =>
-      allPresets.filter((preset) =>
-        preset.name.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [allPresets, searchTerm]
-  );
+  const filteredPresets = useMemo(() => {
+    if (!debouncedSearchTerm) return [];
+    return searchResults ?? [];
+  }, [searchResults, debouncedSearchTerm]);
 
   const recentPresets = searchTerm === '' ? allPresets.slice(0, 3) : [];
   const topPresets = searchTerm === '' ? allPresets.slice(3, 6) : [];
 
+  const showLoader = searchTerm !== '' && (isSearchLoading || isSearchFetching);
+
   return (
     <div className="flex flex-col h-full py-4 space-y-6">
       <div className="relative px-1">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        {showLoader ? (
+          <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin" />
+        ) : (
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        )}
         <Input
           placeholder={t(
             'exercise.workoutPresetSelector.searchPlaceholder',
@@ -80,6 +93,13 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
               )}
             />
           </>
+        ) : showLoader && filteredPresets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-3">
+            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t('exercise.workoutPresetSelector.searching', 'Searching...')}
+            </p>
+          </div>
         ) : (
           <PresetSection
             title={t(

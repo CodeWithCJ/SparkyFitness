@@ -29,6 +29,8 @@ export const presetKeys = {
   detail: (id: string) => [...presetKeys.details(), id] as const,
   infinite: (userId?: string, limit: number = 10) =>
     [...presetKeys.lists(), 'infinite', { userId, limit }] as const,
+  search: (searchTerm: string, userId?: string, limit: number = 10) =>
+    [...presetKeys.lists(), 'search', { searchTerm, userId, limit }] as const,
 };
 
 export const exerciseSearchKeys = {
