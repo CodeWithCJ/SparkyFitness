@@ -70,6 +70,18 @@ interface WorkoutFormExerciseListProps {
    * the set-type-menu fallback instead.
    */
   setExerciseNotes?: (exerciseClientId: string, notes: string) => void;
+  /**
+   * Enables the ⋮ "Replace exercise" item: swaps the exercise identity in
+   * place, keeping the entry's position and superset grouping. The owning
+   * screen sets its replace target and routes the ExerciseSearch return.
+   */
+  onReplaceExercise?: (clientId: string) => void;
+  /**
+   * Enables the ⋮ "Clear logged sets" item, shown only when the exercise has
+   * a completed set (workout edit). Absent for forms whose drafts never carry
+   * completions.
+   */
+  clearExerciseCompletions?: (clientId: string) => void;
   supersetWith: (currentClientId: string, pickedClientId: string) => void;
   ungroupExercise: (clientId: string) => void;
   /** Move a draggable item (solo or whole run) from one item index to another. */
@@ -131,6 +143,8 @@ const WorkoutFormExerciseList = forwardRef<
     setExerciseRest,
     setExerciseCalories,
     setExerciseNotes,
+    onReplaceExercise,
+    clearExerciseCompletions,
     supersetWith,
     ungroupExercise,
     onReorderExercises,
@@ -440,6 +454,24 @@ const WorkoutFormExerciseList = forwardRef<
         onPress: () => ungroupExercise(clientId),
       });
     }
+    if (onReplaceExercise) {
+      items.push({
+        key: 'replace',
+        label: 'Replace exercise',
+        onPress: () => onReplaceExercise(clientId),
+      });
+    }
+    if (clearExerciseCompletions) {
+      const target = exercises.find(e => e.clientId === clientId);
+      if (target?.sets.some(s => s.completedAt != null)) {
+        items.push({
+          key: 'clear',
+          label: 'Clear logged sets',
+          destructive: true,
+          onPress: () => clearExerciseCompletions(clientId),
+        });
+      }
+    }
     items.push({
       key: 'remove',
       label: 'Remove exercise',
@@ -456,6 +488,8 @@ const WorkoutFormExerciseList = forwardRef<
     supersetRuns,
     supersetWith,
     ungroupExercise,
+    onReplaceExercise,
+    clearExerciseCompletions,
     onRemoveExercise,
     onViewExercise,
     handleViewExercise,

@@ -60,6 +60,7 @@ interface PresetFormBodyProps {
   reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
   isEligibleForPrefill: (clientId: string) => boolean;
   onAddExercisePress: () => void;
+  onReplaceExercise: (clientId: string) => void;
   onViewExercise: (exercise: Exercise) => void;
   listRef: React.Ref<WorkoutFormExerciseListHandle>;
 }
@@ -79,6 +80,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   reorderExercises,
   isEligibleForPrefill,
   onAddExercisePress,
+  onReplaceExercise,
   onViewExercise,
   listRef,
 }) => {
@@ -131,6 +133,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           onAddSet={exerciseSetEditing.handleAddSet}
           onRemoveExercise={exerciseSetEditing.handleRemoveExercise}
           setExerciseRest={setExerciseRest}
+          onReplaceExercise={onReplaceExercise}
           supersetWith={supersetWith}
           ungroupExercise={ungroupExercise}
           onReorderExercises={reorderExercises}
@@ -165,6 +168,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     setDescription,
     addExercise,
     removeExercise,
+    replaceExercise,
     addSet,
     removeSet,
     updateSetField,
@@ -188,6 +192,20 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     },
     [addExercise],
   );
+  // A replaced exercise is effectively freshly added: mark it prefill-eligible
+  // so its empty set seeds from the new exercise's history.
+  const wrappedReplaceExercise = useCallback(
+    (clientId: string, exercise: Parameters<typeof replaceExercise>[1]) => {
+      const result = replaceExercise(clientId, exercise);
+      setEligibleIds(prev => {
+        const next = new Set(prev);
+        next.add(clientId);
+        return next;
+      });
+      return result;
+    },
+    [replaceExercise],
+  );
   const isEligibleForPrefill = useCallback(
     (clientId: string) => eligibleIds.has(clientId),
     [eligibleIds],
@@ -197,6 +215,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     addExercise: wrappedAddExercise,
     removeExercise,
     addSet,
+    replaceExercise: wrappedReplaceExercise,
   });
   useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
 
@@ -216,6 +235,16 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     : null;
 
   const openExerciseSearch = () => {
+    // Plain Add: drop any pending replace target so a cancelled replace can't
+    // misroute this add.
+    exerciseSetEditing.setReplaceTarget(null);
+    navigation.navigate('ExerciseSearch', { returnKey: route.key });
+  };
+
+  // ⋮ "Replace exercise": the next ExerciseSearch return swaps this entry in
+  // place instead of appending.
+  const handleReplaceExercise = (clientId: string) => {
+    exerciseSetEditing.setReplaceTarget(clientId);
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
   };
 
@@ -283,6 +312,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         reorderExercises={reorderExercises}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
+        onReplaceExercise={handleReplaceExercise}
         onViewExercise={(exercise) =>
           navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
         }
@@ -339,6 +369,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     setDescription,
     addExercise,
     removeExercise,
+    replaceExercise,
     addSet,
     removeSet,
     updateSetField,
@@ -365,6 +396,20 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     },
     [addExercise],
   );
+  // A replaced exercise is effectively freshly added: mark it prefill-eligible
+  // so its empty set seeds from the new exercise's history.
+  const wrappedReplaceExercise = useCallback(
+    (clientId: string, exercise: Parameters<typeof replaceExercise>[1]) => {
+      const result = replaceExercise(clientId, exercise);
+      setEligibleIds(prev => {
+        const next = new Set(prev);
+        next.add(clientId);
+        return next;
+      });
+      return result;
+    },
+    [replaceExercise],
+  );
   const isEligibleForPrefill = useCallback(
     (clientId: string) => eligibleIds.has(clientId),
     [eligibleIds],
@@ -374,6 +419,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     addExercise: wrappedAddExercise,
     removeExercise,
     addSet,
+    replaceExercise: wrappedReplaceExercise,
   });
   useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
 
@@ -400,6 +446,16 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     : null;
 
   const openExerciseSearch = () => {
+    // Plain Add: drop any pending replace target so a cancelled replace can't
+    // misroute this add.
+    exerciseSetEditing.setReplaceTarget(null);
+    navigation.navigate('ExerciseSearch', { returnKey: route.key });
+  };
+
+  // ⋮ "Replace exercise": the next ExerciseSearch return swaps this entry in
+  // place instead of appending.
+  const handleReplaceExercise = (clientId: string) => {
+    exerciseSetEditing.setReplaceTarget(clientId);
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
   };
 
@@ -470,6 +526,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         reorderExercises={reorderExercises}
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
+        onReplaceExercise={handleReplaceExercise}
         onViewExercise={(exercise) =>
           navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
         }

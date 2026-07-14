@@ -332,17 +332,19 @@ function ActiveWorkoutExerciseCard({
   // Edit-only: seed the first still-empty set from "last time" once, when
   // stats arrive. Weight and reps fill independently — a null lastSet field
   // must not clobber a value the user already typed (a typed character makes
-  // the mapped field non-null and skips that side).
-  const didPrefillRef = useRef(false);
+  // the mapped field non-null and skips that side). The guard is keyed by
+  // exercise identity, not once-per-mount: a replaced exercise reuses the
+  // card instance and must be able to seed from its own history.
+  const prefilledExerciseIdRef = useRef<string | null>(null);
   const firstSet = exercise.sets[0];
   const firstSetId = firstSet != null ? String(firstSet.id) : null;
   const firstSetWeightEmpty = firstSet != null && firstSet.weight == null;
   const firstSetRepsEmpty = firstSet != null && firstSet.reps == null;
   useEffect(() => {
-    if (!isEdit || didPrefillRef.current) return;
+    if (!isEdit || prefilledExerciseIdRef.current === exercise.exercise_id) return;
     if (!eligibleForPrefill || !lastSet || firstSetId == null) return;
 
-    didPrefillRef.current = true;
+    prefilledExerciseIdRef.current = exercise.exercise_id;
     const patch: ActiveSetPatch = {};
     if (firstSetWeightEmpty && lastSet.weight != null) patch.weight = lastSet.weight;
     if (firstSetRepsEmpty && lastSet.reps != null) patch.reps = lastSet.reps;
@@ -350,6 +352,7 @@ function ActiveWorkoutExerciseCard({
   }, [
     isEdit,
     eligibleForPrefill,
+    exercise.exercise_id,
     lastSet,
     firstSetId,
     firstSetWeightEmpty,
