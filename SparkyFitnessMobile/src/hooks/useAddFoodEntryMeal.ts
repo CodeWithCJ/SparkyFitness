@@ -5,7 +5,8 @@ import type {
   FoodEntryMeal,
   FoodEntryMealCreateData,
 } from '../types/foodEntryMeals';
-import { dailySummaryQueryKey, foodsQueryKey, recentMealsQueryKeyRoot } from './queryKeys';
+import { dailySummaryQueryKey, foodsQueryKey } from './queryKeys';
+import { invalidateMealUsageCaches } from './useMeals';
 
 interface UseAddFoodEntryMealOptions {
   onSuccess?: (meal: FoodEntryMeal) => void;
@@ -17,7 +18,7 @@ export function useAddFoodEntryMeal(options?: UseAddFoodEntryMealOptions) {
   const mutation = useMutation({
     mutationFn: (payload: FoodEntryMealCreateData) => createFoodEntryMeal(payload),
     onSuccess: (meal) => {
-      queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
+      invalidateMealUsageCaches(queryClient);
       options?.onSuccess?.(meal);
     },
     onError: () => {

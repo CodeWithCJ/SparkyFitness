@@ -8,6 +8,7 @@ import {
   fetchMealDeletionImpact,
   fetchMeals,
   fetchRecentMeals,
+  fetchTopMeals,
   updateMeal,
 } from '../services/api/mealsApi';
 import {
@@ -16,13 +17,31 @@ import {
   mealsQueryKey,
   recentMealsQueryKey,
   recentMealsQueryKeyRoot,
+  topMealsQueryKey,
+  topMealsQueryKeyRoot,
 } from './queryKeys';
 import type { QueryClient } from '@tanstack/react-query';
 import type { CreateMealPayload, Meal, UpdateMealPayload } from '../types/meals';
 
+// Stable reference for the "no data yet" case. A fresh `[]` on every render
+// would break memoization for consumers (e.g. the landing-list useMemo in
+// FoodSearchScreen) while a query is still loading.
+const EMPTY_MEALS: Meal[] = [];
+
+/**
+ * Invalidates the caches derived from meal *usage* (recency and frequency).
+ * Call this from any mutation that logs, edits or removes a meal entry: both
+ * lists feed the food-search landing, so refreshing one without the other
+ * leaves the landing internally inconsistent.
+ */
+export function invalidateMealUsageCaches(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
+  queryClient.invalidateQueries({ queryKey: topMealsQueryKeyRoot, refetchType: 'all' });
+}
+
 function invalidateMealCaches(queryClient: QueryClient, mealId?: string) {
   queryClient.invalidateQueries({ queryKey: mealsQueryKey });
-  queryClient.invalidateQueries({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
+  invalidateMealUsageCaches(queryClient);
   queryClient.invalidateQueries({ queryKey: mealSearchQueryKeyRoot });
 
   if (mealId) {
@@ -41,7 +60,7 @@ export function useMeals(options?: { enabled?: boolean }) {
   });
 
   return {
-    meals: query.data ?? [],
+    meals: query.data ?? EMPTY_MEALS,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
@@ -59,7 +78,25 @@ export function useRecentMeals(options?: { enabled?: boolean; limit?: number }) 
   });
 
   return {
-    recentMeals: query.data ?? [],
+    recentMeals: query.data ?? EMPTY_MEALS,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+  };
+}
+
+export function useTopMeals(options?: { enabled?: boolean; limit?: number }) {
+  const { enabled = true, limit = 3 } = options ?? {};
+
+  const query = useQuery({
+    queryKey: topMealsQueryKey(limit),
+    queryFn: () => fetchTopMeals(limit),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled,
+  });
+
+  return {
+    topMeals: query.data ?? EMPTY_MEALS,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,

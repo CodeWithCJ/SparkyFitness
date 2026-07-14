@@ -7,12 +7,18 @@ interface MealLibraryRowProps {
   meal: Meal;
   onPress?: () => void;
   showDivider?: boolean;
+  // Renders an outline "Meal" badge next to the name. Used where meals are
+  // merged into a list alongside foods (the food-search landing), so a meal is
+  // not mistaken for a food. Off by default for lists that already have a
+  // meals-only header. Mirrors the web food-search meal badge.
+  showBadge?: boolean;
 }
 
 const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
   meal,
   onPress,
   showDivider = false,
+  showBadge = false,
 }) => {
   const foodInfo = useMemo(() => mealToFoodInfo(meal), [meal]);
   const itemCount = meal.foods.length;
@@ -26,9 +32,27 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
     >
       <View className="flex-row justify-between items-center">
         <View className="flex-1 mr-3">
-          <Text className="text-text-primary text-base font-medium" numberOfLines={1}>
-            {meal.name}
-          </Text>
+          <View className="flex-row items-baseline gap-1.5">
+            <Text
+              className="text-text-primary text-base font-medium flex-shrink"
+              numberOfLines={1}
+            >
+              {meal.name}
+            </Text>
+            {showBadge ? (
+              // Baseline alignment puts the badge's own text on the name's
+              // baseline, which leaves the box hanging under the line; the 2dp
+              // lift pulls the box back onto it.
+              <View
+                className="px-1 py-0.5 rounded border border-border-subtle flex-shrink-0"
+                style={{ transform: [{ translateY: -2 }] }}
+              >
+                <Text className="text-text-secondary text-[9px] font-semibold">
+                  Meal
+                </Text>
+              </View>
+            ) : null}
+          </View>
           {meal.description ? (
             <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>
               {meal.description}

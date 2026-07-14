@@ -14,7 +14,9 @@ import {
   useMealSearch,
   useMeals,
   usePreferences,
+  useRecentMeals,
   useServerConnection,
+  useTopMeals,
 } from '../../src/hooks';
 import type { Meal } from '../../src/types/meals';
 import type { FoodItem } from '../../src/types/foods';
@@ -28,7 +30,9 @@ jest.mock('../../src/hooks', () => ({
   useMealSearch: jest.fn(),
   useMeals: jest.fn(),
   usePreferences: jest.fn(),
+  useRecentMeals: jest.fn(),
   useServerConnection: jest.fn(),
+  useTopMeals: jest.fn(),
   useDebounce: (value: unknown) => value,
 }));
 
@@ -59,7 +63,9 @@ const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
 const mockUseMealSearch = useMealSearch as jest.MockedFunction<typeof useMealSearch>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
 const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
+const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<typeof useRecentMeals>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
+const mockUseTopMeals = useTopMeals as jest.MockedFunction<typeof useTopMeals>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -184,6 +190,18 @@ describe('FoodSearchScreen', () => {
       isError: false,
       refetch: jest.fn(),
     });
+    mockUseRecentMeals.mockReturnValue({
+      recentMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+    mockUseTopMeals.mockReturnValue({
+      topMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
     mockUseMealSearch.mockReturnValue({
       searchResults: [],
       isSearching: false,
@@ -357,5 +375,44 @@ describe('FoodSearchScreen', () => {
         item: expect.objectContaining({ id: 'ext-1', source: 'external' }),
       }),
     );
+  });
+
+  it('retries the meals queries as well as foods from the landing error state', () => {
+    // An outage fails foods and meals together, so a retry that only refetches
+    // foods would clear the error screen and leave the meals half empty.
+    const refetchFoods = jest.fn();
+    const refetchRecentMeals = jest.fn();
+    const refetchTopMeals = jest.fn();
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchFoods,
+    } as any);
+    mockUseRecentMeals.mockReturnValue({
+      recentMeals: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchRecentMeals,
+    } as any);
+    mockUseTopMeals.mockReturnValue({
+      topMeals: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchTopMeals,
+    } as any);
+
+    const screen = render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodSearchScreen navigation={navigation} route={route} />
+      </SafeAreaProvider>,
+    );
+
+    fireEvent.press(screen.getByText('Retry'));
+
+    expect(refetchFoods).toHaveBeenCalled();
+    expect(refetchRecentMeals).toHaveBeenCalled();
+    expect(refetchTopMeals).toHaveBeenCalled();
   });
 });
