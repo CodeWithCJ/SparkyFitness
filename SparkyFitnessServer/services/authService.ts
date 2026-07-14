@@ -216,7 +216,10 @@ async function updateUserEmail(
     // The configured admin email is the bootstrap admin identity; it may only
     // be held by registering with it, never adopted through an email change.
     const adminEmail = process.env.SPARKY_FITNESS_ADMIN_EMAIL;
-    if (adminEmail && newEmail === adminEmail) {
+    const normalizedAdminEmail = adminEmail?.trim().toLowerCase();
+    const normalizedNewEmail =
+      typeof newEmail === 'string' ? newEmail.trim().toLowerCase() : '';
+    if (normalizedAdminEmail && normalizedNewEmail === normalizedAdminEmail) {
       throw Object.assign(new Error('This email address is not available.'), {
         statusCode: 400,
       });

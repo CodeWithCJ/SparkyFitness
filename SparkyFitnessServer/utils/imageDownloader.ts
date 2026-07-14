@@ -25,19 +25,60 @@ const UPLOADS_DIR = path.join(baseUploadsDir, 'exercises');
 // accept only raster image types/sizes before writing under the served uploads dir.
 const guardedFetch = createGuardedFetch(PUBLIC_ONLY_AI_NETWORK_POLICY);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_IMAGE_EXTENSIONS = new Set([
-  '.png',
-  '.jpg',
-  '.jpeg',
-  '.gif',
-  '.webp',
+const MAX_REDIRECTS = 5;
+const IMAGE_CONTENT_TYPE_EXTENSIONS = new Map<string, readonly string[]>([
+  ['image/png', ['.png']],
+  ['image/jpeg', ['.jpg', '.jpeg']],
+  ['image/gif', ['.gif']],
+  ['image/webp', ['.webp']],
 ]);
-const ALLOWED_IMAGE_CONTENT_TYPES = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/gif',
-  'image/webp',
-]);
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+async function fetchImageResponse(imageUrl: string): Promise<Response> {
+  let currentUrl = imageUrl;
+
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
+    const response = await guardedFetch(currentUrl);
+    if (!REDIRECT_STATUSES.has(response.status)) {
+      return response;
+    }
+
+    const location = response.headers.get('location');
+    await response.body?.cancel();
+    if (!location) {
+      throw new Error(
+        `[imageDownloader] Redirect response ${response.status} had no location`
+      );
+    }
+    if (redirectCount === MAX_REDIRECTS) {
+      throw new Error(
+        `[imageDownloader] Image exceeded the ${MAX_REDIRECTS}-redirect limit`
+      );
+    }
+
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+
+  throw new Error('[imageDownloader] Image redirect resolution failed');
+}
+
+function resolveImageFileName(imageUrl: string, contentType: string): string {
+  const allowedExtensions = IMAGE_CONTENT_TYPE_EXTENSIONS.get(contentType);
+  if (!allowedExtensions) {
+    throw new Error(
+      `[imageDownloader] Rejected image with disallowed content-type: ${contentType || '(none)'}`
+    );
+  }
+
+  const sourceName = path.basename(new URL(imageUrl).pathname);
+  const sourceExtension = path.extname(sourceName).toLowerCase();
+  if (sourceName && allowedExtensions.includes(sourceExtension)) {
+    return sourceName;
+  }
+
+  const sourceStem = path.basename(sourceName, path.extname(sourceName));
+  return `${sourceStem || 'image'}${allowedExtensions[0]}`;
+}
 
 /**
  * Ensures the upload directory exists.
@@ -68,22 +109,7 @@ async function downloadImage(
   await ensureUploadsDir();
 
   try {
-    // Derive the filename from the URL path so the extension check sees the
-    // real extension.
-    const imageFileName = path.basename(new URL(imageUrl).pathname);
-    const extension = path.extname(imageFileName).toLowerCase();
-    if (!ALLOWED_IMAGE_EXTENSIONS.has(extension)) {
-      throw new Error(
-        `[imageDownloader] Rejected image with disallowed extension: ${extension || '(none)'}`
-      );
-    }
-
-    const exerciseUploadDir = path.join(UPLOADS_DIR, exerciseId);
-    const localImagePath = path.join(exerciseUploadDir, imageFileName);
-
-    await fsp.mkdir(exerciseUploadDir, { recursive: true });
-
-    const response = await guardedFetch(imageUrl);
+    const response = await fetchImageResponse(imageUrl);
     if (!response.ok) {
       throw new Error(
         `[imageDownloader] Upstream returned status ${response.status}`
@@ -94,11 +120,11 @@ async function downloadImage(
       .split(';')[0]
       .trim()
       .toLowerCase();
-    if (!ALLOWED_IMAGE_CONTENT_TYPES.has(contentType)) {
-      throw new Error(
-        `[imageDownloader] Rejected image with disallowed content-type: ${contentType || '(none)'}`
-      );
-    }
+    const imageFileName = resolveImageFileName(imageUrl, contentType);
+    const exerciseUploadDir = path.join(UPLOADS_DIR, exerciseId);
+    const localImagePath = path.join(exerciseUploadDir, imageFileName);
+
+    await fsp.mkdir(exerciseUploadDir, { recursive: true });
 
     const declaredLength = Number(response.headers.get('content-length'));
     if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_BYTES) {

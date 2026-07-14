@@ -409,7 +409,23 @@ app.get(
       const externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
         originalRelativeImagePath
       );
-      await downloadImage(externalImageUrl, exerciseId as string);
+      const downloadedImagePath = await downloadImage(
+        externalImageUrl,
+        exerciseId as string
+      );
+      localImagePath = path.resolve(
+        exercisesBaseDir,
+        exerciseId as string,
+        path.basename(downloadedImagePath)
+      );
+      const normalizedDownloadedPath = isWindows
+        ? localImagePath.toLowerCase()
+        : localImagePath;
+      if (
+        !normalizedDownloadedPath.startsWith(`${normalizedBaseDir}${path.sep}`)
+      ) {
+        return res.status(400).send('Invalid image path.');
+      }
       res.sendFile(localImagePath, uploadsStaticOptions);
     } catch (error) {
       // @ts-expect-error TS18046

@@ -40,6 +40,16 @@ describe('authService.updateUserEmail', () => {
     expect(userRepository.getCredentialPasswordHash).not.toHaveBeenCalled();
   });
 
+  it('refuses a case-variant of the configured admin email', async () => {
+    process.env.SPARKY_FITNESS_ADMIN_EMAIL = 'admin@example.com';
+
+    await expect(
+      authService.updateUserEmail('attacker-id', 'ADMIN@EXAMPLE.COM', 'pw')
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(userRepository.updateUserEmail).not.toHaveBeenCalled();
+    expect(userRepository.getCredentialPasswordHash).not.toHaveBeenCalled();
+  });
+
   it('requires the correct current password for a credential account', async () => {
     vi.mocked(userRepository.getCredentialPasswordHash).mockResolvedValue(
       PASSWORD_HASH

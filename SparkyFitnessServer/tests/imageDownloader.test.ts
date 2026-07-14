@@ -93,14 +93,81 @@ describe('imageDownloader - downloadImage', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('rejects a disallowed file extension before making a request', async () => {
-    const fetchSpy = vi.fn();
-    globalThis.fetch = fetchSpy;
+  it('derives a safe extension for an extensionless image URL', async () => {
+    const bytes = Buffer.from('fake-png-bytes');
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      imageResponse(bytes, {
+        'content-type': 'image/png',
+        'content-length': String(bytes.length),
+      })
+    );
+
+    const result = await downloadImage(
+      'https://cdn.example.com/image?id=123',
+      'ex-no-ext'
+    );
+
+    expect(result).toBe('/uploads/exercises/ex-no-ext/image.png');
+    expect(
+      fs.existsSync(
+        path.join(TMP_UPLOADS, 'exercises', 'ex-no-ext', 'image.png')
+      )
+    ).toBe(true);
+  });
+
+  it('replaces a misleading extension with one matching the response type', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        imageResponse('fake-png-bytes', { 'content-type': 'image/png' })
+      );
+
+    const result = await downloadImage(
+      'https://cdn.example.com/evil.html',
+      'ex-safe-ext'
+    );
+
+    expect(result).toBe('/uploads/exercises/ex-safe-ext/evil.png');
+  });
+
+  it('follows redirects through the guarded fetch path', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: { location: '/images/final.png' },
+        })
+      )
+      .mockResolvedValueOnce(
+        imageResponse('redirected-png', { 'content-type': 'image/png' })
+      );
+
+    const result = await downloadImage(
+      'https://cdn.example.com/start.png',
+      'ex-redirect'
+    );
+
+    expect(result).toBe('/uploads/exercises/ex-redirect/start.png');
+    expect(globalThis.fetch).toHaveBeenNthCalledWith(
+      2,
+      'https://cdn.example.com/images/final.png',
+      expect.any(Object)
+    );
+  });
+
+  it('blocks a redirect to a private host', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { location: 'http://127.0.0.1/internal.png' },
+      })
+    );
 
     await expect(
-      downloadImage('https://cdn.example.com/evil.html', 'ex-ext')
-    ).rejects.toThrow(/disallowed extension/);
-    expect(fetchSpy).not.toHaveBeenCalled();
+      downloadImage('https://cdn.example.com/start.png', 'ex-redirect-ssrf')
+    ).rejects.toThrow();
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a non-image content-type', async () => {
