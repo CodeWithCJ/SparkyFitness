@@ -1,5 +1,13 @@
 import { log } from '../../config/logging.js';
 import { normalizeBarcode } from '../../utils/foodUtils.js';
+import {
+  createGuardedFetch,
+  PUBLIC_ONLY_AI_NETWORK_POLICY,
+} from '../../utils/outboundUrlPolicy.js';
+
+// The base URL is configurable per provider; route outbound requests through
+// the shared public-host guard.
+const guardedFetch = createGuardedFetch(PUBLIC_ONLY_AI_NETWORK_POLICY);
 // Harvest every nutrient YAZIO reports (keyed like "mineral.magnesium",
 // "vitamin.a", "nutrient.protein") into a readable label -> value map scaled to
 // the variant, for alias discovery and custom-nutrient matching. Note: YAZIO
@@ -191,7 +199,7 @@ async function getYazioAccessToken(
     tokenBody.password = resolvedCredentials.password;
   }
 
-  const tokenPromise = fetch(`${baseUrl}/oauth/token`, {
+  const tokenPromise = guardedFetch(`${baseUrl}/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -598,7 +606,7 @@ function mapYazioProduct(
 async function yazioFetch<T>(path: string, credentials: YazioCredentials) {
   const baseUrl = resolveBaseUrl(credentials.baseUrl);
   const accessToken = await getYazioAccessToken(credentials);
-  return fetch(`${baseUrl}${path}`, {
+  return guardedFetch(`${baseUrl}${path}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: 'application/json',

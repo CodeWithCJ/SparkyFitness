@@ -260,16 +260,25 @@ console.log('SparkyFitnessServer UPLOADS_BASE_DIR:', UPLOADS_BASE_DIR);
 // Disable etag/lastModified — iOS CFNetwork mis-handles the resulting 304s
 // on freshly uploaded images (#1353). Filenames embed Date.now() so URLs
 // are already effectively immutable; clients still cache by URL.
-// Stored uploads are user-supplied; send `X-Content-Type-Options: nosniff` so a
-// disguised file (e.g. HTML/JS carrying an image extension) can't be MIME-sniffed
-// by the browser into an executable type and run in our origin. express.static
-// reads `setHeaders`; res.sendFile (the on-demand route below) reads `headers`.
+// Harden how stored uploads are served: `X-Content-Type-Options: nosniff` pins
+// each file to its declared type, and `Content-Disposition: attachment` is
+// defense-in-depth so a stored file can't render inline in our origin on direct
+// navigation (ignored for <img>/subresource loads, so it doesn't affect how the
+// app displays these images). express.static reads `setHeaders`; res.sendFile
+// (the on-demand route below) reads `headers`.
+const uploadsSecurityHeaders = {
+  'X-Content-Type-Options': 'nosniff',
+  'Content-Disposition': 'attachment',
+};
 const uploadsStaticOptions = {
   etag: false,
   lastModified: false,
-  setHeaders: (res: ServerResponse) =>
-    res.setHeader('X-Content-Type-Options', 'nosniff'),
-  headers: { 'X-Content-Type-Options': 'nosniff' },
+  setHeaders: (res: ServerResponse) => {
+    for (const [name, value] of Object.entries(uploadsSecurityHeaders)) {
+      res.setHeader(name, value);
+    }
+  },
+  headers: uploadsSecurityHeaders,
 };
 // Check-in progress photos are sensitive. Block direct access via the public
 // static mounts so they can only be reached through the authenticated,
@@ -400,7 +409,7 @@ app.get(
       const externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
         originalRelativeImagePath
       );
-      await downloadImage(externalImageUrl, exerciseId);
+      await downloadImage(externalImageUrl, exerciseId as string);
       res.sendFile(localImagePath, uploadsStaticOptions);
     } catch (error) {
       // @ts-expect-error TS18046

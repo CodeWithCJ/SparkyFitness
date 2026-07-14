@@ -1,4 +1,13 @@
 import { log } from '../../config/logging.js';
+import {
+  createGuardedFetch,
+  PUBLIC_ONLY_AI_NETWORK_POLICY,
+} from '../../utils/outboundUrlPolicy.js';
+
+// The base URL is configurable per provider; route outbound requests through
+// the shared public-host guard.
+const guardedFetch = createGuardedFetch(PUBLIC_ONLY_AI_NETWORK_POLICY);
+
 const DEFAULT_BASE_URL =
   'https://api.webapp.prod.blv.foodcase-services.com/BLV_WebApp_WS/webresources/BLV-api';
 
@@ -117,7 +126,7 @@ export async function searchSwissFoods(
   const url = `${baseUrl}/foods?${params.toString()}`;
 
   try {
-    const response = await fetch(url, {
+    const response = await guardedFetch(url, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -126,10 +135,8 @@ export async function searchSwissFoods(
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Swiss Food API returned status ${response.status}: ${errorText}`
-      );
+      // Surface only the status, not the upstream response body.
+      throw new Error(`Swiss Food API returned status ${response.status}`);
     }
 
     const items = (await response.json()) as SwissFoodSearchItem[];
@@ -206,7 +213,7 @@ export async function getSwissFoodDetails(
   const url = `${baseUrl}/food/${encodeURIComponent(externalId)}?lang=${encodeURIComponent(queryLang)}`;
 
   try {
-    const response = await fetch(url, {
+    const response = await guardedFetch(url, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -215,9 +222,8 @@ export async function getSwissFoodDetails(
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
       throw new Error(
-        `Swiss Food Details API returned status ${response.status}: ${errorText}`
+        `Swiss Food Details API returned status ${response.status}`
       );
     }
 
