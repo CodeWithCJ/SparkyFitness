@@ -638,13 +638,43 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       .map((t) => t.entry);
   }, [favoriteFoods, favoriteMeals]);
 
+  // One notion of "starred", shared by the landing (which excludes favorites
+  // from the sections below Favorites) and the search results (which float them
+  // to the top of their own section).
+  const favoriteKeys = useMemo(
+    () => new Set(favoriteEntries.map((entry) => entry.key)),
+    [favoriteEntries],
+  );
+
+  // Once a query is typed, favorites float to the top of their own section
+  // rather than being pulled into a group of their own: a favorited meal stays
+  // under Your Meals, just first. The rest keep the backend's relevance order,
+  // and filter preserves it, so favorites stay relevance-ordered among
+  // themselves too. This runs before the LOCAL_RESULT_CAP slice below, or a
+  // favorite ranked outside the cap could never float up.
+  const searchFoodsFavFirst = useMemo(() => {
+    const isFavorite = (food: FoodItem) =>
+      favoriteKeys.has(landingKey('food', food.id));
+    return [
+      ...searchResults.filter(isFavorite),
+      ...searchResults.filter((food) => !isFavorite(food)),
+    ];
+  }, [searchResults, favoriteKeys]);
+  const searchMealsFavFirst = useMemo(() => {
+    const isFavorite = (meal: Meal) =>
+      favoriteKeys.has(landingKey('meal', meal.id));
+    return [
+      ...mealResults.filter(isFavorite),
+      ...mealResults.filter((meal) => !isFavorite(meal)),
+    ];
+  }, [mealResults, favoriteKeys]);
+
   const landingSections = useMemo<LandingSection[]>(() => {
     // Each section excludes what the sections above it already show, so the
     // landing never repeats a row: Recent drops favorites, Top drops favorites
     // and Recent. The exclusions are passed into the merges rather than applied
     // to their results, because both merges cap at landingLimit last — filtering
     // afterwards would shrink a section below its cap.
-    const favoriteKeys = new Set(favoriteEntries.map((entry) => entry.key));
     // Recently Logged: foods + meals merged into one recency timeline.
     const recentEntries = mergeRecent(
       recentMeals,
@@ -666,6 +696,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     ].filter((section) => section.data.length > 0);
   }, [
     favoriteEntries,
+    favoriteKeys,
     recentFoods,
     topFoods,
     recentMeals,
@@ -683,32 +714,32 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       : showOnlineSection;
 
     if (hasLocalResults) {
-      if (searchResults.length > 0) {
+      if (searchFoodsFavFirst.length > 0) {
         const capFoods = willShowOnline && !showAllFoods;
         const shown = capFoods
-          ? searchResults.slice(0, LOCAL_RESULT_CAP)
-          : searchResults;
+          ? searchFoodsFavFirst.slice(0, LOCAL_RESULT_CAP)
+          : searchFoodsFavFirst;
         const data: ResultRow[] = shown.map((food) => ({ type: 'food', food }));
-        if (capFoods && searchResults.length > LOCAL_RESULT_CAP) {
+        if (capFoods && searchFoodsFavFirst.length > LOCAL_RESULT_CAP) {
           data.push({
             type: 'show-all-local',
             section: 'foods',
-            count: searchResults.length,
+            count: searchFoodsFavFirst.length,
           });
         }
         sections.push({ key: 'foods', kind: 'food', title: 'Your Foods', data });
       }
-      if (!isMealBuilderMode && mealResults.length > 0) {
+      if (!isMealBuilderMode && searchMealsFavFirst.length > 0) {
         const capMeals = willShowOnline && !showAllMeals;
         const shown = capMeals
-          ? mealResults.slice(0, LOCAL_RESULT_CAP)
-          : mealResults;
+          ? searchMealsFavFirst.slice(0, LOCAL_RESULT_CAP)
+          : searchMealsFavFirst;
         const data: ResultRow[] = shown.map((meal) => ({ type: 'meal', meal }));
-        if (capMeals && mealResults.length > LOCAL_RESULT_CAP) {
+        if (capMeals && searchMealsFavFirst.length > LOCAL_RESULT_CAP) {
           data.push({
             type: 'show-all-local',
             section: 'meals',
-            count: mealResults.length,
+            count: searchMealsFavFirst.length,
           });
         }
         sections.push({ key: 'meals', kind: 'meal', title: 'Your Meals', data });
@@ -792,8 +823,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   }, [
     hasLocalResults,
     stableLocalPending,
-    searchResults,
-    mealResults,
+    searchFoodsFavFirst,
+    searchMealsFavFirst,
     isMealBuilderMode,
     showOnlineSection,
     selectedProviderName,

@@ -276,6 +276,81 @@ describe('FoodSearchScreen', () => {
     expect(screen.getByText('Cheddar Cheese')).toBeTruthy();
   });
 
+  it('floats favorited foods to the top of Your Foods, and does so above the local cap', () => {
+    // Eight results with the favorite ranked LAST by relevance. The local cap
+    // (6) only bites when an online section also renders, so switch one on.
+    // Ordering has to happen before the slice: order after it and the favorite,
+    // sitting outside the cap, could never float up at all.
+    const foods = Array.from({ length: 8 }, (_, i) =>
+      buildFood({ id: `food-${i + 1}`, name: `Result ${i + 1} Food` }),
+    );
+    const favorite = foods[7];
+
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: foods,
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+    } as any);
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [{ ...favorite, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      favoriteMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] }),
+    );
+
+    const screen = renderSearching();
+
+    // The favorite is rendered first, ahead of the relevance-ordered rest.
+    const rendered = screen
+      .getAllByText(/^Result \d Food$/)
+      .map((node) => node.props.children);
+    expect(rendered[0]).toBe('Result 8 Food');
+    expect(rendered.slice(1)).toEqual([
+      'Result 1 Food',
+      'Result 2 Food',
+      'Result 3 Food',
+      'Result 4 Food',
+      'Result 5 Food',
+    ]);
+    // It took a slot inside the cap, so the last non-favorite is pushed out.
+    expect(screen.queryByText('Result 6 Food')).toBeNull();
+  });
+
+  it('floats favorited meals to the top of Your Meals without moving them out of the section', () => {
+    const plain = { ...buildMeal(), id: 'meal-1', name: 'Alpha Meal' };
+    const favorite = { ...buildMeal(), id: 'meal-2', name: 'Zeta Meal' };
+
+    mockUseMealSearch.mockReturnValue({
+      searchResults: [plain, favorite],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+      refetch: jest.fn(),
+    });
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [],
+      favoriteMeals: [{ ...favorite, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+
+    const screen = renderSearching();
+
+    // Still under Your Meals — floated, not lifted into a group of its own.
+    expect(screen.getByText('Your Meals')).toBeTruthy();
+    const rendered = screen
+      .getAllByText(/^(Alpha|Zeta) Meal$/)
+      .map((node) => node.props.children);
+    expect(rendered).toEqual(['Zeta Meal', 'Alpha Meal']);
+  });
+
   it('renders verified badge for verified local foods in search results', () => {
     mockUseFoodSearch.mockReturnValue({
       searchResults: [buildFood({ provider_verified: true })],
