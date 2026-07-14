@@ -159,14 +159,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             />
 
             <SettingsRowGroup>
-              {isConnected && activeConfig?.authType === 'session' && (
-                <SettingsRow
-                  icon="fingerprint"
-                  title="Passkeys"
-                  onPress={() => navigation.navigate('PasskeySettings')}
-                  iconColor={catSlate}
-                />
-              )}
               {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"

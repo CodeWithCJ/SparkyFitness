@@ -152,7 +152,20 @@ describe('ServerConfigModal', () => {
       expect(result.getByText('Sign In')).toBeTruthy();
       expect(result.getByText('API Key')).toBeTruthy();
       expect(result.getByText('Connect')).toBeTruthy();
-      expect(result.getByText('Cancel')).toBeTruthy();
+      expect(result.getByLabelText('Close')).toBeTruthy();
+    });
+
+    it('echoes the unfocused URL value as plain text', async () => {
+      // iOS wraps overflowing text in unfocused TextInputs (RN #29068),
+      // hiding everything after "https://"; the echo Text is what keeps the
+      // URL readable.
+      const result = renderModal();
+      await waitForForm(result);
+      await enterUrl(result, 'https://a-long-enough-server-url.example.com');
+
+      expect(
+        result.getByText('https://a-long-enough-server-url.example.com'),
+      ).toBeTruthy();
     });
 
     it('shows API key field when API Key tab is selected', async () => {
@@ -754,12 +767,12 @@ describe('ServerConfigModal', () => {
   });
 
   describe('callbacks', () => {
-    it('calls onDismiss when Cancel is pressed', async () => {
+    it('calls onDismiss when the close button is pressed', async () => {
       const onDismiss = jest.fn();
       const result = renderModal({ onDismiss });
       await waitForForm(result);
 
-      fireEvent.press(result.getByText('Cancel'));
+      fireEvent.press(result.getByLabelText('Close'));
 
       expect(onDismiss).toHaveBeenCalled();
     });
