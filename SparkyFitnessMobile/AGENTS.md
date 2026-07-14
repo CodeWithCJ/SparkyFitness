@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-07-13*
+*Last updated: 2026-07-14*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -103,7 +103,7 @@ npx expo prebuild --clean
 - `useWaterIntakeMutation` fetches `waterContainersQueryKey`, persists the selected container, and optimistically updates `dailySummaryQueryKey(date)`.
 - Active-server switches clear React Query state before refetching connection state.
 - Error-boundary retry flows call `queryClient.resetQueries()`.
-- App-local toggles live in `stores/appPreferencesStore.ts` (Zustand `persist`, single AsyncStorage key `@SparkyFitness/app-preferences`): haptics, sounds, notifications, hydration/fasting card visibility, Ask Sparky card visibility, and the Liquid Glass tab bar opt-in. Consume via selectors (`useAppPreferencesStore((s) => s.hapticsEnabled)`) plus generated setters. A legacy-aware storage adapter migrates the old per-key `@HealthConnect:*` values once. These preferences never sync to the server.
+- App-local toggles live in `stores/appPreferencesStore.ts` (Zustand `persist`, single AsyncStorage key `@SparkyFitness/app-preferences`): haptics, sounds, notifications, hydration/fasting card visibility, Ask Sparky card visibility, the Liquid Glass tab bar opt-in, the active-workout metric column, and the default rest period (`defaultRestSec`, edited in `WorkoutSettingsScreen`). Consume via selectors (`useAppPreferencesStore((s) => s.hapticsEnabled)`) plus generated setters; non-React code reads current values through helpers like `getDefaultRestSec()`. A legacy-aware storage adapter migrates the old per-key `@HealthConnect:*` values once. These preferences never sync to the server.
 
 ## Health Sync
 
@@ -170,7 +170,7 @@ npx expo prebuild --clean
 - Exercise selection returns via `CommonActions.setParams` and a nonce pattern through `useSelectedExercise`.
 - Rest timer state lives in `stores/activeWorkoutStore.ts`; notifications are scheduled through `services/notifications.ts`. The rest-complete ping carries a background "Complete Set" action (`rest-complete` category): responses are routed to `completeActiveSetIfReady` by `initWorkoutNotificationActions` (exported from the store, wired in App startup — the response listener cannot live in `notifications.ts` without a store↔service import cycle), and stale delivered pings are swept when the next rest is scheduled.
 - Set IDs are preserved server-side across workout edits so the active workout cursor stays attached to the right row.
-- Rest duration is configurable per exercise via `RestPeriodChip` / `RestPeriodSheet` and is forwarded through `buildExercisesPayload`.
+- Rest duration is configurable per exercise via `RestPeriodChip` / `RestPeriodSheet` and is forwarded through `buildExercisesPayload`. New exercises/sets and null `rest_time` fallbacks seed from the `defaultRestSec` app preference via `getDefaultRestSec()` (Settings → Workout Settings), not a hardcoded constant.
 - Fasting uses `FastingDetailScreen`, `FastingCard`, `FastingProtocolSheet`, `useFasting`, `useFastingTimer`, `utils/fasting.ts`, and `services/api/fastingApi.ts`.
 - `FastingGoalReconciler` is mounted headlessly on `DashboardScreen`; it owns goal-notification reconciliation and app-resume refetch even when the visible fasting card is hidden.
 - Fasting goal notifications are gated by the app notifications toggle; ending/canceling a fast clears scheduled notifications.

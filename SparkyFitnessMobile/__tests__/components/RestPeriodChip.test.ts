@@ -1,6 +1,10 @@
 import { formatRest, formatRestLabel } from '../../src/components/RestPeriodChip';
 import { clampRestSeconds, MIN_REST_SEC, MAX_REST_SEC } from '../../src/components/RestPeriodSheet';
 import { DEFAULT_REST_SEC } from '../../src/utils/workoutSession';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
 
 describe('formatRest', () => {
   it('formats values under a minute as Ns', () => {
@@ -77,5 +81,14 @@ describe('clampRestSeconds', () => {
 
   it('handles NaN by returning the default rest', () => {
     expect(clampRestSeconds(NaN)).toBe(DEFAULT_REST_SEC);
+  });
+
+  it('follows the user-configured default rest for non-finite input', () => {
+    useAppPreferencesStore.getState().setDefaultRestSec(120);
+    try {
+      expect(clampRestSeconds(NaN)).toBe(120);
+    } finally {
+      __resetAppPreferencesStoreForTests();
+    }
   });
 });

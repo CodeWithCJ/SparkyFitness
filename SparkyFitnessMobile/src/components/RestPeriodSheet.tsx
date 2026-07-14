@@ -19,7 +19,7 @@ import Button from './ui/Button';
 import CollapsibleSection from './CollapsibleSection';
 import StepperInput from './StepperInput';
 import { formatRestLabel } from './RestPeriodChip';
-import { DEFAULT_REST_SEC } from '../utils/workoutSession';
+import { getDefaultRestSec } from '../utils/workoutSession';
 
 export const MIN_REST_SEC = 0;
 export const MAX_REST_SEC = 900;
@@ -27,7 +27,7 @@ const REST_PRESETS: number[] = [0, 5, 15, 30, 45, 60, 90, 120, 180, 300];
 
 /** Clamp to [MIN, MAX] and round to the nearest 5 seconds (0 = no rest). */
 export function clampRestSeconds(seconds: number): number {
-  if (!Number.isFinite(seconds)) return DEFAULT_REST_SEC;
+  if (!Number.isFinite(seconds)) return getDefaultRestSec();
   const clamped = Math.max(MIN_REST_SEC, Math.min(MAX_REST_SEC, seconds));
   return Math.round(clamped / 5) * 5;
 }
@@ -58,7 +58,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
 
     useImperativeHandle(ref, () => ({
       present: (sec) => {
-        const initial = clampRestSeconds(sec ?? 90);
+        const initial = clampRestSeconds(sec ?? getDefaultRestSec());
         setCurrentValue(initial);
         setCustomText(String(initial));
         setCustomOpen(!REST_PRESETS.includes(initial));

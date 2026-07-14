@@ -16,7 +16,7 @@ import type { WorkoutPreset, WorkoutPresetExercise } from '../types/workoutPrese
 import type { WorkoutPresetExercisePayload } from '../services/api/workoutPresetsApi';
 import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
 import { parseDecimalInput } from './numericInput';
-import { DEFAULT_REST_SEC } from './workoutSupersets';
+import { getDefaultRestSec } from './workoutSupersets';
 
 // The superset/reorder algebra lives in its own module; re-exported here so
 // the many existing import sites keep working.
@@ -975,7 +975,7 @@ function makeDefaultStartSet(setNumber: number): ExerciseEntrySetRequest {
     reps: null,
     weight: null,
     duration: null,
-    rest_time: DEFAULT_REST_SEC,
+    rest_time: getDefaultRestSec(),
     notes: null,
     rpe: null,
     completed_at: null,

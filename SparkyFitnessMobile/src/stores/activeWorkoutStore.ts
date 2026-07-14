@@ -11,8 +11,8 @@ import type {
 } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
 import {
-  DEFAULT_REST_SEC,
   describeActiveSetAssumed,
+  getDefaultRestSec,
   getSupersetRuns,
   isDropSetType,
   isPrSet,
@@ -439,7 +439,7 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
 
     const run = runByFirstEntryId.get(exercise.id);
     if (!run) {
-      const restSec = exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
+      const restSec = exercise.sets[0]?.rest_time ?? getDefaultRestSec();
       for (const set of exercise.sets) {
         pushStep(exercise, set, restSec);
       }
@@ -451,7 +451,7 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
 
     // Rest is per-round; group actions harmonize every member's rest_time,
     // so the anchor's first set speaks for the whole group.
-    const groupRest = members[0].sets[0]?.rest_time ?? DEFAULT_REST_SEC;
+    const groupRest = members[0].sets[0]?.rest_time ?? getDefaultRestSec();
     const roundCount = Math.max(...members.map((m) => m.sets.length));
     for (let round = 0; round < roundCount; round++) {
       let firstInRound = true;
@@ -558,7 +558,7 @@ function makeDefaultSet(id: number, setNumber: number): ExerciseEntrySetResponse
     reps: null,
     weight: null,
     duration: null,
-    rest_time: DEFAULT_REST_SEC,
+    rest_time: getDefaultRestSec(),
     notes: null,
     rpe: null,
     completed_at: null,
@@ -661,11 +661,11 @@ function restSecBeforeNextSet(
   nextSetId: string,
 ): number {
   const to = locateSet(session, nextSetId);
-  if (!to) return DEFAULT_REST_SEC;
+  if (!to) return getDefaultRestSec();
   if (isDropSetType(to.exercise.sets[to.setIndex]?.set_type)) return 0;
 
   const from = locateSet(session, completedSetId);
-  if (!from) return to.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
+  if (!from) return to.exercise.sets[0]?.rest_time ?? getDefaultRestSec();
 
   // Back-to-back superset partners: same run, different member, same round.
   const toRun = getSupersetRuns(session.exercises).find((r) =>
@@ -679,7 +679,7 @@ function restSecBeforeNextSet(
   ) {
     return 0;
   }
-  return from.exercise.sets[0]?.rest_time ?? DEFAULT_REST_SEC;
+  return from.exercise.sets[0]?.rest_time ?? getDefaultRestSec();
 }
 
 export function seedCompletionFromSession(session: PresetSessionResponse): CompletedSetMap {
@@ -844,7 +844,7 @@ function startRestForStep(
   durationSecOverride?: number,
 ): Rest {
   const step = steps.find((s) => s.setId === setId);
-  const durationSec = durationSecOverride ?? step?.restSec ?? DEFAULT_REST_SEC;
+  const durationSec = durationSecOverride ?? step?.restSec ?? getDefaultRestSec();
   const token = ++restInstanceCounter;
   const endsAt = Date.now() + durationSec * 1000;
 

@@ -14,6 +14,11 @@ import {
 } from '../../src/services/notifications';
 import { fireSelectionHaptic, fireSuccessHaptic } from '../../src/services/haptics';
 import { newUuid } from '../../src/utils/ids';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
+import type { Exercise } from '../../src/types/exercise';
 
 jest.mock('../../src/services/notifications', () => ({
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
@@ -1705,6 +1710,37 @@ describe('activeWorkoutStore', () => {
       it('is a no-op for an unknown exercise entry id', () => {
         useActiveWorkoutStore.getState().addSetToExercise('nope');
         expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      });
+    });
+
+    describe('addExercise', () => {
+      const rowExercise: Exercise = {
+        id: 'ex-3',
+        name: 'Row',
+        category: 'strength',
+        equipment: [],
+        primary_muscles: [],
+        secondary_muscles: [],
+        calories_per_hour: 0,
+        source: 'custom',
+        images: [],
+        tags: [],
+      };
+
+      it('seeds the new entry with one empty set using the configured default rest', () => {
+        useAppPreferencesStore.getState().setDefaultRestSec(150);
+        try {
+          useActiveWorkoutStore.getState().addExercise(rowExercise);
+          const entries = useActiveWorkoutStore.getState().session!.exercises;
+          const added = entries[entries.length - 1];
+          expect(added.exercise_id).toBe('ex-3');
+          expect(added.sets).toHaveLength(1);
+          expect(added.sets[0].rest_time).toBe(150);
+          expect(added.sets[0].weight).toBeNull();
+          expect(added.sets[0].reps).toBeNull();
+        } finally {
+          __resetAppPreferencesStoreForTests();
+        }
       });
     });
 

@@ -77,6 +77,7 @@ describe('ActiveWorkoutHeader', () => {
       onRename?: () => void;
       onReorder?: () => void;
       onAddExercise?: () => void;
+      onOpenSettings?: () => void;
       onClearAllSets?: () => void;
     },
   ) {
@@ -92,6 +93,7 @@ describe('ActiveWorkoutHeader', () => {
         onRename={overrides?.onRename}
         onReorder={overrides?.onReorder}
         onAddExercise={overrides?.onAddExercise}
+        onOpenSettings={overrides?.onOpenSettings}
         onClearAllSets={overrides?.onClearAllSets}
       />,
     );
@@ -195,5 +197,19 @@ describe('ActiveWorkoutHeader', () => {
     fireEvent.press(getByLabelText('Workout menu'));
     fireEvent.press(getByText('Clear all logged sets'));
     expect(onClearAllSets).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Workout settings and fires onOpenSettings when provided', () => {
+    const onOpenSettings = jest.fn();
+    const { getByLabelText, getByText } = renderHeaderComponent({}, { onOpenSettings });
+    fireEvent.press(getByLabelText('Workout menu'));
+    fireEvent.press(getByText('Workout settings'));
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits Workout settings when onOpenSettings is not provided', () => {
+    const { getByLabelText, queryByText } = renderHeaderComponent({});
+    fireEvent.press(getByLabelText('Workout menu'));
+    expect(queryByText('Workout settings')).toBeNull();
   });
 });

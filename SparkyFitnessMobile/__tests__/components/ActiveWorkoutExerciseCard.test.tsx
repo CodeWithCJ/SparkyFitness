@@ -666,15 +666,15 @@ describe('ActiveWorkoutExerciseCard', () => {
     const prevOf = (utils: ReturnType<typeof renderCard>, id: number) =>
       utils.getByTestId(`set-row-${id}`).props.accessibilityValue.text;
 
-    it('shows the PREVIOUS header in live and edit modes but not view', () => {
+    it('shows the PREV header in live and edit modes but not view', () => {
       const live = renderCard(true, { mode: 'live' });
-      expect(live.getByText('Previous')).toBeTruthy();
+      expect(live.getByText('Prev')).toBeTruthy();
 
       const edit = renderCard(true, { mode: 'edit' });
-      expect(edit.getByText('Previous')).toBeTruthy();
+      expect(edit.getByText('Prev')).toBeTruthy();
 
       const view = renderCard(true, { mode: 'view' });
-      expect(view.queryByText('Previous')).toBeNull();
+      expect(view.queryByText('Prev')).toBeNull();
     });
 
     it('matches the most recent session to rows by position, dashing the overflow', () => {

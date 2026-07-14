@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { DEFAULT_REST_SEC } from '../utils/workoutSession';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 
 /** Format a rest duration as `m:ss` when ≥ 60s, otherwise `Ns`. */
 export function formatRest(seconds: number | null | undefined): string {
@@ -29,12 +30,14 @@ function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProp
     '--color-text-secondary',
     '--color-accent-primary',
   ]) as [string, string];
+  const defaultRestSec = useAppPreferencesStore((s) => s.defaultRestSec);
+  const label = formatRestLabel(value ?? defaultRestSec);
 
   if (readOnly) {
     return (
       <View className="flex-row items-center">
         <Icon name="timer" size={14} color={textSecondary} />
-        <Text className="text-sm text-text-secondary ml-1">Rest {formatRestLabel(value)}</Text>
+        <Text className="text-sm text-text-secondary ml-1">Rest {label}</Text>
       </View>
     );
   }
@@ -47,7 +50,7 @@ function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProp
     >
       <Icon name="timer" size={14} color={accentPrimary} />
       <Text className="text-sm" style={{ color: accentPrimary }}>
-        Rest {formatRestLabel(value)}
+        Rest {label}
       </Text>
       <Icon name="chevron-down" size={10} color={accentPrimary} />
     </Pressable>

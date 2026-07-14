@@ -14,7 +14,9 @@ import {
 import {
   KeyboardAvoidingView,
   KeyboardAwareScrollView,
+  KeyboardEvents,
   KeyboardProvider,
+  KeyboardStickyView,
   type KeyboardAwareScrollViewRef,
 } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,7 +29,12 @@ import ActiveWorkoutHeader, {
 } from '../components/ActiveWorkoutHeader';
 import ActiveWorkoutRail, { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
+import type { SetRowAccessoryHandle } from '../components/ActiveWorkoutSetRow';
 import KeyboardCollapsible from '../components/KeyboardCollapsible';
+import {
+  SetInputAccessoryBar,
+  type SetAccessoryAction,
+} from '../components/SetRowChrome';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
 import ActiveWorkoutRestBar, {
   REST_BAR_GLASS_CLEARANCE,
@@ -238,6 +245,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     Keyboard.dismiss();
     setReorderVisible(true);
   }, []);
+
+  const handleOpenWorkoutSettings = useCallback(() => {
+    Keyboard.dismiss();
+    navigation.navigate('WorkoutSettings');
+  }, [navigation]);
 
   // Superset display: adjacent 2+ runs get a flat left rail (log cards) and a
   // bottom bar (rail thumbs) in a per-group palette color.
@@ -648,6 +660,32 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setFocusedSetKey(null);
   }, []);
 
+  // Live rows register their sticky-bar handles here, keyed by render key;
+  // the accessory bar dispatches to the focused row's handle at press time.
+  const accessoryHandlesRef = useRef<Record<string, SetRowAccessoryHandle>>({});
+  const handleRegisterAccessoryHandle = useCallback(
+    (key: string, handle: SetRowAccessoryHandle | null) => {
+      if (handle == null) delete accessoryHandlesRef.current[key];
+      else accessoryHandlesRef.current[key] = handle;
+    },
+    [],
+  );
+
+  // The keyboard leaving — accessory Done, a tap outside the grid, the
+  // Android back gesture — always ends the cell edit: clearing the focus
+  // state flushes the row's drafts (deactivation commit) and hides the bar.
+  useEffect(() => {
+    const subscription = KeyboardEvents.addListener('keyboardDidHide', () => {
+      setFocusedSetKey(null);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const handleAccessoryDone = useCallback(() => {
+    setFocusedSetKey(null);
+    Keyboard.dismiss();
+  }, []);
+
   const handleCompleteSet = useCallback((setId: string) => {
     useActiveWorkoutStore.getState().completeSet(setId);
     // Logging advances the cursor and (usually) starts a rest; drop the
@@ -891,6 +929,53 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const restNextSetText =
     activeSetDescription == null ? null : formatSetLoad(activeSetDescription, weightUnit);
 
+  // Sticky accessory bar (both platforms) for the focused set cell. The
+  // focused row registered its handle by render key; its set id — needed for
+  // completion state — reverses through setRenderKeys (identity when the id
+  // never churned).
+  const focusedSetId =
+    focusedSetKey == null
+      ? null
+      : (Object.keys(setRenderKeys).find((id) => setRenderKeys[id] === focusedSetKey) ??
+        focusedSetKey);
+  // The keyboard walk: weight → reps → RPE (when that column is shown); the
+  // last field's bar drops Next and leads with Log.
+  const accessoryNextField =
+    focusedField === 'weight'
+      ? ('reps' as const)
+      : focusedField === 'reps' && metricColumn === 'rpe'
+        ? ('rpe' as const)
+        : null;
+  const accessoryActions: SetAccessoryAction[] = [
+    ...(accessoryNextField != null
+      ? [
+          {
+            key: 'next',
+            label: 'Next',
+            onPress: () => {
+              if (focusedSetKey == null) return;
+              accessoryHandlesRef.current[focusedSetKey]?.focusField(accessoryNextField);
+            },
+          },
+        ]
+      : []),
+    // Any uncompleted set is loggable (matching its ring), so a focused row
+    // doesn't dead-end on the last field with only Done.
+    ...(focusedSetId != null && completedSetIds[focusedSetId] == null
+      ? [
+          {
+            key: 'log',
+            label: 'Log',
+            bold: true,
+            onPress: () => {
+              if (focusedSetKey == null) return;
+              accessoryHandlesRef.current[focusedSetKey]?.log();
+            },
+          },
+        ]
+      : []),
+  ];
+
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <ActiveWorkoutHeader
@@ -904,6 +989,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onRename={() => setRenameVisible(true)}
         onAddExercise={handleAddExercise}
         onReorder={reorderItemCount >= 2 ? handleOpenReorder : undefined}
+        onOpenSettings={handleOpenWorkoutSettings}
         onClearAllSets={hasAnyCompletedSets ? handleClearAllSets : undefined}
       />
 
@@ -934,11 +1020,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           viewportHeightRef.current = e.nativeEvent.layout.height;
         }}
         keyboardShouldPersistTaps="handled"
+        // Clearance above the keyboard for the focused input: the sticky
+        // accessory bar occupies the first ~48px, the rest keeps the row
+        // readable above it.
         bottomOffset={80}
-        // Tapping a cell in another row remounts the focused TextInput
-        // (unmount-blur → keyboard hide → refocus). Without this, the hide leg
-        // scrolls back to a stale pre-keyboard position and the refocus then
-        // measures against it, landing the tapped input off-screen.
+        // A real dismissal (Done, tap outside) shouldn't scroll the log back
+        // to its pre-keyboard position — the user is usually mid-list.
         disableScrollOnKeyboardHide
       >
         {session.exercises.map((exercise) => {
@@ -977,6 +1064,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onActivateSet={handleActivateSet}
               onActivateRpe={handleActivateRpe}
               onDeactivateSet={handleDeactivateSet}
+              onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
             />
           );
 
@@ -1047,6 +1135,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onCompleteSet={handleCompleteActiveSet}
           onPressBar={handlePressRestBar}
         />
+      )}
+
+      {/* Keyboard accessory bar for the focused set cell, on both platforms
+          (per-input InputAccessoryViews are iOS-only and edit-form-only now).
+          It rides the keyboard via KeyboardStickyView and unmounts when the
+          keyboard-hide listener clears the focus state. */}
+      {focusedSetKey != null && (
+        <KeyboardStickyView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+          <SetInputAccessoryBar onDone={handleAccessoryDone} actions={accessoryActions} />
+        </KeyboardStickyView>
       )}
 
       <RestPeriodSheet ref={restSheetRef} onChange={handleRestChanged} />

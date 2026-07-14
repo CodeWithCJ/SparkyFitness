@@ -31,6 +31,41 @@ export interface PickerOption<T> {
   value: T;
 }
 
+interface PickerTriggerProps {
+  label: string;
+  onPress: () => void;
+  accessibilityLabel: string;
+  containerStyle?: StyleProp<ViewStyle>;
+}
+
+/**
+ * The dropdown-style control BottomSheetPicker renders when no custom trigger
+ * is supplied. Exported so settings rows backed by a different sheet (e.g.
+ * RestPeriodSheet) present the same control.
+ */
+export function PickerTrigger({
+  label,
+  onPress,
+  accessibilityLabel,
+  containerStyle,
+}: PickerTriggerProps) {
+  const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
+  return (
+    <TouchableOpacity
+      className="flex-row items-center justify-between px-3 py-2.5 rounded-lg border border-border-subtle bg-raised min-h-11"
+      style={containerStyle}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint="Opens selection menu"
+    >
+      <Text className="text-base flex-1 text-text-primary">{label}</Text>
+      <Icon name="chevron-down" size={16} color={textMuted} />
+    </TouchableOpacity>
+  );
+}
+
 export interface PickerSection<T> {
   title?: string;
   options: PickerOption<T>[];
@@ -173,20 +208,12 @@ function BottomSheetPicker<T extends string | number>({
         // eslint-disable-next-line react-hooks/refs
         renderTrigger({ onPress: handleOpen, selectedOption })
       ) : (
-        <TouchableOpacity
-          className="flex-row items-center justify-between px-3 py-2.5 rounded-lg border border-border-subtle bg-raised min-h-11"
-          style={containerStyle}
+        <PickerTrigger
+          label={displayText}
           onPress={handleOpen}
-          activeOpacity={0.7}
-          accessibilityRole="button"
           accessibilityLabel={title || placeholder}
-          accessibilityHint="Opens selection menu"
-        >
-          <Text className="text-base flex-1 text-text-primary">
-            {displayText}
-          </Text>
-          <Icon name="chevron-down" size={16} color={textMuted} />
-        </TouchableOpacity>
+          containerStyle={containerStyle}
+        />
       )}
 
       <BottomSheetModal

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
+import { act, render, fireEvent } from '@testing-library/react-native';
 import { useCSSVariable } from 'uniwind';
 import type {
   ExerciseEntrySetResponse,
@@ -61,7 +61,7 @@ interface RenderOverrides {
   displayNumber?: number;
   readOnly?: boolean;
   mode?: SetRowMode;
-  activeField?: 'weight' | 'reps';
+  activeField?: 'weight' | 'reps' | 'rpe';
   isFocused?: boolean;
   nextSetId?: string | null;
   entryId?: string;
@@ -89,6 +89,7 @@ function renderRow(overrides?: RenderOverrides) {
     onEditFieldChange: jest.fn(),
     onAddSet: jest.fn(),
     onPressSetType: jest.fn(),
+    onRegisterAccessoryHandle: jest.fn(),
   };
   // onToggleComplete and onPressSetType are opt-in (via enableToggle /
   // enableSetType) so most tests exercise the static-check + onLongPress
@@ -193,27 +194,46 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onComplete).toHaveBeenCalledWith('101');
     });
 
-    it('activates the tapped cell instead of showing inputs inline', () => {
-      const { getByLabelText, queryByLabelText, callbacks } = renderRow({ state: 'current' });
-      expect(queryByLabelText('Weight')).toBeNull();
-      fireEvent.press(getByLabelText('Edit weight for set 1'));
+    it('keeps inputs mounted while unfocused and reports focus up', () => {
+      // Always-mounted inputs are what keep the keyboard from dipping when
+      // the user taps between rows: focus lands natively and only the report
+      // goes through screen state.
+      const { getByLabelText, callbacks } = renderRow({ state: 'current' });
+      const weight = getByLabelText('Weight');
+      expect(weight.props.value).toBe('60');
+      fireEvent(weight, 'focus');
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
-      fireEvent.press(getByLabelText('Edit reps for set 1'));
+      fireEvent(getByLabelText('Reps'), 'focus');
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'reps');
     });
 
-    it('activates RPE when the RPE column cell is tapped', () => {
+    it('renders cells as plain text until focused — no chip chrome on the resting grid', () => {
+      const { getByLabelText } = renderRow({ state: 'current' });
+      const input = getByLabelText('Weight');
+      expect(StyleSheet.flatten(input.props.style).backgroundColor).toBe('transparent');
+      expect(StyleSheet.flatten(input.props.style).borderColor).toBe('transparent');
+
+      // The chip + ring come back on the focused cell to mark the keyboard target.
+      fireEvent(input, 'focus');
+      expect(StyleSheet.flatten(input.props.style).backgroundColor).not.toBe('transparent');
+    });
+
+    it('reports RPE focus when the RPE column input is focused', () => {
       const { getByLabelText, callbacks } = renderRow({
         state: 'current',
         metricColumn: 'rpe',
       });
-      fireEvent.press(getByLabelText('Edit RPE for set 1'));
+      fireEvent(getByLabelText('RPE'), 'focus');
       expect(callbacks.onActivateRpe).toHaveBeenCalledWith('101');
     });
 
-    it('does not make a non-RPE metric column tappable', () => {
-      const { queryByLabelText } = renderRow({ state: 'current', metricColumn: 'volume' });
-      expect(queryByLabelText('Edit RPE for set 1')).toBeNull();
+    it('renders no RPE input for a non-RPE metric column', () => {
+      const { queryByLabelText, getByText } = renderRow({
+        state: 'current',
+        metricColumn: 'volume',
+      });
+      expect(queryByLabelText('RPE')).toBeNull();
+      expect(getByText('600')).toBeTruthy();
     });
   });
 
@@ -360,47 +380,39 @@ describe('ActiveWorkoutSetRow', () => {
       expect(getByText('600')).toBeTruthy();
     });
 
-    it('does not wrap the actively-edited row in a swipeable', () => {
-      const { queryByTestId } = renderRow({ state: 'current', isFocused: true });
-      expect(queryByTestId('reanimated-swipeable')).toBeNull();
+    it('keeps swipe-delete on the focused row (inputs never unmount)', () => {
+      const { getByTestId } = renderRow({ state: 'current', isFocused: true });
+      expect(getByTestId('reanimated-swipeable')).toBeTruthy();
     });
 
-    it('gives each input a distinct accessory id so the keyboard bar shows on all three', () => {
-      // iOS attaches a shared InputAccessoryView to only the first input, so a
-      // single id would leave reps/RPE with a bare keyboard.
+    it('attaches no per-input accessory ids — the live bar is screen-owned', () => {
       const { getByLabelText } = renderRow({
         state: 'current',
         isFocused: true,
         metricColumn: 'rpe',
       });
-      const ids = [
-        getByLabelText('Weight').props.inputAccessoryViewID,
-        getByLabelText('Reps').props.inputAccessoryViewID,
-        getByLabelText('RPE').props.inputAccessoryViewID,
-      ];
-      expect(ids.every(Boolean)).toBe(true);
-      expect(new Set(ids).size).toBe(3);
+      expect(getByLabelText('Weight').props.inputAccessoryViewID).toBeUndefined();
+      expect(getByLabelText('Reps').props.inputAccessoryViewID).toBeUndefined();
+      expect(getByLabelText('RPE').props.inputAccessoryViewID).toBeUndefined();
     });
 
-    it('issues a fresh accessory id on each activation but holds it while active', () => {
-      // Fabric recycles native TextInputs with their last props retained, so a
-      // remount that reuses a prior activation's exact id string is treated as
-      // unchanged and the accessory bar never reattaches (bare keyboard on the
-      // second edit of the same cell). Re-renders during one activation must
-      // NOT change the id, or the live attachment breaks under the open
-      // keyboard (e.g. autosave churn).
-      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
-      const { getByLabelText, rerenderRow } = renderRow({ ...base, isFocused: true });
-      const firstId = getByLabelText('Weight').props.inputAccessoryViewID;
+    it('registers a sticky-bar handle whose log flushes drafts, then completes', () => {
+      const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true });
+      const [key, handle] = callbacks.onRegisterAccessoryHandle.mock.calls[0];
+      expect(key).toBe('101');
+      expect(handle).not.toBeNull();
 
-      rerenderRow({ ...base, isFocused: true, weightUnit: 'lbs' });
-      expect(getByLabelText('Weight').props.inputAccessoryViewID).toBe(firstId);
+      fireEvent.changeText(getByLabelText('Weight'), '80');
+      act(() => handle.log());
 
-      rerenderRow({ ...base, isFocused: false });
-      rerenderRow({ ...base, isFocused: true });
-      const secondId = getByLabelText('Weight').props.inputAccessoryViewID;
-      expect(secondId).toBeTruthy();
-      expect(secondId).not.toBe(firstId);
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 80 });
+      expect(callbacks.onComplete).toHaveBeenCalledWith('101');
+    });
+
+    it('unregisters the sticky-bar handle on unmount', () => {
+      const { unmount, callbacks } = renderRow({ state: 'current' });
+      unmount();
+      expect(callbacks.onRegisterAccessoryHandle).toHaveBeenLastCalledWith('101', null);
     });
   });
 
@@ -415,28 +427,19 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onComplete).toHaveBeenCalledWith('101');
     });
 
-    it('still lets an upcoming cell be tapped to edit (pre-fill)', () => {
+    it('keeps its inputs mounted for direct editing (pre-fill by typing)', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'upcoming' });
-      fireEvent.press(getByLabelText('Edit weight for set 1'));
+      fireEvent(getByLabelText('Weight'), 'focus');
       expect(callbacks.onActivateSet).toHaveBeenCalledWith('101', 'weight');
     });
 
-    it('offers Log in the keyboard accessory while uncompleted', () => {
-      // Out-of-order logging: a focused upcoming row must be loggable from the
-      // accessory too, or the RPE field (last in the Next chain) dead-ends on
-      // Done. One bar per input, so the button appears once per accessory.
-      const { getAllByText, callbacks } = renderRow({
-        state: 'upcoming',
-        isFocused: true,
-        metricColumn: 'rpe',
-      });
-      fireEvent.press(getAllByText('Log')[0]);
+    it('logs out of order through the registered sticky-bar handle', () => {
+      // Out-of-order logging: any uncompleted row is loggable from the
+      // screen's accessory bar, or the last field dead-ends on Done.
+      const { callbacks } = renderRow({ state: 'upcoming', isFocused: true });
+      const [, handle] = callbacks.onRegisterAccessoryHandle.mock.calls[0];
+      act(() => handle.log());
       expect(callbacks.onComplete).toHaveBeenCalledWith('101');
-    });
-
-    it('omits Log from the accessory once the set is completed', () => {
-      const { queryByText } = renderRow({ state: 'done', isFocused: true });
-      expect(queryByText('Log')).toBeNull();
     });
 
     it('is not dimmed', () => {
@@ -695,6 +698,45 @@ describe('ActiveWorkoutSetRow', () => {
         });
         expect(queryByLabelText('RPE')).toBeNull();
       });
+
+      it('gives each input a distinct accessory id so the keyboard bar shows on all three', () => {
+        // iOS attaches a shared InputAccessoryView to only the first input,
+        // so a single id would leave reps/RPE with a bare keyboard.
+        const { getByLabelText } = renderRow({
+          mode: 'edit',
+          state: 'current',
+          metricColumn: 'rpe',
+          set: editSet(),
+        });
+        const ids = [
+          getByLabelText('Weight').props.inputAccessoryViewID,
+          getByLabelText('Reps').props.inputAccessoryViewID,
+          getByLabelText('RPE').props.inputAccessoryViewID,
+        ];
+        expect(ids.every(Boolean)).toBe(true);
+        expect(new Set(ids).size).toBe(3);
+      });
+
+      it('issues a fresh accessory id on each activation but holds it while active', () => {
+        // Fabric recycles native TextInputs with their last props retained, so
+        // a remount that reuses a prior activation's exact id string is treated
+        // as unchanged and the accessory bar never reattaches (bare keyboard on
+        // the second edit of the same cell). Re-renders during one activation
+        // must NOT change the id, or the live attachment breaks under the open
+        // keyboard (e.g. autosave churn).
+        const base = { mode: 'edit' as const, metricColumn: 'rpe' as const, set: editSet() };
+        const { getByLabelText, rerenderRow } = renderRow({ ...base, state: 'current' });
+        const firstId = getByLabelText('Weight').props.inputAccessoryViewID;
+
+        rerenderRow({ ...base, state: 'current', weightUnit: 'lbs' });
+        expect(getByLabelText('Weight').props.inputAccessoryViewID).toBe(firstId);
+
+        rerenderRow({ ...base, state: 'upcoming' });
+        rerenderRow({ ...base, state: 'current' });
+        const secondId = getByLabelText('Weight').props.inputAccessoryViewID;
+        expect(secondId).toBeTruthy();
+        expect(secondId).not.toBe(firstId);
+      });
     });
 
     describe('inactive rows', () => {
@@ -864,9 +906,11 @@ describe('ActiveWorkoutSetRow', () => {
   });
 
   describe('metric column display', () => {
-    it('shows an en-dash when RPE is missing', () => {
-      const { getByText } = renderRow({ state: 'upcoming', metricColumn: 'rpe' });
-      expect(getByText('–')).toBeTruthy();
+    it('shows an en-dash placeholder when RPE is missing', () => {
+      const { getByLabelText } = renderRow({ state: 'upcoming', metricColumn: 'rpe' });
+      const input = getByLabelText('RPE');
+      expect(input.props.value).toBe('');
+      expect(input.props.placeholder).toBe('–');
     });
 
     it.each([
@@ -875,14 +919,15 @@ describe('ActiveWorkoutSetRow', () => {
       [9.5, COLORS['--color-cat-orange']],
       [10, COLORS['--color-icon-danger']],
     ])('tints RPE %s with its effort tone', (rpe, expectedColor) => {
-      const { getByText } = renderRow({
+      const { getByLabelText } = renderRow({
         state: 'upcoming',
         metricColumn: 'rpe',
-        // reps 3 so the reps cell can't collide with any RPE label.
         set: { rpe: rpe as number, reps: 3 },
       });
+      const input = getByLabelText('RPE');
       const label = Number.isInteger(rpe) ? String(rpe) : (rpe as number).toFixed(1);
-      expect(textColor(getByText(label))).toBe(expectedColor);
+      expect(input.props.value).toBe(label);
+      expect(textColor(input)).toBe(expectedColor);
     });
 
     it('formats volume per weight unit', () => {
@@ -1033,14 +1078,14 @@ describe('ActiveWorkoutSetRow', () => {
   describe('assumed placeholders (live)', () => {
     const assumed: AssumedSetValues = { weight: 100, reps: 8 };
 
-    it('renders assumed values in empty display cells, converting for the display unit', () => {
+    it('renders assumed values as input placeholders, converting for the display unit', () => {
       const kg = renderRow({
         state: 'upcoming',
         set: { weight: null, reps: null },
         assumed,
       });
-      expect(kg.getByText('100')).toBeTruthy();
-      expect(kg.getByText('8')).toBeTruthy();
+      expect(kg.getByLabelText('Weight').props.placeholder).toBe('100');
+      expect(kg.getByLabelText('Reps').props.placeholder).toBe('8');
 
       const lbs = renderRow({
         state: 'upcoming',
@@ -1048,18 +1093,18 @@ describe('ActiveWorkoutSetRow', () => {
         assumed,
         weightUnit: 'lbs',
       });
-      expect(lbs.getByText('220.5')).toBeTruthy();
+      expect(lbs.getByLabelText('Weight').props.placeholder).toBe('220.5');
     });
 
     it('never covers an entered value, per field', () => {
-      const { getByText, queryByText } = renderRow({
+      const { getByLabelText } = renderRow({
         state: 'upcoming',
         set: { weight: 105, reps: null },
         assumed,
       });
-      expect(getByText('105')).toBeTruthy();
-      expect(queryByText('100')).toBeNull();
-      expect(getByText('8')).toBeTruthy(); // reps still assumed
+      expect(getByLabelText('Weight').props.value).toBe('105');
+      expect(getByLabelText('Weight').props.placeholder).toBe('–');
+      expect(getByLabelText('Reps').props.placeholder).toBe('8'); // reps still assumed
     });
 
     it('uses the assumed values as input placeholders on the focused row', () => {
@@ -1073,13 +1118,14 @@ describe('ActiveWorkoutSetRow', () => {
       expect(getByLabelText('Reps').props.placeholder).toBe('8');
     });
 
-    it('falls back to dashes when nothing resolves or outside live mode', () => {
+    it('falls back to dash placeholders when nothing resolves, and is inert outside live mode', () => {
       const empty = renderRow({
         state: 'upcoming',
         set: { weight: null, reps: null },
         assumed: { weight: null, reps: null },
       });
-      expect(empty.getAllByText('–').length).toBeGreaterThan(0);
+      expect(empty.getByLabelText('Weight').props.placeholder).toBe('–');
+      expect(empty.getByLabelText('Reps').props.placeholder).toBe('–');
 
       const view = renderRow({
         state: 'upcoming',
