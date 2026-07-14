@@ -406,6 +406,7 @@ export async function searchProviderFoods(
         baseUrl: credentials.base_url,
         page,
         pageSize,
+        language,
       });
       foods = result.foods || [];
       pagination = result.pagination;
