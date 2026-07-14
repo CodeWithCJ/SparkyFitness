@@ -1,9 +1,8 @@
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ToastConfig } from 'react-native-toast-message';
-import Icon from '../Icon';
 
-type ToastVariant = 'success' | 'error' | 'info' | 'pr';
+type ToastVariant = 'success' | 'error' | 'info';
 
 const variantTokens: Record<ToastVariant, { bg: string; text: string; border: string }> = {
   success: {
@@ -21,11 +20,6 @@ const variantTokens: Record<ToastVariant, { bg: string; text: string; border: st
     text: '--color-text-primary',
     border: '--color-accent-primary',
   },
-  pr: {
-    bg: '--color-bg-pr',
-    text: '--color-text-pr',
-    border: '--color-pr',
-  },
 };
 
 function ToastContent({
@@ -38,28 +32,10 @@ function ToastContent({
   text2?: string;
 }) {
   const tokens = variantTokens[variant];
-  const [bgColor, textColor, prColor] = useCSSVariable([
-    tokens.bg,
-    tokens.text,
-    '--color-pr',
-  ]) as [string, string, string];
-
-  const showTrophy = variant === 'pr';
-
-  const textBlock = (
-    <View style={{ flex: showTrophy ? 1 : undefined }}>
-      {text1 ? (
-        <Text style={{ color: textColor, fontWeight: '600', fontSize: 14 }}>
-          {text1}
-        </Text>
-      ) : null}
-      {text2 ? (
-        <Text style={{ color: textColor, fontSize: 13, marginTop: 2, opacity: 0.85 }}>
-          {text2}
-        </Text>
-      ) : null}
-    </View>
-  );
+  const [bgColor, textColor] = useCSSVariable([tokens.bg, tokens.text]) as [
+    string,
+    string,
+  ];
 
   return (
     <View
@@ -74,13 +50,18 @@ function ToastContent({
         shadowRadius: 4,
         elevation: 4,
         borderRadius: 8,
-        flexDirection: showTrophy ? 'row' : 'column',
-        alignItems: showTrophy ? 'center' : 'stretch',
-        gap: showTrophy ? 10 : 0,
       }}
     >
-      {showTrophy ? <Icon name="trophy" size={22} color={prColor} /> : null}
-      {textBlock}
+      {text1 ? (
+        <Text style={{ color: textColor, fontWeight: '600', fontSize: 14 }}>
+          {text1}
+        </Text>
+      ) : null}
+      {text2 ? (
+        <Text style={{ color: textColor, fontSize: 13, marginTop: 2, opacity: 0.85 }}>
+          {text2}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -94,8 +75,5 @@ export const toastConfig: ToastConfig = {
   ),
   info: ({ text1, text2 }) => (
     <ToastContent variant="info" text1={text1} text2={text2} />
-  ),
-  pr: ({ text1, text2 }) => (
-    <ToastContent variant="pr" text1={text1} text2={text2} />
   ),
 };

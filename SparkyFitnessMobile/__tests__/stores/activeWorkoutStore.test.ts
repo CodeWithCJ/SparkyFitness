@@ -2946,13 +2946,6 @@ describe('activeWorkoutStore', () => {
       expect(mockSuccessHaptic).toHaveBeenCalledTimes(1);
       // The PR fires only the success buzz — the two stay mutually exclusive.
       expect(mockSelectionHaptic).toHaveBeenCalledTimes(1);
-      expect(st.lastPrEvent).toMatchObject({
-        setId: '102',
-        exerciseName: 'Bench Press',
-        weightKg: 70,
-        reps: 8,
-      });
-      expect(st.lastPrEvent!.seq).toBeGreaterThan(0);
     });
 
     it('stamps a rep-PR at the same top weight', () => {
@@ -3114,7 +3107,6 @@ describe('activeWorkoutStore', () => {
       const st = useActiveWorkoutStore.getState();
       expect(st.prSetIds).toEqual({});
       expect(st.prBaseline).toEqual({});
-      expect(st.lastPrEvent).toBeNull();
     });
   });
 });

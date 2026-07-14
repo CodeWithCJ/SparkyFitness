@@ -81,8 +81,6 @@
       --color-icon-danger:       hsl(358, 80%, 50%);
 
       --color-pr:                hsl(40, 88%, 43%);
-      --color-bg-pr:             hsl(48, 96%, 89%);
-      --color-text-pr:           hsl(28, 80%, 28%);
     }
       
     @variant dark {
@@ -150,8 +148,6 @@
       --color-icon-danger:       hsl(358, 80%, 65%);
 
       --color-pr:                hsl(40, 60%, 58%);
-      --color-bg-pr:             hsl(36, 42%, 24%);
-      --color-text-pr:           hsl(43, 86%, 86%);
     }
 
     @variant amoled {
@@ -218,8 +214,6 @@
       --color-icon-danger:       hsl(358, 80%, 65%);
 
       --color-pr:                hsl(40, 60%, 58%);
-      --color-bg-pr:             hsl(36, 42%, 24%);
-      --color-text-pr:           hsl(43, 86%, 86%);
     }
   }
 }
