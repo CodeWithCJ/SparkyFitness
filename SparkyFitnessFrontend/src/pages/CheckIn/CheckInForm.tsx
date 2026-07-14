@@ -13,6 +13,37 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
 import { UnitInput } from '@/components/ui/UnitInput';
 import { CustomCategoriesResponse } from '@workspace/shared';
+import { CheckInPlaceholders } from '@/types/checkin';
+import { History } from 'lucide-react';
+
+interface UseLastButtonProps {
+  value: string;
+  lastValue: number | null;
+  onAdopt: (value: string) => void;
+}
+
+// Fills an empty field with the carried-forward value shown in its
+// placeholder, turning it into a real entry for the selected day.
+const UseLastButton: React.FC<UseLastButtonProps> = ({
+  value,
+  lastValue,
+  onAdopt,
+}) => {
+  const { t } = useTranslation();
+  if (value !== '' || lastValue === null) return null;
+  return (
+    <Button
+      type="button"
+      variant="link"
+      size="sm"
+      className="h-7 gap-1.5 p-0 text-xs underline [&_svg]:size-3.5"
+      onClick={() => onAdopt(lastValue.toString())}
+    >
+      <History />
+      {t('checkIn.useLast', 'Use last')}
+    </Button>
+  );
+};
 
 interface CheckInFormProps {
   bodyFatPercentage: string;
@@ -25,6 +56,7 @@ interface CheckInFormProps {
   hips: string;
   loading: boolean;
   neck: string;
+  placeholders: CheckInPlaceholders;
   setBodyFatPercentage: (value: string) => void;
   setCustomNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setCustomValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -53,6 +85,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
   hips,
   loading,
   neck,
+  placeholders,
   setBodyFatPercentage,
   setCustomNotes,
   setCustomValues,
@@ -84,12 +117,20 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="weight">{t('checkIn.weight', 'Weight')}</Label>
+              <div className="mb-1 flex items-center justify-between">
+                <Label htmlFor="weight">{t('checkIn.weight', 'Weight')}</Label>
+                <UseLastButton
+                  value={weight}
+                  lastValue={placeholders.weight}
+                  onAdopt={setWeight}
+                />
+              </div>
               <UnitInput
                 id="weight"
                 type="weight"
                 unit={defaultWeightUnit}
                 value={weight}
+                placeholderValue={placeholders.weight}
                 onChange={(val) =>
                   setWeight(val !== null ? val.toString() : '')
                 }
@@ -97,12 +138,20 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
             </div>
 
             <div>
-              <Label htmlFor="height">{t('checkIn.height', 'Height')}</Label>
+              <div className="mb-1 flex items-center justify-between">
+                <Label htmlFor="height">{t('checkIn.height', 'Height')}</Label>
+                <UseLastButton
+                  value={height}
+                  lastValue={placeholders.height}
+                  onAdopt={setHeight}
+                />
+              </div>
               <UnitInput
                 id="height"
                 type="height"
                 unit={defaultMeasurementUnit}
                 value={height}
+                placeholderValue={placeholders.height}
                 onChange={(val) =>
                   setHeight(val !== null ? val.toString() : '')
                 }
@@ -123,66 +172,100 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
             </div>
 
             <div>
-              <Label htmlFor="neck">{t('checkIn.neck', 'Neck')}</Label>
+              <div className="mb-1 flex items-center justify-between">
+                <Label htmlFor="neck">{t('checkIn.neck', 'Neck')}</Label>
+                <UseLastButton
+                  value={neck}
+                  lastValue={placeholders.neck}
+                  onAdopt={setNeck}
+                />
+              </div>
               <UnitInput
                 id="neck"
                 type="measurement"
                 unit={defaultMeasurementUnit}
                 value={neck}
+                placeholderValue={placeholders.neck}
                 onChange={(val) => setNeck(val !== null ? val.toString() : '')}
               />
             </div>
 
             <div>
-              <Label htmlFor="waist">{t('checkIn.waist', 'Waist')}</Label>
+              <div className="mb-1 flex items-center justify-between">
+                <Label htmlFor="waist">{t('checkIn.waist', 'Waist')}</Label>
+                <UseLastButton
+                  value={waist}
+                  lastValue={placeholders.waist}
+                  onAdopt={setWaist}
+                />
+              </div>
               <UnitInput
                 id="waist"
                 type="measurement"
                 unit={defaultMeasurementUnit}
                 value={waist}
+                placeholderValue={placeholders.waist}
                 onChange={(val) => setWaist(val !== null ? val.toString() : '')}
               />
             </div>
 
             <div>
-              <Label htmlFor="hips">{t('checkIn.hips', 'Hips')}</Label>
+              <div className="mb-1 flex items-center justify-between">
+                <Label htmlFor="hips">{t('checkIn.hips', 'Hips')}</Label>
+                <UseLastButton
+                  value={hips}
+                  lastValue={placeholders.hips}
+                  onAdopt={setHips}
+                />
+              </div>
               <UnitInput
                 id="hips"
                 type="measurement"
                 unit={defaultMeasurementUnit}
                 value={hips}
+                placeholderValue={placeholders.hips}
                 onChange={(val) => setHips(val !== null ? val.toString() : '')}
               />
             </div>
             <div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="bodyFat">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <Label htmlFor="bodyFat" className="whitespace-nowrap">
                   {t('checkIn.bodyFatPercentage', 'Body Fat %')}
                 </Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Switch
-                          id="use-most-recent-toggle"
-                          checked={useMostRecentForCalculation}
-                          onCheckedChange={setUseMostRecentForCalculation}
-                        />
-                        <Label htmlFor="use-most-recent-toggle">
-                          {t('checkIn.useRecent', 'Use Recent')}
-                        </Label>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>
-                        {t(
-                          'checkIn.useMostRecentForCalculation',
-                          'Use most recent Weight, Height, Waist, Neck, and Hips for body fat calculation'
-                        )}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                  <UseLastButton
+                    value={bodyFatPercentage}
+                    lastValue={placeholders.bodyFatPercentage}
+                    onAdopt={setBodyFatPercentage}
+                  />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="use-most-recent-toggle"
+                            checked={useMostRecentForCalculation}
+                            onCheckedChange={setUseMostRecentForCalculation}
+                          />
+                          <Label
+                            htmlFor="use-most-recent-toggle"
+                            className="whitespace-nowrap"
+                          >
+                            {t('checkIn.useRecent', 'Use Recent')}
+                          </Label>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          {t(
+                            'checkIn.useMostRecentForCalculation',
+                            'Use most recent Weight, Height, Waist, Neck, and Hips for body fat calculation'
+                          )}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
               <div className="flex items-center">
                 <Input
@@ -191,10 +274,14 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                   step="0.1"
                   value={bodyFatPercentage}
                   onChange={(e) => setBodyFatPercentage(e.target.value)}
-                  placeholder={t(
-                    'checkIn.enterBodyFatPercentage',
-                    'Enter body fat percentage'
-                  )}
+                  placeholder={
+                    placeholders.bodyFatPercentage !== null
+                      ? placeholders.bodyFatPercentage.toString()
+                      : t(
+                          'checkIn.enterBodyFatPercentage',
+                          'Enter body fat percentage'
+                        )
+                  }
                 />
                 <Button
                   type="button"

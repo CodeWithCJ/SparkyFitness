@@ -45,6 +45,7 @@ const CheckIn = () => {
     moodNotes,
     moodTags,
     neck,
+    placeholders,
     recentMeasurements,
     selectedDate,
     setBodyFatPercentage,
@@ -128,6 +129,7 @@ const CheckIn = () => {
         hips={hips}
         loading={loading}
         neck={neck}
+        placeholders={placeholders}
         setBodyFatPercentage={setBodyFatPercentage}
         setCustomNotes={setCustomNotes}
         setCustomValues={setCustomValues}
