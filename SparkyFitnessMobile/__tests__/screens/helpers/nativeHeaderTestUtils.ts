@@ -56,7 +56,7 @@ export function findHeaderItem(
   return [...items].reverse().find((item) => item?.label === label);
 }
 
-function findHeaderItemByAccessibilityLabel(
+export function findHeaderItemByAccessibilityLabel(
   navigation: { setOptions?: unknown },
   accessibilityLabel: string,
 ): HeaderItem | undefined {

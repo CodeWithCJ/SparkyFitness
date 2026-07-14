@@ -1177,7 +1177,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         : favoriteFoods.some((f) => f.id === activeItem.id),
     [isMealItem, favoriteMeals, favoriteFoods, activeItem.id]
   );
-  const { toggleFavorite } = useToggleFavorite();
+  const { toggleFavorite, isPending: isFavoritePending } = useToggleFavorite();
   const handleToggleFavorite = useCallback(() => {
     // originalItem is the source FoodItem/Meal, used for the optimistic insert.
     if (isMealItem) {
@@ -1229,7 +1229,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                     // Accent-tinted (role:'primary') so the star reads as a
                     // tappable button rather than a neutral glyph.
                     role: 'primary',
-                    disabled: isActionPending,
+                    // Also gated on the toggle's own mutation: onMutate flips the
+                    // cache optimistically, so a second tap before the first
+                    // settles sends the OPPOSITE operation. Two in-flight writes
+                    // can then land out of order and leave the server in the
+                    // state opposite the user's last tap.
+                    disabled: isActionPending || isFavoritePending,
                     onPress: handleToggleFavorite,
                     accessibilityLabel: isFavorite
                       ? 'Remove from favorites'

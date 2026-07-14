@@ -1,10 +1,13 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { pressActionByAccessibilityLabel } from './helpers/nativeHeaderTestUtils';
+import {
+  findHeaderItemByAccessibilityLabel,
+  pressActionByAccessibilityLabel,
+} from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodEntryAddScreen from '../../src/screens/FoodEntryAddScreen';
-import { useMealTypes } from '../../src/hooks';
+import { useMealTypes, useToggleFavorite } from '../../src/hooks';
 import {
   useCreateFoodVariant,
   useFoodVariants,
@@ -203,6 +206,9 @@ jest.mock('../../src/utils/mealBuilderDraft', () => {
 
 const { useQuery } = jest.requireMock('@tanstack/react-query') as { useQuery: jest.Mock };
 const mockUseMealTypes = useMealTypes as jest.MockedFunction<typeof useMealTypes>;
+const mockUseToggleFavorite = useToggleFavorite as jest.MockedFunction<
+  typeof useToggleFavorite
+>;
 const mockUseFoodVariants = useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
 const mockUseCreateFoodVariant =
   useCreateFoodVariant as jest.MockedFunction<typeof useCreateFoodVariant>;
@@ -1253,6 +1259,61 @@ describe('FoodEntryAddScreen', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('favorite star', () => {
+    // The toggle updates the favorites cache optimistically, so `isFavorite`
+    // flips the instant the first tap lands. A second tap before the first
+    // settles therefore sends the OPPOSITE operation, and the two writes can
+    // reach the server out of order — leaving it in the state opposite the
+    // user's last tap. Gating the star on its own in-flight mutation closes it.
+    it('disables the favorite star while a toggle is already in flight', () => {
+      mockUseToggleFavorite.mockReturnValue({
+        toggleFavorite: jest.fn(),
+        isPending: true,
+      });
+
+      renderScreen({ item: baseLocalItem, mealType: 'breakfast' });
+
+      const star = findHeaderItemByAccessibilityLabel(
+        navigation,
+        'Add to favorites',
+      );
+      expect(star).toBeDefined();
+      expect(star?.disabled).toBe(true);
+    });
+
+    it('leaves the favorite star enabled when no toggle is in flight', () => {
+      mockUseToggleFavorite.mockReturnValue({
+        toggleFavorite: jest.fn(),
+        isPending: false,
+      });
+
+      renderScreen({ item: baseLocalItem, mealType: 'breakfast' });
+
+      const star = findHeaderItemByAccessibilityLabel(
+        navigation,
+        'Add to favorites',
+      );
+      expect(star?.disabled).toBe(false);
+    });
+
+    it('does not disable unrelated header actions while a toggle is in flight', () => {
+      mockUseToggleFavorite.mockReturnValue({
+        toggleFavorite: jest.fn(),
+        isPending: true,
+      });
+
+      renderScreen({ item: baseLocalItem, mealType: 'breakfast' });
+
+      // The gate is scoped to the star: an in-flight favorite toggle must not
+      // block editing or saving.
+      const edit = findHeaderItemByAccessibilityLabel(
+        navigation,
+        'Adjust nutrition',
+      );
+      expect(edit?.disabled).toBe(false);
     });
   });
 });
