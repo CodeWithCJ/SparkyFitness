@@ -564,6 +564,12 @@ SELECT create_diary_policy('weekly_goal_plans');
 SELECT create_diary_policy('user_water_containers');
 SELECT create_diary_policy('user_custom_nutrients');
 SELECT create_diary_policy('user_allergen_preferences');
+-- Starred foods/meals follow the diary context: the favorites routes are mounted
+-- behind checkPermissionMiddleware('diary'), and the food-search screen a delegate
+-- sees is already scoped to the user they are acting for (recent/frequent entries
+-- included). An owner-only policy here would authorize the delegate at the route
+-- layer and then hide every row at the RLS layer.
+SELECT create_diary_policy('food_favorites');
 
 -- Nutrient display preferences: delegates can read but only owner can rearrange their own columns.
 CREATE POLICY select_policy ON public.user_nutrient_display_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
@@ -896,6 +902,3 @@ CREATE POLICY modify_policy ON public.user_medication_display_preferences FOR AL
 -- RLS). Deny the app role entirely as defense-in-depth so a stray GRANT can
 -- never expose session material to user-scoped queries.
 CREATE POLICY deny_all_policy ON public.passkey_registration_tickets FOR ALL TO PUBLIC USING (false) WITH CHECK (false);
-
--- Food favorites: a user's starred foods/meals are strictly private to them (Tier 1)
-SELECT create_owner_policy('food_favorites');
