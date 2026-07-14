@@ -150,6 +150,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     },
     plugins: [
       ...(config.plugins ?? []),
+      'expo-image',
       './plugins/withGlanceAndroidSupport',
       './plugins/withCalorieWidget',
       './plugins/withExactAlarmModule',

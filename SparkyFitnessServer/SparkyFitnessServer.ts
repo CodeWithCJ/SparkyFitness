@@ -266,7 +266,9 @@ console.log('SparkyFitnessServer UPLOADS_BASE_DIR:', UPLOADS_BASE_DIR);
 // Mount at both paths for compatibility during transition.
 // Disable etag/lastModified — iOS CFNetwork mis-handles the resulting 304s
 // on freshly uploaded images (#1353). Filenames embed Date.now() so URLs
-// are already effectively immutable; clients still cache by URL.
+// are already effectively immutable; maxAge + immutable lets clients cache
+// by URL without ever revalidating (no validators exist, so a stale entry
+// means a full re-download, never a 304).
 // Harden how stored uploads are served: `X-Content-Type-Options: nosniff` pins
 // each file to its declared type, and `Content-Disposition: attachment` is
 // defense-in-depth so a stored file can't render inline in our origin on direct
@@ -280,6 +282,8 @@ const uploadsSecurityHeaders = {
 const uploadsStaticOptions = {
   etag: false,
   lastModified: false,
+  maxAge: '7d',
+  immutable: true,
   setHeaders: (res: ServerResponse) => {
     for (const [name, value] of Object.entries(uploadsSecurityHeaders)) {
       res.setHeader(name, value);

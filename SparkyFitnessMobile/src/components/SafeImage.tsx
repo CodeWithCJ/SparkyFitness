@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Image, type ImageStyle, type StyleProp } from 'react-native';
+import { type ImageStyle, type StyleProp } from 'react-native';
+import { Image } from 'expo-image';
+
 interface SafeImageProps {
   source: { uri: string; headers: Record<string, string> } | null;
   style: StyleProp<ImageStyle>;
@@ -51,11 +53,16 @@ const SafeImage: React.FC<SafeImageProps> = ({ source, style, fallback = null })
 
   if (!source || (error && attempt >= MAX_RETRIES)) return fallback;
 
+  // Upload URLs are effectively immutable (filenames embed the exercise/upload
+  // identity), so disk-cache them across launches; the transition softens the
+  // pop-in on loads that do hit the network.
   return (
     <Image
       key={attempt}
-      source={{ uri: source.uri, headers: source.headers }}
+      source={source}
       style={style}
+      cachePolicy="memory-disk"
+      transition={150}
       onError={() => setError(true)}
     />
   );
