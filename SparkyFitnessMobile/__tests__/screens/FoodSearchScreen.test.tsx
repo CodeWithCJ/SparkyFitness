@@ -11,6 +11,7 @@ import {
   useAllProvidersSearch,
   useFoodSearch,
   useFoods,
+  useFavorites,
   useMealSearch,
   useMeals,
   usePreferences,
@@ -27,6 +28,7 @@ jest.mock('../../src/hooks', () => ({
   useAllProvidersSearch: jest.fn(),
   useFoodSearch: jest.fn(),
   useFoods: jest.fn(),
+  useFavorites: jest.fn(),
   useMealSearch: jest.fn(),
   useMeals: jest.fn(),
   usePreferences: jest.fn(),
@@ -60,6 +62,7 @@ const mockUseExternalProviders = useExternalProviders as jest.MockedFunction<typ
 const mockUseAllProvidersSearch = useAllProvidersSearch as jest.MockedFunction<typeof useAllProvidersSearch>;
 const mockUseFoodSearch = useFoodSearch as jest.MockedFunction<typeof useFoodSearch>;
 const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
+const mockUseFavorites = useFavorites as jest.MockedFunction<typeof useFavorites>;
 const mockUseMealSearch = useMealSearch as jest.MockedFunction<typeof useMealSearch>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
 const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
@@ -174,6 +177,13 @@ describe('FoodSearchScreen', () => {
     mockUseFoods.mockReturnValue({
       recentFoods: [],
       topFoods: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [],
+      favoriteMeals: [],
       isLoading: false,
       isError: false,
       refetch: jest.fn(),

@@ -38,6 +38,7 @@ import {
   useAllProvidersSearch,
   usePreferences,
   useDebounce,
+  useFavorites,
 } from '../hooks';
 import { ExternalProvider } from '../types/externalProviders';
 import Toast from 'react-native-toast-message';
@@ -60,7 +61,7 @@ import {
 import { formatServingDescription, formatServingUnit } from '../utils/foodDetails';
 import { useProviderColor } from '../utils/providerColor';
 import { interleaveTopMatches } from '../utils/topMatches';
-import { mergeRecent, mergeFrequent } from '../utils/landingLists';
+import { mergeRecent, mergeFrequent, landingKey } from '../utils/landingLists';
 import type { LandingEntry } from '../utils/landingLists';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
@@ -139,6 +140,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({
+    enabled: isConnected,
+  });
+  const { favoriteFoods, favoriteMeals } = useFavorites({
     enabled: isConnected,
   });
 
@@ -595,23 +599,79 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }
   }, [providerPopoverVisible, onlineHeaderVisible]);
 
+  // Favorites: the first landing section, starred foods and meals intermixed,
+  // most recently starred first. Modelled as LandingEntry so every landing
+  // section shares one row renderer and one key space.
+  const favoriteEntries = useMemo<LandingEntry[]>(() => {
+    const tagged = [
+      ...favoriteMeals.map((meal) => ({
+        entry: {
+          kind: 'meal' as const,
+          key: landingKey('meal', meal.id),
+          meal,
+        },
+        favoritedAt: meal.favorited_at,
+      })),
+      ...favoriteFoods.map((food) => ({
+        entry: {
+          kind: 'food' as const,
+          key: landingKey('food', food.id),
+          food,
+        },
+        favoritedAt: food.favorited_at,
+      })),
+    ];
+    // Dedupe by key so an item can never render twice, even if a stale refetch
+    // window or a repeated API row briefly doubles it up.
+    const seen = new Set<string>();
+    return tagged
+      .filter(({ entry }) => {
+        if (seen.has(entry.key)) return false;
+        seen.add(entry.key);
+        return true;
+      })
+      .sort((a, b) => {
+        const at = a.favoritedAt ? new Date(a.favoritedAt).getTime() : 0;
+        const bt = b.favoritedAt ? new Date(b.favoritedAt).getTime() : 0;
+        return bt - at;
+      })
+      .map((t) => t.entry);
+  }, [favoriteFoods, favoriteMeals]);
+
   const landingSections = useMemo<LandingSection[]>(() => {
+    // Each section excludes what the sections above it already show, so the
+    // landing never repeats a row: Recent drops favorites, Top drops favorites
+    // and Recent. The exclusions are passed into the merges rather than applied
+    // to their results, because both merges cap at landingLimit last — filtering
+    // afterwards would shrink a section below its cap.
+    const favoriteKeys = new Set(favoriteEntries.map((entry) => entry.key));
     // Recently Logged: foods + meals merged into one recency timeline.
-    const recentEntries = mergeRecent(recentMeals, recentFoods, landingLimit);
-    // Top: foods + meals by usage, excluding anything already in Recent so the
-    // two sections never repeat a row.
-    const excludeKeys = new Set(recentEntries.map((entry) => entry.key));
+    const recentEntries = mergeRecent(
+      recentMeals,
+      recentFoods,
+      favoriteKeys,
+      landingLimit,
+    );
+    // Top: foods + meals by usage.
     const frequentEntries = mergeFrequent(
       topMeals,
       topFoods,
-      excludeKeys,
+      new Set([...favoriteKeys, ...recentEntries.map((entry) => entry.key)]),
       landingLimit,
     );
     return [
+      { title: 'Favorites', data: favoriteEntries },
       { title: 'Recently Logged', data: recentEntries },
       { title: 'Top', data: frequentEntries },
     ].filter((section) => section.data.length > 0);
-  }, [recentFoods, topFoods, recentMeals, topMeals, landingLimit]);
+  }, [
+    favoriteEntries,
+    recentFoods,
+    topFoods,
+    recentMeals,
+    topMeals,
+    landingLimit,
+  ]);
 
   const resultSections = useMemo<ResultSection[]>(() => {
     const sections: ResultSection[] = [];

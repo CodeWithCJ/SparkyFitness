@@ -14,14 +14,14 @@ describe('mergeRecent', () => {
       food('f1', { last_used_date: '2026-07-09' }),
       food('f2', { last_used_date: '2026-07-01' }),
     ];
-    const out = mergeRecent(meals, foods, 10);
+    const out = mergeRecent(meals, foods, new Set(), 10);
     expect(out.map((e) => e.key)).toEqual(['food-f1', 'meal-m1', 'food-f2']);
   });
 
   it('keeps meals before foods on a same-day tie (stable)', () => {
     const meals = [meal('m1', { last_used_date: '2026-07-09' })];
     const foods = [food('f1', { last_used_date: '2026-07-09' })];
-    expect(mergeRecent(meals, foods, 10).map((e) => e.key)).toEqual([
+    expect(mergeRecent(meals, foods, new Set(), 10).map((e) => e.key)).toEqual([
       'meal-m1',
       'food-f1',
     ]);
@@ -33,7 +33,7 @@ describe('mergeRecent', () => {
       food('f2', { last_used_date: '2026-07-08' }),
       food('f3', { last_used_date: '2026-07-07' }),
     ];
-    expect(mergeRecent([], foods, 2).map((e) => e.key)).toEqual([
+    expect(mergeRecent([], foods, new Set(), 2).map((e) => e.key)).toEqual([
       'food-f1',
       'food-f2',
     ]);
@@ -43,6 +43,7 @@ describe('mergeRecent', () => {
     const out = mergeRecent(
       [meal('m1', { last_used_date: '2026-07-09' })],
       [food('f1', { last_used_date: '2026-07-08' })],
+      new Set(),
       10,
     );
     expect(out[0]).toMatchObject({ kind: 'meal', key: 'meal-m1' });
@@ -53,8 +54,38 @@ describe('mergeRecent', () => {
     // Older backend that does not yet return last_used_date: everything sorts
     // equal, so the meals-then-foods concat order is preserved (no crash, no
     // scrambling).
-    const out = mergeRecent([meal('m1')], [food('f1'), food('f2')], 10);
+    const out = mergeRecent(
+      [meal('m1')],
+      [food('f1'), food('f2')],
+      new Set(),
+      10,
+    );
     expect(out.map((e) => e.key)).toEqual(['meal-m1', 'food-f1', 'food-f2']);
+  });
+
+  it('excludes items already shown above it (favorites), meals included', () => {
+    const meals = [meal('m1', { last_used_date: '2026-07-09' })];
+    const foods = [
+      food('f1', { last_used_date: '2026-07-08' }),
+      food('f2', { last_used_date: '2026-07-07' }),
+    ];
+    const exclude = new Set(['meal-m1', 'food-f1']);
+    expect(mergeRecent(meals, foods, exclude, 10).map((e) => e.key)).toEqual([
+      'food-f2',
+    ]);
+  });
+
+  it('excludes before the slice, so the section still fills to limit', () => {
+    // The excluded item must not consume one of the `limit` slots: with f1
+    // favorited, a 2-slot Recent should still show two rows, not one.
+    const foods = [
+      food('f1', { last_used_date: '2026-07-09' }),
+      food('f2', { last_used_date: '2026-07-08' }),
+      food('f3', { last_used_date: '2026-07-07' }),
+    ];
+    expect(
+      mergeRecent([], foods, new Set(['food-f1']), 2).map((e) => e.key),
+    ).toEqual(['food-f2', 'food-f3']);
   });
 });
 

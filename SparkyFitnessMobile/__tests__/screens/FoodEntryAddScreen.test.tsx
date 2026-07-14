@@ -46,6 +46,8 @@ jest.mock('../../src/hooks', () => ({
   useMealTypes: jest.fn(),
   usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
+  useFavorites: jest.fn(() => ({ favoriteFoods: [], favoriteMeals: [], isLoading: false, isError: false, refetch: jest.fn() })),
+  useToggleFavorite: jest.fn(() => ({ toggleFavorite: jest.fn(), isPending: false })),
 }));
 
 jest.mock('../../src/hooks/useFoodVariants', () => ({
