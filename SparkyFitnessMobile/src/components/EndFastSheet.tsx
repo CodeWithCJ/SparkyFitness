@@ -128,6 +128,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
       weekday_label: { color: textSecondary },
       month_selector_label: { color: textPrimary, fontWeight: '600' as const },
       year_selector_label: { color: textPrimary, fontWeight: '600' as const },
+      time_selector_label: { color: textPrimary, fontWeight: '600' as const },
       disabled_label: { color: textMuted },
       month_label: { color: textPrimary },
       year_label: { color: textPrimary },
@@ -203,12 +204,22 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
     <BottomSheetModal
       ref={bottomSheetRef}
       enableDynamicSizing
+      // On Android the sheet's content pan gesture steals vertical drags from
+      // the time picker's wheels (plain FlatLists), so content panning stays
+      // off there. Must be static: toggling this prop swaps the sheet's
+      // content wrapper component, remounting the content and dismissing the
+      // modal.
+      enableContentPanningGesture={Platform.OS !== 'android'}
       backdropComponent={renderBackdrop}
       containerComponent={sheetContainer}
       backgroundStyle={{ backgroundColor: surfaceBg }}
       handleIndicatorStyle={{ backgroundColor: textMuted }}
     >
-      <BottomSheetScrollView contentContainerClassName="px-5 pb-safe-or-8">
+      {/* bg-surface is a touch shield, not decoration: with content panning off
+          on Android, gesture-handler lets taps on background-less views fall
+          through to the backdrop's tap-to-close. A background makes this
+          container absorb them. */}
+      <BottomSheetScrollView contentContainerClassName="bg-surface px-5 pb-safe-or-8">
         <Text className="text-lg font-semibold text-text-primary text-center mb-1">
           End fast
         </Text>
