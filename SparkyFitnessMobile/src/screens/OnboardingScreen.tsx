@@ -17,7 +17,7 @@ import { useCSSVariable } from 'uniwind';
 
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
-import FormInput from '../components/FormInput';
+import FormInput, { UnfocusedInputEcho } from '../components/FormInput';
 import SegmentedControl from '../components/SegmentedControl';
 import MfaForm, { ErrorBanner, OidcProviderLogo, PrimaryButton } from '../components/MfaForm';
 import {
@@ -510,11 +510,8 @@ export default function OnboardingScreen({ navigation }: Props) {
           style={{ borderWidth: 1, borderColor: isServerUrlFocused ? accentPrimary : borderSubtle }}
         >
           <View className="flex-1">
-            {/* An unfocused iOS TextInput wraps overflowing text instead of
-                clipping it (facebook/react-native#29068); a long URL breaks
-                after "https://" and the single-line height hides the rest. So
-                while unfocused, the input's own text is transparent and an
-                ellipsized Text echoes the value on top. */}
+            {/* While unfocused, the input's own text is transparent and
+                UnfocusedInputEcho renders the value on top; see FormInput.tsx. */}
             <TextInput
               ref={serverUrlInputRef}
               className="p-2.5 text-base text-text-primary"
@@ -535,20 +532,11 @@ export default function OnboardingScreen({ navigation }: Props) {
               keyboardType="url"
               autoCorrect={false}
             />
-            {!isServerUrlFocused && !!serverUrl && (
-              <View
-                pointerEvents="none"
-                className="absolute inset-0 justify-center p-2.5"
-              >
-                <Text
-                  className="text-base text-text-primary"
-                  style={{ lineHeight: 20 }}
-                  numberOfLines={1}
-                >
-                  {serverUrl}
-                </Text>
-              </View>
-            )}
+            <UnfocusedInputEcho
+              focused={isServerUrlFocused}
+              value={serverUrl}
+              style={{ padding: 10 }}
+            />
           </View>
           <Button
             variant="ghost"
@@ -686,17 +674,18 @@ export default function OnboardingScreen({ navigation }: Props) {
               </>
             )}
 
-            {hasOidc && (
-              <>
-                {hasEmail && (
-                  <View className="flex-row items-center my-4">
-                    <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
-                    <Text className="mx-3 text-xs text-text-muted uppercase" style={{ marginHorizontal: 12 }}>Or sign in with</Text>
-                    <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
-                  </View>
-                )}
-                <View className="gap-2">
-                  {authSettings.oidc.providers.map((provider: OidcProvider) => (
+            {hasOidc && hasEmail && (
+              <View className="flex-row items-center mb-4">
+                <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
+                <Text className="mx-3 text-xs text-text-muted uppercase" style={{ marginHorizontal: 12 }}>Or sign in with</Text>
+                <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
+              </View>
+            )}
+
+            {authSettings && (
+              <View className="gap-4">
+                {hasOidc &&
+                  authSettings.oidc.providers.map((provider: OidcProvider) => (
                     <Button
                       key={provider.id}
                       variant="outline"
@@ -719,12 +708,6 @@ export default function OnboardingScreen({ navigation }: Props) {
                       </View>
                     </Button>
                   ))}
-                </View>
-              </>
-            )}
-
-            {authSettings && (
-              <View style={{ marginTop: 8 }}>
                 <Button
                   variant="outline"
                   onPress={handlePasskeyLogin}
@@ -736,7 +719,6 @@ export default function OnboardingScreen({ navigation }: Props) {
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginTop: 8,
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -795,20 +777,18 @@ export default function OnboardingScreen({ navigation }: Props) {
           </View>
         )}
 
-        {!!error && (
-          <View className="mt-4">
-            <ErrorBanner message={error} />
-          </View>
-        )}
-
         {/* Actions */}
-        {(authTab === 'apiKey' || hasEmail) && (
+        {(authTab === 'apiKey' || hasEmail || !!error) && (
           <View className="mt-4">
-            <PrimaryButton
-              label="Connect"
-              onPress={handleConnect}
-              loading={loading}
-            />
+            {/* ErrorBanner's own mb-4 is the banner→button gap. */}
+            <ErrorBanner message={error} />
+            {(authTab === 'apiKey' || hasEmail) && (
+              <PrimaryButton
+                label="Connect"
+                onPress={handleConnect}
+                loading={loading}
+              />
+            )}
           </View>
         )}
       </>

@@ -218,7 +218,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
           variant="ghost"
           onPress={onUseApiKey}
           className="py-2"
-          textClassName="text-sm text-text-muted"
+          textClassName="text-sm"
         >
           Use API Key Instead
         </Button>

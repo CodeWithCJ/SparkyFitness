@@ -17,6 +17,7 @@ import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
+import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -35,6 +36,12 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type PasskeySettingsScreenProps = RootStackScreenProps<'PasskeySettings'>;
 
+const passkeyAuthMethods =
+  Platform.OS === 'ios'
+    ? 'Face ID, Touch ID, or your device PIN'
+    : 'your fingerprint, face unlock, or device PIN';
+const passkeyNameExample = Platform.OS === 'ios' ? 'My iPhone' : 'My Android Phone';
+
 const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -42,13 +49,11 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
 
   const [
     accentPrimary,
-    borderSubtle,
     textMuted,
   ] = useCSSVariable([
     '--color-accent-primary',
-    '--color-border-subtle',
     '--color-text-muted',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const { activeConfig } = useServerConfigs();
 
@@ -235,11 +240,12 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
         ) : (
           <>
             <View className="mb-4">
-              <Text className="text-sm text-text-secondary mb-2">
-                Server: {activeConfig?.url}
-              </Text>
-              <Text className="text-xs text-text-muted">
-                Passkeys allow you to sign in securely using Face ID, Touch ID, or your device PIN without entering your password.
+              <Text
+                className="text-base font-semibold text-text-primary"
+                numberOfLines={1}
+                ellipsizeMode="middle"
+              >
+                {activeConfig?.url}
               </Text>
             </View>
 
@@ -260,61 +266,53 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                 </Text>
               </View>
             ) : (
-              <View className="bg-surface rounded-xl shadow-sm border border-border-subtle mb-6 overflow-hidden">
-                {passkeys.map((passkey, index) => (
-                  <View
+              <SettingsRowGroup>
+                {passkeys.map((passkey) => (
+                  <SettingsRow
                     key={passkey.id}
-                    className={`flex-row items-center justify-between p-4 ${
-                      index < passkeys.length - 1 ? 'border-b border-border-subtle' : ''
-                    }`}
-                  >
-                    <View className="flex-1 mr-4">
-                      <Text className="text-base font-semibold text-text-primary">
-                        {passkey.name || 'Unnamed Passkey'}
-                      </Text>
-                      <Text className="text-xs text-text-muted mt-1">
-                        Registered: {new Date(passkey.createdAt).toLocaleDateString()}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => handleDeletePasskey(passkey.id, passkey.name)}
-                      disabled={actionLoading}
-                      accessibilityLabel="Delete passkey"
-                      className="p-2"
-                    >
-                      <Icon name="trash" size={20} color="#ef4444" />
-                    </TouchableOpacity>
-                  </View>
+                    icon="fingerprint"
+                    iconColor={accentPrimary}
+                    title={passkey.name || 'Unnamed Passkey'}
+                    subtitle={`Registered ${new Date(passkey.createdAt).toLocaleDateString()}`}
+                    rightAccessory={
+                      <TouchableOpacity
+                        onPress={() => handleDeletePasskey(passkey.id, passkey.name)}
+                        disabled={actionLoading}
+                        accessibilityLabel="Delete passkey"
+                        className="p-2"
+                      >
+                        <Icon name="remove-circle" size={20} color="#ef4444" />
+                      </TouchableOpacity>
+                    }
+                  />
                 ))}
-              </View>
+              </SettingsRowGroup>
             )}
 
             <Button
-              variant="outline"
+              variant="primary"
               disabled={loading || actionLoading}
               onPress={() => {
                 setNewPasskeyName('');
                 setModalVisible(true);
               }}
-              className="w-full flex-row items-center justify-center p-3 rounded-lg border bg-surface"
-              style={{
-                borderColor: borderSubtle,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              className="w-full flex-row items-center justify-center"
             >
               {actionLoading ? (
-                <ActivityIndicator size="small" color={accentPrimary} style={{ marginRight: 8 }} />
+                <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
               ) : (
                 <View style={{ marginRight: 8 }}>
-                  <Icon name="fingerprint" size={20} color={accentPrimary} />
+                  <Icon name="fingerprint" size={20} color="#fff" />
                 </View>
               )}
-              <Text className="text-base font-semibold text-text-primary">
+              <Text className="text-base font-semibold text-white">
                 Add Passkey
               </Text>
             </Button>
+
+            <Text className="text-xs text-text-muted mt-4">
+              Passkeys allow you to sign in securely using {passkeyAuthMethods} without entering your password.
+            </Text>
           </>
         )}
       </ScrollView>
@@ -339,11 +337,11 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                 Register Passkey
               </Text>
               <Text className="text-sm text-text-secondary mb-4">
-                Give this passkey a friendly name to identify it later (e.g. My iPhone).
+                Give this passkey a friendly name to identify it later (e.g. {passkeyNameExample}).
               </Text>
 
               <FormInput
-                placeholder="e.g. My iPhone"
+                placeholder={`e.g. ${passkeyNameExample}`}
                 value={newPasskeyName}
                 onChangeText={setNewPasskeyName}
                 autoCapitalize="sentences"
