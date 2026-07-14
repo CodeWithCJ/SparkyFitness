@@ -531,6 +531,98 @@ export function describeActiveSet(
 }
 
 /**
+ * Assumed weight/reps for a set whose fields are still empty — the gray
+ * Hevy-style placeholder the live row renders, and the values a completion
+ * adopts when the user logs the set without typing. Weight is kg. A `null`
+ * field means nothing can be assumed (a brand-new exercise with no history,
+ * plan, or earlier entries).
+ */
+export interface AssumedSetValues {
+  weight: number | null;
+  reps: number | null;
+}
+
+type AssumableSet = Pick<WorkoutCardSet, 'id' | 'set_type' | 'weight' | 'reps'>;
+
+/**
+ * Resolve the assumed (placeholder) weight/reps for every set of one exercise
+ * in a live workout. Each field resolves independently, first match wins:
+ *
+ *   1. The same-position set from the exercise's most recent prior session
+ *      (what the PREVIOUS column shows).
+ *   2. The planned value captured at live start (the preset's programmed set).
+ *   3. The preceding row's effective value — its entered value, else its
+ *      resolved placeholder.
+ *
+ * A set with history or a plan stays pinned to its own numbers no matter what
+ * is typed above it, so last session's progression (100/95/90) reproduces
+ * set-for-set. Only sets with neither — added beyond last time's count, or a
+ * never-done exercise — mirror the rows above (rule 3), which is why typing
+ * into one row of a new exercise updates every empty row below it at once.
+ *
+ * The rule-3 cascade runs in two tiers: warmup sets only mirror warmups and
+ * everything else mirrors the non-warmup pool, so a light warmup can't become
+ * a working set's target. Values are resolved for every set regardless of
+ * what it already holds — consumers only apply a field when the set's own
+ * value is null.
+ */
+export function resolveAssumedSetValues(
+  sets: readonly AssumableSet[],
+  previousSets: readonly ExerciseRecentSessionSet[] | undefined,
+  plannedBySetId?: Record<string, AssumedSetValues>,
+): AssumedSetValues[] {
+  const lastEffective = {
+    warmup: { weight: null, reps: null } as AssumedSetValues,
+    working: { weight: null, reps: null } as AssumedSetValues,
+  };
+  return sets.map((set, index) => {
+    const tier = set.set_type === 'warmup' ? 'warmup' : 'working';
+    const previous = previousSets?.[index];
+    const planned = plannedBySetId?.[String(set.id)];
+    const assumed: AssumedSetValues = {
+      weight: previous?.weight ?? planned?.weight ?? lastEffective[tier].weight,
+      reps: previous?.reps ?? planned?.reps ?? lastEffective[tier].reps,
+    };
+    lastEffective[tier].weight = set.weight ?? assumed.weight;
+    lastEffective[tier].reps = set.reps ?? assumed.reps;
+    return assumed;
+  });
+}
+
+/**
+ * {@link describeActiveSet} with empty weight/reps backfilled from
+ * {@link resolveAssumedSetValues}, so the HUD bar and the rest-complete
+ * notification describe the set the user is assumed to perform — matching the
+ * gray placeholders the live row shows — instead of dropping the load text.
+ */
+export function describeActiveSetAssumed(
+  session: PresetSessionResponse | null,
+  setId: string | null,
+  previousSetsByExerciseId: Record<string, ExerciseRecentSessionSet[]>,
+  plannedBySetId: Record<string, AssumedSetValues>,
+): ActiveSetDescription | null {
+  const desc = describeActiveSet(session, setId);
+  if (desc == null || session == null || (desc.weightKg != null && desc.reps != null)) {
+    return desc;
+  }
+  for (const exercise of session.exercises) {
+    const setIndex = exercise.sets.findIndex((s) => String(s.id) === setId);
+    if (setIndex < 0) continue;
+    const assumed = resolveAssumedSetValues(
+      exercise.sets,
+      previousSetsByExerciseId[exercise.exercise_id],
+      plannedBySetId,
+    )[setIndex];
+    return {
+      ...desc,
+      weightKg: desc.weightKg ?? assumed.weight,
+      reps: desc.reps ?? assumed.reps,
+    };
+  }
+  return desc;
+}
+
+/**
  * Collapse the three-way preference unit to the two display units the workout
  * formatters understand: `st_lbs` (and anything unexpected) renders as lbs,
  * while a missing preference defaults to kg (the server-side storage unit).
@@ -925,6 +1017,34 @@ export function buildPresetStartExercisesPayload(
             rpe: null,
             completed_at: null,
           })),
+  }));
+}
+
+/**
+ * Planned weight/reps per exercise/set position from a live-start payload,
+ * captured before {@link stripPlannedSetValues} empties the create request.
+ * The store keys these to the created session's set ids (same order) so
+ * placeholder resolution can fall back to the preset's programmed values.
+ */
+export function extractPlannedSetValues(
+  exercises: PresetSessionExerciseRequest[],
+): AssumedSetValues[][] {
+  return exercises.map((exercise) =>
+    exercise.sets.map((set) => ({ weight: set.weight ?? null, reps: set.reps ?? null })),
+  );
+}
+
+/**
+ * Hevy-style live starts create every set with empty weight/reps: the plan is
+ * an assumption, not a result, so it renders as a gray placeholder and only
+ * becomes a real value when the set is completed or typed over.
+ */
+export function stripPlannedSetValues(
+  exercises: PresetSessionExerciseRequest[],
+): PresetSessionExerciseRequest[] {
+  return exercises.map((exercise) => ({
+    ...exercise,
+    sets: exercise.sets.map((set) => ({ ...set, weight: null, reps: null })),
   }));
 }
 

@@ -28,6 +28,10 @@ import {
   formatVolume,
   formatRecentSessionSet,
   describeActiveSet,
+  describeActiveSetAssumed,
+  resolveAssumedSetValues,
+  extractPlannedSetValues,
+  stripPlannedSetValues,
   formatSetLoad,
   formatRestCountdown,
   normalizeWeightUnit,
@@ -2431,6 +2435,174 @@ describe('workoutSession', () => {
         expect(describeActiveSet(null, '101')).toBeNull();
         expect(describeActiveSet(sessionWithSets, null)).toBeNull();
         expect(describeActiveSet(sessionWithSets, '999')).toBeNull();
+      });
+
+      describe('describeActiveSetAssumed', () => {
+        it('backfills empty weight/reps from the assumed resolution', () => {
+          // Set 201 has no values and its exercise (ex-2) has previous
+          // history — the description assumes last session's counterpart.
+          const previous = {
+            'ex-2': [{ setNumber: 1, setType: 'normal', weight: 45, reps: 12 }],
+          };
+          expect(describeActiveSetAssumed(sessionWithSets, '201', previous, {})).toEqual({
+            exerciseName: null,
+            setNumber: 1,
+            setCount: 1,
+            reps: 12,
+            weightKg: 45,
+          });
+        });
+
+        it('leaves a fully-entered set untouched and passes null descriptions through', () => {
+          const previous = {
+            'ex-1': [
+              { setNumber: 1, setType: 'normal', weight: 45, reps: 12 },
+              { setNumber: 2, setType: 'normal', weight: 45, reps: 12 },
+            ],
+          };
+          expect(describeActiveSetAssumed(sessionWithSets, '102', previous, {})).toEqual(
+            describeActiveSet(sessionWithSets, '102'),
+          );
+          expect(describeActiveSetAssumed(null, '101', {}, {})).toBeNull();
+        });
+      });
+    });
+
+    describe('resolveAssumedSetValues', () => {
+      const makeSet = (
+        id: number,
+        overrides?: Partial<{ set_type: string | null; weight: number | null; reps: number | null }>,
+      ) => ({ id, set_type: 'normal', weight: null, reps: null, ...overrides });
+      const prev = (weight: number | null, reps: number | null, setType = 'normal') => ({
+        setNumber: 1,
+        setType,
+        weight,
+        reps,
+      });
+
+      it('assumes each set from its same-position previous-session set', () => {
+        const result = resolveAssumedSetValues(
+          [makeSet(1), makeSet(2), makeSet(3)],
+          [prev(100, 8), prev(100, 6), prev(95, 6)],
+        );
+        expect(result).toEqual([
+          { weight: 100, reps: 8 },
+          { weight: 100, reps: 6 },
+          { weight: 95, reps: 6 },
+        ]);
+      });
+
+      it('keeps sets with history pinned to their own previous values, whatever is typed above', () => {
+        // Hevy-exact: typing 105 into set 1 must not drag sets 2–3 off last
+        // session's 100/95 — the progression reproduces set-for-set.
+        const result = resolveAssumedSetValues(
+          [makeSet(1, { weight: 105 }), makeSet(2), makeSet(3)],
+          [prev(110, 8), prev(100, 6), prev(95, 6)],
+        );
+        expect(result[1]).toEqual({ weight: 100, reps: 6 });
+        expect(result[2]).toEqual({ weight: 95, reps: 6 });
+      });
+
+      it('mirrors the rows above onto sets with no history of their own', () => {
+        // A never-done exercise: typing into set 1 updates every empty row
+        // below it at once.
+        const typed = resolveAssumedSetValues(
+          [makeSet(1, { weight: 100, reps: 8 }), makeSet(2), makeSet(3)],
+          undefined,
+        );
+        expect(typed[1]).toEqual({ weight: 100, reps: 8 });
+        expect(typed[2]).toEqual({ weight: 100, reps: 8 });
+
+        // A set added beyond last time's count mirrors the row above's
+        // resolved placeholder.
+        const added = resolveAssumedSetValues([makeSet(1), makeSet(2)], [prev(100, 8)]);
+        expect(added[1]).toEqual({ weight: 100, reps: 8 });
+      });
+
+      it('falls back to the planned value when there is no history or session entry', () => {
+        const result = resolveAssumedSetValues([makeSet(1), makeSet(2)], undefined, {
+          '2': { weight: 80, reps: 5 },
+        });
+        expect(result[0]).toEqual({ weight: null, reps: null });
+        expect(result[1]).toEqual({ weight: 80, reps: 5 });
+      });
+
+      it('prefers history over the plan, and both over typed entries above', () => {
+        const planned = { '1': { weight: 80, reps: 5 }, '2': { weight: 80, reps: 5 } };
+        const withHistory = resolveAssumedSetValues(
+          [makeSet(1), makeSet(2)],
+          [prev(100, 8), prev(100, 8)],
+          planned,
+        );
+        expect(withHistory[1]).toEqual({ weight: 100, reps: 8 });
+
+        const withEntry = resolveAssumedSetValues(
+          [makeSet(1, { weight: 110, reps: 3 }), makeSet(2)],
+          [prev(100, 8), prev(100, 8)],
+          planned,
+        );
+        expect(withEntry[1]).toEqual({ weight: 100, reps: 8 });
+      });
+
+      it('keeps warmup and working mirrors separate', () => {
+        // A typed warmup must not become the assumption for working sets that
+        // have nothing of their own.
+        const result = resolveAssumedSetValues(
+          [makeSet(1, { set_type: 'warmup', weight: 60, reps: 10 }), makeSet(2), makeSet(3)],
+          undefined,
+        );
+        expect(result[1]).toEqual({ weight: null, reps: null });
+        expect(result[2]).toEqual({ weight: null, reps: null });
+
+        // And a working entry doesn't retarget a later warmup row.
+        const warmupAfter = resolveAssumedSetValues(
+          [makeSet(1, { weight: 100, reps: 5 }), makeSet(2, { set_type: 'warmup' })],
+          undefined,
+        );
+        expect(warmupAfter[1]).toEqual({ weight: null, reps: null });
+      });
+
+      it('resolves nothing for a brand-new exercise with no sources', () => {
+        expect(resolveAssumedSetValues([makeSet(1), makeSet(2)], undefined)).toEqual([
+          { weight: null, reps: null },
+          { weight: null, reps: null },
+        ]);
+      });
+    });
+
+    describe('extractPlannedSetValues / stripPlannedSetValues', () => {
+      const exercises = buildPresetStartExercisesPayload({
+        id: 1,
+        name: 'Push Day',
+        exercises: [
+          {
+            id: 10,
+            exercise_id: '11111111-1111-4111-8111-111111111111',
+            exercise_name: 'Bench Press',
+            sets: [
+              { id: 1, set_number: 1, weight: 80, reps: 5, rest_time: 120 },
+              { id: 2, set_number: 2, weight: 80, reps: 5, rest_time: 120 },
+            ],
+          },
+        ],
+      } as unknown as WorkoutPreset);
+
+      it('captures the plan positionally and strips it from the create payload', () => {
+        expect(extractPlannedSetValues(exercises)).toEqual([
+          [
+            { weight: 80, reps: 5 },
+            { weight: 80, reps: 5 },
+          ],
+        ]);
+        const stripped = stripPlannedSetValues(exercises);
+        expect(stripped[0].sets.map((s) => [s.weight, s.reps])).toEqual([
+          [null, null],
+          [null, null],
+        ]);
+        // Structure survives the strip.
+        expect(stripped[0].sets.map((s) => s.rest_time)).toEqual([120, 120]);
+        // The source payload is not mutated.
+        expect(exercises[0].sets[0].weight).toBe(80);
       });
     });
 

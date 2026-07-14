@@ -37,6 +37,7 @@ import {
   quantizeSetWeightKg,
   setTypeLetter,
   setVolumeKg,
+  type AssumedSetValues,
   type RpeTone,
   type WorkoutCardSet,
 } from '../utils/workoutSession';
@@ -100,6 +101,14 @@ interface ActiveWorkoutSetRowProps {
    * row, replacing anything already entered.
    */
   previousSet?: ExerciseRecentSessionSet | null;
+  /**
+   * Live only: assumed weight/reps for this set's still-empty fields
+   * (Hevy-style placeholders, resolved by the card from the same sources the
+   * store's completion adoption uses). An empty cell renders the assumed value
+   * grayed — as the input's placeholder while editing, muted text otherwise —
+   * and logging the set records it.
+   */
+  assumed?: AssumedSetValues | null;
   /**
    * 'view' renders without logging affordances: static check on done rows, no
    * un-complete control, no swipe-delete, no done-row dim.
@@ -195,6 +204,8 @@ interface SetCellInputProps {
   inputRef: React.Ref<TextInput>;
   accessoryId?: string;
   className?: string;
+  /** Shown while the cell is empty; the assumed value when one resolves. */
+  placeholder?: string;
 }
 
 function SetCellInput({
@@ -207,6 +218,7 @@ function SetCellInput({
   inputRef,
   accessoryId,
   className,
+  placeholder = '–',
 }: SetCellInputProps) {
   const iosProps = accessoryId != null ? { inputAccessoryViewID: accessoryId } : {};
   return (
@@ -218,7 +230,7 @@ function SetCellInput({
       onBlur={onBlur}
       keyboardType={keyboardType}
       selectTextOnFocus
-      placeholder="–"
+      placeholder={placeholder}
       accessibilityLabel={accessibilityLabel}
       className={`text-center ${className ?? ''}`}
       // Tighter than FormInput's default 10/12 so the cell fits the 5-column row.
@@ -236,6 +248,7 @@ function ActiveWorkoutSetRow({
   metricColumn,
   weightUnit,
   previousSet,
+  assumed,
   mode = 'live',
   onComplete,
   onUncomplete,
@@ -362,6 +375,15 @@ function ActiveWorkoutSetRow({
   // raw keystrokes like "102.55" survive to save without a kg round-trip.
   const editWeightText = set.editWeightText ?? '';
   const editRepsText = set.editRepsText ?? '';
+
+  // Assumed-value display text for a still-empty field (live only): the gray
+  // placeholder in the cell, and what logging the set will record.
+  const assumedWeightText =
+    isLive && set.weight == null && assumed?.weight != null
+      ? formatDisplayWeight(assumed.weight, weightUnit)
+      : null;
+  const assumedRepsText =
+    isLive && set.reps == null && assumed?.reps != null ? String(assumed.reps) : null;
 
   // Fill-from-previous replaces whatever the row holds with last time's
   // values. A field the previous set lacks (e.g. a weight-only set) is left
@@ -771,6 +793,7 @@ function ActiveWorkoutSetRow({
               accessibilityLabel="Weight"
               accessoryId={weightAccessoryId}
               className="w-16"
+              placeholder={assumedWeightText ?? '–'}
             />
           </View>
           <View className="flex-1 items-center">
@@ -788,6 +811,7 @@ function ActiveWorkoutSetRow({
               accessibilityLabel="Reps"
               accessoryId={repsAccessoryId}
               className="w-16"
+              placeholder={assumedRepsText ?? '–'}
             />
           </View>
           <View className="w-14 items-center">
@@ -843,16 +867,22 @@ function ActiveWorkoutSetRow({
       ? editWeightText || '–'
       : set.weight != null
         ? formatDisplayWeight(set.weight, weightUnit)
-        : '–';
-  const displayReps = isEdit ? editRepsText || '–' : set.reps != null ? String(set.reps) : '–';
+        : (assumedWeightText ?? '–');
+  const displayReps = isEdit
+    ? editRepsText || '–'
+    : set.reps != null
+      ? String(set.reps)
+      : (assumedRepsText ?? '–');
 
   // live + edit render tap-to-activate display cells (tap → the input variant
   // above focuses that field); view keeps flat text.
   const editable = isEdit || isLive;
 
+  // Assumed values render muted, so a grayed-in target reads differently from
+  // a value the user actually entered or logged.
   const weightCellText = (
     <Text
-      className={`text-center text-sm text-text-primary ${editable ? '' : 'flex-1'}`}
+      className={`text-center text-sm ${assumedWeightText != null ? 'text-text-muted' : 'text-text-primary'} ${editable ? '' : 'flex-1'}`}
       style={{ fontVariant: ['tabular-nums'] }}
     >
       {displayWeight}
@@ -860,7 +890,7 @@ function ActiveWorkoutSetRow({
   );
   const repsCellText = (
     <Text
-      className={`text-center text-sm text-text-primary ${editable ? '' : 'flex-1'}`}
+      className={`text-center text-sm ${assumedRepsText != null ? 'text-text-muted' : 'text-text-primary'} ${editable ? '' : 'flex-1'}`}
       style={{ fontVariant: ['tabular-nums'] }}
     >
       {displayReps}

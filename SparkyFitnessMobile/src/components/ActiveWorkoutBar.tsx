@@ -27,7 +27,7 @@ import { flushActiveWorkoutBeforeClear } from '../hooks/useActiveWorkoutAutosave
 import { usePreferences } from '../hooks/usePreferences';
 import { useRestCountdown } from '../hooks/useRestCountdown';
 import {
-  describeActiveSet,
+  describeActiveSetAssumed,
   formatRestCountdown,
   formatSetLoad,
   normalizeWeightUnit,
@@ -282,6 +282,8 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   const sessionId = useActiveWorkoutStore(s => s.sessionId);
   const activeSession = useActiveWorkoutStore(s => s.session);
   const activeSetId = useActiveWorkoutStore(s => s.activeSetId);
+  const previousSessionSets = useActiveWorkoutStore(s => s.previousSessionSets);
+  const plannedSetValues = useActiveWorkoutStore(s => s.plannedSetValues);
   const { state: restState, remainingMs, progress } = useRestCountdown();
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
@@ -417,7 +419,14 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   // against the session snapshot since `steps` only holds name/restSec.
   // Split into discrete fields so the rendering can stack "status: name -
   // set N/M" on one row and the load ("135 lbs × 8") on a second row.
-  const activeSetDescription = describeActiveSet(activeSession, activeSetId);
+  // Assumed-aware: an upcoming set with empty fields shows its placeholder
+  // target, matching the gray values the live row renders.
+  const activeSetDescription = describeActiveSetAssumed(
+    activeSession,
+    activeSetId,
+    previousSessionSets,
+    plannedSetValues,
+  );
   const activeSetLabel =
     activeSetDescription == null
       ? null

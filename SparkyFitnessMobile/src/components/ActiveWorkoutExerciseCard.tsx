@@ -23,6 +23,7 @@ import {
   compareSetRecords,
   formatVolume,
   getExerciseVolumeKg,
+  resolveAssumedSetValues,
   setTypeLetter,
   type WorkoutCardExercise,
   type WorkoutCardSet,
@@ -247,10 +248,25 @@ function ActiveWorkoutExerciseCard({
   // the column just shows dashes there.
   const previousSessionSets = (stats?.recentSessions ?? [])[0]?.sets;
 
+  // Assumed (placeholder) weight/reps per row — live only. Resolved from the
+  // same sources completion adoption uses in the store, so the gray value a
+  // row shows is exactly what logging it would record.
+  const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
+  const assumedSetValues = useMemo(
+    () =>
+      isLive
+        ? resolveAssumedSetValues(exercise.sets, previousSessionSets, plannedSetValues)
+        : null,
+    [isLive, exercise.sets, previousSessionSets, plannedSetValues],
+  );
+
   // Capture the historical PR baseline once per exercise. The store no-ops
   // unless a live workout is active and the key is absent, so view/edit renders
   // can't clobber it and a re-resolved query is harmless.
   const capturePrBaseline = useActiveWorkoutStore((s) => s.capturePrBaseline);
+  const capturePreviousSessionSets = useActiveWorkoutStore(
+    (s) => s.capturePreviousSessionSets,
+  );
   useEffect(() => {
     // Wait for the query to resolve (data is null/undefined while loading). A
     // resolved stats object with a null `bestSet` still captures — that's the
@@ -262,7 +278,14 @@ function ActiveWorkoutExerciseCard({
         ? { weight: stats.bestSet.weight, reps: stats.bestSet.reps }
         : null,
     );
-  }, [isLive, stats, exercise.exercise_id, capturePrBaseline]);
+    // The store-side copy placeholder adoption resolves against on complete —
+    // captured from the same query the PREVIOUS column renders, so a
+    // lock-screen complete adopts exactly what the row shows.
+    capturePreviousSessionSets(
+      exercise.exercise_id,
+      stats.recentSessions?.[0]?.sets ?? [],
+    );
+  }, [isLive, stats, exercise.exercise_id, capturePrBaseline, capturePreviousSessionSets]);
 
   // The best set to show on the "Best" line: the historical best, or — once a
   // set this session earns a PR — the better of that and the stamped session
@@ -659,6 +682,7 @@ function ActiveWorkoutExerciseCard({
               metricColumn={metricColumn}
               weightUnit={weightUnit}
               previousSet={readOnly ? undefined : (previousSessionSets?.[index] ?? null)}
+              assumed={assumedSetValues?.[index] ?? null}
               mode={mode}
               onComplete={onComplete}
               onUncomplete={onUncomplete}

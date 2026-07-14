@@ -146,6 +146,35 @@ describe('useStartLiveWorkout', () => {
     expect(navigation.replace).toHaveBeenCalledWith('ActiveWorkout');
   });
 
+  it('strips planned weight/reps from the create payload and seeds them as the store plan', async () => {
+    const { result } = setup();
+    const plannedExercises = [
+      {
+        ...EXERCISES[0],
+        sets: [{ ...EXERCISES[0].sets[0], weight: 80, reps: 5 }],
+      },
+    ];
+
+    await act(async () => {
+      await result.current.startLiveWorkout({ name: 'Push Day', exercises: plannedExercises });
+    });
+
+    // Sets are created empty — the plan is an assumption, not a result.
+    expect(mockCreateWorkout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        exercises: [
+          expect.objectContaining({
+            sets: [expect.objectContaining({ weight: null, reps: null })],
+          }),
+        ],
+      }),
+    );
+    // The plan lands keyed to the created session's set ids for placeholders.
+    expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
+      '101': { weight: 80, reps: 5 },
+    });
+  });
+
   it('defaults the name to the dated workout name when omitted', async () => {
     const { result } = setup();
 
