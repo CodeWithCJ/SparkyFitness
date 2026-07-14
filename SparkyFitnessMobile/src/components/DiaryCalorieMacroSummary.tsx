@@ -33,8 +33,8 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
     '--color-progress-track',
     '--color-calories',
   ]) as [string, string];
-  const barHeight = 10;
-  const borderRadius = 5;
+  const barHeight = 7;
+  const borderRadius = 3.5;
   const hasGoal = goal > 0;
 
   const animatedProgress = useSharedValue(0);
@@ -76,8 +76,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
         <Text className="text-lg font-bold text-text-primary">
           {Math.round(eaten).toLocaleString()}
           <Text className="text-sm font-normal text-text-secondary">
-            {' '}
-            kcal{hasGoal ? ` / ${Math.round(goal).toLocaleString()}` : ''}
+            {hasGoal ? ` / ${Math.round(goal).toLocaleString()} kcal` : ' kcal'}
           </Text>
         </Text>
         {hasGoal && (
@@ -91,7 +90,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
         )}
       </View>
       {hasGoal && (
-        <View className="h-2.5" onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
+        <View className="h-[7px]" onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
           {barWidth > 0 && (
             <View
               style={{
@@ -139,14 +138,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   const diarySummaryVisible = useAppPreferencesStore((s) => s.diarySummaryVisible);
   const diarySummaryExpanded = useAppPreferencesStore((s) => s.diarySummaryExpanded);
   const setDiarySummaryExpanded = useAppPreferencesStore((s) => s.setDiarySummaryExpanded);
-  const [proteinColor, carbsColor, fatColor, fiberColor, accentColor, textSecondary] = useCSSVariable([
-    '--color-macro-protein',
-    '--color-macro-carbs',
-    '--color-macro-fat',
-    '--color-macro-fiber',
-    '--color-accent-primary',
-    '--color-text-secondary',
-  ]) as [string, string, string, string, string, string];
+  const textSecondary = useCSSVariable('--color-text-secondary') as string;
 
   const rotation = useSharedValue(diarySummaryExpanded ? 0 : -90);
   useEffect(() => {
@@ -165,13 +157,6 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   const handleToggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setDiarySummaryExpanded(!diarySummaryExpanded);
-  };
-
-  const macroColors: Record<string, string> = {
-    protein: proteinColor,
-    carbs: carbsColor,
-    fat: fatColor,
-    dietary_fiber: fiberColor,
   };
 
   const resolveCoreMacro = (key: (typeof CORE_MACROS)[number]) => {
@@ -221,7 +206,6 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
                 label={label}
                 consumed={consumed}
                 goal={macroGoal}
-                color={macroColors[key]}
               />
             );
           })}
@@ -239,7 +223,6 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
                 consumed={consumed}
                 goal={nutrientGoal}
                 unit={unit}
-                color={accentColor}
               />
             );
           })}

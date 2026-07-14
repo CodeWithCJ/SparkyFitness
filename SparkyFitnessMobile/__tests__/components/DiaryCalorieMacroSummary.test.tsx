@@ -81,8 +81,7 @@ describe('DiaryCalorieMacroSummary', () => {
       }),
     });
     expect(getByText('Calories')).toBeTruthy();
-    expect(getByText(/500 kcal/)).toBeTruthy();
-    expect(getByText(/2,000/)).toBeTruthy();
+    expect(getByText(/500 \/ 2,000 kcal/)).toBeTruthy();
     expect(getByText(/1,500/)).toBeTruthy();
     expect(getByText(/remaining/)).toBeTruthy();
     expect(queryByText('Protein')).toBeNull();
