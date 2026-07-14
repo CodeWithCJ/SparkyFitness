@@ -6,6 +6,10 @@ import {
   type PresetClientIds,
 } from '../../src/hooks/useWorkoutPresetForm';
 import { DEFAULT_REST_SEC, buildPresetExercisesPayload } from '../../src/utils/workoutSession';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
 import { kgToLbs } from '../../src/utils/unitConversions';
 import type { Exercise } from '../../src/types/exercise';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
@@ -78,6 +82,21 @@ describe('presetFormReducer', () => {
       images: ['bench.png'],
       sets: [{ clientId: 's1', weight: '', reps: '', restTime: DEFAULT_REST_SEC }],
     });
+  });
+
+  it('ADD_EXERCISE seeds the set with the user-configured default rest', () => {
+    useAppPreferencesStore.getState().setDefaultRestSec(150);
+    try {
+      const next = presetFormReducer(empty, {
+        type: 'ADD_EXERCISE',
+        exercise: exercise(),
+        exerciseClientId: 'e1',
+        setClientId: 's1',
+      });
+      expect(next.exercises[0].sets[0].restTime).toBe(150);
+    } finally {
+      __resetAppPreferencesStoreForTests();
+    }
   });
 
   it('ADD_EXERCISE defaults missing images to an empty array', () => {

@@ -44,6 +44,8 @@ interface ActiveWorkoutHeaderProps {
   onAddExercise?: () => void;
   /** When provided, adds a "Reorder exercises" action above Discard. */
   onReorder?: () => void;
+  /** When provided, adds a "Workout settings" action above the destructive items. */
+  onOpenSettings?: () => void;
   /** When provided (any set logged), adds a "Clear all logged sets" action. */
   onClearAllSets?: () => void;
 }
@@ -110,6 +112,7 @@ function ActiveWorkoutHeader({
   onRename,
   onAddExercise,
   onReorder,
+  onOpenSettings,
   onClearAllSets,
 }: ActiveWorkoutHeaderProps) {
   const [textPrimary, textMuted, accentPrimary, successColor, trackColor, chromeBorder] =
@@ -157,6 +160,13 @@ function ActiveWorkoutHeader({
       key: 'reorder',
       label: 'Reorder exercises',
       onPress: onReorder,
+    });
+  }
+  if (onOpenSettings) {
+    menuItems.push({
+      key: 'workout-settings',
+      label: 'Workout settings',
+      onPress: onOpenSettings,
     });
   }
   if (onClearAllSets) {

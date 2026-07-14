@@ -56,7 +56,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     ? `Last synced ${formatRelativeTime(new Date(lastSyncedTime))}`
     : 'Never synced';
 
-  const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration, macroGreen, catTeal] = useCSSVariable([
+  const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration, macroGreen, catTeal, catBlue] = useCSSVariable([
     '--color-icon-success',
     '--color-bg-danger',
     '--color-cat-slate',
@@ -67,7 +67,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     '--color-hydration',
     '--color-cat-green',
     '--color-cat-teal',
-  ]) as [string, string, string, string, string, string, string, string, string, string];
+    '--color-cat-blue',
+  ]) as [string, string, string, string, string, string, string, string, string, string, string];
 
   const serverSubtitle = activeConfig ? (
     <View className="flex-row items-center">
@@ -209,6 +210,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   iconColor={catPink}
                 />
               )}
+              <SettingsRow
+                icon="workout-settings"
+                title="Workout Settings"
+                onPress={() => navigation.navigate('WorkoutSettings')}
+                iconColor={catBlue}
+              />
               <SettingsRow
                 icon="app-settings"
                 title="App Settings"

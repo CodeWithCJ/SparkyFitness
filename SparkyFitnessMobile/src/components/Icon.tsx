@@ -124,6 +124,7 @@ const ICON_MAP = {
   'food-search-settings': { sf: 'magnifyingglass', ion: 'search-outline' },
   'dashboard-settings': { sf: 'square.grid.2x2', ion: 'grid-outline' },
   'diary-settings': { sf: 'book', ion: 'book-outline' },
+  'workout-settings': { sf: 'dumbbell', ion: 'barbell-outline' },
   'app-settings': { sf: 'slider.horizontal.3', ion: 'options-outline' },
   'logs': { sf: 'doc.plaintext', ion: 'document-text-outline' },
   'about': { sf: 'info.circle', ion: 'information-circle-outline' },

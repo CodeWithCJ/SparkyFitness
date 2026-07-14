@@ -24,6 +24,7 @@ describe('appPreferencesStore', () => {
       expect(state.activeWorkoutMetricColumn).toBe('rpe');
       expect(state.diarySummaryVisible).toBe(false);
       expect(state.diarySummaryExpanded).toBe(false);
+      expect(state.defaultRestSec).toBe(90);
     });
   });
 
@@ -50,6 +51,9 @@ describe('appPreferencesStore', () => {
 
       store.setDiarySummaryExpanded(true);
       expect(useAppPreferencesStore.getState().diarySummaryExpanded).toBe(true);
+
+      store.setDefaultRestSec(120);
+      expect(useAppPreferencesStore.getState().defaultRestSec).toBe(120);
     });
   });
 

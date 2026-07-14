@@ -25,6 +25,9 @@ type LegacyKey = keyof typeof LEGACY_KEYS;
 /** Which stat the active-workout log shows in its per-set metric column. */
 export type ActiveWorkoutMetricColumn = 'rpe' | 'volume' | 'e1rm' | 'tenrm';
 
+/** Factory default rest period between sets, in seconds. */
+export const DEFAULT_REST_SEC = 90;
+
 export const PREFERENCE_DEFAULTS = {
   hapticsEnabled: true,
   soundsEnabled: true,
@@ -36,6 +39,7 @@ export const PREFERENCE_DEFAULTS = {
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
   diarySummaryExpanded: false,
+  defaultRestSec: DEFAULT_REST_SEC as number,
 } as const;
 
 export type AppPreferencesData = {
@@ -49,6 +53,7 @@ export type AppPreferencesData = {
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
   diarySummaryExpanded: boolean;
+  defaultRestSec: number;
 };
 
 export interface AppPreferencesState extends AppPreferencesData {
@@ -62,6 +67,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
   setDiarySummaryExpanded: (value: boolean) => void;
+  setDefaultRestSec: (value: number) => void;
 }
 
 /**
@@ -115,6 +121,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setActiveWorkoutMetricColumn: (value) => set({ activeWorkoutMetricColumn: value }),
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
       setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
+      setDefaultRestSec: (value) => set({ defaultRestSec: value }),
     }),
     {
       name: STORE_KEY,
@@ -128,11 +135,12 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         fastingCardVisible: state.fastingCardVisible,
         askSparkyVisible: state.askSparkyVisible,
         liquidGlassTabBarEnabled: state.liquidGlassTabBarEnabled,
-        // Older persisted blobs without this key backfill via the default
+        // Older persisted blobs without these keys backfill via the default
         // shallow merge — no version bump needed.
         activeWorkoutMetricColumn: state.activeWorkoutMetricColumn,
         diarySummaryVisible: state.diarySummaryVisible,
         diarySummaryExpanded: state.diarySummaryExpanded,
+        defaultRestSec: state.defaultRestSec,
       }),
       migrate: (persistedState, version) => {
         if (
@@ -152,6 +160,16 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
     },
   ),
 );
+
+/**
+ * The user's default rest period in seconds, for non-React callers (stores,
+ * reducers, payload builders). Components should subscribe with
+ * `useAppPreferencesStore((s) => s.defaultRestSec)` instead so they re-render
+ * when the setting changes.
+ */
+export function getDefaultRestSec(): number {
+  return useAppPreferencesStore.getState().defaultRestSec;
+}
 
 /**
  * Test-only helper — resets store state to defaults and clears the persisted

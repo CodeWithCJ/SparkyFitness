@@ -11,7 +11,7 @@ import SafeImage from './SafeImage';
 import CompletionCheck from './CompletionCheck';
 import FormInput from './FormInput';
 import RestPeriodChip from './RestPeriodChip';
-import ActiveWorkoutSetRow from './ActiveWorkoutSetRow';
+import ActiveWorkoutSetRow, { type SetRowAccessoryHandle } from './ActiveWorkoutSetRow';
 import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
 import WorkoutNotesField from './WorkoutNotesField';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
@@ -144,6 +144,8 @@ interface ActiveWorkoutExerciseCardProps {
   onToggleComplete?: (setId: string) => void;
   onDeactivateSet?: () => void;
   onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
+  /** Live only: rows register their sticky-bar handles here (keyed by render key). */
+  onRegisterAccessoryHandle?: (key: string, handle: SetRowAccessoryHandle | null) => void;
 }
 
 /**
@@ -219,6 +221,7 @@ function ActiveWorkoutExerciseCard({
   onToggleComplete,
   onDeactivateSet,
   onEditFieldChange,
+  onRegisterAccessoryHandle,
 }: ActiveWorkoutExerciseCardProps) {
   const readOnly = mode === 'view';
   const isEdit = mode === 'edit';
@@ -624,7 +627,7 @@ function ActiveWorkoutExerciseCard({
           </Text>
           {!readOnly && (
             <Text className="w-20 text-center text-xs font-semibold uppercase text-text-muted">
-              Previous
+              Prev
             </Text>
           )}
           <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
@@ -702,6 +705,7 @@ function ActiveWorkoutExerciseCard({
               onDeactivate={onDeactivateSet}
               onEditFieldChange={onEditFieldChange}
               onAddSet={onAddSet}
+              onRegisterAccessoryHandle={onRegisterAccessoryHandle}
             />
             {/* Per-set note expand — live only, toggled by long-pressing the
                 set row. */}

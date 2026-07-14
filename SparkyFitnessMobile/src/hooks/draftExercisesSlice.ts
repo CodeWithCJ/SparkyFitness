@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import type { Dispatch, MutableRefObject } from 'react';
 import {
-  DEFAULT_REST_SEC,
+  getDefaultRestSec,
   moveDraftExerciseItem,
   normalizeDraftSupersetGroups,
   supersetDraftExercises,
@@ -59,7 +59,7 @@ export function draftExercisesReducer(
           exerciseCategory: action.exercise.category,
           images: action.exercise.images ?? [],
           sets: [
-            { clientId: action.setClientId, weight: '', reps: '', restTime: DEFAULT_REST_SEC },
+            { clientId: action.setClientId, weight: '', reps: '', restTime: getDefaultRestSec() },
           ],
         },
       ];
@@ -78,7 +78,7 @@ export function draftExercisesReducer(
           clientId: action.setClientId,
           weight: lastSet?.weight ?? '',
           reps: lastSet?.reps ?? '',
-          restTime: firstSet?.restTime ?? DEFAULT_REST_SEC,
+          restTime: firstSet?.restTime ?? getDefaultRestSec(),
         };
         return { ...exercise, sets: [...exercise.sets, newSet] };
       });

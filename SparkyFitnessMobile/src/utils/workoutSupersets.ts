@@ -1,8 +1,10 @@
 import type { ExerciseEntryResponse } from '@workspace/shared';
 import type { WorkoutDraftExercise } from '../types/drafts';
+import { getDefaultRestSec } from '../stores/appPreferencesStore';
 
-/** Default rest period between sets, in seconds. */
-export const DEFAULT_REST_SEC = 90;
+// The default rest period lives with the preference that configures it;
+// re-exported here so workout code keeps importing it from the rest domain.
+export { DEFAULT_REST_SEC, getDefaultRestSec } from '../stores/appPreferencesStore';
 
 // --- Supersets ---
 
@@ -153,7 +155,7 @@ function supersetWithByFields<T extends object>(
   const memberIdSet = new Set(memberIds);
 
   const anchor = exercises.find(e => getId(e) === memberIds[0])!;
-  const groupRest = fields.firstRestSec(anchor) ?? DEFAULT_REST_SEC;
+  const groupRest = fields.firstRestSec(anchor) ?? getDefaultRestSec();
 
   const lastMemberId = currentRun
     ? currentRun.entryIds[currentRun.entryIds.length - 1]
