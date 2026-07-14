@@ -182,6 +182,156 @@ describe('workoutFormReducer', () => {
     });
   });
 
+  describe('REPLACE_EXERCISE', () => {
+    const makeReplaceState = (): WorkoutDraft => ({
+      ...makeEmptyDraft(),
+      exercises: [
+        {
+          clientId: 'first',
+          serverId: 'srv-1',
+          exerciseId: 'ex-1',
+          exerciseName: 'Bench Press',
+          exerciseCategory: 'Strength',
+          images: ['bench.png'],
+          supersetGroup: 1,
+          notes: 'felt heavy',
+          snapshot: {
+            id: 'ex-1',
+            name: 'Bench Press',
+            category: 'Strength',
+            images: null,
+            primary_muscles: null,
+            secondary_muscles: null,
+            equipment: null,
+            instructions: null,
+            force: null,
+            level: null,
+            mechanic: null,
+            calories_per_hour: null,
+          },
+          sets: [
+            { clientId: 's1', serverId: 101, weight: '100', reps: '5', restTime: 120 },
+            { clientId: 's2', serverId: 102, weight: '100', reps: '4', restTime: 120 },
+          ],
+        },
+        {
+          clientId: 'second',
+          serverId: 'srv-2',
+          exerciseId: 'ex-2',
+          exerciseName: 'Squat',
+          exerciseCategory: 'Strength',
+          images: [],
+          supersetGroup: 1,
+          sets: [{ clientId: 's3', serverId: 103, weight: '140', reps: '3' }],
+        },
+      ],
+    });
+
+    it('swaps the exercise identity in place, resetting to one default set', () => {
+      const state = makeReplaceState();
+      const result = workoutFormReducer(state, {
+        type: 'REPLACE_EXERCISE',
+        clientId: 'first',
+        exercise: makeExercise({ id: 'ex-9', name: 'Incline Press', images: ['incline.png'] }),
+        setClientId: 'new-set',
+      });
+
+      const replaced = result.exercises[0];
+      expect(replaced.exerciseId).toBe('ex-9');
+      expect(replaced.exerciseName).toBe('Incline Press');
+      expect(replaced.images).toEqual(['incline.png']);
+      expect(replaced.sets).toEqual([
+        { clientId: 'new-set', weight: '', reps: '', restTime: 90 },
+      ]);
+      expect(replaced.serverId).toBeUndefined();
+      expect(replaced.snapshot).toBeNull();
+      // Position, draft identity, grouping, and the entry note survive.
+      expect(replaced.clientId).toBe('first');
+      expect(replaced.supersetGroup).toBe(1);
+      expect(replaced.notes).toBe('felt heavy');
+      // The sibling is untouched.
+      expect(result.exercises[1]).toBe(state.exercises[1]);
+    });
+
+    it('drops serverIds so the payload takes the delete-and-recreate path for the whole session', () => {
+      const state = makeReplaceState();
+      const result = workoutFormReducer(state, {
+        type: 'REPLACE_EXERCISE',
+        clientId: 'first',
+        exercise: makeExercise({ id: 'ex-9', name: 'Incline Press' }),
+        setClientId: 'new-set',
+      });
+
+      const payload = buildExercisesPayload(result.exercises, 'kg');
+      expect(payload.every(e => !('id' in e))).toBe(true);
+      expect(payload.flatMap(e => e.sets).every(s => !('id' in s))).toBe(true);
+    });
+  });
+
+  describe('CLEAR_EXERCISE_COMPLETIONS', () => {
+    const makeCompletionsState = (): WorkoutDraft => ({
+      ...makeEmptyDraft(),
+      exercises: [
+        {
+          clientId: 'logged',
+          exerciseId: 'ex-1',
+          exerciseName: 'Bench Press',
+          exerciseCategory: 'Strength',
+          images: [],
+          sets: [
+            {
+              clientId: 's1',
+              weight: '100',
+              reps: '5',
+              completedAt: '2026-03-12T10:00:00.000Z',
+              isPr: true,
+            },
+            { clientId: 's2', weight: '105', reps: '5' },
+          ],
+        },
+        {
+          clientId: 'other',
+          exerciseId: 'ex-2',
+          exerciseName: 'Squat',
+          exerciseCategory: 'Strength',
+          images: [],
+          sets: [
+            { clientId: 's3', weight: '140', reps: '3', completedAt: '2026-03-12T10:05:00.000Z' },
+          ],
+        },
+      ],
+    });
+
+    it('un-logs every set of the target, dropping PR flags but keeping values, and round-trips into the payload', () => {
+      const result = workoutFormReducer(makeCompletionsState(), {
+        type: 'CLEAR_EXERCISE_COMPLETIONS',
+        clientId: 'logged',
+      });
+
+      expect(result.exercises[0].sets[0].completedAt).toBeNull();
+      expect(result.exercises[0].sets[0].isPr).toBe(false);
+      expect(result.exercises[0].sets[0].weight).toBe('100');
+      expect(result.exercises[1].sets[0].completedAt).toBe('2026-03-12T10:05:00.000Z');
+
+      const payload = buildExercisesPayload(result.exercises, 'kg');
+      expect(payload[0].sets[0].completed_at).toBeNull();
+      expect(payload[0].sets[0].is_pr).toBe(false);
+      expect(payload[1].sets[0].completed_at).toBe('2026-03-12T10:05:00.000Z');
+    });
+
+    it('returns the state identity when the exercise has no logged sets', () => {
+      const state = workoutFormReducer(makeCompletionsState(), {
+        type: 'CLEAR_EXERCISE_COMPLETIONS',
+        clientId: 'logged',
+      });
+      const result = workoutFormReducer(state, {
+        type: 'CLEAR_EXERCISE_COMPLETIONS',
+        clientId: 'logged',
+      });
+      expect(result).toBe(state);
+    });
+  });
+
   describe('ADD_SET', () => {
     it('adds a set pre-filled from the previous set values', () => {
       const state: WorkoutDraft = {

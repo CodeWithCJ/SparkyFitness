@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
 import type { Exercise } from '../types/exercise';
 
@@ -6,6 +6,12 @@ interface ExerciseSetEditingActions {
   addExercise: (exercise: Exercise) => { exerciseClientId: string; setClientId: string };
   removeExercise: (clientId: string) => void;
   addSet: (exerciseClientId: string) => string;
+  /** Enables replace routing: while a replace target is set, the next selected
+   *  exercise swaps in place instead of appending. */
+  replaceExercise?: (
+    clientId: string,
+    exercise: Exercise,
+  ) => { exerciseClientId: string; setClientId: string };
 }
 
 export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
@@ -14,11 +20,25 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
   // RPE column). The activity forms only ever set 'weight' | 'reps'.
   const [activeSetField, setActiveSetField] = useState<'weight' | 'reps' | 'rpe'>('weight');
 
+  // Routes the next ExerciseSearch return to a Replace (holding the target's
+  // clientId) instead of an Add. Consumed on selection; the owning screen must
+  // clear it when plain Add opens the search, so a cancelled replace can't
+  // misroute a later add.
+  const replaceTargetClientIdRef = useRef<string | null>(null);
+  const setReplaceTarget = useCallback((clientId: string | null) => {
+    replaceTargetClientIdRef.current = clientId;
+  }, []);
+
   const handleAddExercise = useCallback((exercise: Exercise) => {
-    const { exerciseClientId, setClientId } = actions.addExercise(exercise);
+    const replaceTarget = replaceTargetClientIdRef.current;
+    replaceTargetClientIdRef.current = null;
+    const { exerciseClientId, setClientId } =
+      replaceTarget != null && actions.replaceExercise
+        ? actions.replaceExercise(replaceTarget, exercise)
+        : actions.addExercise(exercise);
     setActiveSetKey(`${exerciseClientId}:${setClientId}`);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property; spreading `actions` would break memoization
-  }, [actions.addExercise]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-properties; spreading `actions` would break memoization
+  }, [actions.addExercise, actions.replaceExercise]);
 
   const handleRemoveExercise = useCallback(
     (exercise: { clientId: string; exerciseName: string; sets: { weight: string; reps: string }[] }) => {
@@ -66,5 +86,6 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
     handleAddSet,
     activateSet,
     deactivateSet,
+    setReplaceTarget,
   };
 }

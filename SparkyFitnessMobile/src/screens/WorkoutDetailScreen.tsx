@@ -154,6 +154,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     state: formState,
     addExercise,
     removeExercise,
+    replaceExercise,
+    clearExerciseCompletions,
     addSet,
     removeSet,
     updateSetField,
@@ -190,6 +192,21 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     [addExercise],
   );
 
+  // A replaced exercise is effectively freshly added: mark it prefill-eligible
+  // so its empty set seeds from the new exercise's history.
+  const wrappedReplaceExercise = useCallback(
+    (clientId: string, exercise: Parameters<typeof replaceExercise>[1]) => {
+      const result = replaceExercise(clientId, exercise);
+      setEligibleIds(prev => {
+        const next = new Set(prev);
+        next.add(clientId);
+        return next;
+      });
+      return result;
+    },
+    [replaceExercise],
+  );
+
   const {
     activeSetKey,
     activeSetField,
@@ -198,7 +215,13 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     handleAddSet,
     activateSet,
     deactivateSet,
-  } = useExerciseSetEditing({ addExercise: wrappedAddExercise, removeExercise, addSet });
+    setReplaceTarget,
+  } = useExerciseSetEditing({
+    addExercise: wrappedAddExercise,
+    removeExercise,
+    addSet,
+    replaceExercise: wrappedReplaceExercise,
+  });
 
   const isEligibleForPrefill = useCallback(
     (clientId: string) => eligibleIds.has(clientId),
@@ -326,8 +349,21 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const openExerciseSearch = () => {
+    // Plain Add: drop any pending replace target so a cancelled replace can't
+    // misroute this add.
+    setReplaceTarget(null);
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
   };
+
+  // ⋮ "Replace exercise": the next ExerciseSearch return swaps this entry in
+  // place instead of appending.
+  const handleReplaceExercise = useCallback(
+    (clientId: string) => {
+      setReplaceTarget(clientId);
+      navigation.navigate('ExerciseSearch', { returnKey: route.key });
+    },
+    [setReplaceTarget, navigation, route.key],
+  );
 
   // Tap an exercise thumbnail → its library detail. Session entries carry a
   // full snapshot, so the detail screen opens with muscles/equipment already
@@ -666,6 +702,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               setExerciseRest={setExerciseRest}
               setExerciseCalories={setExerciseCalories}
               setExerciseNotes={setExerciseNotes}
+              onReplaceExercise={handleReplaceExercise}
+              clearExerciseCompletions={clearExerciseCompletions}
               supersetWith={supersetWith}
               ungroupExercise={ungroupExercise}
               onReorderExercises={reorderExercises}

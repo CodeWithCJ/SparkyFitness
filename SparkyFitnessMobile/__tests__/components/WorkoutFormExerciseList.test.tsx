@@ -397,6 +397,95 @@ describe('WorkoutFormExerciseList', () => {
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       expect(utils.queryByText('Reorder exercises')).toBeNull();
     });
+
+    it('routes Replace exercise through onReplaceExercise; omitted without the prop', () => {
+      const onReplaceExercise = jest.fn();
+      const utils = renderList([makeExercise('a')], { onReplaceExercise });
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      fireEvent.press(utils.getByTestId('menu-item-replace'));
+      expect(onReplaceExercise).toHaveBeenCalledWith('a');
+
+      const without = renderList([makeExercise('a')]);
+      fireEvent.press(without.getByTestId('card-a-overflow'));
+      expect(without.queryByText('Replace exercise')).toBeNull();
+    });
+
+    it('offers Clear logged sets only when the exercise has a completed set', () => {
+      const clearExerciseCompletions = jest.fn();
+      const utils = renderList(
+        [
+          makeExercise('a', {
+            sets: [
+              {
+                clientId: 'a-s1',
+                weight: '100',
+                reps: '5',
+                completedAt: '2026-07-14T10:00:00.000Z',
+              },
+            ],
+          }),
+          makeExercise('b'),
+        ],
+        { clearExerciseCompletions },
+      );
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      fireEvent.press(utils.getByTestId('menu-item-clear'));
+      expect(clearExerciseCompletions).toHaveBeenCalledWith('a');
+
+      fireEvent.press(utils.getByTestId('card-b-overflow'));
+      expect(utils.queryByText('Clear logged sets')).toBeNull();
+    });
+
+    it('omits Clear logged sets without the prop even when a set is logged', () => {
+      const utils = renderList([
+        makeExercise('a', {
+          sets: [
+            { clientId: 'a-s1', weight: '100', reps: '5', completedAt: '2026-07-14T10:00:00.000Z' },
+          ],
+        }),
+      ]);
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      expect(utils.queryByText('Clear logged sets')).toBeNull();
+    });
+
+    it('orders the full menu to match the live screen', () => {
+      const utils = renderList(
+        [
+          makeExercise('a', {
+            supersetGroup: 1,
+            sets: [
+              {
+                clientId: 'a-s1',
+                weight: '100',
+                reps: '5',
+                completedAt: '2026-07-14T10:00:00.000Z',
+              },
+            ],
+          }),
+          makeExercise('b', { supersetGroup: 1 }),
+          makeExercise('c'),
+        ],
+        {
+          onViewExercise: jest.fn(),
+          setExerciseNotes: jest.fn(),
+          onReplaceExercise: jest.fn(),
+          clearExerciseCompletions: jest.fn(),
+        },
+      );
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      const keys = utils
+        .getAllByTestId(/^menu-item-/)
+        .map(node => node.props.testID.replace('menu-item-', ''));
+      expect(keys).toEqual([
+        'view',
+        'notes',
+        'superset-with',
+        'ungroup',
+        'replace',
+        'clear',
+        'remove',
+      ]);
+    });
   });
 
   describe('view exercise', () => {

@@ -28,6 +28,8 @@ export function generateClientId(): string {
 export type DraftExercisesAction =
   | { type: 'ADD_EXERCISE'; exercise: Exercise; exerciseClientId: string; setClientId: string }
   | { type: 'REMOVE_EXERCISE'; clientId: string }
+  | { type: 'REPLACE_EXERCISE'; clientId: string; exercise: Exercise; setClientId: string }
+  | { type: 'CLEAR_EXERCISE_COMPLETIONS'; clientId: string }
   | { type: 'ADD_SET'; exerciseClientId: string; setClientId: string }
   | { type: 'REMOVE_SET'; exerciseClientId: string; setClientId: string }
   | {
@@ -69,6 +71,45 @@ export function draftExercisesReducer(
       return normalizeDraftSupersetGroups(
         exercises.filter(e => e.clientId !== action.clientId),
       );
+
+    // Mirrors the live store's replaceExercise: swap the exercise identity in
+    // place (keeping clientId, position, and superset grouping) and reset to
+    // one default set — the old sets no longer describe the new movement.
+    // Dropping serverId sends the whole session down the server's
+    // delete-and-recreate path (mixed old/new exercise ids aren't allowed).
+    case 'REPLACE_EXERCISE':
+      return exercises.map(exercise => {
+        if (exercise.clientId !== action.clientId) return exercise;
+        return {
+          ...exercise,
+          serverId: undefined,
+          snapshot: null,
+          exerciseId: action.exercise.id,
+          exerciseName: action.exercise.name,
+          exerciseCategory: action.exercise.category,
+          images: action.exercise.images ?? [],
+          sets: [
+            { clientId: action.setClientId, weight: '', reps: '', restTime: getDefaultRestSec() },
+          ],
+        };
+      });
+
+    // Mirrors the live store's clearExerciseCompletions: un-log every set,
+    // dropping the stale PR flags with the completions. Identity return when
+    // nothing is logged.
+    case 'CLEAR_EXERCISE_COMPLETIONS': {
+      const target = exercises.find(e => e.clientId === action.clientId);
+      if (target == null || !target.sets.some(s => s.completedAt != null)) return exercises;
+      return exercises.map(exercise => {
+        if (exercise.clientId !== action.clientId) return exercise;
+        return {
+          ...exercise,
+          sets: exercise.sets.map(set =>
+            set.completedAt != null ? { ...set, completedAt: null, isPr: false } : set,
+          ),
+        };
+      });
+    }
 
     case 'ADD_SET':
       return exercises.map(exercise => {
@@ -173,6 +214,11 @@ export function useDraftExerciseActions(
   exercisesModifiedRef: MutableRefObject<boolean>;
   addExercise: (exercise: Exercise) => { exerciseClientId: string; setClientId: string };
   removeExercise: (clientId: string) => void;
+  replaceExercise: (
+    clientId: string,
+    exercise: Exercise,
+  ) => { exerciseClientId: string; setClientId: string };
+  clearExerciseCompletions: (clientId: string) => void;
   addSet: (exerciseClientId: string) => string;
   removeSet: (exerciseClientId: string, setClientId: string) => void;
   updateSetField: (
@@ -207,6 +253,16 @@ export function useDraftExerciseActions(
       removeExercise: (clientId: string) => {
         exercisesModifiedRef.current = true;
         dispatch({ type: 'REMOVE_EXERCISE', clientId });
+      },
+      replaceExercise: (clientId: string, exercise: Exercise) => {
+        exercisesModifiedRef.current = true;
+        const setClientId = generateClientId();
+        dispatch({ type: 'REPLACE_EXERCISE', clientId, exercise, setClientId });
+        return { exerciseClientId: clientId, setClientId };
+      },
+      clearExerciseCompletions: (clientId: string) => {
+        exercisesModifiedRef.current = true;
+        dispatch({ type: 'CLEAR_EXERCISE_COMPLETIONS', clientId });
       },
       addSet: (exerciseClientId: string) => {
         exercisesModifiedRef.current = true;
