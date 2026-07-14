@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Edit, Share2, Sparkles } from 'lucide-react';
+import { Edit, Share2, Sparkles, Star } from 'lucide-react';
 import { NutrientGrid } from './NutrientGrid';
 import ProviderVerifiedBadge from './ProviderVerifiedBadge';
 import AllergenBadges from '@/components/AllergenBadges';
@@ -9,6 +9,7 @@ import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { useTranslation } from 'react-i18next';
+import { useFavoritesQuery } from '@/hooks/Foods/useFavorites';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { formatServingLabel } from '@/utils/foodServing';
@@ -61,9 +62,17 @@ const FoodResultCard = ({
 }: FoodResultCardProps) => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
+  const { data: favorites } = useFavoritesQuery();
   const isFood = !isMeal;
   const foodItem = item as Food;
   const mealItem = item as Meal;
+  // Row-level favorite indicator: a filled star marks starred items in every
+  // list (search results, recent, top), not just under the Favorites header.
+  const isFavorite =
+    !!item.id &&
+    (isMeal
+      ? !!favorites?.favoriteMeals?.some((m) => m.id === item.id)
+      : !!favorites?.favoriteFoods?.some((f) => f.id === item.id));
   // Hex opacity suffixes are only valid on a full #rrggbb value; other colour
   // formats (CSS vars, named colours, #rgb) are used as-is without a tint.
   const badgeIsHex =
@@ -197,19 +206,26 @@ const FoodResultCard = ({
               </>
             )}
           </div>
-          {isOnline && onEditClick && (
-            <Button
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditClick();
-              }}
-              className="ml-2"
-            >
-              <Edit className="w-4 h-4 mr-1" />
-              {t('enhancedFoodSearch.editAndAdd', 'Edit & Add')}
-            </Button>
-          )}
+          <div className="flex items-center space-x-2 ml-2 shrink-0">
+            {isFavorite && (
+              <Star
+                className="h-4 w-4 shrink-0 fill-current text-yellow-500"
+                aria-label={t('enhancedFoodSearch.favorite', 'Favorite')}
+              />
+            )}
+            {isOnline && onEditClick && (
+              <Button
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditClick();
+                }}
+              >
+                <Edit className="w-4 h-4 mr-1" />
+                {t('enhancedFoodSearch.editAndAdd', 'Edit & Add')}
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

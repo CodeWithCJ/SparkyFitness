@@ -73,6 +73,9 @@ export interface Food {
   is_quick_food?: boolean;
   glycemic_index?: GlycemicIndex;
   custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
+  // ISO timestamp of when the current user starred this food. Present only on
+  // items returned by the favorites endpoint; used to order the Favorites list.
+  favorited_at?: string;
 }
 
 export interface FoodDeletionImpact {

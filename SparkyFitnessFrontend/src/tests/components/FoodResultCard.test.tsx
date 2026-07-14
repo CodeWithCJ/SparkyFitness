@@ -11,6 +11,12 @@ jest.mock('@/hooks/useAllergenPreferences', () => ({
   useAllergenPreferences: () => ({ data: [] }),
 }));
 
+// The card reads starred state to decide whether to show the row star. Stub the
+// query so the suite needs no QueryClientProvider; the star has its own tests.
+jest.mock('@/hooks/Foods/useFavorites', () => ({
+  useFavoritesQuery: () => ({ data: undefined }),
+}));
+
 jest.mock('@/contexts/ActiveUserContext', () => ({
   useActiveUser: () => ({
     activeUserId: 'user-1',

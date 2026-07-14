@@ -764,7 +764,13 @@
     "bySource": "By Source",
     "noResults": "No results",
     "couldntLoad": "Couldn't load",
-    "showAllResults": "Show all {{count}} {{provider}} results"
+    "showAllResults": "Show all {{count}} {{provider}} results",
+    "favorite": "Favorite",
+    "favorites": "Favorites",
+    "addToFavorites": "Add to favorites",
+    "removeFromFavorites": "Remove from favorites",
+    "failedToLoadFavorites": "Failed to load favorites.",
+    "failedToUpdateFavorite": "Failed to update favorite."
   },
   "sync": {
     "syncAll": "Sync all active providers",

@@ -14,6 +14,14 @@ jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => mockQueryClient,
 }));
 
+// The dialog header carries a favorite star. Stub its hooks: this suite's
+// react-query mock deliberately exposes only useQueryClient, and the star's
+// behaviour is covered by its own tests.
+jest.mock('@/hooks/Foods/useFavorites', () => ({
+  useFavoritesQuery: () => ({ data: undefined }),
+  useToggleFavoriteMutation: () => ({ mutate: jest.fn(), isPending: false }),
+}));
+
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     loggingLevel: 'DEBUG',
