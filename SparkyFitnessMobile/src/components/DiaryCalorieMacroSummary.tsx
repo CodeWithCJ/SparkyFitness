@@ -1,13 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
-import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import { View, Text, TouchableOpacity, LayoutAnimation } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useDerivedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 
-import MacroCard from './MacroCard';
+import Icon from './Icon';
+import NutrientPill from './NutrientPill';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
+import { NUTRIENT_META } from '../constants/nutrients';
 import type { DailySummary } from '../types/dailySummary';
+import type { UserCustomNutrient } from '../hooks/useCustomNutrients';
+
+const CORE_MACROS = ['protein', 'carbs', 'fat', 'dietary_fiber'] as const;
 
 interface CalorieBarProps {
   eaten: number;
@@ -60,8 +71,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
   const overflowStyle = useAnimatedStyle(() => ({ left: overflowX.value, width: overflowWidth.value }));
 
   return (
-    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-2">Calories</Text>
+    <View>
       <View className="flex-row justify-between items-end mb-3">
         <Text className="text-lg font-bold text-text-primary">
           {Math.round(eaten).toLocaleString()}
@@ -115,71 +125,127 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
 interface DiaryCalorieMacroSummaryProps {
   summary: DailySummary;
   showNetCarbs: boolean;
+  /** Diary-specific custom nutrient keys (view_group='diary'), already capped to 4. */
+  customNutrientKeys: string[];
+  customNutrients: UserCustomNutrient[];
 }
 
-const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({ summary, showNetCarbs }) => {
-  const diaryCalorieSummaryVisible = useAppPreferencesStore((s) => s.diaryCalorieSummaryVisible);
-  const diaryMacroSummaryVisible = useAppPreferencesStore((s) => s.diaryMacroSummaryVisible);
-  const [proteinColor, carbsColor, fatColor, fiberColor, progressOverfillColor] = useCSSVariable([
+const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
+  summary,
+  showNetCarbs,
+  customNutrientKeys,
+  customNutrients,
+}) => {
+  const diarySummaryVisible = useAppPreferencesStore((s) => s.diarySummaryVisible);
+  const diarySummaryExpanded = useAppPreferencesStore((s) => s.diarySummaryExpanded);
+  const setDiarySummaryExpanded = useAppPreferencesStore((s) => s.setDiarySummaryExpanded);
+  const [proteinColor, carbsColor, fatColor, fiberColor, accentColor, textSecondary] = useCSSVariable([
     '--color-macro-protein',
     '--color-macro-carbs',
     '--color-macro-fat',
     '--color-macro-fiber',
-    '--color-progress-overfill',
-  ]) as [string, string, string, string, string];
+    '--color-accent-primary',
+    '--color-text-secondary',
+  ]) as [string, string, string, string, string, string];
 
-  if (!diaryCalorieSummaryVisible && !diaryMacroSummaryVisible) {
+  const rotation = useSharedValue(diarySummaryExpanded ? 0 : -90);
+  useEffect(() => {
+    rotation.value = withTiming(diarySummaryExpanded ? 0 : -90, { duration: 200 });
+  }, [diarySummaryExpanded, rotation]);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  if (!diarySummaryVisible) {
     return null;
   }
 
   const { eaten, goal, remaining, progress } = summary.calorieBalance;
 
-  const carbsConsumed = showNetCarbs
-    ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
-    : summary.carbs.consumed;
-  const carbsLabel = showNetCarbs ? 'Net Carbs' : 'Carbs';
+  const handleToggleExpanded = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setDiarySummaryExpanded(!diarySummaryExpanded);
+  };
+
+  const macroColors: Record<string, string> = {
+    protein: proteinColor,
+    carbs: carbsColor,
+    fat: fatColor,
+    dietary_fiber: fiberColor,
+  };
+
+  const resolveCoreMacro = (key: (typeof CORE_MACROS)[number]) => {
+    if (key === 'protein') {
+      return { label: 'Protein', consumed: summary.protein.consumed, goal: summary.protein.goal || undefined };
+    }
+    if (key === 'carbs') {
+      const consumed = showNetCarbs
+        ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
+        : summary.carbs.consumed;
+      return {
+        label: showNetCarbs ? 'Net Carbs' : 'Carbs',
+        consumed,
+        goal: summary.carbs.goal || undefined,
+      };
+    }
+    if (key === 'fat') {
+      return { label: 'Fat', consumed: summary.fat.consumed, goal: summary.fat.goal || undefined };
+    }
+    return { label: 'Fiber', consumed: summary.fiber.consumed, goal: summary.fiber.goal || undefined };
+  };
 
   return (
-    <>
-      {diaryCalorieSummaryVisible && (
+    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+      <TouchableOpacity
+        onPress={handleToggleExpanded}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: diarySummaryExpanded }}
+        accessibilityHint={diarySummaryExpanded ? 'Collapse this section' : 'Expand this section'}
+      >
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="text-md font-bold text-text-secondary">Calories</Text>
+          <Animated.View style={chevronStyle}>
+            <Icon name="chevron-down" size={20} color={textSecondary} />
+          </Animated.View>
+        </View>
         <CalorieBar eaten={eaten} goal={goal} remaining={remaining} progressPercent={progress / 100} />
-      )}
-      {diaryMacroSummaryVisible && (
-        <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
-          <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
-          <View className="flex-row flex-wrap justify-between">
-            <MacroCard
-              label={carbsLabel}
-              consumed={carbsConsumed}
-              goal={summary.carbs.goal || undefined}
-              color={carbsColor}
-              overfillColor={progressOverfillColor}
-            />
-            <MacroCard
-              label="Fat"
-              consumed={summary.fat.consumed}
-              goal={summary.fat.goal || undefined}
-              color={fatColor}
-              overfillColor={progressOverfillColor}
-            />
-            <MacroCard
-              label="Protein"
-              consumed={summary.protein.consumed}
-              goal={summary.protein.goal || undefined}
-              color={proteinColor}
-              overfillColor={progressOverfillColor}
-            />
-            <MacroCard
-              label="Fiber"
-              consumed={summary.fiber.consumed}
-              goal={summary.fiber.goal || undefined}
-              color={fiberColor}
-              overfillColor={progressOverfillColor}
-            />
-          </View>
+      </TouchableOpacity>
+      {diarySummaryExpanded && (
+        <View className="flex-row flex-wrap justify-between mt-3">
+          {CORE_MACROS.map((key) => {
+            const { label, consumed, goal: macroGoal } = resolveCoreMacro(key);
+            return (
+              <NutrientPill
+                key={key}
+                label={label}
+                consumed={consumed}
+                goal={macroGoal}
+                color={macroColors[key]}
+              />
+            );
+          })}
+          {customNutrientKeys.map((name) => {
+            const customDef = customNutrients.find((cn) => cn.name === name);
+            const meta = NUTRIENT_META[name];
+            const label = meta?.label ?? customDef?.name ?? name;
+            const unit = meta?.unit ?? customDef?.unit ?? 'g';
+            const consumed = summary.customNutrientTotals[name] ?? 0;
+            const nutrientGoal = summary.customNutrientGoals[name] || undefined;
+            return (
+              <NutrientPill
+                key={name}
+                label={label}
+                consumed={consumed}
+                goal={nutrientGoal}
+                unit={unit}
+                color={accentColor}
+              />
+            );
+          })}
         </View>
       )}
-    </>
+    </View>
   );
 };
 

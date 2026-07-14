@@ -3,6 +3,7 @@ import { render } from '@testing-library/react-native';
 import DiaryCalorieMacroSummary from '../../src/components/DiaryCalorieMacroSummary';
 import { useAppPreferencesStore, __resetAppPreferencesStoreForTests } from '../../src/stores/appPreferencesStore';
 import type { DailySummary } from '../../src/types/dailySummary';
+import type { UserCustomNutrient } from '../../src/hooks/useCustomNutrients';
 
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -49,56 +50,60 @@ function buildSummary(overrides: Partial<DailySummary> = {}): DailySummary {
   };
 }
 
+function renderWidget(props: Partial<React.ComponentProps<typeof DiaryCalorieMacroSummary>> = {}) {
+  return render(
+    <DiaryCalorieMacroSummary
+      summary={buildSummary()}
+      showNetCarbs={false}
+      customNutrientKeys={[]}
+      customNutrients={[]}
+      {...props}
+    />,
+  );
+}
+
 describe('DiaryCalorieMacroSummary', () => {
   beforeEach(() => {
     __resetAppPreferencesStoreForTests();
   });
 
-  it('renders nothing when both toggles are off', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: false,
-      diaryMacroSummaryVisible: false,
-    });
-    const { toJSON } = render(
-      <DiaryCalorieMacroSummary summary={buildSummary()} showNetCarbs={false} />,
-    );
+  it('renders nothing when diarySummaryVisible is off', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: false });
+    const { toJSON } = renderWidget();
     expect(toJSON()).toBeNull();
   });
 
-  it('renders only the calorie bar when macros are off', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: true,
-      diaryMacroSummaryVisible: false,
+  it('renders only the calorie row when collapsed (default)', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: false });
+    const { getByText, queryByText } = renderWidget({
+      summary: buildSummary({
+        calorieBalance: { ...buildSummary().calorieBalance, eaten: 500, goal: 2000, remaining: 1500 },
+      }),
     });
-    const { getByText, queryByText } = render(
-      <DiaryCalorieMacroSummary
-        summary={buildSummary({
-          calorieBalance: { ...buildSummary().calorieBalance, eaten: 500, goal: 2000, remaining: 1500 },
-        })}
-        showNetCarbs={false}
-      />,
-    );
     expect(getByText('Calories')).toBeTruthy();
     expect(getByText(/500 kcal/)).toBeTruthy();
     expect(getByText(/2,000/)).toBeTruthy();
     expect(getByText(/1,500/)).toBeTruthy();
     expect(getByText(/remaining/)).toBeTruthy();
-    expect(queryByText('Carbs')).toBeNull();
+    expect(queryByText('Protein')).toBeNull();
   });
 
-  it('shows "over" instead of "left" when remaining is negative', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: true,
-      diaryMacroSummaryVisible: false,
+  it('reveals the macro pill grid when diarySummaryExpanded is true', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: true });
+    const { getByText } = renderWidget();
+    expect(getByText('Protein')).toBeTruthy();
+    expect(getByText('Carbs')).toBeTruthy();
+    expect(getByText('Fat')).toBeTruthy();
+    expect(getByText('Fiber')).toBeTruthy();
+  });
+
+  it('shows "over" instead of "remaining" when remaining is negative', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: false });
+    const { getByText } = renderWidget({
+      summary: buildSummary({
+        calorieBalance: { ...buildSummary().calorieBalance, eaten: 2500, goal: 2000, remaining: -500 },
+      }),
     });
-    const { getByText } = render(
-      <DiaryCalorieMacroSummary
-        summary={buildSummary({
-          calorieBalance: { ...buildSummary().calorieBalance, eaten: 2500, goal: 2000, remaining: -500 },
-        })}
-        showNetCarbs={false}
-      />,
-    );
     expect(getByText(/over/)).toBeTruthy();
   });
 
@@ -106,131 +111,70 @@ describe('DiaryCalorieMacroSummary', () => {
     // Simulates a dynamic/TDEE calorie mode where remaining includes an
     // exercise credit, so it diverges from a naive goal - eaten calculation
     // (2000 - 500 would be 1500, but the server-computed remaining is 1800).
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: true,
-      diaryMacroSummaryVisible: false,
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: false });
+    const { getByText, queryByText } = renderWidget({
+      summary: buildSummary({
+        calorieBalance: { ...buildSummary().calorieBalance, eaten: 500, goal: 2000, remaining: 1800 },
+      }),
     });
-    const { getByText, queryByText } = render(
-      <DiaryCalorieMacroSummary
-        summary={buildSummary({
-          calorieBalance: { ...buildSummary().calorieBalance, eaten: 500, goal: 2000, remaining: 1800 },
-        })}
-        showNetCarbs={false}
-      />,
-    );
     expect(getByText(/1,800/)).toBeTruthy();
     expect(queryByText(/1,500/)).toBeNull();
   });
 
-  it('renders the "Macronutrients" section label', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: false,
-      diaryMacroSummaryVisible: true,
+  it('still renders the calorie row (without a goal bar/suffix) when no goal is configured', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: false });
+    const { getByText, queryByText, toJSON } = renderWidget({
+      summary: buildSummary({
+        calorieGoal: 0,
+        calorieBalance: { ...buildSummary().calorieBalance, eaten: 300, goal: 0 },
+      }),
     });
-    const { getByText } = render(
-      <DiaryCalorieMacroSummary summary={buildSummary()} showNetCarbs={false} />,
-    );
-    expect(getByText('Macronutrients')).toBeTruthy();
-  });
-
-  it('shows the macro card on a day with no logged food when the toggle is on', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: false,
-      diaryMacroSummaryVisible: true,
-    });
-    const { getByText } = render(
-      <DiaryCalorieMacroSummary summary={buildSummary({ foodEntries: [] })} showNetCarbs={false} />,
-    );
-    expect(getByText('Macronutrients')).toBeTruthy();
-  });
-
-  it('renders only the macro row when calories are off', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: false,
-      diaryMacroSummaryVisible: true,
-    });
-    const { getByText, queryByText } = render(
-      <DiaryCalorieMacroSummary summary={buildSummary()} showNetCarbs={false} />,
-    );
-    expect(getByText('Carbs')).toBeTruthy();
-    expect(getByText('Fat')).toBeTruthy();
-    expect(getByText('Protein')).toBeTruthy();
-    expect(queryByText(/cal$/)).toBeNull();
-  });
-
-  it('renders a Fiber bar, matching the Dashboard macro grid', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: false,
-      diaryMacroSummaryVisible: true,
-    });
-    const { getByText } = render(
-      <DiaryCalorieMacroSummary summary={buildSummary()} showNetCarbs={false} />,
-    );
-    expect(getByText('Fiber')).toBeTruthy();
-  });
-
-  it('shows total carbs labeled "Carbs" when showNetCarbs is false', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: false,
-      diaryMacroSummaryVisible: true,
-    });
-    const { getByText, queryByText } = render(
-      <DiaryCalorieMacroSummary
-        summary={buildSummary({ carbs: { consumed: 50, goal: 250 }, fiber: { consumed: 15, goal: 30 } })}
-        showNetCarbs={false}
-      />,
-    );
-    expect(getByText('Carbs')).toBeTruthy();
-    expect(getByText('50g / 250g')).toBeTruthy();
-    expect(queryByText('Net Carbs')).toBeNull();
-  });
-
-  it('swaps to Net Carbs (carbs - fiber) when showNetCarbs is true', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: false,
-      diaryMacroSummaryVisible: true,
-    });
-    const { getByText, queryByText } = render(
-      <DiaryCalorieMacroSummary
-        summary={buildSummary({ carbs: { consumed: 50, goal: 250 }, fiber: { consumed: 15, goal: 30 } })}
-        showNetCarbs
-      />,
-    );
-    expect(getByText('Net Carbs')).toBeTruthy();
-    expect(getByText('35g / 250g')).toBeTruthy();
-    expect(queryByText('Carbs')).toBeNull();
-  });
-
-  it('still renders the calorie row (without a goal bar/suffix) when the toggle is on but no goal is configured', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: true,
-      diaryMacroSummaryVisible: false,
-    });
-    const { getByText, queryByText, toJSON } = render(
-      <DiaryCalorieMacroSummary
-        summary={buildSummary({
-          calorieGoal: 0,
-          calorieBalance: { ...buildSummary().calorieBalance, eaten: 300, goal: 0 },
-        })}
-        showNetCarbs={false}
-      />,
-    );
     expect(toJSON()).not.toBeNull();
     expect(getByText(/300/)).toBeTruthy();
     expect(queryByText(/2,000/)).toBeNull();
   });
 
-  it('renders the calorie row when there is no goal but macros are off, matching DiaryScreen showing the widget for logged days without a configured goal', () => {
-    useAppPreferencesStore.setState({
-      diaryCalorieSummaryVisible: true,
-      diaryMacroSummaryVisible: false,
+  it('shows total carbs labeled "Carbs" when showNetCarbs is false', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: true });
+    const { getByText, queryByText } = renderWidget({
+      summary: buildSummary({ carbs: { consumed: 50, goal: 250 }, fiber: { consumed: 15, goal: 30 } }),
+      showNetCarbs: false,
     });
-    const { toJSON } = render(
-      <DiaryCalorieMacroSummary
-        summary={buildSummary({ calorieGoal: 0, calorieBalance: { ...buildSummary().calorieBalance, goal: 0 } })}
-        showNetCarbs={false}
-      />,
-    );
-    expect(toJSON()).not.toBeNull();
+    expect(getByText('Carbs')).toBeTruthy();
+    expect(queryByText('Net Carbs')).toBeNull();
+  });
+
+  it('swaps to Net Carbs (carbs - fiber) when showNetCarbs is true', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: true });
+    const { getByText, queryByText } = renderWidget({
+      summary: buildSummary({ carbs: { consumed: 50, goal: 250 }, fiber: { consumed: 15, goal: 30 } }),
+      showNetCarbs: true,
+    });
+    expect(getByText('Net Carbs')).toBeTruthy();
+    expect(queryByText('Carbs')).toBeNull();
+  });
+
+  it('renders custom nutrient pills up to the provided customNutrientKeys list', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: true });
+    const customNutrients: UserCustomNutrient[] = [
+      { id: '1', name: 'Omega-3', unit: 'mg' },
+      { id: '2', name: 'Magnesium', unit: 'mg' },
+    ];
+    const { getByText } = renderWidget({
+      summary: buildSummary({
+        customNutrientTotals: { 'Omega-3': 200, Magnesium: 50 },
+        customNutrientGoals: { 'Omega-3': 500, Magnesium: 400 },
+      }),
+      customNutrientKeys: ['Omega-3', 'Magnesium'],
+      customNutrients,
+    });
+    expect(getByText('Omega-3')).toBeTruthy();
+    expect(getByText('Magnesium')).toBeTruthy();
+  });
+
+  it('renders no custom nutrient pills when customNutrientKeys is empty', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: true });
+    const { queryByText } = renderWidget({ customNutrientKeys: [], customNutrients: [] });
+    expect(queryByText('Omega-3')).toBeNull();
   });
 });

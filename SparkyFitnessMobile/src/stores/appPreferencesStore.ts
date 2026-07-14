@@ -34,8 +34,8 @@ export const PREFERENCE_DEFAULTS = {
   askSparkyVisible: true,
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
-  diaryCalorieSummaryVisible: false,
-  diaryMacroSummaryVisible: false,
+  diarySummaryVisible: false,
+  diarySummaryExpanded: false,
 } as const;
 
 export type AppPreferencesData = {
@@ -47,8 +47,8 @@ export type AppPreferencesData = {
   askSparkyVisible: boolean;
   liquidGlassTabBarEnabled: boolean;
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
-  diaryCalorieSummaryVisible: boolean;
-  diaryMacroSummaryVisible: boolean;
+  diarySummaryVisible: boolean;
+  diarySummaryExpanded: boolean;
 };
 
 export interface AppPreferencesState extends AppPreferencesData {
@@ -60,8 +60,8 @@ export interface AppPreferencesState extends AppPreferencesData {
   setAskSparkyVisible: (value: boolean) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
-  setDiaryCalorieSummaryVisible: (value: boolean) => void;
-  setDiaryMacroSummaryVisible: (value: boolean) => void;
+  setDiarySummaryVisible: (value: boolean) => void;
+  setDiarySummaryExpanded: (value: boolean) => void;
 }
 
 /**
@@ -113,8 +113,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setAskSparkyVisible: (value) => set({ askSparkyVisible: value }),
       setLiquidGlassTabBarEnabled: (value) => set({ liquidGlassTabBarEnabled: value }),
       setActiveWorkoutMetricColumn: (value) => set({ activeWorkoutMetricColumn: value }),
-      setDiaryCalorieSummaryVisible: (value) => set({ diaryCalorieSummaryVisible: value }),
-      setDiaryMacroSummaryVisible: (value) => set({ diaryMacroSummaryVisible: value }),
+      setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
+      setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
     }),
     {
       name: STORE_KEY,
@@ -131,8 +131,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         // Older persisted blobs without this key backfill via the default
         // shallow merge — no version bump needed.
         activeWorkoutMetricColumn: state.activeWorkoutMetricColumn,
-        diaryCalorieSummaryVisible: state.diaryCalorieSummaryVisible,
-        diaryMacroSummaryVisible: state.diaryMacroSummaryVisible,
+        diarySummaryVisible: state.diarySummaryVisible,
+        diarySummaryExpanded: state.diarySummaryExpanded,
       }),
       migrate: (persistedState, version) => {
         if (
