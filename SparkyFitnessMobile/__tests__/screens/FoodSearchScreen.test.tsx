@@ -351,6 +351,46 @@ describe('FoodSearchScreen', () => {
     expect(rendered).toEqual(['Zeta Meal', 'Alpha Meal']);
   });
 
+  it('marks favorited rows with a star in search results, where the FAVORITES header is gone', () => {
+    // Once a query is typed there is no FAVORITES header, so ordering is the
+    // only cue that an item is starred — and ordering is invisible unless you
+    // already know the relevance order. The star is the signal; assert it lands
+    // on exactly the favorited food and meal, and on nothing else.
+    const plainFood = buildFood({ id: 'food-1', name: 'Plain Food' });
+    const favFood = buildFood({ id: 'food-2', name: 'Starred Food' });
+    const plainMeal = { ...buildMeal(), id: 'meal-1', name: 'Plain Meal' };
+    const favMeal = { ...buildMeal(), id: 'meal-2', name: 'Starred Meal' };
+
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: [plainFood, favFood],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+    } as any);
+    mockUseMealSearch.mockReturnValue({
+      searchResults: [plainMeal, favMeal],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+      refetch: jest.fn(),
+    });
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [{ ...favFood, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      favoriteMeals: [{ ...favMeal, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+
+    const screen = renderSearching();
+
+    // One star for the favorited food, one for the favorited meal — and none on
+    // the two plain rows.
+    expect(screen.getAllByLabelText('Favorite')).toHaveLength(2);
+    expect(screen.getByText('Starred Food')).toBeTruthy();
+    expect(screen.getByText('Starred Meal')).toBeTruthy();
+  });
+
   it('renders verified badge for verified local foods in search results', () => {
     mockUseFoodSearch.mockReturnValue({
       searchResults: [buildFood({ provider_verified: true })],

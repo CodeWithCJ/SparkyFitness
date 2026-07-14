@@ -23,6 +23,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import VerifiedBadge from '../components/VerifiedBadge';
 import MealLibraryRow from '../components/MealLibraryRow';
+import FavoriteStar from '../components/FavoriteStar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import AnchoredMenu, { AnchorRect } from '../components/AnchoredMenu';
 import Popover from '../components/Popover';
@@ -859,9 +860,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           ) : null}
         </View>
         <View className="items-end">
-          <Text className="text-text-primary text-base font-semibold">
-            {item.default_variant.calories} cal
-          </Text>
+          <View className="flex-row items-center gap-1">
+            <FavoriteStar show={favoriteKeys.has(landingKey('food', item.id))} />
+            <Text className="text-text-primary text-base font-semibold">
+              {item.default_variant.calories} cal
+            </Text>
+          </View>
           <Text className="text-text-secondary text-xs">
             {`${item.default_variant.serving_size} ${formatServingUnit(item.default_variant.serving_unit)}`}
           </Text>
@@ -879,6 +883,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           meal={entry.meal}
           showBadge
           showDivider
+          isFavorite={favoriteKeys.has(landingKey('meal', entry.meal.id))}
           onPress={() => showFoodInfo(mealToFoodInfo(entry.meal))}
         />
       );
@@ -1017,6 +1022,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <MealLibraryRow
             meal={item.meal}
             showDivider
+            isFavorite={favoriteKeys.has(landingKey('meal', item.meal.id))}
             onPress={() => showFoodInfo(mealToFoodInfo(item.meal))}
           />
         );

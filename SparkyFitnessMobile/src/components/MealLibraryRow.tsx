@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import type { Meal } from '../types/meals';
 import { mealToFoodInfo } from '../types/foodInfo';
+import FavoriteStar from './FavoriteStar';
 
 interface MealLibraryRowProps {
   meal: Meal;
@@ -12,6 +13,11 @@ interface MealLibraryRowProps {
   // not mistaken for a food. Off by default for lists that already have a
   // meals-only header. Mirrors the web food-search meal badge.
   showBadge?: boolean;
+  // Marks the row with an accent star. Opt-in so the star stays confined to
+  // food search, where favorites are a meaningful distinction — the other
+  // screens using this row (meal library, meal picker) have no favorites
+  // concept and should not sprout a star.
+  isFavorite?: boolean;
 }
 
 const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
@@ -19,6 +25,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
   onPress,
   showDivider = false,
   showBadge = false,
+  isFavorite = false,
 }) => {
   const foodInfo = useMemo(() => mealToFoodInfo(meal), [meal]);
   const itemCount = meal.foods.length;
@@ -60,9 +67,12 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
           ) : null}
         </View>
         <View className="items-end">
-          <Text className="text-text-primary text-base font-semibold">
-            {foodInfo.calories} cal
-          </Text>
+          <View className="flex-row items-center gap-1">
+            <FavoriteStar show={isFavorite} />
+            <Text className="text-text-primary text-base font-semibold">
+              {foodInfo.calories} cal
+            </Text>
+          </View>
           <Text className="text-text-secondary text-xs">
             {itemCount} {itemCount === 1 ? 'item' : 'items'}
           </Text>
