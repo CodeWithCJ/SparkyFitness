@@ -5,7 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Search, Layers, ChevronRight } from 'lucide-react';
 import type { WorkoutPreset } from '@/types/workout';
-import { useWorkoutPresets } from '@/hooks/Exercises/useWorkoutPresets';
+import {
+  useWorkoutPresets,
+  useSearchWorkoutPresets,
+} from '@/hooks/Exercises/useWorkoutPresets';
 import { useAuth } from '@/hooks/useAuth';
 
 interface WorkoutPresetSelectorProps {
@@ -20,19 +23,17 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
   const { user } = useAuth();
 
   const { data: presetData } = useWorkoutPresets(user?.id);
+  const { data: searchResults } = useSearchWorkoutPresets(searchTerm, user?.id);
 
   const allPresets = useMemo(
     () => presetData?.pages.flatMap((page) => page.presets) ?? [],
     [presetData]
   );
 
-  const filteredPresets = useMemo(
-    () =>
-      allPresets.filter((preset) =>
-        preset.name.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [allPresets, searchTerm]
-  );
+  const filteredPresets = useMemo(() => {
+    if (!searchTerm) return [];
+    return searchResults ?? [];
+  }, [searchResults, searchTerm]);
 
   const recentPresets = searchTerm === '' ? allPresets.slice(0, 3) : [];
   const topPresets = searchTerm === '' ? allPresets.slice(3, 6) : [];

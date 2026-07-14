@@ -86,6 +86,7 @@ export * from "./utils/entryTime.ts";
 export * from "./utils/calorieCalculations.ts";
 export * from "./utils/servingSizeConversions.ts";
 export * from "./utils/nutrientMatching.ts";
+export * from "./utils/search.ts";
 export * from "./ai/unitConversion.ts";
 export * from "./ai/confidenceLabels.ts";
 export * from "./medications/glp1.ts";

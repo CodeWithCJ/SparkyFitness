@@ -2,6 +2,7 @@ import {
   useMutation,
   useQueryClient,
   useInfiniteQuery,
+  useQuery,
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,6 +10,7 @@ import {
   createWorkoutPreset,
   updateWorkoutPreset,
   deleteWorkoutPreset,
+  searchWorkoutPresets,
 } from '@/api/Exercises/workoutPresets';
 import type { WorkoutPreset } from '@/types/workout';
 import { presetKeys } from '@/api/keys/exercises';
@@ -103,6 +105,26 @@ export const useDeleteWorkoutPresetMutation = () => {
       errorMessage: t(
         'workoutPresetsManager.deleteError',
         'Failed to delete workout preset.'
+      ),
+    },
+  });
+};
+
+export const useSearchWorkoutPresets = (
+  searchTerm: string,
+  userId?: string,
+  limit: number = 10
+) => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: ['presets', 'search', userId, searchTerm, limit],
+    queryFn: () => searchWorkoutPresets(searchTerm, limit),
+    enabled: !!userId && searchTerm.trim().length > 0,
+    meta: {
+      errorMessage: t(
+        'workoutPresetsManager.failedToLoadPresets',
+        'Failed to load workout presets.'
       ),
     },
   });
