@@ -6,7 +6,14 @@ export function parseSearchTerms(searchTerm: string): string[] {
   return searchTerm
     .toLowerCase()
     .split(/\s+/)
-    .map((t) => t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+    .map((t) => {
+      // If it contains letters or numbers, strip leading/trailing punctuation/symbols
+      if (/[\p{L}\p{N}]/u.test(t)) {
+        return t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+      }
+      // Otherwise, leave it as is (handles emojis, math symbols, etc.)
+      return t;
+    })
     .filter((t) => t.length > 0);
 }
 

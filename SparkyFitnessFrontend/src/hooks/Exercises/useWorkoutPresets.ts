@@ -118,7 +118,7 @@ export const useSearchWorkoutPresets = (
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: ['presets', 'search', userId, searchTerm, limit],
+    queryKey: presetKeys.search(searchTerm, userId, limit),
     queryFn: () => searchWorkoutPresets(searchTerm, limit),
     enabled: !!userId && searchTerm.trim().length > 0,
     meta: {

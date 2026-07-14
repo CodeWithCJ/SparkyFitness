@@ -129,12 +129,12 @@ async function searchFoods(
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
-      WHERE f.is_quick_food = FALSE AND `;
+      WHERE f.is_quick_food = FALSE`;
     const queryParams: any[] = [];
     let paramIndex = 1;
     let orderByClause = '';
     if (exactMatch) {
-      query += `CONCAT(f.brand, ' ', f.name) ILIKE $${paramIndex++}`;
+      query += ` AND CONCAT(f.brand, ' ', f.name) ILIKE $${paramIndex++}`;
       queryParams.push(name);
     } else if (broadMatch) {
       const {
@@ -142,16 +142,18 @@ async function searchFoods(
         queryParams: searchParams,
         nextParamIndex,
       } = buildSqlSearch("CONCAT(f.brand, ' ', f.name)", name, 1);
-      query += whereClauses.join(' AND ');
-      queryParams.push(...searchParams);
-      paramIndex = nextParamIndex;
+      if (whereClauses.length > 0) {
+        query += ` AND ${whereClauses.join(' AND ')}`;
+        queryParams.push(...searchParams);
+        paramIndex = nextParamIndex;
 
-      const exactMatchParamIndex = paramIndex;
-      queryParams.push(`%${name}%`);
-      paramIndex++;
-      orderByClause = ` ORDER BY ${buildSqlExactMatchOrder("CONCAT(f.brand, ' ', f.name)", exactMatchParamIndex)}, f.name ASC`;
+        const exactMatchParamIndex = paramIndex;
+        queryParams.push(`%${name}%`);
+        paramIndex++;
+        orderByClause = ` ORDER BY ${buildSqlExactMatchOrder("CONCAT(f.brand, ' ', f.name)", exactMatchParamIndex)}, f.name ASC`;
+      }
     } else if (checkCustom) {
-      query += `f.name = $${paramIndex++}`;
+      query += ` AND f.name = $${paramIndex++}`;
       queryParams.push(name);
     } else {
       throw new Error('Invalid search parameters.');
