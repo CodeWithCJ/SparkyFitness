@@ -74,9 +74,6 @@ const YAZIO_LOCALES: Record<
 };
 
 function resolveLanguage(lang: string | null | undefined): string | null {
-  if (lang === undefined || lang === null) {
-    return null;
-  }
   if (typeof lang !== 'string') {
     return null;
   }
