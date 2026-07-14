@@ -11,7 +11,7 @@ import ActiveWorkoutSetRow, {
   type SetRowMode,
   type SetRowState,
 } from '../../src/components/ActiveWorkoutSetRow';
-import type { WorkoutCardSet } from '../../src/utils/workoutSession';
+import type { AssumedSetValues, WorkoutCardSet } from '../../src/utils/workoutSession';
 import type { ActiveWorkoutMetricColumn } from '../../src/stores/appPreferencesStore';
 
 jest.mock('../../src/components/Icon', () => {
@@ -68,6 +68,7 @@ interface RenderOverrides {
   rpeEditable?: boolean;
   completedBadge?: boolean;
   previousSet?: ExerciseRecentSessionSet | null;
+  assumed?: AssumedSetValues | null;
   /** Wire the edit-mode completion toggle (otherwise the check is static). */
   enableToggle?: boolean;
   /** Wire the set-type handler (makes the set number a menu trigger). */
@@ -108,6 +109,7 @@ function renderRow(overrides?: RenderOverrides) {
       rpeEditable={current?.rpeEditable}
       completedBadge={current?.completedBadge}
       previousSet={current?.previousSet}
+      assumed={current?.assumed}
       {...spreadCallbacks}
       onToggleComplete={current?.enableToggle ? onToggleComplete : undefined}
       onPressSetType={current?.enableSetType ? onPressSetType : undefined}
@@ -957,7 +959,6 @@ describe('ActiveWorkoutSetRow', () => {
       const { queryByText } = renderRow({ state: 'upcoming' });
       expect(queryByText('-')).toBeNull();
     });
-
     describe('tap-to-fill', () => {
       it('replaces already-entered values with the previous ones', () => {
         const { getByLabelText, callbacks } = renderRow({
@@ -1026,6 +1027,67 @@ describe('ActiveWorkoutSetRow', () => {
         });
         expect(queryByLabelText('Fill set 1 from previous')).toBeNull();
       });
+    });
+  });
+
+  describe('assumed placeholders (live)', () => {
+    const assumed: AssumedSetValues = { weight: 100, reps: 8 };
+
+    it('renders assumed values in empty display cells, converting for the display unit', () => {
+      const kg = renderRow({
+        state: 'upcoming',
+        set: { weight: null, reps: null },
+        assumed,
+      });
+      expect(kg.getByText('100')).toBeTruthy();
+      expect(kg.getByText('8')).toBeTruthy();
+
+      const lbs = renderRow({
+        state: 'upcoming',
+        set: { weight: null, reps: null },
+        assumed,
+        weightUnit: 'lbs',
+      });
+      expect(lbs.getByText('220.5')).toBeTruthy();
+    });
+
+    it('never covers an entered value, per field', () => {
+      const { getByText, queryByText } = renderRow({
+        state: 'upcoming',
+        set: { weight: 105, reps: null },
+        assumed,
+      });
+      expect(getByText('105')).toBeTruthy();
+      expect(queryByText('100')).toBeNull();
+      expect(getByText('8')).toBeTruthy(); // reps still assumed
+    });
+
+    it('uses the assumed values as input placeholders on the focused row', () => {
+      const { getByLabelText } = renderRow({
+        state: 'current',
+        isFocused: true,
+        set: { weight: null, reps: null },
+        assumed,
+      });
+      expect(getByLabelText('Weight').props.placeholder).toBe('100');
+      expect(getByLabelText('Reps').props.placeholder).toBe('8');
+    });
+
+    it('falls back to dashes when nothing resolves or outside live mode', () => {
+      const empty = renderRow({
+        state: 'upcoming',
+        set: { weight: null, reps: null },
+        assumed: { weight: null, reps: null },
+      });
+      expect(empty.getAllByText('–').length).toBeGreaterThan(0);
+
+      const view = renderRow({
+        state: 'upcoming',
+        mode: 'view',
+        set: { weight: null, reps: null },
+        assumed,
+      });
+      expect(view.queryByText('100')).toBeNull();
     });
   });
 

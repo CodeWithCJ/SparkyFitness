@@ -14,6 +14,7 @@ import {
   maybePromptForExactAlarmPermission,
 } from '../services/notifications';
 import { getTodayDate } from '../utils/dateUtils';
+import { extractPlannedSetValues, stripPlannedSetValues } from '../utils/workoutSession';
 import type { RootStackParamList } from '../types/navigation';
 
 type StartLiveWorkoutNavigation = Pick<
@@ -66,11 +67,15 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
 
       const entryDate = getTodayDate();
       try {
+        // Hevy-style start: sets are created with empty weight/reps — the
+        // plan renders as gray placeholders and is only recorded when a set
+        // is completed or typed over.
+        const plannedSetValues = extractPlannedSetValues(exercises);
         const session = await createSession({
           name: name ?? defaultWorkoutName(entryDate),
           entry_date: entryDate,
           source: 'sparky',
-          exercises,
+          exercises: stripPlannedSetValues(exercises),
         });
         invalidateCache(entryDate);
         // Chained so the exact-alarm prompt never stacks on top of the OS
@@ -78,7 +83,9 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         void ensureNotificationPermission().then(() =>
           maybePromptForExactAlarmPermission(),
         );
-        useActiveWorkoutStore.getState().startWorkout(session, { createdByLiveStart: true });
+        useActiveWorkoutStore
+          .getState()
+          .startWorkout(session, { createdByLiveStart: true, plannedSetValues });
         if (navigation.isFocused()) {
           navigation.replace('ActiveWorkout');
           // The lock stays engaged: the replace unmounts the calling screen.

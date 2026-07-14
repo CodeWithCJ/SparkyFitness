@@ -872,6 +872,176 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('assumed-value adoption (placeholders)', () => {
+    /** The base session with every set's weight/reps emptied — a Hevy-style live start. */
+    function makeEmptySession(): PresetSessionResponse {
+      const session = makeSession();
+      return {
+        ...session,
+        exercises: session.exercises.map((e) => ({
+          ...e,
+          sets: e.sets.map((s) => ({ ...s, weight: null, reps: null })),
+        })),
+      };
+    }
+
+    const PREVIOUS_EX1 = [
+      { setNumber: 1, setType: 'working', weight: 100, reps: 8 },
+      { setNumber: 2, setType: 'working', weight: 95, reps: 6 },
+    ];
+
+    describe('startWorkout plan mapping', () => {
+      it('keys planned values to the created session set ids positionally, skipping empty entries', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [
+              { weight: 80, reps: 5 },
+              { weight: null, reps: null },
+            ],
+            [{ weight: 120, reps: 3 }],
+          ],
+        });
+        expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
+          '101': { weight: 80, reps: 5 },
+          '201': { weight: 120, reps: 3 },
+        });
+      });
+
+      it('clears the plan and captured history when a workout starts without them', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [[{ weight: 80, reps: 5 }]],
+        });
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+
+        useActiveWorkoutStore.getState().startWorkout(makeSession());
+        expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({});
+        expect(useActiveWorkoutStore.getState().previousSessionSets).toEqual({});
+      });
+    });
+
+    describe('capturePreviousSessionSets', () => {
+      it('captures once per exercise and only while a workout is live', () => {
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+        expect(useActiveWorkoutStore.getState().previousSessionSets).toEqual({});
+
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', []);
+        expect(useActiveWorkoutStore.getState().previousSessionSets).toEqual({
+          'ex-1': PREVIOUS_EX1,
+        });
+      });
+    });
+
+    describe('completeSet adoption', () => {
+      it('adopts the previous-session values into an empty set on completion', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(100);
+        expect(set0.reps).toBe(8);
+        expect(useActiveWorkoutStore.getState().hasUnsavedChanges).toBe(true);
+      });
+
+      it('adopts per field — a typed value is never overwritten', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+        useActiveWorkoutStore.getState().updateSetField('101', { weight: 105 });
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(105);
+        expect(set0.reps).toBe(8);
+      });
+
+      it('keeps a set with history pinned to its own previous values, whatever was typed above', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+        useActiveWorkoutStore.getState().updateSetField('101', { weight: 105, reps: 5 });
+
+        useActiveWorkoutStore.getState().completeSet('102');
+
+        const set1 = useActiveWorkoutStore.getState().session!.exercises[0].sets[1];
+        expect(set1.weight).toBe(95);
+        expect(set1.reps).toBe(6);
+      });
+
+      it('adopts the row above\'s entered values for a set with no history of its own', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', []);
+        useActiveWorkoutStore.getState().updateSetField('101', { weight: 105, reps: 5 });
+
+        useActiveWorkoutStore.getState().completeSet('102');
+
+        const set1 = useActiveWorkoutStore.getState().session!.exercises[0].sets[1];
+        expect(set1.weight).toBe(105);
+        expect(set1.reps).toBe(5);
+      });
+
+      it('falls back to the live-start plan when the exercise has no history', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [
+              { weight: 80, reps: 5 },
+              { weight: 80, reps: 5 },
+            ],
+            [{ weight: 120, reps: 3 }],
+          ],
+        });
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', []);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(80);
+        expect(set0.reps).toBe(5);
+      });
+
+      it('completes with nothing to adopt when no source resolves', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession());
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBeNull();
+        expect(set0.reps).toBeNull();
+        expect(useActiveWorkoutStore.getState().completedSetIds['101']).toBe(FIXED_NOW);
+      });
+
+      it('keeps adopted values when the set is un-completed', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        useActiveWorkoutStore.getState().uncompleteSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.weight).toBe(100);
+        expect(set0.reps).toBe(8);
+      });
+
+      it('announces the next set\'s assumed rep target in the rest notification', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeEmptySession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', PREVIOUS_EX1);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        expect(mockSchedule).toHaveBeenCalledWith(
+          'Bench Press',
+          60,
+          expect.objectContaining({ body: expect.stringContaining('6 reps target') }),
+        );
+      });
+    });
+  });
+
   describe('completeSet rest (supersets)', () => {
     // Steps: 301(90), 401(0), 302(90), 402(0).
     beforeEach(() => {
@@ -1494,7 +1664,7 @@ describe('activeWorkoutStore', () => {
     });
 
     describe('addSetToExercise', () => {
-      it('appends a clone of the last set with a negative temp id, without its outcomes', () => {
+      it('appends an empty set with a negative temp id, cloning structure but not values or outcomes', () => {
         useActiveWorkoutStore.getState().updateSetField('102', { rpe: 9 });
         useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-1');
         const state = useActiveWorkoutStore.getState();
@@ -1502,8 +1672,9 @@ describe('activeWorkoutStore', () => {
         expect(sets).toHaveLength(3);
         expect(sets[2].id).toBe(-1);
         expect(sets[2].set_number).toBe(3);
-        expect(sets[2].weight).toBe(70); // plan cloned from set 102
-        expect(sets[2].reps).toBe(8);
+        expect(sets[2].rest_time).toBe(sets[1].rest_time); // structure cloned from set 102
+        expect(sets[2].weight).toBeNull(); // values start empty (placeholder shows the row above)
+        expect(sets[2].reps).toBeNull();
         expect(sets[2].rpe).toBeNull(); // outcomes not cloned
         expect(sets[2].notes).toBeNull();
         expect(state.steps.map((s) => s.setId)).toEqual(['101', '102', '-1', '201']);

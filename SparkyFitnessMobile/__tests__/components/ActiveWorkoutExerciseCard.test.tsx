@@ -50,11 +50,13 @@ jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
       nextSetId,
       entryId,
       previousSet,
+      assumed,
       displayNumber,
     }: any) => (
       <View
         testID={`set-row-${set.id}`}
         displayNumber={displayNumber}
+        assumed={assumed == null ? 'none' : `${assumed.weight}x${assumed.reps}`}
         accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}${isFocused ? ' focused' : ''}`}
         accessibilityHint={`next:${nextSetId ?? 'none'} entry:${entryId ?? 'none'}`}
         accessibilityValue={{
@@ -88,11 +90,18 @@ jest.mock('../../src/hooks/useExerciseStats', () => ({
 // stub exposes a stable spy for that action.
 jest.mock('../../src/stores/activeWorkoutStore', () => {
   const capturePrBaseline = jest.fn();
+  const capturePreviousSessionSets = jest.fn();
+  const storeState = {
+    capturePrBaseline,
+    capturePreviousSessionSets,
+    plannedSetValues: {},
+  };
   return {
     __esModule: true,
-    useActiveWorkoutStore: (selector: (s: { capturePrBaseline: unknown }) => unknown) =>
-      selector({ capturePrBaseline }),
+    useActiveWorkoutStore: (selector: (s: typeof storeState) => unknown) =>
+      selector(storeState),
     __capturePrBaseline: capturePrBaseline,
+    __capturePreviousSessionSets: capturePreviousSessionSets,
   };
 });
 
@@ -104,6 +113,9 @@ const mockUseExerciseStats = jest.requireMock('../../src/hooks/useExerciseStats'
   .useExerciseStats as jest.Mock;
 const mockCapturePrBaseline = jest.requireMock('../../src/stores/activeWorkoutStore')
   .__capturePrBaseline as jest.Mock;
+const mockCapturePreviousSessionSets = jest.requireMock(
+  '../../src/stores/activeWorkoutStore',
+).__capturePreviousSessionSets as jest.Mock;
 
 /** Stats fixture with a historical best of 100kg × 5. */
 const STATS_WITH_BEST = {
@@ -706,6 +718,70 @@ describe('ActiveWorkoutExerciseCard', () => {
 
       expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-9');
       expect(prevOf(utils, 101)).toBe('prev:60x8');
+    });
+
+    it('captures the previous-session sets for adoption alongside the baseline', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      renderCard(true, { mode: 'live' });
+      expect(mockCapturePreviousSessionSets).toHaveBeenCalledWith(
+        'ex-1',
+        STATS_WITH_HISTORY.data.recentSessions[0].sets,
+      );
+    });
+
+    it('captures an empty history so no-history exercises still mark captured', () => {
+      mockUseExerciseStats.mockReturnValue({ data: { bestSet: null, lastSet: null } });
+      renderCard(true, { mode: 'live' });
+      expect(mockCapturePreviousSessionSets).toHaveBeenCalledWith('ex-1', []);
+    });
+  });
+
+  describe('assumed placeholders', () => {
+    const STATS_WITH_HISTORY = {
+      data: {
+        bestSet: null,
+        lastSet: null,
+        recentSessions: [
+          {
+            entryDate: '2026-01-05',
+            sets: [
+              { setNumber: 1, setType: null, weight: 100, reps: 8 },
+              { setNumber: 2, setType: null, weight: 95, reps: 6 },
+            ],
+          },
+        ],
+      },
+    };
+    /** Bench Press with three EMPTY sets (ids 101–103), like a Hevy-style live start. */
+    const emptySets = () => {
+      const base = makeExercise();
+      return makeExercise({
+        sets: [
+          { ...base.sets[0], weight: null, reps: null },
+          { ...base.sets[0], id: 102, set_number: 2, weight: null, reps: null },
+          { ...base.sets[0], id: 103, set_number: 3, weight: null, reps: null },
+        ],
+      });
+    };
+    const assumedOf = (utils: ReturnType<typeof renderCard>, id: number) =>
+      utils.getByTestId(`set-row-${id}`).props.assumed;
+
+    it('resolves each live row from history, cascading past its end', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      const utils = renderCard(true, { mode: 'live', exercise: emptySets() });
+      expect(assumedOf(utils, 101)).toBe('100x8');
+      expect(assumedOf(utils, 102)).toBe('95x6');
+      // Beyond history: the row above's resolved placeholder.
+      expect(assumedOf(utils, 103)).toBe('95x6');
+    });
+
+    it('passes no assumed values outside live mode', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      const view = renderCard(true, { mode: 'view', exercise: emptySets() });
+      expect(assumedOf(view, 101)).toBe('none');
+
+      const edit = renderCard(true, { mode: 'edit', exercise: emptySets() });
+      expect(assumedOf(edit, 101)).toBe('none');
     });
   });
 
