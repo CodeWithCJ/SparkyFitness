@@ -158,7 +158,14 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   const { eaten, goal, remaining, progress } = summary.calorieBalance;
 
   const handleToggleExpanded = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // Custom config (rather than Presets.easeInEaseOut) so the height change
+    // animates without the default create/delete opacity fade on the pills.
+    LayoutAnimation.configureNext({
+      duration: 200,
+      update: { type: LayoutAnimation.Types.easeInEaseOut },
+      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.scaleXY },
+      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.scaleXY },
+    });
     setDiarySummaryExpanded(!diarySummaryExpanded);
   };
 

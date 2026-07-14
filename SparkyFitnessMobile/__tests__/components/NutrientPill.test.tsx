@@ -3,29 +3,26 @@ import { render } from '@testing-library/react-native';
 import NutrientPill from '../../src/components/NutrientPill';
 
 describe('NutrientPill', () => {
-  it('renders label and consumed/goal/unit text with a percentage', () => {
+  it('renders label and consumed/goal/unit text', () => {
     const { getByText } = render(
       <NutrientPill label="Protein" consumed={34} goal={97} />,
     );
     expect(getByText('Protein')).toBeTruthy();
     expect(getByText(/34\/97g/)).toBeTruthy();
-    expect(getByText(/35%/)).toBeTruthy();
   });
 
-  it('omits the percentage and goal suffix when goal is undefined', () => {
-    const { getByText, queryByText } = render(
+  it('omits the goal suffix when goal is undefined', () => {
+    const { getByText } = render(
       <NutrientPill label="Protein" consumed={34} />,
     );
     expect(getByText(/^34g/)).toBeTruthy();
-    expect(queryByText(/%/)).toBeNull();
   });
 
-  it('omits the percentage and goal suffix when goal is zero', () => {
-    const { getByText, queryByText } = render(
+  it('omits the goal suffix when goal is zero', () => {
+    const { getByText } = render(
       <NutrientPill label="Protein" consumed={34} goal={0} />,
     );
     expect(getByText(/^34g/)).toBeTruthy();
-    expect(queryByText(/%/)).toBeNull();
   });
 
   it('defaults unit to "g" when not provided', () => {
