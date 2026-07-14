@@ -275,7 +275,10 @@ const EnhancedFoodSearch = ({
   // twice: Recent drops favorites, Frequent drops favorites and Recent. Passing
   // the exclusions in (rather than filtering the results) keeps each section
   // filled to itemDisplayLimit, since both merges cap last.
-  const favoriteKeys = new Set(favoriteEntries.map((e) => e.key));
+  const favoriteKeys = useMemo(
+    () => new Set(favoriteEntries.map((e) => e.key)),
+    [favoriteEntries]
+  );
   const recentEntries = mergeRecent(
     recentMeals,
     recentFoods,
@@ -289,6 +292,29 @@ const EnhancedFoodSearch = ({
     new Set([...favoriteKeys, ...recentEntryKeys]),
     itemDisplayLimit
   );
+
+  // Once a query is typed, favorites float to the top of their own section
+  // rather than being pulled into a group of their own: a favorited meal stays
+  // under Your Meals, just first. The rest keep the backend's relevance order,
+  // and filter preserves it, so favorites stay relevance-ordered among
+  // themselves too.
+  const searchFoodsFavFirst = useMemo(() => {
+    const results: Food[] = searchData?.searchResults || [];
+    const isFavorite = (food: Food) =>
+      favoriteKeys.has(landingKey('food', food.id));
+    return [
+      ...results.filter(isFavorite),
+      ...results.filter((food) => !isFavorite(food)),
+    ];
+  }, [searchData, favoriteKeys]);
+  const searchMealsFavFirst = useMemo(() => {
+    const isFavorite = (meal: Meal) =>
+      favoriteKeys.has(landingKey('meal', meal.id));
+    return [
+      ...meals.filter(isFavorite),
+      ...meals.filter((meal) => !isFavorite(meal)),
+    ];
+  }, [meals, favoriteKeys]);
 
   // Active food-category providers: the only valid options for the provider
   // dropdown, so the resolved default must be drawn from this list (not the raw
@@ -1194,7 +1220,7 @@ const EnhancedFoodSearch = ({
                 <SectionHeader>
                   {t('enhancedFoodSearch.yourFoods', 'Your Foods')}
                 </SectionHeader>
-                {foods.map((food: Food) => (
+                {searchFoodsFavFirst.map((food: Food) => (
                   <FoodResultCard
                     key={food.id}
                     item={food}
@@ -1211,7 +1237,7 @@ const EnhancedFoodSearch = ({
                 <SectionHeader>
                   {t('enhancedFoodSearch.yourMeals', 'Your Meals')}
                 </SectionHeader>
-                {meals.map((meal) => (
+                {searchMealsFavFirst.map((meal) => (
                   <FoodResultCard
                     key={`meal-${meal.id}`}
                     item={meal}
