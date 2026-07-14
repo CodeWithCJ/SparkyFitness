@@ -303,7 +303,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     return (
       <>
         <GestureDetector gesture={swipeGesture}>
-          {renderedContent ?? <View className="flex-1 bg-background" />}
+          <View collapsable={false} className="flex-1">
+            {renderedContent ?? <View className="flex-1 bg-background" />}
+          </View>
         </GestureDetector>
         <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
         <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
