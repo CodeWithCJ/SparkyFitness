@@ -18,11 +18,11 @@ const NutrientPill: React.FC<NutrientPillProps> = ({ label, consumed, goal, unit
   const percent = goalPercent(consumed, goal);
 
   return (
-    <View className="w-[23%] bg-surface border border-border-subtle rounded-xl px-2 py-2 mb-2 items-center">
-      <Text className="text-xs text-text-secondary mb-1">
+    <View className="w-[23%] bg-progress-track rounded-xl px-2 py-2 mb-2 items-center">
+      <Text className="text-xs text-text-secondary mb-1" numberOfLines={1}>
         {label}
       </Text>
-      <Text className="text-sm font-bold text-text-primary text-center">
+      <Text className="text-sm font-bold text-text-primary text-center" numberOfLines={1}>
         {Math.round(consumed)}
         {goal && goal > 0 ? `/${Math.round(goal)}` : ''}
         {unit}
