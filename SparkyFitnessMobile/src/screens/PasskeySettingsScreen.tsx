@@ -129,6 +129,13 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
       Alert.alert('Required', 'Please enter a name for this passkey.');
       return;
     }
+    if (passkeys.some((p) => (p.name ?? '').trim().toLowerCase() === name.toLowerCase())) {
+      Alert.alert(
+        'Name Already Used',
+        `You already have a passkey named "${name}". Please choose a different name.`
+      );
+      return;
+    }
 
     setModalVisible(false);
     setActionLoading(true);
