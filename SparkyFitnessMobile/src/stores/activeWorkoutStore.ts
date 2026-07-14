@@ -41,14 +41,6 @@ const STORAGE_KEY = '@SparkyFitness/active-workout';
 /** Monotonic counter used to reject stale async schedule resolutions. */
 let restInstanceCounter = 0;
 
-/**
- * Monotonic counter stamped onto each `lastPrEvent`. The celebration listener
- * keys its effect on this so one PR fires exactly one toast — and, since the
- * counter and `lastPrEvent` are both transient (never persisted), a cold start
- * can't replay a stale celebration.
- */
-let prEventCounter = 0;
-
 export interface WorkoutStep {
   exerciseId: string;
   setId: string;
@@ -71,20 +63,6 @@ export type CompletedSetMap = Record<string, number>;
  * `false`, so unchecking a PR set clears it server-side).
  */
 export type PrSetMap = Record<string, true>;
-
-/**
- * Transient one-shot describing the most recent PR, consumed by the
- * celebration toast listener. Excluded from `partialize` so a cold start never
- * replays it. `weightKg` is metric (the toast converts for display); `seq`
- * makes each event distinct so the listener fires once per PR.
- */
-export interface PrEvent {
-  setId: string;
-  exerciseName: string;
-  weightKg: number;
-  reps: number | null;
-  seq: number;
-}
 
 /**
  * Rest-timer state for the currently-active workout. The rest always
@@ -166,11 +144,6 @@ export interface ActiveWorkoutState {
   prBaseline: Record<string, PrBaselineEntry | null>;
   /** Set ids that earned a PR this session. Persisted; see {@link PrSetMap}. */
   prSetIds: PrSetMap;
-  /**
-   * Transient last-PR one-shot for the celebration listener. NOT persisted —
-   * see {@link PrEvent}.
-   */
-  lastPrEvent: PrEvent | null;
   /**
    * Current set id → stable React render key. A set's birth id is its render
    * key, so a missing entry means "the id is its own key"; an entry appears
@@ -378,7 +351,6 @@ const initialData: Pick<
   | 'createdByLiveStart'
   | 'prBaseline'
   | 'prSetIds'
-  | 'lastPrEvent'
   | 'setRenderKeys'
   | 'plannedSetValues'
   | 'previousSessionSets'
@@ -395,7 +367,6 @@ const initialData: Pick<
   createdByLiveStart: false,
   prBaseline: {},
   prSetIds: {},
-  lastPrEvent: null,
   setRenderKeys: {},
   plannedSetValues: {},
   previousSessionSets: {},
@@ -567,24 +538,6 @@ function makeDefaultSet(id: number, setNumber: number): ExerciseEntrySetResponse
 }
 
 /**
- * Seed the completion map from server-persisted `completed_at` timestamps so
- * a workout started from a session with prior progress resumes where it left
- * off. Missing or unparseable timestamps count as not completed. Also used by
- * read-only session views to derive done/upcoming per set.
- */
-/** Find a set anywhere in the session by its stringified id. */
-function findSessionSet(
-  session: PresetSessionResponse,
-  setId: string,
-): ExerciseEntrySetResponse | undefined {
-  for (const exercise of session.exercises) {
-    const found = exercise.sets.find((s) => String(s.id) === setId);
-    if (found) return found;
-  }
-  return undefined;
-}
-
-/**
  * Locate a set's owning exercise and its index within that exercise. The index
  * doubles as the superset round the set belongs to (round `n` is the `n`th set
  * of each member). Returns null when the id isn't in the session.
@@ -682,6 +635,12 @@ function restSecBeforeNextSet(
   return from.exercise.sets[0]?.rest_time ?? getDefaultRestSec();
 }
 
+/**
+ * Seed the completion map from server-persisted `completed_at` timestamps so
+ * a workout started from a session with prior progress resumes where it left
+ * off. Missing or unparseable timestamps count as not completed. Also used by
+ * read-only session views to derive done/upcoming per set.
+ */
 export function seedCompletionFromSession(session: PresetSessionResponse): CompletedSetMap {
   const seeded: CompletedSetMap = {};
   for (const exercise of session.exercises) {
@@ -900,10 +859,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           hasUnsavedChanges: false,
           createdByLiveStart: opts?.createdByLiveStart ?? false,
           // Baseline is captured lazily per exercise by the live card; stamps
-          // resume from the server. A fresh start clears any prior event.
+          // resume from the server.
           prBaseline: {},
           prSetIds: seedPrFromSession(session),
-          lastPrEvent: null,
           // A fresh start has no id churn yet — every set keys by its own id.
           setRenderKeys: {},
           plannedSetValues,
@@ -948,7 +906,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // completeActiveSet); stamps resume from the server.
           prBaseline: {},
           prSetIds: seedPrFromSession(session),
-          lastPrEvent: null,
           // A fresh start has no id churn yet — every set keys by its own id.
           setRenderKeys: {},
           // A resumed diary workout has no live-start plan; its set values
@@ -1004,26 +961,16 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         };
 
         // PR detection runs against the pre-completion map (the candidate is
-        // excluded internally). On a hit: stamp the set, fire the strong
-        // success haptic, and publish the one-shot the celebration listener
-        // consumes. A regular log fires only the light selection tick, so the
-        // PR buzz still stands out against it.
+        // excluded internally). On a hit: stamp the set and fire the strong
+        // success haptic. A regular log fires only the light selection tick,
+        // so the PR buzz still stands out against it.
         let prSetIds = state.prSetIds;
-        let lastPrEvent = state.lastPrEvent;
         if (
           session != null &&
           isPrSet(session, setId, state.completedSetIds, state.prBaseline)
         ) {
           prSetIds = { ...state.prSetIds, [setId]: true };
           fireSuccessHaptic();
-          const set0 = findSessionSet(session, setId);
-          lastPrEvent = {
-            setId,
-            exerciseName: state.steps[targetIndex].exerciseName,
-            weightKg: set0?.weight ?? 0,
-            reps: set0?.reps ?? null,
-            seq: ++prEventCounter,
-          };
         } else {
           fireSelectionHaptic();
         }
@@ -1043,7 +990,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             session,
             completedSetIds,
             prSetIds,
-            lastPrEvent,
             activeSetId: null,
             rest: READY_REST,
             sessionRevision: state.sessionRevision + 1,
@@ -1065,7 +1011,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           session,
           completedSetIds,
           prSetIds,
-          lastPrEvent,
           activeSetId: nextStep.setId,
           // Zero rest (back-to-back superset partners, or an explicit rest_time
           // of 0) advances straight to ready — no timer flash.
@@ -1780,8 +1725,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // next launch. sessionRevision is deliberately transient.
         hasUnsavedChanges: state.hasUnsavedChanges,
         createdByLiveStart: state.createdByLiveStart,
-        // Baseline and stamps survive a cold-start resume; `lastPrEvent` is
-        // deliberately omitted so a resume never replays a celebration.
+        // Baseline and stamps survive a cold-start resume.
         prBaseline: state.prBaseline,
         prSetIds: state.prSetIds,
         // Placeholder sources survive a cold start: the plan can't be
@@ -1889,7 +1833,6 @@ export function initWorkoutNotificationActions(): void {
  */
 export function __resetActiveWorkoutStoreForTests(): void {
   restInstanceCounter = 0;
-  prEventCounter = 0;
   notificationActionsSubscription?.remove();
   notificationActionsSubscription = null;
   useActiveWorkoutStore.setState({ ...initialData });
