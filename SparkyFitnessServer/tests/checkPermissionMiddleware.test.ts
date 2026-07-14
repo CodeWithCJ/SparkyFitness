@@ -169,6 +169,27 @@ describe('checkPermissionMiddleware', () => {
     );
   });
 
+  it('checks an array-valued target instead of silently skipping it', async () => {
+    // A repeated query key (?targetUserId=a&targetUserId=b) arrives as an array;
+    // it must not slip past the guard while a handler reading the same param
+    // still resolves it.
+    mockedCanAccess.mockResolvedValue(false);
+    const mw = checkPermissionMiddleware('diary');
+    const { promise, res, next } = run(mw, {
+      method: 'POST',
+      query: { targetUserId: ['stranger', 'stranger'] },
+      body: {},
+      userId: 'self',
+      originalUserId: 'self',
+      authenticatedUserId: 'self',
+    });
+    await promise;
+
+    expect(mockedCanAccess).toHaveBeenCalledWith('stranger', 'diary', 'self');
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it("ignores the literal string 'undefined' in target params", async () => {
     mockedCanAccess.mockResolvedValue(true);
     const mw = checkPermissionMiddleware('diary');

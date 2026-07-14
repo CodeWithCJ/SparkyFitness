@@ -141,19 +141,25 @@ async function downloadImage(
     const source = Readable.fromWeb(
       response.body as unknown as NodeReadableStream
     );
-    source.on('data', (chunk: Buffer) => {
-      downloaded += chunk.length;
-      if (downloaded > MAX_IMAGE_BYTES) {
-        source.destroy(
-          new Error(
+
+    async function* enforceSizeLimit(chunks: AsyncIterable<Buffer>) {
+      for await (const chunk of chunks) {
+        downloaded += chunk.length;
+        if (downloaded > MAX_IMAGE_BYTES) {
+          throw new Error(
             `[imageDownloader] Image exceeds maximum size of ${MAX_IMAGE_BYTES} bytes`
-          )
-        );
+          );
+        }
+        yield chunk;
       }
-    });
+    }
 
     try {
-      await pipeline(source, fs.createWriteStream(localImagePath));
+      await pipeline(
+        source,
+        enforceSizeLimit,
+        fs.createWriteStream(localImagePath)
+      );
     } catch (streamError) {
       await fsp.unlink(localImagePath).catch(() => {});
       throw streamError;

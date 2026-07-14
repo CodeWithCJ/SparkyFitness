@@ -8,6 +8,18 @@ const checkPermissionMiddleware = (permissionType: any) => {
     const authUserId =
       req.originalUserId || req.authenticatedUserId || req.userId;
 
+    // Express parses a repeated query key (?userId=a&userId=b) or a JSON array
+    // into an array, so pull every string out of each source — dropping an
+    // array-valued target would let it skip the check while a handler reading
+    // the same param still resolves it.
+    const extractStrings = (value: unknown): string[] => {
+      if (typeof value === 'string') return [value];
+      if (Array.isArray(value)) {
+        return value.filter((item): item is string => typeof item === 'string');
+      }
+      return [];
+    };
+
     // Every user this request could act on: the validated active context
     // (req.userId, which authMiddleware/onBehalfOfMiddleware already vetted the
     // switch for) plus any user named in a client-supplied query/body param.
@@ -17,15 +29,12 @@ const checkPermissionMiddleware = (permissionType: any) => {
     const candidateTargets = [
       ...new Set(
         [
-          req.userId,
-          req.query.userId,
-          req.query.targetUserId,
-          req.body?.user_id,
-          req.body?.targetUserId,
-        ].filter(
-          (id: unknown): id is string =>
-            typeof id === 'string' && id.length > 0 && id !== 'undefined'
-        )
+          ...extractStrings(req.userId),
+          ...extractStrings(req.query.userId),
+          ...extractStrings(req.query.targetUserId),
+          ...extractStrings(req.body?.user_id),
+          ...extractStrings(req.body?.targetUserId),
+        ].filter((id) => id.length > 0 && id !== 'undefined')
       ),
     ];
 
