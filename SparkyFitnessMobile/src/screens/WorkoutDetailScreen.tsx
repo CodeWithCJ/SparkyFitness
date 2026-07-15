@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import Animated, { LinearTransition } from 'react-native-reanimated';
@@ -33,7 +33,7 @@ import {
   useDeleteWorkout,
   useUpdateWorkout,
 } from '../hooks/useExerciseMutations';
-import { flushActiveWorkoutBeforeClear } from '../hooks/useActiveWorkoutAutosave';
+import { promptForActiveWorkoutConflict } from '../hooks/useStartLiveWorkout';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
@@ -278,38 +278,20 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     [session, navigation],
   );
 
-  // Start this workout, first offering to clear any other in-progress session
-  // (mirrors useStartLiveWorkout's "Replace current workout?" prompt). The
+  // Start this workout, first resolving any other in-progress session through
+  // the shared conflict prompt (go to it, or clear it and start this one). The
   // Start button and "Start workout here" long-press are both gated on
   // !isWorkoutActive, so a non-null sessionId here means a *different* workout.
   const beginWorkout = useCallback(
     (atSetId?: string) => {
-      if (useActiveWorkoutStore.getState().sessionId !== null) {
-        Alert.alert(
-          'Replace current workout?',
-          'You already have a workout in progress. Starting this one clears it here. Any sets already saved stay in your diary.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Clear & Start',
-              style: 'destructive',
-              onPress: () => {
-                void (async () => {
-                  // Best-effort save of the in-progress session before dropping
-                  // it locally, mirroring the HUD's Clear action.
-                  await flushActiveWorkoutBeforeClear(queryClient);
-                  useActiveWorkoutStore.getState().clearWorkout();
-                  enterLiveWorkout(atSetId);
-                })();
-              },
-            },
-          ],
-        );
-        return;
-      }
+      const prompted = promptForActiveWorkoutConflict(queryClient, {
+        onGoToWorkout: () => navigation.navigate('ActiveWorkout'),
+        onClearAndStart: () => enterLiveWorkout(atSetId),
+      });
+      if (prompted) return;
       enterLiveWorkout(atSetId);
     },
-    [queryClient, enterLiveWorkout],
+    [queryClient, navigation, enterLiveWorkout],
   );
 
   const handleStartWorkout = () => beginWorkout();

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useQueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { PresetSessionExerciseRequest } from '@workspace/shared';
 import { useCreateWorkout } from './useExerciseMutations';
@@ -19,13 +20,52 @@ import type { RootStackParamList } from '../types/navigation';
 
 type StartLiveWorkoutNavigation = Pick<
   NativeStackNavigationProp<RootStackParamList>,
-  'replace' | 'isFocused'
+  'replace' | 'isFocused' | 'navigate'
 >;
 
 interface StartLiveWorkoutArgs {
   /** Session name; defaults to the form path's dated name ("Workout - Jul 6"). */
   name?: string;
   exercises: PresetSessionExerciseRequest[];
+}
+
+/**
+ * When another workout is already live, prompt before starting a new one:
+ * go to the active workout screen, or clear it and start fresh (with a
+ * best-effort save first, mirroring the HUD's Clear action). Returns true
+ * when a workout was active — the prompt owns the flow and the caller must
+ * bail out; false means no conflict and the caller may start directly.
+ */
+export function promptForActiveWorkoutConflict(
+  queryClient: QueryClient,
+  options: {
+    /** "Go to Workout": open the ActiveWorkout screen, leaving the session live. */
+    onGoToWorkout: () => void;
+    /** "Clear & Start": runs after the flush and store clear. */
+    onClearAndStart: () => void | Promise<void>;
+  },
+): boolean {
+  if (useActiveWorkoutStore.getState().sessionId === null) return false;
+  Alert.alert(
+    'Workout in progress',
+    'You already have a workout in progress. Starting another clears it here. Any sets already saved stay in your diary.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Go to Workout', onPress: options.onGoToWorkout },
+      {
+        text: 'Clear & Start',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            await flushActiveWorkoutBeforeClear(queryClient);
+            useActiveWorkoutStore.getState().clearWorkout();
+            await options.onClearAndStart();
+          })();
+        },
+      },
+    ],
+  );
+  return true;
 }
 
 /**
@@ -49,7 +89,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
   const [isStarting, setIsStarting] = useState(false);
 
   // The actual create → seed store → navigate flow, run once the active-session
-  // guard has cleared. Split out so the "replace current workout?" prompt can
+  // guard has cleared. Split out so the "Workout in progress" prompt can
   // clear the in-progress session and then call straight through.
   const runStart = useCallback(
     async ({ name, exercises }: StartLiveWorkoutArgs) => {
@@ -114,32 +154,14 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         );
         return;
       }
-      if (useActiveWorkoutStore.getState().sessionId !== null) {
-        Alert.alert(
-          'Replace current workout?',
-          'You already have a workout in progress. Starting a new one clears it here. Any sets already saved stay in your diary.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Clear & Start',
-              style: 'destructive',
-              onPress: () => {
-                void (async () => {
-                  // Best-effort save of the in-progress session before dropping
-                  // it locally, mirroring the HUD's Clear action.
-                  await flushActiveWorkoutBeforeClear(queryClient);
-                  useActiveWorkoutStore.getState().clearWorkout();
-                  await runStart(args);
-                })();
-              },
-            },
-          ],
-        );
-        return;
-      }
+      const prompted = promptForActiveWorkoutConflict(queryClient, {
+        onGoToWorkout: () => navigation.navigate('ActiveWorkout'),
+        onClearAndStart: () => runStart(args),
+      });
+      if (prompted) return;
       await runStart(args);
     },
-    [queryClient, runStart],
+    [queryClient, navigation, runStart],
   );
 
   return { startLiveWorkout, isStarting };
