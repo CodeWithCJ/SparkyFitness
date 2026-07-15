@@ -80,7 +80,9 @@
       --color-text-danger-subtle: hsl(358, 72%, 38%);
       --color-icon-danger:       hsl(358, 80%, 50%);
 
-      --color-pr:                hsl(40, 88%, 43%);
+      /* Deliberately distinct from --color-cat-amber, which also colors
+         moderate RPE and a superset rail on the same live-workout screen. */
+      --color-pr:                hsl(36, 92%, 44%);
     }
       
     @variant dark {
@@ -147,7 +149,7 @@
       --color-text-danger-subtle: hsl(357, 88%, 88%);
       --color-icon-danger:       hsl(358, 80%, 65%);
 
-      --color-pr:                hsl(40, 60%, 58%);
+      --color-pr:                hsl(42, 88%, 64%);
     }
 
     @variant amoled {
@@ -213,7 +215,7 @@
       --color-text-danger-subtle: hsl(357, 88%, 88%);
       --color-icon-danger:       hsl(358, 80%, 65%);
 
-      --color-pr:                hsl(40, 60%, 58%);
+      --color-pr:                hsl(42, 88%, 64%);
     }
   }
 }
