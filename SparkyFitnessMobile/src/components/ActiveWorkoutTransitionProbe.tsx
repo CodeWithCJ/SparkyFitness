@@ -18,8 +18,10 @@ function getTabRevealProgress(startProgress: number, currentProgress: number) {
 
 function ActiveWorkoutTransitionProgressProbe({
   enabled,
+  routeKey,
 }: {
   enabled: boolean;
+  routeKey: string;
 }) {
   const usesNativeTabs = useNativeIOSTabsActive();
   const transition = useTransitionProgress() as
@@ -57,7 +59,7 @@ function ActiveWorkoutTransitionProgressProbe({
       if (!triggeredRef.current) {
         triggeredRef.current = true;
         startProgressRef.current = currentProgress;
-        notifyActiveWorkoutBarStackTransition('start', true);
+        notifyActiveWorkoutBarStackTransition('start', true, routeKey);
       }
 
       const startProgress = startProgressRef.current ?? currentProgress;
@@ -79,7 +81,7 @@ function ActiveWorkoutTransitionProgressProbe({
       closing.removeListener(closingListener);
       progress.removeListener(progressListener);
     };
-  }, [closing, enabled, progress, usesNativeTabs]);
+  }, [closing, enabled, progress, routeKey, usesNativeTabs]);
 
   return null;
 }
@@ -87,15 +89,20 @@ function ActiveWorkoutTransitionProgressProbe({
 export function ActiveWorkoutTransitionScreenLayout({
   children,
   routeName,
+  routeKey,
 }: {
   children: React.ReactNode;
   routeName: string;
+  routeKey: string;
 }) {
   const canProbeInteractiveBack = !NON_INTERACTIVE_BACK_ROUTES.has(routeName);
 
   return (
     <>
-      <ActiveWorkoutTransitionProgressProbe enabled={canProbeInteractiveBack} />
+      <ActiveWorkoutTransitionProgressProbe
+        enabled={canProbeInteractiveBack}
+        routeKey={routeKey}
+      />
       {children}
     </>
   );

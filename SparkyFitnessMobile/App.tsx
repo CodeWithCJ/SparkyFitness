@@ -834,7 +834,7 @@ function AppContent() {
         <Stack.Navigator
           screenLayout={usesLiquidGlassNavigation
             ? ({ children, route }) => (
-              <ActiveWorkoutTransitionScreenLayout routeName={route.name}>
+              <ActiveWorkoutTransitionScreenLayout routeName={route.name} routeKey={route.key}>
                 {children}
               </ActiveWorkoutTransitionScreenLayout>
             )
@@ -842,16 +842,16 @@ function AppContent() {
           screenListeners={usesLiquidGlassNavigation
             ? {
               transitionStart: (event) => {
-                notifyActiveWorkoutBarStackTransition('start', Boolean(event.data?.closing));
+                notifyActiveWorkoutBarStackTransition('start', Boolean(event.data?.closing), event.target);
               },
               transitionEnd: (event) => {
                 const closing = Boolean(event.data?.closing);
                 if (!closing) notifyActiveWorkoutBarSwipeProgress(0);
-                notifyActiveWorkoutBarStackTransition('end', closing);
+                notifyActiveWorkoutBarStackTransition('end', closing, event.target);
               },
-              gestureCancel: () => {
+              gestureCancel: (event) => {
                 notifyActiveWorkoutBarSwipeProgress(0);
-                notifyActiveWorkoutBarStackTransition('end', false);
+                notifyActiveWorkoutBarStackTransition('end', false, event.target);
               },
             }
             : undefined}
