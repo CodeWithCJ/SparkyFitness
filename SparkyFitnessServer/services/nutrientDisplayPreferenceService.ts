@@ -188,14 +188,6 @@ const defaultPreferences = [
     visible_nutrients: defaultNutrients,
   },
   {
-    // Mobile-only view group for the Diary screen's custom nutrient pills.
-    // No desktop counterpart exists; defaults to an empty selection since the
-    // 4 core macros are always shown and custom nutrients are opt-in.
-    view_group: 'diary',
-    platform: 'mobile',
-    visible_nutrients: [],
-  },
-  {
     view_group: 'food_database',
     platform: 'mobile',
     visible_nutrients: predefinedNutrients,
@@ -269,21 +261,6 @@ async function getNutrientDisplayPreferences(userId: any) {
         completePreferences.push(prefToPush);
       }
     }
-  }
-  // 'diary' is mobile-only (no desktop counterpart), so it's handled outside
-  // the viewGroups x platforms cross-product above rather than adding a
-  // spurious diary/desktop row.
-  const diaryPref = userPreferences.find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (p: any) => p.view_group === 'diary' && p.platform === 'mobile'
-  );
-  if (diaryPref) {
-    completePreferences.push(diaryPref);
-  } else {
-    const diaryDefault = defaultPreferences.find(
-      (p) => p.view_group === 'diary' && p.platform === 'mobile'
-    );
-    completePreferences.push(JSON.parse(JSON.stringify(diaryDefault)));
   }
   return completePreferences;
 }

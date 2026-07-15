@@ -11,27 +11,14 @@ interface MacroCardProps {
   color: string;
   overfillColor: string;
   unit?: string;
-  /** Shrinks label/value text and the bar height for use in denser layouts (e.g. a 3-up row). */
-  compact?: boolean;
-  /** Overrides the default 2-column `w-[48%]` container width. */
-  widthClassName?: string;
 }
 
-const MacroCard: React.FC<MacroCardProps> = ({
-  label,
-  consumed,
-  goal,
-  color,
-  overfillColor,
-  unit = 'g',
-  compact = false,
-  widthClassName = 'w-[48%]',
-}) => {
+const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, overfillColor, unit = 'g' }) => {
   const [barWidth, setBarWidth] = useState(0);
   const hasGoal = !!(goal && goal > 0);
   const progress = hasGoal ? consumed / (goal as number) : 0;
-  const barHeight = compact ? 6 : 8;
-  const borderRadius = compact ? 3 : 4;
+  const barHeight = 8;
+  const borderRadius = 4;
   const [trackColor] = useCSSVariable([
     '--color-progress-track',
   ]) as [string];
@@ -81,12 +68,10 @@ const MacroCard: React.FC<MacroCardProps> = ({
   }));
 
   return (
-    <View className={`${widthClassName} p-1`}>
+    <View className="w-[48%] p-1">
       <View className="flex-row justify-between items-center mb-2">
-        <Text className={compact ? 'text-xs font-medium text-text-primary' : 'text-sm font-medium text-text-primary'}>
-          {label}
-        </Text>
-        <Text className={compact ? 'text-[11px] text-text-secondary' : 'text-xs text-text-secondary'}>
+        <Text className="text-sm font-medium text-text-primary">{label}</Text>
+        <Text className="text-xs text-text-secondary">
           {goal && goal > 0
             ? `${Math.round(consumed)}${unit} / ${Math.round(goal)}${unit}`
             : `${Math.round(consumed)}${unit}`}
