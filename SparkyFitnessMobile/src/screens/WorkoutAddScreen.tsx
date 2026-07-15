@@ -19,6 +19,7 @@ import FormInput from '../components/FormInput';
 import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
 } from '../components/WorkoutFormExerciseList';
+import { useSetEditAccessoryBar } from '../components/SetRowChrome';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useWorkoutForm, getWorkoutDraftSubmission } from '../hooks/useWorkoutForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
@@ -138,6 +139,13 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     removeExercise,
     addSet,
     replaceExercise: wrappedReplaceExercise,
+  });
+
+  // Sticky Done/Next bar for the focused set cell, on both platforms.
+  const { onRegisterAccessoryHandle, accessoryBar } = useSetEditAccessoryBar({
+    activeSetKey,
+    activeSetField,
+    onDeactivateSet: deactivateSet,
   });
 
   const isEligibleForPrefill = useCallback(
@@ -405,6 +413,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     activeSetField={activeSetField}
                     onActivateSet={activateSet}
                     onDeactivateSet={deactivateSet}
+                    onRegisterAccessoryHandle={onRegisterAccessoryHandle}
                     updateSetField={updateSetField}
                     updateSetMeta={updateSetMeta}
                     removeSet={removeSet}
@@ -458,6 +467,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </Button>
           </View>
 
+          {accessoryBar}
         </>
       )}
 

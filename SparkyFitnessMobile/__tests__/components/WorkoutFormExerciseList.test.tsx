@@ -61,6 +61,7 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
               expandedSetKey: props.expandedSetKey ?? null,
               hasLongPressSet: !!props.onLongPressSet,
               hasCommitExerciseNote: !!props.onCommitExerciseNote,
+              hasRegisterAccessoryHandle: !!props.onRegisterAccessoryHandle,
             })}
           </Text>
           <Pressable
@@ -321,6 +322,14 @@ describe('WorkoutFormExerciseList', () => {
   it('passes no excludePresetEntryId in create mode', () => {
     const utils = renderList([makeExercise('a')]);
     expect(cardInfo(utils, 'a').excludePresetEntryId).toBeNull();
+  });
+
+  it('threads onRegisterAccessoryHandle to every card for the screen sticky bar', () => {
+    const utils = renderList([makeExercise('a'), makeExercise('b')], {
+      onRegisterAccessoryHandle: jest.fn(),
+    });
+    expect(cardInfo(utils, 'a').hasRegisterAccessoryHandle).toBe(true);
+    expect(cardInfo(utils, 'b').hasRegisterAccessoryHandle).toBe(true);
   });
 
   describe('superset rails', () => {

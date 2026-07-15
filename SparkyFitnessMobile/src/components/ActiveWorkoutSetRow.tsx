@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  InputAccessoryView,
   Platform,
   Pressable,
   Text,
@@ -18,12 +17,7 @@ import { useCSSVariable } from 'uniwind';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import FormInput from './FormInput';
 import CompletionCheck from './CompletionCheck';
-import {
-  SetInputAccessoryBar,
-  SetSwipeDeleteAction,
-  useAccessoryEpoch,
-  type SetAccessoryAction,
-} from './SetRowChrome';
+import { SetSwipeDeleteAction, type SetRowAccessoryHandle } from './SetRowChrome';
 import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import { formatRest } from './RestPeriodChip';
 import { withAlpha } from '../utils/colors';
@@ -79,25 +73,15 @@ export function parseRpeInput(text: string): number | null {
 
 export type SetRowMode = 'live' | 'view' | 'edit';
 
-/**
- * Imperative surface a live row registers with the screen so the shared
- * keyboard accessory bar (a screen-level KeyboardStickyView, not a per-input
- * iOS InputAccessoryView) can act on the focused row: `log` flushes the row's
- * drafts before completing, and `focusField` moves the keyboard between the
- * row's always-mounted inputs natively.
- */
-export interface SetRowAccessoryHandle {
-  log: () => void;
-  focusField: (field: 'weight' | 'reps' | 'rpe') => void;
-}
+export type { SetRowAccessoryHandle } from './SetRowChrome';
 
 interface ActiveWorkoutSetRowProps {
   set: WorkoutCardSet;
   /**
    * Stable React render key for this row (from the store's `setRenderKeys`
-   * map). Defaults to the set id. The iOS input-accessory `nativeID`s derive
-   * from it, so a focused input keeps its accessory attached across an id churn
-   * on autosave (the accessory attachment is fragile — see the `isIOS` block).
+   * map). Defaults to the set id. The accessory-handle registration is keyed
+   * by it, so the screen bar keeps dispatching to this row across an id churn
+   * on autosave.
    */
   renderKey?: string;
   /** Working-set number. Warmup/drop/failure rows show a `W`/`D`/`F` letter instead. */
@@ -124,8 +108,8 @@ interface ActiveWorkoutSetRowProps {
   /**
    * 'view' renders without logging affordances: static check on done rows, no
    * un-complete control, no swipe-delete, no done-row dim.
-   * 'edit' renders form-draft rows: controlled inputs on the active row,
-   * tap-to-activate display cells, delete instead of log, Done/Next accessory.
+   * 'edit' renders form-draft rows: always-mounted inputs controlled by the
+   * form reducer (committed per keystroke), delete instead of log.
    * 'live' renders store-backed rows whose weight/reps inputs stay mounted on
    * every row — taps move keyboard focus natively (no input remount, so the
    * keyboard never dips) — while the cursor (next-unlogged) row carries the
@@ -176,13 +160,12 @@ interface ActiveWorkoutSetRowProps {
   onActivateSet?: (setId: string, field: 'weight' | 'reps') => void;
   /** Live only: tap the RPE column to focus the RPE input on that row. */
   onActivateRpe?: (setId: string) => void;
-  onDeactivate?: () => void;
   onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
   onAddSet?: (entryId: string) => void;
   /**
-   * Live only: register this row's {@link SetRowAccessoryHandle} (keyed by its
-   * render key) so the screen's sticky accessory bar can dispatch Next/Log to
-   * the focused row. Called with `null` on unmount.
+   * Live and edit: register this row's {@link SetRowAccessoryHandle} (keyed by
+   * its render key) so the screen's sticky accessory bar can dispatch
+   * Next/Log/advance to the focused row. Called with `null` on unmount.
    */
   onRegisterAccessoryHandle?: (key: string, handle: SetRowAccessoryHandle | null) => void;
 }
@@ -223,7 +206,6 @@ interface SetCellInputProps {
   keyboardType: 'decimal-pad' | 'number-pad';
   accessibilityLabel: string;
   inputRef: React.Ref<TextInput>;
-  accessoryId?: string;
   className?: string;
   /** Shown while the cell is empty; the assumed value when one resolves. */
   placeholder?: string;
@@ -247,13 +229,11 @@ function SetCellInput({
   keyboardType,
   accessibilityLabel,
   inputRef,
-  accessoryId,
   className,
   placeholder = '–',
   flat = false,
   textColor,
 }: SetCellInputProps) {
-  const iosProps = accessoryId != null ? { inputAccessoryViewID: accessoryId } : {};
   const [focused, setFocused] = useState(false);
   return (
     <FormInput
@@ -280,6 +260,17 @@ function SetCellInput({
         paddingLeft: 4,
         paddingRight: 4,
         ...(flat ? { fontSize: 14, lineHeight: 18 } : null),
+        // The explicit lineHeight is an iOS alignment fix (see FormInput). On
+        // Android it lays the glyph box out shifted up in these compact cells,
+        // clipping the text against the chip background — drop it and center
+        // the text instead.
+        ...(Platform.OS === 'android'
+          ? {
+              lineHeight: undefined,
+              includeFontPadding: false as const,
+              textAlignVertical: 'center' as const,
+            }
+          : null),
         // Transparent (not zero-width) border so the cell doesn't shift when
         // the focus ring appears; FormInput's own focus styling supplies the
         // raised background + accent border while focused.
@@ -288,7 +279,6 @@ function SetCellInput({
           : null),
         ...(textColor != null ? { color: textColor } : null),
       }}
-      {...iosProps}
     />
   );
 }
@@ -318,7 +308,6 @@ function ActiveWorkoutSetRow({
   onToggleComplete,
   onActivateSet,
   onActivateRpe,
-  onDeactivate,
   onEditFieldChange,
   onAddSet,
   onRegisterAccessoryHandle,
@@ -330,12 +319,11 @@ function ActiveWorkoutSetRow({
   // there — coerce anyway so the editing chrome can never render.
   const state = readOnly && stateProp === 'current' ? 'upcoming' : stateProp;
 
-  // The row whose drafts currently own the keyboard. In `edit` the cursor row
-  // (state === 'current') is the focused cell and is the only row rendering
-  // inputs; in `live` every row keeps its inputs mounted and this marks the
-  // one the user is editing (drafts win over store re-seeds, deactivation
-  // flushes commits) — distinct from the cursor, which can stay on the next
-  // set.
+  // The row whose inputs currently own the keyboard. Every live and edit row
+  // keeps its inputs mounted; in `edit` the cursor row (state === 'current')
+  // is the focused cell, while in `live` this marks the row the user is
+  // editing (drafts win over store re-seeds, deactivation flushes commits) —
+  // distinct from the cursor, which can stay on the next set.
   const isFocusedRow = isEdit ? state === 'current' : isLive ? isFocused : false;
 
   const [
@@ -408,10 +396,11 @@ function ActiveWorkoutSetRow({
   const rpeInputRef = useRef<TextInput>(null);
 
   // Move the keyboard to the commanded input when this row is the focused
-  // cell. Live rows keep their inputs mounted, so a user tap focuses natively
+  // cell. All rows keep their inputs mounted, so a user tap focuses natively
   // and this is a no-op backstop; it does the real work for programmatic
-  // moves (edit's Next chain, live's tap-on-RPE-cell swapping in the RPE
-  // input) and for edit rows whose inputs mount on activation.
+  // moves (the accessory bar's Next Set landing on this row, live's
+  // tap-on-RPE-cell) — a native input-to-input move, so the keyboard never
+  // dips.
   useEffect(() => {
     if (!isFocusedRow) return;
     const ref =
@@ -471,21 +460,16 @@ function ActiveWorkoutSetRow({
     [onCommitField, setId],
   );
 
-  // For within-row advance, move focus directly via ref so iOS keeps the
-  // keyboard + InputAccessoryView attached. Going through parent state would
-  // briefly leave no TextInput focused, which drops the accessory. Next skips
-  // the RPE input (reachable by tap).
+  // Advance past this row: activate the next set's weight, or add a set when
+  // this is the last row. In-row hops (weight → reps → RPE) are native
+  // focusField moves the screen's accessory bar makes through the handle.
   const handleAdvance = useCallback(() => {
-    if (activeField === 'weight') {
-      repsInputRef.current?.focus();
-      return;
-    }
     if (nextSetId) {
       onActivateSet?.(nextSetId, 'weight');
       return;
     }
     if (entryId) onAddSet?.(entryId);
-  }, [activeField, entryId, nextSetId, onActivateSet, onAddSet]);
+  }, [entryId, nextSetId, onActivateSet, onAddSet]);
 
   const commitWeight = useCallback(
     (text: string) => {
@@ -542,19 +526,20 @@ function ActiveWorkoutSetRow({
     [commitRpeValue],
   );
 
-  // Commit any in-progress drafts when this row stops being the focused
-  // cell. Blur alone can't be trusted to land the commit: the accessory Done
-  // button and a tap on another row's cell both deactivate this row first, and
-  // an edit-mode input can unmount before its native blur event reaches JS —
-  // dropping the onBlur commit entirely (RPE was the visible casualty;
-  // weight/reps are usually rescued by Log). The unchanged-value guards inside
-  // each commit helper make this idempotent with any blur that did fire.
+  // Live only: commit any in-progress drafts when this row stops being the
+  // focused cell. Blur alone can't be trusted to land the commit — the
+  // accessory Done button and a tap on another row's cell both deactivate
+  // this row first. The unchanged-value guards inside each commit helper make
+  // this idempotent with any blur that did fire. Edit rows don't flush:
+  // they're controlled by the form reducer per keystroke, and this row's
+  // local drafts can hold stale values there.
   useEffect(() => {
-    if (isFocusedRow) return;
+    if (!isLive || isFocusedRow) return;
     commitWeight(weightDraft);
     commitReps(repsDraft);
     if (metricColumn === 'rpe') commitRpeValue(rpeDraft);
   }, [
+    isLive,
     isFocusedRow,
     commitWeight,
     commitReps,
@@ -586,17 +571,20 @@ function ActiveWorkoutSetRow({
     rpeDraft,
   ]);
 
-  // Register this row's accessory handle for the screen's sticky bar. The
-  // handle is registered once per key with stable closures — `log` reads the
-  // latest handleLog through a ref so the registration doesn't churn on every
+  // Register this row's accessory handle for the screen's sticky bar (live
+  // and edit — view rows have nothing to dispatch to). The handle is
+  // registered once per key with stable closures — `log`/`advance` read the
+  // latest handlers through refs so the registration doesn't churn on every
   // draft keystroke, and `focusField` moves focus via refs (a native
   // input-to-input move, so the keyboard stays attached).
   const handleLogRef = useRef(handleLog);
+  const handleAdvanceRef = useRef(handleAdvance);
   useEffect(() => {
     handleLogRef.current = handleLog;
+    handleAdvanceRef.current = handleAdvance;
   });
   useEffect(() => {
-    if (!isLive || !onRegisterAccessoryHandle) return;
+    if (readOnly || !onRegisterAccessoryHandle) return;
     const key = renderKey ?? setId;
     onRegisterAccessoryHandle(key, {
       log: () => handleLogRef.current(),
@@ -605,9 +593,10 @@ function ActiveWorkoutSetRow({
           field === 'reps' ? repsInputRef : field === 'rpe' ? rpeInputRef : weightInputRef;
         ref.current?.focus();
       },
+      advance: () => handleAdvanceRef.current(),
     });
     return () => onRegisterAccessoryHandle(key, null);
-  }, [isLive, renderKey, setId, onRegisterAccessoryHandle]);
+  }, [readOnly, renderKey, setId, onRegisterAccessoryHandle]);
 
   const metricValue = ((): { text: string; color?: string } => {
     switch (metricColumn) {
@@ -780,142 +769,22 @@ function ActiveWorkoutSetRow({
       </Pressable>
     ) : null;
 
-  // Edit-only iOS accessory plumbing: each input gets its OWN
-  // InputAccessoryView (unique nativeID) — iOS attaches a shared accessory to
-  // only the first-registered input, so reps/RPE would come up with a bare
-  // keyboard if all three pointed at one id. The ids derive from the render
-  // key, not the set id, so they stay stable across an autosave that churns
-  // the id while the keyboard is up — and carry a per-activation epoch so a
-  // remount never reuses a prior activation's id (see useAccessoryEpoch).
-  // Live rows have no per-input accessories: the live screen renders one
-  // KeyboardStickyView bar and dispatches through the registered handle.
-  const isEditFocusedRow = isEdit && isFocusedRow;
-  const accessoryEpoch = useAccessoryEpoch(isEditFocusedRow);
-  const isIOS = Platform.OS === 'ios';
-  const accessoryKey = `${renderKey ?? setId}-${accessoryEpoch}`;
-  const weightAccessoryId = isIOS ? `active-set-${accessoryKey}-weight` : undefined;
-  const repsAccessoryId = isIOS ? `active-set-${accessoryKey}-reps` : undefined;
-  const rpeAccessoryId = isIOS ? `active-set-${accessoryKey}-rpe` : undefined;
-
-  if (isEditFocusedRow) {
-    // One bar description, rendered into each input's accessory (only the
-    // focused input's is on screen). Fresh elements per call so the three
-    // InputAccessoryViews don't share a subtree.
-    const accessoryActions: SetAccessoryAction[] = [
-      {
-        key: 'advance',
-        label: activeField === 'weight' ? 'Next' : 'Next Set',
-        onPress: handleAdvance,
-      },
-    ];
-    const renderAccessoryBar = () => (
-      <SetInputAccessoryBar
-        onDone={() => {
-          onDeactivate?.();
-          weightInputRef.current?.blur();
-          repsInputRef.current?.blur();
-          rpeInputRef.current?.blur();
-        }}
-        actions={accessoryActions}
-      />
-    );
-    return (
-      <>
-        <Pressable
-          testID="set-row"
-          onLongPress={longPress}
-          className={`flex-row items-center py-2 px-1 rounded-xl ${state === 'current' ? '' : 'bg-background'}`}
-          style={state === 'current' ? { backgroundColor: withAlpha(accentPrimary, 0.12) } : undefined}
-        >
-          {setNumberControl}
-          {previousCell}
-          <View className="flex-1 items-center">
-            <SetCellInput
-              inputRef={weightInputRef}
-              value={editWeightText}
-              onChangeText={(text) => onEditFieldChange?.(setId, 'weight', text)}
-              onFocus={() => onActivateSet?.(setId, 'weight')}
-              keyboardType="decimal-pad"
-              accessibilityLabel="Weight"
-              accessoryId={weightAccessoryId}
-              className="w-16"
-            />
-          </View>
-          <View className="flex-1 items-center">
-            <SetCellInput
-              inputRef={repsInputRef}
-              value={editRepsText}
-              onChangeText={(text) => onEditFieldChange?.(setId, 'reps', text)}
-              onFocus={() => onActivateSet?.(setId, 'reps')}
-              keyboardType="number-pad"
-              accessibilityLabel="Reps"
-              accessoryId={repsAccessoryId}
-              className="w-16"
-            />
-          </View>
-          <View className="w-14 items-center">
-            {showRpeInput ? (
-              <SetCellInput
-                inputRef={rpeInputRef}
-                value={rpeDraft}
-                onChangeText={handleEditRpeChange}
-                onBlur={() => commitRpe(rpeDraft)}
-                keyboardType="decimal-pad"
-                accessibilityLabel="RPE"
-                accessoryId={rpeAccessoryId}
-                className="w-11"
-              />
-            ) : (
-              <Text
-                className="text-sm text-text-secondary"
-                style={{ fontVariant: ['tabular-nums'] }}
-              >
-                {metricValue.text}
-              </Text>
-            )}
-          </View>
-          <View className="w-10 items-center">{editLastCell}</View>
-        </Pressable>
-        {isIOS && (
-          <>
-            <InputAccessoryView nativeID={weightAccessoryId}>
-              {renderAccessoryBar()}
-            </InputAccessoryView>
-            <InputAccessoryView nativeID={repsAccessoryId}>
-              {renderAccessoryBar()}
-            </InputAccessoryView>
-            {showRpeInput && (
-              <InputAccessoryView nativeID={rpeAccessoryId}>
-                {renderAccessoryBar()}
-              </InputAccessoryView>
-            )}
-          </>
-        )}
-      </>
-    );
-  }
-
   // Time-based sets (e.g. plank in a preset) have no weight/reps to show —
-  // surface the duration in the weight cell on the non-live surfaces.
+  // surface the duration in the weight cell on the non-live surfaces (view
+  // text; edit placeholder, still typable-over).
   const showDurationFallback =
     (readOnly || isEdit) && set.weight == null && set.reps == null && set.duration != null;
   const displayWeight = showDurationFallback
     ? formatRest(set.duration)
-    : isEdit
-      ? editWeightText || '–'
-      : set.weight != null
-        ? formatDisplayWeight(set.weight, weightUnit)
-        : '–';
-  const displayReps = isEdit ? editRepsText || '–' : set.reps != null ? String(set.reps) : '–';
+    : set.weight != null
+      ? formatDisplayWeight(set.weight, weightUnit)
+      : '–';
+  const displayReps = set.reps != null ? String(set.reps) : '–';
 
-  // Inactive edit rows render tap-to-activate display cells (tap → the input
-  // variant above focuses that field); view keeps flat text. Live rows render
-  // always-mounted inputs instead — see below.
-  const editable = isEdit;
-
+  // View cells: flat text.
   const weightCellText = (
     <Text
-      className={`text-center text-sm text-text-primary ${editable ? '' : 'flex-1'}`}
+      className="flex-1 text-center text-sm text-text-primary"
       style={{ fontVariant: ['tabular-nums'] }}
     >
       {displayWeight}
@@ -923,47 +792,60 @@ function ActiveWorkoutSetRow({
   );
   const repsCellText = (
     <Text
-      className={`text-center text-sm text-text-primary ${editable ? '' : 'flex-1'}`}
+      className="flex-1 text-center text-sm text-text-primary"
       style={{ fontVariant: ['tabular-nums'] }}
     >
       {displayReps}
     </Text>
   );
 
-  // Live cells: always-mounted inputs backed by this row's drafts, with the
-  // assumed values as gray placeholders. Focus lands natively on tap and is
-  // reported up through onActivateSet/onActivateRpe so the screen can mark
-  // the focused row and target its sticky accessory bar; because the inputs
-  // never unmount, moving between cells — same row or another — never leaves
-  // the keyboard without a responder, so it stays up.
-  const liveWeightCell = (
+  // Live and edit cells: always-mounted inputs. Focus lands natively on tap
+  // and is reported up through onActivateSet/onActivateRpe so the screen can
+  // mark the focused row and target its sticky accessory bar; because the
+  // inputs never unmount, moving between cells — same row or another — never
+  // leaves the keyboard without a responder, so it stays up. Live cells are
+  // backed by this row's drafts (committed on blur/log) with the assumed
+  // values as gray placeholders; edit cells are controlled by the form
+  // reducer (weight/reps per keystroke; RPE snapped per keystroke) so a
+  // header Save reads the draft synchronously with no flush step.
+  const weightInputCell = (
     <View className="flex-1 items-center">
       <SetCellInput
         inputRef={weightInputRef}
-        value={weightDraft}
-        onChangeText={setWeightDraft}
-        onBlur={() => commitWeight(weightDraft)}
+        value={isEdit ? editWeightText : weightDraft}
+        onChangeText={
+          isEdit ? (text) => onEditFieldChange?.(setId, 'weight', text) : setWeightDraft
+        }
+        onBlur={isEdit ? undefined : () => commitWeight(weightDraft)}
         onFocus={() => onActivateSet?.(setId, 'weight')}
         keyboardType="decimal-pad"
         accessibilityLabel="Weight"
         className="w-16"
-        placeholder={assumedWeightText ?? '–'}
+        placeholder={
+          isEdit
+            ? showDurationFallback
+              ? formatRest(set.duration)
+              : '–'
+            : (assumedWeightText ?? '–')
+        }
         flat
       />
     </View>
   );
-  const liveRepsCell = (
+  const repsInputCell = (
     <View className="flex-1 items-center">
       <SetCellInput
         inputRef={repsInputRef}
-        value={repsDraft}
-        onChangeText={setRepsDraft}
-        onBlur={() => commitReps(repsDraft)}
+        value={isEdit ? editRepsText : repsDraft}
+        onChangeText={
+          isEdit ? (text) => onEditFieldChange?.(setId, 'reps', text) : setRepsDraft
+        }
+        onBlur={isEdit ? undefined : () => commitReps(repsDraft)}
         onFocus={() => onActivateSet?.(setId, 'reps')}
         keyboardType="number-pad"
         accessibilityLabel="Reps"
         className="w-16"
-        placeholder={assumedRepsText ?? '–'}
+        placeholder={isEdit ? '–' : (assumedRepsText ?? '–')}
         flat
       />
     </View>
@@ -971,12 +853,12 @@ function ActiveWorkoutSetRow({
   // RPE stays a mounted input on every row like weight/reps; the committed
   // value's effort tone carries into the input text so the tint survives the
   // cell being an input.
-  const liveRpeCell = showRpeInput ? (
+  const rpeInputCell = showRpeInput ? (
     <View className="w-14 items-center">
       <SetCellInput
         inputRef={rpeInputRef}
         value={rpeDraft}
-        onChangeText={setRpeDraft}
+        onChangeText={isEdit ? handleEditRpeChange : setRpeDraft}
         onBlur={() => commitRpe(rpeDraft)}
         onFocus={() => onActivateRpe?.(setId)}
         keyboardType="decimal-pad"
@@ -1009,56 +891,10 @@ function ActiveWorkoutSetRow({
       >
         {setNumberControl}
         {previousCell}
-        {isLive ? (
-          liveWeightCell
-        ) : editable ? (
-          <Pressable
-            className="flex-1 py-1"
-            onPress={() => onActivateSet?.(setId, 'weight')}
-            onLongPress={longPress}
-            accessibilityRole="button"
-            accessibilityLabel={`Edit weight for set ${set.set_number}`}
-          >
-            {weightCellText}
-          </Pressable>
-        ) : (
-          weightCellText
-        )}
-        {isLive ? (
-          liveRepsCell
-        ) : editable ? (
-          <Pressable
-            className="flex-1 py-1"
-            onPress={() => onActivateSet?.(setId, 'reps')}
-            onLongPress={longPress}
-            accessibilityRole="button"
-            accessibilityLabel={`Edit reps for set ${set.set_number}`}
-          >
-            {repsCellText}
-          </Pressable>
-        ) : (
-          repsCellText
-        )}
-        {isLive && liveRpeCell != null ? (
-          liveRpeCell
-        ) : editable && showRpeInput ? (
-          <Pressable
-            className="w-14 items-center py-1"
-            onPress={() => onActivateRpe?.(setId)}
-            onLongPress={longPress}
-            accessibilityRole="button"
-            accessibilityLabel={`Edit RPE for set ${set.set_number}`}
-          >
-            <Text
-              className="text-center text-sm"
-              style={[
-                { fontVariant: ['tabular-nums'] },
-                { color: metricValue.color ?? textMuted },
-              ]}
-            >
-              {metricValue.text}
-            </Text>
-          </Pressable>
+        {readOnly ? weightCellText : weightInputCell}
+        {readOnly ? repsCellText : repsInputCell}
+        {!readOnly && rpeInputCell != null ? (
+          rpeInputCell
         ) : (
           <Text
             className="w-14 text-center text-sm"

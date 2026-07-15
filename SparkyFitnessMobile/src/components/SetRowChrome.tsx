@@ -1,12 +1,15 @@
-import { useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Keyboard, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardEvents, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useCSSVariable } from 'uniwind';
 
 import LiquidGlassSurface, { createLiquidGlassPillStyle } from './LiquidGlassSurface';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 
 /**
  * Presentation shared by the set rows (ActiveWorkoutSetRow and the activity
- * form's EditableSetRow): the iOS keyboard accessory bar and the right-swipe
+ * form's EditableSetRow): the keyboard accessory bar (per-input on iOS for
+ * EditableSetRow, screen-level for the card surfaces) and the right-swipe
  * Delete action.
  */
 
@@ -125,6 +128,117 @@ export function SetInputAccessoryBar({
       </View>
     </View>
   );
+}
+
+/**
+ * Imperative surface a set row registers with its owning screen so the shared
+ * keyboard accessory bar (a screen-level KeyboardStickyView, not a per-input
+ * iOS InputAccessoryView) can act on the focused row.
+ */
+export interface SetRowAccessoryHandle {
+  /** Live: flush the row's in-progress drafts, then complete the set. */
+  log: () => void;
+  /** Move the keyboard between the row's always-mounted inputs natively. */
+  focusField: (field: 'weight' | 'reps' | 'rpe') => void;
+  /** Edit: move on to the next set — or add one when this is the last row. */
+  advance: () => void;
+}
+
+/**
+ * Screen-level keyboard accessory bar for the card-based edit forms, on both
+ * platforms (per-input InputAccessoryViews are iOS-only, which left Android
+ * with a bare keyboard). Mirrors the live screen's bar: rows register a
+ * {@link SetRowAccessoryHandle} keyed by set clientId, and the bar dispatches
+ * Done / Next / Next Set to the focused row's handle at press time.
+ *
+ * Render `accessoryBar` at the screen root as a sibling of the scroll view (a
+ * sticky view inside scroll content won't stick) and pass
+ * `onRegisterAccessoryHandle` to the exercise list.
+ */
+export function useSetEditAccessoryBar({
+  activeSetKey,
+  activeSetField,
+  onDeactivateSet,
+  rpeEnabled = true,
+}: {
+  /** `${exerciseClientId}:${setClientId}` from useExerciseSetEditing. */
+  activeSetKey: string | null;
+  activeSetField: 'weight' | 'reps' | 'rpe';
+  onDeactivateSet: () => void;
+  /** False when the form's sets store no RPE (the preset form). */
+  rpeEnabled?: boolean;
+}): {
+  onRegisterAccessoryHandle: (key: string, handle: SetRowAccessoryHandle | null) => void;
+  accessoryBar: ReactNode;
+} {
+  const handlesRef = useRef<Record<string, SetRowAccessoryHandle>>({});
+  const onRegisterAccessoryHandle = useCallback(
+    (key: string, handle: SetRowAccessoryHandle | null) => {
+      if (handle == null) delete handlesRef.current[key];
+      else handlesRef.current[key] = handle;
+    },
+    [],
+  );
+
+  // The keyboard leaving — accessory Done, a tap outside the grid, the
+  // Android back gesture — always ends the cell edit: clearing the focus
+  // state flushes the row's drafts and unmounts the bar.
+  useEffect(() => {
+    const subscription = KeyboardEvents.addListener('keyboardDidHide', onDeactivateSet);
+    return () => subscription.remove();
+  }, [onDeactivateSet]);
+
+  const handleDone = useCallback(() => {
+    onDeactivateSet();
+    Keyboard.dismiss();
+  }, [onDeactivateSet]);
+
+  // Rows register by set clientId — the second half of the composite focus key.
+  const focusedSetClientId =
+    activeSetKey == null ? null : activeSetKey.slice(activeSetKey.indexOf(':') + 1);
+
+  // The keyboard walk mirrors the live bar: weight → reps → RPE (when that
+  // column is shown), then on to the next set. In-row hops are native
+  // focusField moves through the handle; the row-crossing hop is advance().
+  const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
+  const nextField =
+    activeSetField === 'weight'
+      ? ('reps' as const)
+      : activeSetField === 'reps' && metricColumn === 'rpe' && rpeEnabled
+        ? ('rpe' as const)
+        : null;
+
+  const accessoryBar: ReactNode =
+    activeSetKey == null ? null : (
+      <KeyboardStickyView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+        <SetInputAccessoryBar
+          onDone={handleDone}
+          actions={[
+            nextField != null
+              ? {
+                  key: 'next',
+                  label: 'Next',
+                  onPress: () => {
+                    if (focusedSetClientId != null) {
+                      handlesRef.current[focusedSetClientId]?.focusField(nextField);
+                    }
+                  },
+                }
+              : {
+                  key: 'next-set',
+                  label: 'Next Set',
+                  onPress: () => {
+                    if (focusedSetClientId != null) {
+                      handlesRef.current[focusedSetClientId]?.advance();
+                    }
+                  },
+                },
+          ]}
+        />
+      </KeyboardStickyView>
+    );
+
+  return { onRegisterAccessoryHandle, accessoryBar };
 }
 
 /** Right-swipe Delete action for ReanimatedSwipeable's renderRightActions. */

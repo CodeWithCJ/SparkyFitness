@@ -14,6 +14,11 @@ interface FormScreenChromeProps {
   onCancel: () => void;
   /** Optional secondary header action rendered left of Save (e.g. a reorder icon). */
   headerAction?: HeaderItem | null;
+  /**
+   * Screen-level keyboard accessory (e.g. useSetEditAccessoryBar's bar),
+   * rendered as a sibling of the scroll view so its sticky positioning works.
+   */
+  keyboardAccessory?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -25,6 +30,7 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   onSave,
   onCancel,
   headerAction,
+  keyboardAccessory,
   children,
 }) => {
   const insets = useSafeAreaInsets();
@@ -66,6 +72,8 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
       >
         {children}
       </KeyboardAwareScrollView>
+
+      {keyboardAccessory}
     </View>
   );
 };
