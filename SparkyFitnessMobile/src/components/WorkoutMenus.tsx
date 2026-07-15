@@ -22,8 +22,8 @@ const METRIC_MENU_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
 /**
  * The metric-column picker anchored off the card's metric header. Owns the
  * shared preference read/write; callers only manage the anchor.
- * `includeRpe: false` (preset form — preset sets store no RPE) drops the RPE
- * option and shows an 'rpe' selection as Volume.
+ * `includeRpe: false` (preset surfaces — preset sets store no RPE) drops the
+ * RPE option and shows an 'rpe' selection as Volume.
  */
 export function MetricColumnMenu({
   anchor,

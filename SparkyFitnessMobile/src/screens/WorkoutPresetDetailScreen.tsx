@@ -80,8 +80,11 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     [cardExercises, navigation],
   );
 
-  // Metric column is shared with the workout screens (intended).
+  // Metric column is shared with the workout screens (intended). Preset sets
+  // store no RPE, so an 'rpe' selection falls back to volume for display and
+  // the picker hides the RPE option — same as the preset form.
   const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
+  const effectiveMetricColumn = metricColumn === 'rpe' ? 'volume' : metricColumn;
   const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
   const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
     setMetricMenuAnchor(anchor);
@@ -285,7 +288,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
                   expanded={isExpanded}
                   completedSetIds={{}}
                   activeSetId={null}
-                  metricColumn={metricColumn}
+                  metricColumn={effectiveMetricColumn}
                   weightUnit={weightUnit}
                   getImageSource={getImageSource}
                   showRestChip={cardExercise.sets.length > 0}
@@ -335,6 +338,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
       <MetricColumnMenu
         anchor={metricMenuAnchor}
         onClose={() => setMetricMenuAnchor(null)}
+        includeRpe={false}
       />
     </View>
   );

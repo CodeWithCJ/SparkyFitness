@@ -8,6 +8,10 @@ import { usePreferences } from '../../src/hooks';
 import { useStartLiveWorkout } from '../../src/hooks/useStartLiveWorkout';
 import { loadActiveDraft } from '../../src/services/workoutDraftService';
 import { buildPresetStartExercisesPayload } from '../../src/utils/workoutSession';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
 import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
 
 jest.mock('../../src/hooks', () => ({
@@ -105,6 +109,7 @@ describe('WorkoutPresetDetailScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
     mockUsePreferences.mockReturnValue({
       preferences: { default_weight_unit: 'kg' },
       isLoading: false,
@@ -237,6 +242,31 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(screen.getByText('KG')).toBeTruthy();
     expect(screen.getByText('100')).toBeTruthy();
     expect(screen.getByText('5')).toBeTruthy();
+  });
+
+  it('hides RPE from the metric picker and shows an rpe selection as Volume', () => {
+    useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+    const preset = buildPreset({
+      exercises: [
+        {
+          id: 'pe-1',
+          exercise_id: 'ex-1',
+          exercise_name: 'Bench Press',
+          image_url: null,
+          sets: [buildSet({ id: 's-1', set_number: 1, reps: 5, weight: 100 })],
+        },
+      ],
+    });
+    const screen = renderScreen(preset);
+
+    // Preset sets store no RPE: the shared 'rpe' preference displays as the
+    // volume column instead of an all-dashes RPE column.
+    expect(screen.getByText('Vol')).toBeTruthy();
+    expect(screen.queryByText('RPE')).toBeNull();
+
+    fireEvent.press(screen.getByLabelText('Change metric column'));
+    expect(screen.queryByText('RPE')).toBeNull();
+    expect(screen.getByText('✓ Volume')).toBeTruthy();
   });
 
   it('converts kg to lbs when the user prefers lbs', () => {
