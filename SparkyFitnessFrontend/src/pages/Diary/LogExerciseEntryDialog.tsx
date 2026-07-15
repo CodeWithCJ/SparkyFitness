@@ -21,7 +21,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { error } from '@/utils/logging';
 import ExerciseHistoryDisplay from '@/components/ExerciseHistoryDisplay';
 import type { ExerciseToLog, WorkoutPresetSet } from '@/types/workout';
-import { Plus, ChevronDown, XCircle } from 'lucide-react';
+import { Plus, ChevronDown, XCircle, X, Clock } from 'lucide-react';
 import ExerciseActivityDetailsEditor from '@/components/ExerciseActivityDetailsEditor';
 import {
   DndContext,
@@ -44,7 +44,11 @@ import { SetColumnHeaders } from '../Exercises/SetHeader';
 import { cn } from '@/lib/utils';
 import { CardioLog } from '../Exercises/CardioLog';
 import { v4 as uuidv4 } from 'uuid';
-import { todayInZone, prefillEntryTime } from '@workspace/shared';
+import {
+  todayInZone,
+  prefillEntryTime,
+  userHourMinute,
+} from '@workspace/shared';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -363,10 +367,38 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
           )}
 
           {/* Start Time (optional) */}
-          <div className="space-y-1.5 max-w-[200px]">
-            <Label htmlFor="entryTime" className="text-sm">
-              Start Time (optional)
-            </Label>
+          <div className="space-y-1.5 max-w-[280px]">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="entryTime" className="text-sm">
+                Start Time (optional)
+              </Label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setEntryTime('')}
+                  disabled={!entryTime}
+                  className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                  title="Clear time"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const { hour, minute } = userHourMinute(timezone);
+                    setEntryTime(
+                      `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+                    );
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                  title="Set to current local time"
+                >
+                  <Clock className="h-4 w-4" />
+                  Now
+                </button>
+              </div>
+            </div>
             <Input
               id="entryTime"
               type="time"
