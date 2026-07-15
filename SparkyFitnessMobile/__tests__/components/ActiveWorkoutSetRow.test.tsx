@@ -697,9 +697,11 @@ describe('ActiveWorkoutSetRow', () => {
         expect(queryByLabelText('RPE')).toBeNull();
       });
 
-      it('drops the iOS lineHeight fix on Android so compact cells do not clip', () => {
-        // With an explicit lineHeight, Android lays the input's glyph box out
-        // shifted up and clips it against the chip background while editing.
+      it('pins an explicit cell height on Android so compact cells do not clip', () => {
+        // Android measures the compact cell shorter than the glyph box and the
+        // EditText clips the text to half-height digits (resetting lineHeight
+        // to undefined did not fix it) — the cell needs an explicit height
+        // with the text centered in it, like StepperInput.
         const osSpy = jest.replaceProperty(Platform, 'OS', 'android');
         try {
           const { getByLabelText } = renderRow({
@@ -708,7 +710,9 @@ describe('ActiveWorkoutSetRow', () => {
             set: editSet(),
           });
           const style = StyleSheet.flatten(getByLabelText('Weight').props.style);
-          expect(style.lineHeight).toBeUndefined();
+          expect(style.height).toBe(32);
+          expect(style.paddingTop).toBe(0);
+          expect(style.paddingBottom).toBe(0);
           expect(style.includeFontPadding).toBe(false);
           expect(style.textAlignVertical).toBe('center');
         } finally {

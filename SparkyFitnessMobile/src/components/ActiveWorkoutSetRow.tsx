@@ -260,13 +260,15 @@ function SetCellInput({
         paddingLeft: 4,
         paddingRight: 4,
         ...(flat ? { fontSize: 14, lineHeight: 18 } : null),
-        // The explicit lineHeight is an iOS alignment fix (see FormInput). On
-        // Android it lays the glyph box out shifted up in these compact cells,
-        // clipping the text against the chip background — drop it and center
-        // the text instead.
+        // Android measures these compact cells shorter than the glyph box and
+        // the EditText clips the text to half-height digits — pin the height
+        // the iOS cell adds up to (6+6 padding + 18 line + borders) and center
+        // the text in it, the same approach StepperInput uses.
         ...(Platform.OS === 'android'
           ? {
-              lineHeight: undefined,
+              height: 32,
+              paddingTop: 0,
+              paddingBottom: 0,
               includeFontPadding: false as const,
               textAlignVertical: 'center' as const,
             }
