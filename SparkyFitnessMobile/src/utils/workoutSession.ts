@@ -1019,6 +1019,122 @@ export function seedPrFromSession(session: PresetSessionResponse): PrSetMap {
   return seeded;
 }
 
+// --- Workout-complete summary ---
+//
+// Everything the post-save celebration screen shows is derived here, from the
+// store snapshot captured before `clearWorkout()`. Volume and top-set honor
+// the same conventions as live PR detection: completed sets only, warmups
+// excluded (drop/failure sets count).
+
+/** One recap row on the workout-complete screen. */
+export interface WorkoutCompletionExercise {
+  entryId: string;
+  name: string;
+  notes: string | null;
+  completedSetCount: number;
+  totalSetCount: number;
+  /** Completed working-set volume in kg; 0 when nothing weighted completed. */
+  volumeKg: number;
+  /** Best completed working set by (weight, reps); reps-only best when nothing weighted. */
+  topSet: { weightKg: number | null; reps: number | null } | null;
+  hasPr: boolean;
+}
+
+/** One line in the records card: the PR'd set and its exercise. */
+export interface WorkoutCompletionPrRow {
+  exerciseName: string;
+  weightKg: number | null;
+  reps: number | null;
+}
+
+export interface WorkoutCompletionSummary {
+  completedSetCount: number;
+  totalSetCount: number;
+  skippedSetCount: number;
+  /** Completed working-set volume in kg across the whole session. */
+  volumeKg: number;
+  /** Mean RPE across completed sets that logged one; null when none did. */
+  averageRpe: number | null;
+  prRows: WorkoutCompletionPrRow[];
+  exercises: WorkoutCompletionExercise[];
+}
+
+export function buildWorkoutCompletionSummary(
+  session: PresetSessionResponse,
+  completedSetIds: CompletedSetMap,
+  prSetIds: PrSetMap,
+): WorkoutCompletionSummary {
+  let completedSetCount = 0;
+  let totalSetCount = 0;
+  let volumeKg = 0;
+  let rpeSum = 0;
+  let rpeCount = 0;
+  const prRows: WorkoutCompletionPrRow[] = [];
+  const exercises: WorkoutCompletionExercise[] = [];
+
+  for (const exercise of session.exercises) {
+    const name = exercise.exercise_snapshot?.name ?? 'Exercise';
+    let exerciseCompleted = 0;
+    let exerciseVolumeKg = 0;
+    let topWeighted: { weightKg: number; reps: number | null } | null = null;
+    let topRepsOnly: { weightKg: null; reps: number } | null = null;
+    let hasPr = false;
+
+    for (const set of exercise.sets) {
+      totalSetCount++;
+      if (completedSetIds[String(set.id)] == null) continue;
+      exerciseCompleted++;
+      if (set.rpe != null) {
+        rpeSum += set.rpe;
+        rpeCount++;
+      }
+      if (prSetIds[String(set.id)] === true) {
+        hasPr = true;
+        prRows.push({ exerciseName: name, weightKg: set.weight, reps: set.reps });
+      }
+      if (isWarmupSetType(set.set_type)) continue;
+      exerciseVolumeKg += setVolumeKg(set);
+      if (set.weight != null) {
+        const contender = { weightKg: set.weight, reps: set.reps };
+        if (
+          topWeighted == null ||
+          compareSetRecords(
+            { weight: contender.weightKg, reps: contender.reps },
+            { weight: topWeighted.weightKg, reps: topWeighted.reps },
+          ) > 0
+        ) {
+          topWeighted = contender;
+        }
+      } else if (set.reps != null && (topRepsOnly == null || set.reps > topRepsOnly.reps)) {
+        topRepsOnly = { weightKg: null, reps: set.reps };
+      }
+    }
+
+    completedSetCount += exerciseCompleted;
+    volumeKg += exerciseVolumeKg;
+    exercises.push({
+      entryId: exercise.id,
+      name,
+      notes: exercise.notes ?? null,
+      completedSetCount: exerciseCompleted,
+      totalSetCount: exercise.sets.length,
+      volumeKg: exerciseVolumeKg,
+      topSet: topWeighted ?? topRepsOnly,
+      hasPr,
+    });
+  }
+
+  return {
+    completedSetCount,
+    totalSetCount,
+    skippedSetCount: totalSetCount - completedSetCount,
+    volumeKg,
+    averageRpe: rpeCount > 0 ? rpeSum / rpeCount : null,
+    prRows,
+    exercises,
+  };
+}
+
 // --- Live-start payload builders ---
 
 

@@ -358,6 +358,14 @@ export const updateExerciseEntry = async (
   });
 };
 
+export const getWorkout = async (id: string): Promise<PresetSessionResponse> => {
+  return apiFetch<PresetSessionResponse>({
+    endpoint: `/api/exercise-preset-entries/${id}`,
+    serviceName: 'Exercise API',
+    operation: 'get workout',
+  });
+};
+
 export const updateWorkout = async (
   id: string,
   payload: UpdatePresetSessionRequest,

@@ -292,6 +292,9 @@ jest.mock('react-native-reanimated', () => {
     withSpring: (toValue) => toValue,
     withSequence: (...args) => args[args.length - 1],
     withRepeat: (animation) => animation,
+    withDelay: (_delayMs, animation) => animation,
+    cancelAnimation: jest.fn(),
+    useReducedMotion: () => false,
     useAnimatedReaction: jest.fn(),
     // Drag-reorder worklet plumbing — runOnJS returns the fn so callers can
     // invoke it synchronously; the scroll/frame helpers are inert stubs.
