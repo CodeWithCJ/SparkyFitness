@@ -255,9 +255,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
         </Text>
 
-        {/* Full-bleed: cancel the scroll container's 16px inset so the card
-            separators reach the screen edges. */}
-        <View className="-mx-4">
+        {/* Pull back part of the scroll container's 16px inset so the cards
+            sit at the same 12px inset as the active workout screen (px-3). */}
+        <View className="-mx-1">
           {cardExercises.map(cardExercise => {
             const isExpanded = !collapsedIds[cardExercise.id];
             const supersetBorder = supersetBorders.get(cardExercise.id) ?? null;

@@ -345,6 +345,16 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     return items;
   }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout]);
 
+  // "Save as preset": review-and-save through the preset create form,
+  // prefilled from this session. Not gated on isSparky — templating a synced
+  // workout (e.g. a Garmin strength import) only reads the session.
+  const handleSaveAsPreset = useCallback(() => {
+    navigation.navigate('WorkoutPresetForm', {
+      mode: 'create-preset',
+      sourceSession: session,
+    });
+  }, [navigation, session]);
+
   const openExerciseSearch = () => {
     // Plain Add: drop any pending replace target so a cancelled replace can't
     // misroute this add.
@@ -576,6 +586,15 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     accessibilityLabel: 'Reorder exercises',
     identifier: 'workout-detail-reorder',
   };
+  const saveAsPresetHeaderItem: HeaderItem = {
+    kind: 'icon',
+    sfSymbol: 'bookmark',
+    ionicon: 'bookmark-outline',
+    role: 'secondary',
+    onPress: handleSaveAsPreset,
+    accessibilityLabel: 'Save as preset',
+    identifier: 'workout-detail-save-as-preset',
+  };
 
   // Small inline native title (set in App.tsx as a small title so re-applying it
   // for the edit-mode swap updates in place rather than flying in a large one).
@@ -602,15 +621,18 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         ? [reorderHeaderItem, saveHeaderItem]
         : saveHeaderItem
       : isSparky
-        ? {
-            kind: 'text',
-            label: 'Edit',
-            role: 'secondary',
-            onPress: startEditing,
-            accessibilityLabel: 'Edit workout',
-            identifier: 'workout-detail-edit',
-          }
-        : null,
+        ? [
+            saveAsPresetHeaderItem,
+            {
+              kind: 'text',
+              label: 'Edit',
+              role: 'secondary',
+              onPress: startEditing,
+              accessibilityLabel: 'Edit workout',
+              identifier: 'workout-detail-edit',
+            },
+          ]
+        : saveAsPresetHeaderItem,
   });
 
   // Native-header mode: the glass header (above) replaces the custom header,
@@ -678,9 +700,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </Button>
         )}
 
-        {/* Exercises render full-bleed: cancel the scroll container's px-4 so
-            the card separators reach the screen edges. */}
-        <View className="-mx-4">
+        {/* Pull back part of the scroll container's px-4 so the cards sit at
+            the same 12px inset as the active workout screen (px-3). */}
+        <View className="-mx-1">
           {isEditing ? (
             <WorkoutFormExerciseList
               ref={exerciseListRef}

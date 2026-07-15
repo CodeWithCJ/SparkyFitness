@@ -401,9 +401,10 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   )}
                 </View>
 
-                {/* Full-bleed: cancel the scroll container's px-4 so the card
-                    separators reach the screen edges. */}
-                <View className="-mx-4">
+                {/* Pull back part of the scroll container's px-4 so the cards
+                    sit at the same 12px inset as the active workout screen
+                    (px-3). */}
+                <View className="-mx-1">
                   <WorkoutFormExerciseList
                     ref={exerciseListRef}
                     exercises={state.exercises}

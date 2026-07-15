@@ -290,6 +290,32 @@ describe('WorkoutDetailScreen', () => {
     expect(imported.queryByLabelText('Rest 1:30')).toBeNull();
   });
 
+  describe('save as preset', () => {
+    it('routes the header bookmark to the prefilled create form', () => {
+      const session = buildSession();
+      const screen = renderScreen(session);
+
+      fireEvent.press(screen.getByLabelText('Save as preset'));
+
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('WorkoutPresetForm', {
+        mode: 'create-preset',
+        sourceSession: session,
+      });
+    });
+
+    it('stays available for imported (non-Sparky) workouts', () => {
+      const session = buildSession({ source: 'healthkit' });
+      const screen = renderScreen(session);
+
+      fireEvent.press(screen.getByLabelText('Save as preset'));
+
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('WorkoutPresetForm', {
+        mode: 'create-preset',
+        sourceSession: session,
+      });
+    });
+  });
+
   describe('set long-press menu', () => {
     const expandAndLongPressSet = (screen: ReturnType<typeof renderScreen>) => {
       fireEvent.press(screen.getByLabelText('Expand Bench Press'));
