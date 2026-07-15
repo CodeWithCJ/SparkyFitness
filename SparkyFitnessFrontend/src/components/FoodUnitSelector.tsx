@@ -485,7 +485,7 @@ const FoodUnitSelector = ({
             {/* Only persisted local/saved foods can be favorited (external
                 provider search results are not saved yet, so they have no
                 stable id to star). */}
-            {food?.id && (food.is_custom || food.user_id) && (
+            {food?.id && (food?.is_custom || food?.user_id) && (
               <FavoriteStarButton type="food" id={food.id} />
             )}
           </DialogTitle>

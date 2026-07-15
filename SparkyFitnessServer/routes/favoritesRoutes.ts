@@ -1,5 +1,4 @@
 import express from 'express';
-import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import favoritesService from '../services/favoritesService.js';
 
@@ -8,9 +7,8 @@ router.use(express.json());
 
 // Favorites are part of the diary surface (starred foods/meals for quick logging).
 // `authenticate` is applied app-wide (SparkyFitnessServer.ts) before any router
-// mounts, so req.userId is already populated when this permission check runs.
-// The per-route `authenticate` below is the redundant belt-and-suspenders the
-// sibling diary routers (food-entries, exercise-entries, …) also carry.
+// mounts, so req.userId is already populated when this permission check runs;
+// no per-route auth is needed (matches dailySummaryRoutes / the v2 diary routers).
 router.use(checkPermissionMiddleware('diary'));
 
 function getErrorMessage(error: unknown): string | null {
@@ -34,7 +32,7 @@ const UUID_RE =
  *       200:
  *         description: The user's favorite foods and meals.
  */
-router.get('/', authenticate, async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const result = await favoritesService.getFavorites(req.userId);
     res.status(200).json(result);
@@ -53,7 +51,7 @@ router.get('/', authenticate, async (req, res, next) => {
  *     summary: Remove a food or meal from favorites
  *     tags: [Nutrition & Meals]
  */
-router.post('/:type/:id', authenticate, async (req, res, next) => {
+router.post('/:type/:id', async (req, res, next) => {
   const { type, id } = req.params;
   if (!VALID_TYPES.has(type)) {
     return res.status(400).json({ error: 'Invalid favorite type.' });
@@ -73,7 +71,7 @@ router.post('/:type/:id', authenticate, async (req, res, next) => {
   }
 });
 
-router.delete('/:type/:id', authenticate, async (req, res, next) => {
+router.delete('/:type/:id', async (req, res, next) => {
   const { type, id } = req.params;
   if (!VALID_TYPES.has(type)) {
     return res.status(400).json({ error: 'Invalid favorite type.' });

@@ -8,18 +8,18 @@ import errorHandler from '../middleware/errorHandler.js';
 import { v4 as uuidv4 } from 'uuid';
 
 vi.mock('../services/favoritesService.js');
-vi.mock('../middleware/authMiddleware', () => ({
-  authenticate: vi.fn((req: any, res: any, next: any) => {
-    req.userId = 'testUserId';
-    next();
-  }),
-}));
 // Permission gate is exercised elsewhere; here it always passes.
 vi.mock('../middleware/checkPermissionMiddleware', () => ({
   default: vi.fn(() => (req: any, res: any, next: any) => next()),
 }));
 
 const app = express();
+// The router relies on the app-wide authenticate (SparkyFitnessServer.ts) to
+// populate req.userId before it mounts; simulate that here.
+app.use((req: any, _res: any, next: any) => {
+  req.userId = 'testUserId';
+  next();
+});
 app.use('/favorites', favoritesRoutes);
 app.use(errorHandler);
 
