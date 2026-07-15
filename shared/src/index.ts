@@ -32,6 +32,7 @@ export * from "./schemas/database/FamilyAccess.zod.ts";
 export * from "./schemas/database/FastingLogs.zod.ts";
 export * from "./schemas/database/FoodEntries.zod.ts";
 export * from "./schemas/database/FoodEntryMeals.zod.ts";
+export * from "./schemas/database/FoodFavorites.zod.ts";
 export * from "./schemas/database/Foods.zod.ts";
 export * from "./schemas/database/FoodVariants.zod.ts";
 export * from "./schemas/database/GlobalSettings.zod.ts";
