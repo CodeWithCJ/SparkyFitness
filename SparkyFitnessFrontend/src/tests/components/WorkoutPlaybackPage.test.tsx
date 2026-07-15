@@ -22,7 +22,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ weightUnit: 'kg' }),
+  usePreferences: () => ({ weightUnit: 'kg', timezone: 'UTC' }),
 }));
 
 jest.mock('@/hooks/Exercises/useExerciseEntries', () => ({
@@ -147,6 +147,25 @@ describe('WorkoutPlaybackPage', () => {
     expect(screen.queryByLabelText('Set notes 1')).not.toBeInTheDocument();
     fireEvent.click(screen.getAllByLabelText('Toggle notes for set 1')[0]!);
     expect(screen.getByLabelText('Set notes 1')).toBeInTheDocument();
+  });
+
+  it('clears the start time when the clear button is clicked', () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      presetFixture,
+      '2026-04-27'
+    );
+    draft.started_at = '2026-04-27T14:30:00.000Z';
+    mockLocationState = { returnTo: '/?date=2026-04-27', draft };
+
+    render(<WorkoutPlaybackPage />);
+
+    const startTimeInput = screen.getByLabelText(
+      'Start Time'
+    ) as HTMLInputElement;
+    expect(startTimeInput.value).toBe('14:30');
+
+    fireEvent.click(screen.getByText('Clear'));
+    expect(startTimeInput.value).toBe('');
   });
 
   it('allows extending a finished exercise after expanding it', () => {

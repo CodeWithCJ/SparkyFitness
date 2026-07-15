@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Check, Sparkles, Clock, CalendarDays } from 'lucide-react';
+import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,7 @@ import {
   shouldOfferAiConversion,
   userHourMinute,
   defaultMealTypeForTime,
+  toHourMinute,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
@@ -184,7 +185,7 @@ const FoodUnitSelector = ({
 
   const handleSetDefaultTime = () => {
     if (resolvedDefaultMealTime) {
-      setEntryTime(resolvedDefaultMealTime.substring(0, 5));
+      setEntryTime(toHourMinute(resolvedDefaultMealTime) || '');
     }
   };
 
@@ -603,28 +604,33 @@ const FoodUnitSelector = ({
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
+                        onClick={() => setEntryTime('')}
+                        disabled={!entryTime}
+                        className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                        title="Clear time"
+                      >
+                        <X className="h-4 w-4" />
+                        Clear
+                      </button>
+                      <button
+                        type="button"
                         onClick={handleSetCurrentTime}
-                        className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 font-medium flex items-center gap-0.5"
+                        className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
                         title="Set to current local time"
                       >
-                        <Clock className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <Clock className="h-4 w-4" />
                         Now
                       </button>
                       {resolvedDefaultMealTime && (
-                        <>
-                          <span className="text-gray-300 dark:text-gray-700 text-[10px]">
-                            |
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleSetDefaultTime}
-                            className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 font-medium flex items-center gap-0.5"
-                            title={`Set to meal default (${resolvedDefaultMealTime.substring(0, 5)})`}
-                          >
-                            <CalendarDays className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                            Default
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={handleSetDefaultTime}
+                          className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                          title={`Set to meal default (${toHourMinute(resolvedDefaultMealTime)})`}
+                        >
+                          <CalendarDays className="h-4 w-4" />
+                          Default
+                        </button>
                       )}
                     </div>
                   </div>

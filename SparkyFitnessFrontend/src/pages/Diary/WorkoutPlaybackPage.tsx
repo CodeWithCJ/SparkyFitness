@@ -340,9 +340,14 @@ const WorkoutPlaybackPage = () => {
 
   const handleStartTimeChange = useCallback(
     (timeStr: string) => {
-      if (!timeStr) return;
       setDraft((currentDraft) => {
         if (!currentDraft) return null;
+        if (!timeStr) {
+          return {
+            ...currentDraft,
+            started_at: '',
+          };
+        }
         try {
           const utcDate = localDateTimeToUtc(
             `${currentDraft.entry_date}T${timeStr}`,
