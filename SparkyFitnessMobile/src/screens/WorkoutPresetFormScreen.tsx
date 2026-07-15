@@ -7,6 +7,7 @@ import FormScreenChrome from '../components/FormScreenChrome';
 import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
 } from '../components/WorkoutFormExerciseList';
+import { useSetEditAccessoryBar, type SetRowAccessoryHandle } from '../components/SetRowChrome';
 import {
   useCreateWorkoutPreset,
   useUpdateWorkoutPreset,
@@ -61,6 +62,7 @@ interface PresetFormBodyProps {
   isEligibleForPrefill: (clientId: string) => boolean;
   onAddExercisePress: () => void;
   onReplaceExercise: (clientId: string) => void;
+  onRegisterAccessoryHandle: (key: string, handle: SetRowAccessoryHandle | null) => void;
   onViewExercise: (exercise: Exercise) => void;
   listRef: React.Ref<WorkoutFormExerciseListHandle>;
 }
@@ -81,6 +83,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   isEligibleForPrefill,
   onAddExercisePress,
   onReplaceExercise,
+  onRegisterAccessoryHandle,
   onViewExercise,
   listRef,
 }) => {
@@ -127,6 +130,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           activeSetField={exerciseSetEditing.activeSetField}
           onActivateSet={exerciseSetEditing.activateSet}
           onDeactivateSet={exerciseSetEditing.deactivateSet}
+          onRegisterAccessoryHandle={onRegisterAccessoryHandle}
           updateSetField={updateSetField}
           updateSetMeta={updateSetMeta}
           removeSet={removeSet}
@@ -219,6 +223,14 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
   });
   useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
 
+  // Sticky Done/Next bar for the focused set cell, on both platforms.
+  const { onRegisterAccessoryHandle, accessoryBar } = useSetEditAccessoryBar({
+    activeSetKey: exerciseSetEditing.activeSetKey,
+    activeSetField: exerciseSetEditing.activeSetField,
+    onDeactivateSet: exerciseSetEditing.deactivateSet,
+    rpeEnabled: false,
+  });
+
   const { createPresetAsync, isPending } = useCreateWorkoutPreset();
 
   const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
@@ -292,6 +304,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
       savingLabel={SAVING_LABEL}
       isSaving={isPending}
       headerAction={reorderAction}
+      keyboardAccessory={accessoryBar}
       onSave={() => {
         void handleSave();
       }}
@@ -313,6 +326,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
         onReplaceExercise={handleReplaceExercise}
+        onRegisterAccessoryHandle={onRegisterAccessoryHandle}
         onViewExercise={(exercise) =>
           navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
         }
@@ -423,6 +437,14 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
   });
   useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
 
+  // Sticky Done/Next bar for the focused set cell, on both platforms.
+  const { onRegisterAccessoryHandle, accessoryBar } = useSetEditAccessoryBar({
+    activeSetKey: exerciseSetEditing.activeSetKey,
+    activeSetField: exerciseSetEditing.activeSetField,
+    onDeactivateSet: exerciseSetEditing.deactivateSet,
+    rpeEnabled: false,
+  });
+
   const hasPopulatedRef = useRef(false);
   useEffect(() => {
     if (hasPopulatedRef.current || isPreferencesLoading) return;
@@ -506,6 +528,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
       savingLabel={SAVING_LABEL}
       isSaving={isPending}
       headerAction={reorderAction}
+      keyboardAccessory={accessoryBar}
       onSave={() => {
         void handleSave();
       }}
@@ -527,6 +550,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
         onReplaceExercise={handleReplaceExercise}
+        onRegisterAccessoryHandle={onRegisterAccessoryHandle}
         onViewExercise={(exercise) =>
           navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
         }

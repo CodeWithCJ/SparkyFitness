@@ -146,9 +146,8 @@ interface ActiveWorkoutExerciseCardProps {
   onActivateRpe?: (setId: string) => void;
   /** Edit only: tap the last-column check to toggle a set's completion. */
   onToggleComplete?: (setId: string) => void;
-  onDeactivateSet?: () => void;
   onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
-  /** Live only: rows register their sticky-bar handles here (keyed by render key). */
+  /** Live/edit: rows register their sticky-bar handles here (keyed by render key). */
   onRegisterAccessoryHandle?: (key: string, handle: SetRowAccessoryHandle | null) => void;
 }
 
@@ -223,7 +222,6 @@ function ActiveWorkoutExerciseCard({
   onActivateSet,
   onActivateRpe,
   onToggleComplete,
-  onDeactivateSet,
   onEditFieldChange,
   onRegisterAccessoryHandle,
 }: ActiveWorkoutExerciseCardProps) {
@@ -718,7 +716,6 @@ function ActiveWorkoutExerciseCard({
               onToggleComplete={onToggleComplete}
               onActivateSet={onActivateSetKeyed}
               onActivateRpe={onActivateRpeKeyed}
-              onDeactivate={onDeactivateSet}
               onEditFieldChange={onEditFieldChange}
               onAddSet={onAddSet}
               onRegisterAccessoryHandle={onRegisterAccessoryHandle}

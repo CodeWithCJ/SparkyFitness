@@ -275,8 +275,8 @@ describe('WorkoutDetailScreen', () => {
       fireEvent.press(screen.getByLabelText('Change type for set 1'));
       fireEvent.press(screen.getByLabelText('Warmup'));
 
-      // Activate the row, type an RPE, blur to snap it to 0.5 steps.
-      fireEvent.press(screen.getByLabelText('Edit weight for set 1'));
+      // Inputs are always mounted in edit mode; type an RPE and blur to snap
+      // it to 0.5 steps.
       const rpeInput = screen.getByLabelText('RPE');
       fireEvent.changeText(rpeInput, '8.6');
       fireEvent(rpeInput, 'blur');
@@ -305,8 +305,8 @@ describe('WorkoutDetailScreen', () => {
       // The completed set shows a green check that now toggles completion.
       expect(screen.getByTestId('completed-badge')).toBeTruthy();
       expect(screen.getByLabelText('Un-complete set 1')).toBeTruthy();
-      // The value cell still activates for editing.
-      fireEvent.press(screen.getByLabelText('Edit weight for set 1'));
+      // The value cells stay editable (always-mounted inputs).
+      expect(screen.getByLabelText('Weight')).toBeTruthy();
       expect(screen.getByLabelText('RPE')).toBeTruthy();
     });
 

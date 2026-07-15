@@ -22,6 +22,7 @@ import {
   exerciseFromDraft,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import type { SetRowAccessoryHandle } from './SetRowChrome';
 import type { ActiveSetPatch, CompletedSetMap } from '../stores/activeWorkoutStore';
 import { useSupersetBorders } from './ActiveWorkoutRail';
 import type { WorkoutDraftExercise, WorkoutSetMetaPatch } from '../types/drafts';
@@ -43,6 +44,12 @@ interface WorkoutFormExerciseListProps {
   activeSetField: 'weight' | 'reps' | 'rpe';
   onActivateSet: (setKey: string, field: 'weight' | 'reps' | 'rpe') => void;
   onDeactivateSet: () => void;
+  /**
+   * From the screen's useSetEditAccessoryBar: rows register their handles here
+   * (keyed by set clientId) so the screen's sticky Done/Next bar can dispatch
+   * to the focused row.
+   */
+  onRegisterAccessoryHandle?: (key: string, handle: SetRowAccessoryHandle | null) => void;
   updateSetField: (
     exerciseClientId: string,
     setClientId: string,
@@ -135,6 +142,7 @@ const WorkoutFormExerciseList = forwardRef<
     activeSetField,
     onActivateSet,
     onDeactivateSet,
+    onRegisterAccessoryHandle,
     updateSetField,
     updateSetMeta,
     removeSet,
@@ -539,8 +547,8 @@ const WorkoutFormExerciseList = forwardRef<
             onActivateSet={handleActivateSet}
             onActivateRpe={handleActivateRpe}
             onToggleComplete={showCompletion ? handleToggleComplete : undefined}
-            onDeactivateSet={onDeactivateSet}
             onEditFieldChange={handleEditFieldChange}
+            onRegisterAccessoryHandle={onRegisterAccessoryHandle}
           />
         );
 

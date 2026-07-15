@@ -13,6 +13,7 @@ import Button from '../components/ui/Button';
 import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
 } from '../components/WorkoutFormExerciseList';
+import { useSetEditAccessoryBar } from '../components/SetRowChrome';
 import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
 import { MetricColumnMenu } from '../components/WorkoutMenus';
 import { type AnchorRect } from '../components/AnchoredMenu';
@@ -221,6 +222,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     removeExercise,
     addSet,
     replaceExercise: wrappedReplaceExercise,
+  });
+
+  // Sticky Done/Next bar for the focused set cell (edit mode), on both
+  // platforms.
+  const { onRegisterAccessoryHandle, accessoryBar } = useSetEditAccessoryBar({
+    activeSetKey,
+    activeSetField,
+    onDeactivateSet: deactivateSet,
   });
 
   const isEligibleForPrefill = useCallback(
@@ -694,6 +703,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               activeSetField={activeSetField}
               onActivateSet={activateSet}
               onDeactivateSet={deactivateSet}
+              onRegisterAccessoryHandle={onRegisterAccessoryHandle}
               updateSetField={updateSetField}
               updateSetMeta={updateSetMeta}
               removeSet={removeSet}
@@ -775,6 +785,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         anchor={metricMenuAnchor}
         onClose={() => setMetricMenuAnchor(null)}
       />
+
+      {accessoryBar}
     </>
   );
 

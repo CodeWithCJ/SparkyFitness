@@ -661,9 +661,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setFocusedField('rpe');
     setFocusedSetKey(setKey);
   }, []);
-  const handleDeactivateSet = useCallback(() => {
-    setFocusedSetKey(null);
-  }, []);
 
   // Live rows register their sticky-bar handles here, keyed by render key;
   // the accessory bar dispatches to the focused row's handle at press time.
@@ -1113,7 +1110,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onCommitExerciseNote={handleCommitExerciseNote}
               onActivateSet={handleActivateSet}
               onActivateRpe={handleActivateRpe}
-              onDeactivateSet={handleDeactivateSet}
               onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
             />
           );
