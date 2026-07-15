@@ -55,7 +55,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     ? `Last synced ${formatRelativeTime(new Date(lastSyncedTime))}`
     : 'Never synced';
 
-  const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration, macroGreen] = useCSSVariable([
+  const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration, macroGreen, catTeal] = useCSSVariable([
     '--color-icon-success',
     '--color-bg-danger',
     '--color-cat-slate',
@@ -65,7 +65,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     '--color-calories',
     '--color-hydration',
     '--color-cat-green',
-  ]) as [string, string, string, string, string, string, string, string, string];
+    '--color-cat-teal',
+  ]) as [string, string, string, string, string, string, string, string, string, string];
 
   const serverSubtitle = activeConfig ? (
     <View className="flex-row items-center">
@@ -181,6 +182,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   title="Dashboard Settings"
                   onPress={() => navigation.navigate('DashboardSettings')}
                   iconColor={macroGreen}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="diary-settings"
+                  title="Diary Settings"
+                  onPress={() => navigation.navigate('DiarySettings')}
+                  iconColor={catTeal}
                 />
               )}
               <SettingsRow
