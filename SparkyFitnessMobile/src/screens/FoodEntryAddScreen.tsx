@@ -1234,7 +1234,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                     // settles sends the OPPOSITE operation. Two in-flight writes
                     // can then land out of order and leave the server in the
                     // state opposite the user's last tap.
-                    disabled: isActionPending || isFavoritePending,
+                    // Also disabled offline: the favorites query is gated on
+                    // isConnected, so a tap offline would fire a guaranteed-fail
+                    // request and surface an error toast.
+                    disabled: isActionPending || isFavoritePending || !isConnected,
                     onPress: handleToggleFavorite,
                     accessibilityLabel: isFavorite
                       ? 'Remove from favorites'

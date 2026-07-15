@@ -16,7 +16,7 @@ interface FavoriteStarButtonProps {
 // starred state from the favorites query and toggles it via the shared mutation.
 const FavoriteStarButton = ({ type, id }: FavoriteStarButtonProps) => {
   const { t } = useTranslation();
-  const { data: favorites } = useFavoritesQuery();
+  const { data: favorites, isLoading } = useFavoritesQuery();
   const { mutate: toggleFavorite, isPending } = useToggleFavoriteMutation();
 
   const isFavorite =
@@ -34,7 +34,9 @@ const FavoriteStarButton = ({ type, id }: FavoriteStarButtonProps) => {
       variant="ghost"
       size="icon"
       className="h-8 w-8 shrink-0"
-      disabled={isPending}
+      // Disable until favorites have loaded: isFavorite defaults to false while
+      // loading, so an early tap would fire a toggle against unknown state.
+      disabled={isPending || isLoading}
       aria-label={label}
       aria-pressed={isFavorite}
       title={label}
