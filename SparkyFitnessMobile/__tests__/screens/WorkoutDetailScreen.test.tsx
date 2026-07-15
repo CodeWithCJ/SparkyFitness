@@ -238,25 +238,28 @@ describe('WorkoutDetailScreen', () => {
   it('hides the rest chip on imported (non-Sparky) workouts', () => {
     const sparky = renderScreen(buildSession());
     fireEvent.press(sparky.getByLabelText('Expand Bench Press'));
-    expect(sparky.getByText('Rest 1:30')).toBeTruthy();
+    expect(sparky.getByLabelText('Rest 1:30')).toBeTruthy();
     sparky.unmount();
 
     const imported = renderScreen(buildSession({ source: 'healthkit' }));
     fireEvent.press(imported.getByLabelText('Expand Bench Press'));
-    expect(imported.queryByText('Rest 1:30')).toBeNull();
+    expect(imported.queryByLabelText('Rest 1:30')).toBeNull();
   });
 
   describe('edit mode', () => {
-    it('excludes the edited session from the stats baseline', () => {
+    it('excludes the viewed and edited session from the stats baseline', () => {
       const screen = renderScreen(buildSession());
 
-      // View mode: the stats fetch is disabled entirely.
-      expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
+      // View mode: session.id reaches the stats layer so the workout being
+      // viewed can't surface as its own Best.
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
+      expect(mockUseExerciseStats).not.toHaveBeenCalledWith(null, undefined);
+      mockUseExerciseStats.mockClear();
 
       fireEvent.press(screen.getByLabelText('Edit workout'));
 
-      // Edit mode: session.id reaches the stats layer so the workout being
-      // edited can't pollute its own Last/Best/recent-sessions baseline.
+      // Edit mode: same exclusion, so the workout being edited can't pollute
+      // its own Last/Best/recent-sessions baseline.
       expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
     });
 

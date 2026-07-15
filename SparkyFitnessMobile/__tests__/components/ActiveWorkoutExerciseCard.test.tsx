@@ -313,14 +313,16 @@ describe('ActiveWorkoutExerciseCard', () => {
     });
 
     it('renders the rest chip read-only so it cannot open the rest sheet', () => {
-      const { getByText, callbacks } = renderCard(true, { mode: 'view' });
-      fireEvent.press(getByText('Rest 1:30'));
+      const { getByLabelText, callbacks } = renderCard(true, { mode: 'view' });
+      // The read-only chip shows just the duration; "Rest" lives in the
+      // accessible name.
+      fireEvent.press(getByLabelText('Rest 1:30'));
       expect(callbacks.onPressRestChip).not.toHaveBeenCalled();
     });
 
     it('hides the rest chip entirely with showRestChip={false}', () => {
-      const { queryByText } = renderCard(true, { mode: 'view', showRestChip: false });
-      expect(queryByText('Rest 1:30')).toBeNull();
+      const { queryByLabelText } = renderCard(true, { mode: 'view', showRestChip: false });
+      expect(queryByLabelText('Rest 1:30')).toBeNull();
     });
 
     it('shows read-only calories, hidden in live mode', () => {
@@ -609,9 +611,12 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('renders the Best line from the historical best', () => {
       mockUseExerciseStats.mockReturnValue(STATS_WITH_BEST);
-      const { getByText } = renderCard(true, { mode: 'live' });
-      expect(getByText('Best')).toBeTruthy();
+      const { getByLabelText, getByTestId, getByText } = renderCard(true, { mode: 'live' });
+      expect(getByTestId('icon-trophy-outline')).toBeTruthy();
       expect(getByText('100 × 5')).toBeTruthy();
+      // The trophy icon replaces the "Best" label visually; the accessible
+      // name keeps the word.
+      expect(getByLabelText('Best 100 × 5')).toBeTruthy();
     });
 
     it('surfaces the stamped session record when a set earned a PR', () => {
@@ -626,12 +631,27 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(queryByText('100 × 5')).toBeNull();
     });
 
-    it('does not fetch stats or render the Best line in view mode', () => {
-      // View mode passes a null id, so the hook is disabled → no baseline line.
-      const { queryByText } = renderCard(true, { mode: 'view' });
+    it('skips the stats fetch in view mode without an exclusion id', () => {
+      // Without the viewed session's id to exclude, Best could show the very
+      // workout being viewed — the hook stays disabled instead.
+      const { queryByTestId } = renderCard(true, { mode: 'view' });
       expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
       expect(mockCapturePrBaseline).not.toHaveBeenCalled();
-      expect(queryByText('Best')).toBeNull();
+      expect(queryByTestId('icon-trophy-outline')).toBeNull();
+    });
+
+    it('renders the Best line in view mode when the viewed session is excluded', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_BEST);
+      const { getByTestId, getByText, queryByText } = renderCard(true, {
+        mode: 'view',
+        excludePresetEntryId: 'session-1',
+      });
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
+      expect(mockCapturePrBaseline).not.toHaveBeenCalled();
+      expect(getByTestId('icon-trophy-outline')).toBeTruthy();
+      expect(getByText('100 × 5')).toBeTruthy();
+      // The PREV column stays live/edit-only.
+      expect(queryByText('Prev')).toBeNull();
     });
   });
 
@@ -699,8 +719,9 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(prevOf(utils, 101)).toBe('prev:dash');
     });
 
-    it('omits the column entirely in view mode', () => {
-      const utils = renderCard(true, { mode: 'view' });
+    it('omits the column entirely in view mode even with history fetched', () => {
+      mockUseExerciseStats.mockReturnValue(STATS_WITH_HISTORY);
+      const utils = renderCard(true, { mode: 'view', excludePresetEntryId: 'session-1' });
       expect(prevOf(utils, 101)).toBe('prev:hidden');
     });
 

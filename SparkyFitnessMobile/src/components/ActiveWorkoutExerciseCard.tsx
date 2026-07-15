@@ -59,8 +59,9 @@ interface ActiveWorkoutExerciseCardProps {
   getImageSource: GetImageSource;
   /**
    * 'view' renders the read-only variant (workout detail): no logging,
-   * editing, overflow menu, add-set, or "Last time" stats fetch; saved
-   * exercise/set notes render as plain text. The metric column and its picker
+   * editing, overflow menu, add-set, or PREV column; the Best line renders
+   * when `excludePresetEntryId` is supplied; saved exercise/set notes render
+   * as plain text. The metric column and its picker
    * stay live in all modes. 'edit' renders form-draft
    * rows (see ActiveWorkoutSetRow) with the overflow menu, add-set, rest chip,
    * and stats line active; completion state is display-only (completedBadge)
@@ -68,9 +69,11 @@ interface ActiveWorkoutExerciseCardProps {
    */
   mode?: 'live' | 'view' | 'edit';
   /**
-   * Live/edit: the active (or edited) session's preset-entry id, forwarded to
-   * the stats query so that session's own sets are excluded from the
-   * historical best/last/recent-sessions baseline. View mode passes nothing.
+   * The active/edited/viewed session's preset-entry id, forwarded to the
+   * stats query so that session's own sets are excluded from the historical
+   * best/last/recent-sessions baseline. In view mode it also gates the fetch:
+   * when absent (e.g. preset detail) stats are skipped and no Best line
+   * renders.
    */
   excludePresetEntryId?: string;
   /**
@@ -236,13 +239,14 @@ function ActiveWorkoutExerciseCard({
   ]) as [string, string, string, string];
 
   const name = exercise.exercise_snapshot?.name ?? 'Exercise';
-  // "Last time" / "Best" only make sense while performing or planning — skip
-  // the fetch in view mode (the hook gates on a null id). In live and edit
-  // modes the active/edited session is excluded so its own sets don't pollute
-  // the historical baseline.
+  // Live and edit fetch the stats baseline with the active/edited session
+  // excluded so its own sets don't pollute it. View mode fetches only when the
+  // owner supplies the viewed session's id to exclude — without it (e.g. the
+  // preset detail view) Best could show the very workout being viewed, so the
+  // fetch is skipped (the hook gates on a null id).
   const { data: stats } = useExerciseStats(
-    readOnly ? null : exercise.exercise_id,
-    readOnly ? undefined : excludePresetEntryId,
+    readOnly && excludePresetEntryId == null ? null : exercise.exercise_id,
+    excludePresetEntryId,
   );
   const lastSet = stats?.lastSet ?? null;
   const bestSet = stats?.bestSet ?? null;
@@ -315,6 +319,12 @@ function ActiveWorkoutExerciseCard({
         : { weight: bestSet.weight, reps: bestSet.reps }
       : null;
   const bestIsPr = stampedBest != null && bestDisplay === stampedBest;
+  const bestText =
+    bestDisplay != null
+      ? `${parseFloat(weightFromKg(bestDisplay.weight, weightUnit).toFixed(1))}${
+          bestDisplay.reps != null ? ` × ${bestDisplay.reps}` : ''
+        }`
+      : null;
 
   // Chip-row calories: an editable field in edit mode (when the form wires a
   // handler), a read-only value in view mode. Live mode shows neither — the
@@ -612,22 +622,28 @@ function ActiveWorkoutExerciseCard({
           ))}
           {caloriesText != null && (
             <View className="flex-row items-center">
-              <Icon name="flame" size={14} color={textSecondary} />
+              <Icon name="flame" size={14} color={textMuted} />
               <Text className="text-sm text-text-secondary ml-1">{caloriesText} Cal</Text>
             </View>
           )}
           {bestDisplay != null && (
-            <View className="flex-row items-baseline gap-1.5">
-              <Text className="text-sm uppercase tracking-wide text-text-muted">Best</Text>
+            <View
+              className="flex-row items-center"
+              accessibilityLabel={`Best ${bestText}`}
+            >
+              <Icon
+                name="trophy-outline"
+                size={14}
+                color={bestIsPr ? prColor : textMuted}
+              />
               <Text
-                className="text-sm"
+                className="text-sm ml-1"
                 style={{
                   color: bestIsPr ? prColor : textSecondary,
                   fontVariant: ['tabular-nums'],
                 }}
               >
-                {parseFloat(weightFromKg(bestDisplay.weight, weightUnit).toFixed(1))}
-                {bestDisplay.reps != null ? ` × ${bestDisplay.reps}` : ''}
+                {bestText}
               </Text>
             </View>
           )}
