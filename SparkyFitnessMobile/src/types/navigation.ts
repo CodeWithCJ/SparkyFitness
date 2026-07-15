@@ -20,6 +20,7 @@ import type {
 import type { WorkoutPreset } from './workoutPresets';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { SaveFoodPayload } from '../services/api/foodsApi';
+import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 
 export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'library';
 
@@ -177,6 +178,16 @@ export type RootStackParamList = {
   ActivityAdd: { entry?: IndividualSessionResponse; date?: string; popCount?: number; selectedExercise?: Exercise; selectionNonce?: number; skipDraftLoad?: boolean } | undefined;
   WorkoutDetail: { session: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number };
   ActiveWorkout: { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+  // Post-save celebration for a finished live workout. Renders entirely from
+  // the store snapshot captured before `clearWorkout()`; only calories arrive
+  // via a post-save session refetch.
+  WorkoutComplete: {
+    session: PresetSessionResponse;
+    completedSetIds: CompletedSetMap;
+    prSetIds: PrSetMap;
+    startedAt: number | null;
+    finishedAt: number;
+  };
   ActivityDetail: { session: IndividualSessionResponse };
   FastingDetail: undefined;
   Chat: undefined;

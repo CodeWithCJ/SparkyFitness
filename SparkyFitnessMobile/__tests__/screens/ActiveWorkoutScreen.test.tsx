@@ -235,6 +235,7 @@ function makeSession(): PresetSessionResponse {
 const navigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  replace: jest.fn(),
   canGoBack: jest.fn(() => true),
   addListener: jest.fn(() => jest.fn()),
 } as any;
@@ -507,6 +508,73 @@ describe('ActiveWorkoutScreen finish flow with a failing flush', () => {
   });
 });
 
+describe('ActiveWorkoutScreen finish success celebration', () => {
+  let alertSpy: jest.SpyInstance;
+
+  function lastAlertButton(label: string): { onPress?: () => void } {
+    const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+    const button = (call?.[2] ?? []).find((b: { text?: string }) => b.text === label);
+    expect(button).toBeDefined();
+    return button;
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+    (useActiveWorkoutAutosave as jest.Mock).mockReturnValue({
+      flush: jest.fn(async () => true),
+    });
+    alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  async function endWorkout(getByText: (text: string) => unknown) {
+    fireEvent.press(getByText('End Workout') as any);
+    await act(async () => {
+      lastAlertButton('End Workout').onPress?.();
+    });
+  }
+
+  it('replaces to WorkoutComplete with a snapshot taken before clearing the store', async () => {
+    useActiveWorkoutStore.getState().startWorkout(makeSession());
+    act(() => useActiveWorkoutStore.getState().completeSet('102'));
+    const { getByText } = renderScreen();
+
+    await endWorkout(getByText);
+
+    expect(navigation.replace).toHaveBeenCalledTimes(1);
+    const [routeName, params] = navigation.replace.mock.calls[0];
+    expect(routeName).toBe('WorkoutComplete');
+    expect(params.session.id).toBe('session-1');
+    // Both the live completion and the server-seeded one ride the snapshot.
+    expect(params.completedSetIds['102']).toBeTruthy();
+    expect(params.completedSetIds['101']).toBeTruthy();
+    expect(params.prSetIds).toEqual({});
+    expect(typeof params.finishedAt).toBe('number');
+    expect(useActiveWorkoutStore.getState().session).toBeNull();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('skips the celebration and exits as before when no sets were completed', async () => {
+    const session = makeSession();
+    session.exercises[0].sets[0].completed_at = null;
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByText } = renderScreen();
+
+    await endWorkout(getByText);
+
+    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(navigation.goBack).toHaveBeenCalled();
+    expect(useActiveWorkoutStore.getState().session).toBeNull();
+  });
+});
+
 describe('ActiveWorkoutScreen long-workout duration adjust', () => {
   const MIN = 60_000;
   let alertSpy: jest.SpyInstance;
@@ -581,7 +649,10 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
 
     expect(lastAlertTitle()).toBe('End workout?');
     expect(startedAtAtFlush).toBe(start);
-    expect(navigation.goBack).toHaveBeenCalled();
+    expect(navigation.replace).toHaveBeenCalledWith(
+      'WorkoutComplete',
+      expect.objectContaining({ finishedAt: expect.any(Number) }),
+    );
   });
 
   it('offers the gap-clamped active time and rebases on accept', async () => {
@@ -597,7 +668,7 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
 
     expect(startedAtAtFlush).toBe(lastCompletedAt - 5 * MIN);
     expect(useActiveWorkoutStore.getState().session).toBeNull();
-    expect(navigation.goBack).toHaveBeenCalled();
+    expect(navigation.replace).toHaveBeenCalledWith('WorkoutComplete', expect.anything());
   });
 
   it('keeps the full span when the user declines', async () => {
@@ -611,7 +682,7 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
     });
 
     expect(startedAtAtFlush).toBe(start);
-    expect(navigation.goBack).toHaveBeenCalled();
+    expect(navigation.replace).toHaveBeenCalledWith('WorkoutComplete', expect.anything());
   });
 
   it('opens the custom sheet capped at the span and finishes with the picked value', async () => {
@@ -630,7 +701,7 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
     });
 
     expect(startedAtAtFlush).toBe(lastCompletedAt - 20 * MIN);
-    expect(navigation.goBack).toHaveBeenCalled();
+    expect(navigation.replace).toHaveBeenCalledWith('WorkoutComplete', expect.anything());
   });
 });
 

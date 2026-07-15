@@ -41,7 +41,7 @@ import type { ExerciseRecentSessionSet } from '@workspace/shared';
 
 export type SetRowState = 'done' | 'current' | 'upcoming';
 
-const RPE_TONE_VARS: Record<RpeTone, string> = {
+export const RPE_TONE_VARS: Record<RpeTone, string> = {
   easy: '--color-icon-success',
   moderate: '--color-cat-amber',
   hard: '--color-cat-orange',

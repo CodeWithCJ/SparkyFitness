@@ -38,6 +38,7 @@ const ICON_MAP = {
   'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
   'star': { sf: 'star.fill', ion: 'star' },
   'link': { sf: 'link', ion: 'link-outline' },
+  'list': { sf: 'list.bullet', ion: 'list-outline' },
   'checkmark-circle': { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
   'checkmark-circle-filled': { sf: 'checkmark.circle.fill', ion: 'checkmark-circle' },
   'radio-button-on': { sf: 'circle.inset.filled', ion: 'radio-button-on' },

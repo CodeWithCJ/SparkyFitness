@@ -31,6 +31,7 @@ const NATIVE_TABS_ROUTE_EXCLUSIONS = {
   ActivityAdd: 'Root-stack activity create/edit route presented above the tab host.',
   WorkoutDetail: 'Root-stack workout detail route presented above the tab host.',
   ActiveWorkout: 'Root-stack live-logging surface with fully custom chrome presented above the tab host.',
+  WorkoutComplete: 'Root-stack post-save celebration with fully custom chrome presented above the tab host.',
   ActivityDetail: 'Root-stack activity detail route presented above the tab host.',
   FastingDetail: 'Root-stack dashboard detail route presented above the tab host.',
   Logs: 'Root-stack settings route presented above the tab host.',

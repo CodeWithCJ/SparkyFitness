@@ -45,6 +45,7 @@ import {
   setTypeLetter,
   summarizeWorkoutSpan,
   WORKOUT_LONG_GAP_MINUTES,
+  buildWorkoutCompletionSummary,
   seedPrFromSession,
   compareSetRecords,
   matchesSetRecord,
@@ -2091,6 +2092,117 @@ describe('workoutSession', () => {
       } as unknown as PresetSession;
 
       expect(seedPrFromSession(session)).toEqual({ '101': true });
+    });
+  });
+
+  describe('buildWorkoutCompletionSummary', () => {
+    const makeSummarySession = () =>
+      ({
+        ...makePreset(),
+        exercises: [
+          {
+            id: 'ex-a',
+            notes: null,
+            exercise_snapshot: { name: 'Bench Press' },
+            sets: [
+              // Completed working set.
+              { id: 101, set_type: 'normal', weight: 100, reps: 5, rpe: 8 },
+              // Completed warmup: counts as a set, never volume/top.
+              { id: 102, set_type: 'warmup', weight: 60, reps: 5, rpe: 6 },
+              // Skipped.
+              { id: 103, set_type: 'normal', weight: 100, reps: 5, rpe: null },
+            ],
+          },
+          {
+            id: 'ex-b',
+            notes: 'felt strong',
+            exercise_snapshot: { name: 'Squat' },
+            sets: [{ id: 201, set_type: 'drop', weight: 120, reps: 3, rpe: null }],
+          },
+        ],
+      }) as unknown as PresetSession;
+    const completed = { '101': 1_000, '102': 2_000, '201': 3_000 };
+
+    it('counts sets, excludes warmups and skipped sets from volume, and averages logged RPE', () => {
+      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {});
+
+      expect(summary.totalSetCount).toBe(4);
+      expect(summary.completedSetCount).toBe(3);
+      expect(summary.skippedSetCount).toBe(1);
+      // 100×5 + 120×3 — the drop set counts, the warmup and skipped set do not.
+      expect(summary.volumeKg).toBe(860);
+      // Only completed sets that logged an RPE: 8 and the warmup's 6.
+      expect(summary.averageRpe).toBe(7);
+    });
+
+    it('builds per-exercise rows with top completed working set and notes', () => {
+      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {});
+
+      const [bench, squat] = summary.exercises;
+      expect(bench).toMatchObject({
+        entryId: 'ex-a',
+        name: 'Bench Press',
+        completedSetCount: 2,
+        totalSetCount: 3,
+        volumeKg: 500,
+        topSet: { weightKg: 100, reps: 5 },
+        hasPr: false,
+      });
+      expect(squat).toMatchObject({
+        entryId: 'ex-b',
+        notes: 'felt strong',
+        completedSetCount: 1,
+        totalSetCount: 1,
+        volumeKg: 360,
+        topSet: { weightKg: 120, reps: 3 },
+      });
+    });
+
+    it('emits one PR row per stamped set and flags the exercise', () => {
+      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {
+        '101': true,
+        '201': true,
+      });
+
+      expect(summary.prRows).toEqual([
+        { exerciseName: 'Bench Press', weightKg: 100, reps: 5 },
+        { exerciseName: 'Squat', weightKg: 120, reps: 3 },
+      ]);
+      expect(summary.exercises[0].hasPr).toBe(true);
+      expect(summary.exercises[1].hasPr).toBe(true);
+    });
+
+    it('returns a null average RPE when no completed set logged one', () => {
+      const session = makeSummarySession();
+      const summary = buildWorkoutCompletionSummary(session, { '201': 3_000 }, {});
+
+      expect(summary.averageRpe).toBeNull();
+    });
+
+    it('falls back to the best reps-only set when nothing weighted completed', () => {
+      const session = {
+        ...makePreset(),
+        exercises: [
+          {
+            id: 'ex-a',
+            notes: null,
+            exercise_snapshot: { name: 'Pull-up' },
+            sets: [
+              { id: 301, set_type: 'normal', weight: null, reps: 8, rpe: null },
+              { id: 302, set_type: 'normal', weight: null, reps: 12, rpe: null },
+            ],
+          },
+        ],
+      } as unknown as PresetSession;
+
+      const summary = buildWorkoutCompletionSummary(
+        session,
+        { '301': 1_000, '302': 2_000 },
+        {},
+      );
+
+      expect(summary.volumeKg).toBe(0);
+      expect(summary.exercises[0].topSet).toEqual({ weightKg: null, reps: 12 });
     });
   });
 

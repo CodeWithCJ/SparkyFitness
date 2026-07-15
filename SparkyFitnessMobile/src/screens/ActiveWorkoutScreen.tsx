@@ -862,8 +862,26 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         );
         return;
       }
+      // The celebration screen renders entirely from this snapshot, so it must
+      // be taken before clearWorkout. With zero completed sets there is
+      // nothing to celebrate — finish exits straight back to the diary.
+      const state = useActiveWorkoutStore.getState();
+      const celebration =
+        state.session != null && Object.keys(state.completedSetIds).length > 0
+          ? {
+              session: state.session,
+              completedSetIds: state.completedSetIds,
+              prSetIds: state.prSetIds,
+              startedAt: state.startedAt,
+              finishedAt: Date.now(),
+            }
+          : null;
       useActiveWorkoutStore.getState().clearWorkout();
-      navigation.goBack();
+      if (celebration != null) {
+        navigation.replace('WorkoutComplete', celebration);
+      } else {
+        navigation.goBack();
+      }
     }
     await attempt();
   }, [flush, navigation]);
