@@ -1,20 +1,28 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { useCSSVariable } from 'uniwind';
 import type { FoodItem } from '../types/foods';
 import { formatServingUnit } from '../utils/foodDetails';
+import Icon from './Icon';
 import VerifiedBadge from './VerifiedBadge';
 
 interface FoodLibraryRowProps {
   food: FoodItem;
   onPress?: () => void;
   showDivider?: boolean;
+  // Marks the row with a gold star. Off by default so lists with no favorites
+  // concept stay unadorned; the library screens opt in. Mirrors MealLibraryRow.
+  isFavorite?: boolean;
 }
 
 const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
   food,
   onPress,
   showDivider = false,
+  isFavorite = false,
 }) => {
+  // Gold, not accent: a passive indicator, not a tap target. See MealLibraryRow.
+  const [goldColor] = useCSSVariable(['--color-cat-amber']) as [string];
   return (
     <Pressable
       onPress={onPress}
@@ -39,9 +47,20 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
           ) : null}
         </View>
         <View className="items-end">
-          <Text className="text-text-primary text-base font-semibold">
-            {food.default_variant.calories} cal
-          </Text>
+          <View className="flex-row items-center gap-1">
+            {isFavorite && (
+              <Icon
+                name="star"
+                size={13}
+                color={goldColor}
+                style={{ marginTop: 1 }}
+                accessibilityLabel="Favorite"
+              />
+            )}
+            <Text className="text-text-primary text-base font-semibold">
+              {food.default_variant.calories} cal
+            </Text>
+          </View>
           <Text className="text-text-secondary text-xs">
             {food.default_variant.serving_size} {formatServingUnit(food.default_variant.serving_unit)}
           </Text>

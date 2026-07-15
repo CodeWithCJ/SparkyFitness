@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -7,7 +7,7 @@ import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
 import FoodLibraryRow from '../components/FoodLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useFoodsLibrary, useServerConnection } from '../hooks';
+import { useFavorites, useFoodsLibrary, useServerConnection } from '../hooks';
 import { foodItemToFoodInfo } from '../types/foodInfo';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -37,6 +37,11 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     loadMore,
     refetch,
   } = useFoodsLibrary(searchText, { enabled: isConnected });
+  const { favoriteFoods } = useFavorites({ enabled: isConnected });
+  const favoriteFoodIds = useMemo(
+    () => new Set(favoriteFoods.map((f) => f.id)),
+    [favoriteFoods],
+  );
 
   const handleFoodPress = useCallback((food: FoodItem) => {
     navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(food) });
@@ -99,6 +104,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         renderItem={({ item, index }) => (
           <FoodLibraryRow
             food={item}
+            isFavorite={favoriteFoodIds.has(item.id)}
             showDivider={index < foods.length - 1}
             onPress={() => handleFoodPress(item)}
           />

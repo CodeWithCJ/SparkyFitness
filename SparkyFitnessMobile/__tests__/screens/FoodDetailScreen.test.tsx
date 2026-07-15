@@ -1,9 +1,13 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { pressAction } from './helpers/nativeHeaderTestUtils';
+import {
+  pressAction,
+  pressActionByAccessibilityLabel,
+  findHeaderItemByAccessibilityLabel,
+} from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodDetailScreen from '../../src/screens/FoodDetailScreen';
-import { useDeleteFood, useFoodVariants, useProfile, useServerConnection } from '../../src/hooks';
+import { useDeleteFood, useFavorites, useFoodVariants, useProfile, useServerConnection, useToggleFavorite } from '../../src/hooks';
 
 jest.mock('../../src/hooks', () => ({
   useDeleteFood: jest.fn(),
@@ -12,6 +16,8 @@ jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(),
   usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
   useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() })),
+  useFavorites: jest.fn(() => ({ favoriteFoods: [], favoriteMeals: [], isLoading: false, isError: false, refetch: jest.fn() })),
+  useToggleFavorite: jest.fn(() => ({ toggleFavorite: jest.fn(), isPending: false })),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -75,6 +81,8 @@ const mockUseFoodVariants = useFoodVariants as jest.MockedFunction<typeof useFoo
 const mockUseDeleteFood = useDeleteFood as jest.MockedFunction<typeof useDeleteFood>;
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
+const mockUseFavorites = useFavorites as jest.MockedFunction<typeof useFavorites>;
+const mockUseToggleFavorite = useToggleFavorite as jest.MockedFunction<typeof useToggleFavorite>;
 const mockConfirmAndDelete = jest.fn();
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -165,6 +173,17 @@ describe('FoodDetailScreen', () => {
       isError: false,
       error: null,
       refetch: jest.fn(),
+    });
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [],
+      favoriteMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+    mockUseToggleFavorite.mockReturnValue({
+      toggleFavorite: jest.fn(),
+      isPending: false,
     });
     mockUseDeleteFood.mockReturnValue({
       confirmAndDelete: mockConfirmAndDelete,
@@ -266,6 +285,49 @@ describe('FoodDetailScreen', () => {
     fireEvent.press(screen.getByText('Delete Food'));
 
     expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles the food favorite from the header star', () => {
+    const toggleFavorite = jest.fn();
+    mockUseToggleFavorite.mockReturnValue({ toggleFavorite, isPending: false });
+
+    const screen = renderScreen();
+
+    // Not yet starred: the action offers to add.
+    expect(
+      findHeaderItemByAccessibilityLabel(navigation, 'Add to favorites'),
+    ).toBeDefined();
+
+    pressActionByAccessibilityLabel(screen, navigation, 'Add to favorites');
+    expect(toggleFavorite).toHaveBeenCalledWith({
+      type: 'food',
+      id: 'food-1',
+      isFavorite: false,
+    });
+  });
+
+  it('shows the starred state when the food is a favorite', () => {
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [{ id: 'food-1' }],
+      favoriteMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+
+    renderScreen();
+
+    expect(
+      findHeaderItemByAccessibilityLabel(navigation, 'Remove from favorites'),
+    ).toBeDefined();
+  });
+
+  it('offers no favorite star for external (unsaved) foods', () => {
+    renderScreen({ source: 'external' });
+
+    expect(
+      findHeaderItemByAccessibilityLabel(navigation, 'Add to favorites'),
+    ).toBeUndefined();
   });
 
   it('keeps the detail view on the simple serving picker', async () => {

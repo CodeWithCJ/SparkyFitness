@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -8,12 +8,12 @@ import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useDeleteMeal, useMeal, useProfile, useServerConnection, usePreferences } from '../hooks';
+import { useDeleteMeal, useFavorites, useMeal, useProfile, useServerConnection, usePreferences, useToggleFavorite } from '../hooks';
 import { mealToFoodInfo } from '../types/foodInfo';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import type { Meal, MealFood } from '../types/meals';
 import type { RootStackScreenProps } from '../types/navigation';
-import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type MealDetailScreenProps = RootStackScreenProps<'MealDetail'>;
@@ -119,6 +119,22 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   });
 
   const canManageMeal = !!(isConnected && meal && profile?.id === meal.user_id);
+
+  // Favorites: a saved meal can be starred from its detail screen, so the
+  // library is no longer edit-only via search. Access is verified server-side
+  // on add, so ownership is not required — only a loaded meal and a connection.
+  const canFavorite = isConnected && !!meal;
+  const { favoriteMeals } = useFavorites({ enabled: isConnected });
+  const isFavorite = useMemo(
+    () => !!meal && favoriteMeals.some((m) => m.id === meal.id),
+    [favoriteMeals, meal],
+  );
+  const { toggleFavorite, isPending: isFavoritePending } = useToggleFavorite();
+  const handleToggleFavorite = useCallback(() => {
+    if (!meal) return;
+    // Full Meal in hand, so the optimistic insert flips the star instantly.
+    toggleFavorite({ type: 'meal', id: meal.id, isFavorite, meal });
+  }, [toggleFavorite, meal, isFavorite]);
   const totalValues = useMemo(
     () => (meal ? buildMealDisplayValues(meal, 'total') : null),
     [meal],
@@ -132,24 +148,49 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
   // The title stays blank on both paths — the meal name is shown in the body's
   // nutrition card, so a bar title would just duplicate it; the header only
   // carries back plus the owner-gated Edit action once the meal loads.
+  // Favorite star (accent-tinted, reads as a button) sits before the neutral
+  // Edit action, matching the meal-log screen's header order.
+  const rightItems: HeaderItem[] = [
+    ...(canFavorite
+      ? [
+          {
+            kind: 'icon',
+            sfSymbol: isFavorite ? 'star.fill' : 'star',
+            ionicon: isFavorite ? 'star' : 'star-outline',
+            role: 'primary',
+            // Gated on the toggle's own mutation so a double tap before settle
+            // can't send the opposite op and land the two writes out of order.
+            disabled: isFavoritePending,
+            onPress: handleToggleFavorite,
+            accessibilityLabel: isFavorite
+              ? 'Remove from favorites'
+              : 'Add to favorites',
+            identifier: 'meal-detail-favorite',
+          } as const,
+        ]
+      : []),
+    ...(canManageMeal
+      ? [
+          {
+            kind: 'text',
+            label: 'Edit',
+            role: 'secondary',
+            onPress: () =>
+              navigation.navigate('MealAdd', {
+                mode: 'edit',
+                mealId: meal!.id,
+                initialMeal: meal,
+              }),
+            accessibilityLabel: 'Edit meal',
+            identifier: 'meal-detail-edit',
+          } as const,
+        ]
+      : []),
+  ];
   const header = useScreenHeader({
     borderless: true,
     left: { kind: 'back' },
-    right: canManageMeal
-      ? {
-          kind: 'text',
-          label: 'Edit',
-          role: 'secondary',
-          onPress: () =>
-            navigation.navigate('MealAdd', {
-              mode: 'edit',
-              mealId: meal!.id,
-              initialMeal: meal,
-            }),
-          accessibilityLabel: 'Edit meal',
-          identifier: 'meal-detail-edit',
-        }
-      : null,
+    right: rightItems.length > 0 ? rightItems : null,
   });
 
   const renderContent = () => {
