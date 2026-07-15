@@ -68,6 +68,11 @@ export type RootStackParamList = {
     // a workout context (active workout, workout builder/edit, preset form),
     // where starting or logging this single exercise would be redundant.
     hideWorkoutActions?: boolean;
+    // Route key of the workout/preset/activity form that opened ExerciseSearch.
+    // When set, the screen is a pre-add preview: an Add header action selects
+    // this exercise (importing it first if external), dispatches it to that
+    // form, and pops back past ExerciseSearch.
+    selectionReturnKey?: string;
   };
   FoodSearch:
     | {

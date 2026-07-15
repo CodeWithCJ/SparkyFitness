@@ -1,10 +1,11 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { CommonActions, StackActions } from '@react-navigation/native';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
@@ -12,7 +13,9 @@ import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import ExerciseHistoryList from '../components/ExerciseHistoryList';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { fetchExerciseById } from '../services/api/exerciseApi';
-import { exerciseDetailQueryKey } from '../hooks/queryKeys';
+import { importExercise } from '../services/api/externalExerciseSearchApi';
+import { getApiErrorMessage } from '../services/api/errors';
+import { exerciseDetailQueryKey, suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import {
   useDeleteExerciseLibrary,
@@ -32,6 +35,7 @@ import {
 import { formatDateLabel } from '../utils/dateUtils';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
@@ -79,8 +83,9 @@ const StatTile: React.FC<{ label: string; value: string; sub?: string }> = ({
 );
 
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation, route }) => {
-  const { item, updatedItem, hideWorkoutActions } = route.params;
+  const { item, updatedItem, hideWorkoutActions, selectionReturnKey } = route.params;
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const textPrimary = useCSSVariable('--color-text-primary') as string;
@@ -307,6 +312,57 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     });
   };
 
+  // Pre-add preview flow (opened via ⓘ from ExerciseSearch): Add selects this
+  // exercise into the form that opened the search. External items (non-UUID
+  // id) are imported into the user's library first.
+  const addInFlightRef = useRef(false);
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAdd = async () => {
+    if (!selectionReturnKey) return;
+    // `busy` only disables the button after a re-render; the ref blocks a
+    // second tap landing before that.
+    if (addInFlightRef.current) return;
+    addInFlightRef.current = true;
+    setIsAdding(true);
+
+    let selected: Exercise | null = exercise;
+    if (!UUID_REGEX.test(item.id)) {
+      try {
+        selected = await importExercise(item.source, item.id);
+        // The import succeeded server-side, so the library cache must reflect
+        // it even when the selection is abandoned below.
+        queryClient.invalidateQueries({ queryKey: suggestedExercisesQueryKey });
+      } catch (error) {
+        Toast.show({
+          type: 'error',
+          text1: 'Failed to add exercise',
+          text2: getApiErrorMessage(error) ?? undefined,
+        });
+        selected = null;
+      }
+      // `busy` doesn't stop the back swipe/button; dispatching the selection
+      // or popping from an unfocused route would misfire.
+      if (!navigation.isFocused()) selected = null;
+    }
+
+    if (selected) {
+      navigation.dispatch({
+        ...CommonActions.setParams({
+          selectedExercise: selected,
+          selectionNonce: Date.now(),
+        }),
+        source: selectionReturnKey,
+      });
+      // Form ← ExerciseSearch ← ExerciseDetail.
+      navigation.dispatch(StackActions.pop(2));
+    }
+    // No `finally`: the react compiler can't lower it and would bail on the
+    // whole component. Every path above falls through to this cleanup.
+    addInFlightRef.current = false;
+    setIsAdding(false);
+  };
+
   const rightItems: HeaderItem[] = [
     ...(canManageExercise
       ? [
@@ -328,6 +384,20 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             onPress: handleEdit,
             accessibilityLabel: 'Edit exercise',
             identifier: 'exercise-detail-edit',
+          } as const,
+        ]
+      : []),
+    ...(selectionReturnKey
+      ? [
+          {
+            kind: 'primary',
+            label: 'Add',
+            busy: isAdding,
+            onPress: () => {
+              void handleAdd();
+            },
+            accessibilityLabel: 'Add exercise',
+            identifier: 'exercise-detail-add',
           } as const,
         ]
       : []),

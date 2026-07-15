@@ -930,6 +930,20 @@ interface FreeExerciseDBResult {
     images: string[];
   }[];
 }
+
+/**
+ * wger descriptions are HTML (often a <ol>/<li> list). Normalize to the same
+ * plain-text step array free-exercise-db exercises use.
+ */
+function wgerDescriptionToInstructions(rawDescription: string): string[] {
+  return rawDescription
+    .replace(/<li>/g, '\n- ')
+    .replace(/<[^>]*>/g, '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 async function searchExternalExercises(
   _authenticatedUserId: string,
   query: string,
@@ -992,18 +1006,45 @@ async function searchExternalExercises(
       );
 
       totalCount = wgerResult.totalCount;
-      items = wgerResult.exercises.map((exercise) => ({
-        id: exercise.id.toString(),
-        name: exercise.name,
-        category: exercise.category?.name ?? 'Uncategorized',
-        calories_per_hour: 0,
-        source: 'wger',
-        description: exercise.instructions || exercise.name,
-        force: exercise.force,
-        mechanic: exercise.mechanic,
-        instructions: exercise.instructions,
-        images: exercise.images,
-      }));
+      const reverseMuscleMap = createReverseMap(muscleNameMap);
+      const reverseEquipmentMap = createReverseMap(equipmentNameMap);
+      items = wgerResult.exercises.map((exercise) => {
+        // `exercise.instructions` is the raw wger HTML description; normalize
+        // it the same way the import path does so previews match imports.
+        const instructions = wgerDescriptionToInstructions(
+          exercise.instructions
+        );
+        return {
+          id: exercise.id.toString(),
+          name: exercise.name,
+          category: exercise.category?.name ?? 'Uncategorized',
+          calories_per_hour: 0,
+          source: 'wger',
+          description: instructions[0] ?? exercise.name,
+          force: exercise.force,
+          mechanic: exercise.mechanic,
+          equipment: exercise.equipment.map(
+            (e) =>
+              reverseEquipmentMap[
+                e.name.toLowerCase() as keyof typeof reverseEquipmentMap
+              ] ?? e.name
+          ),
+          primary_muscles: exercise.muscles.map(
+            (m) =>
+              reverseMuscleMap[
+                m.name.toLowerCase() as keyof typeof reverseMuscleMap
+              ] ?? m.name
+          ),
+          secondary_muscles: exercise.muscles_secondary.map(
+            (m) =>
+              reverseMuscleMap[
+                m.name.toLowerCase() as keyof typeof reverseMuscleMap
+              ] ?? m.name
+          ),
+          instructions,
+          images: exercise.images,
+        };
+      });
     } else if (providerType === 'nutritionix') {
       const nutritionixSearchResults =
         await nutritionixService.searchNutritionixExercises(query, providerId);
@@ -1133,12 +1174,7 @@ async function addExternalExerciseToUserExercises(
         ] ?? null)
       : null;
 
-    const instructions = rawDescription
-      .replace(/<li>/g, '\n- ')
-      .replace(/<[^>]*>/g, '')
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const instructions = wgerDescriptionToInstructions(rawDescription);
 
     const exerciseData = {
       name: exerciseName,

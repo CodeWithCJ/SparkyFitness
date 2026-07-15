@@ -48,6 +48,7 @@ import {
   seedPrFromSession,
   compareSetRecords,
   matchesSetRecord,
+  exerciseFromExternalItem,
   makeSparseExercise,
   exerciseFromDraft,
 } from '../../src/utils/workoutSession';
@@ -2974,6 +2975,69 @@ describe('workoutSession', () => {
       expect(exercise.name).toBe('Exercise');
       expect(exercise.category).toBeNull();
       expect(exercise.images).toEqual([]);
+    });
+  });
+
+  describe('exerciseFromExternalItem', () => {
+    it('maps a full online search item onto an Exercise for preview', () => {
+      const exercise = exerciseFromExternalItem({
+        id: '123',
+        name: 'Wger Squat',
+        category: 'Legs',
+        calories_per_hour: 250,
+        source: 'wger',
+        description: 'Stand with the bar on your back.',
+        force: 'push',
+        level: 'intermediate',
+        mechanic: 'compound',
+        equipment: ['barbell'],
+        primary_muscles: ['quadriceps'],
+        secondary_muscles: ['glutes'],
+        instructions: ['Stand with the bar on your back.', 'Squat down.'],
+        images: ['https://wger.de/media/squat.png'],
+      });
+      expect(exercise).toMatchObject({
+        id: '123',
+        name: 'Wger Squat',
+        category: 'Legs',
+        calories_per_hour: 250,
+        source: 'wger',
+        description: 'Stand with the bar on your back.',
+        force: 'push',
+        level: 'intermediate',
+        mechanic: 'compound',
+        equipment: ['barbell'],
+        primary_muscles: ['quadriceps'],
+        secondary_muscles: ['glutes'],
+        instructions: ['Stand with the bar on your back.', 'Squat down.'],
+        images: ['https://wger.de/media/squat.png'],
+      });
+    });
+
+    it('defaults the sparse nutritionix shape, coercing null calories to 0', () => {
+      const exercise = exerciseFromExternalItem({
+        id: 'nx-1',
+        name: 'Running',
+        category: 'External',
+        calories_per_hour: null,
+        source: 'nutritionix',
+      });
+      expect(exercise).toMatchObject({
+        id: 'nx-1',
+        name: 'Running',
+        category: 'External',
+        calories_per_hour: 0,
+        source: 'nutritionix',
+        equipment: [],
+        primary_muscles: [],
+        secondary_muscles: [],
+        images: [],
+        force: null,
+        level: null,
+        mechanic: null,
+      });
+      expect(exercise.instructions).toBeUndefined();
+      expect(exercise.description).toBeUndefined();
     });
   });
 

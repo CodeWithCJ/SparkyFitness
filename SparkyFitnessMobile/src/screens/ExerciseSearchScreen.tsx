@@ -20,15 +20,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import SafeImage from '../components/SafeImage';
 import SegmentedControl from '../components/SegmentedControl';
-import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
+import { CATEGORY_ICON_MAP, exerciseFromExternalItem } from '../utils/workoutSession';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useServerConnection, useExternalProviders, useSuggestedExercises, useExerciseSearch, useProfile } from '../hooks';
 import { deriveShareStatus } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
 import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
+import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { importExercise } from '../services/api/externalExerciseSearchApi';
+import {
+  importExercise,
+  isImportableExerciseSource,
+} from '../services/api/externalExerciseSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
@@ -85,6 +89,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
   const { isConnected } = useServerConnection();
   const { profile } = useProfile();
   const { getImageSource } = useExerciseImageSource();
+  const { isNavigationLocked, runNavigationAction } = useNavigationActionGuard(navigation);
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
   const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
@@ -151,12 +156,23 @@ useEffect(() => {
     navigation.goBack();
   }, [returnKey, navigation]);
 
+  const importInFlightRef = useRef(false);
   const handleImportExercise = useCallback(async (item: ExternalExerciseItem) => {
+    // `importingExerciseId` only disables the rows after a re-render; the ref
+    // blocks a second tap landing before that.
+    if (importInFlightRef.current) return;
+    importInFlightRef.current = true;
     setImportingExerciseId(item.id);
     try {
       const exercise = await importExercise(item.source, item.id);
+      // The import succeeded server-side, so the library cache must reflect
+      // it even when the selection is abandoned below.
       queryClient.invalidateQueries({ queryKey: suggestedExercisesQueryKey });
-      handleSelectExercise(exercise);
+      // The import doesn't block the back swipe/button; selecting from an
+      // unfocused route would dispatch to the form and pop it.
+      if (navigation.isFocused()) {
+        handleSelectExercise(exercise);
+      }
     } catch (error) {
       // apiFetch already logs the failure; surface it so the tap isn't silent.
       Toast.show({
@@ -165,50 +181,102 @@ useEffect(() => {
         text2: getApiErrorMessage(error) ?? undefined,
       });
     }
+    // No `finally`: the react compiler can't lower it and would bail on the
+    // whole component. Every path above falls through to this cleanup.
+    importInFlightRef.current = false;
     setImportingExerciseId(null);
-  }, [queryClient, handleSelectExercise]);
+  }, [queryClient, handleSelectExercise, navigation]);
+
+  const handlePreviewExercise = useCallback((item: Exercise) => {
+    runNavigationAction(() => {
+      navigation.navigate('ExerciseDetail', {
+        item,
+        hideWorkoutActions: true,
+        selectionReturnKey: returnKey,
+      });
+    });
+  }, [runNavigationAction, navigation, returnKey]);
+
+  const handlePreviewExternalExercise = useCallback((item: ExternalExerciseItem) => {
+    runNavigationAction(() => {
+      navigation.navigate('ExerciseDetail', {
+        item: exerciseFromExternalItem(item),
+        hideWorkoutActions: true,
+        // Only importable sources get the Add action; a nutritionix preview
+        // is read-only because mobile has no import path for it.
+        ...(isImportableExerciseSource(item.source)
+          ? { selectionReturnKey: returnKey }
+          : {}),
+      });
+    });
+  }, [runNavigationAction, navigation, returnKey]);
 
   // --- Shared renderers ---
 
+  // Row tap selects instantly (fast path); the trailing ⓘ opens the detail
+  // screen as a pre-add preview. The two are sibling pressables — nesting
+  // would leave the ⓘ live while its parent is disabled and invite mis-taps.
   const renderExerciseRow = useCallback(({ item }: { item: Exercise }) => {
     const image = item.images?.[0] ?? null;
     const fallbackIcon =
       (item.category && CATEGORY_ICON_MAP[item.category]) || 'exercise-weights';
     const status = deriveShareStatus(item.userId, item.sharedWithPublic, profile?.id);
     return (
-      <TouchableOpacity
-        className="flex-row items-center gap-3 px-4 py-3 border-b border-border-subtle"
-        activeOpacity={0.7}
-        onPress={() => handleSelectExercise(item)}
-      >
-        <SafeImage
-          source={image ? getImageSource(image) : null}
-          style={{ width: 44, height: 44, borderRadius: 8 }}
-          fallback={
-            <View
-              className="bg-raised items-center justify-center"
-              style={{ width: 44, height: 44, borderRadius: 8 }}
-            >
-              <Icon name={fallbackIcon} size={22} color={textMuted} />
+      <View className="flex-row items-center border-b border-border-subtle">
+        <TouchableOpacity
+          className="flex-1 flex-row items-center gap-3 pl-4 py-3"
+          activeOpacity={0.7}
+          onPress={() => handleSelectExercise(item)}
+        >
+          <SafeImage
+            source={image ? getImageSource(image) : null}
+            style={{ width: 44, height: 44, borderRadius: 8 }}
+            fallback={
+              <View
+                className="bg-raised items-center justify-center"
+                style={{ width: 44, height: 44, borderRadius: 8 }}
+              >
+                <Icon name={fallbackIcon} size={22} color={textMuted} />
+              </View>
+            }
+          />
+          <View className="flex-1">
+            <View className="flex-row items-center gap-1.5">
+              <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
+                {item.name}
+              </Text>
+              <ShareStatusBadge status={status} />
             </View>
-          }
-        />
-        <View className="flex-1">
-          <View className="flex-row items-center gap-1.5">
-            <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
-              {item.name}
-            </Text>
-            <ShareStatusBadge status={status} />
+            {item.category && (
+              <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
+                {item.category}
+              </Text>
+            )}
           </View>
-          {item.category && (
-            <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-              {item.category}
-            </Text>
-          )}
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="px-4 py-3"
+          activeOpacity={0.7}
+          hitSlop={8}
+          disabled={isNavigationLocked || importingExerciseId !== null}
+          accessibilityLabel="View exercise details"
+          onPress={() => handlePreviewExercise(item)}
+        >
+          <Icon name="info-circle" size={22} color={accentColor} />
+        </TouchableOpacity>
+      </View>
     );
-  }, [handleSelectExercise, textSecondary, textMuted, getImageSource, profile]);
+  }, [
+    handleSelectExercise,
+    handlePreviewExercise,
+    isNavigationLocked,
+    importingExerciseId,
+    accentColor,
+    textSecondary,
+    textMuted,
+    getImageSource,
+    profile,
+  ]);
 
   const filteredRecentExercises = useMemo(() => filterItems(recentExercises, ownershipFilter, profile?.id), [recentExercises, ownershipFilter, profile?.id]);
   const filteredTopExercises = useMemo(() => filterItems(topExercises, ownershipFilter, profile?.id), [topExercises, ownershipFilter, profile?.id]);
@@ -329,28 +397,66 @@ useEffect(() => {
 
   // --- Online tab ---
 
-  const renderExternalExerciseItem = ({ item }: { item: ExternalExerciseItem }) => (
-    <TouchableOpacity
-      className="px-4 py-3 border-b border-border-subtle"
-      activeOpacity={0.7}
-      disabled={importingExerciseId !== null}
-      onPress={() => handleImportExercise(item)}
-    >
-      <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-3">
-          <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-          {item.category && (
-            <Text className="text-text-secondary text-sm mt-0.5">{item.category}</Text>
+  // Same sibling-pressables layout as the local rows: content and the
+  // trailing ⊕ both import-and-select; ⓘ opens the pre-add preview.
+  const renderExternalExerciseItem = ({ item }: { item: ExternalExerciseItem }) => {
+    const image = item.images?.[0] ?? null;
+    const fallbackIcon =
+      (item.category && CATEGORY_ICON_MAP[item.category]) || 'exercise-weights';
+    const isImportInFlight = importingExerciseId !== null;
+    return (
+      <View className="flex-row items-center border-b border-border-subtle">
+        <TouchableOpacity
+          className="flex-1 flex-row items-center gap-3 pl-4 py-3"
+          activeOpacity={0.7}
+          disabled={isImportInFlight}
+          onPress={() => handleImportExercise(item)}
+        >
+          <SafeImage
+            source={image ? getImageSource(image) : null}
+            style={{ width: 44, height: 44, borderRadius: 8 }}
+            fallback={
+              <View
+                className="bg-raised items-center justify-center"
+                style={{ width: 44, height: 44, borderRadius: 8 }}
+              >
+                <Icon name={fallbackIcon} size={22} color={textMuted} />
+              </View>
+            }
+          />
+          <View className="flex-1">
+            <Text className="text-text-primary text-base font-medium">{item.name}</Text>
+            {item.category && (
+              <Text className="text-text-secondary text-sm mt-0.5">{item.category}</Text>
+            )}
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="pl-3 pr-2 py-3"
+          activeOpacity={0.7}
+          hitSlop={8}
+          disabled={isNavigationLocked || isImportInFlight}
+          accessibilityLabel="View exercise details"
+          onPress={() => handlePreviewExternalExercise(item)}
+        >
+          <Icon name="info-circle" size={22} color={accentColor} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="pl-2 pr-4 py-3"
+          activeOpacity={0.7}
+          disabled={isImportInFlight}
+          accessibilityLabel="Add exercise"
+          onPress={() => handleImportExercise(item)}
+        >
+          {importingExerciseId === item.id ? (
+            <ActivityIndicator size="small" color={accentColor} />
+          ) : (
+            <Icon name="add-circle" size={22} color={accentColor} />
           )}
-        </View>
-        {importingExerciseId === item.id ? (
-          <ActivityIndicator size="small" color={accentColor} />
-        ) : (
-          <Icon name="add-circle" size={22} color={accentColor} />
-        )}
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const renderOnlineFooter = () => {
     if (isFetchNextPageError) {
