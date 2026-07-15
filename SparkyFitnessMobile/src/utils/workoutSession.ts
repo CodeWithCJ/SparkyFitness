@@ -12,6 +12,7 @@ import type { IconName } from '../components/Icon';
 import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 import type { WorkoutDraftExercise } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
+import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { WorkoutPreset, WorkoutPresetExercise } from '../types/workoutPresets';
 import type { WorkoutPresetExercisePayload } from '../services/api/workoutPresetsApi';
 import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
@@ -1166,6 +1167,34 @@ export function makeSparseExercise(params: {
     description: undefined,
     userId: null,
     isCustom: undefined,
+  };
+}
+
+/**
+ * Build an `Exercise` from an online search result so the Exercise Detail
+ * screen can preview it before import. External ids are not UUIDs, so the
+ * detail screen skips hydration and history and renders exactly these fields.
+ */
+export function exerciseFromExternalItem(item: ExternalExerciseItem): Exercise {
+  return {
+    ...makeSparseExercise({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      images: item.images,
+    }),
+    equipment: item.equipment ?? [],
+    primary_muscles: item.primary_muscles ?? [],
+    secondary_muscles: item.secondary_muscles ?? [],
+    calories_per_hour: item.calories_per_hour ?? 0,
+    source: item.source,
+    force: item.force ?? null,
+    level: item.level ?? null,
+    mechanic: item.mechanic ?? null,
+    // Servers predating the wger search-projection parity send `instructions`
+    // as a raw HTML string; drop it rather than crash the preview render.
+    instructions: Array.isArray(item.instructions) ? item.instructions : undefined,
+    description: item.description,
   };
 }
 

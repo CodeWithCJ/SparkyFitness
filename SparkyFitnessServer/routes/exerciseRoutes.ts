@@ -425,7 +425,61 @@ router.get('/search', authenticate, async (req, res, next) => {
  *                 items:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/Exercise'
+ *                     type: object
+ *                     description: >-
+ *                       External search projection (see
+ *                       externalExerciseSearchItemSchema in @workspace/shared).
+ *                       wger and free-exercise-db items include the optional
+ *                       detail fields; nutritionix items carry only the base
+ *                       fields.
+ *                     required:
+ *                       - id
+ *                       - name
+ *                       - source
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       source:
+ *                         type: string
+ *                       category:
+ *                         type: string
+ *                         nullable: true
+ *                       calories_per_hour:
+ *                         type: number
+ *                         nullable: true
+ *                       description:
+ *                         type: string
+ *                       force:
+ *                         type: string
+ *                         nullable: true
+ *                       level:
+ *                         type: string
+ *                         nullable: true
+ *                       mechanic:
+ *                         type: string
+ *                         nullable: true
+ *                       equipment:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       primary_muscles:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       secondary_muscles:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       instructions:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       images:
+ *                         type: array
+ *                         items:
+ *                           type: string
  *                 pagination:
  *                   type: object
  *                   properties:

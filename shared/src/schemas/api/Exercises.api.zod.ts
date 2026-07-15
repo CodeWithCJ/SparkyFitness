@@ -55,10 +55,52 @@ export const paginatedExercisesResponseSchema = z
   })
   .strict();
 
+/**
+ * Item projected by `/exercises/search-external` (`searchExternalExercises`
+ * in `services/exerciseService.ts`). wger and free-exercise-db converge on
+ * this shape; the optional detail fields are always present for both, but
+ * stay optional so pre-parity servers still typecheck against the contract.
+ *
+ * Live nutritionix items carry extra passthrough keys (`duration_min`,
+ * `external_id`) that this `.strict()` schema rejects — nutritionix is exempt
+ * from the contract, so don't runtime-parse its items with this schema.
+ */
+export const externalExerciseSearchItemSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    source: z.string(),
+    category: z.string().nullable(),
+    calories_per_hour: z.number().nullable(),
+    description: z.string().optional(),
+    force: z.string().nullable().optional(),
+    level: z.string().nullable().optional(),
+    mechanic: z.string().nullable().optional(),
+    equipment: z.array(z.string()).optional(),
+    primary_muscles: z.array(z.string()).optional(),
+    secondary_muscles: z.array(z.string()).optional(),
+    instructions: z.array(z.string()).optional(),
+    images: z.array(z.string()).optional(),
+  })
+  .strict();
+
+export const paginatedExternalExerciseSearchResultSchema = z
+  .object({
+    items: z.array(externalExerciseSearchItemSchema),
+    pagination: paginationSchema,
+  })
+  .strict();
+
 // --- Types ---
 
 export type ExerciseSearchQuery = z.infer<typeof exerciseSearchQuerySchema>;
 export type ExerciseLibraryItem = z.infer<typeof exerciseLibraryItemSchema>;
 export type PaginatedExercisesResponse = z.infer<
   typeof paginatedExercisesResponseSchema
+>;
+export type ExternalExerciseSearchItem = z.infer<
+  typeof externalExerciseSearchItemSchema
+>;
+export type PaginatedExternalExerciseSearchResult = z.infer<
+  typeof paginatedExternalExerciseSearchResultSchema
 >;

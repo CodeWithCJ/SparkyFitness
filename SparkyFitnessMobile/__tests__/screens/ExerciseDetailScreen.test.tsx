@@ -1,7 +1,12 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { pressAction, expectActionPresent } from './helpers/nativeHeaderTestUtils';
+import Toast from 'react-native-toast-message';
+import {
+  pressAction,
+  expectActionPresent,
+  findHeaderItem,
+} from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ExerciseDetailScreen from '../../src/screens/ExerciseDetailScreen';
 import {
@@ -13,6 +18,7 @@ import {
 import { useExerciseStats } from '../../src/hooks/useExerciseStats';
 import { useExerciseHistory } from '../../src/hooks/useExerciseHistory';
 import { fetchExerciseById } from '../../src/services/api/exerciseApi';
+import { importExercise } from '../../src/services/api/externalExerciseSearchApi';
 import type { Exercise } from '../../src/types/exercise';
 
 jest.mock('../../src/hooks', () => ({
@@ -33,6 +39,10 @@ jest.mock('../../src/hooks/useExerciseHistory', () => ({
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
   fetchExerciseById: jest.fn(),
+}));
+
+jest.mock('../../src/services/api/externalExerciseSearchApi', () => ({
+  importExercise: jest.fn(),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -65,6 +75,8 @@ const mockNavigation = {
   navigate: jest.fn(),
   goBack: jest.fn(),
   setParams: jest.fn(),
+  dispatch: jest.fn(),
+  isFocused: jest.fn(() => true),
 } as any;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -86,6 +98,9 @@ const mockUseDeleteExerciseLibrary =
   useDeleteExerciseLibrary as jest.MockedFunction<typeof useDeleteExerciseLibrary>;
 const mockFetchExerciseById = fetchExerciseById as jest.MockedFunction<
   typeof fetchExerciseById
+>;
+const mockImportExercise = importExercise as jest.MockedFunction<
+  typeof importExercise
 >;
 const mockConfirmAndDelete = jest.fn();
 
@@ -563,6 +578,138 @@ describe('ExerciseDetailScreen', () => {
 
       fireEvent.press(screen.getByText('Summary'));
       expect(screen.getByText('Equipment')).toBeTruthy();
+    });
+  });
+
+  describe('pre-add preview (selectionReturnKey)', () => {
+    const returnKey = 'workout-form-key';
+    const uuidId = '33333333-3333-4333-8333-333333333333';
+
+    const renderPreview = (overrides: Partial<Exercise> = {}) =>
+      render(
+        <Providers>
+          <ExerciseDetailScreen
+            navigation={navigation}
+            route={
+              {
+                key: 'ExerciseDetail-key',
+                name: 'ExerciseDetail' as const,
+                params: {
+                  item: { ...baseExercise, ...overrides },
+                  hideWorkoutActions: true,
+                  selectionReturnKey: returnKey,
+                },
+              } as any
+            }
+          />
+        </Providers>,
+      );
+
+    it('shows no Add action without selectionReturnKey', () => {
+      const screen = renderScreen();
+
+      expect(findHeaderItem(navigation, 'Add')).toBeUndefined();
+      expect(screen.queryByText('Add')).toBeNull();
+    });
+
+    it('dispatches a local exercise to the form and pops both screens', async () => {
+      const screen = renderPreview({ id: uuidId });
+
+      expectActionPresent(screen, navigation, 'Add');
+      pressAction(screen, navigation, 'Add');
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'SET_PARAMS',
+            payload: expect.objectContaining({
+              params: expect.objectContaining({
+                selectedExercise: expect.objectContaining({ id: uuidId }),
+                selectionNonce: expect.any(Number),
+              }),
+            }),
+            source: returnKey,
+          }),
+        ),
+      );
+      expect(navigation.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'POP',
+          payload: expect.objectContaining({ count: 2 }),
+        }),
+      );
+      expect(mockImportExercise).not.toHaveBeenCalled();
+    });
+
+    it('imports an external item first and dispatches the imported exercise', async () => {
+      const imported = { ...baseExercise, id: uuidId, name: 'Imported Bench' };
+      mockImportExercise.mockResolvedValue(imported);
+
+      const screen = renderPreview({ id: '123', source: 'wger' });
+
+      pressAction(screen, navigation, 'Add');
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'SET_PARAMS',
+            payload: expect.objectContaining({
+              params: expect.objectContaining({
+                selectedExercise: expect.objectContaining({
+                  id: uuidId,
+                  name: 'Imported Bench',
+                }),
+              }),
+            }),
+            source: returnKey,
+          }),
+        ),
+      );
+      expect(mockImportExercise).toHaveBeenCalledWith('wger', '123');
+      expect(navigation.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'POP',
+          payload: expect.objectContaining({ count: 2 }),
+        }),
+      );
+    });
+
+    it('shows a toast and stays on the screen when the import fails, then allows a retry', async () => {
+      mockImportExercise.mockRejectedValueOnce(new Error('boom'));
+
+      const screen = renderPreview({ id: '123', source: 'wger' });
+
+      pressAction(screen, navigation, 'Add');
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', text1: 'Failed to add exercise' }),
+        ),
+      );
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+
+      // The in-flight guard must clear on failure, so a retry can succeed.
+      mockImportExercise.mockResolvedValueOnce({ ...baseExercise, id: uuidId });
+      pressAction(screen, navigation, 'Add');
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'SET_PARAMS' }),
+        ),
+      );
+    });
+
+    it('does not dispatch or pop when the screen loses focus during the import', async () => {
+      mockImportExercise.mockResolvedValue({ ...baseExercise, id: uuidId });
+      mockNavigation.isFocused.mockReturnValueOnce(false);
+
+      const screen = renderPreview({ id: '123', source: 'wger' });
+
+      pressAction(screen, navigation, 'Add');
+
+      await waitFor(() => expect(mockImportExercise).toHaveBeenCalled());
+      await act(async () => {});
+      expect(navigation.dispatch).not.toHaveBeenCalled();
     });
   });
 });

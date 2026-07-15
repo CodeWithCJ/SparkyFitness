@@ -25,6 +25,15 @@ export async function searchExternalExercises(
   });
 }
 
+// Must match the cases `importExercise` switches on below. Nutritionix is
+// deliberately absent: mobile has no import path for it, so its search
+// results can be previewed but not added.
+const IMPORTABLE_EXERCISE_SOURCES = ['wger', 'free-exercise-db'] as const;
+
+export function isImportableExerciseSource(source: string): boolean {
+  return (IMPORTABLE_EXERCISE_SOURCES as readonly string[]).includes(source);
+}
+
 export async function importExercise(
   source: string,
   externalId: string,
