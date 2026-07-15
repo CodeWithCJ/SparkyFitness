@@ -697,11 +697,14 @@ describe('ActiveWorkoutSetRow', () => {
         expect(queryByLabelText('RPE')).toBeNull();
       });
 
-      it('pins an explicit cell height on Android so compact cells do not clip', () => {
-        // Android measures the compact cell shorter than the glyph box and the
-        // EditText clips the text to half-height digits (resetting lineHeight
-        // to undefined did not fix it) — the cell needs an explicit height
-        // with the text centered in it, like StepperInput.
+      it('gives Android cells the StepperInput shape so focus cannot clip them', () => {
+        // Android EditText mislays its text on the first focus — half-clipped
+        // digits, persisting after blur — unless the input is bone-stock:
+        // explicit height, zero vertical padding, lineHeight = fontSize + 2,
+        // and NO border or background (the chip chrome lives on a wrapper
+        // View instead, the shape StepperInput has proven on-device; borders,
+        // vertical padding, includeFontPadding: false, textAlignVertical, and
+        // a forced 18px line box each broke it).
         const osSpy = jest.replaceProperty(Platform, 'OS', 'android');
         try {
           const { getByLabelText } = renderRow({
@@ -713,8 +716,12 @@ describe('ActiveWorkoutSetRow', () => {
           expect(style.height).toBe(32);
           expect(style.paddingTop).toBe(0);
           expect(style.paddingBottom).toBe(0);
-          expect(style.includeFontPadding).toBe(false);
-          expect(style.textAlignVertical).toBe('center');
+          expect(style.borderWidth).toBe(0);
+          expect(style.backgroundColor).toBe('transparent');
+          expect(style.fontSize).toBe(14);
+          expect(style.lineHeight).toBe(16);
+          expect(style.includeFontPadding).toBeUndefined();
+          expect(style.textAlignVertical).toBeUndefined();
         } finally {
           osSpy.restore();
         }

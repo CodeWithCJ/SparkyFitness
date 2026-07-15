@@ -988,6 +988,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       : focusedField === 'reps' && metricColumn === 'rpe'
         ? ('rpe' as const)
         : null;
+  const focusedSetCompleted = focusedSetId != null && completedSetIds[focusedSetId] != null;
   const accessoryActions: SetAccessoryAction[] = [
     ...(accessoryNextField != null
       ? [
@@ -1001,9 +1002,24 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           },
         ]
       : []),
+    // A completed set has no Log, so its last field would dead-end with only
+    // Done — Next Set moves on to the following row (or adds one on the last
+    // set), matching the edit forms' bar.
+    ...(accessoryNextField == null && focusedSetCompleted
+      ? [
+          {
+            key: 'next-set',
+            label: 'Next Set',
+            onPress: () => {
+              if (focusedSetKey == null) return;
+              accessoryHandlesRef.current[focusedSetKey]?.advance();
+            },
+          },
+        ]
+      : []),
     // Any uncompleted set is loggable (matching its ring), so a focused row
     // doesn't dead-end on the last field with only Done.
-    ...(focusedSetId != null && completedSetIds[focusedSetId] == null
+    ...(focusedSetId != null && !focusedSetCompleted
       ? [
           {
             key: 'log',
