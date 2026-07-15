@@ -618,7 +618,7 @@ describe('getActiveOpenFoodFactsProviderId', () => {
     expect(id).toBe('p2');
   });
 
-  it('returns null when no credentialed OFF provider exists', async () => {
+  it('falls back to the credential-less active provider when none has credentials', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.getExternalDataProvidersByUserId.mockResolvedValue(
       [
@@ -630,6 +630,35 @@ describe('getActiveOpenFoodFactsProviderId', () => {
           app_key: null,
         },
       ]
+    );
+    const id =
+      await externalProviderService.getActiveOpenFoodFactsProviderId(OWNER);
+    expect(id).toBe('p1');
+  });
+
+  it('falls back to a self-hosted provider with only a base_url and no credentials', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProvidersByUserId.mockResolvedValue(
+      [
+        {
+          id: 'p1',
+          provider_type: 'openfoodfacts',
+          is_active: true,
+          app_id: null,
+          app_key: null,
+          base_url: 'http://sparkyfitness-foodfacts:8080',
+        },
+      ]
+    );
+    const id =
+      await externalProviderService.getActiveOpenFoodFactsProviderId(OWNER);
+    expect(id).toBe('p1');
+  });
+
+  it('returns null when no active OFF provider exists at all', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProvidersByUserId.mockResolvedValue(
+      []
     );
     const id =
       await externalProviderService.getActiveOpenFoodFactsProviderId(OWNER);

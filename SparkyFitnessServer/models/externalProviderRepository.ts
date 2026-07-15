@@ -272,6 +272,7 @@ async function updateExternalDataProvider(
     let appKeyTag = updateData.app_key_tag || null;
     let clearAppId = false;
     let clearAppKey = false;
+    const clearBaseUrl = updateData.base_url === null;
 
     const encryptedGarthDump = updateData.encrypted_garth_dump || null;
     const garthDumpIv = updateData.garth_dump_iv || null;
@@ -298,7 +299,7 @@ async function updateExternalDataProvider(
         provider_name = COALESCE($1, provider_name),
         provider_type = COALESCE($2, provider_type),
         is_active = COALESCE($3, is_active),
-        base_url = COALESCE($4, base_url),
+        base_url = CASE WHEN $23 THEN NULL ELSE COALESCE($4, base_url) END,
         is_public = COALESCE($5, is_public),
         encrypted_app_id = CASE WHEN $19 THEN NULL ELSE COALESCE($6, encrypted_app_id) END,
         app_id_iv = CASE WHEN $19 THEN NULL ELSE COALESCE($7, app_id_iv) END,
@@ -339,6 +340,7 @@ async function updateExternalDataProvider(
         clearAppKey,
         updateData.sort_order,
         userId,
+        clearBaseUrl,
       ]
     );
     return result.rows[0];
@@ -808,6 +810,7 @@ async function updateGlobalExternalDataProvider(id: any, updateData: any) {
       appKeyTag = null;
     let clearAppId = false,
       clearAppKey = false;
+    const clearBaseUrl = updateData.base_url === null;
     if (updateData.app_id === null) {
       clearAppId = true;
     } else if (updateData.app_id !== undefined) {
@@ -829,7 +832,7 @@ async function updateGlobalExternalDataProvider(id: any, updateData: any) {
         provider_name = COALESCE($1, provider_name),
         provider_type = COALESCE($2, provider_type),
         is_active = COALESCE($3, is_active),
-        base_url = COALESCE($4, base_url),
+        base_url = CASE WHEN $15 THEN NULL ELSE COALESCE($4, base_url) END,
         encrypted_app_id = CASE WHEN $5 THEN NULL ELSE COALESCE($6, encrypted_app_id) END,
         app_id_iv = CASE WHEN $5 THEN NULL ELSE COALESCE($7, app_id_iv) END,
         app_id_tag = CASE WHEN $5 THEN NULL ELSE COALESCE($8, app_id_tag) END,
@@ -855,6 +858,7 @@ async function updateGlobalExternalDataProvider(id: any, updateData: any) {
         appKeyTag,
         updateData.sync_frequency,
         id,
+        clearBaseUrl,
       ]
     );
     return result.rows[0];

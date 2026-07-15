@@ -900,7 +900,11 @@
     "foodExerciseDataProviders": {
       "title": "Food & Exercise Data Providers",
       "description": "Configure external food and exercise data sources and synchronize data with Garmin Connect",
-      "invalidKeyLengthWarning": "If you encounter an \"Invalid key length\" error, ensure your encryption key in the server's env variables are 64 hex."
+      "invalidKeyLengthWarning": "If you encounter an \"Invalid key length\" error, ensure your encryption key in the server's env variables are 64 hex.",
+      "openFoodFacts": {
+        "baseUrlLabel": "Base URL (Optional)",
+        "baseUrlHelp": "Leave blank to use the public Open Food Facts server, or point this at your own self-hosted instance."
+      }
     },
     "aiService": {
       "title": "AI Service",
