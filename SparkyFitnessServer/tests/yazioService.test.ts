@@ -682,24 +682,15 @@ describe('yazioService', () => {
   });
 
   describe('localization', () => {
-    const product = {
-      product_id: 'localized-product',
-      name: 'Localized Product',
-      serving_quantity: 100,
-      base_unit: 'g',
-      nutrients: { 'energy.energy': 1 },
-    };
-
     beforeEach(() => {
       vi.mocked(global.fetch)
         .mockResolvedValueOnce(
           makeFetchResponse({ access_token: 'local-token', expires_in: 3600 })
         )
-        .mockResolvedValue(makeFetchResponse([product]));
+        .mockResolvedValue(makeFetchResponse([]));
     });
 
-    it('resolves languages or falls back to default/English', async () => {
-      // 1. No language -> defaults to multi-country list
+    it('defaults to multi-country list when no language is specified', async () => {
       await searchYazioFoods('test', { ...yazioClientCredentials });
       expect(global.fetch).toHaveBeenLastCalledWith(
         expect.stringContaining(
@@ -707,8 +698,9 @@ describe('yazioService', () => {
         ),
         expect.any(Object)
       );
+    });
 
-      // 2. Supported language -> de
+    it('resolves supported languages to specific countries and locales', async () => {
       await searchYazioFoods('test', {
         ...yazioClientCredentials,
         language: 'de',
@@ -717,8 +709,9 @@ describe('yazioService', () => {
         expect.stringContaining('countries=DE%2CAT%2CCH&locales=de_DE'),
         expect.any(Object)
       );
+    });
 
-      // 3. Unsupported language -> falls back to multi-country default list
+    it('falls back to default country list when language is unsupported', async () => {
       await searchYazioFoods('test', {
         ...yazioClientCredentials,
         language: 'es',
