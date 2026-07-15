@@ -305,9 +305,9 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('Rest 45s')).toBeTruthy();
-    expect(screen.queryByText('Rest 1:30')).toBeNull();
-    expect(screen.queryByText('Rest 2:00')).toBeNull();
+    expect(screen.getByLabelText('Rest 45s')).toBeTruthy();
+    expect(screen.queryByLabelText('Rest 1:30')).toBeNull();
+    expect(screen.queryByLabelText('Rest 2:00')).toBeNull();
   });
 
   it('renders a superset rail on each grouped exercise', () => {

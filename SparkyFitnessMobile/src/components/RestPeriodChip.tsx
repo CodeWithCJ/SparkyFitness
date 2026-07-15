@@ -26,8 +26,8 @@ interface RestPeriodChipProps {
 }
 
 function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProps) {
-  const [textSecondary, accentPrimary] = useCSSVariable([
-    '--color-text-secondary',
+  const [textMuted, accentPrimary] = useCSSVariable([
+    '--color-text-muted',
     '--color-accent-primary',
   ]) as [string, string];
   const defaultRestSec = useAppPreferencesStore((s) => s.defaultRestSec);
@@ -35,9 +35,9 @@ function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProp
 
   if (readOnly) {
     return (
-      <View className="flex-row items-center">
-        <Icon name="timer" size={14} color={textSecondary} />
-        <Text className="text-sm text-text-secondary ml-1">Rest {label}</Text>
+      <View className="flex-row items-center" accessibilityLabel={`Rest ${label}`}>
+        <Icon name="timer" size={14} color={textMuted} />
+        <Text className="text-sm text-text-secondary ml-1">{label}</Text>
       </View>
     );
   }
