@@ -103,7 +103,11 @@ function makeSession(): PresetSessionResponse {
 function setup({ connected = true, focused = true } = {}) {
   const queryClient = createTestQueryClient();
   if (connected) queryClient.setQueryData(serverConnectionQueryKey, true);
-  const navigation = { replace: jest.fn(), isFocused: jest.fn(() => focused) };
+  const navigation = {
+    replace: jest.fn(),
+    navigate: jest.fn(),
+    isFocused: jest.fn(() => focused),
+  };
   const { result } = renderHook(() => useStartLiveWorkout(navigation), {
     wrapper: createQueryWrapper(queryClient),
   });
@@ -224,14 +228,40 @@ describe('useStartLiveWorkout', () => {
     });
 
     expect(alertSpy).toHaveBeenCalledWith(
-      'Replace current workout?',
+      'Workout in progress',
       expect.stringContaining('workout in progress'),
       expect.arrayContaining([
+        expect.objectContaining({ text: 'Go to Workout' }),
         expect.objectContaining({ text: 'Clear & Start' }),
       ]),
     );
     // Without confirming the prompt, nothing is created.
     expect(mockCreateWorkout).not.toHaveBeenCalled();
+  });
+
+  it('navigates to the active workout without creating or clearing when "Go to Workout" is chosen', async () => {
+    const { result, navigation } = setup();
+    act(() => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+    });
+
+    alertSpy.mockImplementation((_title, _message, buttons) => {
+      const goTo = (buttons as { text: string; onPress?: () => void }[] | undefined)?.find(
+        (b) => b.text === 'Go to Workout',
+      );
+      goTo?.onPress?.();
+      return undefined as never;
+    });
+
+    await act(async () => {
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
+    });
+
+    expect(navigation.navigate).toHaveBeenCalledWith('ActiveWorkout');
+    expect(mockCreateWorkout).not.toHaveBeenCalled();
+    expect(mockFlushBeforeClear).not.toHaveBeenCalled();
+    // The in-progress session survives untouched.
+    expect(useActiveWorkoutStore.getState().sessionId).toBe('session-1');
   });
 
   it('clears the in-progress workout and starts the new one when replace is confirmed', async () => {

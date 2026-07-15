@@ -20,10 +20,8 @@ import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useCycleMode } from './src/hooks';
-import {
-  initWorkoutNotificationActions,
-  useActiveWorkoutStore,
-} from './src/stores/activeWorkoutStore';
+import { initWorkoutNotificationActions } from './src/stores/activeWorkoutStore';
+import { promptForActiveWorkoutConflict } from './src/hooks/useStartLiveWorkout';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import SyncScreen from './src/screens/SyncScreen';
@@ -475,15 +473,16 @@ function AppContent() {
 
   // Live start: no draft guard (form drafts belong to the Log Workout path) and
   // no diary date (a live workout is logged to today). Tapping while a workout
-  // is already running resumes it instead of opening the start surface.
+  // is already running prompts to go back to it or clear it and start over.
   const handleStartWorkout = useCallback(() => {
     if (!checkServerConnected('Configure your server connection in Settings to start a workout.')) {
       return;
     }
-    if (useActiveWorkoutStore.getState().sessionId !== null) {
-      navigateFromSheet('ActiveWorkout');
-      return;
-    }
+    const prompted = promptForActiveWorkoutConflict(queryClient, {
+      onGoToWorkout: () => navigateFromSheet('ActiveWorkout'),
+      onClearAndStart: () => navigateFromSheet('PresetSearch'),
+    });
+    if (prompted) return;
     navigateFromSheet('PresetSearch');
   }, [checkServerConnected, navigateFromSheet]);
 
