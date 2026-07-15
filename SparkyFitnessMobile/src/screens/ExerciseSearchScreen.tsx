@@ -213,9 +213,11 @@ useEffect(() => {
 
   // --- Shared renderers ---
 
-  // Row tap selects instantly (fast path); the trailing ⓘ opens the detail
-  // screen as a pre-add preview. The two are sibling pressables — nesting
-  // would leave the ⓘ live while its parent is disabled and invite mis-taps.
+  // Row tap selects instantly (fast path); the thumbnail and trailing ⓘ open
+  // the detail screen as a pre-add preview. All are sibling pressables —
+  // nesting would leave the inner ones live while their parent is disabled
+  // and invite mis-taps. The thumbnail is hidden from the accessibility tree
+  // because it duplicates the labeled ⓘ action.
   const renderExerciseRow = useCallback(({ item }: { item: Exercise }) => {
     const image = item.images?.[0] ?? null;
     const fallbackIcon =
@@ -224,9 +226,12 @@ useEffect(() => {
     return (
       <View className="flex-row items-center border-b border-border-subtle">
         <TouchableOpacity
-          className="flex-1 flex-row items-center gap-3 pl-4 py-3"
+          className="pl-4 py-3"
           activeOpacity={0.7}
-          onPress={() => handleSelectExercise(item)}
+          accessible={false}
+          testID="exercise-thumbnail"
+          disabled={isNavigationLocked || importingExerciseId !== null}
+          onPress={() => handlePreviewExercise(item)}
         >
           <SafeImage
             source={image ? getImageSource(image) : null}
@@ -240,6 +245,12 @@ useEffect(() => {
               </View>
             }
           />
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="flex-1 flex-row items-center pl-3 py-3"
+          activeOpacity={0.7}
+          onPress={() => handleSelectExercise(item)}
+        >
           <View className="flex-1">
             <View className="flex-row items-center gap-1.5">
               <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
@@ -397,8 +408,9 @@ useEffect(() => {
 
   // --- Online tab ---
 
-  // Same sibling-pressables layout as the local rows: content and the
-  // trailing ⊕ both import-and-select; ⓘ opens the pre-add preview.
+  // Same sibling-pressables layout as the local rows: content imports and
+  // selects; the thumbnail and ⓘ open the pre-add preview (the ⓘ slot shows
+  // a spinner while importing).
   const renderExternalExerciseItem = ({ item }: { item: ExternalExerciseItem }) => {
     const image = item.images?.[0] ?? null;
     const fallbackIcon =
@@ -407,10 +419,12 @@ useEffect(() => {
     return (
       <View className="flex-row items-center border-b border-border-subtle">
         <TouchableOpacity
-          className="flex-1 flex-row items-center gap-3 pl-4 py-3"
+          className="pl-4 py-3"
           activeOpacity={0.7}
-          disabled={isImportInFlight}
-          onPress={() => handleImportExercise(item)}
+          accessible={false}
+          testID="exercise-thumbnail"
+          disabled={isNavigationLocked || isImportInFlight}
+          onPress={() => handlePreviewExternalExercise(item)}
         >
           <SafeImage
             source={image ? getImageSource(image) : null}
@@ -424,6 +438,13 @@ useEffect(() => {
               </View>
             }
           />
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="flex-1 flex-row items-center pl-3 py-3"
+          activeOpacity={0.7}
+          disabled={isImportInFlight}
+          onPress={() => handleImportExercise(item)}
+        >
           <View className="flex-1">
             <Text className="text-text-primary text-base font-medium">{item.name}</Text>
             {item.category && (
@@ -432,26 +453,17 @@ useEffect(() => {
           </View>
         </TouchableOpacity>
         <TouchableOpacity
-          className="pl-3 pr-2 py-3"
+          className="px-4 py-3"
           activeOpacity={0.7}
           hitSlop={8}
           disabled={isNavigationLocked || isImportInFlight}
           accessibilityLabel="View exercise details"
           onPress={() => handlePreviewExternalExercise(item)}
         >
-          <Icon name="info-circle" size={22} color={accentColor} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          className="pl-2 pr-4 py-3"
-          activeOpacity={0.7}
-          disabled={isImportInFlight}
-          accessibilityLabel="Add exercise"
-          onPress={() => handleImportExercise(item)}
-        >
           {importingExerciseId === item.id ? (
             <ActivityIndicator size="small" color={accentColor} />
           ) : (
-            <Icon name="add-circle" size={22} color={accentColor} />
+            <Icon name="info-circle" size={22} color={accentColor} />
           )}
         </TouchableOpacity>
       </View>

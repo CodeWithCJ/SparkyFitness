@@ -254,6 +254,20 @@ describe('ExerciseSearchScreen', () => {
       expect(mockImportExercise).not.toHaveBeenCalled();
     });
 
+    it('opens the pre-add preview from the thumbnail without selecting', () => {
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByTestId('exercise-thumbnail'));
+
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('ExerciseDetail', {
+        item: expect.objectContaining({ id: localExercise.id }),
+        hideWorkoutActions: true,
+        selectionReturnKey: 'workout-form-key',
+      });
+      expect(mockNavigation.dispatch).not.toHaveBeenCalled();
+      expect(mockImportExercise).not.toHaveBeenCalled();
+    });
+
     it('does not open the preview while navigation is locked', () => {
       mockUseNavigationActionGuard.mockReturnValue({
         isNavigationLocked: true,
@@ -318,6 +332,20 @@ describe('ExerciseSearchScreen', () => {
           instructions: ['Stand with the bar on your back.', 'Squat down.'],
           images: ['https://wger.de/media/squat.png'],
         }),
+        hideWorkoutActions: true,
+        selectionReturnKey: 'workout-form-key',
+      });
+      expect(mockImportExercise).not.toHaveBeenCalled();
+    });
+
+    it('opens the preview from the thumbnail without importing', () => {
+      const screen = renderScreen();
+      openOnlineTab(screen);
+
+      fireEvent.press(screen.getAllByTestId('exercise-thumbnail')[0]);
+
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('ExerciseDetail', {
+        item: expect.objectContaining({ id: '123', name: 'Wger Squat', source: 'wger' }),
         hideWorkoutActions: true,
         selectionReturnKey: 'workout-form-key',
       });
