@@ -14,7 +14,6 @@ import {
 import {
   KeyboardAvoidingView,
   KeyboardAwareScrollView,
-  KeyboardEvents,
   KeyboardProvider,
   KeyboardStickyView,
   type KeyboardAwareScrollViewRef,
@@ -33,6 +32,7 @@ import type { SetRowAccessoryHandle } from '../components/ActiveWorkoutSetRow';
 import KeyboardCollapsible from '../components/KeyboardCollapsible';
 import {
   SetInputAccessoryBar,
+  useDeactivateOnKeyboardDismiss,
   type SetAccessoryAction,
 } from '../components/SetRowChrome';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
@@ -676,12 +676,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // The keyboard leaving — accessory Done, a tap outside the grid, the
   // Android back gesture — always ends the cell edit: clearing the focus
   // state flushes the row's drafts (deactivation commit) and hides the bar.
-  useEffect(() => {
-    const subscription = KeyboardEvents.addListener('keyboardDidHide', () => {
-      setFocusedSetKey(null);
-    });
-    return () => subscription.remove();
-  }, []);
+  useDeactivateOnKeyboardDismiss(useCallback(() => setFocusedSetKey(null), []));
 
   const handleAccessoryDone = useCallback(() => {
     setFocusedSetKey(null);

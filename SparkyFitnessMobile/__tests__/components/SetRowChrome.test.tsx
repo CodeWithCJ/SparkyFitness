@@ -1,5 +1,5 @@
 import React from 'react';
-import { Keyboard, View } from 'react-native';
+import { Keyboard, Platform, View } from 'react-native';
 import { KeyboardEvents } from 'react-native-keyboard-controller';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import {
@@ -160,6 +160,46 @@ describe('useSetEditAccessoryBar', () => {
     expect(hideCall).toBeTruthy();
     act(() => hideCall![1]());
     expect(onDeactivateSet).toHaveBeenCalledTimes(1);
+  });
+
+  it('Android: a phantom didHide is cancelled by the didShow that follows it', () => {
+    // Right after the keyboard opens, Android can emit a hide while the
+    // keyboard stays up (RNKC inset-desync recovery); deactivating on it
+    // would tear the bar down and flush drafts under a live keyboard. Only a
+    // hide with no show inside the grace window may deactivate.
+    const osSpy = jest.replaceProperty(Platform, 'OS', 'android');
+    jest.useFakeTimers();
+    try {
+      const onDeactivateSet = jest.fn();
+      const addListener = KeyboardEvents.addListener as jest.Mock;
+      addListener.mockClear();
+      render(
+        <Harness
+          activeSetKey="ex1:set1"
+          activeSetField="weight"
+          onDeactivateSet={onDeactivateSet}
+          handles={{ set1: makeHandle() }}
+        />,
+      );
+      const hide = addListener.mock.calls.find(([event]) => event === 'keyboardDidHide')![1];
+      const show = addListener.mock.calls.find(([event]) => event === 'keyboardDidShow')![1];
+      act(() => {
+        hide();
+        show();
+        jest.advanceTimersByTime(1000);
+      });
+      expect(onDeactivateSet).not.toHaveBeenCalled();
+      // A real dismissal is never followed by a show — the deferred
+      // deactivation lands after the grace window.
+      act(() => {
+        hide();
+        jest.advanceTimersByTime(1000);
+      });
+      expect(onDeactivateSet).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+      osSpy.restore();
+    }
   });
 
   it('a null registration removes the handle so a stale key cannot dispatch', () => {

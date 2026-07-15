@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Keyboard, Text, TouchableOpacity, View } from 'react-native';
+import { Keyboard, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { KeyboardEvents, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useCSSVariable } from 'uniwind';
 
@@ -63,7 +63,13 @@ function AccessoryPillButton({
 }) {
   return (
     <LiquidGlassSurface
-      style={createLiquidGlassPillStyle(chromeBorder, { marginHorizontal: 0, marginBottom: 0 })}
+      style={createLiquidGlassPillStyle(chromeBorder, {
+        marginHorizontal: 0,
+        marginBottom: 0,
+        // The pill default's elevation 8 renders as a heavy shadow blob under
+        // these small keyboard buttons on Android; 2 is enough lift.
+        ...(Platform.OS === 'android' ? { elevation: 2 } : null),
+      })}
       isInteractive
     >
       <TouchableOpacity
@@ -131,6 +137,51 @@ export function SetInputAccessoryBar({
 }
 
 /**
+ * Deactivation grace on Android: right after the keyboard opens, a phantom
+ * keyboardDidHide can arrive while the keyboard stays up —
+ * react-native-keyboard-controller's inset-desync recovery
+ * (onApplyWindowInsets) reads a transient zero height as the resized window
+ * settles and force-emits a hide. A real dismissal is never followed by a
+ * show, so waiting this long for a cancelling keyboardDidShow filters the
+ * phantom; the settle burst is a frame or two, this is ~9 frames of margin.
+ */
+const ANDROID_PHANTOM_HIDE_GRACE_MS = 150;
+
+/**
+ * Runs `onDeactivate` when the keyboard leaves — accessory Done, a tap
+ * outside the grid, the Android back gesture — so the focused-cell edit
+ * always ends with the keyboard. On Android the call is deferred by
+ * {@link ANDROID_PHANTOM_HIDE_GRACE_MS} and cancelled by a keyboardDidShow
+ * inside that window, so a phantom hide can't tear the accessory bar down
+ * (and flush the row's drafts) under a live keyboard.
+ */
+export function useDeactivateOnKeyboardDismiss(onDeactivate: () => void): void {
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      const subscription = KeyboardEvents.addListener('keyboardDidHide', onDeactivate);
+      return () => subscription.remove();
+    }
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const hide = KeyboardEvents.addListener('keyboardDidHide', () => {
+      if (timer != null) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        onDeactivate();
+      }, ANDROID_PHANTOM_HIDE_GRACE_MS);
+    });
+    const show = KeyboardEvents.addListener('keyboardDidShow', () => {
+      if (timer != null) clearTimeout(timer);
+      timer = null;
+    });
+    return () => {
+      hide.remove();
+      show.remove();
+      if (timer != null) clearTimeout(timer);
+    };
+  }, [onDeactivate]);
+}
+
+/**
  * Imperative surface a set row registers with its owning screen so the shared
  * keyboard accessory bar (a screen-level KeyboardStickyView, not a per-input
  * iOS InputAccessoryView) can act on the focused row.
@@ -183,10 +234,7 @@ export function useSetEditAccessoryBar({
   // The keyboard leaving — accessory Done, a tap outside the grid, the
   // Android back gesture — always ends the cell edit: clearing the focus
   // state flushes the row's drafts and unmounts the bar.
-  useEffect(() => {
-    const subscription = KeyboardEvents.addListener('keyboardDidHide', onDeactivateSet);
-    return () => subscription.remove();
-  }, [onDeactivateSet]);
+  useDeactivateOnKeyboardDismiss(onDeactivateSet);
 
   const handleDone = useCallback(() => {
     onDeactivateSet();
