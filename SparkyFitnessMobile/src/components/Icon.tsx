@@ -121,7 +121,6 @@ const ICON_MAP = {
   'calorie-settings': { sf: 'flame', ion: 'flame-outline' },
   'food-search-settings': { sf: 'magnifyingglass', ion: 'search-outline' },
   'dashboard-settings': { sf: 'square.grid.2x2', ion: 'grid-outline' },
-  'diary-settings': { sf: 'book', ion: 'book-outline' },
   'app-settings': { sf: 'slider.horizontal.3', ion: 'options-outline' },
   'logs': { sf: 'doc.plaintext', ion: 'document-text-outline' },
   'about': { sf: 'info.circle', ion: 'information-circle-outline' },
