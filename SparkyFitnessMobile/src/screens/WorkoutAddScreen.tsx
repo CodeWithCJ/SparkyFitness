@@ -71,6 +71,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     addExercise,
     removeExercise,
     replaceExercise,
+    clearExerciseCompletions,
     addSet,
     removeSet,
     updateSetField,
@@ -422,6 +423,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     setExerciseRest={setExerciseRest}
                     setExerciseNotes={setExerciseNotes}
                     onReplaceExercise={handleReplaceExercise}
+                    clearExerciseCompletions={clearExerciseCompletions}
                     supersetWith={supersetWith}
                     ungroupExercise={ungroupExercise}
                     onReorderExercises={reorderExercises}
@@ -433,6 +435,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       })
                     }
                     isEligibleForPrefill={isEligibleForPrefill}
+                    showCompletion
                     removeExerciseOnLastSetDelete
                   />
                 </View>

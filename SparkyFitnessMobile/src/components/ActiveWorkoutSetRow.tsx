@@ -193,10 +193,11 @@ function LogCircle({ color }: { color: string }) {
 /**
  * Plain number cell used for the weight/reps/RPE inputs on a set row (both
  * `live` and `edit`). Replaces the `−/number/+` stepper: tap to type, with an
- * accent focus ring. Delegates to {@link FormInput} so it inherits the iOS
- * fontSize/lineHeight alignment fix and the themed subtle→accent focus border;
- * only the compact grid padding is overridden. The parent owns the value +
- * commit semantics.
+ * accent focus ring. Delegates to {@link FormInput}: on iOS its base styling
+ * carries both the fontSize/lineHeight alignment fix and the themed
+ * subtle→accent focus chrome; on Android the chrome moves to a wrapper View
+ * and the input itself stays bone-stock (see the comment inside). The parent
+ * owns the value + commit semantics.
  */
 interface SetCellInputProps {
   value: string;
@@ -235,7 +236,21 @@ function SetCellInput({
   textColor,
 }: SetCellInputProps) {
   const [focused, setFocused] = useState(false);
-  return (
+  const [raisedBg, borderSubtle, accentPrimary] = useCSSVariable([
+    '--color-raised',
+    '--color-border-subtle',
+    '--color-accent-primary',
+  ]) as [string, string, string];
+
+  // Android's EditText mislays its text on the first focus when it is styled
+  // like a chip — borders, vertical padding, or a forced line box shift the
+  // digits half out of view, persisting after blur (facebook/react-native
+  // #28078 family; the offset direction varies by device font). The only
+  // shape proven immune on-device is StepperInput's: a bone-stock EditText
+  // (explicit height, zero vertical padding, lineHeight = fontSize + 2, no
+  // background or border) with the chip chrome on a wrapper View. iOS keeps
+  // the chrome on the input itself.
+  const input = (
     <FormInput
       ref={inputRef}
       value={value}
@@ -254,34 +269,48 @@ function SetCellInput({
       accessibilityLabel={accessibilityLabel}
       className={`text-center ${className ?? ''}`}
       style={{
-        // Tighter than FormInput's default 10/12 so the cell fits the 5-column row.
-        paddingTop: 6,
-        paddingBottom: 6,
+        // Tighter than FormInput's default 12 so the cell fits the 5-column row.
         paddingLeft: 4,
         paddingRight: 4,
-        ...(flat ? { fontSize: 14, lineHeight: 18 } : null),
-        // Android measures these compact cells shorter than the glyph box and
-        // the EditText clips the text to half-height digits — pin the height
-        // the iOS cell adds up to (6+6 padding + 18 line + borders) and center
-        // the text in it, the same approach StepperInput uses.
         ...(Platform.OS === 'android'
           ? {
               height: 32,
               paddingTop: 0,
               paddingBottom: 0,
-              includeFontPadding: false as const,
-              textAlignVertical: 'center' as const,
+              backgroundColor: 'transparent',
+              borderWidth: 0,
+              ...(flat ? { fontSize: 14, lineHeight: 16 } : { lineHeight: 18 }),
             }
-          : null),
-        // Transparent (not zero-width) border so the cell doesn't shift when
-        // the focus ring appears; FormInput's own focus styling supplies the
-        // raised background + accent border while focused.
-        ...(flat && !focused
-          ? { backgroundColor: 'transparent', borderColor: 'transparent' }
-          : null),
+          : {
+              paddingTop: 6,
+              paddingBottom: 6,
+              ...(flat ? { fontSize: 14, lineHeight: 18 } : null),
+              // Transparent (not zero-width) border so the cell doesn't shift
+              // when the focus ring appears; FormInput's own focus styling
+              // supplies the raised background + accent border while focused.
+              ...(flat && !focused
+                ? { backgroundColor: 'transparent', borderColor: 'transparent' }
+                : null),
+            }),
         ...(textColor != null ? { color: textColor } : null),
       }}
     />
+  );
+
+  if (Platform.OS !== 'android') return input;
+
+  const chipVisible = focused || !flat;
+  return (
+    <View
+      className="rounded-lg"
+      style={{
+        borderWidth: 1,
+        borderColor: chipVisible ? (focused ? accentPrimary : borderSubtle) : 'transparent',
+        backgroundColor: chipVisible ? raisedBg : 'transparent',
+      }}
+    >
+      {input}
+    </View>
   );
 }
 

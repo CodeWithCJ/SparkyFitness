@@ -15,6 +15,10 @@ import WorkoutFormExerciseList, {
 } from '../components/WorkoutFormExerciseList';
 import { useSetEditAccessoryBar } from '../components/SetRowChrome';
 import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
+import ActionSheet, {
+  type ActionSheetItem,
+  type ActionSheetRef,
+} from '../components/ActionSheet';
 import { MetricColumnMenu } from '../components/WorkoutMenus';
 import { type AnchorRect } from '../components/AnchoredMenu';
 import {
@@ -95,34 +99,17 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setMetricMenuAnchor(anchor);
   }, []);
 
-  // Active workout state (narrow selectors to avoid re-rendering on unrelated changes)
+  // Active workout state (narrow selector to avoid re-rendering on unrelated
+  // changes). The Diary routes the live session to ActiveWorkout instead of
+  // here, but this gate still hides Start actions if the screen is reached
+  // for the live session some other way.
   const activeSessionId = useActiveWorkoutStore((s) => s.sessionId);
-  const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const isWorkoutActive = activeSessionId === session.id;
 
   const toggleSection = useCallback((key: string) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
-
-  // Auto-expand the exercise containing the active set while the workout is
-  // running for this session, so opening the detail page mid-workout (e.g.
-  // from the Diary) lands with the current exercise already open. Never
-  // auto-collapses; the user can still close it manually, and it re-expands
-  // only when the active set advances into a different exercise.
-  useEffect(() => {
-    if (!isWorkoutActive || activeSetId == null) return;
-    const activeExercise = session.exercises.find(ex =>
-      ex.sets.some(s => String(s.id) === activeSetId),
-    );
-    if (!activeExercise) return;
-    // Syncs the expanded section to the external active-workout store; guarded so
-    // it only auto-expands the active exercise, never collapses a user's choice.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setExpandedSections(prev =>
-      prev[activeExercise.id] ? prev : { ...prev, [activeExercise.id]: true },
-    );
-  }, [isWorkoutActive, activeSetId, session]);
 
   const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
   const entryDate = session.entry_date ?? '';
@@ -327,35 +314,36 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleStartWorkout = () => beginWorkout();
 
+  // Long-pressing a set opens a menu-style bottom sheet (same ActionSheet the
+  // live/edit exercise ⋮ menus use). Gated on isSparky like the Start button:
+  // synced (non-manual) sessions can be neither edited nor run live — a live
+  // workout autosaves via the nested-exercise update, which the server
+  // rejects (409) for them.
+  const setMenuSheetRef = useRef<ActionSheetRef>(null);
+  const [setMenuTargetId, setSetMenuTargetId] = useState<string | null>(null);
   const handleLongPressSet = useCallback(
     (setId: string) => {
-      const buttons: {
-        text: string;
-        style?: 'cancel' | 'destructive';
-        onPress?: () => void;
-      }[] = [];
-
-      if (isSparky) {
-        buttons.push({ text: 'Edit', onPress: startEditing });
-      }
-
-      // Gated on isSparky like the Start button: a live workout autosaves via
-      // the nested-exercise update, which the server rejects (409) for
-      // synced (non-manual/sparky) sessions.
-      if (!isWorkoutActive && isSparky) {
-        buttons.push({
-          text: 'Start workout here',
-          onPress: () => beginWorkout(setId),
-        });
-      }
-
-      if (buttons.length === 0) return;
-
-      buttons.push({ text: 'Cancel', style: 'cancel' });
-      Alert.alert(name, undefined, buttons);
+      if (!isSparky) return;
+      setSetMenuTargetId(setId);
+      setMenuSheetRef.current?.present();
     },
-    [isSparky, isWorkoutActive, name, startEditing, beginWorkout],
+    [isSparky],
   );
+
+  const setMenuItems = useMemo<ActionSheetItem[]>(() => {
+    if (setMenuTargetId == null) return [];
+    const items: ActionSheetItem[] = [
+      { key: 'edit', label: 'Edit', onPress: startEditing },
+    ];
+    if (!isWorkoutActive) {
+      items.push({
+        key: 'start-here',
+        label: 'Start workout here',
+        onPress: () => beginWorkout(setMenuTargetId),
+      });
+    }
+    return items;
+  }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout]);
 
   const openExerciseSearch = () => {
     // Plain Add: drop any pending replace target so a cancelled replace can't
@@ -785,6 +773,13 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       <MetricColumnMenu
         anchor={metricMenuAnchor}
         onClose={() => setMetricMenuAnchor(null)}
+      />
+
+      <ActionSheet
+        ref={setMenuSheetRef}
+        title={name}
+        items={setMenuItems}
+        onDismiss={() => setSetMenuTargetId(null)}
       />
 
       {accessoryBar}

@@ -55,6 +55,13 @@ jest.mock('../../src/components/ActiveWorkoutHeader', () => {
   };
 });
 
+// Accessory handles the card mock registers when a test focuses a set's RPE
+// cell, keyed by set id, so tests can assert bar-action dispatch.
+const mockAccessoryHandles: Record<
+  string,
+  { log: jest.Mock; focusField: jest.Mock; advance: jest.Mock }
+> = {};
+
 // Trigger pressables standing in for each card, driving the screen's wiring.
 jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
   const React = require('react');
@@ -67,6 +74,21 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
           testID={`card-${props.exercise.id}-overflow`}
           onPress={() => props.onPressOverflow?.(props.exercise.id)}
         />
+        {props.exercise.sets.map((set: any) => {
+          const key = String(set.id);
+          return (
+            <Pressable
+              key={key}
+              testID={`focus-rpe-${key}`}
+              onPress={() => {
+                const handle = { log: jest.fn(), focusField: jest.fn(), advance: jest.fn() };
+                mockAccessoryHandles[key] = handle;
+                props.onRegisterAccessoryHandle?.(key, handle);
+                props.onActivateRpe?.(key);
+              }}
+            />
+          );
+        })}
       </View>
     ),
   };
@@ -332,6 +354,37 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     fireEvent.press(getByTestId('card-ex-b-overflow'));
     expect(mockSheet.present).toHaveBeenCalledTimes(2);
     expect(mockSheet.props?.title).toBe('Squat');
+  });
+});
+
+describe('ActiveWorkoutScreen keyboard accessory bar', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+    useActiveWorkoutStore.getState().startWorkout(makeSession());
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("offers Next Set on a completed set's last field instead of Log", () => {
+    const { getByTestId, getByText, queryByText } = renderScreen();
+    // Set 101 is server-completed; RPE is the walk's last field.
+    fireEvent.press(getByTestId('focus-rpe-101'));
+    expect(queryByText('Log')).toBeNull();
+    fireEvent.press(getByText('Next Set'));
+    expect(mockAccessoryHandles['101'].advance).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps Log (and no Next Set) on an uncompleted set's last field", () => {
+    const { getByTestId, getByText, queryByText } = renderScreen();
+    fireEvent.press(getByTestId('focus-rpe-102'));
+    expect(queryByText('Next Set')).toBeNull();
+    fireEvent.press(getByText('Log'));
+    expect(mockAccessoryHandles['102'].log).toHaveBeenCalledTimes(1);
   });
 });
 
