@@ -167,6 +167,7 @@ async function getFavoriteFoods(userId: any) {
         f.shared_with_public,
         f.provider_external_id,
         f.provider_type,
+        f.provider_verified,
         ff.created_at AS favorited_at,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM food_favorites ff
@@ -174,6 +175,7 @@ async function getFavoriteFoods(userId: any) {
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
       WHERE ff.user_id = $1
         AND ff.food_id IS NOT NULL
+        AND f.is_quick_food = FALSE
       ORDER BY ff.created_at DESC`,
       [userId]
     );

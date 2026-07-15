@@ -15,6 +15,11 @@ function getErrorMessage(error: unknown): string | null {
 
 const VALID_TYPES = new Set(['food', 'meal']);
 
+// food_id / meal_id are UUID columns; forwarding a malformed id raises a
+// Postgres 22P02 that would surface as a generic 500. Reject it as a 400 here.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * @swagger
  * /favorites:
@@ -49,6 +54,9 @@ router.post('/:type/:id', authenticate, async (req, res, next) => {
   if (!VALID_TYPES.has(type)) {
     return res.status(400).json({ error: 'Invalid favorite type.' });
   }
+  if (!UUID_RE.test(id)) {
+    return res.status(400).json({ error: 'Invalid favorite id.' });
+  }
   try {
     const result = await favoritesService.addFavorite(req.userId, type, id);
     res.status(200).json(result);
@@ -65,6 +73,9 @@ router.delete('/:type/:id', authenticate, async (req, res, next) => {
   const { type, id } = req.params;
   if (!VALID_TYPES.has(type)) {
     return res.status(400).json({ error: 'Invalid favorite type.' });
+  }
+  if (!UUID_RE.test(id)) {
+    return res.status(400).json({ error: 'Invalid favorite id.' });
   }
   try {
     const result = await favoritesService.removeFavorite(req.userId, type, id);
