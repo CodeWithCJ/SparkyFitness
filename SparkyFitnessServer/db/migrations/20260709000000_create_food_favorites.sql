@@ -17,5 +17,12 @@ CREATE TABLE IF NOT EXISTS public.food_favorites (
 
 CREATE INDEX IF NOT EXISTS idx_food_favorites_user_id ON public.food_favorites(user_id);
 
+-- Index the FK targets so an ON DELETE CASCADE from foods/meals is an index
+-- lookup, not a full scan. The unique constraints lead with user_id, so they
+-- cannot serve a cascade filtered on food_id / meal_id alone. Partial to skip
+-- the NULL side of the one-of CHECK.
+CREATE INDEX IF NOT EXISTS idx_food_favorites_food_id ON public.food_favorites(food_id) WHERE food_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_food_favorites_meal_id ON public.food_favorites(meal_id) WHERE meal_id IS NOT NULL;
+
 -- RLS Policies are enabled and defined in rls_policies.sql
 -- Permissions are granted in grantPermissions.js

@@ -7,6 +7,10 @@ const router = express.Router();
 router.use(express.json());
 
 // Favorites are part of the diary surface (starred foods/meals for quick logging).
+// `authenticate` is applied app-wide (SparkyFitnessServer.ts) before any router
+// mounts, so req.userId is already populated when this permission check runs.
+// The per-route `authenticate` below is the redundant belt-and-suspenders the
+// sibling diary routers (food-entries, exercise-entries, …) also carry.
 router.use(checkPermissionMiddleware('diary'));
 
 function getErrorMessage(error: unknown): string | null {

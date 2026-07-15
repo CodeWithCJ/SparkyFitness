@@ -246,7 +246,11 @@ const EnhancedFoodSearch = ({
           key: landingKey('meal', meal.id),
           meal,
         },
-        favoritedAt: meal.favorited_at,
+        // Pre-parsed to a timestamp so the comparator below is a plain numeric
+        // subtraction rather than allocating a Date on every comparison.
+        favoritedAt: meal.favorited_at
+          ? new Date(meal.favorited_at).getTime()
+          : 0,
       })),
       ...(favoritesData?.favoriteFoods || []).map((food) => ({
         entry: {
@@ -254,7 +258,9 @@ const EnhancedFoodSearch = ({
           key: landingKey('food', food.id),
           food,
         },
-        favoritedAt: food.favorited_at,
+        favoritedAt: food.favorited_at
+          ? new Date(food.favorited_at).getTime()
+          : 0,
       })),
     ];
     // Dedupe by key so an item can never render twice, even if a stale refetch
@@ -266,11 +272,7 @@ const EnhancedFoodSearch = ({
         seen.add(entry.key);
         return true;
       })
-      .sort((a, b) => {
-        const at = a.favoritedAt ? new Date(a.favoritedAt).getTime() : 0;
-        const bt = b.favoritedAt ? new Date(b.favoritedAt).getTime() : 0;
-        return bt - at;
-      })
+      .sort((a, b) => b.favoritedAt - a.favoritedAt)
       .map((t) => t.entry);
   }, [favoritesData, showMeals]);
 

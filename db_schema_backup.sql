@@ -5104,6 +5104,20 @@ CREATE INDEX idx_food_entry_meals_user_id_entry_date ON public.food_entry_meals 
 
 
 --
+-- Name: idx_food_favorites_food_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_food_favorites_food_id ON public.food_favorites USING btree (food_id) WHERE (food_id IS NOT NULL);
+
+
+--
+-- Name: idx_food_favorites_meal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_food_favorites_meal_id ON public.food_favorites USING btree (meal_id) WHERE (meal_id IS NOT NULL);
+
+
+--
 -- Name: idx_food_favorites_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
