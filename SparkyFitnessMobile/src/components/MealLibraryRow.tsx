@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { useCSSVariable } from 'uniwind';
 import type { Meal } from '../types/meals';
 import { mealToFoodInfo } from '../types/foodInfo';
-import FavoriteStar from './FavoriteStar';
+import Icon from './Icon';
 
 interface MealLibraryRowProps {
   meal: Meal;
@@ -29,6 +30,10 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
 }) => {
   const foodInfo = useMemo(() => mealToFoodInfo(meal), [meal]);
   const itemCount = meal.foods.length;
+  // Gold, not accent: this passive marker carries the "favorite" cue by colour,
+  // leaving accent (blue) for tappable things. --color-cat-amber is the closest
+  // token to web's yellow-500 and has a dark-mode value, unlike a raw hex.
+  const [goldColor] = useCSSVariable(['--color-cat-amber']) as [string];
 
   return (
     <Pressable
@@ -68,7 +73,15 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
         </View>
         <View className="items-end">
           <View className="flex-row items-center gap-1">
-            <FavoriteStar show={isFavorite} />
+            {isFavorite && (
+              <Icon
+                name="star"
+                size={13}
+                color={goldColor}
+                style={{ marginTop: 1 }}
+                accessibilityLabel="Favorite"
+              />
+            )}
             <Text className="text-text-primary text-base font-semibold">
               {foodInfo.calories} cal
             </Text>

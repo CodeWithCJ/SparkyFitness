@@ -23,7 +23,6 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import VerifiedBadge from '../components/VerifiedBadge';
 import MealLibraryRow from '../components/MealLibraryRow';
-import FavoriteStar from '../components/FavoriteStar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import AnchoredMenu, { AnchorRect } from '../components/AnchoredMenu';
 import Popover from '../components/Popover';
@@ -130,11 +129,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  const [accentColor, textMuted, textSecondary] = useCSSVariable([
+  const [accentColor, textMuted, textSecondary, favoriteGold] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-text-secondary',
-  ]) as [string, string, string];
+    // Gold row-star marker; kept distinct from accent so it reads as an
+    // indicator, not a tap target. See MealLibraryRow for the rationale.
+    '--color-cat-amber',
+  ]) as [string, string, string, string];
   const { defaultColor: headerActionColor, saveColor: headerSaveColor } = useHeaderActionColors();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
@@ -633,15 +635,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         favoritedAt: food.favorited_at ? new Date(food.favorited_at).getTime() : 0,
       })),
     ];
-    // Dedupe by key so an item can never render twice, even if a stale refetch
-    // window or a repeated API row briefly doubles it up.
-    const seen = new Set<string>();
+    // No dedupe needed: a food and a meal never share a key (kind-prefixed),
+    // and the DB's unique constraints stop the same row arriving twice.
     return tagged
-      .filter(({ entry }) => {
-        if (seen.has(entry.key)) return false;
-        seen.add(entry.key);
-        return true;
-      })
       .sort((a, b) => b.favoritedAt - a.favoritedAt)
       .map((t) => t.entry);
   }, [favoriteFoods, favoriteMeals, isMealBuilderMode]);
@@ -687,15 +683,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     const recentEntries = mergeRecent(
       recentMeals,
       recentFoods,
-      favoriteKeys,
       landingLimit,
+      favoriteKeys,
     );
     // Top: foods + meals by usage.
     const frequentEntries = mergeFrequent(
       topMeals,
       topFoods,
-      new Set([...favoriteKeys, ...recentEntries.map((entry) => entry.key)]),
       landingLimit,
+      new Set([...favoriteKeys, ...recentEntries.map((entry) => entry.key)]),
     );
     return [
       { title: 'Favorites', data: favoriteEntries },
@@ -868,7 +864,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         </View>
         <View className="items-end">
           <View className="flex-row items-center gap-1">
-            <FavoriteStar show={favoriteKeys.has(landingKey('food', item.id))} />
+            {favoriteKeys.has(landingKey('food', item.id)) && (
+              <Icon
+                name="star"
+                size={13}
+                color={favoriteGold}
+                style={{ marginTop: 1 }}
+                accessibilityLabel="Favorite"
+              />
+            )}
             <Text className="text-text-primary text-base font-semibold">
               {item.default_variant.calories} cal
             </Text>

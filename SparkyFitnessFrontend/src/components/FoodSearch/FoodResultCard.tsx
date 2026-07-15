@@ -9,7 +9,6 @@ import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { useTranslation } from 'react-i18next';
-import { useFavoritesQuery } from '@/hooks/Foods/useFavorites';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { formatServingLabel } from '@/utils/foodServing';
@@ -47,6 +46,10 @@ interface FoodResultCardProps {
   nutrientConfig: NutrientGridConfig;
   onCardClick?: () => void;
   onEditClick?: () => void;
+  // Whether this row is starred. Passed down rather than queried per-card: the
+  // parent already holds the favorites Set, so one card mounting N rows is one
+  // lookup, not N copies of useFavoritesQuery.
+  isFavorite?: boolean;
 }
 
 const FoodResultCard = ({
@@ -59,20 +62,13 @@ const FoodResultCard = ({
   nutrientConfig,
   onCardClick,
   onEditClick,
+  isFavorite = false,
 }: FoodResultCardProps) => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
-  const { data: favorites } = useFavoritesQuery();
   const isFood = !isMeal;
   const foodItem = item as Food;
   const mealItem = item as Meal;
-  // Row-level favorite indicator: a filled star marks starred items in every
-  // list (search results, recent, top), not just under the Favorites header.
-  const isFavorite =
-    !!item.id &&
-    (isMeal
-      ? !!favorites?.favoriteMeals?.some((m) => m.id === item.id)
-      : !!favorites?.favoriteFoods?.some((f) => f.id === item.id));
   // Hex opacity suffixes are only valid on a full #rrggbb value; other colour
   // formats (CSS vars, named colours, #rgb) are used as-is without a tint.
   const badgeIsHex =

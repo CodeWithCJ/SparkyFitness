@@ -10,13 +10,12 @@ import { useTranslation } from 'react-i18next';
 
 export type { FavoriteType } from '@/api/Foods/favoritesService';
 
-export const useFavoritesQuery = (enabled: boolean = true) => {
+export const useFavoritesQuery = () => {
   const { t } = useTranslation();
 
   return useQuery({
     queryKey: foodKeys.favorites(),
     queryFn: getFavorites,
-    enabled,
     meta: {
       errorMessage: t(
         'enhancedFoodSearch.failedToLoadFavorites',

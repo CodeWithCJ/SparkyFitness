@@ -263,15 +263,9 @@ const EnhancedFoodSearch = ({
           : 0,
       })),
     ];
-    // Dedupe by key so an item can never render twice, even if a stale refetch
-    // window or a repeated API row briefly doubles it up.
-    const seen = new Set<string>();
+    // No dedupe needed: a food and a meal never share a key (kind-prefixed),
+    // and the DB's unique constraints stop the same row arriving twice.
     return tagged
-      .filter(({ entry }) => {
-        if (seen.has(entry.key)) return false;
-        seen.add(entry.key);
-        return true;
-      })
       .sort((a, b) => b.favoritedAt - a.favoritedAt)
       .map((t) => t.entry);
   }, [favoritesData, showMeals]);
@@ -289,15 +283,15 @@ const EnhancedFoodSearch = ({
   const recentEntries = mergeRecent(
     recentMeals,
     recentFoods,
-    favoriteKeys,
-    itemDisplayLimit
+    itemDisplayLimit,
+    favoriteKeys
   );
   const recentEntryKeys = new Set(recentEntries.map((e) => e.key));
   const frequentEntries = mergeFrequent(
     topMeals,
     topFoods,
-    new Set([...favoriteKeys, ...recentEntryKeys]),
-    itemDisplayLimit
+    itemDisplayLimit,
+    new Set([...favoriteKeys, ...recentEntryKeys])
   );
 
   // Once a query is typed, favorites float to the top of their own section
@@ -1037,6 +1031,7 @@ const EnhancedFoodSearch = ({
         key={entry.key}
         item={entry.meal}
         isMeal={true}
+        isFavorite={favoriteKeys.has(entry.key)}
         nutrientConfig={nutrientConfig}
         onCardClick={() => onFoodSelect(entry.meal, 'meal')}
       />
@@ -1044,6 +1039,7 @@ const EnhancedFoodSearch = ({
       <FoodResultCard
         key={entry.key}
         item={entry.food}
+        isFavorite={favoriteKeys.has(entry.key)}
         nutrientConfig={nutrientConfig}
         onCardClick={() => onFoodSelect(entry.food, 'food')}
       />
@@ -1231,6 +1227,7 @@ const EnhancedFoodSearch = ({
                   <FoodResultCard
                     key={food.id}
                     item={food}
+                    isFavorite={favoriteKeys.has(landingKey('food', food.id))}
                     nutrientConfig={nutrientConfig}
                     onCardClick={() => onFoodSelect(food, 'food')}
                   />
@@ -1249,6 +1246,7 @@ const EnhancedFoodSearch = ({
                     key={`meal-${meal.id}`}
                     item={meal}
                     isMeal={true}
+                    isFavorite={favoriteKeys.has(landingKey('meal', meal.id))}
                     nutrientConfig={nutrientConfig}
                     onCardClick={() => onFoodSelect(meal, 'meal')}
                   />

@@ -11,12 +11,6 @@ jest.mock('@/hooks/useAllergenPreferences', () => ({
   useAllergenPreferences: () => ({ data: [] }),
 }));
 
-// The card reads starred state to decide whether to show the row star. Stub the
-// query so the suite needs no QueryClientProvider; the star has its own tests.
-jest.mock('@/hooks/Foods/useFavorites', () => ({
-  useFavoritesQuery: () => ({ data: undefined }),
-}));
-
 jest.mock('@/contexts/ActiveUserContext', () => ({
   useActiveUser: () => ({
     activeUserId: 'user-1',
@@ -167,6 +161,27 @@ describe('FoodResultCard', () => {
       />
     );
     expect(screen.getByText(/Public/i)).toBeInTheDocument();
+  });
+
+  it('renders the row star only when isFavorite is set', () => {
+    const { rerender } = render(
+      <FoodResultCard
+        item={createFood()}
+        nutrientConfig={nutrientConfig}
+        onCardClick={jest.fn()}
+      />
+    );
+    expect(screen.queryByLabelText('Favorite')).not.toBeInTheDocument();
+
+    rerender(
+      <FoodResultCard
+        item={createFood()}
+        isFavorite
+        nutrientConfig={nutrientConfig}
+        onCardClick={jest.fn()}
+      />
+    );
+    expect(screen.getByLabelText('Favorite')).toBeInTheDocument();
   });
 
   it('renders Family badge for meals owned by other user', () => {

@@ -51,7 +51,9 @@ jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ name }: any) => <View testID={`icon-${name}`} />,
+    default: ({ name, accessibilityLabel }: any) => (
+      <View testID={`icon-${name}`} accessibilityLabel={accessibilityLabel} />
+    ),
   };
 });
 

@@ -1068,10 +1068,6 @@ async function lookupBarcode(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFavoriteFoods(authenticatedUserId: any) {
-  return foodRepository.getFavoriteFoods(authenticatedUserId);
-}
 async function addFoodFavorite(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -1094,7 +1090,7 @@ async function removeFoodFavorite(
   return { food_id: foodId, is_favorite: false };
 }
 export { searchFoods };
-export { getFavoriteFoods, addFoodFavorite, removeFoodFavorite };
+export { addFoodFavorite, removeFoodFavorite };
 export { createFood };
 export { getFoodById };
 export { updateFood };
@@ -1116,7 +1112,6 @@ export { mapFatSecretFood };
 export { mapUsdaBarcodeProduct };
 export default {
   searchFoods,
-  getFavoriteFoods,
   addFoodFavorite,
   removeFoodFavorite,
   createFood,

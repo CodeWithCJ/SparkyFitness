@@ -16,18 +16,6 @@ describe('foodCoreService favorites', () => {
     vi.clearAllMocks();
   });
 
-  describe('getFavoriteFoods', () => {
-    it('returns the favorite foods from the repository', async () => {
-      const favorites = [{ id: TEST_FOOD_ID, name: 'Green Tea' }];
-      repo.getFavoriteFoods.mockResolvedValue(favorites);
-
-      const result = await foodCoreService.getFavoriteFoods(TEST_USER_ID);
-
-      expect(repo.getFavoriteFoods).toHaveBeenCalledWith(TEST_USER_ID);
-      expect(result).toBe(favorites);
-    });
-  });
-
   describe('addFoodFavorite', () => {
     it('verifies access then adds the favorite', async () => {
       // getFoodById (called internally) resolves when the food is accessible.
