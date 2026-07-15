@@ -31,6 +31,7 @@ import type {
   WorkoutPresetUpdatePayload,
 } from '../services/api/workoutPresetsApi';
 
+type CreateParams = Extract<RootStackParamList['WorkoutPresetForm'], { mode: 'create-preset' }>;
 type EditParams = Extract<RootStackParamList['WorkoutPresetForm'], { mode: 'edit-preset' }>;
 
 type WorkoutPresetFormScreenProps = RootStackScreenProps<'WorkoutPresetForm'>;
@@ -91,36 +92,34 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
 
   return (
     <View className="gap-4">
-      <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
-        <View className="gap-1.5">
-          <Text className="text-text-secondary text-sm font-medium">Name *</Text>
-          <FormInput
-            placeholder="e.g. Push Day"
-            value={state.name}
-            onChangeText={setName}
-            autoCapitalize="words"
-            autoCorrect={false}
-            autoFocus
-            returnKeyType="next"
-          />
-        </View>
-
-        <View className="gap-1.5">
-          <Text className="text-text-secondary text-sm font-medium">Description</Text>
-          <FormInput
-            placeholder="Optional notes about this routine"
-            value={state.description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={2}
-            style={{ minHeight: 48, textAlignVertical: 'top' }}
-          />
-        </View>
+      <View className="gap-1.5">
+        <Text className="text-text-secondary text-sm font-medium">Name *</Text>
+        <FormInput
+          placeholder="e.g. Push Day"
+          value={state.name}
+          onChangeText={setName}
+          autoCapitalize="words"
+          autoCorrect={false}
+          autoFocus
+          returnKeyType="next"
+        />
       </View>
 
-      {/* Full-bleed: cancel FormScreenChrome's px-4 so the card separators
-          reach the screen edges. */}
-      <View className="-mx-4">
+      <View className="gap-1.5">
+        <Text className="text-text-secondary text-sm font-medium">Description</Text>
+        <FormInput
+          placeholder="Optional notes about this routine"
+          value={state.description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={2}
+          style={{ minHeight: 48, textAlignVertical: 'top' }}
+        />
+      </View>
+
+      {/* Pull back part of FormScreenChrome's px-4 so the cards sit at the
+          same 12px inset as the active workout screen (px-3). */}
+      <View className="-mx-1">
         <WorkoutFormExerciseList
           ref={listRef}
           exercises={state.exercises}
@@ -160,10 +159,12 @@ function getWeightUnit(value: string | undefined | null): 'kg' | 'lbs' {
 interface CreatePresetModeProps {
   navigation: Navigation;
   route: Route;
+  params: CreateParams;
 }
 
-const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }) => {
-  const { preferences } = usePreferences();
+const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, params }) => {
+  const { sourceSession } = params;
+  const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = getWeightUnit(preferences?.default_weight_unit);
 
   const {
@@ -181,6 +182,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     supersetWith,
     ungroupExercise,
     reorderExercises,
+    populateFromSession,
   } = useWorkoutPresetForm();
 
   const [eligibleIds, setEligibleIds] = useState<Set<string>>(() => new Set());
@@ -230,6 +232,15 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route }
     onDeactivateSet: exerciseSetEditing.deactivateSet,
     rpeEnabled: false,
   });
+
+  // "Save as preset" from a logged workout: seed the form from the session
+  // once preferences resolve (the weight unit drives the kg→display mapping).
+  const hasPopulatedRef = useRef(false);
+  useEffect(() => {
+    if (sourceSession == null || hasPopulatedRef.current || isPreferencesLoading) return;
+    hasPopulatedRef.current = true;
+    populateFromSession(sourceSession, weightUnit);
+  }, [sourceSession, isPreferencesLoading, populateFromSession, weightUnit]);
 
   const { createPresetAsync, isPending } = useCreateWorkoutPreset();
 
@@ -567,7 +578,7 @@ const WorkoutPresetFormScreen: React.FC<WorkoutPresetFormScreenProps> = ({
   if (route.params.mode === 'edit-preset') {
     return <EditPresetMode navigation={navigation} route={route} params={route.params} />;
   }
-  return <CreatePresetMode navigation={navigation} route={route} />;
+  return <CreatePresetMode navigation={navigation} route={route} params={route.params} />;
 };
 
 export default WorkoutPresetFormScreen;

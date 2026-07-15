@@ -44,7 +44,7 @@ export type RootStackParamList = {
   WorkoutPresetsLibrary: undefined;
   WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };
   WorkoutPresetForm:
-    | { mode: 'create-preset'; selectedExercise?: Exercise; selectionNonce?: number }
+    | { mode: 'create-preset'; sourceSession?: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number }
     | { mode: 'edit-preset'; preset: WorkoutPreset; returnKey: string; selectedExercise?: Exercise; selectionNonce?: number };
   MealDetail: { mealId: string; initialMeal?: Meal };
   FoodDetail: {
