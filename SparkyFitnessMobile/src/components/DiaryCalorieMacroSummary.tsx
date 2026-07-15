@@ -183,7 +183,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   };
 
   return (
-    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+    <View className="mb-4">
       <TouchableOpacity
         onPress={handleToggleExpanded}
         activeOpacity={0.7}
