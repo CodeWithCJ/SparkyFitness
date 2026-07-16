@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-07-09_
+_Last updated: 2026-07-16_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -227,6 +227,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect the relevant `integrations/*` code, then the matching service and repository files
 - Health data or date bucketing issue:
   inspect `integrations/healthData/healthDataRoutes.ts`, `services/measurementService.ts`, and `utils/timezoneLoader.ts`
+- Self-service "delete synced data by source" issue:
+  inspect `routes/syncedDataRoutes.ts`, `services/syncedDataService.ts`, and `models/syncedDataRepository.ts` (the `SYNCED_SOURCE_TABLES` whitelist)
 - AI chat or chatbot tool issue:
   inspect `services/chatService.ts`, `ai/tools/`, and the matching domain service and repository
 - Fasting or mood issue:

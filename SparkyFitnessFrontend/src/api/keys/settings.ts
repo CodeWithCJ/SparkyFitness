@@ -3,6 +3,11 @@ export const externalProviderKeys = {
   lists: () => [...externalProviderKeys.all, 'list'] as const,
 };
 
+export const syncedDataKeys = {
+  all: ['syncedData'] as const,
+  sources: () => [...syncedDataKeys.all, 'sources'] as const,
+};
+
 export const familyAccessKeys = {
   all: ['familyAccess'] as const,
   lists: () => [...familyAccessKeys.all, 'list'] as const,
