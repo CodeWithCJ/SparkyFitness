@@ -5,8 +5,10 @@ export const checkInKeys = {
   recentCustom: () => [...checkInKeys.all, 'recentCustom'] as const,
   recentStandard: (startDate: string, endDate: string) =>
     [...checkInKeys.all, 'recentStandard', startDate, endDate] as const,
-  existingCheckIn: (date: string) =>
-    [...checkInKeys.all, 'existingCheckIn', date] as const,
+  latestCheckIn: (date: string) =>
+    [...checkInKeys.all, 'latestCheckIn', date] as const,
+  dayCheckIn: (date: string) =>
+    [...checkInKeys.all, 'dayCheckIn', date] as const,
   existingCustom: (date: string) =>
     [...checkInKeys.all, 'existingCustom', date] as const,
   mostRecent: (type: string) =>

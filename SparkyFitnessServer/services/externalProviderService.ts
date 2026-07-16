@@ -69,6 +69,30 @@ function redactCredentialsForNonOwner(provider: any, authenticatedUserId: any) {
   return rest;
 }
 
+// Strip every decrypted secret from a single provider's detail row before it
+// leaves the server to a non-owner. Unlike `redactCredentialsForNonOwner`
+// (which only sheds `app_id`/`app_key`), the by-id detail row also carries the
+// decrypted Garmin session dump and the provider's base URL / external user id,
+// so the detail endpoint needs a wider net. Owners get the row untouched.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function redactProviderDetailsForNonOwner(
+  provider: any,
+  authenticatedUserId: any
+) {
+  if (!provider || provider.user_id === authenticatedUserId) {
+    return provider;
+  }
+  const {
+    app_id: _appId,
+    app_key: _appKey,
+    garth_dump: _garthDump,
+    external_user_id: _externalUserId,
+    base_url: _baseUrl,
+    ...rest
+  } = provider;
+  return rest;
+}
+
 // Keep misconfigured YAZIO rows visible in Settings while preventing clients
 // from offering them as usable search providers.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -457,10 +481,13 @@ async function deleteExternalDataProvider(
   }
 }
 
-// Returns the id of the first active OFF provider owned by the user that has
-// populated encrypted credentials, or null. The seeded default OFF row has no
-// credentials — this filter ensures we don't add pointless session lookups for
-// users who never configured a username/password.
+// Returns the id of the first active OFF provider owned by (or shared with)
+// the user, preferring one with populated login credentials — those enable
+// authenticated requests, which helps with rate limiting. Falls back to the
+// first active OFF provider without credentials (e.g. the seeded global
+// default row, or a self-hosted row configured with only a custom base_url
+// and no login) so a self-hosted-only setup is still selected: base_url
+// must be resolved for every OFF call now, not just credentialed ones.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getActiveOpenFoodFactsProviderId(userId: any) {
   try {
@@ -469,13 +496,11 @@ async function getActiveOpenFoodFactsProviderId(userId: any) {
         userId,
         userId
       );
-    const match = providers.find(
-      (p) =>
-        p.provider_type === 'openfoodfacts' &&
-        p.is_active &&
-        p.app_id &&
-        p.app_key
-    );
+    const isActiveOff = (p: { provider_type: string; is_active: boolean }) =>
+      p.provider_type === 'openfoodfacts' && p.is_active;
+    const match =
+      providers.find((p) => isActiveOff(p) && p.app_id && p.app_key) ||
+      providers.find((p) => isActiveOff(p));
     return match ? match.id : null;
   } catch (error) {
     log(
@@ -495,6 +520,7 @@ export { getExternalDataProvidersForUser };
 export { createExternalDataProvider };
 export { updateExternalDataProvider };
 export { getExternalDataProviderDetails };
+export { redactProviderDetailsForNonOwner };
 export { deleteExternalDataProvider };
 export { getExternalProviderTypes };
 export default {
@@ -503,6 +529,7 @@ export default {
   createExternalDataProvider,
   updateExternalDataProvider,
   getExternalDataProviderDetails,
+  redactProviderDetailsForNonOwner,
   deleteExternalDataProvider,
   getActiveOpenFoodFactsProviderId,
   getExternalProviderTypes,

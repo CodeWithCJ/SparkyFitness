@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,17 @@ import {
   Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import {
+  KeyboardAwareScrollView,
+  type KeyboardAwareScrollViewRef,
+} from 'react-native-keyboard-controller';
 import { useCSSVariable } from 'uniwind';
-import Clipboard from '@react-native-clipboard/clipboard';
 
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
-import FormInput from '../components/FormInput';
+import FormInput, { UnfocusedInputEcho } from '../components/FormInput';
 import SegmentedControl from '../components/SegmentedControl';
-import MfaForm, { ErrorBanner, PrimaryButton } from '../components/MfaForm';
+import MfaForm, { ErrorBanner, OidcProviderLogo, PrimaryButton } from '../components/MfaForm';
 import {
   login,
   LoginError,
@@ -36,6 +38,7 @@ import {
 import { saveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
+import { pasteFromClipboard } from '../utils/keyboardFocus';
 import {
   CONNECTION_CHECK_TIMEOUT_MS,
   TimeoutError,
@@ -106,6 +109,28 @@ export default function OnboardingScreen({ navigation }: Props) {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [isServerUrlFocused, setIsServerUrlFocused] = useState(false);
   const [isApiKeyFocused, setIsApiKeyFocused] = useState(false);
+  const scrollViewRef = useRef<KeyboardAwareScrollViewRef>(null);
+  const serverUrlInputRef = useRef<TextInput>(null);
+  const apiKeyInputRef = useRef<TextInput>(null);
+
+  // Page changes unmount the focused input without firing onBlur, which would
+  // leave a stale focus flag suppressing the URL echo and keeping the focused
+  // border highlight.
+  useEffect(() => {
+    setIsServerUrlFocused(false);
+    setIsApiKeyFocused(false);
+  }, [page]);
+
+  // On small screens the error banner can push the primary action below the
+  // fold; scroll the bottom of the form back into view once the banner has
+  // laid out.
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [error]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -485,9 +510,15 @@ export default function OnboardingScreen({ navigation }: Props) {
           style={{ borderWidth: 1, borderColor: isServerUrlFocused ? accentPrimary : borderSubtle }}
         >
           <View className="flex-1">
+            {/* While unfocused, the input's own text is transparent and
+                UnfocusedInputEcho renders the value on top; see FormInput.tsx. */}
             <TextInput
+              ref={serverUrlInputRef}
               className="p-2.5 text-base text-text-primary"
-              style={{ lineHeight: 20 }}
+              style={[
+                { lineHeight: 20 },
+                !isServerUrlFocused && !!serverUrl && { color: 'transparent' },
+              ]}
               placeholder="https://your-sparky-app.com"
               placeholderTextColor={textMuted}
               value={serverUrl}
@@ -501,10 +532,15 @@ export default function OnboardingScreen({ navigation }: Props) {
               keyboardType="url"
               autoCorrect={false}
             />
+            <UnfocusedInputEcho
+              focused={isServerUrlFocused}
+              value={serverUrl}
+              style={{ padding: 10 }}
+            />
           </View>
           <Button
             variant="ghost"
-            onPress={async () => setServerUrl(await Clipboard.getString())}
+            onPress={() => pasteFromClipboard(serverUrlInputRef, setServerUrl)}
             accessibilityLabel="Paste URL from clipboard"
             className="p-2 py-2 px-2 rounded-lg"
           >
@@ -516,19 +552,12 @@ export default function OnboardingScreen({ navigation }: Props) {
       <ErrorBanner message={error} />
 
       {/* Actions */}
-      <View className="gap-3 mt-2">
+      <View className="mt-2">
         <PrimaryButton
           label="Next"
           onPress={handleNext}
           loading={checkingUrl}
         />
-        <Button
-          variant="ghost"
-          onPress={finishOnboarding}
-          className="py-2.5"
-        >
-          Later
-        </Button>
       </View>
 
       {/* Learn more */}
@@ -645,17 +674,18 @@ export default function OnboardingScreen({ navigation }: Props) {
               </>
             )}
 
-            {hasOidc && (
-              <>
-                {hasEmail && (
-                  <View className="flex-row items-center my-4">
-                    <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
-                    <Text className="mx-3 text-xs text-text-muted uppercase" style={{ marginHorizontal: 12 }}>Or sign in with</Text>
-                    <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
-                  </View>
-                )}
-                <View className="gap-2">
-                  {authSettings.oidc.providers.map((provider: OidcProvider) => (
+            {hasOidc && hasEmail && (
+              <View className="flex-row items-center mb-4">
+                <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
+                <Text className="mx-3 text-xs text-text-muted uppercase" style={{ marginHorizontal: 12 }}>Or sign in with</Text>
+                <View className="flex-1" style={{ height: 1, backgroundColor: borderSubtle }} />
+              </View>
+            )}
+
+            {authSettings && (
+              <View className="gap-4">
+                {hasOidc &&
+                  authSettings.oidc.providers.map((provider: OidcProvider) => (
                     <Button
                       key={provider.id}
                       variant="outline"
@@ -671,29 +701,13 @@ export default function OnboardingScreen({ navigation }: Props) {
                       }}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        {provider.logo_url && (
-                          <Image
-                            source={{
-                              uri: provider.logo_url.startsWith('http')
-                                ? provider.logo_url
-                                : `${normalizeUrl(serverUrl)}${provider.logo_url}`,
-                            }}
-                            style={{ width: 20, height: 20, marginRight: 8 }}
-                            resizeMode="contain"
-                          />
-                        )}
+                        <OidcProviderLogo logoUrl={provider.logo_url} serverUrl={serverUrl} />
                         <Text className="text-base font-semibold text-text-primary">
                           {provider.display_name || `Sign in with ${provider.id}`}
                         </Text>
                       </View>
                     </Button>
                   ))}
-                </View>
-              </>
-            )}
-
-            {authSettings && (
-              <View style={{ marginTop: 8 }}>
                 <Button
                   variant="outline"
                   onPress={handlePasskeyLogin}
@@ -705,7 +719,6 @@ export default function OnboardingScreen({ navigation }: Props) {
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginTop: 8,
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -740,6 +753,7 @@ export default function OnboardingScreen({ navigation }: Props) {
             >
               <View className="flex-1">
                 <TextInput
+                  ref={apiKeyInputRef}
                   className="p-2.5 text-base text-text-primary"
                   style={{ lineHeight: 20 }}
                   placeholder="Uds3d8i..."
@@ -753,7 +767,7 @@ export default function OnboardingScreen({ navigation }: Props) {
               </View>
               <Button
                 variant="ghost"
-                onPress={async () => setApiKey(await Clipboard.getString())}
+                onPress={() => pasteFromClipboard(apiKeyInputRef, setApiKey)}
                 accessibilityLabel="Paste API key from clipboard"
                 className="p-2 py-2 px-2 rounded-lg"
               >
@@ -763,24 +777,20 @@ export default function OnboardingScreen({ navigation }: Props) {
           </View>
         )}
 
-        <ErrorBanner message={error} />
-
         {/* Actions */}
-        <View className="gap-3 mt-4">
-          {(authTab === 'apiKey' || hasEmail) && (
-            <PrimaryButton
-              label="Connect"
-              onPress={handleConnect}
-              loading={loading}
-            />
-          )}
-          <Button
-            variant="ghost"
-            onPress={finishOnboarding}
-          >
-            Later
-          </Button>
-        </View>
+        {(authTab === 'apiKey' || hasEmail || !!error) && (
+          <View className="mt-4">
+            {/* ErrorBanner's own mb-4 is the banner→button gap. */}
+            <ErrorBanner message={error} />
+            {(authTab === 'apiKey' || hasEmail) && (
+              <PrimaryButton
+                label="Connect"
+                onPress={handleConnect}
+                loading={loading}
+              />
+            )}
+          </View>
+        )}
       </>
     );
   };
@@ -820,7 +830,37 @@ export default function OnboardingScreen({ navigation }: Props) {
       className="flex-1 bg-background"
       style={{ paddingTop: insets.top }}
     >
+      <View className="h-11 flex-row items-center justify-between px-4">
+        {page === 2 ? (
+          <Pressable
+            onPress={() => {
+              if (step === 'mfa') {
+                void handleBackToAuth();
+              } else {
+                setError('');
+                setPage(1);
+              }
+            }}
+            className="flex-row items-center gap-1 py-2 px-2"
+          >
+            <Icon name="chevron-back" size={18} color={accentPrimary} />
+            <Text className="text-base text-accent-primary font-semibold">Back</Text>
+          </Pressable>
+        ) : (
+          <View />
+        )}
+        {step === 'auth' && (
+          <Button
+            variant="header"
+            onPress={finishOnboarding}
+            className="py-2 px-2"
+          >
+            Later
+          </Button>
+        )}
+      </View>
       <KeyboardAwareScrollView
+        ref={scrollViewRef}
         className="flex-1"
         contentContainerStyle={{
           flexGrow: 1,
@@ -835,23 +875,10 @@ export default function OnboardingScreen({ navigation }: Props) {
         <View
           style={{
             flexGrow: 1,
-            justifyContent: isKeyboardVisible ? 'flex-start' : 'center',
+            justifyContent:
+              page === 1 && !isKeyboardVisible ? 'center' : 'flex-start',
           }}
         >
-          {page === 2 && step === 'auth' && (
-            <View className="mb-3">
-              <Pressable
-                onPress={() => {
-                  setError('');
-                  setPage(1);
-                }}
-                className="self-start flex-row items-center gap-1 py-2 px-2"
-              >
-                <Icon name="chevron-back" size={18} color={accentPrimary} />
-                <Text className="text-base text-accent-primary font-semibold">Back</Text>
-              </Pressable>
-            </View>
-          )}
           <View className="w-full max-w-sm self-center">
             {page === 1 ? renderPage1() : renderPage2()}
           </View>

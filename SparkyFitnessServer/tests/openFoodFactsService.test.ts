@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  getOpenFoodFactsSessionCookie,
+  resolveOpenFoodFactsProvider,
   invalidateOpenFoodFactsSession,
+  DEFAULT_OFF_BASE_URL,
 } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import {
   mapOpenFoodFactsProduct,
@@ -10,8 +11,9 @@ import {
 } from '../integrations/openfoodfacts/openFoodFactsService.js';
 
 vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
-  getOpenFoodFactsSessionCookie: vi.fn(),
+  resolveOpenFoodFactsProvider: vi.fn(),
   invalidateOpenFoodFactsSession: vi.fn(),
+  DEFAULT_OFF_BASE_URL: 'https://world.openfoodfacts.org',
 }));
 
 global.fetch = vi.fn();
@@ -20,7 +22,10 @@ describe('openFoodFactsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    getOpenFoodFactsSessionCookie.mockResolvedValue(null);
+    resolveOpenFoodFactsProvider.mockResolvedValue({
+      session: null,
+      baseUrl: DEFAULT_OFF_BASE_URL,
+    });
   });
 
   describe('searchOpenFoodFacts', () => {
@@ -82,7 +87,10 @@ describe('openFoodFactsService', () => {
   describe('authenticated request path', () => {
     it('attaches a session cookie when providerId+userId are supplied', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getOpenFoodFactsSessionCookie.mockResolvedValue('SESS_TOKEN');
+      resolveOpenFoodFactsProvider.mockResolvedValue({
+        session: 'SESS_TOKEN',
+        baseUrl: DEFAULT_OFF_BASE_URL,
+      });
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       fetch.mockResolvedValue({
         ok: true,
@@ -97,7 +105,7 @@ describe('openFoodFactsService', () => {
         'prov-1'
       );
 
-      expect(getOpenFoodFactsSessionCookie).toHaveBeenCalledWith(
+      expect(resolveOpenFoodFactsProvider).toHaveBeenCalledWith(
         'user-A',
         'prov-1'
       );
@@ -117,7 +125,7 @@ describe('openFoodFactsService', () => {
 
       await searchOpenFoodFactsByBarcodeFields('12345678');
 
-      expect(getOpenFoodFactsSessionCookie).not.toHaveBeenCalled();
+      expect(resolveOpenFoodFactsProvider).not.toHaveBeenCalled();
       // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
       const headers = fetch.mock.calls[0][1].headers;
       expect(headers.Cookie).toBeUndefined();
@@ -125,7 +133,10 @@ describe('openFoodFactsService', () => {
 
     it('on 429 with cookie, invalidates and retries unauthenticated once', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getOpenFoodFactsSessionCookie.mockResolvedValue('SESS_TOKEN');
+      resolveOpenFoodFactsProvider.mockResolvedValue({
+        session: 'SESS_TOKEN',
+        baseUrl: DEFAULT_OFF_BASE_URL,
+      });
       fetch
         // @ts-expect-error TS(2339): Property 'mockResolvedValueOnce' does not exist on... Remove this comment to see the full error message
         .mockResolvedValueOnce({
@@ -161,7 +172,10 @@ describe('openFoodFactsService', () => {
 
     it('on 503 with cookie, retries unauthenticated and returns final response', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getOpenFoodFactsSessionCookie.mockResolvedValue('SESS_TOKEN');
+      resolveOpenFoodFactsProvider.mockResolvedValue({
+        session: 'SESS_TOKEN',
+        baseUrl: DEFAULT_OFF_BASE_URL,
+      });
       fetch
         // @ts-expect-error TS(2339): Property 'mockResolvedValueOnce' does not exist on... Remove this comment to see the full error message
         .mockResolvedValueOnce({
@@ -193,6 +207,74 @@ describe('openFoodFactsService', () => {
         searchOpenFoodFactsByBarcodeFields('12345678')
       ).rejects.toThrow('OpenFoodFacts API error');
       expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('self-hosted base_url resolution', () => {
+    it('builds the search URL from a resolved custom base_url', async () => {
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      resolveOpenFoodFactsProvider.mockResolvedValue({
+        session: null,
+        baseUrl: 'http://sparkyfitness-foodfacts:8080',
+      });
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      fetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ products: [], count: 0 }),
+      });
+
+      await searchOpenFoodFacts('pizza', 1, 'en', 'user-A', 'prov-1');
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^http:\/\/sparkyfitness-foodfacts:8080\/cgi\/search\.pl/
+        ),
+        expect.any(Object)
+      );
+    });
+
+    it('builds the barcode URL from a resolved custom base_url', async () => {
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      resolveOpenFoodFactsProvider.mockResolvedValue({
+        session: null,
+        baseUrl: 'http://sparkyfitness-foodfacts:8080',
+      });
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      fetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 1, product: {} }),
+      });
+
+      await searchOpenFoodFactsByBarcodeFields(
+        '12345678',
+        undefined,
+        'en',
+        'user-A',
+        'prov-1'
+      );
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^http:\/\/sparkyfitness-foodfacts:8080\/api\/v2\/product\/12345678\.json/
+        ),
+        expect.any(Object)
+      );
+    });
+
+    it('falls back to the public default URL when no provider/base_url is configured', async () => {
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      fetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ products: [], count: 0 }),
+      });
+
+      await searchOpenFoodFacts('pizza', 1, 'en');
+
+      expect(resolveOpenFoodFactsProvider).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining(DEFAULT_OFF_BASE_URL),
+        expect.any(Object)
+      );
     });
   });
 

@@ -2,6 +2,10 @@ import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
+import {
+  buildSqlSearch,
+  buildSqlExactMatchOrder,
+} from '../utils/dbSearchHelper.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createWorkoutPreset(presetData: any) {
   const client = await getClient(presetData.user_id); // User-specific operation
@@ -398,14 +402,34 @@ async function addExerciseToWorkoutPreset(
 }
 
 async function searchWorkoutPresets(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  searchTerm: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  limit = null
+  searchTerm: string | null | undefined,
+  userId: string | null | undefined,
+  limit: number | null = null
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
+    const {
+      whereClauses: searchClauses,
+      queryParams: searchParams,
+      nextParamIndex,
+    } = buildSqlSearch('wp.name', searchTerm, 1);
+    const whereClauses: string[] = [...searchClauses];
+    const queryParams: any[] = [...searchParams];
+    const paramIndex = nextParamIndex;
+
+    const whereSql =
+      whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    let orderClause = 'wp.name ASC';
+    const selectQueryParams = [...queryParams];
+    let selectParamIndex = paramIndex;
+    if (searchTerm) {
+      const exactMatchParamIndex = selectParamIndex;
+      selectQueryParams.push(`%${searchTerm}%`);
+      selectParamIndex++;
+      orderClause = `${buildSqlExactMatchOrder('wp.name', exactMatchParamIndex)}, wp.name ASC`;
+    }
+
     let query = `
       SELECT
         wp.id, wp.user_id, wp.name, wp.description, wp.is_public,
@@ -437,17 +461,16 @@ async function searchWorkoutPresets(
           ), '[]'::json
         ) AS exercises
       FROM workout_presets wp
-      WHERE wp.name ILIKE $1
+      ${whereSql}
       GROUP BY wp.id
-      ORDER BY wp.name ASC`;
-    // Visibility (owner/public/family-shared) is enforced by RLS; $2 userId is
-    // intentionally unused in the filter so shared presets are not dropped.
-    const queryParams = [`%${searchTerm}%`];
+      ORDER BY ${orderClause}`;
+
+    // Visibility (owner/public/family-shared) is enforced by RLS
     if (limit !== null) {
-      query += ' LIMIT $2';
-      queryParams.push(limit);
+      query += ` LIMIT $${selectParamIndex}`;
+      selectQueryParams.push(limit);
     }
-    const result = await client.query(query, queryParams);
+    const result = await client.query(query, selectQueryParams);
     return result.rows;
   } finally {
     client.release();

@@ -636,7 +636,8 @@ router.get('/barcode/:barcode', authenticate, async (req, res, next) => {
       barcode,
 
       req.userId,
-      req.query.providerId
+      req.query.providerId,
+      req.authenticatedUserId
     );
     res.status(200).json(result);
   } catch (error) {

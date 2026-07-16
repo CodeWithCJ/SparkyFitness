@@ -1,6 +1,10 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import { normalizeBarcode } from '../utils/foodUtils.js';
+import {
+  buildSqlSearch,
+  buildSqlExactMatchOrder,
+} from '../utils/dbSearchHelper.js';
 
 const DEFAULT_VARIANT_JSON_SQL = `
   json_build_object(
@@ -110,16 +114,11 @@ function sanitizeBoolean(value: any) {
   return null;
 }
 async function searchFoods(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  name: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exactMatch: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  broadMatch: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  checkCustom: any,
+  name: string | null | undefined,
+  userId: string | null | undefined,
+  exactMatch: boolean,
+  broadMatch: boolean,
+  checkCustom: boolean,
   limit = 10
 ) {
   const client = await getClient(userId); // User-specific operation
@@ -130,20 +129,37 @@ async function searchFoods(
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
-      WHERE f.is_quick_food = FALSE AND `;
-    const queryParams = [];
+      WHERE f.is_quick_food = FALSE`;
+    const queryParams: any[] = [];
     let paramIndex = 1;
+    let orderByClause = '';
     if (exactMatch) {
-      query += `CONCAT(f.brand, ' ', f.name) ILIKE $${paramIndex++}`;
+      query += ` AND CONCAT(f.brand, ' ', f.name) ILIKE $${paramIndex++}`;
       queryParams.push(name);
     } else if (broadMatch) {
-      query += `CONCAT(f.brand, ' ', f.name) ILIKE $${paramIndex++}`;
-      queryParams.push(`%${name}%`);
+      const {
+        whereClauses,
+        queryParams: searchParams,
+        nextParamIndex,
+      } = buildSqlSearch("CONCAT(f.brand, ' ', f.name)", name, 1);
+      if (whereClauses.length > 0) {
+        query += ` AND ${whereClauses.join(' AND ')}`;
+        queryParams.push(...searchParams);
+        paramIndex = nextParamIndex;
+
+        const exactMatchParamIndex = paramIndex;
+        queryParams.push(`%${name}%`);
+        paramIndex++;
+        orderByClause = ` ORDER BY ${buildSqlExactMatchOrder("CONCAT(f.brand, ' ', f.name)", exactMatchParamIndex)}, f.name ASC`;
+      }
     } else if (checkCustom) {
-      query += `f.name = $${paramIndex++}`;
+      query += ` AND f.name = $${paramIndex++}`;
       queryParams.push(name);
     } else {
       throw new Error('Invalid search parameters.');
+    }
+    if (orderByClause) {
+      query += orderByClause;
     }
     query += ` LIMIT $${paramIndex++}`;
     queryParams.push(limit);
@@ -374,29 +390,24 @@ async function deleteFood(id: any, userId: any) {
   }
 }
 async function getFoodsWithPagination(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  searchTerm: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  limit: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  offset: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sortBy: any
+  searchTerm: string | null | undefined,
+  foodFilter: string | null | undefined,
+  authenticatedUserId: string | null | undefined,
+  limit: number,
+  offset: number,
+  sortBy: string | null | undefined
 ) {
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
     const whereClauses = ['f.is_quick_food = FALSE'];
-    const queryParams = [];
-    let paramIndex = 1;
-    if (searchTerm) {
-      whereClauses.push(`CONCAT(brand, ' ', name) ILIKE $${paramIndex}`);
-      queryParams.push(`%${searchTerm}%`);
-      paramIndex++;
-    }
+    const {
+      whereClauses: searchClauses,
+      queryParams: searchParams,
+      nextParamIndex,
+    } = buildSqlSearch("CONCAT(f.brand, ' ', f.name)", searchTerm, 1);
+    whereClauses.push(...searchClauses);
+    const queryParams: any[] = [...searchParams];
+    const paramIndex = nextParamIndex;
     // RLS will handle ownership filtering
     let query = `
       SELECT
@@ -428,10 +439,18 @@ async function getFoodsWithPagination(
         );
       }
     }
+    const selectQueryParams = [...queryParams];
+    let selectParamIndex = paramIndex;
+    if (searchTerm) {
+      const exactMatchParamIndex = selectParamIndex;
+      selectQueryParams.push(`%${searchTerm}%`);
+      selectParamIndex++;
+      orderByClause = `${buildSqlExactMatchOrder("CONCAT(f.brand, ' ', f.name)", exactMatchParamIndex)}, ${orderByClause}`;
+    }
     query += ` ORDER BY ${orderByClause}`;
-    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    queryParams.push(limit, offset);
-    const foodsResult = await client.query(query, queryParams);
+    query += ` LIMIT $${selectParamIndex} OFFSET $${selectParamIndex + 1}`;
+    selectQueryParams.push(limit, offset);
+    const foodsResult = await client.query(query, selectQueryParams);
     return foodsResult.rows;
   } finally {
     client.release();
@@ -439,23 +458,17 @@ async function getFoodsWithPagination(
 }
 
 async function countFoods(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  searchTerm: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any
+  searchTerm: string | null | undefined,
+  foodFilter: string | null | undefined,
+  authenticatedUserId: string | null | undefined
 ) {
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
     const whereClauses = ['is_quick_food = FALSE'];
-    const countQueryParams = [];
-    let paramIndex = 1;
-    if (searchTerm) {
-      whereClauses.push(`CONCAT(brand, ' ', name) ILIKE $${paramIndex}`);
-      countQueryParams.push(`%${searchTerm}%`);
-      paramIndex++;
-    }
+    const { whereClauses: searchClauses, queryParams: searchParams } =
+      buildSqlSearch("CONCAT(brand, ' ', name)", searchTerm, 1);
+    whereClauses.push(...searchClauses);
+    const countQueryParams: any[] = [...searchParams];
     // RLS will handle ownership filtering
     const countQuery = `
       SELECT COUNT(*)
@@ -517,15 +530,9 @@ async function getFoodDeletionImpact(
       })
     );
 
-    const otherUserFoodEntries = otherUserEntriesResult.rows.map(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (row: any) => ({
-        id: row.id,
-        entry_date: row.entry_date,
-        meal_type_id: row.meal_type_id,
-        isCurrentUser: false,
-      })
-    );
+    // Other users' diary rows are counted for the impact warning but never
+    // returned — their entry ids/dates belong to those users, not the caller.
+    const otherUserFoodEntriesCount = otherUserEntriesResult.rows.length;
 
     // Structural reference counts (meals, plans, templates)
     const [
@@ -573,14 +580,14 @@ async function getFoodDeletionImpact(
       parseInt(otherUserTemplatesResult.rows[0].count, 10);
 
     const foodEntriesCount =
-      currentUserFoodEntries.length + otherUserFoodEntries.length;
+      currentUserFoodEntries.length + otherUserFoodEntriesCount;
     const currentUserReferences =
       currentUserFoodEntries.length +
       parseInt(currentUserMealFoodsResult.rows[0].count, 10) +
       parseInt(currentUserMealPlansResult.rows[0].count, 10) +
       parseInt(currentUserTemplatesResult.rows[0].count, 10);
     const otherUserReferences =
-      otherUserFoodEntries.length +
+      otherUserFoodEntriesCount +
       parseInt(otherUserMealFoodsResult.rows[0].count, 10) +
       parseInt(otherUserMealPlansResult.rows[0].count, 10) +
       parseInt(otherUserTemplatesResult.rows[0].count, 10);
@@ -603,7 +610,7 @@ async function getFoodDeletionImpact(
     }
 
     return {
-      foodEntries: [...currentUserFoodEntries, ...otherUserFoodEntries],
+      foodEntries: currentUserFoodEntries,
       foodEntriesCount,
       mealFoodsCount,
       mealPlansCount,

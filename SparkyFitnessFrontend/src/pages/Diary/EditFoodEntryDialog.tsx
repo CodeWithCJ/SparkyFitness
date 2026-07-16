@@ -6,7 +6,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,6 +43,7 @@ import {
   type AiConfidence,
   type ConfidenceTone,
   toHourMinute,
+  userHourMinute,
 } from '@workspace/shared';
 import { formatServingLabel } from '@/utils/foodServing';
 
@@ -70,6 +71,7 @@ const EditFoodEntryDialog = ({
     energyUnit,
     convertEnergy,
     nutrientDisplayPreferences,
+    timezone,
   } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
@@ -406,8 +408,55 @@ const EditFoodEntryDialog = ({
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="entryTime">Time (optional)</Label>
+                <div className="col-span-4 space-y-1 max-w-[280px]">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="entryTime">Time (optional)</Label>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setEntryTime('')}
+                        disabled={!entryTime}
+                        className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                        title="Clear time"
+                      >
+                        <X className="h-4 w-4" />
+                        Clear
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const { hour, minute } = userHourMinute(timezone);
+                          setEntryTime(
+                            `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+                          );
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                        title="Set to current local time"
+                      >
+                        <Clock className="h-4 w-4" />
+                        Now
+                      </button>
+                      {(() => {
+                        const selectedMeal = availableMealTypes.find(
+                          (m) => m.id === mealId
+                        );
+                        const defaultTime = selectedMeal?.default_time;
+                        return defaultTime ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEntryTime(toHourMinute(defaultTime) || '')
+                            }
+                            className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                            title={`Set to meal default (${toHourMinute(defaultTime)})`}
+                          >
+                            <CalendarDays className="h-4 w-4" />
+                            Default
+                          </button>
+                        ) : null;
+                      })()}
+                    </div>
+                  </div>
                   <Input
                     id="entryTime"
                     type="time"

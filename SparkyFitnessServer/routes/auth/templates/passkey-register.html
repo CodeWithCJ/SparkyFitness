@@ -116,6 +116,25 @@
       // would always fail with "link expired".
       let sessionToken = null;
 
+      function friendlyRegistrationError(err) {
+        switch (err.code) {
+          case 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED':
+            return 'This device is already registered as a passkey for this account. To register it again, delete the existing passkey in the app first.';
+          case 'ERROR_CEREMONY_ABORTED':
+            return 'Passkey registration was cancelled or timed out.';
+          case 'ERROR_INVALID_DOMAIN':
+          case 'ERROR_INVALID_RP_ID':
+            return 'This server is not set up correctly for passkeys (its domain does not match the passkey configuration).';
+        }
+        if (err.name === 'InvalidStateError') {
+          return 'This device is already registered as a passkey for this account. To register it again, delete the existing passkey in the app first.';
+        }
+        if (err.name === 'NotAllowedError') {
+          return 'Passkey registration was cancelled or timed out.';
+        }
+        return err.message || String(err);
+      }
+
       async function doRegister() {
         const errorDiv = document.getElementById('error-msg');
         const retryBtn = document.getElementById('retry-btn');
@@ -130,6 +149,21 @@
         desc.innerText = 'Please complete the biometric registration prompt.';
 
         try {
+          if (!window.isSecureContext) {
+            const err = new Error(
+              'Passkeys require a secure (HTTPS) connection. Please update the server URL in the app to use HTTPS.'
+            );
+            err.terminal = true;
+            throw err;
+          }
+          if (!window.PublicKeyCredential) {
+            const err = new Error(
+              'This browser does not support passkeys. Please set a different default browser and try again.'
+            );
+            err.terminal = true;
+            throw err;
+          }
+
           // 0. Redeem the single-use ticket for the session token, but only the
           // first time. The token is returned in the POST response body, so it
           // never appears in any URL (and can't leak into access/proxy logs or
@@ -206,7 +240,7 @@
           console.error(err);
           spinner.style.display = 'none';
           title.innerText = 'Registration Failed';
-          errorDiv.innerText = err.message || String(err);
+          errorDiv.innerText = friendlyRegistrationError(err);
           if (err.terminal) {
             // Ticket redemption failed — retrying can't help.
             desc.innerText = 'Please restart passkey setup from the app.';

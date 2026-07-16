@@ -19,10 +19,39 @@ interface UnitInputProps {
   type: 'weight' | 'height' | 'measurement';
   onChange: (metricValue: number | null) => void;
   placeholder?: string;
+  placeholderValue?: number | null; // Metric base value shown as placeholder when the input is empty
   className?: string;
   inputClassName?: string;
   'aria-label'?: string;
 }
+
+type UnitInputType = UnitInputProps['type'];
+
+const toSingleDisplayString = (
+  metricValue: number,
+  unit: string,
+  type: UnitInputType
+) => {
+  const precision = getPrecision(type, unit);
+  let displayVal = metricValue;
+  if (unit === 'lbs') displayVal = kgToLbs(metricValue);
+  if (unit === 'inches') displayVal = cmToInches(metricValue);
+  return Number(displayVal.toFixed(precision)).toString();
+};
+
+const toSplitDisplayStrings = (
+  metricValue: number,
+  unit: 'st_lbs' | 'ft_in',
+  type: UnitInputType
+): [string, string] => {
+  const precision = getPrecision(type, unit);
+  if (unit === 'st_lbs') {
+    const { stones, lbs } = kgToStonesLbs(metricValue);
+    return [stones.toString(), Number(lbs.toFixed(precision)).toString()];
+  }
+  const { feet, inches } = cmToFeetInches(metricValue);
+  return [feet.toString(), Number(inches.toFixed(precision)).toString()];
+};
 
 export const UnitInput: React.FC<UnitInputProps> = ({
   id,
@@ -31,6 +60,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   onChange,
   type,
   placeholder,
+  placeholderValue,
   className,
   inputClassName = '',
   'aria-label': ariaLabel,
@@ -57,37 +87,23 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     if (metricValue === null || Number.isNaN(metricValue)) {
       setVal1('');
       setVal2('');
+    } else if (unit === 'st_lbs' || unit === 'ft_in') {
+      const [display1, display2] = toSplitDisplayStrings(
+        metricValue,
+        unit,
+        type
+      );
+      setVal1(display1);
+      setVal2(display2);
     } else {
-      switch (unit) {
-        case 'st_lbs': {
-          const { stones, lbs } = kgToStonesLbs(metricValue);
-          const precision = getPrecision(type, 'st_lbs');
-          setVal1(stones.toString());
-          setVal2(Number(lbs.toFixed(precision)).toString());
-          break;
-        }
-        case 'ft_in': {
-          const { feet, inches } = cmToFeetInches(metricValue);
-          const precision = getPrecision(type, 'ft_in');
-          setVal1(feet.toString());
-          setVal2(Number(inches.toFixed(precision)).toString());
-          break;
-        }
-        case 'lbs':
-        case 'inches':
-        case 'cm':
-        case 'kg':
-        default: {
-          const precision = getPrecision(type, unit);
-          let displayVal = metricValue;
-          if (unit === 'lbs') displayVal = kgToLbs(metricValue);
-          if (unit === 'inches') displayVal = cmToInches(metricValue);
-          setVal1(Number(displayVal.toFixed(precision)).toString());
-          break;
-        }
-      }
+      setVal1(toSingleDisplayString(metricValue, unit, type));
     }
   }
+
+  const placeholderMetric =
+    placeholderValue == null || Number.isNaN(placeholderValue)
+      ? null
+      : placeholderValue;
 
   const handleSingleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setVal1(e.target.value);
@@ -140,6 +156,10 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   if (unit === 'st_lbs' || unit === 'ft_in') {
     const label1 = unit === 'st_lbs' ? 'st' : 'ft';
     const label2 = unit === 'st_lbs' ? 'lb' : 'in';
+    const [placeholder1, placeholder2] =
+      placeholderMetric !== null
+        ? toSplitDisplayStrings(placeholderMetric, unit, type)
+        : ['0', '0'];
 
     return (
       <div className={`flex items-center gap-2 ${className}`}>
@@ -152,7 +172,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             onChange={(e) => handleSplitChange(e.target.value, val2)}
             onBlur={handleSplitBlur}
             className={`pr-8 ${inputClassName}`}
-            placeholder="0"
+            placeholder={placeholder1}
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
             {label1}
@@ -171,7 +191,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             onChange={(e) => handleSplitChange(val1, e.target.value)}
             onBlur={handleSplitBlur}
             className={`pr-8 ${inputClassName}`}
-            placeholder="0"
+            placeholder={placeholder2}
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
             {label2}
@@ -184,6 +204,11 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   // Render standard single input
   const precision = getPrecision(type, unit);
   const step = precision > 0 ? (1 / Math.pow(10, precision)).toString() : '1';
+  const singlePlaceholder =
+    placeholder ??
+    (placeholderMetric !== null
+      ? toSingleDisplayString(placeholderMetric, unit, type)
+      : undefined);
 
   return (
     <div className={`relative ${className}`}>
@@ -194,7 +219,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         value={val1}
         onChange={handleSingleChange}
         onBlur={handleSingleBlur}
-        placeholder={placeholder}
+        placeholder={singlePlaceholder}
         className={`pr-9 ${inputClassName}`}
         aria-label={ariaLabel}
       />

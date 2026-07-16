@@ -3,6 +3,7 @@ import polarIntegrationService from '../integrations/polar/polarService.js';
 import polarService from '../services/polarService.js';
 import { log } from '../config/logging.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 const router = express.Router();
 /**
  * @swagger
@@ -28,29 +29,35 @@ const router = express.Router();
  *       500:
  *         description: Error initiating Polar authorization.
  */
-router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { providerId } = req.query; // Optional providerId
-    const baseUrl =
-      process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
-    const redirectUri = `${baseUrl}/polar/callback`;
-    const authorizationUrl = await polarIntegrationService.getAuthorizationUrl(
-      userId,
-      redirectUri,
-      providerId
-    );
-    res.json({ authUrl: authorizationUrl });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error initiating Polar authorization: ${error.message}`);
-    res.status(500).json({
-      message: 'Error initiating Polar authorization',
+router.get(
+  '/authorize',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const userId = req.userId;
+      const { providerId } = req.query; // Optional providerId
+      const baseUrl =
+        process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
+      const redirectUri = `${baseUrl}/polar/callback`;
+      const authorizationUrl =
+        await polarIntegrationService.getAuthorizationUrl(
+          userId,
+          redirectUri,
+          providerId
+        );
+      res.json({ authUrl: authorizationUrl });
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
-    });
+      log('error', `Error initiating Polar authorization: ${error.message}`);
+      res.status(500).json({
+        message: 'Error initiating Polar authorization',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 /**
  * @swagger
  * /integrations/polar/callback:
@@ -81,41 +88,46 @@ router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
  *       500:
  *         description: Failed to connect Polar account.
  */
-router.post('/callback', authMiddleware.authenticate, async (req, res) => {
-  try {
-    const { code, state, providerId } = req.body;
+router.post(
+  '/callback',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const { code, state, providerId } = req.body;
 
-    const userId = req.userId;
-    const baseUrl =
-      process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
-    const redirectUri = `${baseUrl}/polar/callback`;
-    if (!code) {
-      return res
-        .status(400)
-        .json({ message: 'Authorization code not received.' });
-    }
-    const result = await polarIntegrationService.exchangeCodeForTokens(
-      userId,
-      code,
-      state,
-      redirectUri,
-      providerId
-    );
-    if (result.success) {
-      res.status(200).json({ message: 'Polar account linked successfully.' });
-    } else {
-      res.status(500).json({ message: 'Failed to connect Polar account.' });
-    }
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error handling Polar OAuth callback: ${error.message}`);
-    res.status(500).json({
-      message: 'Error handling Polar OAuth callback',
+      const userId = req.userId;
+      const baseUrl =
+        process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
+      const redirectUri = `${baseUrl}/polar/callback`;
+      if (!code) {
+        return res
+          .status(400)
+          .json({ message: 'Authorization code not received.' });
+      }
+      const result = await polarIntegrationService.exchangeCodeForTokens(
+        userId,
+        code,
+        state,
+        redirectUri,
+        providerId
+      );
+      if (result.success) {
+        res.status(200).json({ message: 'Polar account linked successfully.' });
+      } else {
+        res.status(500).json({ message: 'Failed to connect Polar account.' });
+      }
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
-    });
+      log('error', `Error handling Polar OAuth callback: ${error.message}`);
+      res.status(500).json({
+        message: 'Error handling Polar OAuth callback',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 /**
  * @swagger
  * /integrations/polar/sync:
@@ -141,34 +153,39 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
  *       500:
  *         description: Error initiating manual Polar sync.
  */
-router.post('/sync', authMiddleware.authenticate, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { providerId, startDate, endDate } = req.body;
-    log(
-      'info',
-      `[polarRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
-    );
-    await polarService.syncPolarData(
-      userId,
-      'manual',
-      providerId,
-      startDate,
-      endDate
-    );
-    res
-      .status(200)
-      .json({ message: 'Polar data sync completed successfully.' });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error initiating manual Polar sync: ${error.message}`);
-    res.status(500).json({
-      message: 'Error initiating manual Polar sync',
+router.post(
+  '/sync',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const userId = req.userId;
+      const { providerId, startDate, endDate } = req.body;
+      log(
+        'info',
+        `[polarRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
+      );
+      await polarService.syncPolarData(
+        userId,
+        'manual',
+        providerId,
+        startDate,
+        endDate
+      );
+      res
+        .status(200)
+        .json({ message: 'Polar data sync completed successfully.' });
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
-    });
+      log('error', `Error initiating manual Polar sync: ${error.message}`);
+      res.status(500).json({
+        message: 'Error initiating manual Polar sync',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 /**
  * @swagger
  * /integrations/polar/disconnect:
@@ -194,24 +211,29 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
  *       500:
  *         description: Error disconnecting Polar account.
  */
-router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { providerId } = req.body;
-    await polarService.disconnectPolar(userId, providerId);
-    res
-      .status(200)
-      .json({ message: 'Polar account disconnected successfully.' });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error disconnecting Polar account: ${error.message}`);
-    res.status(500).json({
-      message: 'Error disconnecting Polar account',
+router.post(
+  '/disconnect',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const userId = req.userId;
+      const { providerId } = req.body;
+      await polarService.disconnectPolar(userId, providerId);
+      res
+        .status(200)
+        .json({ message: 'Polar account disconnected successfully.' });
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error: error.message,
-    });
+      log('error', `Error disconnecting Polar account: ${error.message}`);
+      res.status(500).json({
+        message: 'Error disconnecting Polar account',
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error.message,
+      });
+    }
   }
-});
+);
 /**
  * @swagger
  * /integrations/polar/status:
@@ -247,19 +269,24 @@ router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
  *       500:
  *         description: Error getting Polar status.
  */
-router.get('/status', authMiddleware.authenticate, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { providerId } = req.query;
-    const status = await polarService.getStatus(userId, providerId);
-    res.status(200).json(status);
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    log('error', `Error getting Polar status: ${error.message}`);
-    res
-      .status(500)
+router.get(
+  '/status',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const userId = req.userId;
+      const { providerId } = req.query;
+      const status = await polarService.getStatus(userId, providerId);
+      res.status(200).json(status);
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      .json({ message: 'Error getting Polar status', error: error.message });
+      log('error', `Error getting Polar status: ${error.message}`);
+      res
+        .status(500)
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        .json({ message: 'Error getting Polar status', error: error.message });
+    }
   }
-});
+);
 export default router;

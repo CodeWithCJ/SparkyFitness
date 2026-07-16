@@ -248,4 +248,64 @@ describe('foodEntryService symmetrical cross-user copy tests', () => {
       expect(result).toEqual(mockResult);
     });
   });
+
+  describe('copy permission is evaluated for the acting delegate, not the switched active user', () => {
+    const ACTIVE_VICTIM = 'active-victim';
+    const DELEGATE = 'delegate-d';
+
+    it('copyFoodEntriesFromUser checks the acting delegate against the source', async () => {
+      vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
+        true
+      );
+      // Empty source -> returns right after the permission check.
+      vi.mocked(
+        foodRepository.getFoodEntriesByDateAndMealType
+      ).mockResolvedValue([]);
+
+      await copyFoodEntriesFromUser(
+        ACTIVE_VICTIM, // authenticatedUserId = switched-into active user
+        DELEGATE, // actingUserId = real actor
+        MEMBER_B,
+        '2026-06-17',
+        'Lunch',
+        '2026-06-17',
+        'Lunch'
+      );
+
+      expect(familyAccessRepository.checkCopyPermissions).toHaveBeenCalledWith(
+        DELEGATE,
+        MEMBER_B
+      );
+      expect(
+        familyAccessRepository.checkCopyPermissions
+      ).not.toHaveBeenCalledWith(ACTIVE_VICTIM, MEMBER_B);
+    });
+
+    it('copyFoodEntriesToUser checks the acting delegate against the target', async () => {
+      vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
+        true
+      );
+      vi.mocked(
+        foodRepository.getFoodEntriesByDateAndMealType
+      ).mockResolvedValue([]);
+
+      await copyFoodEntriesToUser(
+        ACTIVE_VICTIM,
+        DELEGATE,
+        MEMBER_B,
+        '2026-06-17',
+        'Lunch',
+        '2026-06-17',
+        'Lunch'
+      );
+
+      expect(familyAccessRepository.checkCopyPermissions).toHaveBeenCalledWith(
+        DELEGATE,
+        MEMBER_B
+      );
+      expect(
+        familyAccessRepository.checkCopyPermissions
+      ).not.toHaveBeenCalledWith(ACTIVE_VICTIM, MEMBER_B);
+    });
+  });
 });

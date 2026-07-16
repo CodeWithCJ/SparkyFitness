@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { Platform, type TextInput } from 'react-native';
 import { KeyboardController, KeyboardEvents } from 'react-native-keyboard-controller';
+import Clipboard from '@react-native-clipboard/clipboard';
 
 /** Spaced to outlast a slow IME bind while keeping the common case snappy. */
 const IME_RETRY_DELAYS_MS = [100, 400];
@@ -64,4 +65,20 @@ export function focusWithAndroidImeRetry(
 ): (() => void) | undefined {
   ref.current?.focus();
   return scheduleAndroidImeShowRetry(ref);
+}
+
+/**
+ * Paste the clipboard into a controlled input, then focus it. The focus is
+ * load-bearing: an unfocused iOS TextInput wraps overflowing text instead of
+ * clipping it (facebook/react-native#29068), so a pasted value longer than
+ * the field can render as blank or truncated until the user taps into it.
+ * Focusing switches to the live single-line rendering (and lets the user see
+ * and edit what landed).
+ */
+export async function pasteFromClipboard(
+  ref: RefObject<TextInput | null>,
+  setValue: (text: string) => void,
+): Promise<void> {
+  setValue(await Clipboard.getString());
+  ref.current?.focus();
 }

@@ -123,6 +123,7 @@ beforeEach(() => {
   vi.unstubAllEnvs();
   // Neutralize the super-admin email override so role is the sole admin factor.
   vi.stubEnv('SPARKY_FITNESS_ADMIN_EMAIL', '');
+  vi.stubEnv('DEV_TOOLS_ENABLED', 'false');
   testUserRole = 'admin';
   // Safe default; tests that exercise the DB fallback set this explicitly.
   getUserRoleSpy.mockResolvedValue('user');

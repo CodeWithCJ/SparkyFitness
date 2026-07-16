@@ -191,6 +191,18 @@ describe('swissFoodService - searchSwissFoods', () => {
       expect.any(Object)
     );
   });
+
+  it('does not echo the upstream response body on error', async () => {
+    // A user-pointed base_url could reflect an internal service's body back to
+    // the caller; the error must carry only the status, never the body.
+    const textSpy = vi.fn().mockResolvedValue('INTERNAL SECRET BODY');
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, text: textSpy });
+
+    await expect(searchSwissFoods('milk', 1, 20, 'en')).rejects.toThrow(
+      'Swiss Food API returned status 500'
+    );
+    expect(textSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe('swissFoodService - getSwissFoodDetails', () => {

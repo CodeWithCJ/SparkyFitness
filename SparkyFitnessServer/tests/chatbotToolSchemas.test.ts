@@ -266,7 +266,6 @@ describe('published (flat) chatbot tool schemas', () => {
       properties: [
         'action',
         'display_name',
-        'email',
         'image',
         'timezone',
         'energy_unit',

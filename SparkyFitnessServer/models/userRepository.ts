@@ -208,12 +208,27 @@ async function updateUserPassword(userId: string, hashedPassword: string) {
     client.release();
   }
 }
+async function getCredentialPasswordHash(
+  userId: string
+): Promise<string | null> {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      'SELECT password FROM "account" WHERE user_id = $1 AND provider_id = \'credential\'',
+      [userId]
+    );
+    return result.rows[0]?.password ?? null;
+  } finally {
+    client.release();
+  }
+}
 async function updateUserEmail(userId: string, newEmail: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
+    // A changed email is unproven until re-verified.
     await client.query(
-      'UPDATE "user" SET email = $1, updated_at = now() WHERE id = $2',
+      'UPDATE "user" SET email = $1, email_verified = false, updated_at = now() WHERE id = $2',
       [newEmail, userId]
     );
     await client.query(
@@ -567,6 +582,7 @@ export { updateUserProfile };
 export { getAuthUserProfile };
 export { updateAuthUserProfile };
 export { updateUserPassword };
+export { getCredentialPasswordHash };
 export { updateUserEmail };
 export { getUserRole };
 export { updateUserRole };
@@ -597,6 +613,7 @@ export default {
   getAuthUserProfile,
   updateAuthUserProfile,
   updateUserPassword,
+  getCredentialPasswordHash,
   updateUserEmail,
   getUserRole,
   updateUserRole,

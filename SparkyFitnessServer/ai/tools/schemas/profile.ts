@@ -15,7 +15,8 @@ const updateProfileSchema = z
       .max(200)
       .optional()
       .describe("User's display name"),
-    email: z.string().email().optional().describe("User's email address"),
+    // Email is intentionally not settable here — the account email is an
+    // identity field whose change requires step-up auth at the identity route.
     image: z.string().url().optional().describe('Profile image URL'),
   })
   .strict();
@@ -85,11 +86,6 @@ export const manageProfileInput = z.object({
     .max(200)
     .optional()
     .describe("update_profile: user's display name"),
-  // No .email() here: Zod v4's email regex uses lookahead, which is invalid
-  // under the RE2-style validators some providers (e.g. Groq) apply to tool
-  // parameter schemas, and it breaks the whole request. Email format is still
-  // enforced server-side by manageProfileSchema.safeParse in the handler.
-  email: z.string().optional().describe("update_profile: user's email address"),
   image: z
     .string()
     .url()

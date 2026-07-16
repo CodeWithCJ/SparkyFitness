@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import externalProviderService from '../services/externalProviderService.js';
 import {
   getOpenFoodFactsSessionCookie,
+  resolveOpenFoodFactsProvider,
   invalidateOpenFoodFactsSession,
+  DEFAULT_OFF_BASE_URL,
+  normalizeBaseUrl,
   __resetForTests,
 } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 
@@ -187,5 +190,100 @@ describe('invalidateOpenFoodFactsSession', () => {
     expect(a).toBe('one');
     expect(b).toBe('two');
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('normalizeBaseUrl', () => {
+  it('returns the default public URL when no url is given', () => {
+    expect(normalizeBaseUrl(undefined)).toBe(DEFAULT_OFF_BASE_URL);
+    expect(normalizeBaseUrl(null)).toBe(DEFAULT_OFF_BASE_URL);
+    expect(normalizeBaseUrl('')).toBe(DEFAULT_OFF_BASE_URL);
+    expect(normalizeBaseUrl('   ')).toBe(DEFAULT_OFF_BASE_URL);
+  });
+
+  it('strips trailing slashes from a custom url', () => {
+    expect(normalizeBaseUrl('http://sparkyfitness-foodfacts:8080/')).toBe(
+      'http://sparkyfitness-foodfacts:8080'
+    );
+    expect(normalizeBaseUrl('http://sparkyfitness-foodfacts:8080///')).toBe(
+      'http://sparkyfitness-foodfacts:8080'
+    );
+  });
+
+  it('passes through a custom url with no trailing slash unchanged', () => {
+    expect(normalizeBaseUrl('http://sparkyfitness-foodfacts:8080')).toBe(
+      'http://sparkyfitness-foodfacts:8080'
+    );
+  });
+});
+
+describe('resolveOpenFoodFactsProvider', () => {
+  it('builds the login URL from the resolved base_url', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderService.getExternalDataProviderDetails.mockResolvedValue({
+      provider_type: 'openfoodfacts',
+      app_id: 'me',
+      app_key: 'pw',
+      base_url: 'http://sparkyfitness-foodfacts:8080/',
+    });
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    fetch.mockResolvedValue(makeOffLoginResponse({ session: 'XYZ' }));
+
+    const result = await resolveOpenFoodFactsProvider(USER_ID, PROVIDER_ID);
+
+    expect(result).toEqual({
+      session: 'XYZ',
+      baseUrl: 'http://sparkyfitness-foodfacts:8080',
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      'http://sparkyfitness-foodfacts:8080/cgi/session.pl',
+      expect.any(Object)
+    );
+  });
+
+  it('resolves base_url even when the provider has no login credentials', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderService.getExternalDataProviderDetails.mockResolvedValue({
+      provider_type: 'openfoodfacts',
+      app_id: null,
+      app_key: null,
+      base_url: 'http://sparkyfitness-foodfacts:8080',
+    });
+
+    const result = await resolveOpenFoodFactsProvider(USER_ID, PROVIDER_ID);
+
+    expect(result).toEqual({
+      session: null,
+      baseUrl: 'http://sparkyfitness-foodfacts:8080',
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the default base_url when the provider has none set', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderService.getExternalDataProviderDetails.mockResolvedValue({
+      provider_type: 'openfoodfacts',
+      app_id: null,
+      app_key: null,
+      base_url: null,
+    });
+
+    const result = await resolveOpenFoodFactsProvider(USER_ID, PROVIDER_ID);
+
+    expect(result).toEqual({ session: null, baseUrl: DEFAULT_OFF_BASE_URL });
+  });
+
+  it('falls back to the default base_url when provider lookup fails', async () => {
+    // @ts-expect-error TS(2339): Property 'mockRejectedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderService.getExternalDataProviderDetails.mockRejectedValue(
+      new Error('Forbidden: not owner')
+    );
+
+    const result = await resolveOpenFoodFactsProvider(
+      USER_ID,
+      OTHER_PROVIDER_ID
+    );
+
+    expect(result).toEqual({ session: null, baseUrl: DEFAULT_OFF_BASE_URL });
   });
 });

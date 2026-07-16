@@ -27,11 +27,16 @@ jest.mock('../../src/services/storage', () => ({
 
 jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn(),
+  getCustomTabsSupportingBrowsersAsync: jest.fn(),
 }));
 
 const mockOpenAuthSession = WebBrowser.openAuthSessionAsync as jest.MockedFunction<
   typeof WebBrowser.openAuthSessionAsync
 >;
+const mockGetCustomTabsBrowsers =
+  WebBrowser.getCustomTabsSupportingBrowsersAsync as jest.MockedFunction<
+    typeof WebBrowser.getCustomTabsSupportingBrowsersAsync
+  >;
 
 const mockClearSessionToken = clearSessionToken as jest.MockedFunction<
   typeof clearSessionToken
@@ -781,6 +786,93 @@ describe('authService', () => {
         addPasskey('https://s.com', 'tok', 'My Phone')
       ).rejects.toMatchObject({ message: 'SESSION_NOT_FRESH' });
       expect(mockOpenAuthSession).not.toHaveBeenCalled();
+    });
+  });
+
+  // Play Services only accepts WebAuthn origin assertions from allowlisted
+  // browsers; Custom Tabs open in the default browser, so a non-allowlisted
+  // default (e.g. F-Droid Firefox) must be overridden via browserPackage.
+  describe('passkey ceremony browser selection', () => {
+    const { Platform } = require('react-native');
+    const originalOS = Platform.OS;
+
+    const mintTicketAndSucceed = () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ ticket: 'ticket-xyz' }),
+      });
+      mockOpenAuthSession.mockResolvedValueOnce({
+        type: 'success',
+        url: 'sparkyfitnessmobile://oauth-callback?status=success',
+      } as never);
+    };
+
+    const setPlatform = (os: string) => {
+      Object.defineProperty(Platform, 'OS', { get: () => os, configurable: true });
+    };
+
+    afterEach(() => {
+      Object.defineProperty(Platform, 'OS', { get: () => originalOS, configurable: true });
+    });
+
+    it('overrides a non-allowlisted default browser with an installed allowlisted one', async () => {
+      setPlatform('android');
+      // With a default browser set, Android filters the VIEW-intent query
+      // (browserPackages) down to just the default — allowlisted browsers
+      // like Chrome only show up in servicePackages.
+      mockGetCustomTabsBrowsers.mockResolvedValueOnce({
+        defaultBrowserPackage: 'org.mozilla.fennec_fdroid',
+        browserPackages: ['org.mozilla.fennec_fdroid'],
+        servicePackages: ['org.mozilla.fennec_fdroid', 'com.android.chrome'],
+      });
+      mintTicketAndSucceed();
+
+      await addPasskey('https://s.com', 'tok', 'My Phone');
+
+      expect(mockOpenAuthSession.mock.calls[0][2]).toEqual({
+        browserPackage: 'com.android.chrome',
+      });
+    });
+
+    it('respects an allowlisted default browser', async () => {
+      setPlatform('android');
+      mockGetCustomTabsBrowsers.mockResolvedValueOnce({
+        defaultBrowserPackage: 'com.android.chrome',
+        browserPackages: ['com.android.chrome', 'org.mozilla.fennec_fdroid'],
+        servicePackages: ['com.android.chrome'],
+      });
+      mintTicketAndSucceed();
+
+      await addPasskey('https://s.com', 'tok', 'My Phone');
+
+      expect(mockOpenAuthSession.mock.calls[0][2]).toEqual({
+        browserPackage: undefined,
+      });
+    });
+
+    it('falls back to the default browser when the lookup fails', async () => {
+      setPlatform('android');
+      mockGetCustomTabsBrowsers.mockRejectedValueOnce(new Error('no custom tabs'));
+      mintTicketAndSucceed();
+
+      await addPasskey('https://s.com', 'tok', 'My Phone');
+
+      expect(mockOpenAuthSession.mock.calls[0][2]).toEqual({
+        browserPackage: undefined,
+      });
+    });
+
+    it('never inspects browsers on iOS', async () => {
+      setPlatform('ios');
+      mintTicketAndSucceed();
+
+      await addPasskey('https://s.com', 'tok', 'My Phone');
+
+      expect(mockGetCustomTabsBrowsers).not.toHaveBeenCalled();
+      expect(mockOpenAuthSession.mock.calls[0][2]).toEqual({
+        browserPackage: undefined,
+      });
     });
   });
 });

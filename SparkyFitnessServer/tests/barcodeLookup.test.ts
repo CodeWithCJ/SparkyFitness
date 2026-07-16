@@ -959,6 +959,37 @@ describe('lookupBarcode', () => {
       externalProviderService.getExternalDataProviderDetails
     ).toHaveBeenCalledWith(TEST_USER_ID, TEST_PROVIDER_ID);
   });
+  it('resolves provider credentials against the authenticated actor, not the switched data-context user', async () => {
+    // A delegate (ACTOR) switched into a family member's context (CONTEXT).
+    const CONTEXT_USER = 'victim-context-1';
+    const ACTOR_USER = 'delegate-actor-2';
+    // @ts-expect-error TS(2339): mockResolvedValue not on mock type
+    foodRepository.findFoodByBarcode.mockResolvedValue(null);
+    // @ts-expect-error TS(2339): mockResolvedValue not on mock type
+    externalProviderService.getExternalDataProviderDetails.mockResolvedValue(
+      makeUsdaProvider()
+    );
+    // @ts-expect-error TS(2339): mockResolvedValue not on mock type
+    searchUsdaFoodsByBarcode.mockResolvedValue({ foods: [makeUsdaFood()] });
+
+    const result = await lookupBarcode(
+      '3017620422003',
+      CONTEXT_USER,
+      TEST_PROVIDER_ID,
+      ACTOR_USER
+    );
+
+    expect(result.source).toBe('usda');
+    // Provider secrets are decrypted for the actor — never the switched victim.
+    expect(
+      externalProviderService.getExternalDataProviderDetails
+    ).toHaveBeenCalledWith(ACTOR_USER, TEST_PROVIDER_ID);
+    // The local food library is still searched in the switched data context.
+    expect(foodRepository.findFoodByBarcode).toHaveBeenCalledWith(
+      '3017620422003',
+      CONTEXT_USER
+    );
+  });
   it('should skip USDA when provider is inactive', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     foodRepository.findFoodByBarcode.mockResolvedValue(null);

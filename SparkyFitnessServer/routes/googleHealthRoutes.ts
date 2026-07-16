@@ -3,6 +3,7 @@ import googleHealthIntegrationService from '../integrations/googlehealth/googleH
 import googleHealthService from '../services/googleHealthService.js';
 import { log } from '../config/logging.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import {
   CallbackBodySchema,
   SyncBodySchema,
@@ -25,6 +26,7 @@ const router = express.Router();
 router.get(
   '/authorize',
   authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
   async (req, res, next) => {
     try {
       const userId = req.userId;
@@ -67,6 +69,7 @@ router.get(
 router.post(
   '/callback',
   authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
   async (req, res, next) => {
     try {
       const bodyResult = CallbackBodySchema.safeParse(req.body);
@@ -122,36 +125,41 @@ router.post(
  *                 type: string
  *                 format: date
  */
-router.post('/sync', authMiddleware.authenticate, async (req, res, next) => {
-  try {
-    const bodyResult = SyncBodySchema.safeParse(req.body);
-    if (!bodyResult.success) {
-      res.status(400).json({ error: 'Invalid request body' });
-      return;
+router.post(
+  '/sync',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    try {
+      const bodyResult = SyncBodySchema.safeParse(req.body);
+      if (!bodyResult.success) {
+        res.status(400).json({ error: 'Invalid request body' });
+        return;
+      }
+      const { startDate, endDate } = bodyResult.data;
+      const userId = req.userId;
+      log(
+        'info',
+        `[googleHealthRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
+      );
+      googleHealthService
+        .syncGoogleHealthData(userId, 'manual', startDate, endDate)
+        .catch((err: Error) => {
+          log(
+            'error',
+            `Background Google Health sync failed for user ${userId}: ${err.message}`
+          );
+        });
+      res.status(202).json({ message: 'Google Health sync started.' });
+    } catch (error) {
+      log(
+        'error',
+        `Error initiating manual Google Health sync: ${(error as Error).message}`
+      );
+      next(error);
     }
-    const { startDate, endDate } = bodyResult.data;
-    const userId = req.userId;
-    log(
-      'info',
-      `[googleHealthRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
-    );
-    googleHealthService
-      .syncGoogleHealthData(userId, 'manual', startDate, endDate)
-      .catch((err: Error) => {
-        log(
-          'error',
-          `Background Google Health sync failed for user ${userId}: ${err.message}`
-        );
-      });
-    res.status(202).json({ message: 'Google Health sync started.' });
-  } catch (error) {
-    log(
-      'error',
-      `Error initiating manual Google Health sync: ${(error as Error).message}`
-    );
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -163,6 +171,7 @@ router.post('/sync', authMiddleware.authenticate, async (req, res, next) => {
 router.post(
   '/disconnect',
   authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
   async (req, res, next) => {
     try {
       const userId = req.userId;
@@ -187,18 +196,23 @@ router.post(
  *     summary: Get Google Health connection status
  *     tags: [External Integrations]
  */
-router.get('/status', authMiddleware.authenticate, async (req, res, next) => {
-  try {
-    const userId = req.userId;
-    const status = await googleHealthService.getStatus(userId);
-    res.status(200).json(status);
-  } catch (error) {
-    log(
-      'error',
-      `Error getting Google Health status: ${(error as Error).message}`
-    );
-    next(error);
+router.get(
+  '/status',
+  authMiddleware.authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    try {
+      const userId = req.userId;
+      const status = await googleHealthService.getStatus(userId);
+      res.status(200).json(status);
+    } catch (error) {
+      log(
+        'error',
+        `Error getting Google Health status: ${(error as Error).message}`
+      );
+      next(error);
+    }
   }
-});
+);
 
 export default router;

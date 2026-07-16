@@ -1,7 +1,9 @@
 import { Platform, type TextInput } from 'react-native';
 import { KeyboardController, KeyboardEvents } from 'react-native-keyboard-controller';
+import Clipboard from '@react-native-clipboard/clipboard';
 import {
   focusWithAndroidImeRetry,
+  pasteFromClipboard,
   runAfterKeyboardSettles,
   scheduleAndroidImeShowRetry,
 } from '../../src/utils/keyboardFocus';
@@ -9,6 +11,7 @@ import {
 const mockedIsVisible = KeyboardController.isVisible as jest.Mock;
 const mockedSetFocusTo = KeyboardController.setFocusTo as jest.Mock;
 const mockedAddListener = KeyboardEvents.addListener as jest.Mock;
+const mockedGetString = Clipboard.getString as jest.Mock;
 
 const makeRef = ({ focused = true } = {}) => {
   const input = {
@@ -37,6 +40,28 @@ describe('keyboardFocus', () => {
       focusWithAndroidImeRetry(ref);
 
       expect(input.focus).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('pasteFromClipboard', () => {
+    it('sets the clipboard text and focuses the input so iOS repaints it', async () => {
+      const { input, ref } = makeRef();
+      mockedGetString.mockResolvedValue('https://example.com');
+      const setValue = jest.fn();
+
+      await pasteFromClipboard(ref, setValue);
+
+      expect(setValue).toHaveBeenCalledWith('https://example.com');
+      expect(input.focus).toHaveBeenCalledTimes(1);
+    });
+
+    it('still sets the value when the input has unmounted', async () => {
+      mockedGetString.mockResolvedValue('secret-key');
+      const setValue = jest.fn();
+
+      await pasteFromClipboard({ current: null }, setValue);
+
+      expect(setValue).toHaveBeenCalledWith('secret-key');
     });
   });
 

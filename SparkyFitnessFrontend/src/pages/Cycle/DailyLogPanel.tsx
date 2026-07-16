@@ -33,7 +33,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import IntercourseLog from './ttc/IntercourseLog';
 import CervicalPositionPicker from './ttc/CervicalPositionPicker';
-import { useExistingCheckInMeasurements } from '@/hooks/CheckIn/useCheckIn';
+import { useLatestCheckInMeasurements } from '@/hooks/CheckIn/useCheckIn';
 import { useSleepEntriesQuery } from '@/hooks/CheckIn/useSleep';
 import { useWaterIntakeQuery } from '@/hooks/Diary/useWaterIntake';
 
@@ -77,7 +77,7 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
   const { data: settings } = useCycleSettings();
   const isTtc = settings?.mode === 'ttc';
 
-  const checkInQuery = useExistingCheckInMeasurements(date);
+  const checkInQuery = useLatestCheckInMeasurements(date);
   const sleepQuery = useSleepEntriesQuery(date, date);
   const waterQuery = useWaterIntakeQuery(date);
 

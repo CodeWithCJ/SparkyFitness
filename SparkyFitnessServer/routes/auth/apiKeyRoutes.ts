@@ -39,7 +39,13 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
   try {
     // @ts-expect-error TS(2339): Property 'createApiKey' does not exist on type 'In... Remove this comment to see the full error message
     const result = await auth.api.createApiKey({
-      userId: req.userId,
+      // Key the credential to the authenticated actor, never the switched
+      // context (req.userId). A family-sharing delegate acting on behalf of
+      // another user must not be able to mint/list/delete that user's API
+      // keys — doing so would let a narrow delegation (e.g. medications)
+      // escalate into full account takeover. Mirrors the isAdmin check in
+      // authMiddleware.ts, which also guards on the authenticated user.
+      userId: req.authenticatedUserId,
       name,
       expiresIn: expiresIn || 31536000, // Default 1 year
     });
@@ -84,8 +90,9 @@ router.delete(
       // @ts-expect-error TS(2339): Property 'deleteApiKey' does not exist on type 'In... Remove this comment to see the full error message
       await auth.api.deleteApiKey({
         apiKeyId,
-
-        userId: req.userId,
+        // Authenticated actor only — a switched-context delegate must not be
+        // able to delete the account owner's keys.
+        userId: req.authenticatedUserId,
       });
       res.status(200).json({ message: 'API key deleted successfully.' });
     } catch (error) {
@@ -112,7 +119,9 @@ router.get('/user-api-keys', authenticate, async (req, res, next) => {
   try {
     // @ts-expect-error TS(2339): Property 'listApiKeys' does not exist on type 'Inf... Remove this comment to see the full error message
     const apiKeys = await auth.api.listApiKeys({
-      userId: req.userId,
+      // Authenticated actor only — do not expose the account owner's key
+      // metadata to a switched-context delegate.
+      userId: req.authenticatedUserId,
     });
     res.status(200).json(apiKeys);
   } catch (error) {

@@ -98,6 +98,63 @@ describe('getExternalDataProvidersForUser - non-owner credential redaction', () 
   });
 });
 
+describe('redactProviderDetailsForNonOwner', () => {
+  const detailRow = {
+    id: PROVIDER_ID,
+    provider_name: 'My Garmin',
+    provider_type: 'garmin',
+    user_id: OWNER,
+    is_public: false,
+    is_active: true,
+    sync_frequency: 'daily',
+    token_expires_at: '2026-01-01T00:00:00.000Z',
+    is_strictly_private: false,
+    supports_barcode: false,
+    app_id: 'username',
+    app_key: 'secretpw',
+    base_url: 'http://192.168.1.5:9000',
+    external_user_id: 'garmin-external-id',
+    garth_dump: 'DECRYPTED-GARMIN-SESSION',
+  };
+
+  it('strips every decrypted secret (incl. garth_dump) for a non-owner', () => {
+    const row = externalProviderService.redactProviderDetailsForNonOwner(
+      { ...detailRow },
+      VIEWER
+    );
+
+    expect(row.app_id).toBeUndefined();
+    expect(row.app_key).toBeUndefined();
+    expect(row.garth_dump).toBeUndefined();
+    expect(row.external_user_id).toBeUndefined();
+    expect(row.base_url).toBeUndefined();
+    // Non-secret display fields survive.
+    expect(row.id).toBe(PROVIDER_ID);
+    expect(row.provider_name).toBe('My Garmin');
+    expect(row.provider_type).toBe('garmin');
+    expect(row.is_active).toBe(true);
+  });
+
+  it('returns the row untouched for the owner', () => {
+    const row = externalProviderService.redactProviderDetailsForNonOwner(
+      { ...detailRow },
+      OWNER
+    );
+
+    expect(row.app_id).toBe('username');
+    expect(row.app_key).toBe('secretpw');
+    expect(row.garth_dump).toBe('DECRYPTED-GARMIN-SESSION');
+    expect(row.base_url).toBe('http://192.168.1.5:9000');
+    expect(row.external_user_id).toBe('garmin-external-id');
+  });
+
+  it('passes through a null detail row', () => {
+    expect(
+      externalProviderService.redactProviderDetailsForNonOwner(null, VIEWER)
+    ).toBeNull();
+  });
+});
+
 describe('getExternalDataProviders - runtime availability', () => {
   it('marks YAZIO inactive when provider OAuth credentials are missing', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
@@ -561,7 +618,7 @@ describe('getActiveOpenFoodFactsProviderId', () => {
     expect(id).toBe('p2');
   });
 
-  it('returns null when no credentialed OFF provider exists', async () => {
+  it('falls back to the credential-less active provider when none has credentials', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     externalProviderRepository.getExternalDataProvidersByUserId.mockResolvedValue(
       [
@@ -573,6 +630,35 @@ describe('getActiveOpenFoodFactsProviderId', () => {
           app_key: null,
         },
       ]
+    );
+    const id =
+      await externalProviderService.getActiveOpenFoodFactsProviderId(OWNER);
+    expect(id).toBe('p1');
+  });
+
+  it('falls back to a self-hosted provider with only a base_url and no credentials', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProvidersByUserId.mockResolvedValue(
+      [
+        {
+          id: 'p1',
+          provider_type: 'openfoodfacts',
+          is_active: true,
+          app_id: null,
+          app_key: null,
+          base_url: 'http://sparkyfitness-foodfacts:8080',
+        },
+      ]
+    );
+    const id =
+      await externalProviderService.getActiveOpenFoodFactsProviderId(OWNER);
+    expect(id).toBe('p1');
+  });
+
+  it('returns null when no active OFF provider exists at all', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    externalProviderRepository.getExternalDataProvidersByUserId.mockResolvedValue(
+      []
     );
     const id =
       await externalProviderService.getActiveOpenFoodFactsProviderId(OWNER);

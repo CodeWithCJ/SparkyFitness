@@ -1,8 +1,50 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
-import { TextInput, type TextInputProps } from 'react-native';
+import {
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type TextInputProps,
+  type ViewStyle,
+} from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
 import { scheduleAndroidImeShowRetry } from '../utils/keyboardFocus';
+
+/**
+ * Ellipsized overlay that echoes a single-line input's value while it is
+ * unfocused. An unfocused iOS TextInput wraps overflowing text instead of
+ * clipping it (facebook/react-native#29068), so a long value breaks after
+ * "https://" and the single-line height hides the rest. Render this as a
+ * sibling over the input, make the input's own text transparent while
+ * unfocused, and match the input's text padding via `style`.
+ */
+export const UnfocusedInputEcho = ({
+  focused,
+  value,
+  style,
+}: {
+  focused: boolean;
+  value: string;
+  style?: StyleProp<ViewStyle>;
+}) => {
+  if (focused || !value) return null;
+  return (
+    <View
+      pointerEvents="none"
+      className="absolute inset-0 justify-center"
+      style={style}
+    >
+      <Text
+        className="text-base text-text-primary"
+        style={{ lineHeight: 20 }}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+};
 
 type FormInputProps = Omit<TextInputProps, 'placeholderTextColor'> & {
   placeholderTextColor?: string;

@@ -1,6 +1,7 @@
 import {
-  getOpenFoodFactsSessionCookie,
+  resolveOpenFoodFactsProvider,
   invalidateOpenFoodFactsSession,
+  DEFAULT_OFF_BASE_URL,
 } from './openFoodFactsAuth.js';
 import { log } from '../../config/logging.js';
 import { normalizeNutrientUnit } from '@workspace/shared';
@@ -43,6 +44,28 @@ interface OffSearchResponse {
   count?: number;
 }
 
+// Resolves the session cookie (if the provider has login credentials) and
+// the base URL (self-hosted or the public default) for a single OFF
+// provider lookup, so callers only hit the provider row once per request.
+async function resolveOffRequestContext(
+  authenticatedUserId?: string,
+  providerId?: string
+): Promise<{ sessionCookie: string | null; baseUrl: string }> {
+  if (!authenticatedUserId || !providerId) {
+    return { sessionCookie: null, baseUrl: DEFAULT_OFF_BASE_URL };
+  }
+  try {
+    const { session, baseUrl } = await resolveOpenFoodFactsProvider(
+      authenticatedUserId,
+      providerId
+    );
+    return { sessionCookie: session, baseUrl };
+  } catch (error) {
+    log('debug', 'OpenFoodFacts: provider resolution failed:', error);
+    return { sessionCookie: null, baseUrl: DEFAULT_OFF_BASE_URL };
+  }
+}
+
 // Wraps fetch with optional session-cookie authentication for OFF endpoints.
 // On 429/5xx with an attached cookie, invalidates the session and retries once
 // without the cookie. OFF returns 200 on stale cookies (no 401 signal), so we
@@ -53,21 +76,14 @@ async function fetchOpenFoodFacts(
   {
     authenticatedUserId,
     providerId,
-  }: { authenticatedUserId?: string; providerId?: string } = {}
+    sessionCookie,
+  }: {
+    authenticatedUserId?: string;
+    providerId?: string;
+    sessionCookie?: string | null;
+  } = {}
 ) {
   const baseHeaders = { ...OFF_HEADERS };
-  let sessionCookie = null;
-
-  if (authenticatedUserId && providerId) {
-    try {
-      sessionCookie = await getOpenFoodFactsSessionCookie(
-        authenticatedUserId,
-        providerId
-      );
-    } catch (error) {
-      log('debug', 'OpenFoodFacts: session cookie lookup failed:', error);
-    }
-  }
 
   const headers = sessionCookie
     ? { ...baseHeaders, Cookie: `session=${sessionCookie}` }
@@ -110,10 +126,15 @@ async function searchOpenFoodFacts(
       fieldSet.add(`product_name_${language}`);
     }
     const fields = [...fieldSet];
-    const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${fields.join(',')}&lc=${language}`;
+    const { sessionCookie, baseUrl } = await resolveOffRequestContext(
+      authenticatedUserId,
+      providerId
+    );
+    const searchUrl = `${baseUrl}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${fields.join(',')}&lc=${language}`;
     const response = await fetchOpenFoodFacts(searchUrl, {
       authenticatedUserId,
       providerId,
+      sessionCookie,
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -159,10 +180,15 @@ async function searchOpenFoodFactsByBarcodeFields(
     }
     const finalFields = [...fieldSet];
     const fieldsParam = finalFields.join(',');
-    const searchUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
+    const { sessionCookie, baseUrl } = await resolveOffRequestContext(
+      authenticatedUserId,
+      providerId
+    );
+    const searchUrl = `${baseUrl}/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
     const response = await fetchOpenFoodFacts(searchUrl, {
       authenticatedUserId,
       providerId,
+      sessionCookie,
     });
     if (!response.ok) {
       if (response.status === 404) {

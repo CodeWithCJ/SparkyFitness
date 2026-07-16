@@ -19,6 +19,7 @@ import * as WebBrowser from 'expo-web-browser';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import ServerConfigModal from '../components/ServerConfigModal';
+import SettingsRow from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
   deleteServerConfig,
@@ -36,7 +37,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type ServerSettingsScreenProps = RootStackScreenProps<'ServerSettings'>;
 
-const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
+const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -268,6 +269,15 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = () => {
             </View>
           </View>
           </>
+        )}
+
+        {isConnected && activeConfig?.authType === 'session' && (
+          <SettingsRow
+            icon="fingerprint"
+            title="Passkeys"
+            onPress={() => navigation.navigate('PasskeySettings')}
+            iconColor={accentPrimary}
+          />
         )}
 
         {otherConfigs.length > 0 && (

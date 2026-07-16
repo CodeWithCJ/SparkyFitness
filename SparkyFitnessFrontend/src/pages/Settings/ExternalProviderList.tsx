@@ -235,7 +235,8 @@ const ExternalProviderList = ({
         editData.provider_type === 'mealie' ||
         editData.provider_type === 'tandoor' ||
         editData.provider_type === 'norish' ||
-        editData.provider_type === 'free-exercise-db'
+        editData.provider_type === 'free-exercise-db' ||
+        editData.provider_type === 'openfoodfacts'
           ? editData.base_url || null
           : null,
       withings_last_sync_at:

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, Edit, Link2 } from 'lucide-react';
+import { Plus, X, Edit, Link2, Clock } from 'lucide-react';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
@@ -25,7 +25,7 @@ import FoodSearchDialog from './FoodSearch/FoodSearchDialog';
 import MealUnitSelector from '@/pages/Foods/MealUnitSelector';
 import LinkedMealPreviewDialog from './LinkedMealPreviewDialog';
 import { useQueryClient } from '@tanstack/react-query';
-import { toHourMinute } from '@workspace/shared';
+import { toHourMinute, userHourMinute } from '@workspace/shared';
 import {
   mealViewOptions,
   useCreateMealMutation,
@@ -103,6 +103,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     nutrientDisplayPreferences,
     energyUnit,
     convertEnergy,
+    timezone,
   } = usePreferences();
   const { t } = useTranslation();
 
@@ -1100,7 +1101,35 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="entryTime">Time (optional)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="entryTime">Time (optional)</Label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setEntryTime('')}
+                    disabled={!entryTime}
+                    className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    title="Clear time"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const { hour, minute } = userHourMinute(timezone);
+                      setEntryTime(
+                        `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+                      );
+                    }}
+                    className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                    title="Set to current local time"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Now
+                  </button>
+                </div>
+              </div>
               <Input
                 id="entryTime"
                 type="time"

@@ -2,6 +2,10 @@ import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
+import {
+  buildSqlSearch,
+  buildSqlExactMatchOrder,
+} from '../utils/dbSearchHelper.js';
 // --- Helpers ---
 // Shared column list + joins for reading a meal's ingredient rows (meal_foods).
 // A row is polymorphic (item_type 'food' | 'meal'): food rows carry the food
@@ -176,25 +180,46 @@ async function getMeals(userId: any, filter = 'all') {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function searchMeals(
-  searchTerm: any,
-  userId: any,
+  searchTerm: string | null | undefined,
+  userId: string | null | undefined,
   limit: number | null = null
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
+    const {
+      whereClauses: searchClauses,
+      queryParams: searchParams,
+      nextParamIndex,
+    } = buildSqlSearch('name', searchTerm, 1);
+    const whereClauses: string[] = [...searchClauses];
+    const queryParams: any[] = [...searchParams];
+    const paramIndex = nextParamIndex;
+
+    const whereSql =
+      whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    let orderClause = 'name ASC';
+    const selectQueryParams = [...queryParams];
+    let selectParamIndex = paramIndex;
+    if (searchTerm) {
+      const exactMatchParamIndex = selectParamIndex;
+      selectQueryParams.push(`%${searchTerm}%`);
+      selectParamIndex++;
+      orderClause = `${buildSqlExactMatchOrder('name', exactMatchParamIndex)}, name ASC`;
+    }
+
     let query = `
       SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings
       FROM meals
-      WHERE name ILIKE '%' || $1 || '%'
-      ORDER BY name ASC`;
-    const queryParams = [searchTerm];
+      ${whereSql}
+      ORDER BY ${orderClause}`;
+
     if (limit !== null) {
-      query += ' LIMIT $3';
-      queryParams.push(limit);
+      query += ` LIMIT $${selectParamIndex}`;
+      selectQueryParams.push(limit);
     }
-    const result = await client.query(query, queryParams);
+    const result = await client.query(query, selectQueryParams);
     // Await so attachFoodsToMeals' queries finish before finally releases the client.
     return await attachFoodsToMeals(client, result.rows);
   } finally {
