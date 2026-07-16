@@ -179,8 +179,8 @@ describe('WorkoutCompleteScreen', () => {
 
     // 100×5 + 120×3; the completed warmup and the skipped set contribute 0.
     expect(getByText(/860/)).toBeTruthy();
-    expect(getByText('1 skipped')).toBeTruthy();
-    // Per-exercise: Bench is partial (amber), Squat complete.
+    expect(getByText(/1 skipped/)).toBeTruthy();
+    // Per-exercise: Bench is partial, Squat complete.
     expect(getByText('2 of 3 sets')).toBeTruthy();
     expect(getByText('1 set · top 120 kg × 3')).toBeTruthy();
     expect(getByText('500 kg')).toBeTruthy();

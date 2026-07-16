@@ -52,14 +52,18 @@ describe('OidcProviderLogo', () => {
     );
   });
 
-  it('falls back to the globe when the logo fails to load', () => {
+  it('shows the globe underlay for a slow load and keeps it when the logo fails', () => {
     jest.useFakeTimers();
     try {
-      const { UNSAFE_getByType, getByTestId, queryByTestId } = render(
+      const { UNSAFE_getByType, UNSAFE_queryByType, getByTestId, queryByTestId } = render(
         <OidcProviderLogo logoUrl="/uploads/broken.png" serverUrl={SERVER_URL} />,
       );
 
+      // The underlay is held back for a grace period so cached loads never
+      // flash it; a slow load gets it as a placeholder beneath the image.
       expect(queryByTestId('icon-globe')).toBeNull();
+      act(() => jest.advanceTimersByTime(200));
+      expect(getByTestId('icon-globe')).toBeTruthy();
 
       // SafeImage retries twice with backoff before surrendering to the
       // fallback; fail the initial load and both retries.
@@ -69,7 +73,43 @@ describe('OidcProviderLogo', () => {
       act(() => jest.runAllTimers());
       fireEvent(UNSAFE_getByType(Image), 'error');
 
+      expect(UNSAFE_queryByType(Image)).toBeNull();
       expect(getByTestId('icon-globe')).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('never shows the underlay when the logo loads within the grace period', () => {
+    jest.useFakeTimers();
+    try {
+      const { UNSAFE_getByType, queryByTestId } = render(
+        <OidcProviderLogo logoUrl="/uploads/logo.png" serverUrl={SERVER_URL} />,
+      );
+
+      fireEvent(UNSAFE_getByType(Image), 'load');
+      act(() => jest.runAllTimers());
+
+      expect(queryByTestId('icon-globe')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('removes the underlay of a slow load once the logo has faded in', () => {
+    jest.useFakeTimers();
+    try {
+      const { UNSAFE_getByType, getByTestId, queryByTestId } = render(
+        <OidcProviderLogo logoUrl="/uploads/logo.png" serverUrl={SERVER_URL} />,
+      );
+
+      act(() => jest.advanceTimersByTime(200));
+      expect(getByTestId('icon-globe')).toBeTruthy();
+
+      fireEvent(UNSAFE_getByType(Image), 'load');
+      act(() => jest.runAllTimers());
+
+      expect(queryByTestId('icon-globe')).toBeNull();
     } finally {
       jest.useRealTimers();
     }

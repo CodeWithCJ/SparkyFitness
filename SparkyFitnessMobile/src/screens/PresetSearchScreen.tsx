@@ -5,15 +5,19 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
+import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus, useProfile } from '../hooks';
 import { deriveShareStatus } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
+import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
+  CATEGORY_ICON_MAP,
   buildPresetStartExercisesPayload,
   buildSingleExerciseStartPayload,
 } from '../utils/workoutSession';
@@ -72,6 +76,8 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   const filteredPresets = useMemo(() => filterItems(presets, ownershipFilter, profile?.id), [presets, ownershipFilter, profile?.id]);
   const filteredSearchResults = useMemo(() => filterItems(searchResults, ownershipFilter, profile?.id), [searchResults, ownershipFilter, profile?.id]);
   const { startLiveWorkout, isStarting } = useStartLiveWorkout(navigation);
+  const { getImageSource } = useExerciseImageSource();
+  const { isNavigationLocked, runNavigationAction } = useNavigationActionGuard(navigation);
 
   useRefetchOnFocus(refetch, true);
 
@@ -92,6 +98,12 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     });
   }, [startLiveWorkout]);
 
+  const handlePreviewPreset = useCallback((preset: WorkoutPreset) => {
+    runNavigationAction(() => {
+      navigation.navigate('WorkoutPresetDetail', { preset });
+    });
+  }, [runNavigationAction, navigation]);
+
   const handleStartEmpty = useCallback(() => {
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
   }, [navigation, route.key]);
@@ -105,32 +117,87 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
 
   useSelectedExercise(route.params, handleFirstExerciseSelected);
 
+  // Same sibling-pressables layout as the ExerciseSearch rows: the content
+  // starts the preset (fast path); the thumbnail and trailing ⓘ open the
+  // preset detail as a preview (the ⓘ slot shows the start spinner). The
+  // thumbnail is hidden from the accessibility tree because it duplicates
+  // the labeled ⓘ action.
   const renderPresetRow = useCallback(({ item }: { item: WorkoutPreset }) => {
+    const firstExercise = item.exercises[0];
+    const image = firstExercise?.image_url ?? null;
+    const fallbackIcon =
+      (firstExercise?.category && CATEGORY_ICON_MAP[firstExercise.category]) ||
+      'exercise-weights';
     const status = deriveShareStatus(item.user_id, item.is_public, profile?.id);
     return (
-      <TouchableOpacity
-        className="flex-row items-center px-4 py-3 border-b border-border-subtle"
-        activeOpacity={0.7}
-        onPress={() => handleSelectPreset(item)}
-        disabled={isStarting}
-      >
-        <View className="flex-1">
-          <View className="flex-row items-center gap-1.5">
-            <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
-              {item.name}
+      <View className="flex-row items-center border-b border-border-subtle">
+        <TouchableOpacity
+          className="pl-4 py-3"
+          activeOpacity={0.7}
+          accessible={false}
+          testID="preset-thumbnail"
+          disabled={isNavigationLocked || isStarting}
+          onPress={() => handlePreviewPreset(item)}
+        >
+          <SafeImage
+            source={image ? getImageSource(image) : null}
+            style={{ width: 44, height: 44, borderRadius: 8 }}
+            fallback={
+              <View
+                className="bg-raised items-center justify-center"
+                style={{ width: 44, height: 44, borderRadius: 8 }}
+              >
+                <Icon name={fallbackIcon} size={22} color={textMuted} />
+              </View>
+            }
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="flex-1 flex-row items-center pl-3 py-3"
+          activeOpacity={0.7}
+          onPress={() => handleSelectPreset(item)}
+          disabled={isStarting}
+        >
+          <View className="flex-1">
+            <View className="flex-row items-center gap-1.5">
+              <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
+                {item.name}
+              </Text>
+              <ShareStatusBadge status={status} />
+            </View>
+            <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
+              {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
             </Text>
-            <ShareStatusBadge status={status} />
           </View>
-          <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-            {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
-          </Text>
-        </View>
-        {isStarting && startingId === item.id && (
-          <ActivityIndicator size="small" color={accentColor} testID="preset-row-spinner" />
-        )}
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="px-4 py-3"
+          activeOpacity={0.7}
+          hitSlop={8}
+          disabled={isNavigationLocked || isStarting}
+          accessibilityLabel="View preset details"
+          onPress={() => handlePreviewPreset(item)}
+        >
+          {isStarting && startingId === item.id ? (
+            <ActivityIndicator size="small" color={accentColor} testID="preset-row-spinner" />
+          ) : (
+            <Icon name="info-circle" size={22} color={accentColor} />
+          )}
+        </TouchableOpacity>
+      </View>
     );
-  }, [handleSelectPreset, isStarting, startingId, textSecondary, accentColor, profile]);
+  }, [
+    handleSelectPreset,
+    handlePreviewPreset,
+    isNavigationLocked,
+    isStarting,
+    startingId,
+    textSecondary,
+    textMuted,
+    accentColor,
+    getImageSource,
+    profile,
+  ]);
 
   const renderSearchResults = () => {
     if (isSearching && filteredSearchResults.length === 0) {

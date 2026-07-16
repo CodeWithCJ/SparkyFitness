@@ -16,10 +16,11 @@ import {
 } from '../utils/workoutSession';
 
 const THUMB_SIZE = 52;
-/** contentContainer gap-3 — non-last superset bars extend across it. */
-const ITEM_GAP = 12;
-/** Horizontal inset of a superset bar from its item's edges. */
-const BAR_INSET = 4;
+/** contentContainer gap-2 — non-last superset bars extend across it. */
+const ITEM_GAP = 8;
+/** Horizontal inset of a superset bar from its item's edges — keeps the bar
+ * flush with the centered thumb block (item width − 2·inset = block width). */
+const BAR_INSET = 8;
 
 export interface SupersetBorder {
   color: string;
@@ -124,7 +125,7 @@ function ActiveWorkoutRail({
       horizontal
       showsHorizontalScrollIndicator={false}
       className="grow-0 border-b border-border-subtle bg-background"
-      contentContainerClassName="px-3 py-2 gap-3"
+      contentContainerClassName="px-3 py-2 gap-2"
     >
       {exercises.map((exercise) => {
         const name = exercise.exercise_snapshot?.name ?? 'Exercise';
@@ -149,7 +150,7 @@ function ActiveWorkoutRail({
             accessibilityRole="button"
             accessibilityLabel={name}
             className="items-center"
-            style={{ width: THUMB_SIZE + 16 }}
+            style={{ width: THUMB_SIZE + 24 }}
           >
             <View
               testID={`rail-ring-${exercise.id}`}
@@ -221,7 +222,7 @@ function ActiveWorkoutRail({
             )}
             <Text
               numberOfLines={2}
-              className={`mt-1 text-center text-[11px] leading-[13px] ${
+              className={`mt-1 text-center text-xs leading-tight ${
                 isCurrent
                   ? 'font-semibold'
                   : isFocused
@@ -241,7 +242,7 @@ function ActiveWorkoutRail({
         accessibilityRole="button"
         accessibilityLabel="Add exercise"
         className="items-center"
-        style={{ width: THUMB_SIZE + 16 }}
+        style={{ width: THUMB_SIZE + 24 }}
       >
         <View style={{ padding: 4 }}>
           <View
@@ -252,7 +253,7 @@ function ActiveWorkoutRail({
           </View>
         </View>
         <Text
-          className="mt-1 text-center text-[11px] leading-[13px] font-medium"
+          className="mt-1 text-center text-xs leading-tight font-medium"
           style={{ color: accentPrimary }}
         >
           Add

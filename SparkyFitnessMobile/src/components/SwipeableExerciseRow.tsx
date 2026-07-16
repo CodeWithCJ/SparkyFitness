@@ -163,7 +163,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
                     style={{ backgroundColor: isSparky ? `${accentPrimary}20` : `${textMuted}20` }}
                   >
                     <Text
-                      className="text-[10px] font-medium"
+                      className="text-xs font-medium"
                       style={{ color: isSparky ? accentPrimary : textSecondary }}
                     >
                       {sourceLabel}

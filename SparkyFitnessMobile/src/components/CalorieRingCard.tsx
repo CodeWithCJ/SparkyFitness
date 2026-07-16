@@ -61,7 +61,7 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
             <Text className="text-text-secondary text-xs">
               remaining
             </Text>
-            <Text className="text-text-muted text-[10px] mt-0.5">
+            <Text className="text-text-muted text-xs mt-0.5">
               of {calorieGoal.toLocaleString()} kcal
             </Text>
           </View>

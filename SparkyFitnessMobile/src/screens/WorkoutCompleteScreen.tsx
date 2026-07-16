@@ -185,14 +185,10 @@ function CaloriesShimmer() {
 function StatTile({
   icon,
   label,
-  note,
-  noteColor,
   children,
 }: {
   icon: IconName;
   label: string;
-  note?: string;
-  noteColor?: string;
   children: ReactNode;
 }) {
   const textMuted = String(useCSSVariable('--color-text-muted'));
@@ -201,18 +197,13 @@ function StatTile({
       <View className="flex-row items-center gap-1">
         <Icon name={icon} size={12} color={textMuted} />
         <Text
-          className="text-[11px] font-semibold uppercase text-text-muted"
+          className="text-xs font-semibold uppercase text-text-muted"
           style={{ letterSpacing: 0.6 }}
         >
           {label}
         </Text>
       </View>
       {children}
-      {note != null && (
-        <Text className="text-[11px] font-semibold" style={noteColor ? { color: noteColor } : undefined}>
-          {note}
-        </Text>
-      )}
     </View>
   );
 }
@@ -224,7 +215,7 @@ function StatValue({ value, unit }: { value: string; unit?: string }) {
       style={{ fontVariant: ['tabular-nums'] }}
     >
       {value}
-      {unit != null && <Text className="text-sm font-semibold text-text-muted"> {unit}</Text>}
+      {unit != null && <Text className="text-sm font-semibold text-text-secondary"> {unit}</Text>}
     </Text>
   );
 }
@@ -262,10 +253,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
   const { getImageSource } = useExerciseImageSource();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
 
-  const [prColor, amberColor] = useCSSVariable(['--color-pr', '--color-cat-amber']) as [
-    string,
-    string,
-  ];
+  const prColor = String(useCSSVariable('--color-pr'));
 
   const summary = useMemo(
     () => buildWorkoutCompletionSummary(session, completedSetIds, prSetIds),
@@ -383,20 +371,16 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             </StatTile>
           </View>
           <View className="flex-row gap-2 mt-2">
-            <StatTile
-              icon="checkmark-circle"
-              label="Sets"
-              note={summary.skippedSetCount > 0 ? `${summary.skippedSetCount} skipped` : undefined}
-              noteColor={amberColor}
-            >
+            <StatTile icon="checkmark-circle" label="Sets">
               <Text
                 className="text-xl font-bold text-text-primary mt-0.5"
                 style={{ fontVariant: ['tabular-nums'] }}
               >
                 {summary.completedSetCount}
-                <Text className="text-sm font-semibold text-text-muted">
+                <Text className="text-sm font-semibold text-text-secondary">
                   {' '}
                   / {summary.totalSetCount}
+                  {summary.skippedSetCount > 0 && ` · ${summary.skippedSetCount} skipped`}
                 </Text>
               </Text>
             </StatTile>
@@ -414,7 +398,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
           {summary.averageRpe != null && rpeTone != null && (
             <View className="flex-row items-center bg-surface rounded-xl shadow-sm px-3.5 py-3 mt-2">
               <Text
-                className="text-[11px] font-semibold uppercase text-text-muted"
+                className="text-xs font-semibold uppercase text-text-muted"
                 style={{ letterSpacing: 0.6 }}
               >
                 Average RPE
@@ -477,8 +461,8 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             Exercises
           </Text>
           <Text
-            className="ml-auto text-[11px] font-semibold uppercase text-text-muted"
-            style={{ letterSpacing: 0.6 }}
+            className="ml-auto text-xs font-bold uppercase text-text-muted"
+            style={{ letterSpacing: 1 }}
           >
             Volume
           </Text>
@@ -509,13 +493,13 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                     {row.hasPr && <Icon name="trophy" size={14} color={prColor} />}
                   </View>
                   <Text
-                    className="text-xs font-medium text-text-muted mt-0.5"
+                    className="text-xs font-medium text-text-secondary mt-0.5"
                     style={{ fontVariant: ['tabular-nums'] }}
                   >
                     {row.completedSetCount === row.totalSetCount ? (
                       `${row.totalSetCount} ${setsNoun(row.totalSetCount)}`
                     ) : (
-                      <Text className="font-semibold" style={{ color: amberColor }}>
+                      <Text className="font-semibold">
                         {row.completedSetCount} of {row.totalSetCount}{' '}
                         {setsNoun(row.totalSetCount)}
                       </Text>

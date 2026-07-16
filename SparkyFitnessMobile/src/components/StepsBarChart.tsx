@@ -31,7 +31,7 @@ const X_TICK_COUNT: Record<StepsRange, number> = {
 };
 
 const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
-const font = matchFont({ fontFamily, fontSize: 11 });
+const font = matchFont({ fontFamily, fontSize: 12 });
 
 const formatYLabel = (value: number) => {
   if (value >= 1000) return `${Math.round(value / 1000)}k`;

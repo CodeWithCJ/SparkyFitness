@@ -49,7 +49,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
     >
       <View className="flex-row justify-between items-center">
         <View className="flex-1 mr-3">
-          <View className="flex-row items-baseline gap-1.5">
+          <View className="flex-row items-center gap-1.5">
             <Text
               className="text-text-primary text-base font-medium flex-shrink"
               numberOfLines={1}
@@ -57,14 +57,8 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
               {meal.name}
             </Text>
             {showBadge ? (
-              // Baseline alignment puts the badge's own text on the name's
-              // baseline, which leaves the box hanging under the line; the 2dp
-              // lift pulls the box back onto it.
-              <View
-                className="px-1 py-0.5 rounded border border-border-subtle flex-shrink-0"
-                style={{ transform: [{ translateY: -2 }] }}
-              >
-                <Text className="text-text-secondary text-[9px] font-semibold">
+              <View className="px-1 py-0.5 rounded border border-border-subtle flex-shrink-0">
+                <Text className="text-text-muted text-xs">
                   Meal
                 </Text>
               </View>
