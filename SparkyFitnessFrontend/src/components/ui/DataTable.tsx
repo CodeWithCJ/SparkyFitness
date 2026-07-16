@@ -340,10 +340,10 @@ export function DataTable<TData, TValue>({
                         })()}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                      {/* Favorite indicator stacks ABOVE the actions menu,
-                          aligned to the top row of the card. Renders nothing on
-                          non-favorited rows (the cell returns null). */}
+                    <div className="flex flex-col items-center gap-1 shrink-0 ml-2 self-start">
+                      {/* Favorite indicator stacks directly ABOVE the actions
+                          menu, top-aligned to the card's first text row (name).
+                          Renders nothing on non-favorited rows (cell → null). */}
                       {(() => {
                         const favoriteCell = row
                           .getVisibleCells()
