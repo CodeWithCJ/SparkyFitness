@@ -80,6 +80,15 @@ jest.mock('@/components/MealBuilder', () => {
   };
 });
 
+// Mock favorites service so the FavoriteStarButton query resolves (empty).
+jest.mock('@/api/Foods/favoritesService', () => ({
+  getFavorites: jest
+    .fn()
+    .mockResolvedValue({ favoriteFoods: [], favoriteMeals: [] }),
+  addFavorite: jest.fn(),
+  removeFavorite: jest.fn(),
+}));
+
 describe('MealManagement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -122,6 +131,36 @@ describe('MealManagement', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Breakfast Bowl').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Protein Shake').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('renders a favorite toggle for each meal row', async () => {
+    mockGetMeals.mockResolvedValue([
+      {
+        id: 'meal1',
+        name: 'Breakfast Bowl',
+        description: 'A healthy start',
+        is_public: false,
+        foods: [],
+      },
+      {
+        id: 'meal2',
+        name: 'Protein Shake',
+        description: '',
+        is_public: true,
+        foods: [],
+      },
+    ]);
+
+    renderWithClient(<MealManagement />);
+
+    // Favorites resolve empty, so every row shows the "Add to favorites" star.
+    // DataTable renders each row in both a desktop and a mobile layout, so the
+    // count is >= the meal count rather than exact.
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole('button', { name: 'Add to favorites' }).length
+      ).toBeGreaterThanOrEqual(2);
     });
   });
 });

@@ -65,6 +65,7 @@ import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkActionToolbar from '@/components/BulkActionToolbar';
 import BulkDeleteDialog from '@/components/BulkDeleteDialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import FavoriteStarButton from '@/components/FavoriteStarButton';
 import { DataTable } from '@/components/ui/DataTable';
 import {
   ColumnDef,
@@ -429,6 +430,18 @@ const MealManagement: React.FC = () => {
         },
         enableSorting: true,
       })),
+      {
+        id: 'favorite',
+        header: () => (
+          <span className="sr-only">{t('common.favorite', 'Favorite')}</span>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) =>
+          row.original.id ? (
+            <FavoriteStarButton type="meal" id={row.original.id} />
+          ) : null,
+      },
       {
         id: 'actions',
         header: t('common.actions', 'Actions'),

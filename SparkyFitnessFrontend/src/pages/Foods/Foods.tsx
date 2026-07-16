@@ -47,6 +47,7 @@ import { useFoodDatabaseManager } from '@/hooks/Foods/useFoodDatabaseManager';
 import DeleteFoodDialog, { PendingDeletion } from './DeleteFoodDialog';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import AllergenBadges from '@/components/AllergenBadges';
+import FavoriteStarButton from '@/components/FavoriteStarButton';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkActionToolbar from '@/components/BulkActionToolbar';
@@ -315,6 +316,17 @@ const FoodDatabaseManager = () => {
           enableSorting: !isCustom && nutrient !== 'dietary_fiber',
         };
       }),
+      {
+        id: 'favorite',
+        header: () => (
+          <span className="sr-only">{t('common.favorite', 'Favorite')}</span>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <FavoriteStarButton type="food" id={row.original.id} />
+        ),
+      },
       {
         id: 'actions',
         header: t('common.actions', 'Actions'),
