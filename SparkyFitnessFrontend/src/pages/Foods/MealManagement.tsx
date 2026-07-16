@@ -373,14 +373,6 @@ const MealManagement: React.FC = () => {
           return (
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                {/* Mobile-only leading indicator; desktop uses the dedicated
-                    favorite column left of the nutrient columns. */}
-                {isMobile && meal.id && favoriteMealIds.has(meal.id) && (
-                  <Star
-                    className="h-4 w-4 shrink-0 fill-current text-yellow-500"
-                    aria-label={t('common.favorited', 'Favorited')}
-                  />
-                )}
                 <span className="font-semibold">{meal.name}</span>
                 {meal.is_public && (
                   <Badge variant="secondary" className="h-4 px-1 text-[10px]">
@@ -490,6 +482,14 @@ const MealManagement: React.FC = () => {
                   <Eye className="mr-2 h-4 w-4" />
                   {t('mealManagement.viewMealDetails', 'View Details')}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleEditMeal(meal.id!)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  {t('mealManagement.editMeal', 'Edit Meal')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDuplicateMeal(meal.id!)}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  {t('mealManagement.duplicateMeal', 'Duplicate Meal')}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!meal.id}
                   onClick={() =>
@@ -514,14 +514,6 @@ const MealManagement: React.FC = () => {
                         'Remove from favorites'
                       )
                     : t('mealManagement.addToFavorites', 'Add to favorites')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleEditMeal(meal.id!)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  {t('mealManagement.editMeal', 'Edit Meal')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDuplicateMeal(meal.id!)}>
-                  <Copy className="mr-2 h-4 w-4" />
-                  {t('mealManagement.duplicateMeal', 'Duplicate Meal')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>
@@ -571,7 +563,6 @@ const MealManagement: React.FC = () => {
       customNutrients,
       favoriteMealIds,
       toggleFavorite,
-      isMobile,
     ]
   );
 

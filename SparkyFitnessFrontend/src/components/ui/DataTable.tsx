@@ -252,7 +252,10 @@ export function DataTable<TData, TValue>({
                         key={cell.id}
                         className={cn(
                           cell.column.id === 'actions' && 'text-right',
-                          cell.column.id === 'select' && 'w-[40px]'
+                          cell.column.id === 'select' && 'w-[40px]',
+                          // Favorite indicator lines up with the first line of a
+                          // (possibly multi-line) title rather than centering.
+                          cell.column.id === 'favorite' && 'align-top'
                         )}
                       >
                         {flexRender(
@@ -337,7 +340,21 @@ export function DataTable<TData, TValue>({
                         })()}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                      {/* Favorite indicator stacks ABOVE the actions menu,
+                          aligned to the top row of the card. Renders nothing on
+                          non-favorited rows (the cell returns null). */}
+                      {(() => {
+                        const favoriteCell = row
+                          .getVisibleCells()
+                          .find((c) => c.column.id === 'favorite');
+                        return favoriteCell
+                          ? flexRender(
+                              favoriteCell.column.columnDef.cell,
+                              favoriteCell.getContext()
+                            )
+                          : null;
+                      })()}
                       {(() => {
                         const actionsCell = row
                           .getVisibleCells()

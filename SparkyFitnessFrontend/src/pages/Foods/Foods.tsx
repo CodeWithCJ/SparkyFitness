@@ -244,14 +244,6 @@ const FoodDatabaseManager = () => {
           return (
             <div className="flex flex-col gap-1 min-w-[150px]">
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Mobile-only leading indicator; desktop uses the dedicated
-                    favorite column left of Calories. */}
-                {isMobile && favoriteFoodIds.has(food.id) && (
-                  <Star
-                    className="h-4 w-4 shrink-0 fill-current text-yellow-500"
-                    aria-label={t('common.favorited', 'Favorited')}
-                  />
-                )}
                 <span className="font-bold text-gray-900 dark:text-gray-100">
                   {food.name}
                 </span>
@@ -378,6 +370,20 @@ const FoodDatabaseManager = () => {
                   {t('common.view', 'View details')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  disabled={!isEditable}
+                  onClick={() => handleEdit(food)}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  {t('foodDatabaseManager.editFood', 'Edit food')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={isDuplicating}
+                  onClick={() => handleDuplicate(food)}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  {t('foodDatabaseManager.duplicateFood', 'Duplicate food')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   onClick={() =>
                     toggleFavorite({
                       type: 'food',
@@ -402,20 +408,6 @@ const FoodDatabaseManager = () => {
                         'foodDatabaseManager.addToFavorites',
                         'Add to favorites'
                       )}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!isEditable}
-                  onClick={() => handleEdit(food)}
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  {t('foodDatabaseManager.editFood', 'Edit food')}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={isDuplicating}
-                  onClick={() => handleDuplicate(food)}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  {t('foodDatabaseManager.duplicateFood', 'Duplicate food')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!isEditable}
@@ -469,7 +461,6 @@ const FoodDatabaseManager = () => {
       customNutrients,
       favoriteFoodIds,
       toggleFavorite,
-      isMobile,
     ]
   );
 
