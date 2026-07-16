@@ -912,7 +912,7 @@
         "deleteButton": "Delete synced data",
         "confirmTitle": "Delete synced data?",
         "confirmDescription": "This will permanently delete {{count}} entries synced from {{source}}. Manually-entered data is not affected.",
-        "confirmWarning": "This action cannot be undone.",
+        "confirmWarning": "This action cannot be undone. Make sure you have a recent database backup before deleting.",
         "confirmButton": "Delete permanently",
         "success": "Synced data deleted.",
         "error": "Failed to delete synced data."
