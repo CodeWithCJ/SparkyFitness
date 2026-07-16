@@ -48,6 +48,7 @@ import garminRoutes from './routes/garminRoutes.js';
 import withingsRoutes from './routes/withingsRoutes.js';
 import withingsDataRoutes from './routes/withingsDataRoutes.js';
 import fitbitRoutes from './routes/fitbitRoutes.js';
+import ouraRoutes from './routes/ouraRoutes.js';
 import googleHealthRoutes from './routes/googleHealthRoutes.js';
 import polarRoutes from './routes/polarRoutes.js';
 import stravaRoutes from './routes/stravaRoutes.js';
@@ -79,6 +80,7 @@ import externalProviderRepository from './models/externalProviderRepository.js';
 import garminService from './services/garminService.js';
 import { getGarminSyncPhaseErrors } from './services/garminSyncResult.js';
 import fitbitService from './services/fitbitService.js';
+import ouraService from './services/ouraService.js';
 import googleHealthService from './services/googleHealthService.js';
 import polarService from './services/polarService.js';
 import stravaService from './services/stravaService.js';
@@ -517,6 +519,7 @@ app.use('/api/admin/oidc-settings', oidcSettingsRoutes);
 app.use('/api/admin/backup', backupRoutes);
 app.use('/api/integrations/withings/data', withingsDataRoutes);
 app.use('/api/integrations/fitbit', fitbitRoutes);
+app.use('/api/integrations/oura', ouraRoutes);
 app.use('/api/integrations/googlehealth', googleHealthRoutes);
 app.use('/api/integrations/polar', polarRoutes);
 app.use('/api/integrations/strava', stravaRoutes);
@@ -668,6 +671,33 @@ const scheduleFitbitSyncs = async () => {
     }
   });
 };
+// Oura sync
+const scheduleOuraSyncs = async () => {
+  cron.schedule('0 * * * *', async () => {
+    try {
+      const ouraProviders =
+        await externalProviderRepository.getProvidersByType('oura');
+      for (const provider of ouraProviders) {
+        if (provider.is_active && provider.sync_frequency !== 'manual') {
+          try {
+            await ouraService.syncOuraData(provider.user_id, 'scheduled');
+            await externalProviderRepository.updateProviderLastSync(
+              provider.id,
+              new Date()
+            );
+          } catch (error) {
+            console.error(
+              `[CRON] Oura sync failed for user ${provider.user_id}:`,
+              error
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[CRON] scheduleOuraSyncs task failed:', error);
+    }
+  });
+};
 // Strava sync
 const scheduleStravaSyncs = async () => {
   cron.schedule('0 * * * *', async () => {
@@ -805,6 +835,7 @@ applyMigrations()
     scheduleWithingsSyncs();
     scheduleGarminSyncs();
     scheduleFitbitSyncs();
+    scheduleOuraSyncs();
     schedulePolarSyncs();
     scheduleStravaSyncs();
     scheduleGoogleHealthSyncs();

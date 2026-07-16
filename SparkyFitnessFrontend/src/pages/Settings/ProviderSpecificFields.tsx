@@ -32,6 +32,7 @@ export const ProviderSpecificFields = ({
     'fatsecret',
     'withings',
     'fitbit',
+    'oura',
     'googlehealth',
     'strava',
     'polar',
@@ -45,6 +46,7 @@ export const ProviderSpecificFields = ({
     'usda',
     'withings',
     'fitbit',
+    'oura',
     'googlehealth',
     'strava',
     'polar',
@@ -79,9 +81,14 @@ export const ProviderSpecificFields = ({
       {needsAppId && (
         <div>
           <Label htmlFor="new_app_id">
-            {['withings', 'fitbit', 'googlehealth', 'strava', 'polar'].includes(
-              provider.provider_type || ''
-            )
+            {[
+              'withings',
+              'fitbit',
+              'oura',
+              'googlehealth',
+              'strava',
+              'polar',
+            ].includes(provider.provider_type || '')
               ? 'Client ID'
               : provider.provider_type === 'yazio'
                 ? 'YAZIO Email / Username'
@@ -103,9 +110,14 @@ export const ProviderSpecificFields = ({
       {needsAppKey && (
         <div>
           <Label htmlFor="new_app_key">
-            {['withings', 'fitbit', 'googlehealth', 'strava', 'polar'].includes(
-              provider.provider_type || ''
-            )
+            {[
+              'withings',
+              'fitbit',
+              'oura',
+              'googlehealth',
+              'strava',
+              'polar',
+            ].includes(provider.provider_type || '')
               ? 'Client Secret'
               : provider.provider_type === 'yazio'
                 ? 'YAZIO Password'
@@ -334,7 +346,7 @@ export const ProviderSpecificFields = ({
         </>
       )}
 
-      {['withings', 'fitbit', 'googlehealth', 'polar'].includes(
+      {['withings', 'fitbit', 'oura', 'googlehealth', 'polar'].includes(
         provider.provider_type || ''
       ) && (
         <p className="text-sm text-muted-foreground col-span-2">
