@@ -680,4 +680,62 @@ describe('yazioService', () => {
 
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  describe('localization', () => {
+    beforeEach(() => {
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce(
+          makeFetchResponse({ access_token: 'local-token', expires_in: 3600 })
+        )
+        .mockResolvedValue(makeFetchResponse([]));
+    });
+
+    it('defaults to multi-country list when no language is specified', async () => {
+      await searchYazioFoods('test', { ...yazioClientCredentials });
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        expect.stringContaining(
+          'countries=DE%2CAT%2CCH%2CUS%2CFR&locales=de_DE%2Cen_US%2Cfr_FR'
+        ),
+        expect.any(Object)
+      );
+    });
+
+    it('resolves supported languages to specific countries and locales', async () => {
+      await searchYazioFoods('test', {
+        ...yazioClientCredentials,
+        language: 'de',
+      });
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        expect.stringContaining('countries=DE%2CAT%2CCH&locales=de_DE'),
+        expect.any(Object)
+      );
+    });
+
+    it('falls back to default country list when language is unsupported', async () => {
+      await searchYazioFoods('test', {
+        ...yazioClientCredentials,
+        language: 'es',
+      });
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        expect.stringContaining(
+          'countries=DE%2CAT%2CCH%2CUS%2CFR&locales=de_DE%2Cen_US%2Cfr_FR'
+        ),
+        expect.any(Object)
+      );
+    });
+
+    it('allows overriding countries and locales', async () => {
+      await searchYazioFoods('test', {
+        ...yazioClientCredentials,
+        language: 'fr',
+        countries: ['JP'],
+        locales: ['ja_JP'],
+      });
+
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        expect.stringContaining('countries=JP&locales=ja_JP'),
+        expect.any(Object)
+      );
+    });
+  });
 });

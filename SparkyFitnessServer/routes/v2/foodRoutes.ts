@@ -403,6 +403,7 @@ const detailHandler: RequestHandler<{
           username: credentials.app_id,
           password: credentials.app_key,
           baseUrl: credentials.base_url,
+          language,
         });
         break;
       }

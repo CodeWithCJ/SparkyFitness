@@ -58,6 +58,35 @@ interface YazioCredentials {
   clientId?: string;
   clientSecret?: string;
   baseUrl?: string | null;
+  language?: string;
+}
+
+const SUPPORTED_LANGUAGES = ['en', 'de', 'fr'];
+
+const YAZIO_LOCALES: Record<
+  string,
+  { countries: string[]; locales: string[] }
+> = {
+  de: {
+    countries: ['DE', 'AT', 'CH'],
+    locales: ['de_DE'],
+  },
+  fr: {
+    countries: ['FR', 'BE', 'CH'],
+    locales: ['fr_FR', 'fr_BE'],
+  },
+  en: {
+    countries: ['US', 'GB', 'CA', 'AU'],
+    locales: ['en_US', 'en_GB'],
+  },
+};
+
+function resolveLanguage(lang: string | null | undefined): string | null {
+  if (typeof lang !== 'string') {
+    return null;
+  }
+  const normalized = lang.trim().toLowerCase().slice(0, 2);
+  return SUPPORTED_LANGUAGES.includes(normalized) ? normalized : null;
 }
 
 interface YazioSearchOptions extends YazioCredentials {
@@ -618,11 +647,21 @@ async function searchRawYazioProducts(
   query: string,
   options: YazioSearchOptions
 ) {
+  const resolvedLang = resolveLanguage(options.language);
+  const resolvedLocales = resolvedLang ? YAZIO_LOCALES[resolvedLang] : null;
+
+  const defaultCountries = ['DE', 'AT', 'CH', 'US', 'FR'];
+  const defaultLocales = ['de_DE', 'en_US', 'fr_FR'];
+
+  const countries =
+    options.countries ?? resolvedLocales?.countries ?? defaultCountries;
+  const locales = options.locales ?? resolvedLocales?.locales ?? defaultLocales;
+
   const params = new URLSearchParams({
     query,
     sex: 'male',
-    countries: (options.countries ?? ['DE', 'AT', 'CH', 'US', 'FR']).join(','),
-    locales: (options.locales ?? ['de_DE', 'en_US', 'fr_FR']).join(','),
+    countries: countries.join(','),
+    locales: locales.join(','),
   });
 
   const data = await yazioFetch<YazioProductSearchResult[]>(

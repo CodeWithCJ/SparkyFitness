@@ -957,6 +957,7 @@ async function lookupBarcode(
           username: provider.app_id,
           password: provider.app_key,
           baseUrl: provider.base_url,
+          language,
         });
         if (yazioFood) {
           return {
