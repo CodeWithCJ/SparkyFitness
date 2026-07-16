@@ -186,7 +186,6 @@ export interface DefaultPreferences {
   default_weight_unit: WeightUnit;
   default_measurement_unit: MeasurementUnit;
   default_distance_unit: DistanceUnit;
-  system_prompt: string;
   auto_clear_history: string;
   logging_level: LoggingLevel;
   timezone: string;
@@ -573,8 +572,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         default_weight_unit: 'kg',
         default_measurement_unit: 'cm',
         default_distance_unit: 'km',
-        system_prompt:
-          'You are Sparky, a helpful AI assistant for health and fitness tracking.',
         auto_clear_history: 'never',
         logging_level: 'ERROR' as const,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,

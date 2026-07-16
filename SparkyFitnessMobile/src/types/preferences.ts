@@ -27,7 +27,6 @@ export interface UserPreferences {
   exercise_calorie_percentage?: number;
   activity_level?: string;
   tdee_allow_negative_adjustment?: boolean;
-  system_prompt?: string;
   auto_clear_history?: string;
   logging_level?: string;
   timezone?: string | null;
