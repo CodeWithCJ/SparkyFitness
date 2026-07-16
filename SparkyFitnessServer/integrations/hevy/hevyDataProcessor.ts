@@ -108,7 +108,20 @@ async function processHevyWorkouts(
       );
     }
   }
+  // The raw bundle can hold the same workout under overlapping page keys
+  // (e.g. `raw_workouts_page` and `raw_workouts_page_1`), and paginated API
+  // fetches can overlap too. Process each workout id only once — otherwise a
+  // second pass creates a duplicate preset-entry session whose exercises stay
+  // deduped on the first one, leaving an empty orphan session.
+  const seenWorkoutIds = new Set<string>();
   for (const workout of workouts) {
+    if (workout.id) {
+      if (seenWorkoutIds.has(workout.id)) {
+        log('debug', `Skipping duplicate Hevy workout ${workout.id}`);
+        continue;
+      }
+      seenWorkoutIds.add(workout.id);
+    }
     try {
       await processSingleWorkout(userId, createdByUserId, workout, timezone);
     } catch (error) {

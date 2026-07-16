@@ -271,6 +271,25 @@ describe('processHevyWorkouts — workout-preset grouping', () => {
   });
 });
 
+describe('processHevyWorkouts — duplicate workout guard', () => {
+  it('processes a repeated workout id once (no orphan/empty preset entry)', async () => {
+    // Same workout twice (mirrors the mock bundle holding page 1 under two keys).
+    await processHevyWorkouts(
+      UID,
+      CID,
+      [sampleWorkout(), sampleWorkout()],
+      'UTC'
+    );
+    expect(
+      exercisePresetEntryRepository.createExercisePresetEntry
+    ).toHaveBeenCalledTimes(1);
+    // 3 exercises, not 6.
+    expect(
+      workoutPresetRepository.addExerciseToWorkoutPreset
+    ).toHaveBeenCalledTimes(3);
+  });
+});
+
 describe('processHevyWorkouts — re-sync cleanup', () => {
   it('clears existing Hevy entries and preset entries over the batch date range', async () => {
     const older = sampleWorkout();
