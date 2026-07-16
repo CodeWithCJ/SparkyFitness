@@ -32,7 +32,7 @@ const sourceParamSchema = z.object({
 
 /**
  * @swagger
- * /api/synced-data/sources:
+ * /synced-data/sources:
  *   get:
  *     summary: List the current user's synced data sources with row counts
  *     tags: [Synced Data]
@@ -56,7 +56,7 @@ router.get('/sources', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /api/synced-data/sources/{source}:
+ * /synced-data/sources/{source}:
  *   delete:
  *     summary: Delete all of the current user's synced entries for one source
  *     tags: [Synced Data]

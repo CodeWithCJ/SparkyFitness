@@ -48,8 +48,7 @@ describe('Synced Data Routes', () => {
         },
         { source: 'garmin', totalCount: 30, byTable: { exercise_entries: 30 } },
       ];
-      // @ts-expect-error TS(2339): mock helper not on typed fn
-      syncedDataService.getSyncedSources.mockResolvedValue(summary);
+      vi.mocked(syncedDataService.getSyncedSources).mockResolvedValue(summary);
 
       const res = await request(app).get('/api/synced-data/sources');
 
@@ -61,8 +60,7 @@ describe('Synced Data Routes', () => {
     });
 
     it('returns 500 on unexpected service error', async () => {
-      // @ts-expect-error TS(2339): mock helper not on typed fn
-      syncedDataService.getSyncedSources.mockRejectedValue(
+      vi.mocked(syncedDataService.getSyncedSources).mockRejectedValue(
         new Error('DB error')
       );
 
@@ -74,8 +72,7 @@ describe('Synced Data Routes', () => {
 
   describe('DELETE /api/synced-data/sources/:source', () => {
     it('deletes all synced rows for a source and returns per-table counts', async () => {
-      // @ts-expect-error TS(2339): mock helper not on typed fn
-      syncedDataService.deleteSyncedSource.mockResolvedValue({
+      vi.mocked(syncedDataService.deleteSyncedSource).mockResolvedValue({
         byTable: { food_entries: 100, exercise_entries: 114 },
         totalDeleted: 214,
       });
@@ -117,8 +114,7 @@ describe('Synced Data Routes', () => {
     );
 
     it('returns 500 on unexpected service error', async () => {
-      // @ts-expect-error TS(2339): mock helper not on typed fn
-      syncedDataService.deleteSyncedSource.mockRejectedValue(
+      vi.mocked(syncedDataService.deleteSyncedSource).mockRejectedValue(
         new Error('DB error')
       );
 

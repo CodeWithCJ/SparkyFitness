@@ -6,7 +6,6 @@ import {
   type DeleteSyncedSourceResponse,
 } from '@/api/Settings/syncedDataService';
 import { syncedDataKeys } from '@/api/keys/settings';
-import { foodEntryKeys, dailyProgressKeys } from '@/api/keys/diary';
 
 export const useSyncedSources = () => {
   const { t } = useTranslation();
@@ -31,11 +30,11 @@ export const useDeleteSyncedSource = () => {
   return useMutation({
     mutationFn: (source: string) => deleteSyncedSource(source),
     onSuccess: () => {
-      // The deletion spans food/exercise/measurement entries, so refresh the
-      // sources list plus the diary/progress caches that surface those rows.
-      queryClient.invalidateQueries({ queryKey: syncedDataKeys.all });
-      queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+      // This bulk delete spans many domains (food, exercise, sleep, water,
+      // custom measurements). Rather than enumerate every affected query key —
+      // which would silently miss a domain — invalidate the whole cache so all
+      // views refetch. This is a rare, deliberate action, so the cost is fine.
+      queryClient.invalidateQueries();
     },
     meta: {
       successMessage: (data: unknown) => {
