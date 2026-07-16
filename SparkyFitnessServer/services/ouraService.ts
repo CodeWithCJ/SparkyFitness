@@ -42,7 +42,10 @@ async function syncOuraData(
   } else {
     throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
   }
-  const sleepEndDate = addDays(endDate, 1);
+  // Oura bounds the sleep and workout endpoints by the UTC start instant with
+  // an exclusive upper limit, so evening items (past UTC midnight) need one
+  // extra day even though their 'day' field is inside the range.
+  const inclusiveEndDate = addDays(endDate, 1);
   const { start: startDateUtc, end: endDateUtc } = dayRangeToUtcRange(
     startDate,
     endDate,
@@ -175,7 +178,7 @@ async function syncOuraData(
         ouraIntegrationService.fetchSleepPeriods(
           userId,
           startDate,
-          sleepEndDate,
+          inclusiveEndDate,
           accessToken
         ),
       'sleep periods'
@@ -186,7 +189,7 @@ async function syncOuraData(
         ouraIntegrationService.fetchDailySleep(
           userId,
           startDate,
-          sleepEndDate,
+          inclusiveEndDate,
           accessToken
         ),
       'daily sleep'
@@ -274,7 +277,7 @@ async function syncOuraData(
         ouraIntegrationService.fetchWorkouts(
           userId,
           startDate,
-          endDate,
+          inclusiveEndDate,
           accessToken
         ),
       'workouts'

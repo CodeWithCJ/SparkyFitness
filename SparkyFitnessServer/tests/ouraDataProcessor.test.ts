@@ -341,6 +341,7 @@ describe('processOuraWorkouts', () => {
       UID,
       expect.objectContaining({
         exercise_id: 'exercise-1',
+        source_id: 'w-1',
         duration_minutes: 40,
         calories_burned: 320,
         entry_date: '2026-07-15',
@@ -348,6 +349,40 @@ describe('processOuraWorkouts', () => {
       CID,
       'Oura'
     );
+  });
+
+  it('keeps several same-day sessions of one activity as separate entries', async () => {
+    vi.mocked(
+      exerciseRepository.getExerciseBySourceAndSourceId
+    ).mockResolvedValue({ id: 'exercise-1', name: 'Basketball' });
+    await processOuraWorkouts(
+      UID,
+      CID,
+      [
+        {
+          ...workout,
+          id: 'w-a',
+          activity: 'basketball',
+          start_datetime: '2026-07-15T17:58:00+00:00',
+          end_datetime: '2026-07-15T18:22:00+00:00',
+        },
+        {
+          ...workout,
+          id: 'w-b',
+          activity: 'basketball',
+          start_datetime: '2026-07-15T18:40:00+00:00',
+          end_datetime: '2026-07-15T19:18:00+00:00',
+        },
+      ],
+      'UTC'
+    );
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledTimes(
+      2
+    );
+    const sourceIds = vi
+      .mocked(exerciseEntryRepository.createExerciseEntry)
+      .mock.calls.map((c) => c[1].source_id);
+    expect(sourceIds).toEqual(['w-a', 'w-b']);
   });
 
   it('reuses an existing exercise found by source id', async () => {

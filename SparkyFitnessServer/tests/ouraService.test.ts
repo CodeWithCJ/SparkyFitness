@@ -81,6 +81,12 @@ describe('syncOuraData sync windows', () => {
       addDays(today, 1),
       'token-1'
     );
+    expect(ouraIntegrationService.fetchWorkouts).toHaveBeenCalledWith(
+      UID,
+      addDays(today, -7),
+      addDays(today, 1),
+      'token-1'
+    );
   });
 
   it('scheduled sync uses a yesterday-to-today window', async () => {

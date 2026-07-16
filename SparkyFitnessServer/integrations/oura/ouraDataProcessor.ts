@@ -747,6 +747,7 @@ async function processOuraWorkouts(
       }
       const exerciseEntryData = {
         exercise_id: exercise.id,
+        source_id: workout.id,
         duration_minutes: durationMinutes,
         calories_burned: caloriesBurned,
         entry_date: entryDate,
