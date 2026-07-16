@@ -252,10 +252,7 @@ export function DataTable<TData, TValue>({
                         key={cell.id}
                         className={cn(
                           cell.column.id === 'actions' && 'text-right',
-                          cell.column.id === 'select' && 'w-[40px]',
-                          // Favorite indicator lines up with the first line of a
-                          // (possibly multi-line) title rather than centering.
-                          cell.column.id === 'favorite' && 'align-top'
+                          cell.column.id === 'select' && 'w-[40px]'
                         )}
                       >
                         {flexRender(
