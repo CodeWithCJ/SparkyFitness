@@ -29,6 +29,7 @@ import {
   Edit,
   Copy,
   Trash2,
+  Star,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -47,7 +48,10 @@ import { useFoodDatabaseManager } from '@/hooks/Foods/useFoodDatabaseManager';
 import DeleteFoodDialog, { PendingDeletion } from './DeleteFoodDialog';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import AllergenBadges from '@/components/AllergenBadges';
-import FavoriteStarButton from '@/components/FavoriteStarButton';
+import {
+  useFavoritesQuery,
+  useToggleFavoriteMutation,
+} from '@/hooks/Foods/useFavorites';
 
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import BulkActionToolbar from '@/components/BulkActionToolbar';
@@ -76,6 +80,15 @@ const FoodDatabaseManager = () => {
   const isMobile = useIsMobile();
   const [viewingFood, setViewingFood] = useState<Food | null>(null);
   const { data: customNutrients = [] } = useCustomNutrients();
+
+  // Favorites: a star INDICATOR on favorited rows (a dedicated column on desktop,
+  // a leading star by the name on mobile); the toggle itself lives in the ⋮ menu.
+  const { data: favorites } = useFavoritesQuery();
+  const { mutate: toggleFavorite } = useToggleFavoriteMutation();
+  const favoriteFoodIds = useMemo(
+    () => new Set((favorites?.favoriteFoods ?? []).map((f) => f.id)),
+    [favorites]
+  );
 
   const {
     user,
@@ -231,6 +244,14 @@ const FoodDatabaseManager = () => {
           return (
             <div className="flex flex-col gap-1 min-w-[150px]">
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Mobile-only leading indicator; desktop uses the dedicated
+                    favorite column left of Calories. */}
+                {isMobile && favoriteFoodIds.has(food.id) && (
+                  <Star
+                    className="h-4 w-4 shrink-0 fill-current text-yellow-500"
+                    aria-label={t('common.favorited', 'Favorited')}
+                  />
+                )}
                 <span className="font-bold text-gray-900 dark:text-gray-100">
                   {food.name}
                 </span>
@@ -273,6 +294,24 @@ const FoodDatabaseManager = () => {
             </div>
           );
         },
+      },
+      {
+        // Indicator-only column (left of Calories on desktop). The favorite
+        // TOGGLE lives in the ⋮ menu; this just shows a gold star when starred.
+        id: 'favorite',
+        header: () => (
+          <span className="sr-only">{t('common.favorite', 'Favorite')}</span>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        meta: { hideOnMobile: true },
+        cell: ({ row }) =>
+          favoriteFoodIds.has(row.original.id) ? (
+            <Star
+              className="h-4 w-4 fill-current text-yellow-500"
+              aria-label={t('common.favorited', 'Favorited')}
+            />
+          ) : null,
       },
       ...visibleNutrients.map((nutrient) => {
         const meta = getNutrientMetadata(nutrient, customNutrients);
@@ -317,17 +356,6 @@ const FoodDatabaseManager = () => {
         };
       }),
       {
-        id: 'favorite',
-        header: () => (
-          <span className="sr-only">{t('common.favorite', 'Favorite')}</span>
-        ),
-        enableSorting: false,
-        enableHiding: false,
-        cell: ({ row }) => (
-          <FavoriteStarButton type="food" id={row.original.id} />
-        ),
-      },
-      {
         id: 'actions',
         header: t('common.actions', 'Actions'),
         cell: ({ row }) => {
@@ -348,6 +376,32 @@ const FoodDatabaseManager = () => {
                 <DropdownMenuItem onClick={() => setViewingFood(food)}>
                   <Eye className="mr-2 h-4 w-4" />
                   {t('common.view', 'View details')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    toggleFavorite({
+                      type: 'food',
+                      id: food.id,
+                      isFavorite: favoriteFoodIds.has(food.id),
+                    })
+                  }
+                >
+                  <Star
+                    className={`mr-2 h-4 w-4 ${
+                      favoriteFoodIds.has(food.id)
+                        ? 'fill-current text-yellow-500'
+                        : ''
+                    }`}
+                  />
+                  {favoriteFoodIds.has(food.id)
+                    ? t(
+                        'foodDatabaseManager.removeFromFavorites',
+                        'Remove from favorites'
+                      )
+                    : t(
+                        'foodDatabaseManager.addToFavorites',
+                        'Add to favorites'
+                      )}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!isEditable}
@@ -413,6 +467,9 @@ const FoodDatabaseManager = () => {
       togglePublicSharing,
       getFoodSourceBadge,
       customNutrients,
+      favoriteFoodIds,
+      toggleFavorite,
+      isMobile,
     ]
   );
 
