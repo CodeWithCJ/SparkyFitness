@@ -90,13 +90,18 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
 
   const isActiveCalories = snapshot?.name === 'Active Calories';
 
-  const durationDisplay = formatMinutesToHHMM(
+  const setsDuration =
     exerciseEntry.sets && exerciseEntry.sets.length > 0
       ? exerciseEntry.sets.reduce(
           (sum, set) => sum + (set.duration || 0) + (set.rest_time || 0) / 60,
           0
         )
-      : exerciseEntry.duration_minutes || 0
+      : 0;
+  // Sets carry their own timers (planks, holds, rest). When those sum to 0
+  // (e.g. pure rep-based sets synced from Hevy), fall back to the entry-level
+  // duration_minutes so the workout's session time still surfaces.
+  const durationDisplay = formatMinutesToHHMM(
+    setsDuration > 0 ? setsDuration : exerciseEntry.duration_minutes || 0
   );
 
   const caloriesDisplay = `${Math.round(convertEnergy(exerciseEntry.calories_burned || 0, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`;
