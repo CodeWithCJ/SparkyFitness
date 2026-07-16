@@ -10,19 +10,76 @@ import {
   instantToDay,
   instantHourMinute,
 } from '@workspace/shared';
+
+/** A single set within a Hevy exercise. */
+interface HevySet {
+  index: number;
+  type: string;
+  weight_kg: number | null;
+  reps: number | null;
+  distance_meters: number | null;
+  duration_seconds: number | null;
+  rpe: number | null;
+  custom_metric?: number | null;
+}
+
+/** One exercise within a Hevy workout. */
+interface HevyExercise {
+  index: number;
+  title: string;
+  notes?: string | null;
+  exercise_template_id?: string | null;
+  superset_id?: string | number | null;
+  sets?: HevySet[] | null;
+}
+
+/** A logged Hevy workout (one session). */
+interface HevyWorkout {
+  id: string;
+  title: string;
+  routine_id?: string | null;
+  description?: string | null;
+  start_time: string;
+  end_time: string;
+  updated_at?: string | null;
+  created_at?: string | null;
+  exercises?: HevyExercise[] | null;
+}
+
+/** The Hevy user-info payload we read body metrics from. */
+interface HevyUserInfoResponse {
+  user?: {
+    weight_kg?: number | null;
+    height_cm?: number | null;
+    updated_at?: string | null;
+  } | null;
+}
+
+/** Minimal shapes for the repository rows we consume by id. */
+interface ExerciseRow {
+  id: string;
+}
+interface WorkoutPresetRow {
+  id: number;
+}
+interface PresetEntryRow {
+  id: string;
+}
+interface ExerciseEntryRow {
+  id: string;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /**
  * Process Hevy user info to sync measurements.
- * @param {string} userId - The Sparky Fitness user ID.
- * @param {string} createdByUserId - The user ID who triggered the sync.
- * @param {Object} data - The Hevy user info response.
  */
 async function processHevyUserInfo(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any,
+  userId: string,
+  createdByUserId: string,
+  data: HevyUserInfoResponse | null | undefined,
   timezone = 'UTC'
 ) {
   if (!data || !data.user) return;
@@ -31,10 +88,8 @@ async function processHevyUserInfo(
     ? updated_at.split('T')[0]
     : todayInZone(timezone);
   try {
-    const measurements = {};
-    // @ts-expect-error TS(2339): Property 'weight' does not exist on type '{}'.
+    const measurements: { weight?: number; height?: number } = {};
     if (weight_kg) measurements.weight = weight_kg;
-    // @ts-expect-error TS(2339): Property 'height' does not exist on type '{}'.
     if (height_cm) measurements.height = height_cm;
     if (Object.keys(measurements).length > 0) {
       await measurementRepository.upsertCheckInMeasurements(
@@ -51,24 +106,18 @@ async function processHevyUserInfo(
   } catch (error) {
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Failed to sync Hevy user measurements for user ${userId}: ${error.message}`
+      `Failed to sync Hevy user measurements for user ${userId}: ${errorMessage(error)}`
     );
   }
 }
+
 /**
  * Process a list of workouts from Hevy.
- * @param {string} userId - The Sparky Fitness user ID.
- * @param {string} createdByUserId - The user ID who triggered the sync.
- * @param {Array} workouts - The list of Hevy workouts.
  */
 async function processHevyWorkouts(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  workouts: any,
+  userId: string,
+  createdByUserId: string,
+  workouts: HevyWorkout[],
   timezone = 'UTC'
 ) {
   log(
@@ -81,9 +130,8 @@ async function processHevyWorkouts(
   // to Hevy-sourced entries. Preset templates (workout_presets) are intentionally
   // left intact and reused across occurrences.
   if (workouts.length > 0) {
-    const entryDates: string[] = workouts.map(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (w: any) => instantToDay(new Date(w.start_time), timezone)
+    const entryDates = workouts.map((w) =>
+      instantToDay(new Date(w.start_time), timezone)
     );
     const startDate = entryDates.reduce((a, b) => (a < b ? a : b));
     const endDate = entryDates.reduce((a, b) => (a > b ? a : b));
@@ -103,8 +151,7 @@ async function processHevyWorkouts(
     } catch (error) {
       log(
         'error',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        `Failed to clear existing Hevy data before re-sync for user ${userId}: ${error.message}`
+        `Failed to clear existing Hevy data before re-sync for user ${userId}: ${errorMessage(error)}`
       );
     }
   }
@@ -127,25 +174,19 @@ async function processHevyWorkouts(
     } catch (error) {
       log(
         'error',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        `Failed to process Hevy workout ${workout.id}: ${error.message}`
+        `Failed to process Hevy workout ${workout.id}: ${errorMessage(error)}`
       );
     }
   }
 }
+
 /**
  * Process a single workout from Hevy.
- * @param {string} userId - The Sparky Fitness user ID.
- * @param {string} createdByUserId - The user ID who triggered the sync.
- * @param {Object} workout - The Hevy workout object.
  */
 async function processSingleWorkout(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  workout: any,
+  userId: string,
+  createdByUserId: string,
+  workout: HevyWorkout,
   timezone = 'UTC'
 ) {
   const startTime = new Date(workout.start_time);
@@ -166,10 +207,8 @@ async function processSingleWorkout(
   // name to mirror Garmin. Then create one preset entry — the logged session —
   // that every exercise in this workout attaches to, so the diary shows the
   // whole workout as a single "Vid plan A" group instead of loose exercises.
-  let workoutPreset = await workoutPresetRepository.getWorkoutPresetByName(
-    userId,
-    workout.title
-  );
+  let workoutPreset: WorkoutPresetRow | null =
+    await workoutPresetRepository.getWorkoutPresetByName(userId, workout.title);
   if (!workoutPreset) {
     workoutPreset = await workoutPresetRepository.createWorkoutPreset({
       user_id: userId,
@@ -179,7 +218,12 @@ async function processSingleWorkout(
       is_public: false,
     });
   }
-  const presetEntry =
+  if (!workoutPreset) {
+    throw new Error(
+      `Failed to find or create workout preset for "${workout.title}"`
+    );
+  }
+  const presetEntry: PresetEntryRow =
     await exercisePresetEntryRepository.createExercisePresetEntry(
       userId,
       {
@@ -195,17 +239,24 @@ async function processSingleWorkout(
       },
       createdByUserId
     );
+
+  // Hevy identifies supersets by an opaque id; the DB stores superset_group as a
+  // per-workout integer. Assign each distinct Hevy superset id a stable number
+  // within this workout so grouped exercises share a value.
+  const supersetGroupByHevyId = new Map<string, number>();
+  const exercises = workout.exercises ?? [];
   for (
     let exerciseIndex = 0;
-    exerciseIndex < workout.exercises.length;
+    exerciseIndex < exercises.length;
     exerciseIndex++
   ) {
-    const hevyExercise = workout.exercises[exerciseIndex];
+    const hevyExercise = exercises[exerciseIndex]!;
     // 1. Find or create exercise template
-    let exercise = await exerciseRepository.findExerciseByNameAndUserId(
-      hevyExercise.title,
-      userId
-    );
+    let exercise: ExerciseRow | null =
+      await exerciseRepository.findExerciseByNameAndUserId(
+        hevyExercise.title,
+        userId
+      );
     if (!exercise) {
       exercise = await exerciseRepository.createExercise(
         {
@@ -215,19 +266,25 @@ async function processSingleWorkout(
           is_custom: true,
           shared_with_public: false,
         },
-        // @ts-expect-error TS(2554): Expected 1 arguments, but got 2.
+        // @ts-expect-error TS(2554): repository accepts createdByUserId at runtime
         createdByUserId
       );
     }
+    if (!exercise) {
+      log(
+        'error',
+        `Failed to find or create Hevy exercise "${hevyExercise.title}"`
+      );
+      continue;
+    }
+    const sets = hevyExercise.sets ?? [];
     // Hevy has no per-exercise duration; it only reports whole-workout
     // start/end. When an exercise's sets carry real per-set durations (timed
     // exercises), use their sum. Otherwise attribute the whole-workout
     // duration to the first exercise only (and 0 to the rest) so daily
     // exercise-minute totals aren't multiplied by the number of exercises.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const setDurationSeconds = hevyExercise.sets.reduce(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (sum: number, set: any) => sum + (set.duration_seconds || 0),
+    const setDurationSeconds = sets.reduce(
+      (sum, set) => sum + (set.duration_seconds || 0),
       0
     );
     const durationMinutes =
@@ -237,12 +294,22 @@ async function processSingleWorkout(
           ? workoutDurationMinutes
           : 0;
     // Sum any per-set distances (meters) Hevy reports; null when none.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const distanceMeters = hevyExercise.sets.reduce(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (sum: number, set: any) => sum + (set.distance_meters || 0),
+    const distanceMeters = sets.reduce(
+      (sum, set) => sum + (set.distance_meters || 0),
       0
     );
+    // Map the Hevy superset id to a numeric per-workout group.
+    let supersetGroup: number | null = null;
+    if (
+      hevyExercise.superset_id !== null &&
+      hevyExercise.superset_id !== undefined
+    ) {
+      const key = String(hevyExercise.superset_id);
+      if (!supersetGroupByHevyId.has(key)) {
+        supersetGroupByHevyId.set(key, supersetGroupByHevyId.size + 1);
+      }
+      supersetGroup = supersetGroupByHevyId.get(key)!;
+    }
     // Stable per-exercise identity so re-syncs update in place instead of
     // duplicating. Hevy workout ids are unique; exercise index is unique
     // within a workout.
@@ -255,7 +322,7 @@ async function processSingleWorkout(
       duration_minutes: durationMinutes,
       calories_burned: 0, // Hevy typically doesn't provide per-exercise calories
       distance: distanceMeters > 0 ? distanceMeters : null,
-      superset_group: hevyExercise.superset_id ?? null,
+      superset_group: supersetGroup,
       source_id: sourceId,
       exercise_preset_entry_id: presetEntry.id,
       notes:
@@ -264,8 +331,7 @@ async function processSingleWorkout(
         `Synced from Hevy: ${workout.title}`,
       entry_source: 'Hevy',
       sort_order: hevyExercise.index,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      sets: hevyExercise.sets.map((set: any) => ({
+      sets: sets.map((set) => ({
         set_number: set.index + 1,
         set_type: mapSetType(set.type),
         weight: set.weight_kg,
@@ -278,13 +344,14 @@ async function processSingleWorkout(
     };
     // 3. Create the exercise entry, linked to the session (preset entry) via
     // the 5th argument so it groups under the workout instead of standing alone.
-    const entry = await exerciseEntryRepository.createExerciseEntry(
-      userId,
-      entryData,
-      createdByUserId,
-      'Hevy',
-      presetEntry.id
-    );
+    const entry: ExerciseEntryRow | null =
+      await exerciseEntryRepository.createExerciseEntry(
+        userId,
+        entryData,
+        createdByUserId,
+        'Hevy',
+        presetEntry.id
+      );
     // 4. Populate the reusable preset template with this exercise. Reuses the
     // existing exercise row when present and skips if it already has sets, so
     // repeat occurrences of the same routine don't duplicate template rows.
@@ -300,8 +367,7 @@ async function processSingleWorkout(
     } catch (error) {
       log(
         'error',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        `Failed to add Hevy exercise to workout preset ${workoutPreset.id}: ${error.message}`
+        `Failed to add Hevy exercise to workout preset ${workoutPreset.id}: ${errorMessage(error)}`
       );
     }
     // 5. Stash the full raw Hevy payload as an activity detail (like Garmin),
@@ -332,27 +398,23 @@ async function processSingleWorkout(
       } catch (error) {
         log(
           'error',
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          `Failed to store Hevy activity detail for entry ${entry.id}: ${error.message}`
+          `Failed to store Hevy activity detail for entry ${entry.id}: ${errorMessage(error)}`
         );
       }
     }
   }
 }
+
 /**
  * Map Hevy set types to Sparky Fitness set types.
- * @param {string} hevyType - Hevy set type (normal, warm_up, drop_set, failure).
- * @returns {string} - Sparky Fitness set type.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapSetType(hevyType: any) {
-  const mapping = {
+function mapSetType(hevyType: string): string {
+  const mapping: Record<string, string> = {
     normal: 'Working Set',
     warm_up: 'Warm-up',
     drop_set: 'Drop Set',
     failure: 'To Failure',
   };
-  // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
   return mapping[hevyType] || 'Working Set';
 }
 export { processHevyUserInfo };

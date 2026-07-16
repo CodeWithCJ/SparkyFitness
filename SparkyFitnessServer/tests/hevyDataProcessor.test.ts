@@ -185,12 +185,13 @@ describe('processHevyWorkouts — field mapping', () => {
     expect(entryArgForExercise('Pull Up').source_id).toBe('workout-abc_1');
   });
 
-  it('maps superset_id to superset_group', async () => {
+  it('maps the Hevy superset id to a numeric per-workout group', async () => {
     await processHevyWorkouts(UID, CID, [sampleWorkout()], 'UTC');
     expect(
       entryArgForExercise('Bulgarian Split Squat').superset_group
     ).toBeNull();
-    expect(entryArgForExercise('Pull Up').superset_group).toBe('ss-1');
+    // First distinct superset id in the workout → group 1 (numeric, not the raw id).
+    expect(entryArgForExercise('Pull Up').superset_group).toBe(1);
   });
 
   it('attributes whole-workout duration to the first untimed exercise only', async () => {

@@ -454,7 +454,7 @@ async function _createExerciseEntryWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createdByUserId: any,
   entrySource = 'Manual',
-  exercisePresetEntryId = null,
+  exercisePresetEntryId: string | null = null,
   options: { skipDuplicateCheck?: boolean } = {}
 ) {
   try {
@@ -631,7 +631,7 @@ async function createExerciseEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createdByUserId: any,
   entrySource = 'Manual',
-  exercisePresetEntryId = null,
+  exercisePresetEntryId: string | null = null,
   options: { skipDuplicateCheck?: boolean } = {}
 ) {
   const client = await getClient(userId);
