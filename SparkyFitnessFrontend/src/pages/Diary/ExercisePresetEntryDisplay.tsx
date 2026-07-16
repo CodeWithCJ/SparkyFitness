@@ -67,17 +67,18 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
     ) ?? 0;
 
   const totalMinutes =
-    presetEntry.exercises?.reduce(
-      (sum, ex) =>
-        sum +
-        (ex.sets && ex.sets.length > 0
+    presetEntry.exercises?.reduce((sum, ex) => {
+      const setsDuration =
+        ex.sets && ex.sets.length > 0
           ? ex.sets.reduce(
               (s, set) => s + (set.duration || 0) + (set.rest_time || 0) / 60,
               0
             )
-          : ex.duration_minutes || 0),
-      0
-    ) ?? 0;
+          : 0;
+      // Fall back to the entry-level duration when the sets carry no per-set
+      // timers (e.g. rep-based sets synced from Hevy).
+      return sum + (setsDuration > 0 ? setsDuration : ex.duration_minutes || 0);
+    }, 0) ?? 0;
 
   const avgHR = (() => {
     const withHR =
