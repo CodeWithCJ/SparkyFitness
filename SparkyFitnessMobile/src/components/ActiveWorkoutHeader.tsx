@@ -36,7 +36,7 @@ interface ActiveWorkoutHeaderProps {
   progress: ExerciseProgress[];
   onBack: () => void;
   onDiscard: () => void;
-  /** Adds an "End workout" action (the finish flow) at the top of the menu. */
+  /** Adds an "End workout" action (the finish flow) below Workout settings. */
   onEndWorkout?: () => void;
   /** Opens the rename dialog from a "Rename workout" menu action. */
   onRename?: () => void;
@@ -134,13 +134,6 @@ function ActiveWorkoutHeader({
   ).length;
 
   const menuItems: ActionSheetItem[] = [];
-  if (onEndWorkout) {
-    menuItems.push({
-      key: 'end-workout',
-      label: 'End workout',
-      onPress: onEndWorkout,
-    });
-  }
   if (onRename) {
     menuItems.push({
       key: 'rename',
@@ -167,6 +160,13 @@ function ActiveWorkoutHeader({
       key: 'workout-settings',
       label: 'Workout settings',
       onPress: onOpenSettings,
+    });
+  }
+  if (onEndWorkout) {
+    menuItems.push({
+      key: 'end-workout',
+      label: 'End workout',
+      onPress: onEndWorkout,
     });
   }
   if (onClearAllSets) {

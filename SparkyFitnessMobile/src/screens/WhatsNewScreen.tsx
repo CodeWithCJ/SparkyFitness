@@ -87,23 +87,23 @@ const WidgetMockup: React.FC = () => {
 
       <View
         className="bg-surface rounded-2xl shadow-md justify-center px-4"
-        style={{ width: 132, height: 108 }}
+        style={{ width: 140, height: 124 }}
       >
-        <Text className="text-[10px] font-semibold tracking-wider text-text-secondary mb-0.5">
+        <Text className="text-xs font-semibold tracking-wider text-text-secondary mb-0.5">
           TODAY
         </Text>
         <Text className="text-2xl font-bold text-text-primary" style={{ color: calorieColor }}>
           1,515
         </Text>
-        <Text className="text-[11px] text-text-secondary mb-2">kcal left</Text>
+        <Text className="text-xs text-text-secondary mb-2">kcal left</Text>
         <View className="flex-row">
           <View className="flex-1">
-            <Text className="text-[9px] text-text-secondary">In</Text>
-            <Text className="text-[11px] font-medium text-text-primary">1,540</Text>
+            <Text className="text-xs text-text-secondary">In</Text>
+            <Text className="text-xs font-medium text-text-primary">1,540</Text>
           </View>
           <View className="flex-1">
-            <Text className="text-[9px] text-text-secondary">Out</Text>
-            <Text className="text-[11px] font-medium text-text-primary">255</Text>
+            <Text className="text-xs text-text-secondary">Out</Text>
+            <Text className="text-xs font-medium text-text-primary">255</Text>
           </View>
         </View>
       </View>
@@ -193,7 +193,7 @@ const LiquidGlassMockup: React.FC = () => {
                 weight={tab.active ? 'semibold' : 'regular'}
               />
               <Text
-                className="text-[9px] mt-0.5"
+                className="text-xs mt-0.5"
                 style={{ color: tab.active ? accentPrimary : "#000000" }}
               >
                 {tab.label}

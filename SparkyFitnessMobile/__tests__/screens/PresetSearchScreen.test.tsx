@@ -3,6 +3,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import PresetSearchScreen from '../../src/screens/PresetSearchScreen';
 import { useWorkoutPresets, useWorkoutPresetSearch } from '../../src/hooks';
+import { useNavigationActionGuard } from '../../src/hooks/useNavigationActionGuard';
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
 import { useStartLiveWorkout } from '../../src/hooks/useStartLiveWorkout';
 import {
@@ -17,6 +18,16 @@ jest.mock('../../src/hooks', () => ({
   useWorkoutPresetSearch: jest.fn(),
   useRefetchOnFocus: jest.fn(),
   useProfile: jest.fn(() => ({ profile: undefined, isLoading: false })),
+}));
+
+jest.mock('../../src/hooks/useNavigationActionGuard', () => ({
+  useNavigationActionGuard: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useExerciseImageSource', () => ({
+  useExerciseImageSource: jest.fn(() => ({
+    getImageSource: jest.fn((path: string) => ({ uri: path, headers: {} })),
+  })),
 }));
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
@@ -36,6 +47,9 @@ jest.mock('../../src/services/nativeTabBarPreference', () => ({
 }));
 
 const mockUseWorkoutPresets = useWorkoutPresets as jest.MockedFunction<typeof useWorkoutPresets>;
+const mockUseNavigationActionGuard = useNavigationActionGuard as jest.MockedFunction<
+  typeof useNavigationActionGuard
+>;
 const mockUseWorkoutPresetSearch = useWorkoutPresetSearch as jest.MockedFunction<
   typeof useWorkoutPresetSearch
 >;
@@ -119,6 +133,10 @@ describe('PresetSearchScreen', () => {
       isSearchError: false,
     } as any);
     mockUseStartLiveWorkout.mockReturnValue({ startLiveWorkout, isStarting: false });
+    mockUseNavigationActionGuard.mockReturnValue({
+      isNavigationLocked: false,
+      runNavigationAction: (action: () => void) => action(),
+    } as any);
   });
 
   it('titles the header "Start Workout" and renders the pinned empty-workout row', () => {
@@ -141,6 +159,41 @@ describe('PresetSearchScreen', () => {
       name: 'Push Day',
       exercises: buildPresetStartExercisesPayload(preset),
     });
+    expect(navigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it('opens the preset preview from the thumbnail without starting', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByTestId('preset-thumbnail'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetDetail', {
+      preset: expect.objectContaining({ id: 'preset-1' }),
+    });
+    expect(startLiveWorkout).not.toHaveBeenCalled();
+  });
+
+  it('opens the preset preview from the info button without starting', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByLabelText('View preset details'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetDetail', {
+      preset: expect.objectContaining({ id: 'preset-1' }),
+    });
+    expect(startLiveWorkout).not.toHaveBeenCalled();
+  });
+
+  it('does not open the preview while navigation is locked', () => {
+    mockUseNavigationActionGuard.mockReturnValue({
+      isNavigationLocked: true,
+      runNavigationAction: jest.fn(),
+    } as any);
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByTestId('preset-thumbnail'));
+    fireEvent.press(screen.getByLabelText('View preset details'));
+
     expect(navigation.navigate).not.toHaveBeenCalled();
   });
 

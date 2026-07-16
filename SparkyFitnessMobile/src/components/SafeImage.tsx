@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { type ImageStyle, type StyleProp } from 'react-native';
-import { Image } from 'expo-image';
+import { StyleSheet, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, type ImageContentFit } from 'expo-image';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 interface SafeImageProps {
   source: { uri: string; headers: Record<string, string> } | null;
   style: StyleProp<ImageStyle>;
+  contentFit?: ImageContentFit;
   fallback?: React.ReactNode;
 }
 
@@ -26,10 +28,26 @@ function getImageSourceSignature(
 // Retry a couple of times with backoff before giving up to the fallback.
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
+const TRANSITION_MS = 150;
+// A cached image paints within the first frames of mounting; an underlay
+// shown from frame one would flash beneath every one of those. Hold it back
+// long enough that only genuinely slow loads get a placeholder.
+const UNDERLAY_DELAY_MS = 200;
 
-const SafeImage: React.FC<SafeImageProps> = ({ source, style, fallback = null }) => {
+/**
+ * Slow and failing loads show the fallback as an underlay beneath the image
+ * slot: a missing image never blanks-then-pops (the retry window hides behind
+ * it), and a slow image cross-fades over it when it arrives. The underlay
+ * fades in after a grace delay — so fast/cached loads never flash it — and is
+ * removed once the image has fully faded in so images with transparency don't
+ * show it through.
+ */
+const SafeImage: React.FC<SafeImageProps> = ({ source, style, contentFit, fallback = null }) => {
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [settled, setSettled] = useState(false);
+  const [showUnderlay, setShowUnderlay] = useState(false);
   const sourceSignature = getImageSourceSignature(source);
 
   // Reset the retry state when the image source changes. Done during render
@@ -40,6 +58,9 @@ const SafeImage: React.FC<SafeImageProps> = ({ source, style, fallback = null })
     setPrevSignature(sourceSignature);
     setError(false);
     setAttempt(0);
+    setLoaded(false);
+    setSettled(false);
+    setShowUnderlay(false);
   }
 
   useEffect(() => {
@@ -51,21 +72,53 @@ const SafeImage: React.FC<SafeImageProps> = ({ source, style, fallback = null })
     return () => clearTimeout(timer);
   }, [error, attempt]);
 
-  if (!source || (error && attempt >= MAX_RETRIES)) return fallback;
+  useEffect(() => {
+    if (loaded || showUnderlay) return;
+    const timer = setTimeout(() => setShowUnderlay(true), UNDERLAY_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [loaded, showUnderlay]);
 
-  // Upload URLs are effectively immutable (filenames embed the exercise/upload
-  // identity), so disk-cache them across launches; the transition softens the
-  // pop-in on loads that do hit the network.
+  // Keep the underlay through the fade so opaque images cross-fade over it
+  // instead of fading in against a blank slot.
+  useEffect(() => {
+    if (!loaded || settled) return;
+    const timer = setTimeout(() => setSettled(true), TRANSITION_MS);
+    return () => clearTimeout(timer);
+  }, [loaded, settled]);
+
+  if (!source) return fallback;
+
+  const failed = error && attempt >= MAX_RETRIES;
+
+  // Terminal failures keep the frame (rather than returning the bare
+  // fallback) so the already-visible underlay doesn't remount or shift.
   return (
-    <Image
-      key={attempt}
-      source={source}
-      style={style}
-      cachePolicy="memory-disk"
-      transition={150}
-      onError={() => setError(true)}
-    />
+    <View style={[style as StyleProp<ViewStyle>, styles.frame]}>
+      {(showUnderlay || failed) && !settled && (
+        <Animated.View entering={FadeIn.duration(TRANSITION_MS)} style={StyleSheet.absoluteFill}>
+          {fallback}
+        </Animated.View>
+      )}
+      {!failed && (
+        // Upload URLs are effectively immutable (filenames embed the
+        // exercise/upload identity), so disk-cache them across launches.
+        <Image
+          key={attempt}
+          source={source}
+          style={StyleSheet.absoluteFill}
+          contentFit={contentFit}
+          cachePolicy="memory-disk"
+          transition={TRANSITION_MS}
+          onLoad={() => setLoaded(true)}
+          onError={() => setError(true)}
+        />
+      )}
+    </View>
   );
 };
+
+// The caller's borderRadius sits on the frame, so it must clip the
+// absolute-filled image to keep rounded corners.
+const styles = StyleSheet.create({ frame: { overflow: 'hidden' } });
 
 export default SafeImage;

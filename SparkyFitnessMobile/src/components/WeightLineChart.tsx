@@ -29,7 +29,7 @@ const X_TICK_COUNT: Record<StepsRange, number> = {
 };
 
 const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
-const font = matchFont({ fontFamily, fontSize: 11 });
+const font = matchFont({ fontFamily, fontSize: 12 });
 
 const formatXLabel7d = (day: string): string => {
   if (typeof day !== 'string') return '';

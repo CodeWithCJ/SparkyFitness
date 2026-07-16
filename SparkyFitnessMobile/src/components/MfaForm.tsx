@@ -46,7 +46,8 @@ export const OidcProviderLogo = ({
           : `${normalizeUrl(serverUrl)}/${logoUrl.replace(/^\//, '')}`,
         headers: {},
       }}
-      style={{ width: 20, height: 20, marginRight: 8, resizeMode: 'contain' }}
+      style={{ width: 20, height: 20, marginRight: 8 }}
+      contentFit="contain"
       fallback={fallback}
     />
   );
