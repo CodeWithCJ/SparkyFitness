@@ -895,7 +895,28 @@
       "exportSuccess": "Export successful",
       "exportSuccessDescription": "Your diary has been exported successfully.",
       "exportError": "Export error",
-      "exportErrorDescription": "Unable to download your diary. Please try again later."
+      "exportErrorDescription": "Unable to download your diary. Please try again later.",
+      "deleteSynced": {
+        "title": "Delete synced data",
+        "description": "Remove all entries that were synced or imported from a specific source (e.g. Apple Health, Garmin). This affects only synced data — entries you added manually are never touched. This cannot be undone.",
+        "scopeNoteTitle": "What this removes",
+        "scopeIncludes": "Deletes synced diary entries: food, exercise/workout sessions, sleep, water, and custom check-in measurements.",
+        "scopeExcludesLibrary": "Does NOT delete your food or exercise database (the reusable food/exercise definitions) — only the logged entries.",
+        "scopeExcludesCheckin": "Does NOT delete standard check-in measurements (weight, steps, body fat, height) — those merge all providers into one daily value and cannot be removed by source here.",
+        "scopeExcludesManual": "Does NOT delete anything you created yourself — entries you typed in, logged via the Sparky assistant, or workouts from a saved preset or plan are always kept.",
+        "loading": "Loading sources...",
+        "loadError": "Failed to load synced data sources.",
+        "empty": "No synced data found. Nothing to delete here.",
+        "sourceLabel": "Data source",
+        "sourcePlaceholder": "Select a source",
+        "deleteButton": "Delete synced data",
+        "confirmTitle": "Delete synced data?",
+        "confirmDescription": "This will permanently delete {{count}} entries synced from {{source}}. Manually-entered data is not affected.",
+        "confirmWarning": "This action cannot be undone.",
+        "confirmButton": "Delete permanently",
+        "success": "Synced data deleted.",
+        "error": "Failed to delete synced data."
+      }
     },
     "foodExerciseDataProviders": {
       "title": "Food & Exercise Data Providers",
