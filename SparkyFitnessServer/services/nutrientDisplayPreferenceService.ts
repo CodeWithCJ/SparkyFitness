@@ -7,6 +7,7 @@ const defaultNutrients = [
   'carbs',
   'fat',
   'dietary_fiber',
+  'sugars',
 ];
 const predefinedNutrients = [
   'calories',

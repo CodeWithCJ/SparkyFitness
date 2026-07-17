@@ -1,5 +1,7 @@
 import { MealTotals } from '@/types/meal';
 
+export type NutrientGoalType = 'minimum' | 'maximum' | 'target';
+
 export interface NutrientMetadata {
   id: string;
   label: string;
@@ -9,7 +11,32 @@ export interface NutrientMetadata {
   chartColor: string; // Hex color for chart rendering
   decimals: number;
   group: 'macros' | 'fats' | 'minerals' | 'custom';
+  // Built-in goal direction when the user has no explicit override saved via
+  // the Nutrient Goal Direction settings screen. Omitted = 'minimum'. Keep in
+  // sync with BUILTIN_MAXIMUM_DEFAULTS in
+  // SparkyFitnessServer/services/nutrientGoalPreferenceService.ts.
+  defaultGoalType?: NutrientGoalType;
 }
+
+export const PREDEFINED_NUTRIENT_KEYS = [
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+];
 
 export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
   calories: {
@@ -61,6 +88,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#ef4444', // red-500
     decimals: 1,
     group: 'fats',
+    defaultGoalType: 'maximum',
   },
   polyunsaturated_fat: {
     id: 'polyunsaturated_fat',
@@ -91,6 +119,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#b91c1c', // red-700
     decimals: 1,
     group: 'fats',
+    defaultGoalType: 'maximum',
   },
   cholesterol: {
     id: 'cholesterol',
@@ -101,6 +130,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#6366f1', // indigo-500
     decimals: 1,
     group: 'minerals',
+    defaultGoalType: 'maximum',
   },
   sodium: {
     id: 'sodium',
@@ -111,6 +141,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#a855f7', // purple-500
     decimals: 1,
     group: 'minerals',
+    defaultGoalType: 'maximum',
   },
   potassium: {
     id: 'potassium',
@@ -141,6 +172,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#ec4899', // pink-500
     decimals: 1,
     group: 'minerals',
+    defaultGoalType: 'maximum',
   },
   vitamin_a: {
     id: 'vitamin_a',
@@ -211,4 +243,5 @@ export const DEFAULT_NUTRIENTS = [
   'carbs',
   'fat',
   'dietary_fiber',
+  'sugars',
 ];

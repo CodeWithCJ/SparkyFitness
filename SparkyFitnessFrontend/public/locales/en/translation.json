@@ -460,6 +460,7 @@
     "dailyProgress": {
       "dailyCalorieGoal": "Daily Calorie Goal",
       "remaining": "remaining",
+      "targetBand": "target {{min}}–{{max}}",
       "eaten": "eaten",
       "burned": "burned",
       "burnedCaloriesBreakdown": "Burned Calories Breakdown:",
@@ -896,6 +897,10 @@
     "nutrientDisplay": {
       "title": "Nutrient Display",
       "description": "Choose which nutrients to display in food and meal views"
+    },
+    "nutrientGoalDirection": {
+      "title": "Nutrient Goal Direction",
+      "description": "Choose whether each nutrient goal is a minimum to reach, a maximum to stay under, or a target range to hit"
     },
     "calculationSettings": {
       "title": "Calculation Settings",
@@ -1510,7 +1515,22 @@
       "iron": "iron",
       "calcium": "calcium"
     },
-    "of": "of"
+    "of": "of",
+    "over": "over"
+  },
+  "nutrientGoalDirection": {
+    "description": "Choose how progress toward each nutrient's daily goal is judged: a minimum to reach, a maximum to stay under, or a target range to hit.",
+    "minimum": "Minimum (more is better)",
+    "maximum": "Maximum (stay under)",
+    "target": "Target range",
+    "min": "Min",
+    "max": "Max",
+    "to": "to",
+    "invalidBand": "Enter a valid min ≤ max",
+    "resetToDefault": "Reset to default",
+    "failedToLoad": "Failed to load nutrient goal direction preferences.",
+    "failedToSave": "Failed to save nutrient goal direction.",
+    "failedToReset": "Failed to reset nutrient goal direction."
   },
   "foodDiary": {
     "title": "Food Diary",

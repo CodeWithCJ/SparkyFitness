@@ -1,25 +1,60 @@
 import {
   CENTRAL_NUTRIENT_CONFIG,
   NutrientMetadata,
+  NutrientGoalType,
 } from '@/constants/nutrients';
 import { UserCustomNutrient } from '@/types/customNutrient';
 
+export interface NutrientGoalOverride {
+  goalType: NutrientGoalType;
+  targetMin?: number | null;
+  targetMax?: number | null;
+}
+export type NutrientGoalOverrideMap = Record<string, NutrientGoalOverride>;
+
+export interface ResolvedNutrientMetadata extends NutrientMetadata {
+  goalType: NutrientGoalType;
+  targetMin?: number;
+  targetMax?: number;
+}
+
+function resolveGoalType(
+  key: string,
+  base: NutrientMetadata,
+  goalOverrides?: NutrientGoalOverrideMap
+): Pick<ResolvedNutrientMetadata, 'goalType' | 'targetMin' | 'targetMax'> {
+  const override = goalOverrides?.[key];
+  if (override) {
+    return {
+      goalType: override.goalType,
+      targetMin: override.targetMin ?? undefined,
+      targetMax: override.targetMax ?? undefined,
+    };
+  }
+  return { goalType: base.defaultGoalType ?? 'minimum' };
+}
+
 /**
  * Retrieves metadata for a nutrient, merging standard config and custom nutrients.
+ * `goalOverrides` (from useNutrientGoalPreferences) resolves the effective
+ * goal direction (minimum/maximum/target); omitted nutrients fall back to the
+ * nutrient's built-in `defaultGoalType` ('minimum' if unset).
  */
 export const getNutrientMetadata = (
   key: string,
-  customNutrients: UserCustomNutrient[] = []
-): NutrientMetadata => {
+  customNutrients: UserCustomNutrient[] = [],
+  goalOverrides?: NutrientGoalOverrideMap
+): ResolvedNutrientMetadata => {
   // Check standard config first
   if (CENTRAL_NUTRIENT_CONFIG[key]) {
-    return CENTRAL_NUTRIENT_CONFIG[key];
+    const base = CENTRAL_NUTRIENT_CONFIG[key];
+    return { ...base, ...resolveGoalType(key, base, goalOverrides) };
   }
 
   // Check custom nutrients
   const custom = customNutrients.find((cn) => cn.name === key);
   if (custom) {
-    return {
+    const base: NutrientMetadata = {
       id: custom.name,
       label: custom.name,
       defaultLabel: custom.name,
@@ -29,10 +64,11 @@ export const getNutrientMetadata = (
       decimals: 1, // Default decimals for custom nutrients
       group: 'custom',
     };
+    return { ...base, ...resolveGoalType(key, base, goalOverrides) };
   }
 
   // Fallback
-  return {
+  const base: NutrientMetadata = {
     id: key,
     label: key,
     defaultLabel: key,
@@ -42,6 +78,7 @@ export const getNutrientMetadata = (
     decimals: 1,
     group: 'custom',
   };
+  return { ...base, ...resolveGoalType(key, base, goalOverrides) };
 };
 
 /**

@@ -37,6 +37,77 @@ import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { buildGoalsPayload, getMealPercentage } from '@/utils/goals';
+import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
+import { useProfileQuery } from '@/hooks/Settings/useProfile';
+import { normalizeNutrientName } from '@workspace/shared';
+import {
+  calculateAddedSugarLimit,
+  UserNutrientData,
+} from '@/services/nutrientCalculationService';
+import {
+  AddedSugarAlgorithm,
+  AddedSugarAlgorithmLabels,
+} from '@/types/nutrientAlgorithms';
+import { Calculator } from 'lucide-react';
+
+const SUGAR_LIKE_NAMES = [
+  'sugar',
+  'sugars',
+  'added sugar',
+  'added sugars',
+  'added_sugar',
+  'added_sugars',
+];
+
+function isSugarLikeName(name: string, aliases: string[] = []): boolean {
+  const candidates = [name, ...aliases].map(normalizeNutrientName);
+  return SUGAR_LIKE_NAMES.map(normalizeNutrientName).some((sugarAlias) =>
+    candidates.includes(sugarAlias)
+  );
+}
+
+const AddedSugarAutoCalculate = ({
+  calories,
+  sex,
+  onApply,
+}: {
+  calories: number;
+  sex?: 'male' | 'female';
+  onApply: (grams: number) => void;
+}) => {
+  const handleSelect = (algorithm: AddedSugarAlgorithm) => {
+    if (algorithm === AddedSugarAlgorithm.AHA_FIXED && !sex) return;
+    const userData: UserNutrientData = {
+      age: 0,
+      sex: sex ?? 'female',
+      weightKg: 0,
+      calories,
+      totalFatGrams: 0,
+    };
+    const { sugars } = calculateAddedSugarLimit(userData, algorithm);
+    onApply(sugars);
+  };
+
+  return (
+    <Select onValueChange={handleSelect}>
+      <SelectTrigger className="h-7 text-xs w-full mt-1">
+        <Calculator className="h-3 w-3 mr-1" />
+        <SelectValue placeholder="Auto-calculate limit" />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.values(AddedSugarAlgorithm).map((algorithm) => (
+          <SelectItem
+            key={algorithm}
+            value={algorithm}
+            disabled={algorithm === AddedSugarAlgorithm.AHA_FIXED && !sex}
+          >
+            {AddedSugarAlgorithmLabels[algorithm]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
 
 interface EditGoalsProps {
   selectedDate: string;
@@ -78,6 +149,15 @@ const EditGoalsForm = ({
   } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
+  const { user } = useAuth();
+  const { data: userProfile } = useProfileQuery(user?.id);
+  const { data: goalTypePreferences = {} } = useNutrientGoalPreferences();
+  const sex: 'male' | 'female' | undefined =
+    userProfile?.gender?.toLowerCase() === 'male'
+      ? 'male'
+      : userProfile?.gender?.toLowerCase() === 'female'
+        ? 'female'
+        : undefined;
 
   const [goals, setGoals] = useState<ExpandedGoals>({
     ...DEFAULT_GOALS,
@@ -317,15 +397,28 @@ const EditGoalsForm = ({
 
         {/* Custom Nutrients */}
         {customNutrients?.map((cn) => {
+          const goalType = goalTypePreferences[cn.name]?.goalType ?? 'minimum';
+          const showAddedSugarAutoCalculate =
+            goalType === 'maximum' && isSugarLikeName(cn.name, cn.aliases);
           return (
-            <NutrientInput
-              key={cn.id}
-              nutrientId={cn.name}
-              state={goals}
-              setState={(val) => setGoals(val)}
-              visibleNutrients={visibleNutrients}
-              customNutrients={customNutrients}
-            />
+            <div key={cn.id}>
+              <NutrientInput
+                nutrientId={cn.name}
+                state={goals}
+                setState={(val) => setGoals(val)}
+                visibleNutrients={visibleNutrients}
+                customNutrients={customNutrients}
+              />
+              {showAddedSugarAutoCalculate && (
+                <AddedSugarAutoCalculate
+                  calories={goals.calories}
+                  sex={sex}
+                  onApply={(grams) =>
+                    setGoals((prev) => ({ ...prev, [cn.name]: grams }))
+                  }
+                />
+              )}
+            </div>
           );
         })}
       </div>

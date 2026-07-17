@@ -10,6 +10,7 @@ import {
   Sparkles,
   UtensilsCrossed,
   ShieldAlert,
+  Target,
 } from 'lucide-react';
 import FamilyAccessManager from './FamilyAccessManager';
 import AIServiceSettings from './AIServiceSettings';
@@ -17,6 +18,7 @@ import CustomCategoryManager from './CustomCategoryManager';
 import MealTypeManager from './MealTypeManager';
 import ExternalProviderSettings from './ExternalProviderSettings';
 import NutrientDisplaySettings from './NutrientDisplaySettings';
+import NutrientGoalDirectionSettings from './NutrientGoalDirectionSettings';
 import {
   Accordion,
   AccordionItem,
@@ -148,6 +150,28 @@ const Settings = () => {
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <NutrientDisplaySettings />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem
+          value="nutrient-goal-direction"
+          className="border rounded-lg mb-4"
+        >
+          <AccordionTrigger
+            className="flex items-center gap-2 p-4 hover:no-underline"
+            description={t(
+              'settings.nutrientGoalDirection.description',
+              'Choose whether each nutrient goal is a minimum to reach, a maximum to stay under, or a target range to hit'
+            )}
+          >
+            <Target className="h-5 w-5" />
+            {t(
+              'settings.nutrientGoalDirection.title',
+              'Nutrient Goal Direction'
+            )}
+          </AccordionTrigger>
+          <AccordionContent className="p-4 pt-0">
+            <NutrientGoalDirectionSettings />
           </AccordionContent>
         </AccordionItem>
 

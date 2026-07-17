@@ -3,6 +3,7 @@ import {
   MineralCalculationAlgorithm,
   VitaminCalculationAlgorithm,
   SugarCalculationAlgorithm,
+  AddedSugarAlgorithm,
 } from '@/types/nutrientAlgorithms';
 
 /**
@@ -285,6 +286,44 @@ export function calculateSugarTarget(
         userData,
         SugarCalculationAlgorithm.WHO_GUIDELINES
       );
+  }
+}
+
+/**
+ * Recommended limit for a user-tracked "Added Sugar" nutrient (distinct from
+ * the existing calorie-scaled Total Sugar target above). WHO_IDEAL/WHO_MAXIMUM
+ * scale with the day's calorie goal; AHA_FIXED is a flat population guideline
+ * that ignores calories. Sources: WHO 2015 sugars guideline (<10% calories,
+ * <5% for added benefit), AHA (men <=36g/day, women <=25g/day).
+ */
+export interface AddedSugarLimit {
+  sugars: number;
+}
+
+export function calculateAddedSugarLimit(
+  userData: UserNutrientData,
+  algorithm: AddedSugarAlgorithm
+): AddedSugarLimit {
+  const { calories, sex } = userData;
+
+  switch (algorithm) {
+    case AddedSugarAlgorithm.WHO_IDEAL: {
+      // WHO conditional recommendation: <5% of calories from added sugars.
+      return { sugars: Math.round((calories * 0.05) / 4) };
+    }
+
+    case AddedSugarAlgorithm.WHO_MAXIMUM: {
+      // WHO strong recommendation: <10% of calories from added sugars.
+      return { sugars: Math.round((calories * 0.1) / 4) };
+    }
+
+    case AddedSugarAlgorithm.AHA_FIXED: {
+      // AHA: fixed grams regardless of calorie intake.
+      return { sugars: sex === 'male' ? 36 : 25 };
+    }
+
+    default:
+      return calculateAddedSugarLimit(userData, AddedSugarAlgorithm.WHO_IDEAL);
   }
 }
 

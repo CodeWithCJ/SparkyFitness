@@ -150,6 +150,11 @@ class CustomNutrientService {
   ) {
     const client = await getClient(userId);
     try {
+      const previousRes = await client.query(
+        'SELECT name FROM user_custom_nutrients WHERE id = $1 AND user_id = $2',
+        [id, userId]
+      );
+      const previousName = previousRes.rows[0]?.name;
       // `aliases` omitted (undefined) keeps the existing value; an explicit
       // array (including []) replaces it.
       const aliasesParam =
@@ -166,6 +171,22 @@ class CustomNutrientService {
       );
       if (result.rows.length > 0) {
         log('info', `Custom nutrient updated: ${id} for user ${userId}`);
+        if (name && previousName && name !== previousName) {
+          try {
+            const { default: nutrientGoalPreferenceService } =
+              await import('./nutrientGoalPreferenceService.js');
+            await nutrientGoalPreferenceService.renameGoalPreferenceKey(
+              userId,
+              previousName,
+              name
+            );
+          } catch (renameError) {
+            log(
+              'error',
+              `Failed to rename goal-direction preference for custom nutrient ${id}: ${renameError instanceof Error ? renameError.message : String(renameError)}`
+            );
+          }
+        }
         return result.rows[0];
       }
       return null;
