@@ -67,6 +67,7 @@ import type {
 import { MedTypeIcon } from './AddMedicationDialog';
 import GlpDailyCheckIn from './GlpDailyCheckIn';
 import Glp1QuickLogDialog from './Glp1QuickLogDialog';
+import MedicationLogCalendar from './MedicationLogCalendar';
 
 export interface DueDose {
   medication: MedicationDetail;
@@ -95,6 +96,7 @@ export interface TodayMedicationsProps {
   recentEntries: MedicationEntry[];
   loadingMeds: boolean;
   loadingEntries: boolean;
+  onSelectDate: (date: string) => void;
 }
 
 export default function TodayMedications({
@@ -105,6 +107,7 @@ export default function TodayMedications({
   recentEntries,
   loadingMeds,
   loadingEntries,
+  onSelectDate,
 }: TodayMedicationsProps) {
   const { t } = useTranslation();
   const { timezone } = usePreferences();
@@ -597,163 +600,179 @@ export default function TodayMedications({
         </Card>
       )}
 
-      {/* Today stats + 14-day adherence ring */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/50">
-              <Activity className="h-3.5 w-3.5 text-indigo-500" />
-            </span>
-            {t('medications.today.adherenceTitle', 'Adherence overview')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-0">
-          <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
-            <div className="grid w-full grid-cols-3 gap-3">
-              {tiles.map((tile) => (
-                <div
-                  key={tile.label}
-                  className={`rounded-xl border bg-gradient-to-br ${tile.grad} p-3`}
-                >
-                  <div
-                    className={`mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full ${tile.chip}`}
-                  >
-                    <tile.Icon className="h-4.5 w-4.5" />
-                  </div>
-                  <p
-                    className={`text-2xl font-bold leading-none tabular-nums ${tile.num}`}
-                  >
-                    {tile.value}
-                  </p>
-                  <p className="mt-1 text-[11px] font-medium text-muted-foreground">
-                    {tile.label}
-                  </p>
+      {/* Adherence overview + Today's Checklist (left) alongside the log calendar (right) */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+        <div className="space-y-6">
+          {/* Today stats + 14-day adherence ring */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/50">
+                  <Activity className="h-3.5 w-3.5 text-indigo-500" />
+                </span>
+                {t('medications.today.adherenceTitle', 'Adherence overview')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-0">
+              <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
+                <div className="grid w-full grid-cols-3 gap-3">
+                  {tiles.map((tile) => (
+                    <div
+                      key={tile.label}
+                      className={`rounded-xl border bg-gradient-to-br ${tile.grad} p-3`}
+                    >
+                      <div
+                        className={`mb-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full ${tile.chip}`}
+                      >
+                        <tile.Icon className="h-4.5 w-4.5" />
+                      </div>
+                      <p
+                        className={`text-2xl font-bold leading-none tabular-nums ${tile.num}`}
+                      >
+                        {tile.value}
+                      </p>
+                      <p className="mt-1 text-[11px] font-medium text-muted-foreground">
+                        {tile.label}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="relative h-24 w-24 shrink-0">
-              <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="15.9155"
-                  fill="none"
-                  className="stroke-muted"
-                  strokeWidth="3"
-                />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="15.9155"
-                  fill="none"
-                  stroke={ringColor}
-                  strokeWidth="3"
-                  strokeDasharray={`${adherence14.pct}, 100`}
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dasharray 0.6s ease' }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span
-                  className="text-lg font-bold tabular-nums"
-                  style={{ color: ringColor }}
-                >
-                  {adherence14.pct}%
-                </span>
-                <span className="text-[9px] text-muted-foreground">14-day</span>
+                <div className="relative h-24 w-24 shrink-0">
+                  <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="15.9155"
+                      fill="none"
+                      className="stroke-muted"
+                      strokeWidth="3"
+                    />
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="15.9155"
+                      fill="none"
+                      stroke={ringColor}
+                      strokeWidth="3"
+                      strokeDasharray={`${adherence14.pct}, 100`}
+                      strokeLinecap="round"
+                      style={{ transition: 'stroke-dasharray 0.6s ease' }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span
+                      className="text-lg font-bold tabular-nums"
+                      style={{ color: ringColor }}
+                    >
+                      {adherence14.pct}%
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">
+                      14-day
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* 14-day adherence strip + streak */}
-          <div>
-            <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>{t('medications.today.last14', 'Last 14 days')}</span>
-              {adherence14.streak > 0 && (
-                <span className="flex items-center gap-1 font-semibold text-orange-500">
-                  <Flame className="h-3.5 w-3.5 fill-orange-500/20" />{' '}
-                  {t('medications.today.streak', '{{count}}-day streak', {
-                    count: adherence14.streak,
+              {/* 14-day adherence strip + streak */}
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>{t('medications.today.last14', 'Last 14 days')}</span>
+                  {adherence14.streak > 0 && (
+                    <span className="flex items-center gap-1 font-semibold text-orange-500">
+                      <Flame className="h-3.5 w-3.5 fill-orange-500/20" />{' '}
+                      {t('medications.today.streak', '{{count}}-day streak', {
+                        count: adherence14.streak,
+                      })}
+                    </span>
+                  )}
+                </div>
+                <div className="flex h-10 items-end gap-1">
+                  {adherence14.days.map((d, i) => {
+                    const noScheduled = d.due === 0;
+                    const hasPrn = d.prnTaken > 0;
+                    const idle = noScheduled && !hasPrn;
+
+                    // d.pct already includes PRN contribution
+                    const color = idle
+                      ? 'bg-muted'
+                      : d.pct === 100
+                        ? 'bg-green-500'
+                        : d.pct >= 50
+                          ? 'bg-amber-500'
+                          : d.pct > 0
+                            ? 'bg-orange-500'
+                            : 'bg-red-500';
+
+                    const tooltip = noScheduled
+                      ? hasPrn
+                        ? `${d.date}: ${d.prnTaken} PRN dose${d.prnTaken > 1 ? 's' : ''}`
+                        : `${d.date}: no doses`
+                      : `${d.date}: ${d.taken}/${d.due} taken${d.prnTaken > 0 ? ` + ${d.prnTaken} PRN` : ''}`;
+
+                    const height = idle
+                      ? 18
+                      : noScheduled && hasPrn
+                        ? Math.min(100, 40 + d.prnTaken * 20)
+                        : Math.max(14, d.pct);
+
+                    return (
+                      <div
+                        key={i}
+                        title={tooltip}
+                        className={`flex-1 rounded-sm transition-all hover:opacity-80 ${color} ${idle ? 'opacity-40' : ''}`}
+                        style={{
+                          height: `${height}%`,
+                        }}
+                      />
+                    );
                   })}
-                </span>
-              )}
-            </div>
-            <div className="flex h-10 items-end gap-1">
-              {adherence14.days.map((d, i) => {
-                const noScheduled = d.due === 0;
-                const hasPrn = d.prnTaken > 0;
-                const idle = noScheduled && !hasPrn;
-
-                // d.pct already includes PRN contribution
-                const color = idle
-                  ? 'bg-muted'
-                  : d.pct === 100
-                    ? 'bg-green-500'
-                    : d.pct >= 50
-                      ? 'bg-amber-500'
-                      : d.pct > 0
-                        ? 'bg-orange-500'
-                        : 'bg-red-500';
-
-                const tooltip = noScheduled
-                  ? hasPrn
-                    ? `${d.date}: ${d.prnTaken} PRN dose${d.prnTaken > 1 ? 's' : ''}`
-                    : `${d.date}: no doses`
-                  : `${d.date}: ${d.taken}/${d.due} taken${d.prnTaken > 0 ? ` + ${d.prnTaken} PRN` : ''}`;
-
-                const height = idle
-                  ? 18
-                  : noScheduled && hasPrn
-                    ? Math.min(100, 40 + d.prnTaken * 20)
-                    : Math.max(14, d.pct);
-
-                return (
-                  <div
-                    key={i}
-                    title={tooltip}
-                    className={`flex-1 rounded-sm transition-all hover:opacity-80 ${color} ${idle ? 'opacity-40' : ''}`}
-                    style={{
-                      height: `${height}%`,
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Progress Banner */}
-      <Card className="bg-gradient-to-r from-blue-500/10 to-teal-500/10 border border-blue-500/20 shadow-sm">
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-blue-500" />{' '}
-              {selectedDate === today
-                ? t('medications.today.checklistToday', "Today's Checklist")
-                : t('medications.today.checklistMed', 'Medication Checklist')}
-            </CardTitle>
-            <CardDescription className="mt-1">
-              {dueDoses.length === 0
-                ? `No scheduled doses for ${selectedDate === today ? 'today' : 'this day'}.`
-                : `${completedDosesCount} of ${dueDoses.length} doses logged ${selectedDate === today ? 'today' : 'for this day'}.`}
-            </CardDescription>
-          </div>
-          {dueDoses.length > 0 && (
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="w-full bg-muted rounded-full h-2.5 max-w-[200px] overflow-hidden">
-                <div
-                  className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercentage}%` }}
-                ></div>
+                </div>
               </div>
-              <span className="text-sm font-semibold">
-                {progressPercentage}%
-              </span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          {/* Progress Banner */}
+          <Card className="bg-gradient-to-r from-blue-500/10 to-teal-500/10 border border-blue-500/20 shadow-sm">
+            <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-500" />{' '}
+                  {selectedDate === today
+                    ? t('medications.today.checklistToday', "Today's Checklist")
+                    : t(
+                        'medications.today.checklistMed',
+                        'Medication Checklist'
+                      )}
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  {dueDoses.length === 0
+                    ? `No scheduled doses for ${selectedDate === today ? 'today' : 'this day'}.`
+                    : `${completedDosesCount} of ${dueDoses.length} doses logged ${selectedDate === today ? 'today' : 'for this day'}.`}
+                </CardDescription>
+              </div>
+              {dueDoses.length > 0 && (
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="w-full bg-muted rounded-full h-2.5 max-w-[200px] overflow-hidden">
+                    <div
+                      className="bg-blue-500 h-2.5 rounded-full transition-all duration-500"
+                      style={{ width: `${progressPercentage}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm font-semibold">
+                    {progressPercentage}%
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <MedicationLogCalendar
+          medications={meds}
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+        />
+      </div>
 
       {hasGlpMed &&
         (canViewGlpCheckIn ? (

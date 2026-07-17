@@ -1,5 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import * as symptomService from '@/api/Medications/symptomService';
+import { reportKeys } from '@/api/keys/reports';
 import type {
   SharedUserCustomSymptom,
   SharedSymptomEntry,
@@ -14,6 +20,16 @@ const symptomKeys = {
     symptomName?: string;
   }) => ['symptom-entries', opts ?? {}] as const,
 };
+
+// Reports > Medications bundles symptomEntries into a query keyed under
+// reportKeys.all, a different namespace from symptomKeys.entries, so it never
+// gets invalidated on its own. refetchType: 'all' also refreshes the cache
+// while Reports isn't mounted (e.g. logging from the Symptoms tab).
+const invalidateReports = (queryClient: QueryClient) =>
+  queryClient.invalidateQueries({
+    queryKey: reportKeys.all,
+    refetchType: 'all',
+  });
 
 // --- Queries ---------------------------------------------------------------
 
@@ -103,7 +119,11 @@ export const useCreateSymptomEntryMutation = () => {
       body: Partial<SharedSymptomEntry> & { symptom_name_snapshot: string }
     ) => symptomService.createSymptomEntry(body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['symptom-entries'] });
+      queryClient.invalidateQueries({
+        queryKey: ['symptom-entries'],
+        refetchType: 'all',
+      });
+      invalidateReports(queryClient);
     },
     meta: {
       errorMessage: 'Could not log symptom.',
@@ -117,7 +137,11 @@ export const useDeleteSymptomEntryMutation = () => {
   return useMutation({
     mutationFn: (id: string) => symptomService.deleteSymptomEntry(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['symptom-entries'] });
+      queryClient.invalidateQueries({
+        queryKey: ['symptom-entries'],
+        refetchType: 'all',
+      });
+      invalidateReports(queryClient);
     },
     meta: {
       errorMessage: 'Could not remove symptom log.',

@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   addDays,
+  buildMonthGrid,
   compareDays,
   todayInZone,
   isHormonalBc,
@@ -29,11 +30,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Edit2, Check, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Edit2, Check, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import DailyLogPanel from './DailyLogPanel';
 import CycleIcon from './CycleIcon';
+import MonthCalendar, { type DayCellRender } from '@/components/MonthCalendar';
 
 interface CycleCalendarProps {
   /** When provided, the calendar is controlled and shares this date with the
@@ -63,10 +64,16 @@ export default function CycleCalendar({
 
   // Follow the selected day into its month (day-nav arrows crossing a boundary).
   // Month prev/next buttons don't change selectedDate, so browsing is preserved.
-  useEffect(() => {
+  // Adjusted during render (React's recommended pattern for "state derived from a
+  // prop") rather than in an effect, to avoid an extra commit/cascading render.
+  const [prevSelectedDate, setPrevSelectedDate] = useState(selectedDate);
+  if (selectedDate !== prevSelectedDate) {
+    setPrevSelectedDate(selectedDate);
     const month = selectedDate.slice(0, 7);
-    setCurrentMonth((prev) => (prev === month ? prev : month));
-  }, [selectedDate]);
+    if (month !== currentMonth) {
+      setCurrentMonth(month);
+    }
+  }
 
   // Queries
   const { data: settings } = useCycleSettings();
@@ -77,23 +84,10 @@ export default function CycleCalendar({
     return { year: parts[0] ?? 2026, monthVal: parts[1] ?? 7 };
   }, [currentMonth]);
 
-  const { gridStartDate, gridDates } = useMemo(() => {
-    const dateObj = new Date(Date.UTC(year, monthVal - 1, 1));
-    const startDayOfWeek = dateObj.getUTCDay();
-    const offset = (startDayOfWeek - firstDayOfWeek + 7) % 7;
-    const gridStart = addDays(
-      `${year}-${String(monthVal).padStart(2, '0')}-01`,
-      -offset
-    );
-
-    const daysInMonth = new Date(Date.UTC(year, monthVal, 0)).getUTCDate();
-    const cells = offset + daysInMonth > 35 ? 42 : 35;
-    const dates = [];
-    for (let i = 0; i < cells; i++) {
-      dates.push(addDays(gridStart, i));
-    }
-    return { gridStartDate: gridStart, gridDates: dates };
-  }, [year, monthVal, firstDayOfWeek]);
+  const { gridStart: gridStartDate, days: gridDates } = useMemo(
+    () => buildMonthGrid(year, monthVal, firstDayOfWeek),
+    [year, monthVal, firstDayOfWeek]
+  );
 
   // Fetch logs for the current grid range
   const gridEndDate = useMemo(() => {
@@ -164,33 +158,6 @@ export default function CycleCalendar({
     }
     setEditMode(false);
   };
-
-  // Month navigation
-  const handlePrevMonth = () => {
-    if (monthVal === 1) {
-      setCurrentMonth(`${year - 1}-12`);
-    } else {
-      setCurrentMonth(`${year}-${String(monthVal - 1).padStart(2, '0')}`);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (monthVal === 12) {
-      setCurrentMonth(`${year + 1}-01`);
-    } else {
-      setCurrentMonth(`${year}-${String(monthVal + 1).padStart(2, '0')}`);
-    }
-  };
-
-  const monthLabel = useMemo(() => {
-    if (!year || !monthVal) return '';
-    const date = new Date(Date.UTC(year, monthVal - 1, 1));
-    return date.toLocaleDateString(t('i18n.locale', 'en-US'), {
-      month: 'long',
-      year: 'numeric',
-      timeZone: 'UTC',
-    });
-  }, [year, monthVal, t]);
 
   // Daily details for selectedDate
   const selectedLog = useMemo(() => {
@@ -323,76 +290,15 @@ export default function CycleCalendar({
       t('cycle.calendar.fri', 'Fri'),
       t('cycle.calendar.sat', 'Sat'),
     ];
-    const reordered = [];
+    const reordered: string[] = [];
     for (let i = 0; i < 7; i++) {
-      reordered.push(days[(firstDayOfWeek + i) % 7]);
+      reordered.push(days[(firstDayOfWeek + i) % 7]!);
     }
     return reordered;
   }, [firstDayOfWeek, t]);
 
   return (
     <div className="space-y-4">
-      {/* Month Picker Header */}
-      <Card>
-        <CardContent className="p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevMonth}
-              disabled={editMode}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="font-bold text-sm select-none min-w-[120px] text-center">
-              {monthLabel}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNextMonth}
-              disabled={editMode}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {editMode ? (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 text-destructive"
-                  onClick={() => setEditMode(false)}
-                >
-                  <X className="h-4 w-4 mr-1.5" />{' '}
-                  {t('common.cancel', 'Cancel')}
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 bg-green-600 hover:bg-green-700 text-white"
-                  onClick={handleSavePaint}
-                >
-                  <Check className="h-4 w-4 mr-1.5" />{' '}
-                  {t('common.save', 'Save')}
-                </Button>
-              </>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8"
-                onClick={handleStartEdit}
-              >
-                <Edit2 className="h-3.5 w-3.5 mr-1.5" />{' '}
-                {t('cycle.calendar.editPeriods', 'Edit Periods')}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
       {editMode && (
         <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/10">
           <CardContent className="py-2.5 px-4 text-xs text-amber-700 dark:text-amber-400">
@@ -404,119 +310,101 @@ export default function CycleCalendar({
         </Card>
       )}
 
-      {/* Calendar Grid Card */}
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-muted-foreground select-none">
-            {weekdayHeaders.map((day) => (
-              <div key={day} className="py-1">
-                {day}
-              </div>
-            ))}
-          </div>
+      <MonthCalendar
+        month={currentMonth}
+        onMonthChange={setCurrentMonth}
+        weekdayLabels={weekdayHeaders}
+        selectedDate={editMode ? undefined : selectedDate}
+        navDisabled={editMode}
+        onDayClick={(dateStr) => {
+          if (editMode) {
+            handleToggleDayPaint(dateStr);
+          } else {
+            setSelectedDate(dateStr);
+          }
+        }}
+        headerRight={
+          editMode ? (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 text-destructive"
+                onClick={() => setEditMode(false)}
+              >
+                <X className="h-4 w-4 mr-1.5" /> {t('common.cancel', 'Cancel')}
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleSavePaint}
+              >
+                <Check className="h-4 w-4 mr-1.5" /> {t('common.save', 'Save')}
+              </Button>
+            </>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8"
+              onClick={handleStartEdit}
+            >
+              <Edit2 className="h-3.5 w-3.5 mr-1.5" />{' '}
+              {t('cycle.calendar.editPeriods', 'Edit Periods')}
+            </Button>
+          )
+        }
+        legend={[
+          { label: t('cycle.legend.period', 'Period'), color: '#C9524E' },
+          {
+            label: t('cycle.legend.predicted', 'Predicted Period'),
+            color: '#C9524E40',
+            dashed: true,
+          },
+          {
+            label: t('cycle.legend.fertile', 'Fertile Window'),
+            color: '#A9D3B5',
+          },
+          { label: t('cycle.legend.ovulation', 'Ovulation'), color: '#33684A' },
+        ]}
+        renderDay={(dateStr): DayCellRender => {
+          const dayType = decoratedDaysMap[dateStr] ?? 'none';
+          const isPainted = editMode ? !!paintedPeriods[dateStr] : false;
+          const hasNote =
+            !editMode && !!logs.find((l) => l.entry_date === dateStr)?.notes;
 
-          {/* Grid Cells */}
-          <div className="grid grid-cols-7 gap-y-2 gap-x-1">
-            {gridDates.map((dateStr) => {
-              const dayParts = dateStr.split('-');
-              const dayNum = Number(dayParts[2]);
-              const isCurrentMonth = Number(dayParts[1]) === monthVal;
-              const isSel = compareDays(dateStr, selectedDate) === 0;
-              const isTdy = compareDays(dateStr, today) === 0;
+          const cell: DayCellRender = {};
 
-              // Types & colors
-              const dayType = decoratedDaysMap[dateStr] ?? 'none';
-              const isPainted = editMode ? !!paintedPeriods[dateStr] : false;
+          if (editMode) {
+            if (isPainted) {
+              cell.fill = '#C9524E';
+              cell.textColor = '#fff';
+            }
+          } else if (dayType === 'period') {
+            cell.fill = '#C9524E';
+            cell.textColor = '#fff';
+          } else if (dayType === 'predicted-period') {
+            cell.fill = '#C9524E40';
+            cell.borderStyle = 'dashed';
+            cell.borderWidth = '2px';
+            cell.borderColor = '#C9524E';
+          } else if (dayType === 'fertile') {
+            cell.fill = '#A9D3B540';
+          } else if (dayType === 'ovulation') {
+            cell.fill = '#33684A';
+            cell.textColor = '#fff';
+          }
 
-              let styleClass = 'text-foreground hover:bg-muted/50';
-              if (!isCurrentMonth) {
-                styleClass = 'text-muted-foreground/40 hover:bg-muted/20';
-              }
+          if (hasNote) {
+            cell.content = (
+              <span className="absolute bottom-1 h-1 w-1 rounded-full bg-muted-foreground/60" />
+            );
+          }
 
-              return (
-                <button
-                  key={dateStr}
-                  type="button"
-                  onClick={() => {
-                    if (editMode) {
-                      handleToggleDayPaint(dateStr);
-                    } else {
-                      setSelectedDate(dateStr);
-                    }
-                  }}
-                  className={cn(
-                    'relative mx-auto flex h-10 w-10 items-center justify-center rounded-full text-xs font-medium transition duration-150 outline-none',
-                    styleClass,
-                    isSel &&
-                      !editMode &&
-                      'ring-2 ring-primary ring-offset-2 ring-offset-background',
-                    isTdy && 'border-2 border-foreground'
-                  )}
-                  style={{
-                    backgroundColor: editMode
-                      ? isPainted
-                        ? '#C9524E'
-                        : undefined
-                      : dayType === 'period'
-                        ? '#C9524E'
-                        : dayType === 'predicted-period'
-                          ? '#C9524E40'
-                          : dayType === 'fertile'
-                            ? '#A9D3B540'
-                            : dayType === 'ovulation'
-                              ? '#33684A'
-                              : undefined,
-                    color: editMode
-                      ? isPainted
-                        ? '#fff'
-                        : undefined
-                      : dayType === 'period'
-                        ? '#fff'
-                        : dayType === 'ovulation'
-                          ? '#fff'
-                          : undefined,
-                    borderStyle:
-                      dayType === 'predicted-period' ? 'dashed' : undefined,
-                    borderWidth:
-                      dayType === 'predicted-period' ? '2px' : undefined,
-                    borderColor:
-                      dayType === 'predicted-period' ? '#C9524E' : undefined,
-                  }}
-                >
-                  <span>{dayNum}</span>
-                  {/* Indicators */}
-                  {!editMode &&
-                    logs.find((l) => l.entry_date === dateStr)?.notes && (
-                      <span className="absolute bottom-1 h-1 w-1 rounded-full bg-muted-foreground/60" />
-                    )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Calendar Legends */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-2 border-t text-[11px] text-muted-foreground select-none">
-            <LegendRow
-              color="#C9524E"
-              label={t('cycle.legend.period', 'Period')}
-            />
-            <LegendRow
-              color="#C9524E40"
-              label={t('cycle.legend.predicted', 'Predicted Period')}
-              dashed
-            />
-            <LegendRow
-              color="#A9D3B5"
-              label={t('cycle.legend.fertile', 'Fertile Window')}
-            />
-            <LegendRow
-              color="#33684A"
-              label={t('cycle.legend.ovulation', 'Ovulation')}
-            />
-          </div>
-        </CardContent>
-      </Card>
+          return cell;
+        }}
+        monthLabelLocale={t('i18n.locale', 'en-US')}
+      />
 
       {/* Selected Day Details Panel — hidden when the parent renders the log */}
       {!editMode && !hideDayDetails && (
@@ -651,28 +539,5 @@ export default function CycleCalendar({
         </Card>
       )}
     </div>
-  );
-}
-
-function LegendRow({
-  color,
-  label,
-  dashed,
-}: {
-  color: string;
-  label: string;
-  dashed?: boolean;
-}) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span
-        className="inline-block h-3.5 w-3.5 rounded-full"
-        style={{
-          backgroundColor: dashed ? undefined : color,
-          border: dashed ? `2px dashed ${color}` : undefined,
-        }}
-      />
-      {label}
-    </span>
   );
 }
