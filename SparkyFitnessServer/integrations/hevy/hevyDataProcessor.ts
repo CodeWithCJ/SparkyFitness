@@ -411,8 +411,8 @@ async function processSingleWorkout(
 function mapSetType(hevyType: string): string {
   const mapping: Record<string, string> = {
     normal: 'Working Set',
-    warm_up: 'Warm-up',
-    drop_set: 'Drop Set',
+    warmup: 'Warm-up',
+    dropset: 'Drop Set',
     failure: 'To Failure',
   };
   return mapping[hevyType] || 'Working Set';
