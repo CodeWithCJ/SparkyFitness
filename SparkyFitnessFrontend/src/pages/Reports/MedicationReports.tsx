@@ -56,6 +56,8 @@ import {
 } from '@/hooks/useMedicationDisplayPreferences';
 import Papa from 'papaparse';
 
+import MedicationLogTable from './MedicationLogTable';
+
 import type {
   Medication,
   MedicationEntry,
@@ -66,6 +68,8 @@ import type {
 interface SymptomEntry {
   id: string;
   entry_date: string;
+  /** Set when the symptom was logged as a side effect of a specific medication. */
+  medication_id?: string | null;
   symptom_name_snapshot: string;
   severity: number;
   body_location?: string | null;
@@ -118,6 +122,7 @@ const DEFAULT_VISIBLE_ITEMS = [
   'nausea_vs_dose_chart',
   'weight_vs_goal_chart',
   'adherence_chart',
+  'medication_log_table',
   'glp1_checkin_chart',
   'hydration_constipation_card',
   'protein_nausea_card',
@@ -193,6 +198,24 @@ const MedicationReports = ({
           viewGroup: 'reports',
           platform: 'web',
           visibleItems: [...activePref.visible_items, 'glp1_checkin_chart'],
+        });
+      }
+    }
+  }, [activePref, upsertPrefMutation]);
+
+  // Migrate existing database preferences to include the new medication log table by default
+  useEffect(() => {
+    if (
+      activePref &&
+      !activePref.visible_items.includes('medication_log_table')
+    ) {
+      const migratedKey = `migrated_medication_log_table_${activePref.id}`;
+      if (!localStorage.getItem(migratedKey)) {
+        localStorage.setItem(migratedKey, 'true');
+        upsertPrefMutation.mutate({
+          viewGroup: 'reports',
+          platform: 'web',
+          visibleItems: [...activePref.visible_items, 'medication_log_table'],
         });
       }
     }
@@ -483,6 +506,7 @@ const MedicationReports = ({
               { id: 'nausea_vs_dose_chart', label: 'Nausea vs. Dose Chart' },
               { id: 'weight_vs_goal_chart', label: 'Weight vs. Goal Chart' },
               { id: 'adherence_chart', label: 'Adherence Trend Chart' },
+              { id: 'medication_log_table', label: 'Medication Log Table' },
               { id: 'glp1_checkin_chart', label: 'GLP-1 Daily Check-In Chart' },
               {
                 id: 'hydration_constipation_card',
@@ -699,6 +723,18 @@ const MedicationReports = ({
               </ResponsiveContainer>
             </CardContent>
           </Card>
+        )}
+
+        {/* Medication Log Table */}
+        {isVisible('medication_log_table') && (
+          <MedicationLogTable
+            medications={medications}
+            medicationEntries={medicationEntries}
+            injections={injections}
+            symptomEntries={symptomEntries}
+            startDate={startDate}
+            endDate={endDate}
+          />
         )}
 
         {/* Adherence Chart */}

@@ -292,7 +292,7 @@ export const DataManagementSettings = () => {
         )}
         warning={t(
           'settings.dataManagement.deleteSynced.confirmWarning',
-          'This action cannot be undone.'
+          'This action cannot be undone. Make sure you have a recent database backup before deleting.'
         )}
       />
     </div>

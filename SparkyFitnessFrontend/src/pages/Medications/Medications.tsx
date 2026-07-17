@@ -252,6 +252,7 @@ export default function Medications() {
           recentEntries={recentEntries}
           loadingMeds={loadingMeds}
           loadingEntries={loadingEntries}
+          onSelectDate={(d) => setSearchParams({ date: d })}
         />
       )}
 

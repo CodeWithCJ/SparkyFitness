@@ -59,6 +59,32 @@
       "cabinet": "Cabinet",
       "symptoms": "Symptoms"
     },
+    "calendar": {
+      "title": "Medication Log Calendar",
+      "noMeds": "Add a medication to see its log calendar here.",
+      "selectMedication": "Select a medication",
+      "allMedications": "All medications",
+      "monthTotal": "{{count}} doses logged in {{month}}",
+      "allTaken": "All doses taken",
+      "partialTaken": "Partially taken",
+      "mostlySkipped": "Mostly skipped",
+      "allSkipped": "All doses skipped",
+      "snoozedOnly": "Snoozed only",
+      "sideEffect": "Side-effect symptom",
+      "generalSymptom": "General symptom",
+      "tooltipTaken": "{{count}} taken",
+      "tooltipPrn": "{{count}} PRN taken",
+      "tooltipSkipped": "{{count}} skipped",
+      "tooltipSnoozed": "{{count}} snoozed",
+      "tooltipSymptoms": "Symptoms: {{names}}",
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    },
     "common": {
       "logging": "Logging…",
       "saving": "Saving…",
@@ -87,6 +113,16 @@
       "title": "Side-Effect Insights & Hints",
       "subtitle": "Pharmacokinetic correlations overlaying recent dose timings",
       "disclaimer": "Insights are calculated over a rolling 30-day window. These are educational estimations, not clinical advice."
+    },
+    "reports": {
+      "logTableTitle": "Medication Log Table",
+      "logTableDesc": "Per-day dose counts and times for {{start}}–{{end}}, including same-day symptoms.",
+      "logTableEmpty": "No medication doses logged in this date range.",
+      "dosesLogged": "{{count}} doses logged",
+      "dosesTaken": "Doses taken",
+      "times": "Times",
+      "symptomsColumn": "Symptoms",
+      "injectionAbbrev": "inj"
     },
     "locations": {
       "general": "General",
@@ -912,7 +948,7 @@
         "deleteButton": "Delete synced data",
         "confirmTitle": "Delete synced data?",
         "confirmDescription": "This will permanently delete {{count}} entries synced from {{source}}. Manually-entered data is not affected.",
-        "confirmWarning": "This action cannot be undone.",
+        "confirmWarning": "This action cannot be undone. Make sure you have a recent database backup before deleting.",
         "confirmButton": "Delete permanently",
         "success": "Synced data deleted.",
         "error": "Failed to delete synced data."
