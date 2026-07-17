@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { CallbackStatus } from './CallbackStatus';
@@ -11,8 +11,12 @@ const OuraCallback = () => {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('Processing Oura authorization...');
   const { mutateAsync: linkOuraAccount } = useLinkOuraMutation();
+  const processed = useRef(false);
 
   useEffect(() => {
+    if (processed.current) return;
+    processed.current = true;
+
     const processCallback = async () => {
       const params = new URLSearchParams(location.search);
       const code = params.get('code');

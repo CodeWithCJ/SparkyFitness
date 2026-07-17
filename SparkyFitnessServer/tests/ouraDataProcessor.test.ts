@@ -296,13 +296,14 @@ describe('processOuraHeartRate', () => {
     );
     const calls = vi.mocked(measurementRepository.upsertCustomMeasurement).mock
       .calls;
+    // 20:30/20:35 UTC = 16:30 local in America/New_York, averaged to one bucket
     expect(calls[0][3]).toBe(65);
     expect(calls[0][4]).toBe('2026-07-15');
-    expect(calls[0][5]).toBe(20);
-
+    expect(calls[0][5]).toBe(16);
+    // 03:00 UTC on Jul 16 = 23:00 local on Jul 15
     expect(calls[1][3]).toBe(50);
     expect(calls[1][4]).toBe('2026-07-15');
-    expect(calls[1][5]).toBe(3);
+    expect(calls[1][5]).toBe(23);
   });
 });
 

@@ -4,7 +4,7 @@ import exerciseRepository from '../../models/exercise.js';
 import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
-import { instantToDay } from '@workspace/shared';
+import { instantToDay, instantHourMinute } from '@workspace/shared';
 import type {
   OuraSleepPeriod,
   OuraDailySleep,
@@ -84,11 +84,17 @@ function parseSleepPhases(
   return stages;
 }
 
+interface CategoryRef {
+  id: string;
+  name: string;
+}
+
 async function upsertCustomMeasurementLogic(
   userId: string,
   createdByUserId: string,
   customMeasurement: CustomMeasurementInput,
-  source = 'manual'
+  source = 'manual',
+  categories?: CategoryRef[]
 ) {
   const {
     categoryName,
@@ -99,10 +105,9 @@ async function upsertCustomMeasurementLogic(
     entryTimestamp,
     frequency,
   } = customMeasurement;
-  const categories = await measurementRepository.getCustomCategories(userId);
-  const category = categories.find(
-    (cat: { name: string; id: string }) => cat.name === categoryName
-  );
+  const resolvedCategories: CategoryRef[] =
+    categories ?? (await measurementRepository.getCustomCategories(userId));
+  const category = resolvedCategories.find((cat) => cat.name === categoryName);
   let categoryId;
   if (!category) {
     const newCategoryData = {
@@ -116,6 +121,7 @@ async function upsertCustomMeasurementLogic(
     const newCategory =
       await measurementRepository.createCustomCategory(newCategoryData);
     categoryId = newCategory.id;
+    resolvedCategories.push({ id: newCategory.id, name: categoryName });
     log(
       'info',
       `Created new custom category '${categoryName}' for user ${userId}.`
@@ -324,6 +330,7 @@ async function processOuraDailyActivity(
     log('info', `No Oura daily activity data to process for user ${userId}.`);
     return;
   }
+  const categories = await measurementRepository.getCustomCategories(userId);
   for (const activity of activities) {
     const entryDate = activity.day;
     if (!entryDate) continue;
@@ -370,7 +377,8 @@ async function processOuraDailyActivity(
           entryTimestamp: new Date(entryDate).toISOString(),
           frequency: 'Daily',
         },
-        OURA_SOURCE
+        OURA_SOURCE,
+        categories
       );
     }
   }
@@ -385,6 +393,7 @@ async function processOuraDailyReadiness(
     log('info', `No Oura daily readiness data to process for user ${userId}.`);
     return;
   }
+  const categories = await measurementRepository.getCustomCategories(userId);
   for (const entry of readiness) {
     const entryDate = entry.day;
     if (!entryDate) continue;
@@ -401,7 +410,8 @@ async function processOuraDailyReadiness(
           entryTimestamp: new Date(entryDate).toISOString(),
           frequency: 'Daily',
         },
-        OURA_SOURCE
+        OURA_SOURCE,
+        categories
       );
     }
     if (
@@ -420,7 +430,8 @@ async function processOuraDailyReadiness(
           entryTimestamp: new Date(entryDate).toISOString(),
           frequency: 'Daily',
         },
-        OURA_SOURCE
+        OURA_SOURCE,
+        categories
       );
     }
   }
@@ -435,6 +446,7 @@ async function processOuraDailySpo2(
     log('info', `No Oura daily SpO2 data to process for user ${userId}.`);
     return;
   }
+  const categories = await measurementRepository.getCustomCategories(userId);
   for (const entry of spo2Entries) {
     const entryDate = entry.day;
     if (!entryDate) continue;
@@ -452,7 +464,8 @@ async function processOuraDailySpo2(
           entryTimestamp: new Date(entryDate).toISOString(),
           frequency: 'Daily',
         },
-        OURA_SOURCE
+        OURA_SOURCE,
+        categories
       );
     }
     if (
@@ -471,7 +484,8 @@ async function processOuraDailySpo2(
           entryTimestamp: new Date(entryDate).toISOString(),
           frequency: 'Daily',
         },
-        OURA_SOURCE
+        OURA_SOURCE,
+        categories
       );
     }
   }
@@ -486,6 +500,7 @@ async function processOuraDailyStress(
     log('info', `No Oura daily stress data to process for user ${userId}.`);
     return;
   }
+  const categories = await measurementRepository.getCustomCategories(userId);
   for (const entry of stressEntries) {
     const entryDate = entry.day;
     if (!entryDate) continue;
@@ -508,7 +523,8 @@ async function processOuraDailyStress(
           entryTimestamp: new Date(entryDate).toISOString(),
           frequency: 'Daily',
         },
-        OURA_SOURCE
+        OURA_SOURCE,
+        categories
       );
     }
   }
@@ -526,6 +542,7 @@ async function processOuraCardioAge(
     );
     return;
   }
+  const categories = await measurementRepository.getCustomCategories(userId);
   for (const entry of cardioAgeEntries) {
     const entryDate = entry.day;
     if (
@@ -547,7 +564,8 @@ async function processOuraCardioAge(
         entryTimestamp: new Date(entryDate).toISOString(),
         frequency: 'Daily',
       },
-      OURA_SOURCE
+      OURA_SOURCE,
+      categories
     );
   }
 }
@@ -561,6 +579,7 @@ async function processOuraVo2Max(
     log('info', `No Oura VO2 max data to process for user ${userId}.`);
     return;
   }
+  const categories = await measurementRepository.getCustomCategories(userId);
   for (const entry of vo2MaxEntries) {
     const entryDate = entry.day;
     if (!entryDate || entry.vo2_max === undefined || entry.vo2_max === null) {
@@ -578,7 +597,8 @@ async function processOuraVo2Max(
         entryTimestamp: new Date(entryDate).toISOString(),
         frequency: 'Daily',
       },
-      OURA_SOURCE
+      OURA_SOURCE,
+      categories
     );
   }
 }
@@ -607,7 +627,7 @@ async function processOuraHeartRate(
     const sampleMs = new Date(sample.timestamp).getTime();
     if (isNaN(sampleMs)) continue;
     const entryDate = instantToDay(sampleMs, timezone);
-    const entryHour = new Date(sampleMs).getUTCHours();
+    const entryHour = instantHourMinute(sampleMs, timezone).hour;
     const key = `${entryDate}|${entryHour}`;
     const bucket = buckets.get(key);
     if (bucket) {
@@ -623,6 +643,7 @@ async function processOuraHeartRate(
       });
     }
   }
+  const categories = await measurementRepository.getCustomCategories(userId);
   for (const bucket of buckets.values()) {
     await upsertCustomMeasurementLogic(
       userId,
@@ -636,7 +657,8 @@ async function processOuraHeartRate(
         entryTimestamp: bucket.entryTimestamp,
         frequency: 'Hourly',
       },
-      OURA_SOURCE
+      OURA_SOURCE,
+      categories
     );
   }
   log(
