@@ -345,4 +345,86 @@ describe('openFoodFactsService', () => {
       expect(result.default_variant.traces).toBeNull();
     });
   });
+
+  describe('mapOpenFoodFactsProduct serving unit derivation', () => {
+    const solidBaseProduct = {
+      product_name: 'Test Bread',
+      brands: 'TestBrand',
+      code: '1234567890123',
+      serving_quantity: 50,
+      nutriments: {
+        'energy-kcal_100g': 250,
+        proteins_100g: 8,
+        carbohydrates_100g: 45,
+        fat_100g: 3,
+      },
+    };
+
+    // Real shape returned by world.openfoodfacts.org for Coca-Cola
+    // (barcode 5449000000996), verified against the live API.
+    const cocaColaProduct = {
+      product_name: 'Coca-Cola',
+      brands: 'Coca-Cola',
+      code: '5449000000996',
+      serving_size: '1 portion (330 ml)',
+      serving_quantity: 330,
+      serving_quantity_unit: 'ml',
+      product_quantity_unit: 'ml',
+      nutrition_data_per: '100g', // deliberately misleading; must be ignored
+      nutriments: {
+        'energy-kcal_100g': 42,
+        proteins_100g: 0,
+        carbohydrates_100g: 10.6,
+        fat_100g: 0,
+      },
+    };
+
+    it('uses serving_quantity_unit for a beverage, keeping nutrient values unconverted', () => {
+      const result = mapOpenFoodFactsProduct(cocaColaProduct);
+      expect(result.default_variant.serving_unit).toBe('ml');
+      expect(result.default_variant.serving_size).toBe(330);
+      // 42 kcal/100 * 330 = 138.6 -> rounds to 139, matching OFF's own
+      // energy-kcal_serving value for this product.
+      expect(result.default_variant.calories).toBe(139);
+    });
+
+    it('falls back to product_quantity_unit when serving_quantity_unit is absent', () => {
+      const { serving_quantity_unit: _omit, ...rest } = cocaColaProduct;
+      const result = mapOpenFoodFactsProduct(rest);
+      expect(result.default_variant.serving_unit).toBe('ml');
+    });
+
+    it('falls back to parsing serving_size text when no unit field is present', () => {
+      const {
+        serving_quantity_unit: _omit1,
+        product_quantity_unit: _omit2,
+        ...rest
+      } = cocaColaProduct;
+      const result = mapOpenFoodFactsProduct(rest);
+      expect(result.default_variant.serving_unit).toBe('ml');
+    });
+
+    it('defaults to g for a solid product with no unit signal (regression guard)', () => {
+      const result = mapOpenFoodFactsProduct(solidBaseProduct);
+      expect(result.default_variant.serving_unit).toBe('g');
+    });
+
+    it('ignores nutrition_data_per even though it says "100g" for a liquid', () => {
+      // Guards against reintroducing nutrition_data_per as a signal: OFF sets
+      // it to "100g" on this real beverage, so trusting it would regress the
+      // exact bug being fixed here.
+      const result = mapOpenFoodFactsProduct(cocaColaProduct);
+      expect(result.default_variant.serving_unit).not.toBe('g');
+    });
+
+    it('respects an explicit g unit for a solid product', () => {
+      const solidProduct = {
+        ...solidBaseProduct,
+        serving_quantity_unit: 'g',
+        product_quantity_unit: 'g',
+      };
+      const result = mapOpenFoodFactsProduct(solidProduct);
+      expect(result.default_variant.serving_unit).toBe('g');
+    });
+  });
 });

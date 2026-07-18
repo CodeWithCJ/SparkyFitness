@@ -6,7 +6,10 @@ import {
 import { log } from '../../config/logging.js';
 import { normalizeNutrientUnit } from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
-import { normalizeBarcode } from '../../utils/foodUtils.js';
+import {
+  normalizeBarcode,
+  normalizeServingUnit,
+} from '../../utils/foodUtils.js';
 const { name, version } = package$0;
 const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
 const OFF_HEADERS = {
@@ -19,6 +22,8 @@ const OFF_FIELDS = [
   'code',
   'serving_size',
   'serving_quantity',
+  'serving_quantity_unit',
+  'product_quantity_unit',
   'nutriments',
   'allergens_tags',
   'traces_tags',
@@ -31,6 +36,8 @@ interface OffProduct {
   code?: string;
   serving_size?: string;
   serving_quantity?: number;
+  serving_quantity_unit?: string;
+  product_quantity_unit?: string;
   nutriments?: Record<string, unknown>;
   allergens_tags?: string[];
   traces_tags?: string[];
@@ -223,6 +230,35 @@ function normalizeAllergenTags(tags: string[] | undefined): string[] | null {
   return tags.map((t) => t.replace(/^[a-z]{2}:/, ''));
 }
 
+// Derives the serving unit OFF explicitly assigns to a product (e.g. 'ml' for
+// a beverage, 'g' for a solid). This never infers liquid-vs-solid from the
+// nutrient basis or any heuristic — it only reads units OFF itself declares,
+// falling back to 'g' (today's behavior) when OFF gives no signal. This keeps
+// solids from ever being mislabeled as ml and vice versa.
+//
+// Deliberately does NOT consult `nutrition_data_per`: that field records what
+// the contributor selected in the data-entry form (often left at its default
+// of "100g" even for liquids), not the product's physical unit.
+function deriveOffServingUnit(product: OffProduct): string {
+  if (product.serving_quantity_unit) {
+    return normalizeServingUnit(product.serving_quantity_unit);
+  }
+  if (product.product_quantity_unit) {
+    return normalizeServingUnit(product.product_quantity_unit);
+  }
+  // Last resort: pull a unit token out of the free-text serving_size string,
+  // e.g. "1 portion (330 ml)" or "250 ml".
+  if (typeof product.serving_size === 'string') {
+    const match = product.serving_size.match(
+      /([\d.,]+)\s*(ml|milliliters?|millilitres?|g|grams?|kg|l|liters?|litres?|oz|ounces?)\b/i
+    );
+    if (match) {
+      return normalizeServingUnit(match[2]);
+    }
+  }
+  return 'g';
+}
+
 // OpenFoodFacts stores every nutrient's `*_100g` value in grams but exposes the
 // label's display unit on `*_unit`. Convert grams to that unit (e.g. magnesium
 // 0.018 g -> 18 mg) so matched custom nutrients carry sensible values, then
@@ -294,7 +330,7 @@ function mapOpenFoodFactsProduct(
   const scale = servingSize / 100;
   const defaultVariant = {
     serving_size: servingSize,
-    serving_unit: 'g',
+    serving_unit: deriveOffServingUnit(product),
     calories: Math.round(getNutrient('energy-kcal_100g') * scale),
     protein: Math.round(getNutrient('proteins_100g') * scale * 10) / 10,
     carbs: Math.round(getNutrient('carbohydrates_100g') * scale * 10) / 10,

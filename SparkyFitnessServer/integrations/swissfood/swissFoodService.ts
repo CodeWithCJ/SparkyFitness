@@ -64,7 +64,11 @@ export function mapSwissFood(food: SwissFoodDetail) {
     }
   }
 
-  // Mappings per 100g edible portion
+  // Mappings per 100g edible portion. The Swiss Food Composition Database has
+  // no field indicating a liquid basis (its per-value `unit.code` is the
+  // *nutrient's* unit, e.g. mg, not the serving unit), so unlike OpenFoodFacts
+  // there is no signal to derive 'ml' from here; 'g' is correct-by-default,
+  // not a placeholder.
   const defaultVariant = {
     serving_size: 100,
     serving_unit: 'g',
