@@ -12,6 +12,7 @@ import { Responsive, useContainerWidth } from 'react-grid-layout';
 import type { Layout, ResponsiveLayouts } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import { useTranslation } from 'react-i18next';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Eye, Minimize2, Pencil, RotateCcw } from 'lucide-react';
 import WidgetFrame from './WidgetFrame';
@@ -43,6 +44,8 @@ interface WidgetGridProps {
   widgets: Widget[];
   /** Builds the default layout for the current widget set (page-specific sizing). */
   generateDefaultLayouts: (widgetKeys: string[]) => DashboardLayouts;
+  /** Optional container to render the toolbar controls inside via portal */
+  toolbarContainer?: HTMLElement | null;
 }
 
 /**
@@ -80,6 +83,7 @@ const WidgetGridInner = ({
   pageKey,
   widgets,
   generateDefaultLayouts,
+  toolbarContainer,
 }: WidgetGridProps) => {
   const { t } = useTranslation();
   const { isActingOnBehalf } = useActiveUser();
@@ -220,44 +224,48 @@ const WidgetGridInner = ({
     ? widgets.find((w) => w.key === maximized)
     : null;
 
-  return (
-    <div className="space-y-3">
-      {/* Toolbar (hidden entirely when viewing another user's profile) */}
-      {canEdit && (
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {effectiveEditMode && hiddenWidgets.length > 0 && (
-            <div className="mr-auto flex flex-wrap items-center gap-1">
-              {hiddenWidgets.map((w) => (
-                <Button
-                  key={w.key}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => restoreWidget(w.key)}
-                >
-                  <Eye className="mr-1 h-3.5 w-3.5" />
-                  {w.title}
-                </Button>
-              ))}
-            </div>
-          )}
-          {effectiveEditMode && (
-            <Button variant="outline" size="sm" onClick={handleReset}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              {t('diary.widgets.resetLayout', 'Reset layout')}
+  const toolbarContent = canEdit ? (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {effectiveEditMode && hiddenWidgets.length > 0 && (
+        <div className="mr-auto flex flex-wrap items-center gap-1">
+          {hiddenWidgets.map((w) => (
+            <Button
+              key={w.key}
+              variant="outline"
+              size="sm"
+              onClick={() => restoreWidget(w.key)}
+            >
+              <Eye className="mr-1 h-3.5 w-3.5" />
+              {w.title}
             </Button>
-          )}
-          <Button
-            variant={effectiveEditMode ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setEditMode((v) => !v)}
-          >
-            <Pencil className="mr-2 h-4 w-4" />
-            {effectiveEditMode
-              ? t('diary.widgets.done', 'Done')
-              : t('diary.widgets.layout', 'Layout')}
-          </Button>
+          ))}
         </div>
       )}
+      {effectiveEditMode && (
+        <Button variant="outline" size="sm" onClick={handleReset}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          {t('diary.widgets.resetLayout', 'Reset layout')}
+        </Button>
+      )}
+      <Button
+        variant={effectiveEditMode ? 'default' : 'outline'}
+        size="sm"
+        onClick={() => setEditMode((v) => !v)}
+      >
+        <Pencil className="mr-2 h-4 w-4" />
+        {effectiveEditMode
+          ? t('diary.widgets.done', 'Done')
+          : t('diary.widgets.layout', 'Layout')}
+      </Button>
+    </div>
+  ) : null;
+
+  return (
+    <div className="space-y-3">
+      {/* Toolbar (hidden entirely when viewing another user's profile, or rendered via portal) */}
+      {toolbarContainer
+        ? toolbarContent && createPortal(toolbarContent, toolbarContainer)
+        : toolbarContent}
 
       <div ref={containerRef}>
         {/* Wait for the saved layout to settle before rendering, so we don't
@@ -337,11 +345,12 @@ const WidgetGridInner = ({
   );
 };
 
-const WidgetGrid = ({
+export default function WidgetGrid({
   pageKey,
   widgets,
   generateDefaultLayouts,
-}: WidgetGridProps) => {
+  toolbarContainer,
+}: WidgetGridProps) {
   const { reset } = useDashboardLayout(pageKey);
   const { t } = useTranslation();
   const [resetKey, setResetKey] = useState(0);
@@ -385,9 +394,8 @@ const WidgetGrid = ({
         pageKey={pageKey}
         widgets={widgets}
         generateDefaultLayouts={generateDefaultLayouts}
+        toolbarContainer={toolbarContainer}
       />
     </GridErrorBoundary>
   );
-};
-
-export default WidgetGrid;
+}
