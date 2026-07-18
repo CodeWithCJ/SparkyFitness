@@ -6,7 +6,10 @@ import {
 import { log } from '../../config/logging.js';
 import { normalizeNutrientUnit } from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
-import { normalizeBarcode } from '../../utils/foodUtils.js';
+import {
+  normalizeBarcode,
+  normalizeServingUnit,
+} from '../../utils/foodUtils.js';
 const { name, version } = package$0;
 const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
 const OFF_HEADERS = {
@@ -19,6 +22,8 @@ const OFF_FIELDS = [
   'code',
   'serving_size',
   'serving_quantity',
+  'serving_quantity_unit',
+  'product_quantity_unit',
   'nutriments',
   'allergens_tags',
   'traces_tags',
@@ -31,6 +36,8 @@ interface OffProduct {
   code?: string;
   serving_size?: string;
   serving_quantity?: number;
+  serving_quantity_unit?: string;
+  product_quantity_unit?: string;
   nutriments?: Record<string, unknown>;
   allergens_tags?: string[];
   traces_tags?: string[];
@@ -223,6 +230,64 @@ function normalizeAllergenTags(tags: string[] | undefined): string[] | null {
   return tags.map((t) => t.replace(/^[a-z]{2}:/, ''));
 }
 
+// Derives the serving unit OFF explicitly assigns to a product (e.g. 'ml' for
+// a beverage, 'g' for a solid). This never infers liquid-vs-solid from the
+// nutrient basis or any heuristic — it only reads units OFF itself declares,
+// falling back to 'g' (today's behavior) when OFF gives no signal. This keeps
+// solids from ever being mislabeled as ml and vice versa.
+//
+// Deliberately does NOT consult `nutrition_data_per`: that field records what
+// the contributor selected in the data-entry form (often left at its default
+// of "100g" even for liquids), not the product's physical unit.
+function deriveOffServingUnit(product: OffProduct): string {
+  if (product.serving_quantity_unit) {
+    return normalizeServingUnit(product.serving_quantity_unit);
+  }
+  if (product.product_quantity_unit) {
+    return normalizeServingUnit(product.product_quantity_unit);
+  }
+  // Last resort: pull a unit token out of the free-text serving_size string,
+  // e.g. "1 portion (330 ml)" or "250 ml".
+  if (typeof product.serving_size === 'string') {
+    const match = product.serving_size.match(
+      /([\d.,]+)\s*(ml|milliliters?|millilitres?|g|grams?|kg|l|liters?|litres?|oz|ounces?)\b/i
+    );
+    if (match) {
+      return normalizeServingUnit(match[2]);
+    }
+  }
+  return 'g';
+}
+
+// Metric units that must never become a household variant — they would just
+// duplicate the metric default (e.g. "28 g (28 g)").
+const METRIC_SERVING_UNITS = new Set(['g', 'ml', 'kg', 'l', 'oz']);
+
+// Extracts a household serving (e.g. "2 cookies") from OFF's free-text
+// serving_size string when it also states the equivalent metric weight/volume
+// in parentheses, e.g. "2 cookies (28 g)" or "1 cup (240 ml)". The parenthetical
+// is what confirms the household count maps to the same physical serving we
+// already computed from serving_quantity, so the household variant can safely
+// reuse the metric variant's nutrient values without any rescaling.
+//
+// Returns null when there is no such household descriptor (e.g. "28 g",
+// "250 ml") or when the descriptor is itself a metric unit, so a household
+// variant is only ever emitted for genuine piece/portion counts.
+function parseOffHouseholdServing(
+  servingSize: string | undefined
+): { size: number; unit: string } | null {
+  if (typeof servingSize !== 'string') return null;
+  const match = servingSize.match(
+    /^\s*([\d.,]+)\s+([^\d(][^(]*?)\s*\([^)]*\)\s*$/
+  );
+  if (!match) return null;
+  const size = parseFloat(match[1].replace(',', '.'));
+  const unit = normalizeServingUnit(match[2]);
+  if (!Number.isFinite(size) || size <= 0 || !unit) return null;
+  if (METRIC_SERVING_UNITS.has(unit)) return null;
+  return { size, unit };
+}
+
 // OpenFoodFacts stores every nutrient's `*_100g` value in grams but exposes the
 // label's display unit on `*_unit`. Convert grams to that unit (e.g. magnesium
 // 0.018 g -> 18 mg) so matched custom nutrients carry sensible values, then
@@ -294,7 +359,7 @@ function mapOpenFoodFactsProduct(
   const scale = servingSize / 100;
   const defaultVariant = {
     serving_size: servingSize,
-    serving_unit: 'g',
+    serving_unit: deriveOffServingUnit(product),
     calories: Math.round(getNutrient('energy-kcal_100g') * scale),
     protein: Math.round(getNutrient('proteins_100g') * scale * 10) / 10,
     carbs: Math.round(getNutrient('carbohydrates_100g') * scale * 10) / 10,
@@ -346,6 +411,32 @@ function mapOpenFoodFactsProduct(
     product[`product_name_${language}`] ||
     product.product_name_en ||
     product.product_name;
+  // The metric serving (e.g. 28 g) stays the default; nothing downstream that
+  // keys off is_default changes.
+  const metricVariant = {
+    ...defaultVariant,
+    allergens: normalizeAllergenTags(product.allergens_tags),
+    traces: normalizeAllergenTags(product.traces_tags),
+  };
+  // If OFF states an equivalent household serving (e.g. "2 cookies (28 g)"),
+  // surface it as a second, non-default variant so users can log by piece.
+  // It describes the SAME physical serving as the metric variant, so it reuses
+  // the exact same nutrient values — no rescaling. Only OFF's serving_unit is
+  // stored, mirroring how FatSecret/USDA store household units.
+  const household = parseOffHouseholdServing(product.serving_size);
+  const householdVariant =
+    household &&
+    !(
+      household.size === metricVariant.serving_size &&
+      household.unit === metricVariant.serving_unit
+    )
+      ? {
+          ...metricVariant,
+          serving_size: household.size,
+          serving_unit: household.unit,
+          is_default: false,
+        }
+      : null;
   return {
     name,
     brand: product.brands?.split(',')[0]?.trim() || '',
@@ -353,11 +444,10 @@ function mapOpenFoodFactsProduct(
     provider_external_id: product.code,
     provider_type: 'openfoodfacts',
     is_custom: false,
-    default_variant: {
-      ...defaultVariant,
-      allergens: normalizeAllergenTags(product.allergens_tags),
-      traces: normalizeAllergenTags(product.traces_tags),
-    },
+    default_variant: metricVariant,
+    ...(householdVariant
+      ? { variants: [metricVariant, householdVariant] }
+      : {}),
   };
 }
 export { searchOpenFoodFacts };
