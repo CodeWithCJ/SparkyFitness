@@ -6,7 +6,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, ClipboardList } from 'lucide-react';
+import { Trash2, ClipboardList, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { Timer, Activity } from 'lucide-react';
 import {
@@ -34,12 +34,18 @@ interface RecentActivityProps {
   ) => Promise<void>;
   recentMeasurements: CombinedMeasurement[];
   shouldConvertCustomMeasurement: (unit: string) => boolean;
+  handleEditFastClick?: (measurement: CombinedMeasurement) => void;
+  title?: string;
+  description?: string;
 }
 
 export const RecentActivity: React.FC<RecentActivityProps> = ({
   handleDeleteMeasurementClick,
   recentMeasurements,
   shouldConvertCustomMeasurement,
+  handleEditFastClick,
+  title,
+  description,
 }) => {
   const {
     weightUnit: defaultWeightUnit,
@@ -54,11 +60,14 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
         <CardHeader className="bg-muted/10">
           <CardTitle className="text-lg flex items-center gap-2">
             <Activity className="w-5 h-5 text-primary" />
-            {t('checkIn.recentMeasurements', 'Recent Activity')}
+            {title || t('checkIn.recentMeasurements', 'Recent Activity')}
           </CardTitle>
           <CardDescription>
-            Your latest logs including measurements, completed fasts, and synced
-            health data.
+            {description ||
+              t(
+                'checkIn.recentMeasurementsDescription',
+                'Your latest logs including measurements, completed fasts, and synced health data.'
+              )}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -213,6 +222,30 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
+                      )}
+                      {measurement.type === 'fasting' && (
+                        <>
+                          {handleEditFastClick && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 ml-2 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleEditFastClick(measurement)}
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-2 text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              handleDeleteMeasurementClick(measurement)
+                            }
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
