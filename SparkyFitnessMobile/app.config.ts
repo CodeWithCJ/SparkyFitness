@@ -154,6 +154,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         'expo-widgets',
         {
           groupIdentifier: getIosAppGroup(),
+          bundleIdentifier: process.env.WIDGET_BUNDLE_IDENTIFIER,
           // Live Activities register at runtime via createLiveActivity and must
           // NOT be listed here — widgets[] is only for home/Lock Screen widgets
           // (an entry without supportedFamilies breaks the generated target).

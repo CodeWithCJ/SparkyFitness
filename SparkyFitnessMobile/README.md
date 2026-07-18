@@ -38,3 +38,15 @@ APP_VARIANT=production eas build -p ios --profile production --auto-submit
 ### Configure Xcode
 ```bash
 open ios/SparkyFitness.xcworkspace
+
+
+###Troubleshooting
+
+# 1. Clean the cached build folders again
+rm -rf ios/build ios/Pods
+
+# 2. Re-run prebuild with the variable set to 0
+EXPO_USE_PRECOMPILED_MODULES=0 npx expo prebuild --clean
+
+# 3. Run the iOS build with the variable set to 0
+EXPO_USE_PRECOMPILED_MODULES=0 pnpm ios
