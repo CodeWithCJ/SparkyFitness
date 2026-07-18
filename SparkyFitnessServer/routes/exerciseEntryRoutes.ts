@@ -376,7 +376,13 @@ router.post(
           distance,
           avg_heart_rate,
           activity_details,
-        }
+        },
+        // Manual diary adds should always create a new entry, even when the
+        // same exercise/date already has one (e.g. two workouts in a day).
+        // Skip the "same exercise + date" merge-into-existing check unless
+        // this entry is tied to a workout plan assignment, which has its own
+        // assignment+date dedup that must still apply.
+        { skipDuplicateCheck: !workout_plan_assignment_id }
       );
       res.status(201).json(newEntry);
     } catch (error) {
