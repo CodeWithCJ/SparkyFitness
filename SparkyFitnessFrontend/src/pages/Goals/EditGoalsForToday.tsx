@@ -38,76 +38,14 @@ import type { UserCustomNutrient } from '@/types/customNutrient';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { buildGoalsPayload, getMealPercentage } from '@/utils/goals';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
-import { useProfileQuery } from '@/hooks/Settings/useProfile';
-import { normalizeNutrientName } from '@workspace/shared';
+import { useAutoCalculateUserData } from '@/hooks/Goals/useAutoCalculateUserData';
+import { NutrientAutoCalculate } from '@/pages/Goals/NutrientAutoCalculate';
+import { AutoCalculateToolbar } from '@/pages/Goals/AutoCalculateToolbar';
+import { isAutoCalculable } from '@/pages/Goals/nutrientAutoCalculateHelpers';
 import {
-  calculateAddedSugarLimit,
-  UserNutrientData,
+  computeAutoCalculatedValue,
+  type AlgorithmBundle,
 } from '@/services/nutrientCalculationService';
-import {
-  AddedSugarAlgorithm,
-  AddedSugarAlgorithmLabels,
-} from '@/types/nutrientAlgorithms';
-import { Calculator } from 'lucide-react';
-
-const SUGAR_LIKE_NAMES = [
-  'sugar',
-  'sugars',
-  'added sugar',
-  'added sugars',
-  'added_sugar',
-  'added_sugars',
-];
-
-function isSugarLikeName(name: string, aliases: string[] = []): boolean {
-  const candidates = [name, ...aliases].map(normalizeNutrientName);
-  return SUGAR_LIKE_NAMES.map(normalizeNutrientName).some((sugarAlias) =>
-    candidates.includes(sugarAlias)
-  );
-}
-
-const AddedSugarAutoCalculate = ({
-  calories,
-  sex,
-  onApply,
-}: {
-  calories: number;
-  sex?: 'male' | 'female';
-  onApply: (grams: number) => void;
-}) => {
-  const handleSelect = (algorithm: AddedSugarAlgorithm) => {
-    if (algorithm === AddedSugarAlgorithm.AHA_FIXED && !sex) return;
-    const userData: UserNutrientData = {
-      age: 0,
-      sex: sex ?? 'female',
-      weightKg: 0,
-      calories,
-      totalFatGrams: 0,
-    };
-    const { sugars } = calculateAddedSugarLimit(userData, algorithm);
-    onApply(sugars);
-  };
-
-  return (
-    <Select onValueChange={handleSelect}>
-      <SelectTrigger className="h-7 text-xs w-full mt-1">
-        <Calculator className="h-3 w-3 mr-1" />
-        <SelectValue placeholder="Auto-calculate limit" />
-      </SelectTrigger>
-      <SelectContent>
-        {Object.values(AddedSugarAlgorithm).map((algorithm) => (
-          <SelectItem
-            key={algorithm}
-            value={algorithm}
-            disabled={algorithm === AddedSugarAlgorithm.AHA_FIXED && !sex}
-          >
-            {AddedSugarAlgorithmLabels[algorithm]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
 
 interface EditGoalsProps {
   selectedDate: string;
@@ -146,23 +84,35 @@ const EditGoalsForm = ({
     convertEnergy,
     getEnergyUnitString,
     nutrientDisplayPreferences,
+    fatBreakdownAlgorithm,
+    mineralCalculationAlgorithm,
+    vitaminCalculationAlgorithm,
+    sugarCalculationAlgorithm,
+    addedSugarAlgorithm,
   } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
-  const { user } = useAuth();
-  const { data: userProfile } = useProfileQuery(user?.id);
   const { data: goalTypePreferences = {} } = useNutrientGoalPreferences();
-  const sex: 'male' | 'female' | undefined =
-    userProfile?.gender?.toLowerCase() === 'male'
-      ? 'male'
-      : userProfile?.gender?.toLowerCase() === 'female'
-        ? 'female'
-        : undefined;
 
   const [goals, setGoals] = useState<ExpandedGoals>({
     ...DEFAULT_GOALS,
     ...initialData,
   });
+  const [selectedForAutoCalc, setSelectedForAutoCalc] = useState<Set<string>>(
+    new Set()
+  );
+
+  const autoCalculateUserData = useAutoCalculateUserData(
+    goals.calories,
+    goals.fat
+  );
+  const algorithms: AlgorithmBundle = {
+    fatBreakdown: fatBreakdownAlgorithm,
+    minerals: mineralCalculationAlgorithm,
+    vitamins: vitaminCalculationAlgorithm,
+    sugar: sugarCalculationAlgorithm,
+    addedSugar: addedSugarAlgorithm,
+  };
   const [macroInputType, setMacroInputType] = useState<'grams' | 'percentages'>(
     initialData.protein_percentage !== null ? 'percentages' : 'grams'
   );
@@ -195,6 +145,53 @@ const EditGoalsForm = ({
     // Also include custom nutrients in the visibility list so they aren't filtered out by NutrientInput
     return [...merged, ...customNutrients.map((cn) => cn.name)];
   }, [goalPreferences, customNutrients]);
+
+  const eligibleAutoCalcIds = useMemo(() => {
+    const standardIds = NUTRIENT_CONFIG.filter(
+      (f) => !['protein', 'carbs', 'fat'].includes(f.id)
+    )
+      .map((f) => f.id)
+      .filter((id) => isAutoCalculable(id, undefined, undefined));
+    const customIds = customNutrients
+      .filter((cn) =>
+        isAutoCalculable(
+          cn.name,
+          cn.aliases,
+          goalTypePreferences[cn.name]?.goalType ?? 'minimum'
+        )
+      )
+      .map((cn) => cn.name);
+    return [...standardIds, ...customIds];
+  }, [customNutrients, goalTypePreferences]);
+
+  const handleApplySelected = () => {
+    if (!autoCalculateUserData) return;
+    const updates: Record<string, number> = {};
+    selectedForAutoCalc.forEach((id) => {
+      // eligibleAutoCalcIds only ever includes a custom nutrient name when
+      // it's already sugar-like + set to Maximum, so "is a custom nutrient"
+      // here is equivalent to "is the Added Sugars case".
+      const isAddedSugarLike = customNutrients.some((cn) => cn.name === id);
+      const value = computeAutoCalculatedValue(
+        id,
+        autoCalculateUserData,
+        algorithms,
+        isAddedSugarLike
+      );
+      if (value !== null) updates[id] = Math.round(value);
+    });
+    setGoals((prev) => ({ ...prev, ...updates }));
+    setSelectedForAutoCalc(new Set());
+  };
+
+  const toggleSelected = (id: string, checked: boolean) => {
+    setSelectedForAutoCalc((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
 
   const currentMacroTotal = useMemo(() => {
     if (macroInputType === 'grams') return 100;
@@ -381,25 +378,43 @@ const EditGoalsForm = ({
         </div>
       )}
 
+      <AutoCalculateToolbar
+        eligibleCount={eligibleAutoCalcIds.length}
+        selectedCount={selectedForAutoCalc.size}
+        onSelectAll={() => setSelectedForAutoCalc(new Set(eligibleAutoCalcIds))}
+        onSelectNone={() => setSelectedForAutoCalc(new Set())}
+        onApplySelected={handleApplySelected}
+        disabled={!autoCalculateUserData}
+      />
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-muted/10 p-4 rounded-xl">
         {NUTRIENT_CONFIG.filter(
           (f) => !['protein', 'carbs', 'fat'].includes(f.id)
         ).map((f) => (
-          <NutrientInput
-            key={f.id}
-            nutrientId={f.id}
-            state={goals}
-            setState={(val) => setGoals(val)}
-            visibleNutrients={visibleNutrients}
-            customNutrients={customNutrients}
-          />
+          <div key={f.id}>
+            <NutrientInput
+              nutrientId={f.id}
+              state={goals}
+              setState={(val) => setGoals(val)}
+              visibleNutrients={visibleNutrients}
+              customNutrients={customNutrients}
+            />
+            <NutrientAutoCalculate
+              nutrientId={f.id}
+              userData={autoCalculateUserData}
+              algorithms={algorithms}
+              selected={selectedForAutoCalc.has(f.id)}
+              onToggleSelected={(checked) => toggleSelected(f.id, checked)}
+              onApply={(value) =>
+                setGoals((prev) => ({ ...prev, [f.id]: value }))
+              }
+            />
+          </div>
         ))}
 
         {/* Custom Nutrients */}
         {customNutrients?.map((cn) => {
           const goalType = goalTypePreferences[cn.name]?.goalType ?? 'minimum';
-          const showAddedSugarAutoCalculate =
-            goalType === 'maximum' && isSugarLikeName(cn.name, cn.aliases);
           return (
             <div key={cn.id}>
               <NutrientInput
@@ -409,15 +424,18 @@ const EditGoalsForm = ({
                 visibleNutrients={visibleNutrients}
                 customNutrients={customNutrients}
               />
-              {showAddedSugarAutoCalculate && (
-                <AddedSugarAutoCalculate
-                  calories={goals.calories}
-                  sex={sex}
-                  onApply={(grams) =>
-                    setGoals((prev) => ({ ...prev, [cn.name]: grams }))
-                  }
-                />
-              )}
+              <NutrientAutoCalculate
+                nutrientId={cn.name}
+                customNutrientAliases={cn.aliases}
+                userData={autoCalculateUserData}
+                goalType={goalType}
+                algorithms={algorithms}
+                selected={selectedForAutoCalc.has(cn.name)}
+                onToggleSelected={(checked) => toggleSelected(cn.name, checked)}
+                onApply={(value) =>
+                  setGoals((prev) => ({ ...prev, [cn.name]: value }))
+                }
+              />
             </div>
           );
         })}

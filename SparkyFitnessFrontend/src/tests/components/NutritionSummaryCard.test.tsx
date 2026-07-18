@@ -44,6 +44,10 @@ jest.mock('@/hooks/Diary/useFoodEntries', () => ({
   useCopyAllFoodEntriesFromYesterdayMutation: () => ({ mutate: jest.fn() }),
 }));
 
+jest.mock('@/hooks/Settings/useNutrientGoalPreferences', () => ({
+  useNutrientGoalPreferences: () => ({ data: {} }),
+}));
+
 const renderSummary = () =>
   render(
     <NutritionSummaryCard

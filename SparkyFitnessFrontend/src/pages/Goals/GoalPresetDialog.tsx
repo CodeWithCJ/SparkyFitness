@@ -29,6 +29,15 @@ import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { GoalPreset } from '@/types/goals';
 import { getMealPercentage, buildGoalsPayload } from '@/utils/goals';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
+import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
+import { useAutoCalculateUserData } from '@/hooks/Goals/useAutoCalculateUserData';
+import { NutrientAutoCalculate } from './NutrientAutoCalculate';
+import { AutoCalculateToolbar } from './AutoCalculateToolbar';
+import { isAutoCalculable } from './nutrientAutoCalculateHelpers';
+import {
+  computeAutoCalculatedValue,
+  type AlgorithmBundle,
+} from '@/services/nutrientCalculationService';
 
 interface GoalPresetDialogProps {
   open: boolean;
@@ -54,11 +63,21 @@ export const GoalPresetDialog = ({
   preset,
   visibleNutrients,
 }: GoalPresetDialogProps) => {
-  const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
+  const {
+    energyUnit,
+    convertEnergy,
+    getEnergyUnitString,
+    fatBreakdownAlgorithm,
+    mineralCalculationAlgorithm,
+    vitaminCalculationAlgorithm,
+    sugarCalculationAlgorithm,
+    addedSugarAlgorithm,
+  } = usePreferences();
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: customNutrients } = useCustomNutrients();
   const { data: mealTypes = [] } = useMealTypes();
+  const { data: goalTypePreferences = {} } = useNutrientGoalPreferences();
 
   const [formData, setFormData] = useState<GoalPreset | null>(() => {
     if (!preset) {
@@ -73,6 +92,66 @@ export const GoalPresetDialog = ({
       ? 'percentages'
       : 'grams'
   );
+
+  const [selectedForAutoCalc, setSelectedForAutoCalc] = useState<Set<string>>(
+    new Set()
+  );
+
+  const autoCalculateUserData = useAutoCalculateUserData(
+    formData?.calories ?? 0,
+    formData?.fat ?? 0
+  );
+  const algorithms: AlgorithmBundle = {
+    fatBreakdown: fatBreakdownAlgorithm,
+    minerals: mineralCalculationAlgorithm,
+    vitamins: vitaminCalculationAlgorithm,
+    sugar: sugarCalculationAlgorithm,
+    addedSugar: addedSugarAlgorithm,
+  };
+
+  const eligibleAutoCalcIds = useMemo(() => {
+    const standardIds = NUTRIENT_CONFIG.filter(
+      (f) => !['protein', 'carbs', 'fat'].includes(f.id)
+    )
+      .map((f) => f.id)
+      .filter((id) => isAutoCalculable(id, undefined, undefined));
+    const customIds = (customNutrients ?? [])
+      .filter((cn) =>
+        isAutoCalculable(
+          cn.name,
+          cn.aliases,
+          goalTypePreferences[cn.name]?.goalType ?? 'minimum'
+        )
+      )
+      .map((cn) => cn.name);
+    return [...standardIds, ...customIds];
+  }, [customNutrients, goalTypePreferences]);
+
+  const toggleSelected = (id: string, checked: boolean) => {
+    setSelectedForAutoCalc((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleApplySelected = () => {
+    if (!autoCalculateUserData) return;
+    const updates: Record<string, number> = {};
+    selectedForAutoCalc.forEach((id) => {
+      const isAddedSugarLike = customNutrients?.some((cn) => cn.name === id);
+      const value = computeAutoCalculatedValue(
+        id,
+        autoCalculateUserData,
+        algorithms,
+        !!isAddedSugarLike
+      );
+      if (value !== null) updates[id] = Math.round(value);
+    });
+    setFormData((prev) => (prev ? { ...prev, ...updates } : prev));
+    setSelectedForAutoCalc(new Set());
+  };
 
   const { mutateAsync: createPreset, isPending: createSaving } =
     useCreatePresetMutation();
@@ -294,28 +373,75 @@ export const GoalPresetDialog = ({
                 </div>
               </>
             )}
+            <AutoCalculateToolbar
+              eligibleCount={eligibleAutoCalcIds.length}
+              selectedCount={selectedForAutoCalc.size}
+              onSelectAll={() =>
+                setSelectedForAutoCalc(new Set(eligibleAutoCalcIds))
+              }
+              onSelectNone={() => setSelectedForAutoCalc(new Set())}
+              onApplySelected={handleApplySelected}
+              disabled={!autoCalculateUserData}
+            />
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-muted/20 p-4 rounded-xl">
               {NUTRIENT_CONFIG.filter(
                 (f) => !['protein', 'carbs', 'fat'].includes(f.id)
               ).map((f) => (
-                <NutrientInput<GoalPreset>
-                  key={f.id}
-                  nutrientId={f.id}
-                  state={formData}
-                  setState={(val) => setFormData(val)}
-                  visibleNutrients={visibleNutrients}
-                />
-              ))}
-              {/* Custom Nutrients */}
-              {customNutrients?.map((cn) => {
-                return (
+                <div key={f.id}>
                   <NutrientInput<GoalPreset>
-                    key={cn.id}
-                    nutrientId={cn.name}
+                    nutrientId={f.id}
                     state={formData}
                     setState={(val) => setFormData(val)}
                     visibleNutrients={visibleNutrients}
+                    customNutrients={customNutrients}
                   />
+                  <NutrientAutoCalculate
+                    nutrientId={f.id}
+                    userData={autoCalculateUserData}
+                    algorithms={algorithms}
+                    selected={selectedForAutoCalc.has(f.id)}
+                    onToggleSelected={(checked) =>
+                      toggleSelected(f.id, checked)
+                    }
+                    onApply={(value) =>
+                      setFormData((prev) =>
+                        prev ? { ...prev, [f.id]: value } : prev
+                      )
+                    }
+                  />
+                </div>
+              ))}
+              {/* Custom Nutrients */}
+              {customNutrients?.map((cn) => {
+                const goalType =
+                  goalTypePreferences[cn.name]?.goalType ?? 'minimum';
+                return (
+                  <div key={cn.id}>
+                    <NutrientInput<GoalPreset>
+                      nutrientId={cn.name}
+                      state={formData}
+                      setState={(val) => setFormData(val)}
+                      visibleNutrients={visibleNutrients}
+                      customNutrients={customNutrients}
+                    />
+                    <NutrientAutoCalculate
+                      nutrientId={cn.name}
+                      customNutrientAliases={cn.aliases}
+                      userData={autoCalculateUserData}
+                      goalType={goalType}
+                      algorithms={algorithms}
+                      selected={selectedForAutoCalc.has(cn.name)}
+                      onToggleSelected={(checked) =>
+                        toggleSelected(cn.name, checked)
+                      }
+                      onApply={(value) =>
+                        setFormData((prev) =>
+                          prev ? { ...prev, [cn.name]: value } : prev
+                        )
+                      }
+                    />
+                  </div>
                 );
               })}
             </div>

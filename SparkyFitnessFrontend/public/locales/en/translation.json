@@ -364,7 +364,14 @@
     "vitaminA": "Vitamin A",
     "vitaminC": "Vitamin C",
     "calcium": "Calcium",
-    "iron": "Iron"
+    "iron": "Iron",
+    "autoCalculate": "Auto-calculate",
+    "autoCalculateTooltip": "Auto-calculate using {{algorithm}}",
+    "autoCalculateDisabledNoSex": "Set your sex in Profile to enable auto-calculate",
+    "autoCalculateSelect": "Include in bulk auto-calculate",
+    "autoCalculateSelectAll": "Select All",
+    "autoCalculateSelectNone": "Select None",
+    "autoCalculateApplySelected": "Auto-calculate Selected ({{count}})"
   },
   "calculationSettings": {
     "showNetCarbs": "Show net carbs (carbs minus fiber)",

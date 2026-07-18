@@ -328,16 +328,24 @@ export function calculateAddedSugarLimit(
 }
 
 /**
+ * Bundle of the 5 saved algorithm choices, as stored in user preferences and
+ * used to compute every nutrient (predefined or a custom Added Sugars
+ * tracker) that has a known formula.
+ */
+export type AlgorithmBundle = {
+  fatBreakdown: FatBreakdownAlgorithm;
+  minerals: MineralCalculationAlgorithm;
+  vitamins: VitaminCalculationAlgorithm;
+  sugar: SugarCalculationAlgorithm;
+  addedSugar: AddedSugarAlgorithm;
+};
+
+/**
  * Calculate all advanced nutrients at once
  */
 export function calculateAllAdvancedNutrients(
   userData: UserNutrientData,
-  algorithms: {
-    fatBreakdown: FatBreakdownAlgorithm;
-    minerals: MineralCalculationAlgorithm;
-    vitamins: VitaminCalculationAlgorithm;
-    sugar: SugarCalculationAlgorithm;
-  }
+  algorithms: AlgorithmBundle
 ) {
   return {
     ...calculateFatBreakdown(userData, algorithms.fatBreakdown),
@@ -345,4 +353,91 @@ export function calculateAllAdvancedNutrients(
     ...calculateVitaminTargets(userData, algorithms.vitamins),
     ...calculateSugarTarget(userData, algorithms.sugar),
   };
+}
+
+// Which algorithm family (and therefore which calculate* function) computes
+// a given predefined nutrient field. Note 'sugars' here is the built-in
+// Total Sugar goal, not a custom "Added Sugars" nutrient — those are handled
+// separately via calculateAddedSugarLimit/AddedSugarAlgorithm.
+const NUTRIENT_FAMILY_MAP: Record<
+  string,
+  keyof Omit<AlgorithmBundle, 'addedSugar'>
+> = {
+  saturated_fat: 'fatBreakdown',
+  trans_fat: 'fatBreakdown',
+  polyunsaturated_fat: 'fatBreakdown',
+  monounsaturated_fat: 'fatBreakdown',
+  cholesterol: 'minerals',
+  sodium: 'minerals',
+  potassium: 'minerals',
+  calcium: 'minerals',
+  iron: 'minerals',
+  vitamin_a: 'vitamins',
+  vitamin_c: 'vitamins',
+  sugars: 'sugar',
+};
+
+export function getAutoCalculateFamily(
+  nutrientId: string
+): keyof Omit<AlgorithmBundle, 'addedSugar'> | null {
+  return NUTRIENT_FAMILY_MAP[nutrientId] ?? null;
+}
+
+/**
+ * Computes a recommended value for a single predefined nutrient field using
+ * its algorithm family. Some families (e.g. minerals) compute several fields
+ * together internally — only the requested field is returned, so applying it
+ * doesn't touch sibling fields (e.g. auto-calculating sodium alone doesn't
+ * also overwrite potassium/calcium/iron/cholesterol).
+ */
+export function calculateSingleNutrientAutoValue(
+  nutrientId: string,
+  userData: UserNutrientData,
+  algorithms: AlgorithmBundle
+): number | null {
+  const family = getAutoCalculateFamily(nutrientId);
+  if (!family) return null;
+  switch (family) {
+    case 'fatBreakdown':
+      return calculateFatBreakdown(userData, algorithms.fatBreakdown)[
+        nutrientId as keyof FatBreakdown
+      ];
+    case 'minerals':
+      return calculateMineralTargets(userData, algorithms.minerals)[
+        nutrientId as keyof MineralTargets
+      ];
+    case 'vitamins':
+      return calculateVitaminTargets(userData, algorithms.vitamins)[
+        nutrientId as keyof VitaminTargets
+      ];
+    case 'sugar':
+      return calculateSugarTarget(userData, algorithms.sugar).sugars;
+    default:
+      // 'addedSugar' has no NUTRIENT_FAMILY_MAP entry (see
+      // computeAutoCalculatedValue for that case) — unreachable via
+      // getAutoCalculateFamily, but keeps this switch exhaustive.
+      return null;
+  }
+}
+
+/**
+ * Single entry point for the Auto-calculate feature (icon button + bulk
+ * apply): resolves either a predefined nutrient's algorithm family, or —
+ * when the caller has already determined this is a custom "Added Sugars"
+ * nutrient set to a maximum goal (see isAutoCalculable) — the Added Sugar
+ * algorithm. Returns null when neither applies.
+ */
+export function computeAutoCalculatedValue(
+  nutrientId: string,
+  userData: UserNutrientData,
+  algorithms: AlgorithmBundle,
+  isAddedSugarLike: boolean
+): number | null {
+  const family = getAutoCalculateFamily(nutrientId);
+  if (family)
+    return calculateSingleNutrientAutoValue(nutrientId, userData, algorithms);
+  if (isAddedSugarLike) {
+    return calculateAddedSugarLimit(userData, algorithms.addedSugar).sugars;
+  }
+  return null;
 }

@@ -27,3 +27,7 @@ CREATE TABLE IF NOT EXISTS public.user_nutrient_goal_preferences (
 
 CREATE INDEX IF NOT EXISTS idx_user_nutrient_goal_preferences_user_id
     ON public.user_nutrient_goal_preferences(user_id);
+
+
+ALTER TABLE "public"."user_preferences"
+ADD COLUMN "added_sugar_algorithm" TEXT NOT NULL DEFAULT 'WHO_IDEAL';

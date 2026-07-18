@@ -90,11 +90,12 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     expect(mockClient.query.mock.calls[0][0]).toContain(
       'active_vision_ai_service_id'
     );
-    // The 'in'-guard flag ($43, last param) gates the CASE WHEN, and the value
-    // ($42) precedes it; a partial payload that includes the field must write it.
+    // The 'in'-guard flag ($42) gates the CASE WHEN, and the value ($41)
+    // precedes it; added_sugar_algorithm ($43, last param) was appended after
+    // both. A partial payload that includes the field must write it.
     const params = mockClient.query.mock.calls[0][1];
-    expect(params[params.length - 1]).toBe(true);
-    expect(params[params.length - 2]).toBe('svc-99');
+    expect(params[params.length - 2]).toBe(true);
+    expect(params[params.length - 3]).toBe('svc-99');
   });
 
   it('leaves active_vision_ai_service_id untouched when the field is omitted', async () => {
@@ -107,7 +108,7 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
 
     // The guard flag is false, so the CASE WHEN keeps the stored pointer.
     const params = mockClient.query.mock.calls[0][1];
-    expect(params[params.length - 1]).toBe(false);
+    expect(params[params.length - 2]).toBe(false);
   });
 
   it('round-trips goal_mode preferences through save and load', async () => {

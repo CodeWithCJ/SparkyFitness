@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict WTBlkWlx9Goijo2D0zOHTQRfiDH76uJRXhMVsg9RZvjMx6pyKJkXiOwdaVpRkdw
+\restrict 2fch36TUbeX3PUGdkdRgGe8u0dKG2Unn4XZdchelSlLo04dOsNOWRB0uSPwFIfm
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -3288,6 +3288,7 @@ CREATE TABLE public.user_preferences (
     add_exercise_water_to_goal boolean DEFAULT false NOT NULL,
     measurement_decimal_places integer DEFAULT 0 NOT NULL,
     active_vision_ai_service_id uuid,
+    added_sugar_algorithm text DEFAULT 'WHO_IDEAL'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
@@ -10224,5 +10225,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict WTBlkWlx9Goijo2D0zOHTQRfiDH76uJRXhMVsg9RZvjMx6pyKJkXiOwdaVpRkdw
+\unrestrict 2fch36TUbeX3PUGdkdRgGe8u0dKG2Unn4XZdchelSlLo04dOsNOWRB0uSPwFIfm
 
