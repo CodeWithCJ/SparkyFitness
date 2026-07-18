@@ -4,7 +4,7 @@
   <dict>
     <key>com.apple.security.application-groups</key>
     <array>
-      <string>group.org.SparkyApps.SparkyFitnessMobile1.dev</string>
+      <string>group.org.SparkyApps.SparkyFitnessMobile.dev</string>
     </array>
   </dict>
 </plist>
