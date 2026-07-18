@@ -208,11 +208,25 @@ const NutritionSummaryCard = ({
                 ? '#f59e0b' // amber-500
                 : metadata.chartColor;
 
+            const targetMinVal =
+              nutrient === 'calories' && metadata.targetMin !== undefined
+                ? Math.round(
+                    convertEnergy(metadata.targetMin, 'kcal', energyUnit)
+                  )
+                : metadata.targetMin;
+
+            const targetMaxVal =
+              nutrient === 'calories' && metadata.targetMax !== undefined
+                ? Math.round(
+                    convertEnergy(metadata.targetMax, 'kcal', energyUnit)
+                  )
+                : metadata.targetMax;
+
             const percentage =
               goal > 0 ? Math.min((comparisonTotal / goal) * 100, 100) : 0;
 
             const subLine = isTargetType
-              ? `${formatNutrientValue(nutrient, metadata.targetMin, customNutrients)}–${formatNutrientValue(nutrient, metadata.targetMax, customNutrients)}${unit}`
+              ? `${formatNutrientValue(nutrient, targetMinVal, customNutrients)}–${formatNutrientValue(nutrient, targetMaxVal, customNutrients)}${unit}`
               : goalType === 'maximum' && isOverLimit
                 ? `${formatNutrientValue(nutrient, comparisonTotal - goal, customNutrients)}${unit} ${t('diary.over', 'over')}`
                 : `${t('diary.of', 'of')} ${displayGoal}${unit}`;

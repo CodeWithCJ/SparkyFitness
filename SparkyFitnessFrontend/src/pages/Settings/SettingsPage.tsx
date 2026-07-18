@@ -97,25 +97,6 @@ const Settings = () => {
         </AccordionItem>
 
         <AccordionItem
-          value="custom-nutrients"
-          className="border rounded-lg mb-4"
-        >
-          <AccordionTrigger
-            className="flex items-center gap-2 p-4 hover:no-underline"
-            description={t(
-              'settings.customNutrients.subtitle',
-              'Manage your custom nutrient definitions'
-            )}
-          >
-            <ListChecks className="h-5 w-5" />
-            {t('settings.customNutrients.title', 'Custom Nutrients')}
-          </AccordionTrigger>
-          <AccordionContent className="p-4 pt-0">
-            <CustomNutrientsSettings />
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem
           value="allergen-preferences"
           className="border rounded-lg mb-4"
         >
@@ -131,6 +112,25 @@ const Settings = () => {
           </AccordionTrigger>
           <AccordionContent className="p-4 pt-0">
             <AllergenSettings />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem
+          value="custom-nutrients"
+          className="border rounded-lg mb-4"
+        >
+          <AccordionTrigger
+            className="flex items-center gap-2 p-4 hover:no-underline"
+            description={t(
+              'settings.customNutrients.subtitle',
+              'Manage your custom nutrient definitions'
+            )}
+          >
+            <ListChecks className="h-5 w-5" />
+            {t('settings.customNutrients.title', 'Custom Nutrients')}
+          </AccordionTrigger>
+          <AccordionContent className="p-4 pt-0">
+            <CustomNutrientsSettings />
           </AccordionContent>
         </AccordionItem>
 

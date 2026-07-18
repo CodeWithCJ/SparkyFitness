@@ -229,6 +229,11 @@ class CustomNutrientService {
         'DELETE FROM user_custom_nutrients WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
+      // Remove from nutrient goal direction preferences (Always)
+      await client.query(
+        'DELETE FROM user_nutrient_goal_preferences WHERE user_id = $1 AND nutrient_key = $2',
+        [userId, nutrientName]
+      );
       // 3. Remove from UI Display Preferences (Always)
       const prefServicePath = './nutrientDisplayPreferenceService.js';
       const { default: nutrientDisplayPreferenceService } = await import(

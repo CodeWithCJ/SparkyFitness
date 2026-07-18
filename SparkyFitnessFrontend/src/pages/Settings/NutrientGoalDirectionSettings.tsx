@@ -22,6 +22,7 @@ import {
   NutrientGoalType,
 } from '@/constants/nutrients';
 import { RotateCcw } from 'lucide-react';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 function getNutrientLabel(
   key: string,
@@ -48,9 +49,27 @@ const NutrientGoalDirectionRow = ({
   targetMax,
 }: NutrientGoalDirectionRowProps) => {
   const { t } = useTranslation();
+  const { energyUnit, convertEnergy } = usePreferences();
   const { mutate: updatePreference } =
     useUpdateNutrientGoalPreferenceMutation();
   const { mutate: resetPreference } = useResetNutrientGoalPreferenceMutation();
+
+  const isCalories = nutrientKey === 'calories';
+
+  // If isCalories and energyUnit is kJ, convert targetMin/targetMax from kcal to kJ for display
+  const initialMin =
+    targetMin !== undefined
+      ? isCalories
+        ? Math.round(convertEnergy(targetMin, 'kcal', energyUnit))
+        : targetMin
+      : undefined;
+
+  const initialMax =
+    targetMax !== undefined
+      ? isCalories
+        ? Math.round(convertEnergy(targetMax, 'kcal', energyUnit))
+        : targetMax
+      : undefined;
 
   // The Select is driven by this local, uncommitted selection rather than
   // directly by the saved `goalType` prop: choosing "Target range" has
@@ -64,10 +83,10 @@ const NutrientGoalDirectionRow = ({
   const [localGoalType, setLocalGoalType] =
     useState<NutrientGoalType>(goalType);
   const [localMin, setLocalMin] = useState<string>(
-    targetMin !== undefined ? String(targetMin) : ''
+    initialMin !== undefined ? String(initialMin) : ''
   );
   const [localMax, setLocalMax] = useState<string>(
-    targetMax !== undefined ? String(targetMax) : ''
+    initialMax !== undefined ? String(initialMax) : ''
   );
 
   const handleGoalTypeChange = (value: NutrientGoalType) => {
@@ -80,11 +99,13 @@ const NutrientGoalDirectionRow = ({
         // range before saving — nothing to persist yet.
         return;
       }
+      const dbMin = isCalories ? convertEnergy(min, energyUnit, 'kcal') : min;
+      const dbMax = isCalories ? convertEnergy(max, energyUnit, 'kcal') : max;
       updatePreference({
         nutrientKey,
         goalType: 'target',
-        targetMin: min,
-        targetMax: max,
+        targetMin: dbMin,
+        targetMax: dbMax,
       });
     } else {
       updatePreference({ nutrientKey, goalType: value });
@@ -95,11 +116,13 @@ const NutrientGoalDirectionRow = ({
     const min = parseFloat(localMin);
     const max = parseFloat(localMax);
     if (isNaN(min) || isNaN(max) || min > max) return;
+    const dbMin = isCalories ? convertEnergy(min, energyUnit, 'kcal') : min;
+    const dbMax = isCalories ? convertEnergy(max, energyUnit, 'kcal') : max;
     updatePreference({
       nutrientKey,
       goalType: 'target',
-      targetMin: min,
-      targetMax: max,
+      targetMin: dbMin,
+      targetMax: dbMax,
     });
   };
 
@@ -154,7 +177,13 @@ const NutrientGoalDirectionRow = ({
             onChange={(e) => setLocalMax(e.target.value)}
             onBlur={handleBandSave}
           />
-          <span className="text-sm text-muted-foreground">{unit}</span>
+          <span className="text-sm text-muted-foreground">
+            {isCalories
+              ? energyUnit === 'kcal'
+                ? t('common.kcalUnit', 'kcal')
+                : t('common.kJUnit', 'kJ')
+              : unit}
+          </span>
           {bandInvalid && (
             <span className="text-xs text-destructive">
               {t(
@@ -180,6 +209,7 @@ const NutrientGoalDirectionRow = ({
 
 const NutrientGoalDirectionSettings = () => {
   const { t } = useTranslation();
+  const { energyUnit } = usePreferences();
   const { data: customNutrients = [] } = useCustomNutrients();
   const { data: goalPreferences = {} } = useNutrientGoalPreferences();
 
@@ -211,7 +241,7 @@ const NutrientGoalDirectionSettings = () => {
           'minimum';
         return (
           <NutrientGoalDirectionRow
-            key={`${key}-${goalType}-${preference?.targetMin}-${preference?.targetMax}`}
+            key={`${key}-${goalType}-${preference?.targetMin}-${preference?.targetMax}-${energyUnit}`}
             nutrientKey={key}
             unit={unit}
             goalType={goalType}
