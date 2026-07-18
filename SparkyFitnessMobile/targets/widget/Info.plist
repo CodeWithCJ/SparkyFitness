@@ -3,7 +3,7 @@
 <plist version="1.0">
   <dict>
     <key>APP_GROUP_IDENTIFIER</key>
-    <string>group.org.SparkyApps.SparkyFitnessMobile.dev</string>
+    <string>group.org.SparkyApps.SparkyFitnessMobile1.dev</string>
     <key>NSExtension</key>
     <dict>
       <key>NSExtensionPointIdentifier</key>
