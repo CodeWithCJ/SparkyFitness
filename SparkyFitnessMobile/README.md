@@ -33,3 +33,8 @@ npx expo run:ios --configuration Release --device
 ```bash
 APP_VARIANT=production eas build -p ios --profile production --auto-submit
 ```
+
+
+### Configure Xcode
+```bash
+open ios/SparkyFitness.xcworkspace

@@ -43,7 +43,6 @@ export interface UserPreferences {
   auto_scale_online_imports: boolean;
   auto_clear_history: 'never' | string;
   logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
-  system_prompt: string;
   item_display_limit: number;
   default_food_data_provider_id: string | null;
   default_barcode_provider_id: string | null;

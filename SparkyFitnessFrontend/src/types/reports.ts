@@ -191,6 +191,8 @@ import {
 export interface SymptomEntry {
   id: string;
   user_id: string;
+  /** Set when the symptom was logged as a side effect of a specific medication. */
+  medication_id?: string | null;
   symptom_name_snapshot: string;
   severity: number;
   entry_date: string;

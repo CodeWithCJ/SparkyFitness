@@ -59,6 +59,32 @@
       "cabinet": "Cabinet",
       "symptoms": "Symptoms"
     },
+    "calendar": {
+      "title": "Medication Log Calendar",
+      "noMeds": "Add a medication to see its log calendar here.",
+      "selectMedication": "Select a medication",
+      "allMedications": "All medications",
+      "monthTotal": "{{count}} doses logged in {{month}}",
+      "allTaken": "All doses taken",
+      "partialTaken": "Partially taken",
+      "mostlySkipped": "Mostly skipped",
+      "allSkipped": "All doses skipped",
+      "snoozedOnly": "Snoozed only",
+      "sideEffect": "Side-effect symptom",
+      "generalSymptom": "General symptom",
+      "tooltipTaken": "{{count}} taken",
+      "tooltipPrn": "{{count}} PRN taken",
+      "tooltipSkipped": "{{count}} skipped",
+      "tooltipSnoozed": "{{count}} snoozed",
+      "tooltipSymptoms": "Symptoms: {{names}}",
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    },
     "common": {
       "logging": "Logging…",
       "saving": "Saving…",
@@ -87,6 +113,16 @@
       "title": "Side-Effect Insights & Hints",
       "subtitle": "Pharmacokinetic correlations overlaying recent dose timings",
       "disclaimer": "Insights are calculated over a rolling 30-day window. These are educational estimations, not clinical advice."
+    },
+    "reports": {
+      "logTableTitle": "Medication Log Table",
+      "logTableDesc": "Per-day dose counts and times for {{start}}–{{end}}, including same-day symptoms.",
+      "logTableEmpty": "No medication doses logged in this date range.",
+      "dosesLogged": "{{count}} doses logged",
+      "dosesTaken": "Doses taken",
+      "times": "Times",
+      "symptomsColumn": "Symptoms",
+      "injectionAbbrev": "inj"
     },
     "locations": {
       "general": "General",
@@ -895,7 +931,28 @@
       "exportSuccess": "Export successful",
       "exportSuccessDescription": "Your diary has been exported successfully.",
       "exportError": "Export error",
-      "exportErrorDescription": "Unable to download your diary. Please try again later."
+      "exportErrorDescription": "Unable to download your diary. Please try again later.",
+      "deleteSynced": {
+        "title": "Delete synced data",
+        "description": "Remove all entries that were synced or imported from a specific source (e.g. Apple Health, Garmin). This affects only synced data — entries you added manually are never touched. This cannot be undone.",
+        "scopeNoteTitle": "What this removes",
+        "scopeIncludes": "Deletes synced diary entries: food, exercise/workout sessions, sleep, water, and custom check-in measurements.",
+        "scopeExcludesLibrary": "Does NOT delete your food or exercise database (the reusable food/exercise definitions) — only the logged entries.",
+        "scopeExcludesCheckin": "Does NOT delete standard check-in measurements (weight, steps, body fat, height) — those merge all providers into one daily value and cannot be removed by source here.",
+        "scopeExcludesManual": "Does NOT delete anything you created yourself — entries you typed in, logged via the Sparky assistant, or workouts from a saved preset or plan are always kept.",
+        "loading": "Loading sources...",
+        "loadError": "Failed to load synced data sources.",
+        "empty": "No synced data found. Nothing to delete here.",
+        "sourceLabel": "Data source",
+        "sourcePlaceholder": "Select a source",
+        "deleteButton": "Delete synced data",
+        "confirmTitle": "Delete synced data?",
+        "confirmDescription": "This will permanently delete {{count}} entries synced from {{source}}. Manually-entered data is not affected.",
+        "confirmWarning": "This action cannot be undone. Make sure you have a recent database backup before deleting.",
+        "confirmButton": "Delete permanently",
+        "success": "Synced data deleted.",
+        "error": "Failed to delete synced data."
+      }
     },
     "foodExerciseDataProviders": {
       "title": "Food & Exercise Data Providers",

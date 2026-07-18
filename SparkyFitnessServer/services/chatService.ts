@@ -493,7 +493,8 @@ async function prepareChatContext(
   // the selector rather than attempt or fake a dormant capability. An
   // auto-classified selection stays self-healing (escalation tool + widening
   // prepareStep) since there's no human-set limit to respect.
-  categoriesAreManual = false
+  categoriesAreManual = false,
+  serviceSystemPrompt?: string | null
 ) {
   const { chatTz, customCategoriesList } =
     await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
@@ -605,20 +606,41 @@ async function prepareChatContext(
   }
 
   return {
-    systemPromptContent: getSystemPrompt(
-      chatTz,
-      customCategoriesList,
-      toolProfile,
-      [...selectedCategories],
-      // Auto mode advertises the escalation tool; manual mode advertises the
-      // tool selector as the way to widen.
-      !categoriesAreManual
+    systemPromptContent: buildFinalSystemPrompt(
+      getSystemPrompt(
+        chatTz,
+        customCategoriesList,
+        toolProfile,
+        [...selectedCategories],
+        // Auto mode advertises the escalation tool; manual mode advertises the
+        // tool selector as the way to widen.
+        !categoriesAreManual
+      ),
+      serviceSystemPrompt
     ),
     tools,
     activeToolNames,
     prepareStep,
     toolProfile,
   };
+}
+
+/**
+ * Appends the per-service custom system_prompt (from ai_service_settings) to
+ * the base MD prompt. The base prompt contains all tool-use rules and must
+ * never be replaced. The custom prompt lets admins/users layer persona or
+ * voice customizations on top (e.g. "Address the user as 'swoldier'").
+ *
+ * Cache-stability: the custom prompt changes only when the service config is
+ * edited, not per-turn, so it doesn't violate the prefix-caching invariant.
+ */
+function buildFinalSystemPrompt(
+  basePrompt: string,
+  serviceSystemPrompt?: string | null
+): string {
+  const trimmed = serviceSystemPrompt?.trim();
+  if (!trimmed) return basePrompt;
+  return `${basePrompt}\n\n## Additional Instructions\n${trimmed}`;
 }
 
 // INVARIANT — keep the request prefix (system prompt + tool schemas) stable
@@ -1357,7 +1379,8 @@ async function processChatMessage(
       aiService.service_type,
       aiService.chat_tool_profile,
       activeCategories,
-      categoriesAreManual
+      categoriesAreManual,
+      aiService.system_prompt
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -1878,7 +1901,8 @@ async function processChatMessageStream(
       aiService.service_type,
       aiService.chat_tool_profile,
       activeCategories,
-      categoriesAreManual
+      categoriesAreManual,
+      aiService.system_prompt
     );
 
     const chatProviderOptions = buildChatProviderOptions(
