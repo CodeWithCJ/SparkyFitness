@@ -259,6 +259,35 @@ function deriveOffServingUnit(product: OffProduct): string {
   return 'g';
 }
 
+// Metric units that must never become a household variant — they would just
+// duplicate the metric default (e.g. "28 g (28 g)").
+const METRIC_SERVING_UNITS = new Set(['g', 'ml', 'kg', 'l', 'oz']);
+
+// Extracts a household serving (e.g. "2 cookies") from OFF's free-text
+// serving_size string when it also states the equivalent metric weight/volume
+// in parentheses, e.g. "2 cookies (28 g)" or "1 cup (240 ml)". The parenthetical
+// is what confirms the household count maps to the same physical serving we
+// already computed from serving_quantity, so the household variant can safely
+// reuse the metric variant's nutrient values without any rescaling.
+//
+// Returns null when there is no such household descriptor (e.g. "28 g",
+// "250 ml") or when the descriptor is itself a metric unit, so a household
+// variant is only ever emitted for genuine piece/portion counts.
+function parseOffHouseholdServing(
+  servingSize: string | undefined
+): { size: number; unit: string } | null {
+  if (typeof servingSize !== 'string') return null;
+  const match = servingSize.match(
+    /^\s*([\d.,]+)\s+([^\d(][^(]*?)\s*\([^)]*\)\s*$/
+  );
+  if (!match) return null;
+  const size = parseFloat(match[1].replace(',', '.'));
+  const unit = normalizeServingUnit(match[2]);
+  if (!Number.isFinite(size) || size <= 0 || !unit) return null;
+  if (METRIC_SERVING_UNITS.has(unit)) return null;
+  return { size, unit };
+}
+
 // OpenFoodFacts stores every nutrient's `*_100g` value in grams but exposes the
 // label's display unit on `*_unit`. Convert grams to that unit (e.g. magnesium
 // 0.018 g -> 18 mg) so matched custom nutrients carry sensible values, then
@@ -382,6 +411,32 @@ function mapOpenFoodFactsProduct(
     product[`product_name_${language}`] ||
     product.product_name_en ||
     product.product_name;
+  // The metric serving (e.g. 28 g) stays the default; nothing downstream that
+  // keys off is_default changes.
+  const metricVariant = {
+    ...defaultVariant,
+    allergens: normalizeAllergenTags(product.allergens_tags),
+    traces: normalizeAllergenTags(product.traces_tags),
+  };
+  // If OFF states an equivalent household serving (e.g. "2 cookies (28 g)"),
+  // surface it as a second, non-default variant so users can log by piece.
+  // It describes the SAME physical serving as the metric variant, so it reuses
+  // the exact same nutrient values — no rescaling. Only OFF's serving_unit is
+  // stored, mirroring how FatSecret/USDA store household units.
+  const household = parseOffHouseholdServing(product.serving_size);
+  const householdVariant =
+    household &&
+    !(
+      household.size === metricVariant.serving_size &&
+      household.unit === metricVariant.serving_unit
+    )
+      ? {
+          ...metricVariant,
+          serving_size: household.size,
+          serving_unit: household.unit,
+          is_default: false,
+        }
+      : null;
   return {
     name,
     brand: product.brands?.split(',')[0]?.trim() || '',
@@ -389,11 +444,10 @@ function mapOpenFoodFactsProduct(
     provider_external_id: product.code,
     provider_type: 'openfoodfacts',
     is_custom: false,
-    default_variant: {
-      ...defaultVariant,
-      allergens: normalizeAllergenTags(product.allergens_tags),
-      traces: normalizeAllergenTags(product.traces_tags),
-    },
+    default_variant: metricVariant,
+    ...(householdVariant
+      ? { variants: [metricVariant, householdVariant] }
+      : {}),
   };
 }
 export { searchOpenFoodFacts };

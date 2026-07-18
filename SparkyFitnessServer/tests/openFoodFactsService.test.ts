@@ -427,4 +427,75 @@ describe('openFoodFactsService', () => {
       expect(result.default_variant.serving_unit).toBe('g');
     });
   });
+
+  describe('mapOpenFoodFactsProduct household serving variant', () => {
+    // Real shape for Pepperidge Farm Milano Double Dark Chocolate
+    // (barcode 0014100054214), verified against the live API.
+    const milanoProduct = {
+      product_name: 'Milano Double Dark Chocolate',
+      brands: 'Pepperidge Farm',
+      code: '0014100054214',
+      serving_size: '2 cookies (28 g)',
+      serving_quantity: 28,
+      serving_quantity_unit: 'g',
+      nutrition_data_per: '100g',
+      nutriments: {
+        'energy-kcal_100g': 500,
+        proteins_100g: 5,
+        carbohydrates_100g: 64,
+        fat_100g: 25,
+      },
+    };
+
+    it('adds a household variant reusing the metric nutrient values, unscaled', () => {
+      const result = mapOpenFoodFactsProduct(milanoProduct);
+      expect(result.variants).toHaveLength(2);
+
+      const metric = result.variants!.find((v) => v.serving_unit === 'g');
+      const household = result.variants!.find(
+        (v) => v.serving_unit === 'cookies'
+      );
+      expect(metric).toBeDefined();
+      expect(household).toBeDefined();
+
+      // Metric stays the default; household is non-default.
+      expect(metric!.serving_size).toBe(28);
+      expect(metric!.is_default).toBe(true);
+      expect(household!.serving_size).toBe(2);
+      expect(household!.is_default).toBe(false);
+      expect(result.default_variant.serving_unit).toBe('g');
+
+      // Same physical serving -> identical nutrient values, no rescaling.
+      expect(household!.calories).toBe(metric!.calories);
+      expect(household!.fat).toBe(metric!.fat);
+    });
+
+    it('does not add a variants array for a plain metric serving_size', () => {
+      const product = { ...milanoProduct, serving_size: '28 g' };
+      const result = mapOpenFoodFactsProduct(product);
+      expect(result.variants).toBeUndefined();
+      expect(result.default_variant.serving_unit).toBe('g');
+    });
+
+    it('handles a household volume serving like "1 cup (240 ml)"', () => {
+      const product = {
+        ...milanoProduct,
+        serving_size: '1 cup (240 ml)',
+        serving_quantity: 240,
+        serving_quantity_unit: 'ml',
+      };
+      const result = mapOpenFoodFactsProduct(product);
+      const household = result.variants?.find((v) => v.serving_unit === 'cup');
+      expect(household).toBeDefined();
+      expect(household!.serving_size).toBe(1);
+      expect(result.default_variant.serving_unit).toBe('ml');
+    });
+
+    it('does not duplicate the metric variant when the household unit is metric', () => {
+      // "28 g (28 g)" would parse a household unit of 'g' — must be skipped.
+      const product = { ...milanoProduct, serving_size: '28 g (28 g)' };
+      const result = mapOpenFoodFactsProduct(product);
+      expect(result.variants).toBeUndefined();
+    });
+  });
 });
