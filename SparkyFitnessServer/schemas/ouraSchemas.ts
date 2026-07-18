@@ -1,7 +1,5 @@
 import { z } from 'zod/v4';
 
-// Shared request schemas for OAuth2 integration routers
-
 export const CallbackBodySchema = z.object({
   code: z.string().min(1, 'code is required'),
 });

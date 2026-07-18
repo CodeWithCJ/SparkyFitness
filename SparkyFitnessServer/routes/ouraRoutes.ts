@@ -4,10 +4,7 @@ import ouraService from '../services/ouraService.js';
 import { log } from '../config/logging.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
-import {
-  CallbackBodySchema,
-  SyncBodySchema,
-} from '../schemas/oauthIntegrationSchemas.js';
+import { CallbackBodySchema, SyncBodySchema } from '../schemas/ouraSchemas.js';
 const router = express.Router();
 /**
  * @swagger
