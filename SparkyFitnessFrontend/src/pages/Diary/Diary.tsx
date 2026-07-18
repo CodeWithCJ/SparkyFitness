@@ -86,6 +86,8 @@ const Diary = () => {
   const [openFoodSearchForMealType, setOpenFoodSearchForMealType] = useState<
     string | null
   >(null);
+  const [toolbarContainer, setToolbarContainer] =
+    useState<HTMLDivElement | null>(null);
 
   const currentUserId = activeUserId;
   const { data: customNutrients, isLoading: customNutrientsLoading } =
@@ -435,15 +437,27 @@ const Diary = () => {
   if (loading) return <div>Loading...</div>;
   return (
     <div className="space-y-6">
-      <DayNavigator
-        selectedDate={selectedDate}
-        onDateChange={(dateString) => {
-          setSelectedDate(dateString);
-          setSearchParams({ date: dateString });
-        }}
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b">
+        <div />
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <div ref={setToolbarContainer} className="flex items-center gap-2" />
+          <DayNavigator
+            selectedDate={selectedDate}
+            onDateChange={(dateString) => {
+              setSelectedDate(dateString);
+              setSearchParams({ date: dateString });
+            }}
+            className="grid-cols-none flex mb-0 items-center gap-2"
+          />
+        </div>
+      </div>
 
-      {effectiveGoals && <DiaryWidgetGrid widgets={widgets} />}
+      {effectiveGoals && (
+        <DiaryWidgetGrid
+          widgets={widgets}
+          toolbarContainer={toolbarContainer}
+        />
+      )}
 
       {/* Food Unit Selector Dialog */}
       {selectedFood && (

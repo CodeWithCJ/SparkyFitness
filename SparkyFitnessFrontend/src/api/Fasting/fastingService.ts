@@ -79,3 +79,8 @@ export const updateFast = async (
   const response = await api.put(`/fasting/${id}`, { body: updates });
   return response;
 };
+
+export const deleteFast = async (id: string): Promise<{ message: string }> => {
+  const response = await api.delete(`/fasting/${id}`);
+  return response;
+};

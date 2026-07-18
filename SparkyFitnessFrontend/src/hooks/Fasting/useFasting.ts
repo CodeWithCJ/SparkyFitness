@@ -8,6 +8,7 @@ import {
   getFastingStats,
   getFastingDataRange,
   updateFast,
+  deleteFast,
 } from '@/api/Fasting/fastingService';
 import { fastingKeys } from '@/api/keys/fasting';
 import { FastingLog } from '@/types/fasting';
@@ -136,6 +137,23 @@ export const useUpdateFastMutation = () => {
       successMessage: i18n.t(
         'fasting.updatedSuccessfully',
         'Fast updated successfully.'
+      ),
+    },
+  });
+};
+
+export const useDeleteFastMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteFast(id),
+    onSuccess: () => {
+      return queryClient.invalidateQueries({ queryKey: fastingKeys.all });
+    },
+    meta: {
+      errorMessage: i18n.t('fasting.failedToDelete', 'Failed to delete fast.'),
+      successMessage: i18n.t(
+        'fasting.deletedSuccessfully',
+        'Fast deleted successfully.'
       ),
     },
   });

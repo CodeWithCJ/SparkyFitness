@@ -1,4 +1,5 @@
 import { CustomCategoriesResponse } from '@workspace/shared';
+import { FastingLog } from './fasting';
 
 // Latest recorded value per standard measurement (metric), shown as input
 // placeholders on the check-in form.
@@ -26,4 +27,5 @@ export interface CombinedMeasurement {
   originalId?: string;
   exercise_name?: string;
   calories_burned?: number;
+  originalFast?: FastingLog;
 }

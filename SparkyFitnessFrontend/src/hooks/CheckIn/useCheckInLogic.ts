@@ -25,7 +25,10 @@ import {
   useMoodEntryByDate,
   useSaveMoodEntryMutation,
 } from '@/hooks/CheckIn/useMood';
-import { useFastingHistory } from '@/hooks/Fasting/useFasting';
+import {
+  useFastingHistory,
+  useDeleteFastMutation,
+} from '@/hooks/Fasting/useFasting';
 import { CheckInPlaceholders, CombinedMeasurement } from '@/types/checkin';
 import {
   CheckInMeasurementsResponse,
@@ -149,6 +152,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   } = useUpdateCheckInMeasurementFieldMutation();
   const { mutateAsync: saveMoodEntry, isPending: isSavingMood } =
     useSaveMoodEntryMutation();
+  const { mutateAsync: deleteFast } = useDeleteFastMutation();
 
   const loading =
     isSavingCheckIn ||
@@ -442,6 +446,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
         display_unit: 'min',
         fasting_type: fast.fasting_type,
         duration_minutes: fast.duration_minutes || 0,
+        originalFast: fast,
       });
     });
 
@@ -470,6 +475,9 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
 
     if (measurement.type === 'custom') {
       await deleteCustomMeasurement(measurement.id);
+    } else if (measurement.type === 'fasting') {
+      const fastId = measurement.originalId || measurement.id;
+      await deleteFast(fastId);
     } else if (measurement.type === 'standard') {
       const standardId = measurement.originalId || measurement.id;
       let fieldToNull: string;
@@ -508,9 +516,8 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     }
   };
 
-  const handleSubmit = async (e: React.SubmitEvent) => {
+  const handleSaveMood = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!currentUserId) return;
 
     try {
@@ -523,6 +530,29 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
         moodTags,
       });
 
+      toast({
+        title: t('checkIn.moodSaved', 'Mood Saved'),
+        description: t(
+          'checkIn.moodSavedSuccessfully',
+          'Mood saved successfully.'
+        ),
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: t('common.error', 'Error'),
+        description: t('checkIn.failedToSaveMood', 'Failed to save mood.'),
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSubmit = async (e: React.SubmitEvent) => {
+    e.preventDefault();
+
+    if (!currentUserId) return;
+
+    try {
       const measurementData = buildCheckInMeasurementsPayload(
         selectedDate,
         { weight, neck, waist, hips, steps, height, bodyFatPercentage },
@@ -734,5 +764,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     useMostRecentForCalculation,
     waist,
     weight,
+    handleSaveMood,
+    isSavingMood,
   };
 };

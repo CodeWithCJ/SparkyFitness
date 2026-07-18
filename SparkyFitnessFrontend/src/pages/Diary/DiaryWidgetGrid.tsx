@@ -15,6 +15,7 @@ export interface DiaryWidget {
 
 interface DiaryWidgetGridProps {
   widgets: DiaryWidget[];
+  toolbarContainer?: HTMLElement | null;
 }
 
 const PAGE_KEY = 'diary';
@@ -22,11 +23,15 @@ const PAGE_KEY = 'diary';
 const diaryDefaultLayouts = (widgetKeys: string[]): DashboardLayouts =>
   generateDefaultLayouts(widgetKeys.filter(isMealWidgetKey));
 
-const DiaryWidgetGrid = ({ widgets }: DiaryWidgetGridProps) => (
+const DiaryWidgetGrid = ({
+  widgets,
+  toolbarContainer,
+}: DiaryWidgetGridProps) => (
   <WidgetGrid
     pageKey={PAGE_KEY}
     widgets={widgets}
     generateDefaultLayouts={diaryDefaultLayouts}
+    toolbarContainer={toolbarContainer}
   />
 );
 
