@@ -1027,6 +1027,7 @@ function AppContent() {
             component={SafeDailyNutritionDetails}
             options={createStackScreenOptions('Nutrition Details', {
               presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
             })}
           />

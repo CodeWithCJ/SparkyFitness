@@ -93,35 +93,45 @@ const MacroCard: React.FC<MacroCardProps> = ({
         </Text>
       </View>
       {hasGoal && (
-        <View
-          className="h-2"
-          onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-        >
+        <>
+          <View
+            className="h-2"
+            onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+          >
+            {barWidth > 0 && (
+              <View
+                style={{
+                  width: barWidth,
+                  height: barHeight,
+                  borderRadius,
+                  overflow: 'hidden',
+                  backgroundColor: trackColor,
+                }}
+              >
+                <Animated.View
+                  style={[
+                    { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
+                    fillStyle,
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
+                    overflowStyle,
+                  ]}
+                />
+              </View>
+            )}
+          </View>
           {barWidth > 0 && (
-            <View
-              style={{
-                width: barWidth,
-                height: barHeight,
-                borderRadius,
-                overflow: 'hidden',
-                backgroundColor: trackColor,
-              }}
-            >
-              <Animated.View
-                style={[
-                  { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
-                  fillStyle,
-                ]}
-              />
-              <Animated.View
-                style={[
-                  { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
-                  overflowStyle,
-                ]}
-              />
-            </View>
+            <Text className="text-[10px] text-text-muted mt-1">
+              {Math.round(progress * 100)}% · {(() => {
+                const diff = goal - consumed;
+                return diff > 0 ? `${Math.round(diff)}${unit} left` : diff < 0 ? `${Math.round(Math.abs(diff))}${unit} over` : 'met';
+              })()}
+            </Text>
           )}
-        </View>
+        </>
       )}
     </View>
   );

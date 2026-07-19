@@ -218,6 +218,14 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
     const hasGoal = item.goal !== undefined && item.goal > 0;
     const progressPercent = hasGoal ? Math.min(Math.round((item.consumed / (item.goal || 1)) * 100), 100) : 0;
 
+    let subText = '';
+    if (hasGoal) {
+      const diff = item.goal! - item.consumed;
+      const remainingLabel = diff > 0 ? `${Math.round(diff).toLocaleString()}${item.unit} left` : diff < 0 ? `${Math.round(Math.abs(diff)).toLocaleString()}${item.unit} over` : 'met';
+      const pct = Math.round((item.consumed / item.goal!) * 100);
+      subText = `${pct}% · ${remainingLabel}`;
+    }
+
     return (
       <TouchableOpacity
         key={item.key}
@@ -232,31 +240,31 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
         }
         className="py-3 border-b border-border-subtle"
       >
-        <View className="flex-row justify-between items-baseline mb-1">
+        <View className="flex-row justify-between items-center mb-1">
           <Text className="text-text-secondary text-sm font-medium">{item.label}</Text>
-          <View className="flex-row items-center gap-1.5">
+          <View className="flex-row items-center gap-1">
             <Text className="text-text-primary text-sm font-semibold">
-              {Math.round(item.consumed).toLocaleString()}
-              <Text className="text-text-muted text-xs font-normal"> {item.unit}</Text>
-              {hasGoal && (
-                <Text className="text-text-muted text-xs font-normal">
-                  {` / ${Math.round(item.goal!).toLocaleString()} ${item.unit}`}
-                </Text>
-              )}
+              {Math.round(item.consumed).toLocaleString()}{item.unit}
+              {hasGoal && ` / ${Math.round(item.goal!).toLocaleString()}${item.unit}`}
             </Text>
             <Icon name="chevron-forward" size={14} color={progressTrackColor} />
           </View>
         </View>
         {hasGoal && (
-          <View className="h-1.5 bg-progress-track rounded-full overflow-hidden mt-1" style={{ backgroundColor: progressTrackColor }}>
-            <View
-              className="h-full rounded-full"
-              style={{
-                backgroundColor: accentColor,
-                width: `${progressPercent}%`,
-              }}
-            />
-          </View>
+          <>
+            <View className="h-1.5 bg-progress-track rounded-full overflow-hidden mt-1" style={{ backgroundColor: progressTrackColor }}>
+              <View
+                className="h-full rounded-full"
+                style={{
+                  backgroundColor: accentColor,
+                  width: `${progressPercent}%`,
+                }}
+              />
+            </View>
+            <Text className="text-[10px] text-text-muted mt-1">
+              {subText}
+            </Text>
+          </>
         )}
       </TouchableOpacity>
     );
