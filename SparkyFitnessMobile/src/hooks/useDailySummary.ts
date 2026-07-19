@@ -112,6 +112,7 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         foodEntries,
         exerciseEntries,
         calorieBalance: resolvedCalorieBalance,
+        goals,
         customNutrientTotals: calculateCustomNutrientTotals(foodEntries),
         // Per-custom-nutrient goals (keyed by name, matching customNutrientTotals).
         // Normalized to numbers; absent/zero goals are simply not tracked.

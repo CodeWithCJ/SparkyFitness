@@ -112,3 +112,5 @@ export { useCustomNutrients } from './useCustomNutrients';
 export type { UserCustomNutrient } from './useCustomNutrients';
 export { useNutrientDisplayPreferences } from './useNutrientDisplayPreferences';
 export { useChatHistory } from './useChatHistory';
+export { useNutritionTrends } from './useNutritionTrends';
+export type { TrendRange } from './useNutritionTrends';

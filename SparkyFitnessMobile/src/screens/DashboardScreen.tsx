@@ -314,7 +314,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           if (dashboardNutrients.length === 0) return null;
           return (
             <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
-              <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
+              <Pressable
+                onPress={() => navigation.navigate('DailyNutritionDetails', { date: summary.date })}
+                className="flex-row justify-between items-center mb-2 px-1"
+              >
+                <Text className="text-md font-bold text-text-secondary">Nutrients</Text>
+                <View className="flex-row items-center">
+                  <Text className="text-xs font-semibold text-accent-primary mr-1">Details</Text>
+                  <Icon name="chevron-forward" size={14} color={accentColor} />
+                </View>
+              </Pressable>
               <View className="flex-row flex-wrap justify-between">
                 {dashboardNutrients.map((nutrientKey) => {
                   // Resolve display label and unit.

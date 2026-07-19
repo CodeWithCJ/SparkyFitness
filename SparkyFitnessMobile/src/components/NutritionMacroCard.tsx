@@ -26,6 +26,10 @@ interface NutritionMacroCardProps {
   // share are computed against this net value too, mirroring the web behavior.
   showNetCarbs?: boolean;
   fiber?: number;
+  calorieGoal?: number;
+  proteinGoal?: number;
+  carbsGoal?: number;
+  fatGoal?: number;
 }
 
 const RING_SIZE = 130;
@@ -41,6 +45,10 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
   goalsLoading,
   showNetCarbs = false,
   fiber,
+  calorieGoal,
+  proteinGoal,
+  carbsGoal,
+  fatGoal,
 }) => {
   const [proteinColor, carbsColor, fatColor, trackColor] = useCSSVariable([
     '--color-macro-protein',
@@ -74,6 +82,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
       value: protein,
       color: proteinColor,
       goalPercent: goalPercentages?.protein,
+      goal: proteinGoal,
     },
     {
       key: 'Carbs',
@@ -81,6 +90,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
       value: displayCarbs,
       color: carbsColor,
       goalPercent: goalPercentages?.carbs,
+      goal: carbsGoal,
     },
     {
       key: 'Fat',
@@ -88,8 +98,9 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
       value: fat,
       color: fatColor,
       goalPercent: goalPercentages?.fat,
+      goal: fatGoal,
     },
-  ] as const;
+  ];
 
   const showGoalProgress =
     goalsLoading === true ||
@@ -107,14 +118,14 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
 
       {showGoalProgress ? (
         <View className="flex-row items-center">
-          <View className="flex-1 items-center pr-10">
+          <View className="flex-1 items-center pr-2">
             <Text className="text-text-primary text-3xl font-medium">
               {Math.round(calories)}
             </Text>
             <Text className="text-text-secondary text-base mt-2">calories</Text>
             {goalPercentages?.calories != null ? (
-              <Text className="text-text-muted text-sm mt-1">
-                {goalPercentages.calories}% of goal
+              <Text className="text-text-muted text-sm mt-1 text-center">
+                {goalPercentages.calories}% of {calorieGoal && calorieGoal > 0 ? `${Math.round(calorieGoal).toLocaleString()} kcal` : 'goal'}
               </Text>
             ) : null}
           </View>
@@ -129,6 +140,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                     <Text className="text-text-secondary text-sm">{macro.label}</Text>
                     <Text className="text-text-primary text-sm font-medium">
                       {Math.round(macro.value)}g
+                      {macro.goal && macro.goal > 0 ? ` / ${Math.round(macro.goal)}g` : ''}
                     </Text>
                   </View>
                   <View className="h-2 rounded-full bg-progress-track overflow-hidden">
@@ -144,7 +156,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                   </View>
                   {goalPct != null ? (
                     <Text className="text-text-muted text-xs mt-1">
-                      {goalPct}% of goal
+                      {goalPct}%
                     </Text>
                   ) : null}
                 </View>
