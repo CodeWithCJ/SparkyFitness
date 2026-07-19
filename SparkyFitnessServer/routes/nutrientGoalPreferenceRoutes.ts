@@ -1,4 +1,5 @@
 import express from 'express';
+import { upsertNutrientGoalPreferenceRequestSchema } from '@workspace/shared';
 import nutrientGoalPreferenceService from '../services/nutrientGoalPreferenceService.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { log } from '../config/logging.js';
@@ -105,7 +106,17 @@ router.get('/', async (req, res, next) => {
 router.put('/:nutrientKey', async (req, res, next) => {
   try {
     const { nutrientKey } = req.params;
-    const { goalType, targetMin, targetMax } = req.body;
+    const parsed = upsertNutrientGoalPreferenceRequestSchema.safeParse(
+      req.body
+    );
+    if (!parsed.success) {
+      res.status(400).json({
+        message: 'Invalid request body',
+        errors: parsed.error.flatten(),
+      });
+      return;
+    }
+    const { goalType, targetMin, targetMax } = parsed.data;
     const preference = await nutrientGoalPreferenceService.upsertGoalPreference(
       req.userId,
       nutrientKey,

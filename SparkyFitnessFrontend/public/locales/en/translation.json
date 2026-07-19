@@ -1526,10 +1526,6 @@
     "over": "over"
   },
   "nutrientGoalDirection": {
-    "description": "Choose how progress toward each nutrient's daily goal is judged: a minimum to reach, a maximum to stay under, or a target range to hit.",
-    "minimum": "Minimum (more is better)",
-    "maximum": "Maximum (stay under)",
-    "target": "Target range",
     "min": "Min",
     "max": "Max",
     "to": "to",
@@ -1537,7 +1533,60 @@
     "resetToDefault": "Reset to default",
     "failedToLoad": "Failed to load nutrient goal direction preferences.",
     "failedToSave": "Failed to save nutrient goal direction.",
-    "failedToReset": "Failed to reset nutrient goal direction."
+    "failedToReset": "Failed to reset nutrient goal direction.",
+    "goalTypeGroupLabel": "Goal direction",
+    "badgeMin": "Min",
+    "badgeMax": "Max",
+    "badgeTarget": "Range",
+    "minimumDescription": "More is better — progress fills toward the goal",
+    "maximumDescription": "Less is better — stay at or under the goal",
+    "targetDescription": "Hit a band between a minimum and a maximum",
+    "resetAll": "Reset All",
+    "resetAllConfirmTitle": "Reset all nutrient goal directions?",
+    "resetAllConfirmDescription": "Every nutrient below will go back to its built-in Min/Max direction. This only affects how progress is displayed — your goal values themselves are unchanged.",
+    "whyDependsLabel": "Why this depends on your goal",
+    "hints": {
+      "calories": "Depends on your goal: Maximum (or Range) to lose weight, Minimum to gain, Range to maintain.",
+      "carbs": "Often Maximum if managing blood sugar (diabetes) or eating low-carb; Minimum if you want to reach a carb target.",
+      "fat": "Usually Minimum (a target to reach); choose Maximum if you are limiting total fat."
+    },
+    "guidance": {
+      "title": "Not sure which to choose? It depends on your goal",
+      "intro": "These are only display directions — they change how progress is judged, not your goal numbers. Pick what fits what you are trying to do:",
+      "loseWeight": {
+        "title": "Losing weight",
+        "body": "Set Calories to Maximum (a ceiling) or a Target range."
+      },
+      "gainWeight": {
+        "title": "Gaining weight or building muscle",
+        "body": "Set Calories and Protein to Minimum (a floor to reach)."
+      },
+      "maintain": {
+        "title": "Maintaining weight",
+        "body": "Set Calories to a Target range around your maintenance level."
+      },
+      "diabetes": {
+        "title": "Managing blood sugar (diabetes)",
+        "body": "Set Carbohydrates and Sugars to Maximum."
+      },
+      "heart": {
+        "title": "High cholesterol or heart health",
+        "body": "Keep Cholesterol, Saturated fat, and Sodium as Maximum (the defaults)."
+      },
+      "lowCarb": {
+        "title": "Low-carb or keto",
+        "body": "Set Carbohydrates to Maximum; keep Fat and Protein as Minimum."
+      }
+    },
+    "sections": {
+      "energyMacros": "Energy & Macros",
+      "fats": "Fats",
+      "minerals": "Minerals",
+      "fiberSugar": "Fiber & Sugar",
+      "vitamins": "Vitamins",
+      "other": "Other",
+      "custom": "Custom Nutrients"
+    }
   },
   "foodDiary": {
     "title": "Food Diary",

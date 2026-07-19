@@ -1,4 +1,5 @@
 import { MealTotals } from '@/types/meal';
+import { BUILTIN_MAXIMUM_GOAL_NUTRIENTS } from '@workspace/shared';
 
 export type NutrientGoalType = 'minimum' | 'maximum' | 'target';
 
@@ -12,8 +13,9 @@ export interface NutrientMetadata {
   decimals: number;
   group: 'macros' | 'fats' | 'minerals' | 'custom';
   // Built-in goal direction when the user has no explicit override saved via
-  // the Nutrient Goal Direction settings screen. Omitted = 'minimum'. Keep in
-  // sync with BUILTIN_MAXIMUM_DEFAULTS in
+  // the Nutrient Goal Direction settings screen. Omitted = 'minimum'. Set
+  // below from BUILTIN_MAXIMUM_GOAL_NUTRIENTS (shared/), the single source of
+  // truth also consumed by
   // SparkyFitnessServer/services/nutrientGoalPreferenceService.ts.
   defaultGoalType?: NutrientGoalType;
 }
@@ -88,7 +90,6 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#ef4444', // red-500
     decimals: 1,
     group: 'fats',
-    defaultGoalType: 'maximum',
   },
   polyunsaturated_fat: {
     id: 'polyunsaturated_fat',
@@ -119,7 +120,6 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#b91c1c', // red-700
     decimals: 1,
     group: 'fats',
-    defaultGoalType: 'maximum',
   },
   cholesterol: {
     id: 'cholesterol',
@@ -130,7 +130,6 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#6366f1', // indigo-500
     decimals: 1,
     group: 'minerals',
-    defaultGoalType: 'maximum',
   },
   sodium: {
     id: 'sodium',
@@ -141,7 +140,6 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#a855f7', // purple-500
     decimals: 1,
     group: 'minerals',
-    defaultGoalType: 'maximum',
   },
   potassium: {
     id: 'potassium',
@@ -172,7 +170,6 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     chartColor: '#ec4899', // pink-500
     decimals: 1,
     group: 'minerals',
-    defaultGoalType: 'maximum',
   },
   vitamin_a: {
     id: 'vitamin_a',
@@ -215,6 +212,15 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     group: 'minerals',
   },
 };
+
+// Apply the shared "stay under" defaults (single source of truth in
+// shared/src/constants/nutrientGoalDefaults.ts) instead of hand-annotating
+// each entry above, so this list only ever needs to change in one place.
+(BUILTIN_MAXIMUM_GOAL_NUTRIENTS ?? []).forEach((key) => {
+  if (CENTRAL_NUTRIENT_CONFIG[key]) {
+    CENTRAL_NUTRIENT_CONFIG[key].defaultGoalType = 'maximum';
+  }
+});
 
 export const EMPTY_MEAL_TOTALS: MealTotals = {
   calories: 0,

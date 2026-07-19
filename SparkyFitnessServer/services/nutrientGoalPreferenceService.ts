@@ -1,16 +1,15 @@
 import nutrientGoalPreferenceRepository from '../models/nutrientGoalPreferenceRepository.js';
 import customNutrientService from './customNutrientService.js';
-import type { NutrientGoalType } from '@workspace/shared';
+import {
+  BUILTIN_MAXIMUM_GOAL_NUTRIENTS,
+  type NutrientGoalType,
+} from '@workspace/shared';
 
-// Keep in sync with CENTRAL_NUTRIENT_CONFIG's `defaultGoalType` entries in
+// BUILTIN_MAXIMUM_GOAL_NUTRIENTS is the single source of truth (shared/),
+// also consumed by CENTRAL_NUTRIENT_CONFIG's `defaultGoalType` entries in
 // SparkyFitnessFrontend/src/constants/nutrients.ts.
-const BUILTIN_MAXIMUM_DEFAULTS = [
-  'cholesterol',
-  'sodium',
-  'saturated_fat',
-  'trans_fat',
-  'sugars',
-];
+const BUILTIN_MAXIMUM_DEFAULTS: readonly string[] =
+  BUILTIN_MAXIMUM_GOAL_NUTRIENTS;
 
 // Predefined nutrient keys that can have a goal-direction preference, mirrors
 // nutrientDisplayPreferenceService's predefinedNutrients list (plus 'calories').
@@ -75,6 +74,18 @@ async function getEffectiveGoalTypes(
   return result;
 }
 
+async function isKnownNutrientKey(
+  userId: string,
+  nutrientKey: string
+): Promise<boolean> {
+  if (PREDEFINED_NUTRIENT_KEYS.includes(nutrientKey)) return true;
+  const customNutrients =
+    await customNutrientService.getCustomNutrients(userId);
+  return customNutrients.some(
+    (cn: { name?: string }) => cn.name === nutrientKey
+  );
+}
+
 async function upsertGoalPreference(
   userId: string,
   nutrientKey: string,
@@ -82,21 +93,26 @@ async function upsertGoalPreference(
   targetMin?: number | null,
   targetMax?: number | null
 ) {
-  if (!['minimum', 'maximum', 'target'].includes(goalType)) {
-    throw new Error(`Invalid goal_type: ${goalType}`);
-  }
-  if (goalType === 'target') {
-    if (
-      targetMin === undefined ||
+  // Requests are validated at the route boundary
+  // (upsertNutrientGoalPreferenceRequestSchema) and again by the DB CHECK
+  // constraint. This defensive guard only protects direct/future callers that
+  // bypass the route, so it stays intentionally minimal.
+  if (
+    goalType === 'target' &&
+    (targetMin === undefined ||
       targetMin === null ||
       targetMax === undefined ||
-      targetMax === null
-    ) {
-      throw new Error('target goal type requires both targetMin and targetMax');
-    }
-    if (targetMin > targetMax) {
-      throw new Error('targetMin must be <= targetMax');
-    }
+      targetMax === null ||
+      targetMin > targetMax)
+  ) {
+    throw new Error(
+      'target goal type requires targetMin and targetMax, with targetMin <= targetMax'
+    );
+  }
+  if (!(await isKnownNutrientKey(userId, nutrientKey))) {
+    throw new Error(
+      `Unknown nutrient key: ${nutrientKey}. Must be a predefined nutrient or one of the user's custom nutrients.`
+    );
   }
   return nutrientGoalPreferenceRepository.upsertNutrientGoalPreference(
     userId,

@@ -18,15 +18,9 @@ import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { buildGoalsPayload, getMealPercentage } from '@/utils/goals';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
-import { useAutoCalculateUserData } from '@/hooks/Goals/useAutoCalculateUserData';
+import { useNutrientAutoCalculate } from '@/hooks/Goals/useNutrientAutoCalculate';
 import { NutrientAutoCalculate } from './NutrientAutoCalculate';
 import { AutoCalculateToolbar } from './AutoCalculateToolbar';
-import { isAutoCalculable } from './nutrientAutoCalculateHelpers';
-import {
-  computeAutoCalculatedValue,
-  type AlgorithmBundle,
-} from '@/services/nutrientCalculationService';
 
 const calculateGrams = (
   calories: number,
@@ -52,35 +46,35 @@ export const DailyGoals = ({
   visibleNutrients,
   today,
 }: DailyGoalsProps) => {
-  const {
-    energyUnit,
-    convertEnergy,
-    getEnergyUnitString,
-    fatBreakdownAlgorithm,
-    mineralCalculationAlgorithm,
-    vitaminCalculationAlgorithm,
-    sugarCalculationAlgorithm,
-    addedSugarAlgorithm,
-  } = usePreferences();
+  const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: customNutrients } = useCustomNutrients();
   const { data: mealTypes = [] } = useMealTypes();
-  const { data: goalTypePreferences = {} } = useNutrientGoalPreferences();
-  const autoCalculateUserData = useAutoCalculateUserData(
-    goals.calories,
-    goals.fat
+
+  const autoCalcCandidateKeys = useMemo(
+    () =>
+      visibleNutrients.filter(
+        (key) => !['calories', 'protein', 'carbs', 'fat'].includes(key)
+      ),
+    [visibleNutrients]
   );
-  const algorithms: AlgorithmBundle = {
-    fatBreakdown: fatBreakdownAlgorithm,
-    minerals: mineralCalculationAlgorithm,
-    vitamins: vitaminCalculationAlgorithm,
-    sugar: sugarCalculationAlgorithm,
-    addedSugar: addedSugarAlgorithm,
-  };
-  const [selectedForAutoCalc, setSelectedForAutoCalc] = useState<Set<string>>(
-    new Set()
-  );
+  const {
+    algorithms,
+    autoCalculateUserData,
+    goalTypePreferences,
+    eligibleIds: eligibleAutoCalcIds,
+    selected: selectedForAutoCalc,
+    toggleSelected,
+    selectAll: selectAllForAutoCalc,
+    selectNone: selectNoneForAutoCalc,
+    applySelected,
+  } = useNutrientAutoCalculate({
+    calories: goals.calories,
+    totalFatGrams: goals.fat,
+    customNutrients,
+    candidateKeys: autoCalcCandidateKeys,
+  });
 
   const [macroInputType, setMacroInputType] = useState<'grams' | 'percentages'>(
     goals.protein_percentage !== null ? 'percentages' : 'grams'
@@ -113,45 +107,8 @@ export const DailyGoals = ({
 
   const isMacroValid = Math.round(currentMacroTotal) === 100;
 
-  const eligibleAutoCalcIds = useMemo(() => {
-    return visibleNutrients
-      .filter((key) => !['calories', 'protein', 'carbs', 'fat'].includes(key))
-      .filter((key) => {
-        const isCustom = customNutrients?.some((cn) => cn.name === key);
-        const goalType = isCustom
-          ? (goalTypePreferences[key]?.goalType ?? 'minimum')
-          : undefined;
-        const customAliases = isCustom
-          ? customNutrients?.find((cn) => cn.name === key)?.aliases
-          : undefined;
-        return isAutoCalculable(key, customAliases, goalType);
-      });
-  }, [visibleNutrients, customNutrients, goalTypePreferences]);
-
-  const toggleSelected = (id: string, checked: boolean) => {
-    setSelectedForAutoCalc((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  };
-
   const handleApplySelected = () => {
-    if (!autoCalculateUserData) return;
-    const updates: Record<string, number> = {};
-    selectedForAutoCalc.forEach((id) => {
-      const isAddedSugarLike = customNutrients?.some((cn) => cn.name === id);
-      const value = computeAutoCalculatedValue(
-        id,
-        autoCalculateUserData,
-        algorithms,
-        !!isAddedSugarLike
-      );
-      if (value !== null) updates[id] = Math.round(value);
-    });
-    setGoals((prev) => ({ ...prev, ...updates }));
-    setSelectedForAutoCalc(new Set());
+    applySelected((updates) => setGoals((prev) => ({ ...prev, ...updates })));
   };
 
   const { mutateAsync: saveGoalsService, isPending: saving } =
@@ -343,10 +300,8 @@ export const DailyGoals = ({
           <AutoCalculateToolbar
             eligibleCount={eligibleAutoCalcIds.length}
             selectedCount={selectedForAutoCalc.size}
-            onSelectAll={() =>
-              setSelectedForAutoCalc(new Set(eligibleAutoCalcIds))
-            }
-            onSelectNone={() => setSelectedForAutoCalc(new Set())}
+            onSelectAll={selectAllForAutoCalc}
+            onSelectNone={selectNoneForAutoCalc}
             onApplySelected={handleApplySelected}
             disabled={!autoCalculateUserData}
           />
