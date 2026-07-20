@@ -161,6 +161,9 @@ function RawHeaderIcon({
   size?: number;
 }) {
   if (Platform.OS === 'ios') {
+    if (sf === 'square.and.arrow.up') {
+      return <Ionicons name="share-social-outline" color={color} size={size} />;
+    }
     return <SymbolView name={sf as never} tintColor={color} size={size} />;
   }
   return <Ionicons name={ion as keyof typeof Ionicons.glyphMap} color={color} size={size} />;

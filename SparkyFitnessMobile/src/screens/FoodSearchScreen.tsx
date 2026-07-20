@@ -39,7 +39,10 @@ import {
   usePreferences,
   useDebounce,
   useFavorites,
+  useProfile,
 } from '../hooks';
+import { deriveShareStatus } from '../utils/shareStatus';
+import ShareStatusBadge from '../components/ShareStatusBadge';
 import { ExternalProvider } from '../types/externalProviders';
 import Toast from 'react-native-toast-message';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
@@ -141,6 +144,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { isConnected } = useServerConnection();
+  const { profile } = useProfile();
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({
     enabled: isConnected,
@@ -844,24 +848,27 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   // --- Row renderers (shared between landing and results) ---
 
-  const renderFoodRow = (item: FoodItem | TopFoodItem) => (
-    <TouchableOpacity
-      className="px-4 py-2 border-b border-border-subtle"
-      activeOpacity={0.7}
-      onPress={() => showFoodInfo(foodItemToFoodInfo(item))}
-    >
-      <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-3">
-          <View className="flex-row items-start gap-1">
-            <Text className="text-text-primary text-base font-medium flex-shrink">
-              {item.name}
-            </Text>
-            {item.provider_verified ? <VerifiedBadge size="sm" style={{ marginTop: 2 }} /> : null}
+  const renderFoodRow = (item: FoodItem | TopFoodItem) => {
+    const status = deriveShareStatus(item.user_id, item.shared_with_public, profile?.id);
+    return (
+      <TouchableOpacity
+        className="px-4 py-2 border-b border-border-subtle"
+        activeOpacity={0.7}
+        onPress={() => showFoodInfo(foodItemToFoodInfo(item))}
+      >
+        <View className="flex-row justify-between items-center">
+          <View className="flex-1 mr-3">
+            <View className="flex-row items-start gap-1">
+              <Text className="text-text-primary text-base font-medium flex-shrink">
+                {item.name}
+              </Text>
+              {item.provider_verified ? <VerifiedBadge size="sm" style={{ marginTop: 2 }} /> : null}
+              <ShareStatusBadge status={status} />
+            </View>
+            {item.brand ? (
+              <Text className="text-text-secondary text-sm mt-0.5">{item.brand}</Text>
+            ) : null}
           </View>
-          {item.brand ? (
-            <Text className="text-text-secondary text-sm mt-0.5">{item.brand}</Text>
-          ) : null}
-        </View>
         <View className="items-end">
           <View className="flex-row items-center gap-1">
             {favoriteKeys.has(landingKey('food', item.id)) && (
@@ -884,6 +891,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       </View>
     </TouchableOpacity>
   );
+};
 
   // A landing row is either a food or a saved meal (tagged with a "Meal" badge
   // so it reads as distinct from a food in the merged list).

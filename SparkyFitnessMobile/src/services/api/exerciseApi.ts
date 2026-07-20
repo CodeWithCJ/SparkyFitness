@@ -156,6 +156,7 @@ export interface UpdateExercisePayload {
   level?: string;
   force?: string;
   mechanic?: string;
+  shared_with_public?: boolean;
 }
 
 const parseJsonValue = (raw: unknown): unknown => {
@@ -229,6 +230,10 @@ export const transformExerciseRow = (row: Record<string, unknown>): Exercise => 
   userId: row.user_id != null ? String(row.user_id) : null,
   isCustom:
     typeof row.is_custom === 'boolean' ? row.is_custom : Boolean(row.is_custom),
+  sharedWithPublic:
+    typeof row.shared_with_public === 'boolean'
+      ? row.shared_with_public
+      : Boolean(row.shared_with_public),
 });
 
 /**

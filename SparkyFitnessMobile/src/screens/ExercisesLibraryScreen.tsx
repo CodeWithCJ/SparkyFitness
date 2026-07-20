@@ -6,7 +6,9 @@ import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useExercisesLibrary, useServerConnection } from '../hooks';
+import { useExercisesLibrary, useServerConnection, useProfile } from '../hooks';
+import { deriveShareStatus } from '../utils/shareStatus';
+import ShareStatusBadge from '../components/ShareStatusBadge';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { Exercise } from '../types/exercise';
@@ -26,6 +28,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   const [searchText, setSearchText] = useState('');
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { profile } = useProfile();
 
   const {
     exercises,
@@ -59,20 +62,28 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     </View>
   );
 
-  const renderRow = ({ item, index }: { item: Exercise; index: number }) => (
-    <TouchableOpacity
-      className={`px-4 py-3 ${index < exercises.length - 1 ? 'border-b border-border-subtle' : ''}`}
-      activeOpacity={0.7}
-      onPress={() => handleExercisePress(item)}
-    >
-      <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-      {item.category ? (
-        <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {item.category}
-        </Text>
-      ) : null}
-    </TouchableOpacity>
-  );
+  const renderRow = ({ item, index }: { item: Exercise; index: number }) => {
+    const status = deriveShareStatus(item.userId, item.sharedWithPublic, profile?.id);
+    return (
+      <TouchableOpacity
+        className={`px-4 py-3 ${index < exercises.length - 1 ? 'border-b border-border-subtle' : ''}`}
+        activeOpacity={0.7}
+        onPress={() => handleExercisePress(item)}
+      >
+        <View className="flex-row items-center gap-1.5">
+          <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
+            {item.name}
+          </Text>
+          <ShareStatusBadge status={status} />
+        </View>
+        {item.category ? (
+          <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
+            {item.category}
+          </Text>
+        ) : null}
+      </TouchableOpacity>
+    );
+  };
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {

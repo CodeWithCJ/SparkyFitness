@@ -6,7 +6,9 @@ import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useServerConnection, useWorkoutPresetsLibrary } from '../hooks';
+import { useServerConnection, useWorkoutPresetsLibrary, useProfile } from '../hooks';
+import { deriveShareStatus } from '../utils/shareStatus';
+import ShareStatusBadge from '../components/ShareStatusBadge';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { WorkoutPreset } from '../types/workoutPresets';
@@ -26,6 +28,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
   const [searchText, setSearchText] = useState('');
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { profile } = useProfile();
   const {
     presets,
     isLoading,
@@ -60,13 +63,19 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
 
   const renderRow = ({ item, index }: { item: WorkoutPreset; index: number }) => {
     const exerciseCount = item.exercises?.length ?? 0;
+    const status = deriveShareStatus(item.user_id, item.is_public, profile?.id);
     return (
       <TouchableOpacity
         className={`px-4 py-3 ${index < presets.length - 1 ? 'border-b border-border-subtle' : ''}`}
         activeOpacity={0.7}
         onPress={() => handlePresetPress(item)}
       >
-        <Text className="text-text-primary text-base font-medium">{item.name}</Text>
+        <View className="flex-row items-center gap-1.5">
+          <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
+            {item.name}
+          </Text>
+          <ShareStatusBadge status={status} />
+        </View>
         <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
           {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
         </Text>

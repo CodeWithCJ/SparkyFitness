@@ -6,7 +6,9 @@ import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus } from '../hooks';
+import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus, useProfile } from '../hooks';
+import { deriveShareStatus } from '../utils/shareStatus';
+import ShareStatusBadge from '../components/ShareStatusBadge';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
@@ -34,6 +36,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     '--color-border-subtle',
   ]) as [string, string, string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const { profile } = useProfile();
 
   const [searchText, setSearchText] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -75,24 +78,32 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
 
   useSelectedExercise(route.params, handleFirstExerciseSelected);
 
-  const renderPresetRow = useCallback(({ item }: { item: WorkoutPreset }) => (
-    <TouchableOpacity
-      className="flex-row items-center px-4 py-3 border-b border-border-subtle"
-      activeOpacity={0.7}
-      onPress={() => handleSelectPreset(item)}
-      disabled={isStarting}
-    >
-      <View className="flex-1">
-        <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-        <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
-        </Text>
-      </View>
-      {isStarting && startingId === item.id && (
-        <ActivityIndicator size="small" color={accentColor} testID="preset-row-spinner" />
-      )}
-    </TouchableOpacity>
-  ), [handleSelectPreset, isStarting, startingId, textSecondary, accentColor]);
+  const renderPresetRow = useCallback(({ item }: { item: WorkoutPreset }) => {
+    const status = deriveShareStatus(item.user_id, item.is_public, profile?.id);
+    return (
+      <TouchableOpacity
+        className="flex-row items-center px-4 py-3 border-b border-border-subtle"
+        activeOpacity={0.7}
+        onPress={() => handleSelectPreset(item)}
+        disabled={isStarting}
+      >
+        <View className="flex-1">
+          <View className="flex-row items-center gap-1.5">
+            <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
+              {item.name}
+            </Text>
+            <ShareStatusBadge status={status} />
+          </View>
+          <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
+            {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
+          </Text>
+        </View>
+        {isStarting && startingId === item.id && (
+          <ActivityIndicator size="small" color={accentColor} testID="preset-row-spinner" />
+        )}
+      </TouchableOpacity>
+    );
+  }, [handleSelectPreset, isStarting, startingId, textSecondary, accentColor, profile]);
 
   const renderSearchResults = () => {
     if (isSearching && searchResults.length === 0) {

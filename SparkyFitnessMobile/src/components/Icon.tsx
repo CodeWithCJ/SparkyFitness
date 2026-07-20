@@ -135,6 +135,7 @@ const ICON_MAP = {
   // Biometrics/Security
   'fingerprint': { sf: 'touchid', ion: 'finger-print-outline' },
   'lock-closed': { sf: 'lock.fill', ion: 'lock-closed-outline' },
+  'share-public': { sf: 'square.and.arrow.up', ion: 'share-social-outline' },
 
   // Wellness / Cycle
   'wellness': { sf: 'heart.circle', ion: 'heart-circle-outline' },
@@ -168,7 +169,7 @@ const Icon: React.FC<IconProps> = ({
 }) => {
   const mapping = ICON_MAP[name];
 
-  if (Platform.OS === 'ios') {
+  if (Platform.OS === 'ios' && name !== 'share-public') {
     return (
       <SymbolView
         name={mapping.sf}

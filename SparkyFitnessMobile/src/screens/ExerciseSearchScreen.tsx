@@ -22,7 +22,9 @@ import SafeImage from '../components/SafeImage';
 import SegmentedControl from '../components/SegmentedControl';
 import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useServerConnection, useExternalProviders, useSuggestedExercises, useExerciseSearch } from '../hooks';
+import { useServerConnection, useExternalProviders, useSuggestedExercises, useExerciseSearch, useProfile } from '../hooks';
+import { deriveShareStatus } from '../utils/shareStatus';
+import ShareStatusBadge from '../components/ShareStatusBadge';
 import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -58,6 +60,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     '--color-border-subtle',
   ]) as [string, string, string, string];
   const { isConnected } = useServerConnection();
+  const { profile } = useProfile();
   const { getImageSource } = useExerciseImageSource();
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
@@ -147,6 +150,7 @@ useEffect(() => {
     const image = item.images?.[0] ?? null;
     const fallbackIcon =
       (item.category && CATEGORY_ICON_MAP[item.category]) || 'exercise-weights';
+    const status = deriveShareStatus(item.userId, item.sharedWithPublic, profile?.id);
     return (
       <TouchableOpacity
         className="flex-row items-center gap-3 px-4 py-3 border-b border-border-subtle"
@@ -166,7 +170,12 @@ useEffect(() => {
           }
         />
         <View className="flex-1">
-          <Text className="text-text-primary text-base font-medium">{item.name}</Text>
+          <View className="flex-row items-center gap-1.5">
+            <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
+              {item.name}
+            </Text>
+            <ShareStatusBadge status={status} />
+          </View>
           {item.category && (
             <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
               {item.category}
@@ -175,7 +184,7 @@ useEffect(() => {
         </View>
       </TouchableOpacity>
     );
-  }, [handleSelectExercise, textSecondary, textMuted, getImageSource]);
+  }, [handleSelectExercise, textSecondary, textMuted, getImageSource, profile]);
 
   const sections = useMemo(() => {
     const allSections: ExerciseSection[] = [

@@ -13,9 +13,10 @@ import {
   usePreferences,
   useProfile,
   useServerConnection,
+  useUpdateWorkoutPreset,
 } from '../hooks';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -94,6 +95,44 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     isConnected && preset.user_id && profile?.id === preset.user_id
   );
 
+  const isPublic = !!preset.is_public;
+  const { updatePresetAsync, isPending: isSharePending } = useUpdateWorkoutPreset();
+
+  const handleToggleShare = useCallback(async () => {
+    const nextIsPublic = !isPublic;
+    const runUpdate = async () => {
+      try {
+        const updated = await updatePresetAsync({
+          id: preset.id,
+          payload: { is_public: nextIsPublic },
+        });
+        navigation.setParams({ updatedPreset: updated });
+        Toast.show({
+          type: 'success',
+          text1: updated.is_public ? 'Workout preset shared publicly' : 'Workout preset made private',
+        });
+      } catch {
+        // useUpdateWorkoutPreset hook already shows error Toast on failure
+      }
+    };
+
+    if (nextIsPublic) {
+      Alert.alert(
+        'Make public?',
+        'This workout preset will become visible to all users on this server.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Make Public',
+            onPress: () => void runUpdate(),
+          },
+        ]
+      );
+    } else {
+      void runUpdate();
+    }
+  }, [preset.id, isPublic, updatePresetAsync, navigation]);
+
   const { confirmAndDelete, isPending: isDeletePending } = useDeleteWorkoutPreset({
     presetId: preset.id,
     onSuccess: () => {
@@ -155,21 +194,37 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     });
   }, [navigation, preset, route.key]);
 
+  const rightItems: HeaderItem[] = [
+    ...(canManagePreset
+      ? [
+          {
+            kind: 'icon',
+            sfSymbol: isPublic ? 'lock.fill' : 'square.and.arrow.up',
+            ionicon: isPublic ? 'lock-closed-outline' : 'share-social-outline',
+            role: 'secondary',
+            disabled: isSharePending,
+            onPress: handleToggleShare,
+            accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+            identifier: 'workout-preset-detail-share',
+          } as const,
+          {
+            kind: 'text',
+            label: 'Edit',
+            role: 'secondary',
+            onPress: handleEdit,
+            accessibilityLabel: 'Edit workout preset',
+            identifier: 'workout-preset-detail-edit',
+          } as const,
+        ]
+      : []),
+  ];
+
   const header = useScreenHeader({
     title: preset.name,
     nativeTitle: preset.name,
     borderless: true,
     left: { kind: 'back' },
-    right: canManagePreset
-      ? {
-          kind: 'text',
-          label: 'Edit',
-          role: 'secondary',
-          onPress: handleEdit,
-          accessibilityLabel: 'Edit workout preset',
-          identifier: 'workout-preset-detail-edit',
-        }
-      : null,
+    right: rightItems.length > 0 ? rightItems : null,
   });
 
   return (
