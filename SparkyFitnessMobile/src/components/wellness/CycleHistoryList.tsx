@@ -1,21 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, Switch, TextInput } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { useCycleHistory } from '../../hooks/useCycleHistory';
 import CycleBarGlyph from './CycleBarGlyph';
 import Icon from '../Icon';
 import Button from '../ui/Button';
+import CalendarSheet, { type CalendarSheetRef } from '../CalendarSheet';
+import { getTodayDate, formatDate } from '../../utils/dateUtils';
 
 const CycleHistoryList: React.FC = () => {
   const { cycles, createCycle, deleteCycle } = useCycleHistory();
   const [showAddForm, setShowAddForm] = useState(false);
+  const calendarSheetRef = useRef<CalendarSheetRef>(null);
   const [accentColor, dangerColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-danger',
   ]) as [string, string];
 
   // Form State
-  const [startDate, setStartDate] = useState('');
+  const [startDate, setStartDate] = useState(getTodayDate());
   const [periodLength, setPeriodLength] = useState('5');
   const [cycleLength, setCycleLength] = useState('28');
   const [isExcluded, setIsExcluded] = useState(false);
@@ -29,7 +32,7 @@ const CycleHistoryList: React.FC = () => {
       is_excluded: isExcluded,
     });
     // Reset Form
-    setStartDate('');
+    setStartDate(getTodayDate());
     setPeriodLength('5');
     setCycleLength('28');
     setIsExcluded(false);
@@ -56,13 +59,16 @@ const CycleHistoryList: React.FC = () => {
           <Text className="text-text-primary font-semibold text-sm">Log Manual Cycle</Text>
           
           <View>
-            <Text className="text-text-secondary text-xs mb-1">Start Date (YYYY-MM-DD)</Text>
-            <TextInput
-              value={startDate}
-              onChangeText={setStartDate}
-              placeholder="e.g. 2026-07-15"
-              className="bg-raised rounded-lg p-2 text-text-primary border border-border-subtle"
-            />
+            <Text className="text-text-secondary text-xs mb-1">Start Date</Text>
+            <TouchableOpacity
+              onPress={() => calendarSheetRef.current?.present()}
+              className="bg-raised rounded-lg p-2.5 text-text-primary border border-border-subtle flex-row justify-between items-center"
+            >
+              <Text className="text-text-primary">
+                {startDate ? formatDate(startDate) : 'Select Date'}
+              </Text>
+              <Icon name="calendar" size={18} color={accentColor} />
+            </TouchableOpacity>
           </View>
 
           <View className="flex-row gap-3">
@@ -138,6 +144,12 @@ const CycleHistoryList: React.FC = () => {
           ))}
         </View>
       )}
+
+      <CalendarSheet
+        ref={calendarSheetRef}
+        selectedDate={startDate}
+        onSelectDate={setStartDate}
+      />
     </View>
   );
 };
