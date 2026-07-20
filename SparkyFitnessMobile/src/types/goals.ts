@@ -27,4 +27,5 @@ export interface DailyGoals {
   dinner_percentage?: number;
   snacks_percentage?: number;
   custom_nutrients?: Record<string, string | number>;
+  custom_meal_percentages?: Record<string, number>;
 }

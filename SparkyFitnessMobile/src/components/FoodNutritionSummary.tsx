@@ -26,6 +26,7 @@ interface FoodNutritionSummaryProps {
   provider_verified?: boolean;
   /** Raw custom nutrient values for this food/variant (key = nutrient name, value = amount per serving). */
   customNutrients?: Record<string, string | number> | null;
+  calorieGoal?: number;
 }
 
 const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
@@ -38,6 +39,7 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   showNetCarbs = false,
   provider_verified = false,
   customNutrients,
+  calorieGoal,
 }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const { isConnected } = useServerConnection();
@@ -126,6 +128,7 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
         goalPercentages={goalPercentages}
         goalsLoading={goalsLoading}
         showNetCarbs={showNetCarbs}
+        calorieGoal={calorieGoal}
       />
 
       {primaryNutrients.length > 0 ? (

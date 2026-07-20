@@ -29,6 +29,7 @@ export const dailyGoalsResponseSchema = z.object({
   dinner_percentage: z.number(),
   snacks_percentage: z.number(),
   custom_nutrients: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  custom_meal_percentages: z.record(z.string(), z.number()).optional(),
 });
 
 export type DailyGoalsResponse = z.infer<typeof dailyGoalsResponseSchema>;

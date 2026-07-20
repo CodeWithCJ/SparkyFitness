@@ -259,6 +259,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <>
             <FoodSummary
               foodEntries={summary.foodEntries}
+              goals={summary.goals}
+              calorieGoal={summary.calorieGoal}
               onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })}
               onAdjustServing={(entry) => servingSheetRef.current?.present(entry)}
               onPressMealType={openMealTypeDetail}
