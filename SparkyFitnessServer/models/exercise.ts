@@ -131,7 +131,22 @@ async function getExercisesWithPagination(
       queryParams.push(categoryFilter);
       paramIndex++;
     }
-    // RLS will handle ownership filtering
+    // Handle ownership/source filtering
+    if (ownershipFilter === 'mine') {
+      whereClauses.push(`user_id = $${paramIndex}`);
+      queryParams.push(targetUserId);
+      paramIndex++;
+    } else if (ownershipFilter === 'family') {
+      whereClauses.push(
+        `user_id IS NOT NULL AND user_id != $${paramIndex} AND shared_with_public = FALSE`
+      );
+      queryParams.push(targetUserId);
+      paramIndex++;
+    } else if (ownershipFilter === 'public') {
+      whereClauses.push('shared_with_public = TRUE');
+    } else if (ownershipFilter === 'system') {
+      whereClauses.push('user_id IS NULL');
+    }
     if (equipmentFilter && equipmentFilter.length > 0) {
       whereClauses.push(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -210,7 +225,22 @@ async function countExercises(
       queryParams.push(categoryFilter);
       paramIndex++;
     }
-    // RLS will handle ownership filtering
+    // Handle ownership/source filtering
+    if (ownershipFilter === 'mine') {
+      whereClauses.push(`user_id = $${paramIndex}`);
+      queryParams.push(targetUserId);
+      paramIndex++;
+    } else if (ownershipFilter === 'family') {
+      whereClauses.push(
+        `user_id IS NOT NULL AND user_id != $${paramIndex} AND shared_with_public = FALSE`
+      );
+      queryParams.push(targetUserId);
+      paramIndex++;
+    } else if (ownershipFilter === 'public') {
+      whereClauses.push('shared_with_public = TRUE');
+    } else if (ownershipFilter === 'system') {
+      whereClauses.push('user_id IS NULL');
+    }
     if (equipmentFilter && equipmentFilter.length > 0) {
       whereClauses.push(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

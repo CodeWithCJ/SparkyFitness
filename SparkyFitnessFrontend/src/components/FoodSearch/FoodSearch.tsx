@@ -17,7 +17,9 @@ import {
   ChevronDown,
   ChevronRight,
   RotateCw,
+  Filter,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -112,6 +114,47 @@ const SectionHeader = ({ children }: { children: ReactNode }) => (
   </div>
 );
 
+interface OwnershipFields {
+  user_id?: string | null;
+  userId?: string | null;
+  is_public?: boolean | null;
+  shared_with_public?: boolean | null;
+  sharedWithPublic?: boolean | null;
+}
+
+const filterItems = <T,>(
+  items: T[],
+  filter: 'all' | 'mine' | 'family' | 'public',
+  currentUserId?: string
+): T[] => {
+  if (filter === 'all') return items;
+  return items.filter((item) => {
+    const raw = item as unknown as OwnershipFields;
+    const isOwner = !!(
+      (raw.user_id && raw.user_id === currentUserId) ||
+      (raw.userId && raw.userId === currentUserId)
+    );
+    const isPublic = !!(
+      raw.is_public ||
+      raw.shared_with_public ||
+      raw.sharedWithPublic
+    );
+
+    if (filter === 'mine') {
+      return isOwner;
+    }
+    if (filter === 'family') {
+      return (
+        !isOwner && !isPublic && (raw.user_id != null || raw.userId != null)
+      );
+    }
+    if (filter === 'public') {
+      return isPublic;
+    }
+    return true;
+  });
+};
+
 const EnhancedFoodSearch = ({
   onFoodSelect,
   hideDatabaseTab = false,
@@ -119,6 +162,10 @@ const EnhancedFoodSearch = ({
   mealType = undefined,
 }: EnhancedFoodSearchProps) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const [ownershipFilter, setOwnershipFilter] = useState<
+    'all' | 'mine' | 'family' | 'public'
+  >('all');
   const {
     defaultFoodDataProviderId,
     defaultBarcodeProviderId,
@@ -221,10 +268,6 @@ const EnhancedFoodSearch = ({
       showLocalFoods && !!debouncedSearchTerm.trim()
     );
 
-  const recentFoods = recentTopData?.recentFoods || [];
-  const topFoods = recentTopData?.topFoods || [];
-  const foods = searchData?.searchResults || [];
-
   // Starred foods and meals. Shared cache with the row star in FoodResultCard,
   // so this is one fetch, not two.
   const { data: favoritesData, isLoading: isLoadingFavorites } =
@@ -276,20 +319,77 @@ const EnhancedFoodSearch = ({
   // twice: Recent drops favorites, Frequent drops favorites and Recent. Passing
   // the exclusions in (rather than filtering the results) keeps each section
   // filled to itemDisplayLimit, since both merges cap last.
+  const filteredFavoriteEntries = useMemo(() => {
+    if (ownershipFilter === 'all') return favoriteEntries;
+    return favoriteEntries.filter((entry) => {
+      const item = entry.kind === 'meal' ? entry.meal : entry.food;
+      const raw = item as unknown as OwnershipFields;
+      const isOwner = !!(
+        (raw.user_id && raw.user_id === user?.id) ||
+        (raw.userId && raw.userId === user?.id)
+      );
+      const isPublic = !!(
+        raw.is_public ||
+        raw.shared_with_public ||
+        raw.sharedWithPublic
+      );
+
+      if (ownershipFilter === 'mine') {
+        return isOwner;
+      }
+      if (ownershipFilter === 'family') {
+        return (
+          !isOwner && !isPublic && (raw.user_id != null || raw.userId != null)
+        );
+      }
+      if (ownershipFilter === 'public') {
+        return isPublic;
+      }
+      return true;
+    });
+  }, [favoriteEntries, ownershipFilter, user?.id]);
+
   const favoriteKeys = useMemo(
-    () => new Set(favoriteEntries.map((e) => e.key)),
-    [favoriteEntries]
+    () => new Set(filteredFavoriteEntries.map((e) => e.key)),
+    [filteredFavoriteEntries]
   );
+  const filteredRecentFoods = useMemo(
+    () =>
+      filterItems(
+        recentTopData?.recentFoods || [],
+        ownershipFilter,
+        user?.id
+      ) as Parameters<typeof mergeRecent>[1],
+    [recentTopData?.recentFoods, ownershipFilter, user?.id]
+  );
+  const filteredTopFoods = useMemo(
+    () =>
+      filterItems(
+        recentTopData?.topFoods || [],
+        ownershipFilter,
+        user?.id
+      ) as Parameters<typeof mergeFrequent>[1],
+    [recentTopData?.topFoods, ownershipFilter, user?.id]
+  );
+  const filteredRecentMeals = useMemo(
+    () => filterItems(recentMeals, ownershipFilter, user?.id),
+    [recentMeals, ownershipFilter, user?.id]
+  );
+  const filteredTopMeals = useMemo(
+    () => filterItems(topMeals, ownershipFilter, user?.id),
+    [topMeals, ownershipFilter, user?.id]
+  );
+
   const recentEntries = mergeRecent(
-    recentMeals,
-    recentFoods,
+    filteredRecentMeals,
+    filteredRecentFoods,
     itemDisplayLimit,
     favoriteKeys
   );
   const recentEntryKeys = new Set(recentEntries.map((e) => e.key));
   const frequentEntries = mergeFrequent(
-    topMeals,
-    topFoods,
+    filteredTopMeals,
+    filteredTopFoods,
     itemDisplayLimit,
     new Set([...favoriteKeys, ...recentEntryKeys])
   );
@@ -316,6 +416,15 @@ const EnhancedFoodSearch = ({
       ...meals.filter((meal) => !isFavorite(meal)),
     ];
   }, [meals, favoriteKeys]);
+
+  const filteredSearchFoodsFavFirst = useMemo(
+    () => filterItems(searchFoodsFavFirst, ownershipFilter, user?.id),
+    [searchFoodsFavFirst, ownershipFilter, user?.id]
+  );
+  const filteredSearchMealsFavFirst = useMemo(
+    () => filterItems(searchMealsFavFirst, ownershipFilter, user?.id),
+    [searchMealsFavFirst, ownershipFilter, user?.id]
+  );
 
   // Active food-category providers: the only valid options for the provider
   // dropdown, so the resolved default must be drawn from this list (not the raw
@@ -402,7 +511,9 @@ const EnhancedFoodSearch = ({
     isSearchActive: isAllProvidersSearchActive,
     debouncedSearch: allProvidersDebouncedSearch,
   } = useAllProvidersFoodSearch(searchTerm, foodProviderOptions, {
-    enabled: isAllProviders,
+    enabled:
+      isAllProviders &&
+      (ownershipFilter === 'all' || ownershipFilter === 'public'),
     autoScale: autoScaleOpenFoodFactsImports,
     foodDisplayLimit,
   });
@@ -642,6 +753,12 @@ const EnhancedFoodSearch = ({
     if (selectedFoodDataProvider === ALL_PROVIDERS_VALUE) {
       return;
     }
+    if (ownershipFilter === 'mine' || ownershipFilter === 'family') {
+      setExternalResults([]);
+      setHasOnlineSearchBeenPerformed(false);
+      setIsOnlineLoading(false);
+      return;
+    }
     const term = searchTerm.trim();
     // Each new search (or provider switch) starts a fresh page 1, so reset the
     // paging cursor and "has more" flag alongside the results below, and
@@ -718,6 +835,7 @@ const EnhancedFoodSearch = ({
     foodDataProviders,
     searchHandlers,
     t,
+    ownershipFilter,
   ]);
 
   // Fetch the next page for the current single-provider search and append it to
@@ -988,11 +1106,15 @@ const EnhancedFoodSearch = ({
   const isDebouncePending =
     !isSearchEmpty && debouncedSearchTerm !== searchTerm;
   const localPending = isFetchingSearch || isMealLoading || isDebouncePending;
-  const noLocalResults = foods.length === 0 && meals.length === 0;
+  const noLocalResults =
+    filteredSearchFoodsFavFirst.length === 0 &&
+    filteredSearchMealsFavFirst.length === 0;
   const showLocalEmpty =
     showLocalFoods && !isSearchEmpty && !localPending && noLocalResults;
   const showLocalSpinner =
     showLocalFoods && !isSearchEmpty && localPending && noLocalResults;
+  const showOnlineResults =
+    ownershipFilter === 'all' || ownershipFilter === 'public';
 
   const renderExternalCard = (
     result: ExternalResultWrapper,
@@ -1090,6 +1212,33 @@ const EnhancedFoodSearch = ({
         {(isOnlineLoading || localPending || anyProviderLoading) && (
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         )}
+        <div className="flex items-center gap-1 shrink-0">
+          <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Select
+            value={ownershipFilter}
+            onValueChange={(value: 'all' | 'mine' | 'family' | 'public') =>
+              setOwnershipFilter(value)
+            }
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {t('foodDatabaseManager.all', 'All')}
+              </SelectItem>
+              <SelectItem value="mine">
+                {t('foodDatabaseManager.myFoods', 'My Foods')}
+              </SelectItem>
+              <SelectItem value="family">
+                {t('foodDatabaseManager.family', 'Family')}
+              </SelectItem>
+              <SelectItem value="public">
+                {t('foodDatabaseManager.public', 'Public')}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         {foodProviderOptions.length > 0 && (
           <Select
             value={selectedFoodDataProvider || ''}
@@ -1148,12 +1297,12 @@ const EnhancedFoodSearch = ({
               !(showMeals && isLoadingRecentMeals) && (
                 <>
                   {/* Favorites: starred meals + foods, most recently starred first */}
-                  {favoriteEntries.length > 0 && (
+                  {filteredFavoriteEntries.length > 0 && (
                     <>
                       <SectionHeader>
                         {t('enhancedFoodSearch.favorites', 'Favorites')}
                       </SectionHeader>
-                      {favoriteEntries.map(renderLandingEntry)}
+                      {filteredFavoriteEntries.map(renderLandingEntry)}
                     </>
                   )}
                   {/* Recent: one timeline of meals + foods by last-used date */}
@@ -1174,7 +1323,7 @@ const EnhancedFoodSearch = ({
                       {frequentEntries.map(renderLandingEntry)}
                     </>
                   )}
-                  {favoriteEntries.length === 0 &&
+                  {filteredFavoriteEntries.length === 0 &&
                     recentEntries.length === 0 &&
                     frequentEntries.length === 0 && (
                       <div className="text-center py-8 text-gray-500">
@@ -1218,12 +1367,12 @@ const EnhancedFoodSearch = ({
         {!isSearchEmpty && (
           <>
             {/* Local foods */}
-            {showLocalFoods && foods.length > 0 && (
+            {showLocalFoods && filteredSearchFoodsFavFirst.length > 0 && (
               <>
                 <SectionHeader>
                   {t('enhancedFoodSearch.yourFoods', 'Your Foods')}
                 </SectionHeader>
-                {searchFoodsFavFirst.map((food: Food) => (
+                {filteredSearchFoodsFavFirst.map((food: Food) => (
                   <FoodResultCard
                     key={food.id}
                     item={food}
@@ -1236,12 +1385,12 @@ const EnhancedFoodSearch = ({
             )}
 
             {/* Local meals */}
-            {showMeals && meals.length > 0 && (
+            {showMeals && filteredSearchMealsFavFirst.length > 0 && (
               <>
                 <SectionHeader>
                   {t('enhancedFoodSearch.yourMeals', 'Your Meals')}
                 </SectionHeader>
-                {searchMealsFavFirst.map((meal) => (
+                {filteredSearchMealsFavFirst.map((meal) => (
                   <FoodResultCard
                     key={`meal-${meal.id}`}
                     item={meal}
@@ -1276,7 +1425,7 @@ const EnhancedFoodSearch = ({
             )}
 
             {/* Single-provider online results */}
-            {!isAllProviders && selectedProviderName && (
+            {showOnlineResults && !isAllProviders && selectedProviderName && (
               <>
                 <SectionHeader>{selectedProviderName}</SectionHeader>
                 {isOnlineLoading && externalResults.length === 0 && (
@@ -1315,139 +1464,144 @@ const EnhancedFoodSearch = ({
             )}
 
             {/* Aggregated "All Providers" results: Top Matches + By Source */}
-            {isAllProviders && isAllProvidersSearchActive && (
-              <>
-                <SectionHeader>
-                  <span className="flex items-center justify-between">
-                    {t('enhancedFoodSearch.topMatches', 'Top Matches')}
-                    {anyProviderLoading && (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    )}
-                  </span>
-                </SectionHeader>
-                {topMatches.length > 0
-                  ? topMatches.map((match) =>
-                      renderExternalCard(match.result, {
-                        keyPrefix: `top-${match.providerId}`,
-                        providerLabel: match.providerName,
-                        badgeColor: getProviderColor(match.providerId),
-                        providerId: match.providerId,
-                      })
-                    )
-                  : !anyProviderLoading && (
-                      <div className="text-center py-4 text-gray-500 text-sm">
-                        {t('enhancedFoodSearch.noResults', 'No results')}
-                      </div>
-                    )}
-
-                <SectionHeader>
-                  {t('enhancedFoodSearch.bySource', 'By Source')}
-                </SectionHeader>
-                {providerResults.map((r) => {
-                  const expanded = expandedProviders.has(r.provider.id);
-                  const color = getProviderColor(r.provider.id);
-                  const loading = r.isLoading;
-                  const errored = r.isError && !loading;
-                  const count = r.totalCount;
-                  const empty = !loading && !errored && count === 0;
-                  const expandable = !loading && !errored && count > 0;
-                  return (
-                    <div
-                      key={r.provider.id}
-                      className="border rounded-md overflow-hidden"
-                    >
-                      <button
-                        type="button"
-                        disabled={!expandable && !errored}
-                        aria-expanded={expandable ? expanded : undefined}
-                        onClick={() => {
-                          if (errored) r.refetch();
-                          else if (expandable) toggleProvider(r.provider.id);
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 disabled:hover:bg-transparent disabled:cursor-default"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: color }}
-                          />
-                          <span className="text-sm font-medium">
-                            {r.provider.provider_name}
-                          </span>
-                          {expandable && (
-                            <span className="text-xs rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
-                              {count}
-                            </span>
-                          )}
-                        </span>
-                        <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                          {loading && (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          )}
-                          {errored && (
-                            <>
-                              <span>
-                                {t(
-                                  'enhancedFoodSearch.couldntLoad',
-                                  "Couldn't load"
-                                )}
-                              </span>
-                              <RotateCw className="w-4 h-4" />
-                            </>
-                          )}
-                          {empty && (
-                            <span>
-                              {t('enhancedFoodSearch.noResults', 'No results')}
-                            </span>
-                          )}
-                          {expandable &&
-                            (expanded ? (
-                              <ChevronDown className="w-4 h-4" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4" />
-                            ))}
-                        </span>
-                      </button>
-                      {expanded && expandable && (
-                        <div className="px-2 pb-2 space-y-2">
-                          {r.items.map((item) =>
-                            renderExternalCard(item, {
-                              keyPrefix: r.provider.id,
-                              providerId: r.provider.id,
-                            })
-                          )}
-                          {count > r.items.length && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                setExternalResults([]);
-                                setManualProviderId(r.provider.id);
-                                // Switching to the single-provider view reuses
-                                // the same scroll container; reset it to the top
-                                // so the user isn't left stranded at the bottom.
-                                const container =
-                                  e.currentTarget.closest('.overflow-y-auto');
-                                if (container) container.scrollTop = 0;
-                              }}
-                              className="text-sm font-medium text-primary px-1 py-2"
-                            >
-                              {t(
-                                'enhancedFoodSearch.showAllResults',
-                                'Show all {{count}} {{provider}} results',
-                                {
-                                  count,
-                                  provider: r.provider.provider_name,
-                                }
-                              )}
-                            </button>
-                          )}
+            {showOnlineResults &&
+              isAllProviders &&
+              isAllProvidersSearchActive && (
+                <>
+                  <SectionHeader>
+                    <span className="flex items-center justify-between">
+                      {t('enhancedFoodSearch.topMatches', 'Top Matches')}
+                      {anyProviderLoading && (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      )}
+                    </span>
+                  </SectionHeader>
+                  {topMatches.length > 0
+                    ? topMatches.map((match) =>
+                        renderExternalCard(match.result, {
+                          keyPrefix: `top-${match.providerId}`,
+                          providerLabel: match.providerName,
+                          badgeColor: getProviderColor(match.providerId),
+                          providerId: match.providerId,
+                        })
+                      )
+                    : !anyProviderLoading && (
+                        <div className="text-center py-4 text-gray-500 text-sm">
+                          {t('enhancedFoodSearch.noResults', 'No results')}
                         </div>
                       )}
-                    </div>
-                  );
-                })}
-              </>
-            )}
+
+                  <SectionHeader>
+                    {t('enhancedFoodSearch.bySource', 'By Source')}
+                  </SectionHeader>
+                  {providerResults.map((r) => {
+                    const expanded = expandedProviders.has(r.provider.id);
+                    const color = getProviderColor(r.provider.id);
+                    const loading = r.isLoading;
+                    const errored = r.isError && !loading;
+                    const count = r.totalCount;
+                    const empty = !loading && !errored && count === 0;
+                    const expandable = !loading && !errored && count > 0;
+                    return (
+                      <div
+                        key={r.provider.id}
+                        className="border rounded-md overflow-hidden"
+                      >
+                        <button
+                          type="button"
+                          disabled={!expandable && !errored}
+                          aria-expanded={expandable ? expanded : undefined}
+                          onClick={() => {
+                            if (errored) r.refetch();
+                            else if (expandable) toggleProvider(r.provider.id);
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 disabled:hover:bg-transparent disabled:cursor-default"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: color }}
+                            />
+                            <span className="text-sm font-medium">
+                              {r.provider.provider_name}
+                            </span>
+                            {expandable && (
+                              <span className="text-xs rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                                {count}
+                              </span>
+                            )}
+                          </span>
+                          <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                            {loading && (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            )}
+                            {errored && (
+                              <>
+                                <span>
+                                  {t(
+                                    'enhancedFoodSearch.couldntLoad',
+                                    "Couldn't load"
+                                  )}
+                                </span>
+                                <RotateCw className="w-4 h-4" />
+                              </>
+                            )}
+                            {empty && (
+                              <span>
+                                {t(
+                                  'enhancedFoodSearch.noResults',
+                                  'No results'
+                                )}
+                              </span>
+                            )}
+                            {expandable &&
+                              (expanded ? (
+                                <ChevronDown className="w-4 h-4" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4" />
+                              ))}
+                          </span>
+                        </button>
+                        {expanded && expandable && (
+                          <div className="px-2 pb-2 space-y-2">
+                            {r.items.map((item) =>
+                              renderExternalCard(item, {
+                                keyPrefix: r.provider.id,
+                                providerId: r.provider.id,
+                              })
+                            )}
+                            {count > r.items.length && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  setExternalResults([]);
+                                  setManualProviderId(r.provider.id);
+                                  // Switching to the single-provider view reuses
+                                  // the same scroll container; reset it to the top
+                                  // so the user isn't left stranded at the bottom.
+                                  const container =
+                                    e.currentTarget.closest('.overflow-y-auto');
+                                  if (container) container.scrollTop = 0;
+                                }}
+                                className="text-sm font-medium text-primary px-1 py-2"
+                              >
+                                {t(
+                                  'enhancedFoodSearch.showAllResults',
+                                  'Show all {{count}} {{provider}} results',
+                                  {
+                                    count,
+                                    provider: r.provider.provider_name,
+                                  }
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
           </>
         )}
       </div>

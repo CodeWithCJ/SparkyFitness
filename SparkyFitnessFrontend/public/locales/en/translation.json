@@ -462,7 +462,13 @@
       "topPresetsTitle": "Top Presets",
       "noTopPresets": "No top presets.",
       "searchResultsTitle": "Search Results",
-      "noMatchingPresets": "No presets found matching your search."
+      "noMatchingPresets": "No presets found matching your search.",
+      "ownership": {
+        "all": "All",
+        "mine": "My Presets",
+        "family": "Family",
+        "public": "Public"
+      }
     },
     "dailyProgress": {
       "dailyCalorieGoal": "Daily Calorie Goal",
@@ -2588,7 +2594,13 @@
     "unknownProvider": "Unknown provider for adding external exercise: {{providerType}}",
     "failedToLoadRecentTopExercises": "Failed to load recent and top exercises.",
     "failedToSearchExercises": "Failed to search exercises: {{errorMessage}}",
-    "failedToLoadFilterOptions": "Failed to load filter options: {{errorMessage}}"
+    "failedToLoadFilterOptions": "Failed to load filter options: {{errorMessage}}",
+    "ownership": {
+      "all": "All",
+      "mine": "My Exercises",
+      "family": "Family",
+      "public": "Public"
+    }
   },
   "addComp": {
     "addNew": "Add New"
