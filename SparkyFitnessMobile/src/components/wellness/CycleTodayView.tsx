@@ -5,6 +5,7 @@ import { useCycleLog } from '../../hooks/useCycleLogs';
 import { useUpsertCycleLog } from '../../hooks/useUpsertCycleLog';
 import { useCycleMode } from '../../hooks/useCycleMode';
 import { upsertBbt } from '../../services/api/cycleApi';
+import { addLog } from '../../services/LogService';
 import CycleIcon from './CycleIcon';
 import CycleSymptomPicker from './CycleSymptomPicker';
 import Button from '../ui/Button';
@@ -106,7 +107,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
       // Refetch to pull latest server-hydrated BBT
       refetch();
     } catch (error) {
-      console.log('[CycleTodayView] Save failed:', error);
+      addLog(`Failed to save cycle daily view: ${error}`, 'ERROR');
     } finally {
       setSubmitting(false);
     }

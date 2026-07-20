@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { putLog, deleteLog } from '../services/api/cycleApi';
+import { addLog } from '../services/LogService';
 import {
   cycleLogQueryKey,
   cyclesQueryKey,
@@ -39,7 +40,7 @@ export function useUpsertCycleLog() {
       });
     },
     onError: (error) => {
-      console.log('[useUpsertCycleLog] Failed:', error);
+      addLog(`Failed to save cycle daily log: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
         text1: 'Save failed',
@@ -60,7 +61,7 @@ export function useUpsertCycleLog() {
       });
     },
     onError: (error) => {
-      console.log('[useDeleteCycleLog] Failed:', error);
+      addLog(`Failed to delete cycle daily log: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
         text1: 'Delete failed',

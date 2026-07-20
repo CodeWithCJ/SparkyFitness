@@ -24,8 +24,7 @@ export function useCycleOverview(date?: string) {
 export function useCycleInsights() {
   const query = useQuery<CycleInsightsOverview>({
     queryKey: cycleInsightsQueryKey,
-    // getInsights on server returns the insights overview
-    queryFn: () => getInsights() as any,
+    queryFn: getInsights,
   });
 
   useRefetchOnFocus(query.refetch);

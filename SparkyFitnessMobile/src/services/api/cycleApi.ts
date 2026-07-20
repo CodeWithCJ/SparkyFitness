@@ -7,6 +7,7 @@ import type {
   CycleOverview,
   FertilityDetails,
   CycleCorrelations,
+  CycleInsightsOverview,
   DisplayPreferences,
 } from '../../types/womensHealth';
 
@@ -148,8 +149,8 @@ export const deleteCycle = async (id: string): Promise<void> => {
   });
 };
 
-export const getInsights = async (): Promise<unknown> => {
-  return apiFetch<unknown>({
+export const getInsights = async (): Promise<CycleInsightsOverview> => {
+  return apiFetch<CycleInsightsOverview>({
     endpoint: '/api/v2/cycle/insights',
     serviceName: 'Cycle API',
     operation: 'get insights',
@@ -249,13 +250,26 @@ export const upsertBbt = async (date: string, value: number | null): Promise<voi
   
   let bbtCategory = categories.find((c) => c.name === 'basal_body_temperature');
   if (!bbtCategory) {
-    bbtCategory = await apiFetch<{ id: string; name: string }>({
-      endpoint: '/api/measurements/custom-categories',
-      serviceName: 'Measurements API',
-      operation: 'create custom category',
-      method: 'POST',
-      body: { name: 'basal_body_temperature', display_name: 'Basal Body Temperature', unit: '°C' },
-    });
+    try {
+      bbtCategory = await apiFetch<{ id: string; name: string }>({
+        endpoint: '/api/measurements/custom-categories',
+        serviceName: 'Measurements API',
+        operation: 'create custom category',
+        method: 'POST',
+        body: { name: 'basal_body_temperature', display_name: 'Basal Body Temperature', unit: '°C' },
+      });
+    } catch (error) {
+      // A concurrent call may have created the category first. Re-list and
+      // reuse the existing one instead of leaving a duplicate behind.
+      const refreshed = await apiFetch<{ id: string; name: string }[]>({
+        endpoint: '/api/measurements/custom-categories',
+        serviceName: 'Measurements API',
+        operation: 'list custom categories',
+      });
+      const existing = refreshed.find((c) => c.name === 'basal_body_temperature');
+      if (!existing) throw error;
+      bbtCategory = existing;
+    }
   }
 
   if (value === null) {
