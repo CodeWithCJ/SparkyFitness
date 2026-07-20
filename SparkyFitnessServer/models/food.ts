@@ -407,8 +407,25 @@ async function getFoodsWithPagination(
     } = buildSqlSearch("CONCAT(f.brand, ' ', f.name)", searchTerm, 1);
     whereClauses.push(...searchClauses);
     const queryParams: any[] = [...searchParams];
-    const paramIndex = nextParamIndex;
-    // RLS will handle ownership filtering
+    let paramIndex = nextParamIndex;
+
+    // Handle ownership/source filtering
+    if (foodFilter === 'mine') {
+      whereClauses.push(`f.user_id = $${paramIndex}`);
+      queryParams.push(authenticatedUserId);
+      paramIndex++;
+    } else if (foodFilter === 'family') {
+      whereClauses.push(
+        `f.user_id IS NOT NULL AND f.user_id != $${paramIndex} AND f.shared_with_public = FALSE`
+      );
+      queryParams.push(authenticatedUserId);
+      paramIndex++;
+    } else if (foodFilter === 'public') {
+      whereClauses.push('f.shared_with_public = TRUE');
+    } else if (foodFilter === 'system') {
+      whereClauses.push('f.user_id IS NULL');
+    }
+
     let query = `
       SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
@@ -469,7 +486,25 @@ async function countFoods(
       buildSqlSearch("CONCAT(brand, ' ', name)", searchTerm, 1);
     whereClauses.push(...searchClauses);
     const countQueryParams: any[] = [...searchParams];
-    // RLS will handle ownership filtering
+    let paramIndex = countQueryParams.length + 1;
+
+    // Handle ownership/source filtering
+    if (foodFilter === 'mine') {
+      whereClauses.push(`user_id = $${paramIndex}`);
+      countQueryParams.push(authenticatedUserId);
+      paramIndex++;
+    } else if (foodFilter === 'family') {
+      whereClauses.push(
+        `user_id IS NOT NULL AND user_id != $${paramIndex} AND shared_with_public = FALSE`
+      );
+      countQueryParams.push(authenticatedUserId);
+      paramIndex++;
+    } else if (foodFilter === 'public') {
+      whereClauses.push('shared_with_public = TRUE');
+    } else if (foodFilter === 'system') {
+      whereClauses.push('user_id IS NULL');
+    }
+
     const countQuery = `
       SELECT COUNT(*)
       FROM foods

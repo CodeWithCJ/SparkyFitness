@@ -48,6 +48,29 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'online', label: 'Online' },
 ] as const;
 
+const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
+  items: T[],
+  filter: 'all' | 'mine' | 'family' | 'public',
+  currentUserId?: string
+) => {
+  if (filter === 'all') return items;
+  return items.filter((item) => {
+    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
+    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
+    
+    if (filter === 'mine') {
+      return isOwner;
+    }
+    if (filter === 'family') {
+      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
+    }
+    if (filter === 'public') {
+      return isPublic;
+    }
+    return true;
+  });
+};
+
 const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation, route }) => {
   const { returnKey } = route.params;
 
@@ -64,6 +87,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
   const { getImageSource } = useExerciseImageSource();
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
+  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
   const [searchText, setSearchText] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [importingExerciseId, setImportingExerciseId] = useState<string | null>(null);
@@ -186,13 +210,17 @@ useEffect(() => {
     );
   }, [handleSelectExercise, textSecondary, textMuted, getImageSource, profile]);
 
+  const filteredRecentExercises = useMemo(() => filterItems(recentExercises, ownershipFilter, profile?.id), [recentExercises, ownershipFilter, profile?.id]);
+  const filteredTopExercises = useMemo(() => filterItems(topExercises, ownershipFilter, profile?.id), [topExercises, ownershipFilter, profile?.id]);
+  const filteredSearchResults = useMemo(() => filterItems(searchResults, ownershipFilter, profile?.id), [searchResults, ownershipFilter, profile?.id]);
+
   const sections = useMemo(() => {
     const allSections: ExerciseSection[] = [
-      { title: 'Recent', data: recentExercises },
-      { title: 'Popular', data: topExercises },
+      { title: 'Recent', data: filteredRecentExercises },
+      { title: 'Popular', data: filteredTopExercises },
     ];
     return allSections.filter((section) => section.data.length > 0);
-  }, [recentExercises, topExercises]);
+  }, [filteredRecentExercises, filteredTopExercises]);
 
   const renderSectionHeader = ({ section }: { section: ExerciseSection }) => (
     <View className="px-4 py-2 bg-surface">
@@ -236,7 +264,7 @@ useEffect(() => {
   // --- Search tab ---
 
   const renderSearchResults = () => {
-    if (isSearching && searchResults.length === 0) {
+    if (isSearching && filteredSearchResults.length === 0) {
       return <StatusView loading />;
     }
 
@@ -244,13 +272,13 @@ useEffect(() => {
       return <StatusView icon="alert-circle" title="Failed to search exercises" />;
     }
 
-    if (searchResults.length === 0) {
+    if (filteredSearchResults.length === 0) {
       return <StatusView title="No matching exercises found" />;
     }
 
     return (
       <FlatList
-        data={searchResults}
+        data={filteredSearchResults}
         keyExtractor={(item) => item.id}
         renderItem={renderExerciseRow}
         keyboardShouldPersistTaps="handled"
@@ -473,6 +501,22 @@ useEffect(() => {
       <View className="px-4 mt-2">
         <SegmentedControl segments={TABS} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
+
+      {/* Ownership filter */}
+      {activeTab === 'search' && (
+        <View className="px-4 mt-2">
+          <SegmentedControl
+            segments={[
+              { key: 'all', label: 'All' },
+              { key: 'mine', label: 'Mine' },
+              { key: 'family', label: 'Family' },
+              { key: 'public', label: 'Public' },
+            ]}
+            activeKey={ownershipFilter}
+            onSelect={setOwnershipFilter}
+          />
+        </View>
+      )}
 
       {/* Search bar */}
       {renderSearchBar()}

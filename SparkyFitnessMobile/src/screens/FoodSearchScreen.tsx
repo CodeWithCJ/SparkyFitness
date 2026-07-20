@@ -26,6 +26,7 @@ import MealLibraryRow from '../components/MealLibraryRow';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import AnchoredMenu, { AnchorRect } from '../components/AnchoredMenu';
 import Popover from '../components/Popover';
+import SegmentedControl from '../components/SegmentedControl';
 import {
   useServerConnection,
   useFoods,
@@ -126,6 +127,29 @@ const LOCAL_RESULT_CAP = 6;
 // item_display_limit preference is unset. Matches the web food-search landing.
 const LANDING_ITEM_LIMIT = 10;
 
+const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
+  items: T[],
+  filter: 'all' | 'mine' | 'family' | 'public',
+  currentUserId?: string
+) => {
+  if (filter === 'all') return items;
+  return items.filter((item) => {
+    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
+    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
+    
+    if (filter === 'mine') {
+      return isOwner;
+    }
+    if (filter === 'family') {
+      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
+    }
+    if (filter === 'public') {
+      return isPublic;
+    }
+    return true;
+  });
+};
+
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
@@ -145,6 +169,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const { isConnected } = useServerConnection();
   const { profile } = useProfile();
+  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({
     enabled: isConnected,
@@ -606,6 +631,16 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }
   }, [providerPopoverVisible, onlineHeaderVisible]);
 
+  const filteredFavoriteFoods = useMemo(() => filterItems(favoriteFoods, ownershipFilter, profile?.id), [favoriteFoods, ownershipFilter, profile?.id]);
+  const filteredFavoriteMeals = useMemo(() => filterItems(favoriteMeals, ownershipFilter, profile?.id), [favoriteMeals, ownershipFilter, profile?.id]);
+  const filteredRecentFoods = useMemo(() => filterItems(recentFoods, ownershipFilter, profile?.id), [recentFoods, ownershipFilter, profile?.id]);
+  const filteredTopFoods = useMemo(() => filterItems(topFoods, ownershipFilter, profile?.id), [topFoods, ownershipFilter, profile?.id]);
+  const filteredRecentMeals = useMemo(() => filterItems(recentMeals, ownershipFilter, profile?.id), [recentMeals, ownershipFilter, profile?.id]);
+  const filteredTopMeals = useMemo(() => filterItems(topMeals, ownershipFilter, profile?.id), [topMeals, ownershipFilter, profile?.id]);
+
+  const filteredSearchResults = useMemo(() => filterItems(searchResults, ownershipFilter, profile?.id), [searchResults, ownershipFilter, profile?.id]);
+  const filteredMealResults = useMemo(() => filterItems(mealResults, ownershipFilter, profile?.id), [mealResults, ownershipFilter, profile?.id]);
+
   // Favorites: the first landing section, starred foods and meals intermixed,
   // most recently starred first. Modelled as LandingEntry so every landing
   // section shares one row renderer and one key space.
@@ -618,7 +653,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // Favorites is the only surface that offers a meal and then refuses it two
   // screens later. Drop the gate once the picker learns to emit child_meal_id.
   const favoriteEntries = useMemo<LandingEntry[]>(() => {
-    const selectableMeals = isMealBuilderMode ? [] : favoriteMeals;
+    const selectableMeals = isMealBuilderMode ? [] : filteredFavoriteMeals;
     const tagged = [
       ...selectableMeals.map((meal) => ({
         entry: {
@@ -630,7 +665,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         // subtraction rather than allocating a Date on every comparison.
         favoritedAt: meal.favorited_at ? new Date(meal.favorited_at).getTime() : 0,
       })),
-      ...favoriteFoods.map((food) => ({
+      ...filteredFavoriteFoods.map((food) => ({
         entry: {
           kind: 'food' as const,
           key: landingKey('food', food.id),
@@ -644,7 +679,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     return tagged
       .sort((a, b) => b.favoritedAt - a.favoritedAt)
       .map((t) => t.entry);
-  }, [favoriteFoods, favoriteMeals, isMealBuilderMode]);
+  }, [filteredFavoriteFoods, filteredFavoriteMeals, isMealBuilderMode]);
 
   // One notion of "starred", shared by the landing (which excludes favorites
   // from the sections below Favorites) and the search results (which float them
@@ -664,18 +699,18 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     const isFavorite = (food: FoodItem) =>
       favoriteKeys.has(landingKey('food', food.id));
     return [
-      ...searchResults.filter(isFavorite),
-      ...searchResults.filter((food) => !isFavorite(food)),
+      ...filteredSearchResults.filter(isFavorite),
+      ...filteredSearchResults.filter((food) => !isFavorite(food)),
     ];
-  }, [searchResults, favoriteKeys]);
+  }, [filteredSearchResults, favoriteKeys]);
   const searchMealsFavFirst = useMemo(() => {
     const isFavorite = (meal: Meal) =>
       favoriteKeys.has(landingKey('meal', meal.id));
     return [
-      ...mealResults.filter(isFavorite),
-      ...mealResults.filter((meal) => !isFavorite(meal)),
+      ...filteredMealResults.filter(isFavorite),
+      ...filteredMealResults.filter((meal) => !isFavorite(meal)),
     ];
-  }, [mealResults, favoriteKeys]);
+  }, [filteredMealResults, favoriteKeys]);
 
   const landingSections = useMemo<LandingSection[]>(() => {
     // Each section excludes what the sections above it already show, so the
@@ -685,15 +720,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     // afterwards would shrink a section below its cap.
     // Recently Logged: foods + meals merged into one recency timeline.
     const recentEntries = mergeRecent(
-      recentMeals,
-      recentFoods,
+      filteredRecentMeals,
+      filteredRecentFoods,
       landingLimit,
       favoriteKeys,
     );
     // Top: foods + meals by usage.
     const frequentEntries = mergeFrequent(
-      topMeals,
-      topFoods,
+      filteredTopMeals,
+      filteredTopFoods,
       landingLimit,
       new Set([...favoriteKeys, ...recentEntries.map((entry) => entry.key)]),
     );
@@ -705,10 +740,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   }, [
     favoriteEntries,
     favoriteKeys,
-    recentFoods,
-    topFoods,
-    recentMeals,
-    topMeals,
+    filteredRecentFoods,
+    filteredTopFoods,
+    filteredRecentMeals,
+    filteredTopMeals,
     landingLimit,
   ]);
 
@@ -717,9 +752,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     // Cap the local sections only when an online section will also render, so a
     // pure local search is never truncated.
-    const willShowOnline = isAllProviders
+    const willShowOnline = (isAllProviders
       ? isAllProvidersSearchActive
-      : showOnlineSection;
+      : showOnlineSection) && (ownershipFilter === 'all' || ownershipFilter === 'public');
 
     if (hasLocalResults) {
       if (searchFoodsFavFirst.length > 0) {
@@ -844,6 +879,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     expandedProviders,
     showAllFoods,
     showAllMeals,
+    ownershipFilter,
   ]);
 
   // --- Row renderers (shared between landing and results) ---
@@ -1468,6 +1504,18 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {renderHeaderBar()}
+      <View className="px-4 py-2 bg-background border-b border-border-subtle">
+        <SegmentedControl
+          segments={[
+            { key: 'all', label: 'All' },
+            { key: 'mine', label: 'Mine' },
+            { key: 'family', label: 'Family' },
+            { key: 'public', label: 'Public' },
+          ]}
+          activeKey={ownershipFilter}
+          onSelect={setOwnershipFilter}
+        />
+      </View>
       {renderBody()}
       <AnchoredMenu
         visible={menuVisible}
