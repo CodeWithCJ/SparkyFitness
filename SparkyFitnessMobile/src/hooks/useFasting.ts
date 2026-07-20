@@ -9,6 +9,8 @@ import {
   fetchFastingStats,
   startFast,
   endFast,
+  updateFast,
+  deleteFast,
 } from '../services/api/fastingApi';
 import {
   cancelScheduledNotification,
@@ -86,6 +88,32 @@ export function useEndFast() {
       // Eagerly cancel the goal notification — the reconciler will also catch
       // this once `/current` refetches to null, but eager cancel is snappier.
       void cancelFastGoalNotification();
+      queryClient.invalidateQueries({ queryKey: fastingRootQueryKey });
+      queryClient.invalidateQueries({ queryKey: dailySummaryRootKey });
+    },
+  });
+}
+
+// Edits/deletes target a specific past (or active) fasting log, distinct from
+// the start/end flows above. Both invalidate the same fasting + daily-summary
+// roots so the history sheet, card, and detail screen all refresh together.
+export function useUpdateFast() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<FastingLog> }) =>
+      updateFast(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fastingRootQueryKey });
+      queryClient.invalidateQueries({ queryKey: dailySummaryRootKey });
+    },
+  });
+}
+
+export function useDeleteFast() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteFast(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fastingRootQueryKey });
       queryClient.invalidateQueries({ queryKey: dailySummaryRootKey });
     },

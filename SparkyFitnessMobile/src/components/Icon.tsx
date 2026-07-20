@@ -81,6 +81,7 @@ const ICON_MAP = {
 
   // Exercise
   'timer': { sf: 'timer', ion: 'timer-outline' },
+  'history': { sf: 'clock.arrow.circlepath', ion: 'time-outline' },
   'trophy': { sf: 'trophy.fill', ion: 'trophy' },
   'exercise': { sf: 'flame.fill', ion: 'flame' },
   'exercise-running': { sf: 'figure.run', ion: 'walk-outline' },

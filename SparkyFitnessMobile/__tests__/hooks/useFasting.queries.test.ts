@@ -6,6 +6,8 @@ import {
   useFastingHistory,
   useStartFast,
   useEndFast,
+  useUpdateFast,
+  useDeleteFast,
 } from '../../src/hooks/useFasting';
 import {
   fetchCurrentFast,
@@ -13,6 +15,8 @@ import {
   fetchFastingHistory,
   startFast,
   endFast,
+  updateFast,
+  deleteFast,
 } from '../../src/services/api/fastingApi';
 import { cancelScheduledNotification } from '../../src/services/notifications';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
@@ -24,6 +28,8 @@ jest.mock('../../src/services/api/fastingApi', () => ({
   fetchFastingHistory: jest.fn(),
   startFast: jest.fn(),
   endFast: jest.fn(),
+  updateFast: jest.fn(),
+  deleteFast: jest.fn(),
 }));
 
 // Used by useEndFast's eager cancel; scheduling is irrelevant to these tests.
@@ -46,6 +52,8 @@ const mockFetchStats = fetchFastingStats as jest.MockedFunction<typeof fetchFast
 const mockFetchHistory = fetchFastingHistory as jest.MockedFunction<typeof fetchFastingHistory>;
 const mockStartFast = startFast as jest.MockedFunction<typeof startFast>;
 const mockEndFast = endFast as jest.MockedFunction<typeof endFast>;
+const mockUpdateFast = updateFast as jest.MockedFunction<typeof updateFast>;
+const mockDeleteFast = deleteFast as jest.MockedFunction<typeof deleteFast>;
 const mockCancelNotification = cancelScheduledNotification as jest.MockedFunction<
   typeof cancelScheduledNotification
 >;
@@ -256,6 +264,74 @@ describe('useFasting queries and mutations', () => {
       expect(mockCancelNotification).not.toHaveBeenCalled();
       expect(invalidateSpy).not.toHaveBeenCalled();
       expect(await AsyncStorage.getItem(GOAL_NOTIF_STORAGE_KEY)).not.toBeNull();
+    });
+  });
+
+  describe('useUpdateFast', () => {
+    it('updates a fast and invalidates fasting + daily-summary caches', async () => {
+      mockUpdateFast.mockResolvedValue(
+        activeFast({ status: 'COMPLETED', end_time: '2026-06-27T16:00:00Z' }),
+      );
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useUpdateFast(), { wrapper });
+
+      const params = {
+        id: 'fast-1',
+        updates: { start_time: '2026-06-27T08:00:00Z', end_time: '2026-06-27T16:00:00Z' },
+      };
+      await act(async () => {
+        await result.current.mutateAsync(params);
+      });
+
+      expect(mockUpdateFast).toHaveBeenCalledWith(params.id, params.updates);
+      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+      expect(invalidatedKeys).toEqual(expect.arrayContaining([['fasting'], ['dailySummary']]));
+    });
+
+    it('surfaces the error without invalidating on failure', async () => {
+      mockUpdateFast.mockRejectedValue(new Error('network'));
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useUpdateFast(), { wrapper });
+
+      await act(async () => {
+        await expect(
+          result.current.mutateAsync({ id: 'fast-1', updates: { end_time: 'e' } }),
+        ).rejects.toThrow('network');
+      });
+
+      expect(invalidateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('useDeleteFast', () => {
+    it('deletes a fast and invalidates fasting + daily-summary caches', async () => {
+      mockDeleteFast.mockResolvedValue(undefined);
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useDeleteFast(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync('fast-1');
+      });
+
+      expect(mockDeleteFast).toHaveBeenCalledWith('fast-1');
+      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+      expect(invalidatedKeys).toEqual(expect.arrayContaining([['fasting'], ['dailySummary']]));
+    });
+
+    it('surfaces the error without invalidating on failure', async () => {
+      mockDeleteFast.mockRejectedValue(new Error('network'));
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useDeleteFast(), { wrapper });
+
+      await act(async () => {
+        await expect(result.current.mutateAsync('fast-1')).rejects.toThrow('network');
+      });
+
+      expect(invalidateSpy).not.toHaveBeenCalled();
     });
   });
 });
