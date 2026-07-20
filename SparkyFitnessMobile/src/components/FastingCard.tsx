@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import Icon from './Icon';
 import FastingProtocolSheet, { type FastingProtocolSheetRef } from './FastingProtocolSheet';
+import FastingHistorySheet, { type FastingHistorySheetRef } from './FastingHistorySheet';
 import { useCurrentFast, useFastingHistory } from '../hooks/useFasting';
 import { useFastingTimer } from '../hooks/useFastingTimer';
 import { formatLastFast } from '../utils/fasting';
@@ -36,6 +37,7 @@ function presetIdForType(type: string | null | undefined): string {
 
 const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
   const protocolSheetRef = useRef<FastingProtocolSheetRef>(null);
+  const historyRef = useRef<FastingHistorySheetRef>(null);
 
   // Read-only here — goal-notification reconciliation is owned by the
   // always-mounted `FastingGoalReconciler` so it keeps running when this card is
@@ -87,6 +89,21 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
           <View className="flex-row items-center justify-between mb-2">
             <Text className="text-md font-bold text-text-secondary">Fasting</Text>
             <View className="flex-row items-center">
+              <TouchableOpacity
+                onPress={() => historyRef.current?.present()}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="View fasting history"
+                className="flex-row items-center mr-4"
+              >
+                <Text className="text-md text-accent-primary font-medium">History</Text>
+                <Icon
+                  name="chevron-forward"
+                  size={14}
+                  color={accentPrimary}
+                  style={{ marginLeft: 2 }}
+                />
+              </TouchableOpacity>
               <Text className="text-md text-accent-primary font-medium">View details</Text>
               <Icon
                 name="chevron-forward"
@@ -147,6 +164,7 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
         </Pressable>
 
         <FastingProtocolSheet ref={protocolSheetRef} />
+        <FastingHistorySheet ref={historyRef} />
       </>
     );
   }
@@ -162,8 +180,23 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
         accessibilityRole="button"
         accessibilityLabel="Start a fast"
       >
-        <View className="mb-2">
+        <View className="flex-row items-center justify-between mb-2">
           <Text className="text-md font-bold text-text-secondary">Fasting</Text>
+          <TouchableOpacity
+            onPress={() => historyRef.current?.present()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="View fasting history"
+            className="flex-row items-center"
+          >
+            <Text className="text-md text-accent-primary font-medium">History</Text>
+            <Icon
+              name="chevron-forward"
+              size={14}
+              color={accentPrimary}
+              style={{ marginLeft: 2 }}
+            />
+          </TouchableOpacity>
         </View>
 
         <View className="flex-row items-center justify-between">
@@ -186,6 +219,7 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
       </Pressable>
 
       <FastingProtocolSheet ref={protocolSheetRef} />
+      <FastingHistorySheet ref={historyRef} />
     </>
   );
 };

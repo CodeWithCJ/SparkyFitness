@@ -129,6 +129,9 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
       month_selector_label: { color: textPrimary, fontWeight: '600' as const },
       year_selector_label: { color: textPrimary, fontWeight: '600' as const },
       time_selector_label: { color: textPrimary, fontWeight: '600' as const },
+      // Hide the calendar header's time button — we render a dedicated time
+      // wheel below the calendar instead.
+      time_selector: { display: 'none' as const },
       disabled_label: { color: textMuted },
       month_label: { color: textPrimary },
       year_label: { color: textPrimary },
@@ -175,13 +178,17 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
     );
   };
 
+  const togglePicker = (picker: 'start' | 'end') => {
+    setOpenPicker((p) => (p === picker ? null : picker));
+  };
+
   const renderRow = (
     label: string,
     value: string,
     picker: 'start' | 'end',
   ) => (
     <TouchableOpacity
-      onPress={() => setOpenPicker((p) => (p === picker ? null : picker))}
+      onPress={() => togglePicker(picker)}
       activeOpacity={0.7}
       className="flex-row items-center justify-between py-3 border-b border-border-subtle"
     >
@@ -198,6 +205,39 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
         />
       </View>
     </TouchableOpacity>
+  );
+
+  const renderInlinePicker = (
+    value: Date,
+    onChange: (payload: { date: DateType }) => void,
+  ) => (
+    <View className="mt-2">
+      {/* Calendar for the date. `timePicker` keeps the time-of-day when a day
+          is tapped (otherwise the library zeroes it). */}
+      <DateTimePicker
+        mode="single"
+        date={value}
+        timePicker
+        onChange={onChange}
+        components={pickerComponents}
+        styles={pickerStyles}
+      />
+      {/* Dedicated time wheel below the calendar, sharing the same value. */}
+      <View className="border-t border-border-subtle mt-1 pt-2">
+        <Text className="text-xs font-semibold uppercase text-text-muted tracking-wide mb-1 px-1">
+          Time
+        </Text>
+        <DateTimePicker
+          mode="single"
+          date={value}
+          timePicker
+          initialView="time"
+          hideHeader
+          onChange={onChange}
+          styles={pickerStyles}
+        />
+      </View>
+    </View>
   );
 
   return (
@@ -226,28 +266,10 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
         <Text className="text-center text-text-secondary mb-4">{durationLabel} fasted</Text>
 
         {renderRow('Started', formatDateTime(startDate), 'start')}
-        {openPicker === 'start' && (
-          <DateTimePicker
-            mode="single"
-            date={startDate}
-            timePicker
-            onChange={handleStartChange}
-            components={pickerComponents}
-            styles={pickerStyles}
-          />
-        )}
+        {openPicker === 'start' && renderInlinePicker(startDate, handleStartChange)}
 
         {renderRow('Ended', formatDateTime(endDate), 'end')}
-        {openPicker === 'end' && (
-          <DateTimePicker
-            mode="single"
-            date={endDate}
-            timePicker
-            onChange={handleEndChange}
-            components={pickerComponents}
-            styles={pickerStyles}
-          />
-        )}
+        {openPicker === 'end' && renderInlinePicker(endDate, handleEndChange)}
 
         {!isValid && (
           <Text className="text-bg-danger text-sm mt-3 text-center">

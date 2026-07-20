@@ -2,6 +2,8 @@ import {
   fetchCurrentFast,
   startFast,
   endFast,
+  updateFast,
+  deleteFast,
   fetchFastingStats,
   fetchFastingHistory,
 } from '../../../src/services/api/fastingApi';
@@ -71,6 +73,39 @@ describe('fastingApi', () => {
             start_time: '2026-06-21T10:00:00.000Z',
             end_time: '2026-06-22T02:00:00.000Z',
           },
+        }),
+      );
+    });
+  });
+
+  describe('updateFast', () => {
+    test('PUTs the updates body to /api/fasting/:id', async () => {
+      mockApiFetch.mockResolvedValueOnce({ id: 'fast-1' });
+      await updateFast('fast-1', {
+        start_time: '2026-06-21T10:00:00.000Z',
+        end_time: '2026-06-22T02:00:00.000Z',
+      });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: '/api/fasting/fast-1',
+          method: 'PUT',
+          body: {
+            start_time: '2026-06-21T10:00:00.000Z',
+            end_time: '2026-06-22T02:00:00.000Z',
+          },
+        }),
+      );
+    });
+  });
+
+  describe('deleteFast', () => {
+    test('DELETEs /api/fasting/:id', async () => {
+      mockApiFetch.mockResolvedValueOnce(undefined);
+      await deleteFast('fast-1');
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: '/api/fasting/fast-1',
+          method: 'DELETE',
         }),
       );
     });
