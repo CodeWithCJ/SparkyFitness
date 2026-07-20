@@ -71,6 +71,7 @@ export type HeaderItem =
       placement?: HeaderPlacement;
       disabled?: boolean;
       busy?: boolean;
+      useIoniconOnIOS?: boolean;
       accessibilityLabel: string;
       identifier?: string;
     }
@@ -154,16 +155,15 @@ function RawHeaderIcon({
   ion,
   color,
   size = 24,
+  useIoniconOnIOS = false,
 }: {
   sf: string;
   ion: string;
   color: string;
   size?: number;
+  useIoniconOnIOS?: boolean;
 }) {
-  if (Platform.OS === 'ios') {
-    if (sf === 'square.and.arrow.up') {
-      return <Ionicons name="share-social-outline" color={color} size={size} />;
-    }
+  if (Platform.OS === 'ios' && !useIoniconOnIOS) {
     return <SymbolView name={sf as never} tintColor={color} size={size} />;
   }
   return <Ionicons name={ion as keyof typeof Ionicons.glyphMap} color={color} size={size} />;
@@ -194,7 +194,14 @@ function HeaderBarButton({
   } else if (item.kind === 'dismiss') {
     content = <Icon name="close" size={22} color={color} />;
   } else if (item.kind === 'icon') {
-    content = <RawHeaderIcon sf={item.sfSymbol} ion={item.ionicon} color={color} />;
+    content = (
+      <RawHeaderIcon
+        sf={item.sfSymbol}
+        ion={item.ionicon}
+        color={color}
+        useIoniconOnIOS={item.useIoniconOnIOS}
+      />
+    );
   } else {
     content = (
       <Text style={{ color, fontSize: 17, fontWeight: isPrimaryItem(item) ? '600' : '500' }}>

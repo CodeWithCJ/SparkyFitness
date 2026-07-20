@@ -255,6 +255,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             sfSymbol: isPublic ? 'lock.fill' : 'square.and.arrow.up',
             ionicon: isPublic ? 'lock-closed-outline' : 'share-social-outline',
             role: 'secondary',
+            useIoniconOnIOS: !isPublic,
             disabled: updateShareMutation.isPending,
             onPress: handleToggleShare,
             accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
