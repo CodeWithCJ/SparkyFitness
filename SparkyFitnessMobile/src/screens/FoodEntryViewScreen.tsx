@@ -20,6 +20,9 @@ import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
+import { toHourMinute } from '@workspace/shared';
+import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { useMealTypes, usePreferences, useServerConnection, useCustomNutrients } from '../hooks';
@@ -118,6 +121,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { profile } = useProfile();
   const calendarRef = useRef<CalendarSheetRef>(null);
+  const timeSheetRef = useRef<TimeSheetRef>(null);
 
   useEffect(() => {
     if (entry.food_entry_meal_id) {
@@ -134,6 +138,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   interface EditState {
     isEditing: boolean;
     selectedDate: string;
+    entryTime: string;
     selectedMealId: string | undefined;
     selectedVariantId: string | undefined;
     quantityText: string;
@@ -144,9 +149,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   }
 
   const initialDate = normalizeDate(entry.entry_date);
+  const initialEntryTime = toHourMinute(entry.entry_time) || '';
   const [editState, setEditState] = useState<EditState>({
     isEditing: false,
     selectedDate: initialDate,
+    entryTime: initialEntryTime,
     selectedMealId: entry.meal_type_id,
     selectedVariantId: entry.variant_id,
     quantityText: String(entry.quantity),
@@ -157,6 +164,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const {
     isEditing,
     selectedDate,
+    entryTime,
     selectedMealId,
     selectedVariantId,
     quantityText,
@@ -599,6 +607,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         setEditState({
           isEditing: false,
           selectedDate: normalizeDate(mergedEntry.entry_date),
+          entryTime: toHourMinute(mergedEntry.entry_time) || '',
           selectedMealId: mergedEntry.meal_type_id,
           selectedVariantId: mergedEntry.variant_id,
           quantityText: String(mergedEntry.quantity),
@@ -612,6 +621,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     const payload: UpdateFoodEntryPayload = {};
     if (quantity !== entry.quantity) payload.quantity = quantity;
     if (displayValues.servingUnit !== entry.unit) payload.unit = displayValues.servingUnit;
+    if ((entryTime || null) !== (toHourMinute(entry.entry_time) || null)) {
+      payload.entry_time = entryTime || null;
+    }
     if (selectedVariantId !== entry.variant_id) {
       payload.variant_id = selectedVariantId;
       payload.unit = displayValues.servingUnit;
@@ -1134,6 +1146,46 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           </View>
         </Animated.View>
 
+        <Animated.View
+          layout={LinearTransition.duration(300)}
+          className="mt-2 flex-row items-center"
+        >
+          <Text className="text-text-secondary text-base mr-2">Time</Text>
+          {isEditing ? (
+            <>
+              <TouchableOpacity
+                onPress={() => timeSheetRef.current?.present()}
+                activeOpacity={0.7}
+                className="flex-row items-center"
+              >
+                <Text className="text-text-primary text-base font-medium">
+                  {formatTimeLabel(entryTime) ?? 'None'}
+                </Text>
+                <Icon
+                  name="chevron-down"
+                  size={12}
+                  color={textPrimary}
+                  style={{ marginLeft: 6 }}
+                  weight="medium"
+                />
+              </TouchableOpacity>
+              {entryTime !== '' && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  className="flex-row items-center ml-4"
+                  onPress={() => updateEdit({ entryTime: '' })}
+                >
+                  <Text className="text-text-link text-sm font-medium">Clear</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          ) : (
+            <Text className="text-text-primary text-base font-medium">
+              {formatTimeLabel(entry.entry_time) ?? 'None'}
+            </Text>
+          )}
+        </Animated.View>
+
         <Animated.View layout={LinearTransition.duration(300)}>
           <Button
             variant="ghost"
@@ -1152,6 +1204,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           ref={calendarRef}
           selectedDate={selectedDate}
           onSelectDate={(date) => updateEdit({ selectedDate: date })}
+        />
+      )}
+      {isEditing && (
+        <TimeSheet
+          ref={timeSheetRef}
+          value={entryTime}
+          onSelectTime={(time) => updateEdit({ entryTime: time })}
         />
       )}
     </View>

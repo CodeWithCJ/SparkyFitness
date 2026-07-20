@@ -195,6 +195,20 @@ jest.mock('../../src/components/CalendarSheet', () => {
   };
 });
 
+jest.mock('../../src/components/TimeSheet', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockTimeSheet = React.forwardRef((_props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({ present: jest.fn() }));
+    return <View testID="time-sheet" />;
+  });
+  MockTimeSheet.displayName = 'MockTimeSheet';
+  return {
+    __esModule: true,
+    default: MockTimeSheet,
+  };
+});
+
 jest.mock('../../src/utils/mealBuilderDraft', () => {
   const actual = jest.requireActual('../../src/utils/mealBuilderDraft');
   return {
@@ -713,6 +727,7 @@ describe('FoodEntryAddScreen', () => {
         quantity: 1,
         unit: 'cup',
         entry_date: '2026-04-23',
+        entry_time: null,
         food_id: 'food-1',
         variant_id: 'variant-1',
       },
@@ -1005,6 +1020,7 @@ describe('FoodEntryAddScreen', () => {
           quantity: 1,
           unit: 'oz',
           entry_date: '2026-04-23',
+          entry_time: null,
           food_id: 'saved-food-1',
           variant_id: 'saved-variant-oz',
         },
@@ -1086,6 +1102,7 @@ describe('FoodEntryAddScreen', () => {
           quantity: 1,
           unit: 'oz',
           entry_date: '2026-04-23',
+          entry_time: null,
         },
       });
     });

@@ -11,6 +11,9 @@ import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHea
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
+import { toHourMinute } from '@workspace/shared';
+import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import NutritionMacroCard from '../components/NutritionMacroCard';
 import SwipeableIngredientRow from '../components/SwipeableIngredientRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -71,6 +74,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const calendarRef = useRef<CalendarSheetRef>(null);
+  const timeSheetRef = useRef<TimeSheetRef>(null);
 
   const { meal, isLoading, isError, error } = useFoodEntryMealDetails(foodEntryMealId, { initialMeal });
   const { mealTypes } = useMealTypes();
@@ -79,6 +83,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
   const [name, setName] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [entryTime, setEntryTime] = useState<string | null>(null);
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>(undefined);
   const [quantityText, setQuantityText] = useState<string | null>(null);
   const [ingredients, setIngredients] = useState<MealIngredientDraft[]>([]);
@@ -135,6 +140,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
   const effectiveName = name ?? meal?.name ?? '';
   const effectiveDate = selectedDate ?? (meal ? normalizeDate(meal.entry_date) : null);
+  const effectiveEntryTime = entryTime ?? (meal ? toHourMinute(meal.entry_time) ?? '' : '');
   const effectiveMealId = selectedMealId ?? meal?.meal_type_id ?? undefined;
   const effectiveQuantityText = quantityText ?? (meal ? String(meal.quantity) : '');
   const quantity = parseDecimalInput(effectiveQuantityText) || 0;
@@ -159,6 +165,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     (
       (name !== null && name !== meal.name) ||
       (selectedDate !== null && selectedDate !== initialDate) ||
+      (entryTime !== null && entryTime !== (toHourMinute(meal.entry_time) ?? '')) ||
       (selectedMealId !== undefined && selectedMealId !== meal.meal_type_id) ||
       (quantityText !== null && quantity !== meal.quantity) ||
       foodsTouched
@@ -281,6 +288,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
       meal_type: selectedMealType?.name ?? meal.meal_type,
       meal_type_id: effectiveMealId,
       entry_date: effectiveDate,
+      entry_time: effectiveEntryTime || null,
       quantity,
       unit: meal.unit,
       meal_template_id: meal.meal_template_id,
@@ -429,6 +437,30 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           </View>
         </Animated.View>
 
+        {/* Time row */}
+        <Animated.View layout={LinearTransition.duration(300)} className="flex-row items-center">
+          <Text className="text-text-secondary text-base mr-2">Time</Text>
+          <TouchableOpacity
+            onPress={() => timeSheetRef.current?.present()}
+            activeOpacity={0.7}
+            className="flex-row items-center"
+          >
+            <Text className="text-text-primary text-base font-medium">
+              {formatTimeLabel(effectiveEntryTime) ?? 'None'}
+            </Text>
+            <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
+          </TouchableOpacity>
+          {effectiveEntryTime !== '' && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              className="flex-row items-center ml-4"
+              onPress={() => setEntryTime('')}
+            >
+              <Text className="text-text-link text-sm font-medium">Clear</Text>
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+
         {/* Component foods: tap a row to edit, swipe to remove, button to add. */}
         <View className="mt-2">
           <Text className="text-text-secondary text-sm mb-2">Foods in this meal</Text>
@@ -489,6 +521,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
         ref={calendarRef}
         selectedDate={effectiveDate ?? ''}
         onSelectDate={(date) => setSelectedDate(date)}
+      />
+      <TimeSheet
+        ref={timeSheetRef}
+        value={effectiveEntryTime}
+        onSelectTime={(time) => setEntryTime(time)}
       />
     </View>
   );

@@ -20,7 +20,10 @@ import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
-import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
+import { getTodayDate, getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
+import { prefillEntryTime, userHourMinute } from '@workspace/shared';
+import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
+import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { getMealTypeLabel } from '../constants/meals';
 import { goalsQueryKey } from '../hooks/queryKeys';
 import {
@@ -184,6 +187,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     initialDate ?? getTodayDate(),
   );
   const calendarRef = useRef<CalendarSheetRef>(null);
+  const timeSheetRef = useRef<TimeSheetRef>(null);
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
@@ -228,6 +232,27 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const activeItem = savedFoodOverride ?? item;
   const effectiveMealId = selectedMealId ?? defaultMealTypeId;
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
+
+  const [entryTime, setEntryTime] = useState('');
+  const entryTimeTouched = useRef(false);
+  useEffect(() => {
+    if (entryTimeTouched.current) return;
+    setEntryTime(
+      prefillEntryTime({
+        defaultTime: selectedMealType?.default_time,
+        isToday: selectedDate === getTodayDate(),
+        tz: getDeviceTimezone(),
+      }),
+    );
+  }, [selectedDate, selectedMealType?.default_time]);
+  const handleSelectEntryTime = (time: string) => {
+    entryTimeTouched.current = true;
+    setEntryTime(time);
+  };
+  const handleSetEntryTimeNow = () => {
+    const { hour, minute } = userHourMinute(getDeviceTimezone());
+    handleSelectEntryTime(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+  };
 
   const isLocalFood = activeItem.source === 'local';
   const hasExternalVariants = !!(
@@ -766,6 +791,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       quantity,
       unit: displayValues.servingUnit,
       entry_date: selectedDate,
+      entry_time: entryTime || null,
     };
 
     switch (activeItem.source) {
@@ -819,6 +845,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       meal_type: mealTypeName,
       meal_type_id: effectiveMealId ?? undefined,
       entry_date: selectedDate,
+      entry_time: entryTime || null,
       name: item.name,
       quantity,
       unit: displayValues.servingUnit,
@@ -1418,6 +1445,43 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               )}
             </View>
 
+            <View className="flex-row items-center mt-2">
+              <TouchableOpacity
+                onPress={() => timeSheetRef.current?.present()}
+                activeOpacity={0.7}
+                className="flex-row items-center"
+              >
+                <Text className="text-text-secondary text-base">Time</Text>
+                <Text className="text-text-primary text-base font-medium mx-1.5">
+                  {formatTimeLabel(entryTime) ?? 'None'}
+                </Text>
+                <Icon
+                  name="chevron-down"
+                  size={12}
+                  color={textPrimary}
+                  weight="medium"
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                className="flex-row items-center mx-4"
+                onPress={handleSetEntryTimeNow}
+              >
+                <Text className="text-text-link text-sm font-medium mx-1.5">Now</Text>
+              </TouchableOpacity>
+
+              {entryTime !== '' && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  className="flex-row items-center"
+                  onPress={() => handleSelectEntryTime('')}
+                >
+                  <Text className="text-text-link text-sm font-medium mx-1.5">Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             {selectedMealType ? (
               <View className="flex-row items-center mt-2">
                 <Text className="text-text-secondary text-base">Meal</Text>
@@ -1518,6 +1582,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         ref={calendarRef}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
+      />
+      <TimeSheet
+        ref={timeSheetRef}
+        value={entryTime}
+        onSelectTime={handleSelectEntryTime}
       />
     </View>
   );
