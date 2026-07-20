@@ -73,6 +73,7 @@ BEGIN
     'sleep_entry_stages',
     'fasting_logs',
     'user_custom_nutrients',
+    'user_nutrient_goal_preferences',
     'user_allergen_preferences',
     'user_dashboard_layouts',
     'sleep_need_calculations',
@@ -563,6 +564,7 @@ SELECT create_diary_policy('user_goals');
 SELECT create_diary_policy('weekly_goal_plans');
 SELECT create_diary_policy('user_water_containers');
 SELECT create_diary_policy('user_custom_nutrients');
+SELECT create_diary_policy('user_nutrient_goal_preferences');
 SELECT create_diary_policy('user_allergen_preferences');
 -- Starred foods/meals follow the diary context: the favorites routes are mounted
 -- behind checkPermissionMiddleware('diary'), and the food-search screen a delegate

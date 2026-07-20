@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 44eQlT10iDrmsmDVhovuOda81iGeJkzS04UKKv8q9Hs26m3yTXW76b6ezSgNE36
+\restrict 2fch36TUbeX3PUGdkdRgGe8u0dKG2Unn4XZdchelSlLo04dOsNOWRB0uSPwFIfm
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1966,8 +1966,8 @@ CREATE TABLE public.foods (
     updated_at timestamp with time zone DEFAULT now(),
     shared_with_public boolean DEFAULT false,
     provider_type text,
-    provider_verified boolean DEFAULT false NOT NULL,
-    is_quick_food boolean DEFAULT false NOT NULL
+    is_quick_food boolean DEFAULT false NOT NULL,
+    provider_verified boolean DEFAULT false NOT NULL
 );
 
 
@@ -3203,6 +3203,24 @@ ALTER SEQUENCE public.user_nutrient_display_preferences_id_seq OWNED BY public.u
 
 
 --
+-- Name: user_nutrient_goal_preferences; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_nutrient_goal_preferences (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    nutrient_key text NOT NULL,
+    goal_type text NOT NULL,
+    target_min numeric,
+    target_max numeric,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT user_nutrient_goal_preferences_goal_type_check CHECK ((goal_type = ANY (ARRAY['minimum'::text, 'maximum'::text, 'target'::text]))),
+    CONSTRAINT user_nutrient_goal_preferences_target_band CHECK (((goal_type <> 'target'::text) OR ((target_min IS NOT NULL) AND (target_max IS NOT NULL) AND (target_min <= target_max))))
+);
+
+
+--
 -- Name: user_oidc_links; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3248,7 +3266,6 @@ CREATE TABLE public.user_preferences (
     default_measurement_unit text DEFAULT 'cm'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    system_prompt text DEFAULT 'You are Sparky, a helpful AI assistant for health and fitness tracking. Be friendly, encouraging, and provide accurate information about nutrition, exercise, and wellness.'::text,
     auto_clear_history text DEFAULT 'never'::text,
     logging_level text DEFAULT 'ERROR'::text,
     timezone text,
@@ -3284,6 +3301,7 @@ CREATE TABLE public.user_preferences (
     add_exercise_water_to_goal boolean DEFAULT false NOT NULL,
     measurement_decimal_places integer DEFAULT 0 NOT NULL,
     active_vision_ai_service_id uuid,
+    added_sugar_algorithm text DEFAULT 'WHO_IDEAL'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
@@ -4702,6 +4720,22 @@ ALTER TABLE ONLY public.user_nutrient_display_preferences
 
 
 --
+-- Name: user_nutrient_goal_preferences user_nutrient_goal_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_nutrient_goal_preferences
+    ADD CONSTRAINT user_nutrient_goal_preferences_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_nutrient_goal_preferences user_nutrient_goal_preferences_user_key_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_nutrient_goal_preferences
+    ADD CONSTRAINT user_nutrient_goal_preferences_user_key_unique UNIQUE (user_id, nutrient_key);
+
+
+--
 -- Name: user_oidc_links user_oidc_links_oidc_provider_id_oidc_sub_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5492,6 +5526,13 @@ CREATE INDEX idx_user_medication_display_preferences_user_id ON public.user_medi
 --
 
 CREATE INDEX idx_user_mood_display_preferences_user_id ON public.user_mood_display_preferences USING btree (user_id);
+
+
+--
+-- Name: idx_user_nutrient_goal_preferences_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_nutrient_goal_preferences_user_id ON public.user_nutrient_goal_preferences USING btree (user_id);
 
 
 --
@@ -6957,6 +6998,14 @@ ALTER TABLE ONLY public.user_nutrient_display_preferences
 
 
 --
+-- Name: user_nutrient_goal_preferences user_nutrient_goal_preferences_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_nutrient_goal_preferences
+    ADD CONSTRAINT user_nutrient_goal_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_oidc_links user_oidc_links_oidc_provider_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7852,6 +7901,13 @@ CREATE POLICY modify_policy ON public.user_nutrient_display_preferences USING ((
 
 
 --
+-- Name: user_nutrient_goal_preferences modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.user_nutrient_goal_preferences USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
 -- Name: user_preferences modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -8508,6 +8564,13 @@ CREATE POLICY select_policy ON public.user_nutrient_display_preferences FOR SELE
 
 
 --
+-- Name: user_nutrient_goal_preferences select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.user_nutrient_goal_preferences FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
 -- Name: user_preferences select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -8695,6 +8758,12 @@ ALTER TABLE public.user_mood_display_preferences ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.user_nutrient_display_preferences ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: user_nutrient_goal_preferences; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_nutrient_goal_preferences ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_oidc_links; Type: ROW SECURITY; Schema: public; Owner: -
@@ -9984,6 +10053,15 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq T
 
 
 --
+-- Name: TABLE user_nutrient_goal_preferences; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_goal_preferences TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_goal_preferences TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_goal_preferences TO sparky_uat;
+
+
+--
 -- Name: TABLE user_oidc_links; Type: ACL; Schema: public; Owner: -
 --
 
@@ -10248,4 +10326,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 44eQlT10iDrmsmDVhovuOda81iGeJkzS04UKKv8q9Hs26m3yTXW76b6ezSgNE36
+\unrestrict 2fch36TUbeX3PUGdkdRgGe8u0dKG2Unn4XZdchelSlLo04dOsNOWRB0uSPwFIfm
+

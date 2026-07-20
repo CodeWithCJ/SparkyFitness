@@ -35,10 +35,12 @@ import {
   MineralCalculationAlgorithm,
   VitaminCalculationAlgorithm,
   SugarCalculationAlgorithm,
+  AddedSugarAlgorithm,
   FatBreakdownAlgorithmLabels,
   MineralCalculationAlgorithmLabels,
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
+  AddedSugarAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
 import {
   useDiaryInvalidation,
@@ -79,6 +81,7 @@ const CalculationSettings = () => {
     mineralCalculationAlgorithm: contextMineralCalculationAlgorithm,
     vitaminCalculationAlgorithm: contextVitaminCalculationAlgorithm,
     sugarCalculationAlgorithm: contextSugarCalculationAlgorithm,
+    addedSugarAlgorithm: contextAddedSugarAlgorithm,
     saveAllPreferences,
     calorieGoalAdjustmentMode: contextCalorieGoalAdjustmentMode,
     exerciseCaloriePercentage: contextExerciseCaloriePercentage,
@@ -147,6 +150,10 @@ const CalculationSettings = () => {
       contextSugarCalculationAlgorithm ||
         SugarCalculationAlgorithm.WHO_GUIDELINES
     );
+  const [addedSugarAlgorithm, setAddedSugarAlgorithm] =
+    useState<AddedSugarAlgorithm>(
+      contextAddedSugarAlgorithm || AddedSugarAlgorithm.WHO_IDEAL
+    );
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -175,6 +182,9 @@ const CalculationSettings = () => {
     }
     if (contextSugarCalculationAlgorithm) {
       setSugarCalculationAlgorithm(contextSugarCalculationAlgorithm);
+    }
+    if (contextAddedSugarAlgorithm) {
+      setAddedSugarAlgorithm(contextAddedSugarAlgorithm);
     }
     if (contextCalorieGoalAdjustmentMode) {
       setCalorieGoalAdjustmentMode(contextCalorieGoalAdjustmentMode);
@@ -210,6 +220,7 @@ const CalculationSettings = () => {
     contextMineralCalculationAlgorithm,
     contextVitaminCalculationAlgorithm,
     contextSugarCalculationAlgorithm,
+    contextAddedSugarAlgorithm,
     contextCalorieGoalAdjustmentMode,
     contextExerciseCaloriePercentage,
     contextTdeeAllowNegativeAdjustment,
@@ -232,6 +243,7 @@ const CalculationSettings = () => {
         mineralCalculationAlgorithm: mineralCalculationAlgorithm,
         vitaminCalculationAlgorithm: vitaminCalculationAlgorithm,
         sugarCalculationAlgorithm: sugarCalculationAlgorithm,
+        addedSugarAlgorithm: addedSugarAlgorithm,
         calorieGoalAdjustmentMode: calorieGoalAdjustmentMode,
         exerciseCaloriePercentage: exerciseCaloriePercentage,
         tdeeAllowNegativeAdjustment: tdeeAllowNegativeAdjustment,
@@ -1405,6 +1417,36 @@ const CalculationSettings = () => {
             </Select>
             <p className="text-sm text-muted-foreground mt-1">
               Maximum sugar intake as a percentage of total calories.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="added-sugar-algorithm">Added Sugar Algorithm</Label>
+            <Select
+              value={addedSugarAlgorithm}
+              onValueChange={(value: AddedSugarAlgorithm) =>
+                setAddedSugarAlgorithm(value)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Added Sugar Algorithm" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.values(AddedSugarAlgorithm).map((alg) => (
+                  <SelectItem key={alg} value={alg}>
+                    {AddedSugarAlgorithmLabels[alg]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground mt-1">
+              Recommended limit for a custom "Added Sugars" nutrient tracked as
+              a maximum goal (WHO or AHA guidelines).
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              Requires a custom nutrient named "Added Sugar(s)" (Settings →
+              Custom Nutrients), set to a Maximum goal direction — this
+              algorithm has no effect until one exists.
             </p>
           </div>
         </div>

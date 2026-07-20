@@ -48,6 +48,7 @@ import {
 } from '@workspace/shared';
 import { ACTIVITY_MULTIPLIERS } from '@/utils/calorieCalculations';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
+import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();
@@ -69,6 +70,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const { user } = useAuth();
   const { data: userProfile } = useProfileQuery(user?.id);
+  const { data: goalTypePreferences } = useNutrientGoalPreferences();
   const { data: weightData } = useMostRecentWeightQuery();
   const { data: heightData } = useMostRecentHeightQuery();
   const { data: bodyFatData } = useMostRecentBodyFatQuery();
@@ -294,6 +296,29 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             remaining={display.remaining}
             progress={calorieProgress}
             unit={energyUnit}
+            targetBand={
+              goalTypePreferences?.['calories']?.goalType === 'target' &&
+              goalTypePreferences['calories'].targetMin !== undefined &&
+              goalTypePreferences['calories'].targetMax !== undefined
+                ? {
+                    min: Math.round(
+                      convertEnergy(
+                        goalTypePreferences['calories'].targetMin,
+                        'kcal',
+                        energyUnit
+                      )
+                    ),
+                    max: Math.round(
+                      convertEnergy(
+                        goalTypePreferences['calories'].targetMax,
+                        'kcal',
+                        energyUnit
+                      )
+                    ),
+                    eaten: display.eaten,
+                  }
+                : undefined
+            }
           />
           {/* Energy Breakdown */}
           <div className="grid grid-cols-3 gap-2 text-center text-sm">

@@ -25,6 +25,14 @@ export enum SugarCalculationAlgorithm {
   BALANCED = 'BALANCED', // Moderate: max 15% of calories
 }
 
+// Algorithms for a user-tracked "Added Sugar" custom nutrient (a maximum-type
+// goal), distinct from the Total Sugar target above.
+export enum AddedSugarAlgorithm {
+  WHO_IDEAL = 'WHO_IDEAL', // WHO conditional: <5% of calories
+  WHO_MAXIMUM = 'WHO_MAXIMUM', // WHO strong recommendation: <10% of calories
+  AHA_FIXED = 'AHA_FIXED', // AHA: 36g men / 25g women, not calorie-scaled
+}
+
 // Helper type for algorithm display names
 export const FatBreakdownAlgorithmLabels: Record<
   FatBreakdownAlgorithm,
@@ -60,4 +68,10 @@ export const SugarCalculationAlgorithmLabels: Record<
   [SugarCalculationAlgorithm.WHO_GUIDELINES]: 'WHO Guidelines (10% max)',
   [SugarCalculationAlgorithm.LOW_CARB_KETO]: 'Low-Carb/Keto (5% max)',
   [SugarCalculationAlgorithm.BALANCED]: 'Balanced (15% max)',
+};
+
+export const AddedSugarAlgorithmLabels: Record<AddedSugarAlgorithm, string> = {
+  [AddedSugarAlgorithm.WHO_IDEAL]: 'WHO Ideal (5% of calories)',
+  [AddedSugarAlgorithm.WHO_MAXIMUM]: 'WHO Maximum (10% of calories)',
+  [AddedSugarAlgorithm.AHA_FIXED]: 'AHA Fixed (36g men / 25g women)',
 };

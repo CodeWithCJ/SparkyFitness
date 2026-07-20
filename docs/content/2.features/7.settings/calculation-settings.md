@@ -53,6 +53,9 @@ This setting determines **how physical activity changes your calorie budget** th
 - **Percentage Earn-Back:** Adds back a custom percentage (e.g., $50\%$) of active calories burned to create a buffer against device calorie over-estimations.
 - **Device Projection:** Projects your total full-day burn by extrapolating active steps and device data to midnight (MyFitnessPal style).
 
+> [!NOTE]
+> If you use [Nutrient Goal Direction](/features/goals)'s **Target range** for calories, note that Adaptive, Dynamic, Percentage Earn-Back, and Device Projection all recalculate your calorie goal value regularly — a manually entered target band won't move with it. Target range for calories works best paired with **Fixed Goal**.
+
 ---
 
 ## 4. Goal Mode & Caloric Deficits
@@ -86,3 +89,16 @@ To protect long-term metabolic health and avoid muscle wasting, SparkyFitness ch
 >
 > - Under the **Adaptive** method, if your calculated target falls below the safety floor, the system **automatically raises** your target to the effective floor.
 > - Under the **Manual** method, the target is **not automatically raised**, but a prominent warning banner is displayed warning you that your budget is in an unsafe range.
+
+---
+
+## 6. Nutrient Calculation Algorithms
+
+These pickers choose a formula for suggesting gram targets for certain nutrient goals, based on your calorie goal, age, and sex:
+
+- **Fat Breakdown Algorithm** (AHA Guidelines / Keto-Adapted / Mediterranean): suggests how to split total fat into saturated, polyunsaturated, monounsaturated, and trans fat.
+- **Mineral Calculation Algorithm** (RDA Standard / Athletic Performance / Heart Health): suggests sodium, potassium, calcium, and iron targets.
+- **Vitamin Calculation Algorithm** (RDA Standard / Immune Support / Antioxidant Focus): suggests Vitamin A and C targets.
+- **Sugar Calculation Algorithm** (WHO Guidelines 10% max / Low-Carb-Keto 5% max / Balanced 15% max): suggests a target for the built-in **Total Sugar** goal, as a percentage of your daily calories.
+
+This is different from the **Added Sugars** auto-calculate control described in [Goals → Tracking Added Sugars](/features/goals) — that one computes a limit for a separate, user-created "Added Sugars" custom nutrient using WHO/AHA guidelines, not this Total Sugar percentage.

@@ -43,6 +43,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         active_ai_service_id = CASE WHEN $38 THEN $37 ELSE active_ai_service_id END,
         active_vision_ai_service_id = CASE WHEN $42 THEN $41 ELSE active_vision_ai_service_id END,
         measurement_decimal_places = COALESCE($40, measurement_decimal_places),
+        added_sugar_algorithm = COALESCE($43, added_sugar_algorithm),
         updated_at = now()
       WHERE user_id = $28
       RETURNING *`,
@@ -89,6 +90,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.measurement_decimal_places,
         preferenceData.active_vision_ai_service_id,
         'active_vision_ai_service_id' in preferenceData,
+        preferenceData.added_sugar_algorithm,
       ]
     );
     return result.rows[0];
@@ -174,6 +176,7 @@ async function upsertUserPreferences(preferenceData: any) {
        active_ai_service_id,
        measurement_decimal_places,
        active_vision_ai_service_id,
+       added_sugar_algorithm,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -198,6 +201,7 @@ async function upsertUserPreferences(preferenceData: any) {
        $37,
        COALESCE($40, 0),
        $41,
+       COALESCE($43, 'WHO_IDEAL'),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -239,6 +243,7 @@ async function upsertUserPreferences(preferenceData: any) {
        active_ai_service_id = CASE WHEN $38 THEN EXCLUDED.active_ai_service_id ELSE user_preferences.active_ai_service_id END,
        active_vision_ai_service_id = CASE WHEN $42 THEN EXCLUDED.active_vision_ai_service_id ELSE user_preferences.active_vision_ai_service_id END,
        measurement_decimal_places = COALESCE(EXCLUDED.measurement_decimal_places, user_preferences.measurement_decimal_places),
+       added_sugar_algorithm = COALESCE(EXCLUDED.added_sugar_algorithm, user_preferences.added_sugar_algorithm),
        updated_at = now()
      RETURNING *`,
       [
@@ -284,6 +289,7 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.measurement_decimal_places,
         preferenceData.active_vision_ai_service_id,
         'active_vision_ai_service_id' in preferenceData,
+        preferenceData.added_sugar_algorithm,
       ]
     );
     return result.rows[0];

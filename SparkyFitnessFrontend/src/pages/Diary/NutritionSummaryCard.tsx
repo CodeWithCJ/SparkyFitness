@@ -8,12 +8,13 @@ import {
   formatNutrientValue,
   getNetCarbsValue,
 } from '@/utils/nutrientUtils';
+import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import EditGoalsForToday from '@/pages/Goals/EditGoalsForToday';
 import { useMemo, useState } from 'react';
 import { DEFAULT_GOALS } from '@/constants/goals';
 import { Button } from '@/components/ui/button';
-import { ClipboardCopy, History } from 'lucide-react';
+import { ClipboardCopy, History, CheckCircle2 } from 'lucide-react';
 import {
   useCopyAllFoodEntriesMutation,
   useCopyAllFoodEntriesFromYesterdayMutation,
@@ -27,6 +28,18 @@ export interface DayTotals {
   carbs: number;
   fat: number;
   dietary_fiber: number;
+  sugars?: number;
+  sodium?: number;
+  cholesterol?: number;
+  saturated_fat?: number;
+  monounsaturated_fat?: number;
+  polyunsaturated_fat?: number;
+  trans_fat?: number;
+  potassium?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  iron?: number;
+  calcium?: number;
   custom_nutrients?: Record<string, number>;
 }
 
@@ -52,6 +65,7 @@ const NutritionSummaryCard = ({
   customNutrients = [],
 }: NutritionSummaryCardProps) => {
   const { nutrientDisplayPreferences, showNetCarbs } = usePreferences();
+  const { data: goalTypePreferences = {} } = useNutrientGoalPreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const { t } = useTranslation();
@@ -121,7 +135,11 @@ const NutritionSummaryCard = ({
           }}
         >
           {visibleNutrients.map((nutrient) => {
-            const metadata = getNutrientMetadata(nutrient, customNutrients);
+            const metadata = getNutrientMetadata(
+              nutrient,
+              customNutrients,
+              goalTypePreferences
+            );
             const total =
               (dayTotals[nutrient as keyof DayTotals] as number) ??
               dayTotals.custom_nutrients?.[nutrient] ??
@@ -163,20 +181,73 @@ const NutritionSummaryCard = ({
               displayNutrient === 'net_carbs'
                 ? t('nutrition.netCarbs', 'Net Carbs')
                 : t(metadata.label, metadata.defaultLabel);
-            const colorClass = metadata.color;
+
+            const goalType = metadata.goalType;
+            const isOverLimit =
+              goalType === 'maximum' && goal > 0 && comparisonTotal > goal;
+            const inTargetRange =
+              goalType === 'target' &&
+              metadata.targetMin !== undefined &&
+              metadata.targetMax !== undefined &&
+              comparisonTotal >= metadata.targetMin &&
+              comparisonTotal <= metadata.targetMax;
+            const isTargetType =
+              goalType === 'target' &&
+              metadata.targetMin !== undefined &&
+              metadata.targetMax !== undefined;
+
+            const colorClass = isOverLimit
+              ? 'text-red-600'
+              : isTargetType && !inTargetRange
+                ? 'text-amber-600'
+                : metadata.color;
+
+            const barColor = isOverLimit
+              ? '#ef4444' // red-500
+              : isTargetType && !inTargetRange
+                ? '#f59e0b' // amber-500
+                : metadata.chartColor;
+
+            const targetMinVal =
+              nutrient === 'calories' && metadata.targetMin !== undefined
+                ? Math.round(
+                    convertEnergy(metadata.targetMin, 'kcal', energyUnit)
+                  )
+                : metadata.targetMin;
+
+            const targetMaxVal =
+              nutrient === 'calories' && metadata.targetMax !== undefined
+                ? Math.round(
+                    convertEnergy(metadata.targetMax, 'kcal', energyUnit)
+                  )
+                : metadata.targetMax;
 
             const percentage =
               goal > 0 ? Math.min((comparisonTotal / goal) * 100, 100) : 0;
 
+            const subLine = isTargetType
+              ? `${formatNutrientValue(nutrient, targetMinVal, customNutrients)}–${formatNutrientValue(nutrient, targetMaxVal, customNutrients)}${unit}`
+              : goalType === 'maximum' && isOverLimit
+                ? `${formatNutrientValue(nutrient, comparisonTotal - goal, customNutrients)}${unit} ${t('diary.over', 'over')}`
+                : `${t('diary.of', 'of')} ${displayGoal}${unit}`;
+
+            const showCheck =
+              (goalType === 'maximum' && goal > 0 && !isOverLimit) ||
+              (isTargetType && inTargetRange);
+
             return (
               <div key={nutrient} className="text-center">
-                <div className={`text-lg sm:text-xl font-bold ${colorClass}`}>
+                <div
+                  className={`text-lg sm:text-xl font-bold ${colorClass} flex items-center justify-center gap-1`}
+                >
                   {displayTotal}
                   {unit}
+                  {showCheck && (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  )}
                 </div>
                 <div className="text-xs text-gray-500 leading-tight">
-                  {t('diary.of', 'of')} {displayGoal}
-                  {unit}
+                  {subLine}
                 </div>
                 <div
                   className="text-xs text-gray-500 truncate w-full"
@@ -189,7 +260,7 @@ const NutritionSummaryCard = ({
                     className="h-1.5 rounded-full"
                     style={{
                       width: `${percentage}%`,
-                      backgroundColor: metadata.chartColor,
+                      backgroundColor: barColor,
                     }}
                   />
                 </div>

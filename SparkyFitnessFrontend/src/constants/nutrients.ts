@@ -1,4 +1,7 @@
 import { MealTotals } from '@/types/meal';
+import { BUILTIN_MAXIMUM_GOAL_NUTRIENTS } from '@workspace/shared';
+
+export type NutrientGoalType = 'minimum' | 'maximum' | 'target';
 
 export interface NutrientMetadata {
   id: string;
@@ -9,7 +12,33 @@ export interface NutrientMetadata {
   chartColor: string; // Hex color for chart rendering
   decimals: number;
   group: 'macros' | 'fats' | 'minerals' | 'custom';
+  // Built-in goal direction when the user has no explicit override saved via
+  // the Nutrient Goal Direction settings screen. Omitted = 'minimum'. Set
+  // below from BUILTIN_MAXIMUM_GOAL_NUTRIENTS (shared/), the single source of
+  // truth also consumed by
+  // SparkyFitnessServer/services/nutrientGoalPreferenceService.ts.
+  defaultGoalType?: NutrientGoalType;
 }
+
+export const PREDEFINED_NUTRIENT_KEYS = [
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+];
 
 export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
   calories: {
@@ -184,6 +213,15 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
   },
 };
 
+// Apply the shared "stay under" defaults (single source of truth in
+// shared/src/constants/nutrientGoalDefaults.ts) instead of hand-annotating
+// each entry above, so this list only ever needs to change in one place.
+(BUILTIN_MAXIMUM_GOAL_NUTRIENTS ?? []).forEach((key) => {
+  if (CENTRAL_NUTRIENT_CONFIG[key]) {
+    CENTRAL_NUTRIENT_CONFIG[key].defaultGoalType = 'maximum';
+  }
+});
+
 export const EMPTY_MEAL_TOTALS: MealTotals = {
   calories: 0,
   protein: 0,
@@ -211,4 +249,5 @@ export const DEFAULT_NUTRIENTS = [
   'carbs',
   'fat',
   'dietary_fiber',
+  'sugars',
 ];

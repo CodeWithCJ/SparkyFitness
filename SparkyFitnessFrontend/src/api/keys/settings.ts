@@ -35,4 +35,6 @@ export const preferencesKeys = {
   all: ['preferences'] as const,
   user: () => [...preferencesKeys.all, 'user'] as const,
   nutrients: () => [...preferencesKeys.all, 'nutrients'] as const,
+  nutrientGoalDirection: () =>
+    [...preferencesKeys.all, 'nutrient-goal-direction'] as const,
 };

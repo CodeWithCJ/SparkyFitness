@@ -6,6 +6,7 @@ import {
   MineralCalculationAlgorithm,
   VitaminCalculationAlgorithm,
   SugarCalculationAlgorithm,
+  AddedSugarAlgorithm,
 } from '@/types/nutrientAlgorithms';
 import { calculateBasePlan } from './nutritionCalculations';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
@@ -61,6 +62,10 @@ export const createInitialPlan = (
     minerals: localMineralAlgorithm,
     vitamins: localVitaminAlgorithm,
     sugar: localSugarAlgorithm,
+    // Onboarding doesn't collect an Added Sugars preference (no custom
+    // nutrient exists yet at this point) — calculateAllAdvancedNutrients
+    // never reads this field, it's only required for AlgorithmBundle's shape.
+    addedSugar: AddedSugarAlgorithm.WHO_IDEAL,
   });
 
   return {
