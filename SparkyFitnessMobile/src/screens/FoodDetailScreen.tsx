@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -10,6 +12,8 @@ import StatusView from '../components/StatusView';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDeleteFood, useFavorites, useFoodVariants, useProfile, useServerConnection, usePreferences, useToggleFavorite } from '../hooks';
+import { foodsQueryKey } from '../hooks/queryKeys';
+import { updateFood } from '../services/api/foodsApi';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
@@ -50,6 +54,51 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     enabled: isLocalFood && isConnected,
   });
   const canManageFood = !!(isLocalFood && isConnected && food.userId && profile?.id === food.userId);
+
+  const queryClient = useQueryClient();
+  const isPublic = !!food.sharedWithPublic;
+
+  const updateShareMutation = useMutation({
+    mutationFn: (next: boolean) => updateFood(food.id, { shared_with_public: next }),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: foodsQueryKey, refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['foodsLibrary'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['foodSearch'], refetchType: 'all' });
+      setFood((prev) => ({
+        ...prev,
+        sharedWithPublic: updated.shared_with_public,
+      }));
+      Toast.show({
+        type: 'success',
+        text1: updated.shared_with_public ? 'Food shared publicly' : 'Food made private',
+      });
+    },
+    onError: (error) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to update sharing',
+        text2: error instanceof Error ? error.message : 'Please try again.',
+      });
+    },
+  });
+
+  const handleToggleShare = useCallback(() => {
+    if (isPublic) {
+      updateShareMutation.mutate(false);
+    } else {
+      Alert.alert(
+        'Make public?',
+        'This food will become visible to all users on this server.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Make Public',
+            onPress: () => updateShareMutation.mutate(true),
+          },
+        ]
+      );
+    }
+  }, [isPublic, updateShareMutation]);
 
   // Favorites: a saved local food can be starred here, so the library is no
   // longer edit-only via search. External results have no stable id to
@@ -201,6 +250,17 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
       : []),
     ...(canManageFood
       ? [
+          {
+            kind: 'icon',
+            sfSymbol: isPublic ? 'lock.fill' : 'square.and.arrow.up',
+            ionicon: isPublic ? 'lock-closed-outline' : 'share-social-outline',
+            role: 'secondary',
+            useIoniconOnIOS: !isPublic,
+            disabled: updateShareMutation.isPending,
+            onPress: handleToggleShare,
+            accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+            identifier: 'food-detail-share',
+          } as const,
           {
             kind: 'text',
             label: 'Edit',

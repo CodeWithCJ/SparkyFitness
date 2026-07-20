@@ -191,12 +191,15 @@ const FoodDatabaseManager = () => {
           </Badge>
         );
       }
-      if (food.user_id === user?.id && !food.shared_with_public) {
-        return (
-          <Badge variant="secondary" className="text-xs w-fit">
-            {t('foodDatabaseManager.private', 'Private')}
-          </Badge>
-        );
+      if (food.user_id === user?.id) {
+        if (!food.shared_with_public) {
+          return (
+            <Badge variant="secondary" className="text-xs w-fit">
+              {t('foodDatabaseManager.private', 'Private')}
+            </Badge>
+          );
+        }
+        return null;
       }
       return (
         <Badge

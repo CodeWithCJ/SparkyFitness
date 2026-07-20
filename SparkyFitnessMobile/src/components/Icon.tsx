@@ -135,6 +135,7 @@ const ICON_MAP = {
   // Biometrics/Security
   'fingerprint': { sf: 'touchid', ion: 'finger-print-outline' },
   'lock-closed': { sf: 'lock.fill', ion: 'lock-closed-outline' },
+  'share-public': { sf: 'square.and.arrow.up', ion: 'share-social-outline', useIoniconOnIOS: true },
 
   // Wellness / Cycle
   'wellness': { sf: 'heart.circle', ion: 'heart-circle-outline' },
@@ -167,8 +168,9 @@ const Icon: React.FC<IconProps> = ({
   accessibilityLabel,
 }) => {
   const mapping = ICON_MAP[name];
+  const useIoniconOnIOS = 'useIoniconOnIOS' in mapping && (mapping as { useIoniconOnIOS?: boolean }).useIoniconOnIOS;
 
-  if (Platform.OS === 'ios') {
+  if (Platform.OS === 'ios' && !useIoniconOnIOS) {
     return (
       <SymbolView
         name={mapping.sf}

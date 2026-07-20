@@ -226,6 +226,7 @@ export interface UpdateFoodPayload {
   name?: string;
   brand?: string;
   barcode?: string | null;
+  shared_with_public?: boolean;
 }
 
 export interface DeleteFoodResponse {

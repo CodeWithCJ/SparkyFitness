@@ -16,6 +16,7 @@ export interface Exercise {
   description?: string | null;
   userId?: string | null;
   isCustom?: boolean;
+  sharedWithPublic?: boolean;
 }
 
 export interface SuggestedExercisesResponse {

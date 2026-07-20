@@ -1,14 +1,15 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import Toast from 'react-native-toast-message';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useDeleteMeal, useFavorites, useMeal, useProfile, useServerConnection, usePreferences, useToggleFavorite } from '../hooks';
+import { useDeleteMeal, useFavorites, useMeal, useProfile, useServerConnection, usePreferences, useToggleFavorite, useUpdateMeal } from '../hooks';
 import { mealToFoodInfo } from '../types/foodInfo';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import type { Meal, MealFood } from '../types/meals';
@@ -120,6 +121,37 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
 
   const canManageMeal = !!(isConnected && meal && profile?.id === meal.user_id);
 
+  const isPublic = !!meal?.is_public;
+  const { updateMeal, isPending: isSharePending } = useUpdateMeal({
+    mealId,
+    onSuccess: (updated) => {
+      Toast.show({
+        type: 'success',
+        text1: updated.is_public ? 'Meal shared publicly' : 'Meal made private',
+      });
+    },
+  });
+
+  const handleToggleShare = useCallback(() => {
+    if (!meal) return;
+    const nextIsPublic = !meal.is_public;
+    if (nextIsPublic) {
+      Alert.alert(
+        'Make public?',
+        'This meal and all of its ingredient foods will become visible to all users on this server.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Make Public',
+            onPress: () => updateMeal({ is_public: true }),
+          },
+        ]
+      );
+    } else {
+      updateMeal({ is_public: false });
+    }
+  }, [meal, updateMeal]);
+
   // Favorites: a saved meal can be starred from its detail screen, so the
   // library is no longer edit-only via search. Access is verified server-side
   // on add, so ownership is not required — only a loaded meal and a connection.
@@ -171,6 +203,17 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
       : []),
     ...(canManageMeal
       ? [
+          {
+            kind: 'icon',
+            sfSymbol: isPublic ? 'lock.fill' : 'square.and.arrow.up',
+            ionicon: isPublic ? 'lock-closed-outline' : 'share-social-outline',
+            role: 'secondary',
+            useIoniconOnIOS: !isPublic,
+            disabled: isSharePending,
+            onPress: handleToggleShare,
+            accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+            identifier: 'meal-detail-share',
+          } as const,
           {
             kind: 'text',
             label: 'Edit',

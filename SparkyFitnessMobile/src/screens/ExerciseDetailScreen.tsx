@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import {
   usePreferences,
   useProfile,
   useServerConnection,
+  useUpdateExercise,
 } from '../hooks';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
@@ -28,7 +29,7 @@ import {
   normalizeWeightUnit,
 } from '../utils/workoutSession';
 import { formatDateLabel } from '../utils/dateUtils';
-import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -113,6 +114,44 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     exercise.userId &&
     profile?.id === exercise.userId
   );
+
+  const isPublic = !!exercise.sharedWithPublic;
+  const { updateExerciseAsync, isPending: isSharePending } = useUpdateExercise();
+
+  const handleToggleShare = useCallback(async () => {
+    const nextIsPublic = !isPublic;
+    const runUpdate = async () => {
+      try {
+        const updated = await updateExerciseAsync({
+          id: exercise.id,
+          payload: { shared_with_public: nextIsPublic },
+        });
+        navigation.setParams({ updatedItem: updated });
+        Toast.show({
+          type: 'success',
+          text1: updated.sharedWithPublic ? 'Exercise shared publicly' : 'Exercise made private',
+        });
+      } catch {
+        // useUpdateExercise hook already shows error Toast on failure
+      }
+    };
+
+    if (nextIsPublic) {
+      Alert.alert(
+        'Make public?',
+        'This exercise will become visible to all users on this server.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Make Public',
+            onPress: () => void runUpdate(),
+          },
+        ]
+      );
+    } else {
+      void runUpdate();
+    }
+  }, [exercise.id, isPublic, updateExerciseAsync, navigation]);
 
   const { confirmAndDelete, isPending: isDeletePending } = useDeleteExerciseLibrary({
     exerciseId: exercise.id,
@@ -266,21 +305,38 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     });
   };
 
+  const rightItems: HeaderItem[] = [
+    ...(canManageExercise
+      ? [
+          {
+            kind: 'icon',
+            sfSymbol: isPublic ? 'lock.fill' : 'square.and.arrow.up',
+            ionicon: isPublic ? 'lock-closed-outline' : 'share-social-outline',
+            role: 'secondary',
+            useIoniconOnIOS: !isPublic,
+            disabled: isSharePending,
+            onPress: handleToggleShare,
+            accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+            identifier: 'exercise-detail-share',
+          } as const,
+          {
+            kind: 'text',
+            label: 'Edit',
+            role: 'secondary',
+            onPress: handleEdit,
+            accessibilityLabel: 'Edit exercise',
+            identifier: 'exercise-detail-edit',
+          } as const,
+        ]
+      : []),
+  ];
+
   const header = useScreenHeader({
     title: exercise.name,
     nativeTitle: exercise.name,
     borderless: true,
     left: { kind: 'back' },
-    right: canManageExercise
-      ? {
-          kind: 'text',
-          label: 'Edit',
-          role: 'secondary',
-          onPress: handleEdit,
-          accessibilityLabel: 'Edit exercise',
-          identifier: 'exercise-detail-edit',
-        }
-      : null,
+    right: rightItems.length > 0 ? rightItems : null,
   });
 
   return (

@@ -3,6 +3,9 @@ import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { Meal } from '../types/meals';
 import { mealToFoodInfo } from '../types/foodInfo';
+import { useProfile } from '../hooks';
+import { deriveShareStatus } from '../utils/shareStatus';
+import ShareStatusBadge from './ShareStatusBadge';
 import Icon from './Icon';
 
 interface MealLibraryRowProps {
@@ -28,6 +31,8 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
   showBadge = false,
   isFavorite = false,
 }) => {
+  const { profile } = useProfile();
+  const status = deriveShareStatus(meal.user_id, meal.is_public, profile?.id);
   const foodInfo = useMemo(() => mealToFoodInfo(meal), [meal]);
   const itemCount = meal.foods.length;
   // Gold, not accent: this passive marker carries the "favorite" cue by colour,
@@ -64,6 +69,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
                 </Text>
               </View>
             ) : null}
+            <ShareStatusBadge status={status} />
           </View>
           {meal.description ? (
             <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>

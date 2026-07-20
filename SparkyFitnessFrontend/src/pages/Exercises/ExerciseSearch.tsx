@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,12 +9,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Loader2, Search, Clock, TrendingUp } from 'lucide-react';
+import { Plus, Loader2, Search, Clock, TrendingUp, Filter } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import BodyMapFilter from './BodyMapFilter';
 
 import { Exercise } from '@/types/exercises';
 import { ExerciseSearchListItem } from './ExerciseSearchListItem';
 import { useExerciseSearchHook } from '@/hooks/Exercises/useExerciseSearchHook';
+
+interface OwnershipFields {
+  user_id?: string | null;
+  userId?: string | null;
+  is_public?: boolean | null;
+  shared_with_public?: boolean | null;
+  sharedWithPublic?: boolean | null;
+}
+
+const filterItems = <T,>(
+  items: T[],
+  filter: 'all' | 'mine' | 'family' | 'public',
+  currentUserId?: string
+): T[] => {
+  if (filter === 'all') return items;
+  return items.filter((item) => {
+    const raw = item as unknown as OwnershipFields;
+    const isOwner = !!(
+      (raw.user_id && raw.user_id === currentUserId) ||
+      (raw.userId && raw.userId === currentUserId)
+    );
+    const isPublic = !!(
+      raw.is_public ||
+      raw.shared_with_public ||
+      raw.sharedWithPublic
+    );
+
+    if (filter === 'mine') {
+      return isOwner;
+    }
+    if (filter === 'family') {
+      return (
+        !isOwner && !isPublic && (raw.user_id != null || raw.userId != null)
+      );
+    }
+    if (filter === 'public') {
+      return isPublic;
+    }
+    return true;
+  });
+};
 
 interface ExerciseSearchProps {
   onExerciseSelect: (
@@ -63,6 +106,24 @@ const ExerciseSearch = ({
     initialSearchSource,
   });
 
+  const { user } = useAuth();
+  const [ownershipFilter, setOwnershipFilter] = useState<
+    'all' | 'mine' | 'family' | 'public'
+  >('all');
+
+  const filteredRecentExercises = useMemo(
+    () => filterItems(recentExercises, ownershipFilter, user?.id),
+    [recentExercises, ownershipFilter, user?.id]
+  );
+  const filteredTopExercises = useMemo(
+    () => filterItems(topExercises, ownershipFilter, user?.id),
+    [topExercises, ownershipFilter, user?.id]
+  );
+  const filteredExercises = useMemo(
+    () => filterItems(exercises, ownershipFilter, user?.id),
+    [exercises, ownershipFilter, user?.id]
+  );
+
   const triggerSearch = () => {
     handleSearch(searchTerm);
     if (searchSource === 'external') setHasSearchedExternal(true);
@@ -99,12 +160,12 @@ const ExerciseSearch = ({
     searchSource === 'internal' &&
     !isSearching &&
     !loading &&
-    recentExercises.length > 0;
+    filteredRecentExercises.length > 0;
   const showTop =
     searchSource === 'internal' &&
     !isSearching &&
     !loading &&
-    topExercises.length > 0;
+    filteredTopExercises.length > 0;
   const showInternalResults =
     searchSource === 'internal' && isSearching && !loading;
   const showExternalResults =
@@ -158,6 +219,35 @@ const ExerciseSearch = ({
             className="pl-9 h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus-visible:ring-blue-500"
           />
         </div>
+        {searchSource === 'internal' && (
+          <div className="flex items-center gap-1 shrink-0">
+            <Filter className="h-4 w-4 text-gray-500 shrink-0" />
+            <Select
+              value={ownershipFilter}
+              onValueChange={(value: 'all' | 'mine' | 'family' | 'public') =>
+                setOwnershipFilter(value)
+              }
+            >
+              <SelectTrigger className="w-32 h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-blue-500">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {t('exerciseSearch.ownership.all', 'All')}
+                </SelectItem>
+                <SelectItem value="mine">
+                  {t('exerciseSearch.ownership.mine', 'My Exercises')}
+                </SelectItem>
+                <SelectItem value="family">
+                  {t('exerciseSearch.ownership.family', 'Family')}
+                </SelectItem>
+                <SelectItem value="public">
+                  {t('exerciseSearch.ownership.public', 'Public')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <Button
           onClick={triggerSearch}
           disabled={loading}
@@ -214,7 +304,7 @@ const ExerciseSearch = ({
             {t('exercise.exerciseSearch.recent', 'Recent')}
           </div>
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
-            {renderExerciseList(recentExercises, 'internal')}
+            {renderExerciseList(filteredRecentExercises, 'internal')}
           </div>
         </section>
       )}
@@ -227,7 +317,7 @@ const ExerciseSearch = ({
             {t('exercise.exerciseSearch.popular', 'Most Used')}
           </div>
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
-            {renderExerciseList(topExercises, 'internal')}
+            {renderExerciseList(filteredTopExercises, 'internal')}
           </div>
         </section>
       )}
@@ -235,8 +325,8 @@ const ExerciseSearch = ({
       {/* Internal search results */}
       {showInternalResults && (
         <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5">
-          {exercises.length > 0 ? (
-            renderExerciseList(exercises, 'internal')
+          {filteredExercises.length > 0 ? (
+            renderExerciseList(filteredExercises, 'internal')
           ) : (
             <p className="text-sm text-center text-gray-400 py-6">
               {t('exercise.exerciseSearch.noResults', 'No exercises found.')}

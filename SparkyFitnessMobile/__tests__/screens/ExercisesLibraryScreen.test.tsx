@@ -9,6 +9,7 @@ import type { Exercise } from '../../src/types/exercise';
 jest.mock('../../src/hooks', () => ({
   useExercisesLibrary: jest.fn(),
   useServerConnection: jest.fn(),
+  useProfile: jest.fn(() => ({ profile: undefined, isLoading: false })),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({

@@ -3,6 +3,9 @@ import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { FoodItem } from '../types/foods';
 import { formatServingUnit } from '../utils/foodDetails';
+import { useProfile } from '../hooks';
+import { deriveShareStatus } from '../utils/shareStatus';
+import ShareStatusBadge from './ShareStatusBadge';
 import Icon from './Icon';
 import VerifiedBadge from './VerifiedBadge';
 
@@ -21,6 +24,8 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
   showDivider = false,
   isFavorite = false,
 }) => {
+  const { profile } = useProfile();
+  const status = deriveShareStatus(food.user_id, food.shared_with_public, profile?.id);
   // Gold, not accent: a passive indicator, not a tap target. See MealLibraryRow.
   const [goldColor] = useCSSVariable(['--color-cat-amber']) as [string];
   return (
@@ -32,13 +37,14 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
     >
       <View className="flex-row justify-between items-center">
         <View className="flex-1 mr-3">
-          <View className="flex-row items-center">
+          <View className="flex-row items-center gap-1.5">
             <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
               {food.name}
             </Text>
             {food.provider_verified ? (
               <VerifiedBadge size="sm" style={{ marginLeft: 4 }} />
             ) : null}
+            <ShareStatusBadge status={status} />
           </View>
           {food.brand ? (
             <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>

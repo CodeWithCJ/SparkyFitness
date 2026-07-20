@@ -12,12 +12,36 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import MealLibraryRow from '../components/MealLibraryRow';
+import SegmentedControl from '../components/SegmentedControl';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useFavorites, useMealSearch, useMeals, useServerConnection } from '../hooks';
+import { useFavorites, useMealSearch, useMeals, useServerConnection, useProfile } from '../hooks';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Meal } from '../types/meals';
+
+const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
+  items: T[],
+  filter: 'all' | 'mine' | 'family' | 'public',
+  currentUserId?: string
+) => {
+  if (filter === 'all') return items;
+  return items.filter((item) => {
+    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
+    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
+    
+    if (filter === 'mine') {
+      return isOwner;
+    }
+    if (filter === 'family') {
+      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
+    }
+    if (filter === 'public') {
+      return isPublic;
+    }
+    return true;
+  });
+};
 
 type MealsLibraryScreenProps = RootStackScreenProps<'MealsLibrary'>;
 
@@ -31,10 +55,12 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
+  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { profile } = useProfile();
   const {
     meals,
     isLoading: isMealsLoading,
@@ -55,6 +81,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   );
 
   const displayedMeals = isSearchActive ? searchResults : meals;
+  const filteredMeals = useMemo(() => filterItems(displayedMeals, ownershipFilter, profile?.id), [displayedMeals, ownershipFilter, profile?.id]);
   const isLoading = isSearchActive
     ? isSearching && searchResults.length === 0
     : isMealsLoading;
@@ -103,18 +130,32 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
     </View>
   );
 
-  const renderEmpty = () => (
-    <View className="px-6 py-10 items-center">
-      <Text className="text-text-primary text-base font-medium text-center">
-        {isSearchActive ? 'No matching meals found' : 'No meals found'}
-      </Text>
-      <Text className="text-text-secondary text-sm mt-2 text-center">
-        {isSearchActive
-          ? 'Try a different search term to find saved meals.'
-          : 'Meals you create will appear here.'}
-      </Text>
-    </View>
-  );
+  const renderEmpty = () => {
+    if (displayedMeals.length > 0 && filteredMeals.length === 0) {
+      return (
+        <View className="px-6 py-10 items-center">
+          <Text className="text-text-primary text-base font-medium text-center">
+            No matching meals found
+          </Text>
+          <Text className="text-text-secondary text-sm mt-2 text-center">
+            Try changing your ownership filter.
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <View className="px-6 py-10 items-center">
+        <Text className="text-text-primary text-base font-medium text-center">
+          {isSearchActive ? 'No matching meals found' : 'No meals found'}
+        </Text>
+        <Text className="text-text-secondary text-sm mt-2 text-center">
+          {isSearchActive
+            ? 'Try a different search term to find saved meals.'
+            : 'Meals you create will appear here.'}
+        </Text>
+      </View>
+    );
+  };
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -149,13 +190,13 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
 
     return (
       <FlatList
-        data={displayedMeals}
+        data={filteredMeals}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
           <MealLibraryRow
             meal={item}
             isFavorite={favoriteMealIds.has(item.id)}
-            showDivider={index < displayedMeals.length - 1}
+            showDivider={index < filteredMeals.length - 1}
             onPress={() => handleMealPress(item)}
           />
         )}
@@ -174,7 +215,23 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {header}
-      {isConnected ? renderSearchBar() : null}
+      {isConnected ? (
+        <>
+          {renderSearchBar()}
+          <View className="px-4 pb-2 border-b border-border-subtle">
+            <SegmentedControl
+              segments={[
+                { key: 'all', label: 'All' },
+                { key: 'mine', label: 'Mine' },
+                { key: 'family', label: 'Family' },
+                { key: 'public', label: 'Public' },
+              ]}
+              activeKey={ownershipFilter}
+              onSelect={setOwnershipFilter}
+            />
+          </View>
+        </>
+      ) : null}
       {renderContent()}
     </View>
   );

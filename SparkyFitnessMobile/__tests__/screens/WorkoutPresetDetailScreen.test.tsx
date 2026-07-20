@@ -15,6 +15,7 @@ jest.mock('../../src/hooks', () => ({
   useProfile: jest.fn(() => ({ profile: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
   useDeleteWorkoutPreset: jest.fn(() => ({ confirmAndDelete: jest.fn(), isPending: false })),
+  useUpdateWorkoutPreset: jest.fn(() => ({ updateWorkoutPreset: jest.fn(), isPending: false })),
 }));
 
 jest.mock('../../src/hooks/useStartLiveWorkout', () => ({

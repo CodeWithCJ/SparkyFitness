@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { ActivityIndicator, View, Text, TouchableOpacity, TextInput, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -6,7 +6,9 @@ import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus } from '../hooks';
+import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus, useProfile } from '../hooks';
+import { deriveShareStatus } from '../utils/shareStatus';
+import ShareStatusBadge from '../components/ShareStatusBadge';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
@@ -15,6 +17,7 @@ import {
   buildPresetStartExercisesPayload,
   buildSingleExerciseStartPayload,
 } from '../utils/workoutSession';
+import SegmentedControl from '../components/SegmentedControl';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -23,6 +26,29 @@ type PresetSearchScreenProps = RootStackScreenProps<'PresetSearch'>;
 
 /** startingId sentinel for the pinned empty-workout row (preset rows use preset ids). */
 const EMPTY_START_ID = 'empty-workout';
+
+const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
+  items: T[],
+  filter: 'all' | 'mine' | 'family' | 'public',
+  currentUserId?: string
+) => {
+  if (filter === 'all') return items;
+  return items.filter((item) => {
+    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
+    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
+    
+    if (filter === 'mine') {
+      return isOwner;
+    }
+    if (filter === 'family') {
+      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
+    }
+    if (filter === 'public') {
+      return isPublic;
+    }
+    return true;
+  });
+};
 
 const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
@@ -34,13 +60,17 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     '--color-border-subtle',
   ]) as [string, string, string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const { profile } = useProfile();
 
   const [searchText, setSearchText] = useState('');
+  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [startingId, setStartingId] = useState<string | number | null>(null);
 
   const { presets, isLoading, isError, refetch } = useWorkoutPresets();
   const { searchResults, isSearching, isSearchActive, isSearchError } = useWorkoutPresetSearch(searchText);
+  const filteredPresets = useMemo(() => filterItems(presets, ownershipFilter, profile?.id), [presets, ownershipFilter, profile?.id]);
+  const filteredSearchResults = useMemo(() => filterItems(searchResults, ownershipFilter, profile?.id), [searchResults, ownershipFilter, profile?.id]);
   const { startLiveWorkout, isStarting } = useStartLiveWorkout(navigation);
 
   useRefetchOnFocus(refetch, true);
@@ -75,38 +105,46 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
 
   useSelectedExercise(route.params, handleFirstExerciseSelected);
 
-  const renderPresetRow = useCallback(({ item }: { item: WorkoutPreset }) => (
-    <TouchableOpacity
-      className="flex-row items-center px-4 py-3 border-b border-border-subtle"
-      activeOpacity={0.7}
-      onPress={() => handleSelectPreset(item)}
-      disabled={isStarting}
-    >
-      <View className="flex-1">
-        <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-        <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
-        </Text>
-      </View>
-      {isStarting && startingId === item.id && (
-        <ActivityIndicator size="small" color={accentColor} testID="preset-row-spinner" />
-      )}
-    </TouchableOpacity>
-  ), [handleSelectPreset, isStarting, startingId, textSecondary, accentColor]);
+  const renderPresetRow = useCallback(({ item }: { item: WorkoutPreset }) => {
+    const status = deriveShareStatus(item.user_id, item.is_public, profile?.id);
+    return (
+      <TouchableOpacity
+        className="flex-row items-center px-4 py-3 border-b border-border-subtle"
+        activeOpacity={0.7}
+        onPress={() => handleSelectPreset(item)}
+        disabled={isStarting}
+      >
+        <View className="flex-1">
+          <View className="flex-row items-center gap-1.5">
+            <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
+              {item.name}
+            </Text>
+            <ShareStatusBadge status={status} />
+          </View>
+          <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
+            {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
+          </Text>
+        </View>
+        {isStarting && startingId === item.id && (
+          <ActivityIndicator size="small" color={accentColor} testID="preset-row-spinner" />
+        )}
+      </TouchableOpacity>
+    );
+  }, [handleSelectPreset, isStarting, startingId, textSecondary, accentColor, profile]);
 
   const renderSearchResults = () => {
-    if (isSearching && searchResults.length === 0) {
+    if (isSearching && filteredSearchResults.length === 0) {
       return <StatusView loading />;
     }
     if (isSearchError) {
       return <StatusView icon="alert-circle" title="Failed to search presets" />;
     }
-    if (searchResults.length === 0) {
+    if (filteredSearchResults.length === 0) {
       return <StatusView title="No matching presets found" />;
     }
     return (
       <FlatList
-        data={searchResults}
+        data={filteredSearchResults}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderPresetRow}
         keyboardShouldPersistTaps="handled"
@@ -134,9 +172,12 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     if (presets.length === 0) {
       return <StatusView title="No presets yet" subtitle="Start an empty workout, or save a workout as a preset to see it here" />;
     }
+    if (filteredPresets.length === 0) {
+      return <StatusView title="No matching presets found" subtitle="Try changing your ownership filter" />;
+    }
     return (
       <FlatList
-        data={presets}
+        data={filteredPresets}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderPresetRow}
         keyboardShouldPersistTaps="handled"
@@ -179,7 +220,19 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
         </View>
       </View>
 
-      {/* Pinned empty-workout start — stays visible across list loading/empty/error states */}
+      {/* Ownership filter */}
+      <View className="px-4 pb-2 border-b border-border-subtle">
+        <SegmentedControl
+          segments={[
+            { key: 'all', label: 'All' },
+            { key: 'mine', label: 'Mine' },
+            { key: 'family', label: 'Family' },
+            { key: 'public', label: 'Public' },
+          ]}
+          activeKey={ownershipFilter}
+          onSelect={setOwnershipFilter}
+        />
+      </View>
       <TouchableOpacity
         className="flex-row items-center px-4 py-3 border-b border-border-subtle"
         activeOpacity={0.7}
