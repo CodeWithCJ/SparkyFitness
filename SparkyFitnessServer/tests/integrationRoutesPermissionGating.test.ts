@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 
-// Proves the switched-context permission gate is wired onto the Fitbit, Polar,
-// Strava, and Withings integration routers (Google Health and Garmin have their
-// own dedicated suites). The real middleware logic lives in
+// Proves the switched-context permission gate is wired onto the Fitbit, Oura,
+// Polar, Strava, and Withings integration routers (Google Health and Garmin
+// have their own dedicated suites). The real middleware logic lives in
 // checkPermissionMiddleware.test.ts; here we only assert the gate is attached
 // and fails closed. When permission is denied the handler never runs, so the
 // integration services are mocked as inert.
@@ -40,6 +40,8 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 // Inert service mocks — handlers must not be reached on the denied path.
 vi.mock('../integrations/fitbit/fitbitService.js', () => ({ default: {} }));
 vi.mock('../services/fitbitService.js', () => ({ default: {} }));
+vi.mock('../integrations/oura/ouraService.js', () => ({ default: {} }));
+vi.mock('../services/ouraService.js', () => ({ default: {} }));
 vi.mock('../integrations/polar/polarService.js', () => ({ default: {} }));
 vi.mock('../services/polarService.js', () => ({ default: {} }));
 vi.mock('../integrations/strava/stravaService.js', () => ({ default: {} }));
@@ -48,6 +50,7 @@ vi.mock('../integrations/withings/withingsService.js', () => ({ default: {} }));
 vi.mock('../services/withingsService.js', () => ({ default: {} }));
 
 import fitbitRoutes from '../routes/fitbitRoutes.js';
+import ouraRoutes from '../routes/ouraRoutes.js';
 import polarRoutes from '../routes/polarRoutes.js';
 import stravaRoutes from '../routes/stravaRoutes.js';
 import withingsRoutes from '../routes/withingsRoutes.js';
@@ -61,6 +64,7 @@ function appWith(mountPath: string, router: express.Router) {
 
 const cases: Array<[string, express.Router]> = [
   ['/fitbit', fitbitRoutes],
+  ['/oura', ouraRoutes],
   ['/polar', polarRoutes],
   ['/strava', stravaRoutes],
   ['/withings', withingsRoutes],

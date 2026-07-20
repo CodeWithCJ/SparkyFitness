@@ -6,6 +6,7 @@ import { MANUAL_SYNC_PROVIDERS } from '@/constants/integrationConstants';
 import {
   handleManualSyncFitbit,
   handleManualSyncGarmin,
+  handleManualSyncOura,
   handleManualSyncPolar,
   handleManualSyncStrava,
   handleManualSync,
@@ -46,6 +47,9 @@ export const useSyncAllMutation = () => {
               break;
             case 'fitbit':
               await handleManualSyncFitbit();
+              break;
+            case 'oura':
+              await handleManualSyncOura();
               break;
             case 'polar':
               await handleManualSyncPolar(provider.id);

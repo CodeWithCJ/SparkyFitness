@@ -47,6 +47,8 @@ export interface ExternalDataProvider {
   withings_token_expires?: string | null;
   fitbit_last_sync_at?: string | null;
   fitbit_token_expires?: string | null;
+  oura_last_sync_at?: string | null;
+  oura_token_expires?: string | null;
   polar_last_sync_at?: string | null;
   polar_token_expires?: string | null;
   hevy_last_sync_at?: string | null;

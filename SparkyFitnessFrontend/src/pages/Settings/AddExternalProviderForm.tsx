@@ -15,6 +15,7 @@ import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useConnectFitbitMutation,
+  useConnectOuraMutation,
   useConnectPolarMutation,
   useConnectStravaMutation,
   useConnectWithingsMutation,
@@ -63,6 +64,8 @@ const AddExternalProviderForm = ({
 
   const { mutateAsync: handleConnectFitbit, isPending: isConnectingFitbit } =
     useConnectFitbitMutation();
+  const { mutateAsync: handleConnectOura, isPending: isConnectingOura } =
+    useConnectOuraMutation();
   const { mutateAsync: handleConnectPolar, isPending: isConnectingPolar } =
     useConnectPolarMutation();
   const { mutateAsync: handleConnectStrava, isPending: isConnectingStrava } =
@@ -78,6 +81,7 @@ const AddExternalProviderForm = ({
     isCreatingProvider ||
     isCreatingGlobal ||
     isConnectingFitbit ||
+    isConnectingOura ||
     isConnectingPolar ||
     isConnectingStrava ||
     isConnectingWithings;
@@ -103,6 +107,7 @@ const AddExternalProviderForm = ({
   const connectionHandlers: Record<string, (id: string) => Promise<void>> = {
     withings: () => handleConnectWithings(),
     fitbit: () => handleConnectFitbit(),
+    oura: () => handleConnectOura(),
     polar: (id) => handleConnectPolar(id),
     strava: () => handleConnectStrava(),
   };

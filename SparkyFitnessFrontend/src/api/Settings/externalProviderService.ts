@@ -68,6 +68,7 @@ export const createExternalProvider = async (
         'withings',
         'garmin',
         'fitbit',
+        'oura',
         'googlehealth',
         'strava',
         'polar',
@@ -207,6 +208,55 @@ export const handleManualSyncFitbit = async (
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Fitbit sync:', error);
+    throw error;
+  }
+};
+
+export const handleConnectOura = async () => {
+  try {
+    const response = await apiCall(`/integrations/oura/authorize`, {
+      method: 'GET',
+    });
+    if (response && response.authUrl) {
+      window.location.href = response.authUrl;
+    } else {
+      throw new Error('Failed to get Oura authorization URL.');
+    }
+  } catch (error: unknown) {
+    console.error('Error connecting to Oura:', error);
+    throw error;
+  }
+};
+
+export const handleDisconnectOura = async () => {
+  if (
+    !confirm(
+      'Are you sure you want to disconnect from Oura? This will revoke access and delete all associated tokens.'
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/integrations/oura/disconnect`, {
+      method: 'POST',
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Oura:', error);
+    throw error;
+  }
+};
+
+export const handleManualSyncOura = async (
+  startDate?: string,
+  endDate?: string
+) => {
+  try {
+    await apiCall(`/integrations/oura/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
+    });
+  } catch (error: unknown) {
+    console.error('Error initiating manual Oura sync:', error);
     throw error;
   }
 };
@@ -396,6 +446,10 @@ export const fetchFitbitStatus = async (): Promise<OAuthStatusResponse> => {
   return apiCall('/integrations/fitbit/status');
 };
 
+export const fetchOuraStatus = async (): Promise<OAuthStatusResponse> => {
+  return apiCall('/integrations/oura/status');
+};
+
 export const fetchPolarStatus = async (
   providerId: string
 ): Promise<OAuthStatusResponse> => {
@@ -456,6 +510,14 @@ export const getEnrichedProviders = async (): Promise<
               const status = await fetchFitbitStatus();
               enriched.fitbit_last_sync_at = status.lastSyncAt;
               enriched.fitbit_token_expires = status.tokenExpiresAt;
+            }
+            break;
+          }
+          case 'oura': {
+            if (provider.has_token) {
+              const status = await fetchOuraStatus();
+              enriched.oura_last_sync_at = status.lastSyncAt;
+              enriched.oura_token_expires = status.tokenExpiresAt;
             }
             break;
           }

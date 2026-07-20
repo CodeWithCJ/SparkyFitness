@@ -255,6 +255,10 @@ const ExternalProviderList = ({
         editData.provider_type === 'fitbit'
           ? editData.fitbit_token_expires
           : null,
+      oura_last_sync_at:
+        editData.provider_type === 'oura' ? editData.oura_last_sync_at : null,
+      oura_token_expires:
+        editData.provider_type === 'oura' ? editData.oura_token_expires : null,
       polar_last_sync_at:
         editData.provider_type === 'polar' ? editData.polar_last_sync_at : null,
       polar_token_expires:
@@ -273,6 +277,7 @@ const ExternalProviderList = ({
         editData.provider_type === 'withings' ||
         editData.provider_type === 'garmin' ||
         editData.provider_type === 'fitbit' ||
+        editData.provider_type === 'oura' ||
         editData.provider_type === 'googlehealth' ||
         editData.provider_type === 'hevy' ||
         editData.provider_type === 'strava' ||
@@ -381,6 +386,8 @@ const ExternalProviderList = ({
       withings_token_expires: provider.withings_token_expires || '',
       fitbit_last_sync_at: provider.fitbit_last_sync_at || '',
       fitbit_token_expires: provider.fitbit_token_expires || '',
+      oura_last_sync_at: provider.oura_last_sync_at || '',
+      oura_token_expires: provider.oura_token_expires || '',
       polar_last_sync_at: provider.polar_last_sync_at || '',
       polar_token_expires: provider.polar_token_expires || '',
     });

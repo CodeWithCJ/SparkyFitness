@@ -361,7 +361,7 @@ async function getCustomMeasurementsData(
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      "SELECT category_id, TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, entry_hour AS hour, value, notes, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp",
+      "SELECT category_id, TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, entry_hour, value, notes, entry_timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp",
       [userId, categoryId, startDate, endDate]
     );
     return result.rows;

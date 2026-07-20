@@ -88,6 +88,9 @@ const WithingsCallback = lazyWithChunkRecovery(
 const FitbitCallback = lazyWithChunkRecovery(
   () => import('@/pages/Integrations/FitbitCallback')
 );
+const OuraCallback = lazyWithChunkRecovery(
+  () => import('@/pages/Integrations/OuraCallback')
+);
 const GoogleHealthCallback = lazyWithChunkRecovery(
   () => import('@/pages/Integrations/GoogleHealthCallback')
 );
@@ -295,6 +298,11 @@ const router = createBrowserRouter([
       {
         path: '/fitbit/callback',
         Component: FitbitCallback,
+        ErrorBoundary: RootErrorBoundary,
+      },
+      {
+        path: '/oura/callback',
+        Component: OuraCallback,
         ErrorBoundary: RootErrorBoundary,
       },
       {
