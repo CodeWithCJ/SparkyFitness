@@ -133,6 +133,9 @@ const ICON_MAP = {
   // Biometrics/Security
   'fingerprint': { sf: 'touchid', ion: 'finger-print-outline' },
   'lock-closed': { sf: 'lock.fill', ion: 'lock-closed-outline' },
+
+  // Wellness / Cycle
+  'wellness': { sf: 'heart.circle', ion: 'heart-circle-outline' },
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

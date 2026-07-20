@@ -4,6 +4,7 @@ import type {
   FoodPhotoEstimateResponse,
   IndividualSessionResponse,
   PresetSessionResponse,
+  SharedPregnancy,
 } from '@workspace/shared';
 import type { FoodInfoItem } from './foodInfo';
 import type { FoodEntry } from './foodEntries';
@@ -33,6 +34,10 @@ export type TabParamList = {
 export type RootStackParamList = {
   Onboarding: undefined;
   Tabs: NavigatorScreenParams<TabParamList>;
+  CycleSettings: undefined;
+  CycleOnboarding: undefined;
+  CycleHub: { initialTab?: 'today' | 'insights' | 'care' } | undefined;
+  PregnancySetup: { pregnancy?: SharedPregnancy } | undefined;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
   ExercisesLibrary: undefined;

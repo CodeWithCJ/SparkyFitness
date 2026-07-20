@@ -108,3 +108,25 @@ export const chatHistoryQueryKey = ['chatHistory'] as const;
 
 export const nutritionTrendsQueryKey = (startDate: string, endDate: string) =>
   ['nutritionTrends', startDate, endDate] as const;
+
+// --- Cycle & Pregnancy ---
+export const cycleSettingsQueryKey = ['cycleSettings'] as const;
+export const cycleLogQueryKey = (date: string) => ['cycleLog', date] as const;
+export const cycleLogsRangeQueryKey = (start: string, end: string) => ['cycleLogsRange', start, end] as const;
+export const cyclesQueryKey = ['cycles'] as const;
+export const cycleOverviewQueryKey = ['cycleOverview'] as const;
+export const cycleInsightsQueryKey = ['cycleInsights'] as const;
+export const cycleFertilityQueryKey = ['cycleFertility'] as const;
+export const cycleTestsQueryKey = ['cycleTests'] as const;
+export const cycleCorrelationsQueryKey = ['cycleCorrelations'] as const;
+export const cycleDisplayPreferencesQueryKey = ['cycleDisplayPreferences'] as const;
+
+export const pregnancyCurrentQueryKey = ['pregnancyCurrent'] as const;
+export const pregnancyOverviewQueryKey = ['pregnancyOverview'] as const;
+export const pregnancyKicksQueryKey = (sessionId?: string) => ['pregnancyKicks', sessionId ?? 'current'] as const;
+export const pregnancyContractionsQueryKey = ['pregnancyContractions'] as const;
+export const pregnancyChecklistQueryKey = ['pregnancyChecklist'] as const;
+export const pregnancyAppointmentsQueryKey = ['healthAppointments'] as const;
+export const pregnancyPhotosQueryKey = ['pregnancyPhotos'] as const;
+
+export const symptomEntriesQueryKey = (fromDate: string, toDate: string) => ['symptomEntries', fromDate, toDate] as const;

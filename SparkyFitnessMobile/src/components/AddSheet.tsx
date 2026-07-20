@@ -26,6 +26,10 @@ interface AddSheetProps {
   onBarcodeScan: () => void;
   onAddMeasurements: () => void;
   onAskSparky: () => void;
+  onOpenCycle?: () => void;
+  showCycleCard?: boolean;
+  cycleLabel?: string;
+  cycleIcon?: IconName;
   onDismissWithoutAction?: () => void;
 }
 
@@ -36,7 +40,7 @@ interface ActionCard {
 }
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
-  ({ onAddFood, onStartWorkout, onAddActivity, onLogWorkout, onSyncHealthData, onBarcodeScan, onAddMeasurements, onAskSparky, onDismissWithoutAction }, ref) => {
+  ({ onAddFood, onStartWorkout, onAddActivity, onLogWorkout, onSyncHealthData, onBarcodeScan, onAddMeasurements, onAskSparky, onOpenCycle, showCycleCard, cycleLabel, cycleIcon, onDismissWithoutAction }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
@@ -287,6 +291,9 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
                 {renderCard(cards[2])}
                 {renderCard(cards[3])}
               </View>
+              {showCycleCard && onOpenCycle
+                ? renderSecondaryRow(cycleLabel ?? 'Wellness', cycleIcon ?? 'wellness', onOpenCycle)
+                : null}
               {renderSecondaryRow('Ask Sparky', 'sparkles', onAskSparky)}
               {renderSecondaryRow('Sync Health Data', 'sync', onSyncHealthData)}
             </>

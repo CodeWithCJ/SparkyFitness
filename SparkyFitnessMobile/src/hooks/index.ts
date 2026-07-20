@@ -37,6 +37,23 @@ export {
   customNutrientsQueryKey,
   nutrientDisplayPreferencesQueryKey,
   chatHistoryQueryKey,
+  cycleSettingsQueryKey,
+  cycleLogQueryKey,
+  cycleLogsRangeQueryKey,
+  cyclesQueryKey,
+  cycleOverviewQueryKey,
+  cycleInsightsQueryKey,
+  cycleFertilityQueryKey,
+  cycleTestsQueryKey,
+  cycleCorrelationsQueryKey,
+  cycleDisplayPreferencesQueryKey,
+  pregnancyCurrentQueryKey,
+  pregnancyOverviewQueryKey,
+  pregnancyKicksQueryKey,
+  pregnancyContractionsQueryKey,
+  pregnancyChecklistQueryKey,
+  pregnancyAppointmentsQueryKey,
+  pregnancyPhotosQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useServerConfigs } from './useServerConfigs';
@@ -114,3 +131,14 @@ export { useNutrientDisplayPreferences } from './useNutrientDisplayPreferences';
 export { useChatHistory } from './useChatHistory';
 export { useNutritionTrends } from './useNutritionTrends';
 export type { TrendRange } from './useNutritionTrends';
+
+// --- Cycle & Pregnancy Hooks ---
+export { useCycleSettings } from './useCycleSettings';
+export { useCycleMode } from './useCycleMode';
+export { useCycleLog, useCycleLogsRange } from './useCycleLogs';
+export { useUpsertCycleLog } from './useUpsertCycleLog';
+export { useSymptomEntries, useSymptomMutations } from './useSymptoms';
+export { useCycleHistory } from './useCycleHistory';
+export { useCycleOverview, useCycleInsights, useCycleCorrelations } from './useCycleInsights';
+export { useCycleTests, useCycleTestMutations } from './useCycleTests';
+
