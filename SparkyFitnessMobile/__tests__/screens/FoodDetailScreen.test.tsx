@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   pressAction,
   pressActionByAccessibilityLabel,
@@ -14,6 +15,7 @@ jest.mock('../../src/hooks', () => ({
   useFoodVariants: jest.fn(),
   useProfile: jest.fn(),
   useServerConnection: jest.fn(),
+  useUpdateFood: jest.fn(() => ({ updateFood: jest.fn(), isPending: false })),
   usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
   useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() })),
   useFavorites: jest.fn(() => ({ favoriteFoods: [], favoriteMeals: [], isLoading: false, isError: false, refetch: jest.fn() })),
@@ -53,7 +55,7 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
     default: ({ options, onSelect, renderTrigger, value }: any) => (
       <View>
         {renderTrigger?.({
-          onPress: () => {},
+          onPress: () => { },
           selectedOption: options.find((option: any) => option.value === value),
         })}
         {options.map((option: any) => (
@@ -138,11 +140,15 @@ describe('FoodDetailScreen', () => {
     },
   });
 
+  let queryClient: QueryClient;
+
   const renderScreen = (itemOverrides: Record<string, unknown> = {}) =>
     render(
-      <SafeAreaProvider initialMetrics={{ insets, frame }}>
-        <FoodDetailScreen navigation={navigation} route={buildRoute(itemOverrides) as any} />
-      </SafeAreaProvider>,
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodDetailScreen navigation={navigation} route={buildRoute(itemOverrides) as any} />
+        </SafeAreaProvider>
+      </QueryClientProvider>,
     );
 
   const renderScreenWithParams = (
@@ -150,265 +156,274 @@ describe('FoodDetailScreen', () => {
     itemOverrides: Record<string, unknown> = {},
   ) =>
     render(
-      <SafeAreaProvider initialMetrics={{ insets, frame }}>
-        <FoodDetailScreen
-          navigation={navigation}
-          route={buildRouteWithParams(paramsOverrides, itemOverrides) as any}
-        />
-      </SafeAreaProvider>,
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodDetailScreen
+            navigation={navigation}
+            route={buildRouteWithParams(paramsOverrides, itemOverrides) as any}
+          />
+        </SafeAreaProvider>
+      </QueryClientProvider>,
     );
 
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
     jest.clearAllMocks();
     mockUseProfile.mockReturnValue({
-      profile: { id: 'user-1' } as any,
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: jest.fn(),
+          profile: {id: 'user-1' } as any,
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
     });
-    mockUseServerConnection.mockReturnValue({
-      isConnected: true,
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: jest.fn(),
+        mockUseServerConnection.mockReturnValue({
+          isConnected: true,
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
     });
-    mockUseFavorites.mockReturnValue({
-      favoriteFoods: [],
-      favoriteMeals: [],
-      isLoading: false,
-      isError: false,
-      refetch: jest.fn(),
+        mockUseFavorites.mockReturnValue({
+          favoriteFoods: [],
+        favoriteMeals: [],
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
     } as any);
-    mockUseToggleFavorite.mockReturnValue({
-      toggleFavorite: jest.fn(),
-      isPending: false,
+        mockUseToggleFavorite.mockReturnValue({
+          toggleFavorite: jest.fn(),
+        isPending: false,
     });
-    mockUseDeleteFood.mockReturnValue({
-      confirmAndDelete: mockConfirmAndDelete,
-      invalidateCaches: jest.fn(),
-      isPending: false,
+        mockUseDeleteFood.mockReturnValue({
+          confirmAndDelete: mockConfirmAndDelete,
+        invalidateCaches: jest.fn(),
+        isPending: false,
     });
-    mockUseFoodVariants.mockReturnValue({
-      variants: [
+        mockUseFoodVariants.mockReturnValue({
+          variants: [
         {
           id: 'variant-1',
-          food_id: 'food-1',
-          serving_size: 1,
-          serving_unit: 'cup',
-          calories: 100,
-          protein: 15,
-          carbs: 6,
-          fat: 0,
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 100,
+        protein: 15,
+        carbs: 6,
+        fat: 0,
         },
         {
           id: 'variant-2',
-          food_id: 'food-1',
-          serving_size: 2,
-          serving_unit: 'cup',
-          calories: 200,
-          protein: 30,
-          carbs: 12,
-          fat: 0,
+        food_id: 'food-1',
+        serving_size: 2,
+        serving_unit: 'cup',
+        calories: 200,
+        protein: 30,
+        carbs: 12,
+        fat: 0,
         },
-      ] as any,
-      isLoading: false,
-      isError: false,
+        ] as any,
+        isLoading: false,
+        isError: false,
     });
   });
 
   it('updates the displayed nutrition when the selected serving changes and logs the selected variant', async () => {
     const screen = renderScreen();
 
-    expect(screen.getByText('Greek Yogurt')).toBeTruthy();
-    expect(screen.getByText('100')).toBeTruthy();
+        expect(screen.getByText('Greek Yogurt')).toBeTruthy();
+        expect(screen.getByText('100')).toBeTruthy();
 
-    fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
+        fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
 
     await waitFor(() => {
-      expect(screen.getByText('200')).toBeTruthy();
+          expect(screen.getByText('200')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText('Log Food'));
+        fireEvent.press(screen.getByText('Log Food'));
 
-    expect(navigation.navigate).toHaveBeenCalledWith(
-      'FoodEntryAdd',
-      expect.objectContaining({
-        item: expect.objectContaining({
+        expect(navigation.navigate).toHaveBeenCalledWith(
+        'FoodEntryAdd',
+        expect.objectContaining({
+          item: expect.objectContaining({
           id: 'food-1',
-          variantId: 'variant-2',
-          calories: 200,
-          servingSize: 2,
-          servingUnit: 'cup',
+        variantId: 'variant-2',
+        calories: 200,
+        servingSize: 2,
+        servingUnit: 'cup',
         }),
       }),
-    );
+        );
   });
 
   it('opens the edit form for owned foods using the selected variant values', async () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
-    pressAction(screen, navigation, 'Edit');
+        fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
+        pressAction(screen, navigation, 'Edit');
 
-    expect(navigation.navigate).toHaveBeenCalledWith(
-      'FoodForm',
-      expect.objectContaining({
-        mode: 'edit-food',
+        expect(navigation.navigate).toHaveBeenCalledWith(
+        'FoodForm',
+        expect.objectContaining({
+          mode: 'edit-food',
         foodId: 'food-1',
         variantId: 'variant-2',
         initialValues: expect.objectContaining({
           name: 'Greek Yogurt',
-          brand: 'Sparky',
-          servingSize: '2',
-          servingUnit: 'cup',
-          calories: '200',
+        brand: 'Sparky',
+        servingSize: '2',
+        servingUnit: 'cup',
+        calories: '200',
         }),
       }),
-    );
+        );
   });
 
   it('hides edit and delete actions for public foods owned by another user', () => {
     const screen = renderScreen({
-      userId: 'user-2',
-      sharedWithPublic: true,
+          userId: 'user-2',
+        sharedWithPublic: true,
     });
 
-    expect(screen.queryByText('Edit')).toBeNull();
-    expect(screen.queryByText('Delete Food')).toBeNull();
+        expect(screen.queryByText('Edit')).toBeNull();
+        expect(screen.queryByText('Delete Food')).toBeNull();
   });
 
   it('shows delete for owned foods and triggers the delete hook', () => {
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByText('Delete Food'));
+        fireEvent.press(screen.getByText('Delete Food'));
 
-    expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
+        expect(mockConfirmAndDelete).toHaveBeenCalledTimes(1);
   });
 
   it('toggles the food favorite from the header star', () => {
     const toggleFavorite = jest.fn();
-    mockUseToggleFavorite.mockReturnValue({ toggleFavorite, isPending: false });
+        mockUseToggleFavorite.mockReturnValue({toggleFavorite, isPending: false });
 
-    const screen = renderScreen();
+        const screen = renderScreen();
 
-    // Not yet starred: the action offers to add.
-    expect(
-      findHeaderItemByAccessibilityLabel(navigation, 'Add to favorites'),
-    ).toBeDefined();
+        // Not yet starred: the action offers to add.
+        expect(
+        findHeaderItemByAccessibilityLabel(navigation, 'Add to favorites'),
+        ).toBeDefined();
 
-    pressActionByAccessibilityLabel(screen, navigation, 'Add to favorites');
-    expect(toggleFavorite).toHaveBeenCalledWith({
-      type: 'food',
-      id: 'food-1',
-      isFavorite: false,
+        pressActionByAccessibilityLabel(screen, navigation, 'Add to favorites');
+        expect(toggleFavorite).toHaveBeenCalledWith({
+          type: 'food',
+        id: 'food-1',
+        isFavorite: false,
     });
   });
 
   it('shows the starred state when the food is a favorite', () => {
-    mockUseFavorites.mockReturnValue({
-      favoriteFoods: [{ id: 'food-1' }],
-      favoriteMeals: [],
-      isLoading: false,
-      isError: false,
-      refetch: jest.fn(),
-    } as any);
+          mockUseFavorites.mockReturnValue({
+            favoriteFoods: [{ id: 'food-1' }],
+            favoriteMeals: [],
+            isLoading: false,
+            isError: false,
+            refetch: jest.fn(),
+          } as any);
 
-    renderScreen();
+        renderScreen();
 
-    expect(
-      findHeaderItemByAccessibilityLabel(navigation, 'Remove from favorites'),
-    ).toBeDefined();
+        expect(
+        findHeaderItemByAccessibilityLabel(navigation, 'Remove from favorites'),
+        ).toBeDefined();
   });
 
   it('offers no favorite star for external (unsaved) foods', () => {
-    renderScreen({ source: 'external' });
+          renderScreen({ source: 'external' });
 
-    expect(
-      findHeaderItemByAccessibilityLabel(navigation, 'Add to favorites'),
-    ).toBeUndefined();
+        expect(
+        findHeaderItemByAccessibilityLabel(navigation, 'Add to favorites'),
+        ).toBeUndefined();
   });
 
   it('keeps the detail view on the simple serving picker', async () => {
     const screen = renderScreen();
 
-    expect(screen.queryByText('Create Draft Unit')).toBeNull();
-    fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
+        expect(screen.queryByText('Create Draft Unit')).toBeNull();
+        fireEvent.press(screen.getAllByText('2 cup (200 cal)')[0]);
 
     await waitFor(() => {
-      expect(screen.getByText('200')).toBeTruthy();
+          expect(screen.getByText('200')).toBeTruthy();
     });
   });
 
   it('shows the Barcode row with the current value for owned foods', () => {
-    const screen = renderScreen({ barcode: '3017620422003' });
+    const screen = renderScreen({barcode: '3017620422003' });
 
-    expect(screen.getByText('Barcode')).toBeTruthy();
-    expect(screen.getByText('3017620422003')).toBeTruthy();
+        expect(screen.getByText('Barcode')).toBeTruthy();
+        expect(screen.getByText('3017620422003')).toBeTruthy();
   });
 
   it('shows "Not set" on the Barcode row when no barcode is stored', () => {
-    const screen = renderScreen({ barcode: null });
+    const screen = renderScreen({barcode: null });
 
-    expect(screen.getByText('Barcode')).toBeTruthy();
-    expect(screen.getByText('Not set')).toBeTruthy();
+        expect(screen.getByText('Barcode')).toBeTruthy();
+        expect(screen.getByText('Not set')).toBeTruthy();
   });
 
   it('hides the Barcode row for foods the user does not own', () => {
     const screen = renderScreen({
-      userId: 'user-2',
-      sharedWithPublic: true,
-      barcode: '3017620422003',
+          userId: 'user-2',
+        sharedWithPublic: true,
+        barcode: '3017620422003',
     });
 
-    expect(screen.queryByText('Barcode')).toBeNull();
+        expect(screen.queryByText('Barcode')).toBeNull();
   });
 
   it('navigates to EditBarcode with the current barcode and returnKey on tap', () => {
-    const screen = renderScreen({ barcode: '3017620422003' });
+    const screen = renderScreen({barcode: '3017620422003' });
 
-    fireEvent.press(screen.getByText('Barcode'));
+        fireEvent.press(screen.getByText('Barcode'));
 
-    expect(navigation.navigate).toHaveBeenCalledWith('EditBarcode', {
-      foodId: 'food-1',
-      foodName: 'Greek Yogurt',
-      currentBarcode: '3017620422003',
-      returnKey: 'FoodDetail-key',
+        expect(navigation.navigate).toHaveBeenCalledWith('EditBarcode', {
+          foodId: 'food-1',
+        foodName: 'Greek Yogurt',
+        currentBarcode: '3017620422003',
+        returnKey: 'FoodDetail-key',
     });
   });
 
   it('merges updatedBarcode and clears the param', async () => {
     const screen = renderScreenWithParams(
-      { updatedBarcode: '0012345678905' },
-      { barcode: null },
-    );
+        {updatedBarcode: '0012345678905' },
+        {barcode: null },
+        );
 
     await waitFor(() => {
-      expect(screen.getByText('0012345678905')).toBeTruthy();
+          expect(screen.getByText('0012345678905')).toBeTruthy();
     });
-    expect(navigation.setParams).toHaveBeenCalledWith({
-      updatedBarcode: undefined,
+        expect(navigation.setParams).toHaveBeenCalledWith({
+          updatedBarcode: undefined,
     });
   });
 
   it('clears the stored barcode when updatedBarcode is null', async () => {
     const screen = renderScreenWithParams(
-      { updatedBarcode: null },
-      { barcode: '3017620422003' },
-    );
+        {updatedBarcode: null },
+        {barcode: '3017620422003' },
+        );
 
     await waitFor(() => {
-      expect(screen.getByText('Not set')).toBeTruthy();
+          expect(screen.getByText('Not set')).toBeTruthy();
     });
-    expect(screen.queryByText('3017620422003')).toBeNull();
+        expect(screen.queryByText('3017620422003')).toBeNull();
   });
 
   it('adopts the returned selected variant after editing', async () => {
     const screen = renderScreenWithParams({
-      updatedItem: {
-        ...baseItem,
-        servingSize: 2,
+          updatedItem: {
+          ...baseItem,
+          servingSize: 2,
         servingUnit: 'cup',
         calories: 200,
         protein: 30,
@@ -416,17 +431,17 @@ describe('FoodDetailScreen', () => {
         fat: 0,
         variantId: 'variant-2',
       },
-      updatedSelectedVariantId: 'variant-2',
+        updatedSelectedVariantId: 'variant-2',
     });
 
     await waitFor(() => {
-      expect(screen.getByText('200')).toBeTruthy();
+          expect(screen.getByText('200')).toBeTruthy();
     });
 
-    expect(screen.getAllByText('2 cup (200 cal)')[0]).toBeTruthy();
-    expect(navigation.setParams).toHaveBeenCalledWith({
-      updatedItem: undefined,
-      updatedSelectedVariantId: undefined,
+        expect(screen.getAllByText('2 cup (200 cal)')[0]).toBeTruthy();
+        expect(navigation.setParams).toHaveBeenCalledWith({
+          updatedItem: undefined,
+        updatedSelectedVariantId: undefined,
     });
   });
 });

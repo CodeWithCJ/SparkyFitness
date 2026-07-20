@@ -35,6 +35,7 @@ jest.mock('../../src/hooks', () => ({
   useRecentMeals: jest.fn(),
   useServerConnection: jest.fn(),
   useTopMeals: jest.fn(),
+  useProfile: jest.fn(() => ({ profile: { id: 'user-1' }, isLoading: false })),
   useDebounce: (value: unknown) => value,
 }));
 

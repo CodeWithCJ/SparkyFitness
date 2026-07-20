@@ -16,6 +16,7 @@ jest.mock('../../src/hooks', () => ({
   useWorkoutPresets: jest.fn(),
   useWorkoutPresetSearch: jest.fn(),
   useRefetchOnFocus: jest.fn(),
+  useProfile: jest.fn(() => ({ profile: undefined, isLoading: false })),
 }));
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({

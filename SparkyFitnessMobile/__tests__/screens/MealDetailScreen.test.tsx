@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MealDetailScreen from '../../src/screens/MealDetailScreen';
 import { useDeleteMeal, useFavorites, useMeal, useProfile, useServerConnection, useToggleFavorite } from '../../src/hooks';
@@ -10,6 +11,7 @@ jest.mock('../../src/hooks', () => ({
   useMeal: jest.fn(),
   useProfile: jest.fn(),
   useServerConnection: jest.fn(),
+  useUpdateMeal: jest.fn(() => ({ updateMeal: jest.fn(), isPending: false })),
   usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
   useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() })),
   useFavorites: jest.fn(() => ({ favoriteFoods: [], favoriteMeals: [], isLoading: false, isError: false, refetch: jest.fn() })),
@@ -111,11 +113,15 @@ describe('MealDetailScreen', () => {
     },
   };
 
+  let queryClient: QueryClient;
+
   const renderScreen = () =>
     render(
-      <SafeAreaProvider initialMetrics={{ insets, frame }}>
-        <MealDetailScreen navigation={navigation} route={route} />
-      </SafeAreaProvider>,
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <MealDetailScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>,
     );
 
   // On iOS the Edit action lives in the native header, applied via
@@ -125,6 +131,13 @@ describe('MealDetailScreen', () => {
     (navigation.setOptions as jest.Mock).mock.calls.at(-1)?.[0]?.unstable_headerRightItems;
 
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
     jest.clearAllMocks();
     mockUseServerConnection.mockReturnValue({
       isConnected: true,
@@ -182,6 +195,11 @@ describe('MealDetailScreen', () => {
       }),
       expect.objectContaining({
         type: 'button',
+        identifier: 'meal-detail-share',
+        sharesBackground: true,
+      }),
+      expect.objectContaining({
+        type: 'button',
         label: 'Edit',
         identifier: 'meal-detail-edit',
         sharesBackground: true,
@@ -209,8 +227,8 @@ describe('MealDetailScreen', () => {
   it('opens MealAdd in edit mode for owners', () => {
     renderScreen();
 
-    // [0] is the favorite star; the Edit action follows it.
-    const editItem = getHeaderRightItems()()[1];
+    // [0] is the favorite star, [1] is the share toggle, [2] is the edit action.
+    const editItem = getHeaderRightItems()()[2];
     editItem.onPress();
 
     expect(navigation.navigate).toHaveBeenCalledWith('MealAdd', {

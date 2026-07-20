@@ -9,6 +9,7 @@ import type { WorkoutPreset } from '../../src/types/workoutPresets';
 jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(),
   useWorkoutPresetsLibrary: jest.fn(),
+  useProfile: jest.fn(() => ({ profile: undefined, isLoading: false })),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({

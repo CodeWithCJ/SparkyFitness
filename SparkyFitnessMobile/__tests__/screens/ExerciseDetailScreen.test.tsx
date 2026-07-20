@@ -20,6 +20,7 @@ jest.mock('../../src/hooks', () => ({
   usePreferences: jest.fn(),
   useProfile: jest.fn(),
   useServerConnection: jest.fn(),
+  useUpdateExercise: jest.fn(() => ({ updateExercise: jest.fn(), isPending: false })),
 }));
 
 jest.mock('../../src/hooks/useExerciseStats', () => ({

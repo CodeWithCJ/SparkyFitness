@@ -9,6 +9,7 @@ jest.mock('../../src/hooks', () => ({
   useMeals: jest.fn(),
   useMealSearch: jest.fn(),
   useServerConnection: jest.fn(),
+  useProfile: jest.fn(() => ({ profile: undefined, isLoading: false })),
   useFavorites: jest.fn(() => ({ favoriteFoods: [], favoriteMeals: [], isLoading: false, isError: false, refetch: jest.fn() })),
 }));
 
