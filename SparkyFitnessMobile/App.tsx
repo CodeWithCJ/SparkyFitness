@@ -19,7 +19,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData } from './src/hooks';
+import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useCycleMode } from './src/hooks';
 import {
   initWorkoutNotificationActions,
   useActiveWorkoutStore,
@@ -69,6 +69,10 @@ import WhatsNewScreen from './src/screens/WhatsNewScreen';
 import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import CycleSettingsScreen from './src/screens/CycleSettingsScreen';
+import CycleOnboardingScreen from './src/screens/CycleOnboardingScreen';
+import CycleHubScreen from './src/screens/CycleHubScreen';
+import PregnancySetupScreen from './src/screens/PregnancySetupScreen';
 import DailyNutritionDetailsScreen from './src/screens/DailyNutritionDetailsScreen';
 import NutrientTrendsScreen from './src/screens/NutrientTrendsScreen';
 import ReauthModal from './src/components/ReauthModal';
@@ -228,6 +232,11 @@ const SafeWhatsNew = withErrorBoundary(WhatsNewScreen, 'WhatsNew', { canGoBack: 
 const SafeDailyNutritionDetails = withErrorBoundary(DailyNutritionDetailsScreen, 'DailyNutritionDetails', { canGoBack: true });
 const SafeNutrientTrends = withErrorBoundary(NutrientTrendsScreen, 'NutrientTrends', { canGoBack: true });
 
+const SafeCycleSettings = withErrorBoundary(CycleSettingsScreen, 'CycleSettings', { canGoBack: true });
+const SafeCycleOnboarding = withErrorBoundary(CycleOnboardingScreen, 'CycleOnboarding', { canGoBack: true });
+const SafeCycleHub = withErrorBoundary(CycleHubScreen, 'CycleHub', { canGoBack: true });
+const SafePregnancySetup = withErrorBoundary(PregnancySetupScreen, 'PregnancySetup', { canGoBack: true });
+
 function AppContent() {
   const { theme } = useUniwind();
   const {
@@ -265,6 +274,13 @@ function AppContent() {
   const lastActiveTabRef = useRef<NonAddTabName>('Dashboard');
   const usesLiquidGlassNavigation = useNativeIOSTabsActive();
   const usesNativeIOSHeaders = useNativeIOSHeadersActive();
+
+  const { enabled: cycleEnabled, mode: cycleMode, discreetMode: cycleDiscreet } = useCycleMode();
+  const cycleSheetLabel = cycleDiscreet
+    ? 'Wellness'
+    : cycleMode === 'pregnant' || cycleMode === 'postpartum'
+      ? 'Log Pregnancy'
+      : 'Log Cycle';
   const rememberActiveTab = useCallback((routeName: string) => {
     if ((NON_ADD_TABS as readonly string[]).includes(routeName)) {
       lastActiveTabRef.current = routeName as NonAddTabName;
@@ -482,6 +498,10 @@ function AppContent() {
 
   const handleAskSparky = useCallback(() => {
     navigateFromSheet('Chat');
+  }, [navigateFromSheet]);
+
+  const handleOpenCycle = useCallback(() => {
+    navigateFromSheet('CycleHub');
   }, [navigateFromSheet]);
 
   const handleSyncHealthData = useCallback(async () => {
@@ -1151,8 +1171,36 @@ function AppContent() {
             component={SafeWhatsNew}
             options={createStackScreenOptions("What's New", { headerBackTitle: 'Settings' })}
           />
+          <Stack.Screen
+            name="CycleSettings"
+            component={SafeCycleSettings}
+            options={createStackScreenOptions('Cycle Settings', { headerBackTitle: 'Settings' })}
+          />
+          <Stack.Screen
+            name="CycleOnboarding"
+            component={SafeCycleOnboarding}
+            options={createStackScreenOptions('Cycle Setup', {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
+            name="CycleHub"
+            component={SafeCycleHub}
+            options={createStackScreenOptions('Wellness Hub', { headerBackTitle: 'Dashboard' })}
+          />
+          <Stack.Screen
+            name="PregnancySetup"
+            component={SafePregnancySetup}
+            options={createStackScreenOptions('Pregnancy Setup', {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onStartWorkout={handleStartWorkout} onAddActivity={handleAddActivity} onLogWorkout={handleLogWorkout} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onAskSparky={handleAskSparky} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onStartWorkout={handleStartWorkout} onAddActivity={handleAddActivity} onLogWorkout={handleLogWorkout} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} onAddMeasurements={handleAddMeasurements} onAskSparky={handleAskSparky} onOpenCycle={handleOpenCycle} showCycleCard={cycleEnabled} cycleLabel={cycleSheetLabel} onDismissWithoutAction={handleAddSheetDismissWithoutAction} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}

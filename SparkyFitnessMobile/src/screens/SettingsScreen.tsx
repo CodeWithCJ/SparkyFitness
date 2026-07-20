@@ -4,7 +4,7 @@ import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
-import { useServerConnection, useServerConfigs, usePreferences, queryClient } from '../hooks';
+import { useServerConnection, useServerConfigs, usePreferences, queryClient, useCycleMode } from '../hooks';
 import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
@@ -36,6 +36,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { isConnected } = useServerConnection();
   const { activeConfig } = useServerConfigs();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
+  const { discreetMode } = useCycleMode();
   const [isSharing, setIsSharing] = useState<boolean>(false);
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
 
@@ -198,6 +199,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   title="Diary Settings"
                   onPress={() => navigation.navigate('DiarySettings')}
                   iconColor={catTeal}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="wellness"
+                  title={discreetMode ? 'Wellness Settings' : 'Cycle & Pregnancy'}
+                  onPress={() => navigation.navigate('CycleSettings')}
+                  iconColor={catPink}
                 />
               )}
               <SettingsRow
