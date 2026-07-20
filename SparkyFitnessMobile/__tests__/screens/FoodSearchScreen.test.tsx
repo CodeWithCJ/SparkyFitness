@@ -11,6 +11,7 @@ import {
   useAllProvidersSearch,
   useFoodSearch,
   useFoods,
+  useFavorites,
   useMealSearch,
   useMeals,
   usePreferences,
@@ -27,6 +28,7 @@ jest.mock('../../src/hooks', () => ({
   useAllProvidersSearch: jest.fn(),
   useFoodSearch: jest.fn(),
   useFoods: jest.fn(),
+  useFavorites: jest.fn(),
   useMealSearch: jest.fn(),
   useMeals: jest.fn(),
   usePreferences: jest.fn(),
@@ -49,7 +51,9 @@ jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ name }: any) => <View testID={`icon-${name}`} />,
+    default: ({ name, accessibilityLabel }: any) => (
+      <View testID={`icon-${name}`} accessibilityLabel={accessibilityLabel} />
+    ),
   };
 });
 
@@ -60,6 +64,7 @@ const mockUseExternalProviders = useExternalProviders as jest.MockedFunction<typ
 const mockUseAllProvidersSearch = useAllProvidersSearch as jest.MockedFunction<typeof useAllProvidersSearch>;
 const mockUseFoodSearch = useFoodSearch as jest.MockedFunction<typeof useFoodSearch>;
 const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
+const mockUseFavorites = useFavorites as jest.MockedFunction<typeof useFavorites>;
 const mockUseMealSearch = useMealSearch as jest.MockedFunction<typeof useMealSearch>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
 const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
@@ -178,6 +183,13 @@ describe('FoodSearchScreen', () => {
       isError: false,
       refetch: jest.fn(),
     } as any);
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [],
+      favoriteMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
     mockUseFoodSearch.mockReturnValue({
       searchResults: [],
       isSearching: false,
@@ -266,6 +278,121 @@ describe('FoodSearchScreen', () => {
     expect(screen.getByText('Cheddar Cheese')).toBeTruthy();
   });
 
+  it('floats favorited foods to the top of Your Foods, and does so above the local cap', () => {
+    // Eight results with the favorite ranked LAST by relevance. The local cap
+    // (6) only bites when an online section also renders, so switch one on.
+    // Ordering has to happen before the slice: order after it and the favorite,
+    // sitting outside the cap, could never float up at all.
+    const foods = Array.from({ length: 8 }, (_, i) =>
+      buildFood({ id: `food-${i + 1}`, name: `Result ${i + 1} Food` }),
+    );
+    const favorite = foods[7];
+
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: foods,
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+    } as any);
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [{ ...favorite, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      favoriteMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] }),
+    );
+
+    const screen = renderSearching();
+
+    // The favorite is rendered first, ahead of the relevance-ordered rest.
+    const rendered = screen
+      .getAllByText(/^Result \d Food$/)
+      .map((node) => node.props.children);
+    expect(rendered[0]).toBe('Result 8 Food');
+    expect(rendered.slice(1)).toEqual([
+      'Result 1 Food',
+      'Result 2 Food',
+      'Result 3 Food',
+      'Result 4 Food',
+      'Result 5 Food',
+    ]);
+    // It took a slot inside the cap, so the last non-favorite is pushed out.
+    expect(screen.queryByText('Result 6 Food')).toBeNull();
+  });
+
+  it('floats favorited meals to the top of Your Meals without moving them out of the section', () => {
+    const plain = { ...buildMeal(), id: 'meal-1', name: 'Alpha Meal' };
+    const favorite = { ...buildMeal(), id: 'meal-2', name: 'Zeta Meal' };
+
+    mockUseMealSearch.mockReturnValue({
+      searchResults: [plain, favorite],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+      refetch: jest.fn(),
+    });
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [],
+      favoriteMeals: [{ ...favorite, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+
+    const screen = renderSearching();
+
+    // Still under Your Meals — floated, not lifted into a group of its own.
+    expect(screen.getByText('Your Meals')).toBeTruthy();
+    const rendered = screen
+      .getAllByText(/^(Alpha|Zeta) Meal$/)
+      .map((node) => node.props.children);
+    expect(rendered).toEqual(['Zeta Meal', 'Alpha Meal']);
+  });
+
+  it('marks favorited rows with a star in search results, where the FAVORITES header is gone', () => {
+    // Once a query is typed there is no FAVORITES header, so ordering is the
+    // only cue that an item is starred — and ordering is invisible unless you
+    // already know the relevance order. The star is the signal; assert it lands
+    // on exactly the favorited food and meal, and on nothing else.
+    const plainFood = buildFood({ id: 'food-1', name: 'Plain Food' });
+    const favFood = buildFood({ id: 'food-2', name: 'Starred Food' });
+    const plainMeal = { ...buildMeal(), id: 'meal-1', name: 'Plain Meal' };
+    const favMeal = { ...buildMeal(), id: 'meal-2', name: 'Starred Meal' };
+
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: [plainFood, favFood],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+    } as any);
+    mockUseMealSearch.mockReturnValue({
+      searchResults: [plainMeal, favMeal],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+      refetch: jest.fn(),
+    });
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [{ ...favFood, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      favoriteMeals: [{ ...favMeal, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+
+    const screen = renderSearching();
+
+    // One star for the favorited food, one for the favorited meal — and none on
+    // the two plain rows.
+    expect(screen.getAllByLabelText('Favorite')).toHaveLength(2);
+    expect(screen.getByText('Starred Food')).toBeTruthy();
+    expect(screen.getByText('Starred Meal')).toBeTruthy();
+  });
+
   it('renders verified badge for verified local foods in search results', () => {
     mockUseFoodSearch.mockReturnValue({
       searchResults: [buildFood({ provider_verified: true })],
@@ -329,6 +456,61 @@ describe('FoodSearchScreen', () => {
         }),
       }),
     );
+  });
+
+  // The Favorites section lives on the LANDING, so the meal-builder test below
+  // (which types a query) never sees it — that gap is exactly how favorited
+  // meals stayed visible in builder mode.
+  function renderLanding(routeOverride: typeof route = route) {
+    return render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodSearchScreen navigation={navigation} route={routeOverride} />
+      </SafeAreaProvider>,
+    );
+  }
+
+  const builderRoute = {
+    key: 'FoodSearch-key',
+    name: 'FoodSearch' as const,
+    params: { pickerMode: 'meal-builder' as const },
+  };
+
+  function favoriteOneFoodAndOneMeal() {
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [
+        { ...buildFood({ id: 'food-1', name: 'Starred Food' }), favorited_at: '2026-07-01T00:00:00.000Z' },
+      ],
+      favoriteMeals: [
+        { ...buildMeal(), id: 'meal-1', name: 'Starred Meal', favorited_at: '2026-07-02T00:00:00.000Z' },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+  }
+
+  it('withholds favorited MEALS from the Favorites landing in meal-builder mode', () => {
+    // This picker cannot emit a meal ingredient (handleMealBuilderAdd rejects a
+    // 'meal' source), and recent/top meals + meal search are already disabled
+    // here. Without this, Favorites is the one surface that offers a meal and
+    // then refuses it two screens later. Favorited FOODS must still show.
+    favoriteOneFoodAndOneMeal();
+
+    const screen = renderLanding(builderRoute);
+
+    expect(screen.queryByText('Starred Meal')).toBeNull();
+    expect(screen.getByText('Starred Food')).toBeTruthy();
+  });
+
+  it('shows favorited meals on the Favorites landing outside meal-builder mode', () => {
+    // The control for the test above: the gate is scoped to builder mode, not a
+    // blanket "favorites cannot hold meals".
+    favoriteOneFoodAndOneMeal();
+
+    const screen = renderLanding();
+
+    expect(screen.getByText('Starred Meal')).toBeTruthy();
+    expect(screen.getByText('Starred Food')).toBeTruthy();
   });
 
   it('does not show saved meals in meal-builder mode', () => {

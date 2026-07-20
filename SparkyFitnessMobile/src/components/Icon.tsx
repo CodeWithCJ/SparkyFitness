@@ -36,6 +36,7 @@ const ICON_MAP = {
   'share': { sf: 'square.and.arrow.up', ion: 'share-outline' },
   'bookmark': { sf: 'bookmark', ion: 'bookmark-outline' },
   'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
+  'star': { sf: 'star.fill', ion: 'star' },
   'link': { sf: 'link', ion: 'link-outline' },
   'checkmark-circle': { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
   'checkmark-circle-filled': { sf: 'checkmark.circle.fill', ion: 'checkmark-circle' },
@@ -143,6 +144,9 @@ interface IconProps {
   color?: string;
   style?: StyleProp<ViewStyle>;
   weight?: SymbolViewProps['weight'];
+  // Forwarded to the underlying glyph so a meaningful icon (e.g. the favorite
+  // star) is announced. Omit for purely decorative icons sitting next to text.
+  accessibilityLabel?: string;
 }
 
 /**
@@ -155,6 +159,7 @@ const Icon: React.FC<IconProps> = ({
   color = '#000000',
   style,
   weight = 'regular',
+  accessibilityLabel,
 }) => {
   const mapping = ICON_MAP[name];
 
@@ -166,6 +171,7 @@ const Icon: React.FC<IconProps> = ({
         tintColor={color}
         style={style}
         weight={weight}
+        accessibilityLabel={accessibilityLabel}
       />
     );
   }
@@ -176,6 +182,7 @@ const Icon: React.FC<IconProps> = ({
       size={size}
       color={color}
       style={style}
+      accessibilityLabel={accessibilityLabel}
     />
   );
 };

@@ -48,6 +48,8 @@ export { usePreferences } from './usePreferences';
 export { useRefetchOnFocus } from './useRefetchOnFocus';
 export { useWaterIntakeMutation } from './useWaterIntakeMutation';
 export { useFoods } from './useFoods';
+export { useFavorites } from './useFavorites';
+export { useToggleFavorite } from './useToggleFavorite';
 export { useDebounce } from './useDebounce';
 export { useFoodSearch } from './useFoodSearch';
 export { useFoodsLibrary } from './useFoodsLibrary';

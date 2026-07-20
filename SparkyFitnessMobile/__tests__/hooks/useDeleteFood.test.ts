@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useDeleteFood } from '../../src/hooks/useDeleteFood';
 import { deleteFood } from '../../src/services/api/foodsApi';
-import { foodVariantsQueryKey, foodsQueryKey } from '../../src/hooks/queryKeys';
+import { favoritesQueryKey, foodVariantsQueryKey, foodsQueryKey } from '../../src/hooks/queryKeys';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/foodsApi', () => ({
@@ -103,6 +103,11 @@ describe('useDeleteFood', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ['foodSearch'],
       refetchType: 'all',
+    });
+    // Regression: a deleted food is cascade-removed from food_favorites, so the
+    // separate favorites cache must refetch or it lingers in the Favorites section.
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: favoritesQueryKey,
     });
 
     invalidateSpy.mockRestore();

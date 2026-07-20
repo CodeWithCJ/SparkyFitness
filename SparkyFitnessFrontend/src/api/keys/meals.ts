@@ -26,6 +26,7 @@ export const foodKeys = {
     [...foodKeys.all, 'recentTop', limit, mealType] as const,
   databaseSearch: (term: string, limit: number, mealType?: string) =>
     [...foodKeys.all, 'search', term, limit, mealType] as const,
+  favorites: () => [...foodKeys.all, 'favorites'] as const,
 };
 
 export const mealPlanKeys = {

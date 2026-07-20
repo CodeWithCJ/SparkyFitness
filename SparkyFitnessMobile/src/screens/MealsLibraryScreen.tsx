@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import MealLibraryRow from '../components/MealLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useMealSearch, useMeals, useServerConnection } from '../hooks';
+import { useFavorites, useMealSearch, useMeals, useServerConnection } from '../hooks';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -48,6 +48,11 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
     isSearchError,
     refetch: refetchSearch,
   } = useMealSearch(searchText, { enabled: isConnected });
+  const { favoriteMeals } = useFavorites({ enabled: isConnected });
+  const favoriteMealIds = useMemo(
+    () => new Set(favoriteMeals.map((m) => m.id)),
+    [favoriteMeals],
+  );
 
   const displayedMeals = isSearchActive ? searchResults : meals;
   const isLoading = isSearchActive
@@ -149,6 +154,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
         renderItem={({ item, index }) => (
           <MealLibraryRow
             meal={item}
+            isFavorite={favoriteMealIds.has(item.id)}
             showDivider={index < displayedMeals.length - 1}
             onPress={() => handleMealPress(item)}
           />

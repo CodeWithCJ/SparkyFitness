@@ -22,7 +22,7 @@ import FoodLibraryRow from '../components/FoodLibraryRow';
 import Icon from '../components/Icon';
 import MealLibraryRow from '../components/MealLibraryRow';
 import StatusView from '../components/StatusView';
-import { useFoods, useMeals, useRecentMeals, useServerConnection, useSuggestedExercises } from '../hooks';
+import { useFavorites, useFoods, useMeals, useRecentMeals, useServerConnection, useSuggestedExercises } from '../hooks';
 import { fetchExercisesCount } from '../services/api/exerciseApi';
 import { fetchFoodsPage } from '../services/api/foodsApi';
 import { fetchWorkoutPresetsPage } from '../services/api/workoutPresetsApi';
@@ -52,6 +52,15 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isNavigationLocked, runNavigationAction } = useNavigationActionGuard(navigation);
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { favoriteFoods, favoriteMeals } = useFavorites({ enabled: isConnected });
+  const favoriteFoodIds = useMemo(
+    () => new Set(favoriteFoods.map((f) => f.id)),
+    [favoriteFoods],
+  );
+  const favoriteMealIds = useMemo(
+    () => new Set(favoriteMeals.map((m) => m.id)),
+    [favoriteMeals],
+  );
   const {
     recentFoods,
     isLoading: isFoodsLoading,
@@ -341,6 +350,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
                   <MealLibraryRow
                     key={`meal-${item.data.id}`}
                     meal={item.data}
+                    isFavorite={favoriteMealIds.has(item.data.id)}
                     showDivider={showDivider}
                     onPress={() =>
                       navigation.navigate('MealDetail', {
@@ -356,6 +366,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
                   <FoodLibraryRow
                     key={`food-${item.data.id}`}
                     food={item.data}
+                    isFavorite={favoriteFoodIds.has(item.data.id)}
                     showDivider={showDivider}
                     onPress={() =>
                       navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(item.data) })

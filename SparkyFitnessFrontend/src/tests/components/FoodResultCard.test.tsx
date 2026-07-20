@@ -163,6 +163,27 @@ describe('FoodResultCard', () => {
     expect(screen.getByText(/Public/i)).toBeInTheDocument();
   });
 
+  it('renders the row star only when isFavorite is set', () => {
+    const { rerender } = render(
+      <FoodResultCard
+        item={createFood()}
+        nutrientConfig={nutrientConfig}
+        onCardClick={jest.fn()}
+      />
+    );
+    expect(screen.queryByLabelText('Favorite')).not.toBeInTheDocument();
+
+    rerender(
+      <FoodResultCard
+        item={createFood()}
+        isFavorite
+        nutrientConfig={nutrientConfig}
+        onCardClick={jest.fn()}
+      />
+    );
+    expect(screen.getByLabelText('Favorite')).toBeInTheDocument();
+  });
+
   it('renders Family badge for meals owned by other user', () => {
     render(
       <FoodResultCard

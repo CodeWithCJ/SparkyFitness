@@ -23,7 +23,14 @@ import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { goalsQueryKey } from '../hooks/queryKeys';
-import { useMealTypes, usePreferences, useServerConnection } from '../hooks';
+import {
+  useFavorites,
+  useMealTypes,
+  usePreferences,
+  useServerConnection,
+  useToggleFavorite,
+} from '../hooks';
+import type { FoodItem } from '../types/foods';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import {
@@ -36,7 +43,7 @@ import { useAddFoodEntryMeal } from '../hooks/useAddFoodEntryMeal';
 import type { FoodEntryMealCreateData } from '../types/foodEntryMeals';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import type { FoodFormData } from '../components/FoodForm';
-import type { MealIngredientDraft } from '../types/meals';
+import type { Meal, MealIngredientDraft } from '../types/meals';
 import type {
   EquivalentUnit,
   FoodUnitSelectionResult,
@@ -1155,9 +1162,51 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const showHeaderActions = activeItem.source !== 'meal';
   const showSaveExternalAction = activeItem.source === 'external';
 
+  // Favorites: persisted local foods and saved meals can be starred. External
+  // (unsaved) foods must be saved to the library first (via the bookmark
+  // action) before they gain a stable id to favorite.
+  const isMealItem = activeItem.source === 'meal';
+  const canFavorite = isLocalFood || isMealItem;
+  const { favoriteFoods, favoriteMeals } = useFavorites({
+    enabled: isConnected && canFavorite,
+  });
+  const isFavorite = useMemo(
+    () =>
+      isMealItem
+        ? favoriteMeals.some((m) => m.id === activeItem.id)
+        : favoriteFoods.some((f) => f.id === activeItem.id),
+    [isMealItem, favoriteMeals, favoriteFoods, activeItem.id]
+  );
+  const { toggleFavorite, isPending: isFavoritePending } = useToggleFavorite();
+  const handleToggleFavorite = useCallback(() => {
+    // originalItem is the source FoodItem/Meal, used for the optimistic insert.
+    if (isMealItem) {
+      toggleFavorite({
+        type: 'meal',
+        id: activeItem.id,
+        isFavorite,
+        meal: activeItem.originalItem as Meal,
+      });
+    } else {
+      toggleFavorite({
+        type: 'food',
+        id: activeItem.id,
+        isFavorite,
+        food: activeItem.originalItem as FoodItem,
+      });
+    }
+  }, [
+    isMealItem,
+    toggleFavorite,
+    activeItem.id,
+    activeItem.originalItem,
+    isFavorite,
+  ]);
+
   // The food name lives in the body's nutrition summary, so the header title
-  // stays blank. Header actions are neutral (role:'secondary') — the sticky
-  // footer "Add Food"/"Add Meal" button is this screen's one accent action.
+  // stays blank. The favorite star is accent-tinted (role:'primary') so it
+  // reads as a button; edit/save stay neutral. The sticky footer "Add Food"/
+  // "Add Meal" button remains this screen's main accent action.
   const header = useScreenHeader({
     nativeTitle: '',
     left: {
@@ -1166,35 +1215,68 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       disabled: isActionPending,
       identifier: 'food-entry-add-cancel',
     },
-    right: showHeaderActions
-      ? [
-          {
-            kind: 'icon',
-            sfSymbol: 'pencil',
-            ionicon: 'create-outline',
-            role: 'secondary',
-            disabled: isActionPending,
-            onPress: handleAdjustNutrition,
-            accessibilityLabel: 'Adjust nutrition',
-            identifier: 'food-entry-add-edit',
-          },
-          ...(showSaveExternalAction
-            ? [
-                {
-                  kind: 'icon',
-                  sfSymbol: 'bookmark',
-                  ionicon: 'bookmark-outline',
-                  role: 'secondary',
-                  busy: isSavePending || isCreateVariantPending,
-                  disabled: isActionPending,
-                  onPress: () => void handleSaveExternalFood(),
-                  accessibilityLabel: 'Save Food',
-                  identifier: 'food-entry-add-save',
-                } as const,
-              ]
-            : []),
-        ]
-      : null,
+    // The star renders for any favoritable item (incl. meals, which suppress the
+    // edit/save actions); edit + save only render when showHeaderActions is true.
+    right:
+      canFavorite || showHeaderActions
+        ? [
+            ...(canFavorite
+              ? [
+                  {
+                    kind: 'icon',
+                    sfSymbol: isFavorite ? 'star.fill' : 'star',
+                    ionicon: isFavorite ? 'star' : 'star-outline',
+                    // Accent-tinted (role:'primary') so the star reads as a
+                    // tappable button rather than a neutral glyph.
+                    role: 'primary',
+                    // Also gated on the toggle's own mutation: onMutate flips the
+                    // cache optimistically, so a second tap before the first
+                    // settles sends the OPPOSITE operation. Two in-flight writes
+                    // can then land out of order and leave the server in the
+                    // state opposite the user's last tap.
+                    // Also disabled offline: the favorites query is gated on
+                    // isConnected, so a tap offline would fire a guaranteed-fail
+                    // request and surface an error toast.
+                    disabled: isActionPending || isFavoritePending || !isConnected,
+                    onPress: handleToggleFavorite,
+                    accessibilityLabel: isFavorite
+                      ? 'Remove from favorites'
+                      : 'Add to favorites',
+                    identifier: 'food-entry-add-favorite',
+                  } as const,
+                ]
+              : []),
+            ...(showHeaderActions
+              ? [
+                  {
+                    kind: 'icon',
+                    sfSymbol: 'pencil',
+                    ionicon: 'create-outline',
+                    role: 'secondary',
+                    disabled: isActionPending,
+                    onPress: handleAdjustNutrition,
+                    accessibilityLabel: 'Adjust nutrition',
+                    identifier: 'food-entry-add-edit',
+                  } as const,
+                  ...(showSaveExternalAction
+                    ? [
+                        {
+                          kind: 'icon',
+                          sfSymbol: 'bookmark',
+                          ionicon: 'bookmark-outline',
+                          role: 'secondary',
+                          busy: isSavePending || isCreateVariantPending,
+                          disabled: isActionPending,
+                          onPress: () => void handleSaveExternalFood(),
+                          accessibilityLabel: 'Save Food',
+                          identifier: 'food-entry-add-save',
+                        } as const,
+                      ]
+                    : []),
+                ]
+              : []),
+          ]
+        : null,
   });
 
   return (

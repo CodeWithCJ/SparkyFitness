@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { deleteFood } from '../services/api/foodsApi';
-import { foodVariantsQueryKey, foodsQueryKey } from './queryKeys';
+import { favoritesQueryKey, foodVariantsQueryKey, foodsQueryKey } from './queryKeys';
 
 interface UseDeleteFoodOptions {
   foodId: string;
@@ -41,6 +41,9 @@ export function useDeleteFood({ foodId, onSuccess }: UseDeleteFoodOptions) {
     queryClient.invalidateQueries({ queryKey: foodsQueryKey, refetchType: 'all' });
     queryClient.invalidateQueries({ queryKey: ['foodsLibrary'], refetchType: 'all' });
     queryClient.invalidateQueries({ queryKey: ['foodSearch'], refetchType: 'all' });
+    // Favorites are a separate query root; a deleted food is cascade-removed
+    // server-side, so refetch so it drops out of the Favorites section too.
+    queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
   };
 
   return {

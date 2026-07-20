@@ -61,6 +61,7 @@ const AI_ESTIMATE_BADGE_TONE_CLASSES: Record<ConfidenceTone, string> = {
   error: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
 };
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
+import FavoriteStarButton from '@/components/FavoriteStarButton';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -476,10 +477,18 @@ const FoodUnitSelector = ({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {initialQuantity
-              ? `Edit ${food?.name}`
-              : `Add ${food?.name} to Meal`}
+          <DialogTitle className="flex items-center gap-2">
+            <span>
+              {initialQuantity
+                ? `Edit ${food?.name}`
+                : `Add ${food?.name} to Meal`}
+            </span>
+            {/* Only persisted local/saved foods can be favorited (external
+                provider search results are not saved yet, so they have no
+                stable id to star). */}
+            {food?.id && (food?.is_custom || food?.user_id) && (
+              <FavoriteStarButton type="food" id={food.id} />
+            )}
           </DialogTitle>
           <DialogDescription>
             {initialQuantity

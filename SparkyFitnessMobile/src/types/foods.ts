@@ -36,6 +36,8 @@ export interface FoodItem {
   provider_external_id?: string | null;
   provider_verified?: boolean;
   is_quick_food?: boolean;
+  // Present only on items returned by the favorites endpoint.
+  favorited_at?: string;
   default_variant: FoodDefaultVariant;
 }
 
@@ -46,6 +48,19 @@ export interface TopFoodItem extends FoodItem {
 export interface FoodsResponse {
   recentFoods: FoodItem[];
   topFoods: TopFoodItem[];
+}
+
+export type FavoriteType = 'food' | 'meal';
+
+export interface FavoritesResponse {
+  favoriteFoods: FoodItem[];
+  favoriteMeals: import('./meals').Meal[];
+}
+
+export interface ToggleFavoriteResponse {
+  type: FavoriteType;
+  id: string;
+  is_favorite: boolean;
 }
 
 export interface FoodSearchResponse {

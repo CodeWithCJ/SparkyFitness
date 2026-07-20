@@ -119,5 +119,7 @@ export interface Meal {
   total_servings: number;
   created_at: string;
   updated_at: string;
+  // Present only on items returned by the favorites endpoint.
+  favorited_at?: string;
   foods: MealFood[];
 }

@@ -23,17 +23,26 @@ type RecentFood = LandingFood & { last_used_date?: string | null };
 type FrequentMeal = Meal & { usage_count?: number | string | null };
 type FrequentFood = LandingFood & { usage_count?: number | string | null };
 
-const mealKey = (m: { id?: string }) => `meal-${m.id ?? ''}`;
-const foodKey = (f: { id?: string }) => `food-${f.id ?? ''}`;
+// The one place the landing keyspace is defined. Callers that need to exclude
+// items they render themselves (e.g. a Favorites section above these lists)
+// build their keys with this rather than re-deriving the prefix format.
+export const landingKey = (kind: 'meal' | 'food', id?: string) =>
+  `${kind}-${id ?? ''}`;
+
+const mealKey = (m: { id?: string }) => landingKey('meal', m.id);
+const foodKey = (f: { id?: string }) => landingKey('food', f.id);
 
 // Recent: merge meals and foods into one timeline ordered by last-used date,
 // newest first. ISO date strings sort lexicographically, so string compare is
 // chronological. Same-day ties keep meals before foods (stable sort over a
 // meals-then-foods concat), matching the sort preference elsewhere.
+// excludeKeys drops anything already shown above these lists (Favorites), and
+// is applied BEFORE the slice so the section still fills to `limit`.
 export function mergeRecent(
   meals: RecentMeal[] = [],
   foods: RecentFood[] = [],
   limit: number,
+  excludeKeys: Set<string> = new Set(),
 ): LandingEntry[] {
   const tagged: { entry: LandingEntry; sort: string }[] = [
     ...meals.map((m) => ({
@@ -44,19 +53,21 @@ export function mergeRecent(
       entry: { kind: 'food' as const, key: foodKey(f), food: f },
       sort: f.last_used_date ?? '',
     })),
-  ];
+  ].filter((t) => !excludeKeys.has(t.entry.key));
   tagged.sort((a, b) => (a.sort < b.sort ? 1 : a.sort > b.sort ? -1 : 0));
   return tagged.slice(0, Math.max(0, limit)).map((t) => t.entry);
 }
 
 // Frequent: merge meals and foods ordered by usage count, most-used first,
-// dropping anything already shown in Recent (excludeKeys) so the two sections
-// do not repeat rows. usage_count can arrive as a numeric string, so coerce.
+// dropping anything already shown above it (excludeKeys: Recent, plus any
+// Favorites) so the sections do not repeat rows. Applied before the slice, so
+// the section still fills to `limit`. usage_count can arrive as a numeric
+// string, so coerce.
 export function mergeFrequent(
   meals: FrequentMeal[] = [],
   foods: FrequentFood[] = [],
-  excludeKeys: Set<string> = new Set(),
   limit: number,
+  excludeKeys: Set<string> = new Set(),
 ): LandingEntry[] {
   // Coerce, and never let a bad value become NaN: NaN in a subtraction
   // comparator breaks sort transitivity and scrambles order.

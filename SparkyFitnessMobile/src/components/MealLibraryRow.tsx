@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { useCSSVariable } from 'uniwind';
 import type { Meal } from '../types/meals';
 import { mealToFoodInfo } from '../types/foodInfo';
+import Icon from './Icon';
 
 interface MealLibraryRowProps {
   meal: Meal;
@@ -12,6 +14,11 @@ interface MealLibraryRowProps {
   // not mistaken for a food. Off by default for lists that already have a
   // meals-only header. Mirrors the web food-search meal badge.
   showBadge?: boolean;
+  // Marks the row with an accent star. Opt-in so the star stays confined to
+  // food search, where favorites are a meaningful distinction — the other
+  // screens using this row (meal library, meal picker) have no favorites
+  // concept and should not sprout a star.
+  isFavorite?: boolean;
 }
 
 const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
@@ -19,9 +26,14 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
   onPress,
   showDivider = false,
   showBadge = false,
+  isFavorite = false,
 }) => {
   const foodInfo = useMemo(() => mealToFoodInfo(meal), [meal]);
   const itemCount = meal.foods.length;
+  // Gold, not accent: this passive marker carries the "favorite" cue by colour,
+  // leaving accent (blue) for tappable things. --color-cat-amber is the closest
+  // token to web's yellow-500 and has a dark-mode value, unlike a raw hex.
+  const [goldColor] = useCSSVariable(['--color-cat-amber']) as [string];
 
   return (
     <Pressable
@@ -60,9 +72,20 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
           ) : null}
         </View>
         <View className="items-end">
-          <Text className="text-text-primary text-base font-semibold">
-            {foodInfo.calories} cal
-          </Text>
+          <View className="flex-row items-center gap-1">
+            {isFavorite && (
+              <Icon
+                name="star"
+                size={13}
+                color={goldColor}
+                style={{ marginTop: 1 }}
+                accessibilityLabel="Favorite"
+              />
+            )}
+            <Text className="text-text-primary text-base font-semibold">
+              {foodInfo.calories} cal
+            </Text>
+          </View>
           <Text className="text-text-secondary text-xs">
             {itemCount} {itemCount === 1 ? 'item' : 'items'}
           </Text>

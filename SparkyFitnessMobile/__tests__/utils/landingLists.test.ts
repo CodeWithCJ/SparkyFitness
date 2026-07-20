@@ -56,6 +56,31 @@ describe('mergeRecent', () => {
     const out = mergeRecent([meal('m1')], [food('f1'), food('f2')], 10);
     expect(out.map((e) => e.key)).toEqual(['meal-m1', 'food-f1', 'food-f2']);
   });
+
+  it('excludes items already shown above it (favorites), meals included', () => {
+    const meals = [meal('m1', { last_used_date: '2026-07-09' })];
+    const foods = [
+      food('f1', { last_used_date: '2026-07-08' }),
+      food('f2', { last_used_date: '2026-07-07' }),
+    ];
+    const exclude = new Set(['meal-m1', 'food-f1']);
+    expect(mergeRecent(meals, foods, 10, exclude).map((e) => e.key)).toEqual([
+      'food-f2',
+    ]);
+  });
+
+  it('excludes before the slice, so the section still fills to limit', () => {
+    // The excluded item must not consume one of the `limit` slots: with f1
+    // favorited, a 2-slot Recent should still show two rows, not one.
+    const foods = [
+      food('f1', { last_used_date: '2026-07-09' }),
+      food('f2', { last_used_date: '2026-07-08' }),
+      food('f3', { last_used_date: '2026-07-07' }),
+    ];
+    expect(
+      mergeRecent([], foods, 2, new Set(['food-f1'])).map((e) => e.key),
+    ).toEqual(['food-f2', 'food-f3']);
+  });
 });
 
 describe('mergeFrequent', () => {
@@ -65,9 +90,11 @@ describe('mergeFrequent', () => {
       food('f1', { usage_count: '10' }),
       food('f2', { usage_count: '1' }),
     ];
-    expect(mergeFrequent(meals, foods, new Set(), 10).map((e) => e.key)).toEqual(
-      ['food-f1', 'meal-m1', 'food-f2'],
-    );
+    expect(mergeFrequent(meals, foods, 10).map((e) => e.key)).toEqual([
+      'food-f1',
+      'meal-m1',
+      'food-f2',
+    ]);
   });
 
   it('excludes items already shown in Recent', () => {
@@ -77,7 +104,7 @@ describe('mergeFrequent', () => {
       food('f2', { usage_count: 2 }),
     ];
     const exclude = new Set(['food-f1']);
-    expect(mergeFrequent(meals, foods, exclude, 10).map((e) => e.key)).toEqual([
+    expect(mergeFrequent(meals, foods, 10, exclude).map((e) => e.key)).toEqual([
       'meal-m1',
       'food-f2',
     ]);
@@ -89,7 +116,7 @@ describe('mergeFrequent', () => {
       food('f2', { usage_count: 8 }),
       food('f3', { usage_count: 7 }),
     ];
-    expect(mergeFrequent([], foods, new Set(), 2).map((e) => e.key)).toEqual([
+    expect(mergeFrequent([], foods, 2).map((e) => e.key)).toEqual([
       'food-f1',
       'food-f2',
     ]);
@@ -102,7 +129,7 @@ describe('mergeFrequent', () => {
       food('f3', { usage_count: undefined }),
     ];
     // f2 (4) ranks above the two that coerce to 0; order stays deterministic.
-    expect(mergeFrequent([], foods, new Set(), 10).map((e) => e.key)).toEqual([
+    expect(mergeFrequent([], foods, 10).map((e) => e.key)).toEqual([
       'food-f2',
       'food-f1',
       'food-f3',

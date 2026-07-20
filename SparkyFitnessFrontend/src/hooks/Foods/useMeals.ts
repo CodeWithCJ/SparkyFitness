@@ -1,4 +1,4 @@
-import { mealKeys } from '@/api/keys/meals';
+import { foodKeys, mealKeys } from '@/api/keys/meals';
 import {
   createMeal,
   deleteMeal,
@@ -109,6 +109,9 @@ export const useDeleteMealMutation = () => {
       force?: boolean;
     }) => deleteMeal(mealId, force),
     onSuccess: () => {
+      // Favorites live under foodKeys (['foods','favorites']); a deleted meal is
+      // cascade-removed server-side, so refetch favorites to drop it.
+      queryClient.invalidateQueries({ queryKey: foodKeys.favorites() });
       return queryClient.invalidateQueries({
         queryKey: mealKeys.all,
       });
@@ -137,6 +140,8 @@ export const useUpdateMealMutation = () => {
       mealPayload: MealPayload;
     }) => updateMeal(mealId, mealPayload),
     onSuccess: () => {
+      // A favorited meal's cached name/nutrition would otherwise go stale.
+      queryClient.invalidateQueries({ queryKey: foodKeys.favorites() });
       return queryClient.invalidateQueries({
         queryKey: mealKeys.all,
       });

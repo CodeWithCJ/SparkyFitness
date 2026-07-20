@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { saveFood, type SaveFoodPayload } from '../services/api/foodsApi';
-import { foodsQueryKey } from './queryKeys';
+import { favoritesQueryKey, foodsQueryKey } from './queryKeys';
 
 export function useSaveFood() {
   const queryClient = useQueryClient();
@@ -10,6 +10,9 @@ export function useSaveFood() {
     mutationFn: (payload: SaveFoodPayload) => saveFood(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
+      // Keep an edited food's name/nutrition fresh in the Favorites section
+      // (separate query root, 5-min staleTime).
+      queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
     },
     onError: () => {
       Toast.show({ type: 'error', text1: 'Failed to save food', text2: 'Please try again.' });

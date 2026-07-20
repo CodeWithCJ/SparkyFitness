@@ -942,7 +942,65 @@ async function getFamilyMeals(userId: any) {
     client.release();
   }
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getFavoriteMeals(userId: any) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `SELECT
+        m.id,
+        m.user_id,
+        m.name,
+        m.description,
+        m.is_public,
+        m.serving_size,
+        m.serving_unit,
+        m.total_servings,
+        m.created_at,
+        m.updated_at,
+        ff.created_at AS favorited_at
+      FROM food_favorites ff
+      JOIN meals m ON m.id = ff.meal_id
+      WHERE ff.user_id = $1
+        AND ff.meal_id IS NOT NULL
+      ORDER BY ff.created_at DESC`,
+      [userId]
+    );
+    return attachFoodsToMeals(client, result.rows);
+  } finally {
+    client.release();
+  }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function addMealFavorite(userId: any, mealId: any) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    await client.query(
+      `INSERT INTO food_favorites (user_id, meal_id)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, meal_id) DO NOTHING`,
+      [userId, mealId]
+    );
+  } finally {
+    client.release();
+  }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function removeMealFavorite(userId: any, mealId: any) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `DELETE FROM food_favorites
+       WHERE user_id = $1 AND meal_id = $2`,
+      [userId, mealId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
 export { createMeal };
+export { getFavoriteMeals, addMealFavorite, removeMealFavorite };
 export { getMeals };
 export { getMealById };
 export { updateMeal };
@@ -999,4 +1057,7 @@ export default {
   getMealComponentUsage,
   getMealSubtreeDepth,
   getMealAncestryHeight,
+  getFavoriteMeals,
+  addMealFavorite,
+  removeMealFavorite,
 };

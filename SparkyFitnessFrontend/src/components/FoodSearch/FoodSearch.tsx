@@ -48,8 +48,10 @@ import { dedupeAppend } from '@/utils/dedupeAppend.ts';
 import {
   mergeRecent,
   mergeFrequent,
+  landingKey,
   type LandingEntry,
 } from '@/utils/landingLists.ts';
+import { useFavoritesQuery } from '@/hooks/Foods/useFavorites.ts';
 import FoodResultCard from './FoodResultCard.tsx';
 import { BarcodeScannerDialog } from './BarcodeScannerDialog.tsx';
 import { CsvImportDialog } from './CsvImportDialog.tsx';
@@ -223,18 +225,97 @@ const EnhancedFoodSearch = ({
   const topFoods = recentTopData?.topFoods || [];
   const foods = searchData?.searchResults || [];
 
+  // Starred foods and meals. Shared cache with the row star in FoodResultCard,
+  // so this is one fetch, not two.
+  const { data: favoritesData, isLoading: isLoadingFavorites } =
+    useFavoritesQuery();
+
+  // Favorites: the first landing section, foods and meals intermixed, most
+  // recently starred first. Modelled as LandingEntry so all three sections
+  // share one card renderer and one key space.
+  //
+  // Meals are withheld wherever the rest of the search already hides them
+  // (`showMeals` covers both hideMealTab and onlineOnly), so Favorites cannot
+  // become the one surface that offers a meal a caller has explicitly excluded.
+  const favoriteEntries: LandingEntry[] = useMemo(() => {
+    const selectableMeals = showMeals ? favoritesData?.favoriteMeals || [] : [];
+    const tagged = [
+      ...selectableMeals.map((meal) => ({
+        entry: {
+          kind: 'meal' as const,
+          key: landingKey('meal', meal.id),
+          meal,
+        },
+        // Pre-parsed to a timestamp so the comparator below is a plain numeric
+        // subtraction rather than allocating a Date on every comparison.
+        favoritedAt: meal.favorited_at
+          ? new Date(meal.favorited_at).getTime()
+          : 0,
+      })),
+      ...(favoritesData?.favoriteFoods || []).map((food) => ({
+        entry: {
+          kind: 'food' as const,
+          key: landingKey('food', food.id),
+          food,
+        },
+        favoritedAt: food.favorited_at
+          ? new Date(food.favorited_at).getTime()
+          : 0,
+      })),
+    ];
+    // No dedupe needed: a food and a meal never share a key (kind-prefixed),
+    // and the DB's unique constraints stop the same row arriving twice.
+    return tagged
+      .sort((a, b) => b.favoritedAt - a.favoritedAt)
+      .map((t) => t.entry);
+  }, [favoritesData, showMeals]);
+
   // Recent is one merged timeline (meals + foods by last-used date); Frequent is
-  // one merged most-used list (by usage count) with anything already in Recent
-  // removed, so the two sections do not repeat cards. Each capped to
-  // itemDisplayLimit.
-  const recentEntries = mergeRecent(recentMeals, recentFoods, itemDisplayLimit);
+  // one merged most-used list (by usage count). Each section excludes what the
+  // sections above it already show, so the landing never renders the same card
+  // twice: Recent drops favorites, Frequent drops favorites and Recent. Passing
+  // the exclusions in (rather than filtering the results) keeps each section
+  // filled to itemDisplayLimit, since both merges cap last.
+  const favoriteKeys = useMemo(
+    () => new Set(favoriteEntries.map((e) => e.key)),
+    [favoriteEntries]
+  );
+  const recentEntries = mergeRecent(
+    recentMeals,
+    recentFoods,
+    itemDisplayLimit,
+    favoriteKeys
+  );
   const recentEntryKeys = new Set(recentEntries.map((e) => e.key));
   const frequentEntries = mergeFrequent(
     topMeals,
     topFoods,
-    recentEntryKeys,
-    itemDisplayLimit
+    itemDisplayLimit,
+    new Set([...favoriteKeys, ...recentEntryKeys])
   );
+
+  // Once a query is typed, favorites float to the top of their own section
+  // rather than being pulled into a group of their own: a favorited meal stays
+  // under Your Meals, just first. The rest keep the backend's relevance order,
+  // and filter preserves it, so favorites stay relevance-ordered among
+  // themselves too.
+  const searchFoodsFavFirst = useMemo(() => {
+    const results: Food[] = searchData?.searchResults || [];
+    const isFavorite = (food: Food) =>
+      favoriteKeys.has(landingKey('food', food.id));
+    return [
+      ...results.filter(isFavorite),
+      ...results.filter((food) => !isFavorite(food)),
+    ];
+  }, [searchData, favoriteKeys]);
+  const searchMealsFavFirst = useMemo(() => {
+    const isFavorite = (meal: Meal) =>
+      favoriteKeys.has(landingKey('meal', meal.id));
+    return [
+      ...meals.filter(isFavorite),
+      ...meals.filter((meal) => !isFavorite(meal)),
+    ];
+  }, [meals, favoriteKeys]);
 
   // Active food-category providers: the only valid options for the provider
   // dropdown, so the resolved default must be drawn from this list (not the raw
@@ -950,6 +1031,7 @@ const EnhancedFoodSearch = ({
         key={entry.key}
         item={entry.meal}
         isMeal={true}
+        isFavorite={favoriteKeys.has(entry.key)}
         nutrientConfig={nutrientConfig}
         onCardClick={() => onFoodSelect(entry.meal, 'meal')}
       />
@@ -957,6 +1039,7 @@ const EnhancedFoodSearch = ({
       <FoodResultCard
         key={entry.key}
         item={entry.food}
+        isFavorite={favoriteKeys.has(entry.key)}
         nutrientConfig={nutrientConfig}
         onCardClick={() => onFoodSelect(entry.food, 'food')}
       />
@@ -1052,47 +1135,62 @@ const EnhancedFoodSearch = ({
         {/* Landing: recent + top foods and meals (local mode, empty query) */}
         {showLocalFoods && isSearchEmpty && (
           <>
-            {(isLoadingRecentFoods || (showMeals && isLoadingRecentMeals)) && (
+            {(isLoadingRecentFoods ||
+              isLoadingFavorites ||
+              (showMeals && isLoadingRecentMeals)) && (
               <div className="text-center py-8 text-gray-500">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
                 {t('enhancedFoodSearch.searchingFoods', 'Searching foods...')}
               </div>
             )}
-            {!isLoadingRecentFoods && !(showMeals && isLoadingRecentMeals) && (
-              <>
-                {/* Recent: one timeline of meals + foods by last-used date */}
-                {recentEntries.length > 0 && (
-                  <>
-                    <SectionHeader>
-                      {t('enhancedFoodSearch.recent', 'Recent')}
-                    </SectionHeader>
-                    {recentEntries.map(renderLandingEntry)}
-                  </>
-                )}
-                {/* Frequent: one list of most-used meals + foods (not in Recent) */}
-                {frequentEntries.length > 0 && (
-                  <>
-                    <SectionHeader>
-                      {t('enhancedFoodSearch.frequent', 'Frequent')}
-                    </SectionHeader>
-                    {frequentEntries.map(renderLandingEntry)}
-                  </>
-                )}
-                {recentEntries.length === 0 && frequentEntries.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    {showMeals
-                      ? t(
-                          'enhancedFoodSearch.noRecentOrTopItems',
-                          'No recent or frequent foods or meals found. Start logging to see them here.'
-                        )
-                      : t(
-                          'enhancedFoodSearch.noRecentOrTopFoods',
-                          'No recent or top foods found. Start logging foods to see them here.'
-                        )}
-                  </div>
-                )}
-              </>
-            )}
+            {!isLoadingRecentFoods &&
+              !isLoadingFavorites &&
+              !(showMeals && isLoadingRecentMeals) && (
+                <>
+                  {/* Favorites: starred meals + foods, most recently starred first */}
+                  {favoriteEntries.length > 0 && (
+                    <>
+                      <SectionHeader>
+                        {t('enhancedFoodSearch.favorites', 'Favorites')}
+                      </SectionHeader>
+                      {favoriteEntries.map(renderLandingEntry)}
+                    </>
+                  )}
+                  {/* Recent: one timeline of meals + foods by last-used date */}
+                  {recentEntries.length > 0 && (
+                    <>
+                      <SectionHeader>
+                        {t('enhancedFoodSearch.recent', 'Recent')}
+                      </SectionHeader>
+                      {recentEntries.map(renderLandingEntry)}
+                    </>
+                  )}
+                  {/* Frequent: one list of most-used meals + foods (not in Recent) */}
+                  {frequentEntries.length > 0 && (
+                    <>
+                      <SectionHeader>
+                        {t('enhancedFoodSearch.frequent', 'Frequent')}
+                      </SectionHeader>
+                      {frequentEntries.map(renderLandingEntry)}
+                    </>
+                  )}
+                  {favoriteEntries.length === 0 &&
+                    recentEntries.length === 0 &&
+                    frequentEntries.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        {showMeals
+                          ? t(
+                              'enhancedFoodSearch.noRecentOrTopItems',
+                              'No recent or frequent foods or meals found. Start logging to see them here.'
+                            )
+                          : t(
+                              'enhancedFoodSearch.noRecentOrTopFoods',
+                              'No recent or top foods found. Start logging foods to see them here.'
+                            )}
+                      </div>
+                    )}
+                </>
+              )}
           </>
         )}
 
@@ -1125,10 +1223,11 @@ const EnhancedFoodSearch = ({
                 <SectionHeader>
                   {t('enhancedFoodSearch.yourFoods', 'Your Foods')}
                 </SectionHeader>
-                {foods.map((food: Food) => (
+                {searchFoodsFavFirst.map((food: Food) => (
                   <FoodResultCard
                     key={food.id}
                     item={food}
+                    isFavorite={favoriteKeys.has(landingKey('food', food.id))}
                     nutrientConfig={nutrientConfig}
                     onCardClick={() => onFoodSelect(food, 'food')}
                   />
@@ -1142,11 +1241,12 @@ const EnhancedFoodSearch = ({
                 <SectionHeader>
                   {t('enhancedFoodSearch.yourMeals', 'Your Meals')}
                 </SectionHeader>
-                {meals.map((meal) => (
+                {searchMealsFavFirst.map((meal) => (
                   <FoodResultCard
                     key={`meal-${meal.id}`}
                     item={meal}
                     isMeal={true}
+                    isFavorite={favoriteKeys.has(landingKey('meal', meal.id))}
                     nutrientConfig={nutrientConfig}
                     onCardClick={() => onFoodSelect(meal, 'meal')}
                   />

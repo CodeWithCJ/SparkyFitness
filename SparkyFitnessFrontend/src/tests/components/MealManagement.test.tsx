@@ -80,6 +80,15 @@ jest.mock('@/components/MealBuilder', () => {
   };
 });
 
+// Mock favorites service: meal1 is a favorite, meal2 is not.
+jest.mock('@/api/Foods/favoritesService', () => ({
+  getFavorites: jest
+    .fn()
+    .mockResolvedValue({ favoriteFoods: [], favoriteMeals: [{ id: 'meal1' }] }),
+  addFavorite: jest.fn(),
+  removeFavorite: jest.fn(),
+}));
+
 describe('MealManagement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -123,5 +132,39 @@ describe('MealManagement', () => {
       expect(screen.getAllByText('Breakfast Bowl').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Protein Shake').length).toBeGreaterThan(0);
     });
+  });
+
+  it('shows a favorite indicator only on favorited meal rows', async () => {
+    mockGetMeals.mockResolvedValue([
+      {
+        id: 'meal1',
+        name: 'Breakfast Bowl',
+        description: 'A healthy start',
+        is_public: false,
+        foods: [],
+      },
+      {
+        id: 'meal2',
+        name: 'Protein Shake',
+        description: '',
+        is_public: true,
+        foods: [],
+      },
+    ]);
+
+    renderWithClient(<MealManagement />);
+
+    // Only meal1 is favorited, so exactly one row shows the "Favorited" star
+    // indicator (the toggle itself lives in the row's ⋮ menu, not inline).
+    await waitFor(() => {
+      expect(screen.getAllByText('Breakfast Bowl').length).toBeGreaterThan(0);
+    });
+    expect(screen.getAllByLabelText('Favorited').length).toBeGreaterThanOrEqual(
+      1
+    );
+    // No inline favorite buttons anymore — favoriting moved into the ⋮ menu.
+    expect(
+      screen.queryByRole('button', { name: 'Add to favorites' })
+    ).toBeNull();
   });
 });

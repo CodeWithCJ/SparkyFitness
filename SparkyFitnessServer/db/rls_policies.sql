@@ -36,6 +36,7 @@ BEGIN
     'family_access',
     'food_entries',
     'food_entry_meals',
+    'food_favorites',
     'food_variants',
     'foods',
     'goal_presets',
@@ -563,6 +564,12 @@ SELECT create_diary_policy('weekly_goal_plans');
 SELECT create_diary_policy('user_water_containers');
 SELECT create_diary_policy('user_custom_nutrients');
 SELECT create_diary_policy('user_allergen_preferences');
+-- Starred foods/meals follow the diary context: the favorites routes are mounted
+-- behind checkPermissionMiddleware('diary'), and the food-search screen a delegate
+-- sees is already scoped to the user they are acting for (recent/frequent entries
+-- included). An owner-only policy here would authorize the delegate at the route
+-- layer and then hide every row at the RLS layer.
+SELECT create_diary_policy('food_favorites');
 
 -- Nutrient display preferences: delegates can read but only owner can rearrange their own columns.
 CREATE POLICY select_policy ON public.user_nutrient_display_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));

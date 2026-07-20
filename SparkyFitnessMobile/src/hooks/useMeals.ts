@@ -12,6 +12,7 @@ import {
   updateMeal,
 } from '../services/api/mealsApi';
 import {
+  favoritesQueryKey,
   mealDetailQueryKey,
   mealSearchQueryKeyRoot,
   mealsQueryKey,
@@ -43,6 +44,10 @@ function invalidateMealCaches(queryClient: QueryClient, mealId?: string) {
   queryClient.invalidateQueries({ queryKey: mealsQueryKey });
   invalidateMealUsageCaches(queryClient);
   queryClient.invalidateQueries({ queryKey: mealSearchQueryKeyRoot });
+  // Favorites are a separate query root (5-min staleTime): an edited favorited
+  // meal would otherwise show stale content, and a deleted one (cascade-removed
+  // server-side) would linger and be re-selectable.
+  queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
 
   if (mealId) {
     queryClient.invalidateQueries({ queryKey: mealDetailQueryKey(mealId) });

@@ -10,6 +10,9 @@ export interface Meal {
   serving_unit?: string;
   total_servings?: number;
   foods?: MealFood[];
+  // ISO timestamp of when the current user starred this meal. Present only on
+  // items returned by the favorites endpoint; used to order the Favorites list.
+  favorited_at?: string;
 }
 
 export type MealComponentType = 'food' | 'meal';

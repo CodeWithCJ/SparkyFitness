@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Edit, Share2, Sparkles } from 'lucide-react';
+import { Edit, Share2, Sparkles, Star } from 'lucide-react';
 import { NutrientGrid } from './NutrientGrid';
 import ProviderVerifiedBadge from './ProviderVerifiedBadge';
 import AllergenBadges from '@/components/AllergenBadges';
@@ -46,6 +46,10 @@ interface FoodResultCardProps {
   nutrientConfig: NutrientGridConfig;
   onCardClick?: () => void;
   onEditClick?: () => void;
+  // Whether this row is starred. Passed down rather than queried per-card: the
+  // parent already holds the favorites Set, so one card mounting N rows is one
+  // lookup, not N copies of useFavoritesQuery.
+  isFavorite?: boolean;
 }
 
 const FoodResultCard = ({
@@ -58,6 +62,7 @@ const FoodResultCard = ({
   nutrientConfig,
   onCardClick,
   onEditClick,
+  isFavorite = false,
 }: FoodResultCardProps) => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
@@ -197,19 +202,26 @@ const FoodResultCard = ({
               </>
             )}
           </div>
-          {isOnline && onEditClick && (
-            <Button
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditClick();
-              }}
-              className="ml-2"
-            >
-              <Edit className="w-4 h-4 mr-1" />
-              {t('enhancedFoodSearch.editAndAdd', 'Edit & Add')}
-            </Button>
-          )}
+          <div className="flex items-center space-x-2 ml-2 shrink-0">
+            {isFavorite && (
+              <Star
+                className="h-4 w-4 shrink-0 fill-current text-yellow-500"
+                aria-label={t('enhancedFoodSearch.favorite', 'Favorite')}
+              />
+            )}
+            {isOnline && onEditClick && (
+              <Button
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditClick();
+                }}
+              >
+                <Edit className="w-4 h-4 mr-1" />
+                {t('enhancedFoodSearch.editAndAdd', 'Edit & Add')}
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

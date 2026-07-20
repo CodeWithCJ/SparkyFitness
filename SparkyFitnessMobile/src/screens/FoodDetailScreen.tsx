@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -9,8 +9,8 @@ import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import StatusView from '../components/StatusView';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useDeleteFood, useFoodVariants, useProfile, useServerConnection, usePreferences } from '../hooks';
-import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useDeleteFood, useFavorites, useFoodVariants, useProfile, useServerConnection, usePreferences, useToggleFavorite } from '../hooks';
+import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   buildExternalVariantOptions,
@@ -50,6 +50,24 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     enabled: isLocalFood && isConnected,
   });
   const canManageFood = !!(isLocalFood && isConnected && food.userId && profile?.id === food.userId);
+
+  // Favorites: a saved local food can be starred here, so the library is no
+  // longer edit-only via search. External results have no stable id to
+  // favorite, and the toggle needs a live connection like the rest of the
+  // screen. Ownership is not required — the server verifies access on add.
+  const canFavorite = isLocalFood && isConnected;
+  const { favoriteFoods } = useFavorites({ enabled: canFavorite });
+  const isFavorite = useMemo(
+    () => favoriteFoods.some((f) => f.id === food.id),
+    [favoriteFoods, food.id],
+  );
+  const { toggleFavorite, isPending: isFavoritePending } = useToggleFavorite();
+  const handleToggleFavorite = useCallback(() => {
+    // The full FoodItem isn't held here (route carries a FoodInfo), so the
+    // optimistic list insert is skipped; the star reconciles on the settle
+    // refetch. Removal filters by id and still flips instantly.
+    toggleFavorite({ type: 'food', id: food.id, isFavorite });
+  }, [toggleFavorite, food.id, isFavorite]);
 
   const localVariantOptions = useMemo(
     () => buildLocalVariantOptions(variants),
@@ -159,20 +177,46 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     });
   };
 
+  // Favorite star (accent-tinted, reads as a button) sits before the neutral
+  // Edit action, matching the food-log screen's header order.
+  const rightItems: HeaderItem[] = [
+    ...(canFavorite
+      ? [
+          {
+            kind: 'icon',
+            sfSymbol: isFavorite ? 'star.fill' : 'star',
+            ionicon: isFavorite ? 'star' : 'star-outline',
+            role: 'primary',
+            // Gated on the toggle's own mutation: onMutate flips the cache
+            // optimistically, so a double tap before settle would send the
+            // opposite op and the two writes could land out of order.
+            disabled: isFavoritePending,
+            onPress: handleToggleFavorite,
+            accessibilityLabel: isFavorite
+              ? 'Remove from favorites'
+              : 'Add to favorites',
+            identifier: 'food-detail-favorite',
+          } as const,
+        ]
+      : []),
+    ...(canManageFood
+      ? [
+          {
+            kind: 'text',
+            label: 'Edit',
+            role: 'secondary',
+            disabled: !selectedVariantId,
+            onPress: handleEdit,
+            accessibilityLabel: 'Edit food',
+            identifier: 'food-detail-edit',
+          } as const,
+        ]
+      : []),
+  ];
   const header = useScreenHeader({
     borderless: true,
     left: { kind: 'back' },
-    right: canManageFood
-      ? {
-          kind: 'text',
-          label: 'Edit',
-          role: 'secondary',
-          disabled: !selectedVariantId,
-          onPress: handleEdit,
-          accessibilityLabel: 'Edit food',
-          identifier: 'food-detail-edit',
-        }
-      : null,
+    right: rightItems.length > 0 ? rightItems : null,
   });
 
   const renderContent = () => {

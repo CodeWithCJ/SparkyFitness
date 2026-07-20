@@ -9,6 +9,7 @@ jest.mock('../../src/hooks', () => ({
   useMeals: jest.fn(),
   useMealSearch: jest.fn(),
   useServerConnection: jest.fn(),
+  useFavorites: jest.fn(() => ({ favoriteFoods: [], favoriteMeals: [], isLoading: false, isError: false, refetch: jest.fn() })),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({

@@ -9,6 +9,7 @@ import {
   useUpdateMeal,
 } from '../../src/hooks/useMeals';
 import {
+  favoritesQueryKey,
   mealDetailQueryKey,
   mealSearchQueryKeyRoot,
   mealsQueryKey,
@@ -225,6 +226,9 @@ describe('meal mutations', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: mealSearchQueryKeyRoot });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: mealDetailQueryKey('meal-1') });
+    // Regression: an edited/deleted favorited meal would otherwise show stale
+    // content (or linger) in the separate favorites cache (5-min staleTime).
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: favoritesQueryKey });
   });
 
   test('update invalidates meal caches and calls onSuccess', async () => {

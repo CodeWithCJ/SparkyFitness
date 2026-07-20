@@ -337,7 +337,21 @@ export function DataTable<TData, TValue>({
                         })()}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <div className="flex flex-col items-center gap-1 shrink-0 ml-2 self-start">
+                      {/* Favorite indicator stacks directly ABOVE the actions
+                          menu, top-aligned to the card's first text row (name).
+                          Renders nothing on non-favorited rows (cell → null). */}
+                      {(() => {
+                        const favoriteCell = row
+                          .getVisibleCells()
+                          .find((c) => c.column.id === 'favorite');
+                        return favoriteCell
+                          ? flexRender(
+                              favoriteCell.column.columnDef.cell,
+                              favoriteCell.getContext()
+                            )
+                          : null;
+                      })()}
                       {(() => {
                         const actionsCell = row
                           .getVisibleCells()

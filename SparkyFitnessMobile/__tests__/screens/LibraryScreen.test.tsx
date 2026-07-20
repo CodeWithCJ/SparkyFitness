@@ -14,6 +14,7 @@ jest.mock('../../src/hooks', () => ({
   useRecentMeals: jest.fn(),
   useServerConnection: jest.fn(),
   useSuggestedExercises: jest.fn(),
+  useFavorites: jest.fn(() => ({ favoriteFoods: [], favoriteMeals: [], isLoading: false, isError: false, refetch: jest.fn() })),
 }));
 
 jest.mock('../../src/services/api/foodsApi', () => ({
