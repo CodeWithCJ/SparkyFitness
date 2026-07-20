@@ -91,6 +91,13 @@ export type RootStackParamList = {
     adjustedCustomNutrients?: Record<string, string | number> | null;
   };
   MealTypeDetail: { date: string; mealType: MealTypeKey; mealLabel?: string };
+  DailyNutritionDetails: { date: string };
+  NutrientTrends: {
+    nutrientKey: string;
+    nutrientLabel: string;
+    unit: string;
+    goal?: number;
+  };
   FoodForm:
     | {
         mode: 'create-food';

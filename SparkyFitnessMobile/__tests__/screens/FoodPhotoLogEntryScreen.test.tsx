@@ -28,7 +28,14 @@ jest.mock('../../src/services/api/goalsApi', () => ({
 }));
 jest.mock('../../src/services/haptics', () => ({
   fireSuccessHaptic: jest.fn(),
+  fireImpactHaptic: jest.fn(),
 }));
+
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => true,
+}));
+
 jest.mock('react-native-toast-message', () => ({
   __esModule: true,
   default: { show: jest.fn() },

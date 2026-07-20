@@ -107,3 +107,6 @@ export const customNutrientsQueryKey = ['customNutrients'] as const;
 export const nutrientDisplayPreferencesQueryKey = ['nutrientDisplayPreferences'] as const;
 
 export const chatHistoryQueryKey = ['chatHistory'] as const;
+
+export const nutritionTrendsQueryKey = (startDate: string, endDate: string) =>
+  ['nutritionTrends', startDate, endDate] as const;

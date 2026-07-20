@@ -69,6 +69,8 @@ import WhatsNewScreen from './src/screens/WhatsNewScreen';
 import MeasurementsAddScreen from './src/screens/MeasurementsAddScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import DailyNutritionDetailsScreen from './src/screens/DailyNutritionDetailsScreen';
+import NutrientTrendsScreen from './src/screens/NutrientTrendsScreen';
 import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
@@ -223,6 +225,8 @@ const SafePasskeySettings = withErrorBoundary(PasskeySettingsScreen, 'PasskeySet
 const SafeAppSettings = withErrorBoundary(AppSettingsScreen, 'AppSettings', { canGoBack: true });
 const SafeAbout = withErrorBoundary(AboutScreen, 'About', { canGoBack: true });
 const SafeWhatsNew = withErrorBoundary(WhatsNewScreen, 'WhatsNew', { canGoBack: true });
+const SafeDailyNutritionDetails = withErrorBoundary(DailyNutritionDetailsScreen, 'DailyNutritionDetails', { canGoBack: true });
+const SafeNutrientTrends = withErrorBoundary(NutrientTrendsScreen, 'NutrientTrends', { canGoBack: true });
 
 function AppContent() {
   const { theme } = useUniwind();
@@ -1017,6 +1021,20 @@ function AppContent() {
             name="MealTypeDetail"
             component={SafeMealTypeDetail}
             options={({ route }) => createStackScreenOptions(route.params.mealLabel ?? 'Meal', { headerBackTitle: 'Diary' })}
+          />
+          <Stack.Screen
+            name="DailyNutritionDetails"
+            component={SafeDailyNutritionDetails}
+            options={createStackScreenOptions('Nutrition Details', {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
+            name="NutrientTrends"
+            component={SafeNutrientTrends}
+            options={createStackScreenOptions('Trends', { headerBackTitle: 'Details' })}
           />
           <Stack.Screen
             name="ExerciseSearch"

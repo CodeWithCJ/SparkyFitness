@@ -1,5 +1,6 @@
 import type { ExerciseSessionResponse, CalorieBalance } from '@workspace/shared';
 import type { FoodEntry } from './foodEntries';
+import type { DailyGoals } from './goals';
 
 export interface MacroSummary {
   consumed: number;
@@ -28,6 +29,7 @@ export interface DailySummary {
   foodEntries: FoodEntry[];
   exerciseEntries: ExerciseSessionResponse[];
   calorieBalance: CalorieBalance;
+  goals: DailyGoals;
   /** Pre-aggregated custom nutrient totals for the day (name → consumed value). */
   customNutrientTotals: Record<string, number>;
   /** Per-custom-nutrient goals (name → goal value); empty when none are set. */
