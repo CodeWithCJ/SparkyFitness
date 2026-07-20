@@ -18,6 +18,7 @@ export interface FoodEntry {
   food_name?: string;
   brand_name?: string;
   entry_date: string;
+  entry_time?: string | null;
   meal_plan_template_id?: string;
   serving_size: number;
   serving_unit?: string;

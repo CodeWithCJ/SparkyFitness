@@ -165,6 +165,18 @@ jest.mock('../../src/components/CalendarSheet', () => {
   };
 });
 
+jest.mock('../../src/components/TimeSheet', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: React.forwardRef((_p: any, ref: any) => {
+      React.useImperativeHandle(ref, () => ({ present: jest.fn() }));
+      return <View />;
+    }),
+  };
+});
+
 const mockUseFoodEntryMealDetails = useFoodEntryMealDetails as jest.MockedFunction<typeof useFoodEntryMealDetails>;
 const mockUseUpdateFoodEntryMeal = useUpdateFoodEntryMeal as jest.MockedFunction<typeof useUpdateFoodEntryMeal>;
 const mockUseDeleteFoodEntryMeal = useDeleteFoodEntryMeal as jest.MockedFunction<typeof useDeleteFoodEntryMeal>;

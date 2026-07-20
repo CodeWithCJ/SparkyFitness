@@ -155,6 +155,20 @@ jest.mock('../../src/components/CalendarSheet', () => {
   };
 });
 
+jest.mock('../../src/components/TimeSheet', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockTimeSheet = React.forwardRef((_props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({ present: jest.fn() }));
+    return <View testID="time-sheet" />;
+  });
+  MockTimeSheet.displayName = 'MockTimeSheet';
+  return {
+    __esModule: true,
+    default: MockTimeSheet,
+  };
+});
+
 const mockUseMealTypes = useMealTypes as jest.MockedFunction<typeof useMealTypes>;
 const mockUseFoodVariants = useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
 const mockUseCreateFoodVariant =
