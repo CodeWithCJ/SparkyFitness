@@ -20,6 +20,7 @@ import {
   calculateEntryNutrition,
   calculateMealNutrition,
   filterFoodEntriesByMealType,
+  getMealPercentage,
 } from '../utils/mealNutrition';
 import { getMealTypeLabel } from '../constants/meals';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -51,6 +52,11 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
     [summary?.foodEntries, mealType],
   );
   const nutrition = useMemo(() => calculateMealNutrition(entries), [entries]);
+  const targetCalories = useMemo(() => {
+    if (!summary?.goals || !summary?.calorieGoal || mealType === 'other') return 0;
+    const percentage = getMealPercentage(mealType, summary.goals);
+    return Math.round((summary.calorieGoal * percentage) / 100);
+  }, [summary, mealType]);
 
   const { copyMeal, isPending: isCopying } = useCopyFoodEntries({
     onSuccess: () => copySheetRef.current?.dismiss(),
@@ -134,10 +140,11 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       >
         <FoodNutritionSummary
           name={label}
-          brand={formatDateLabel(date)}
+          brand={targetCalories > 0 ? `${formatDateLabel(date)} · Target: ${targetCalories} Cal` : formatDateLabel(date)}
           values={nutrition.values}
           showNetCarbs={showNetCarbs}
           customNutrients={Object.keys(nutrition.customNutrients).length > 0 ? nutrition.customNutrients : null}
+          calorieGoal={targetCalories > 0 ? targetCalories : undefined}
         />
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">

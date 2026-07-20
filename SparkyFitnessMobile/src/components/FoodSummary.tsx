@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { FoodEntry } from '../types/foodEntries';
+import type { DailyGoals } from '../types/goals';
 import Icon, { type IconName } from './Icon';
 import { MEAL_TYPES, MEAL_CONFIG } from '../constants/meals';
 import SwipeableFoodRow from './SwipeableFoodRow';
@@ -9,11 +10,14 @@ import {
   calculateEntryNutrition,
   calculateMealNutrition,
   groupFoodEntriesByMealType,
+  getMealPercentage,
   type MealTypeKey,
 } from '../utils/mealNutrition';
 
 interface FoodSummaryProps {
   foodEntries: FoodEntry[];
+  goals?: DailyGoals;
+  calorieGoal?: number;
   onAddFood?: () => void;
   onAdjustServing?: (entry: FoodEntry) => void;
   onPressMealType?: (mealType: MealTypeKey, entries: FoodEntry[]) => void;
@@ -22,22 +26,40 @@ interface FoodSummaryProps {
 interface MealSectionProps {
   mealType: MealTypeKey;
   entries: FoodEntry[];
+  goals?: DailyGoals;
+  calorieGoal?: number;
   onAdjustServing?: (entry: FoodEntry) => void;
   onPressMealType?: (mealType: MealTypeKey, entries: FoodEntry[]) => void;
 }
 
-const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustServing, onPressMealType }) => {
+const MealSection: React.FC<MealSectionProps> = ({
+  mealType,
+  entries,
+  goals,
+  calorieGoal,
+  onAdjustServing,
+  onPressMealType,
+}) => {
   const config = MEAL_CONFIG[mealType] || { label: mealType, icon: 'meal-snack' as IconName };
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const totalCalories = calculateMealNutrition(entries).values.calories;
+  const targetCalories = React.useMemo(() => {
+    if (!goals || !calorieGoal || mealType === 'other') return 0;
+    const percentage = getMealPercentage(mealType, goals);
+    return Math.round((calorieGoal * percentage) / 100);
+  }, [goals, calorieGoal, mealType]);
+
   const headerContent = (
     <>
       <Icon name={config.icon} size={18} color={accentPrimary} />
       <Text className="text-base font-bold text-text-secondary flex-1">{config.label}</Text>
-      {totalCalories > 0 && (
+      {(totalCalories > 0 || targetCalories > 0) && (
         <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
-          <Text className="text-xs text-accent-primary font-semibold">{totalCalories} Cal</Text>
+          <Text className="text-xs text-accent-primary font-semibold">
+            {totalCalories}
+            {targetCalories > 0 ? ` / ${targetCalories}` : ''} Cal
+          </Text>
         </View>
       )}
       {onPressMealType && (
@@ -77,7 +99,14 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustSe
   );
 };
 
-const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdjustServing, onPressMealType }) => {
+const FoodSummary: React.FC<FoodSummaryProps> = ({
+  foodEntries,
+  goals,
+  calorieGoal,
+  onAddFood,
+  onAdjustServing,
+  onPressMealType,
+}) => {
   if (foodEntries.length === 0) {
     return (
       <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
@@ -105,6 +134,8 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdj
           key={mealType}
           mealType={mealType}
           entries={grouped[mealType]}
+          goals={goals}
+          calorieGoal={calorieGoal}
           onAdjustServing={onAdjustServing}
           onPressMealType={onPressMealType}
         />
@@ -113,6 +144,8 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdj
         <MealSection
           mealType="other"
           entries={grouped.other}
+          goals={goals}
+          calorieGoal={calorieGoal}
           onAdjustServing={onAdjustServing}
           onPressMealType={onPressMealType}
         />

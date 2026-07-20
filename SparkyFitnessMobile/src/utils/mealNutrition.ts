@@ -1,6 +1,7 @@
 import { MEAL_TYPES } from '../constants/meals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDisplayValues } from './foodDetails';
+import type { DailyGoals } from '../types/goals';
 import { calculateCustomNutrientTotals } from '../services/api/foodEntriesApi';
 
 export type MealTypeKey = (typeof MEAL_TYPES)[number] | 'other';
@@ -104,4 +105,17 @@ export function calculateMealNutrition(entries: FoodEntry[]): MealNutrition {
     },
     customNutrients: calculateCustomNutrientTotals(entries),
   };
+}
+
+export function getMealPercentage(mealName: string, goals?: DailyGoals): number {
+  if (!goals) return 0;
+
+  const key = mealName.toLowerCase();
+
+  if (goals.custom_meal_percentages && key in goals.custom_meal_percentages) {
+    return goals.custom_meal_percentages[key] ?? 0;
+  }
+
+  const legacyKey = `${key}_percentage` as keyof DailyGoals;
+  return (goals[legacyKey] as number) ?? 0;
 }

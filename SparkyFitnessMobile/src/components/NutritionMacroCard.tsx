@@ -189,23 +189,34 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
         </View>
       ) : (
         <View className="flex-row items-center gap-x-5">
-          <View
-            className="items-center justify-center"
-            style={{ width: RING_SIZE, height: RING_SIZE }}
-          >
-            <MacroCompositionRing
-              size={RING_SIZE}
-              strokeWidth={RING_STROKE}
-              shares={shares}
-              colors={{ protein: proteinColor, carbs: carbsColor, fat: fatColor }}
-              trackColor={trackColor}
-            />
-            <View className="absolute items-center justify-center">
-              <Text className="text-text-primary text-3xl font-medium">
-                {Math.round(calories)}
-              </Text>
-              <Text className="text-text-secondary text-xs mt-0.5">calories</Text>
+          <View className="items-center">
+            <View
+              className="items-center justify-center"
+              style={{ width: RING_SIZE, height: RING_SIZE }}
+            >
+              <MacroCompositionRing
+                size={RING_SIZE}
+                strokeWidth={RING_STROKE}
+                shares={shares}
+                colors={{ protein: proteinColor, carbs: carbsColor, fat: fatColor }}
+                trackColor={trackColor}
+              />
+              <View className="absolute items-center justify-center">
+                <Text className="text-text-primary text-3xl font-medium">
+                  {calorieGoal && calorieGoal > 0
+                    ? Math.max(0, Math.round(calorieGoal - calories)).toLocaleString()
+                    : Math.round(calories)}
+                </Text>
+                <Text className="text-text-secondary text-xs mt-0.5">
+                  {calorieGoal && calorieGoal > 0 ? 'left' : 'calories'}
+                </Text>
+              </View>
             </View>
+            {calorieGoal && calorieGoal > 0 ? (
+              <Text className="text-text-secondary text-xs font-medium mt-2 text-center">
+                {Math.round(calories).toLocaleString()} / {Math.round(calorieGoal).toLocaleString()} Cal
+              </Text>
+            ) : null}
           </View>
 
           <View className="flex-1 gap-3 pl-5">
