@@ -53,9 +53,17 @@ spec:
               value: {{ .Values.garmin.port | quote }}
             - name: GARMIN_SERVICE_IS_CN
               value: {{ .Values.config.garmin.isChinaRegion | quote }}
+            {{- if kindIs "slice" .Values.garmin.extraEnv }}
+            {{- toYaml .Values.garmin.extraEnv | nindent 12 }}
+            {{- else }}
             {{- range $k, $v := .Values.garmin.extraEnv }}
             - name: {{ $k }}
+              {{- if kindIs "map" $v }}
+              {{- toYaml $v | nindent 14 }}
+              {{- else }}
               value: {{ $v | quote }}
+              {{- end }}
+            {{- end }}
             {{- end }}
           {{- with .Values.garmin.containerSecurityContext }}
           securityContext:

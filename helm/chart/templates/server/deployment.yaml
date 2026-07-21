@@ -85,23 +85,23 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.appSecretName" . }}
-                  key: api_encryption_key
+                  key: {{ .Values.server.secrets.existingSecretKeys.apiEncryptionKey | default "api_encryption_key" }}
             - name: BETTER_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.appSecretName" . }}
-                  key: better_auth_secret
+                  key: {{ .Values.server.secrets.existingSecretKeys.betterAuthSecret | default "better_auth_secret" }}
             # --- App database credentials (limited-privilege user) ---
             - name: SPARKY_FITNESS_APP_DB_USER
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.appDbSecretName" . }}
-                  key: username
+                  key: {{ .Values.server.appDatabase.existingSecretKeys.username | default "username" }}
             - name: SPARKY_FITNESS_APP_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.appDbSecretName" . }}
-                  key: password
+                  key: {{ .Values.server.appDatabase.existingSecretKeys.password | default "password" }}
             # --- Database credentials (owner) ---
             - name: SPARKY_FITNESS_DB_USER
               {{- if .Values.postgresql.enabled }}
@@ -110,7 +110,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.databaseSecretName" . }}
-                  key: username
+                  key: {{ .Values.externalDatabase.auth.existingSecretKeys.username | default "username" }}
               {{- end }}
             - name: SPARKY_FITNESS_DB_PASSWORD
               valueFrom:
@@ -119,7 +119,7 @@ spec:
                   {{- if .Values.postgresql.enabled }}
                   key: user-password
                   {{- else }}
-                  key: password
+                  key: {{ .Values.externalDatabase.auth.existingSecretKeys.password | default "password" }}
                   {{- end }}
             {{- if .Values.config.oidc.enabled }}
             # --- OIDC credentials ---
@@ -127,12 +127,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.oidcSecretName" . }}
-                  key: client_id
+                  key: {{ .Values.config.oidc.secrets.existingSecretKeys.clientId | default "client_id" }}
             - name: SPARKY_FITNESS_OIDC_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.oidcSecretName" . }}
-                  key: client_secret
+                  key: {{ .Values.config.oidc.secrets.existingSecretKeys.clientSecret | default "client_secret" }}
             {{- end }}
             {{- if .Values.config.email.enabled }}
             # --- SMTP credentials ---
@@ -140,16 +140,24 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.smtpSecretName" . }}
-                  key: username
+                  key: {{ .Values.config.email.secrets.existingSecretKeys.username | default "username" }}
             - name: SPARKY_FITNESS_EMAIL_PASS
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.smtpSecretName" . }}
-                  key: password
+                  key: {{ .Values.config.email.secrets.existingSecretKeys.password | default "password" }}
             {{- end }}
+            {{- if kindIs "slice" .Values.server.extraEnv }}
+            {{- toYaml .Values.server.extraEnv | nindent 12 }}
+            {{- else }}
             {{- range $k, $v := .Values.server.extraEnv }}
             - name: {{ $k }}
+              {{- if kindIs "map" $v }}
+              {{- toYaml $v | nindent 14 }}
+              {{- else }}
               value: {{ $v | quote }}
+              {{- end }}
+            {{- end }}
             {{- end }}
           {{- with .Values.server.containerSecurityContext }}
           securityContext:
