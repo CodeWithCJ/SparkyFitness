@@ -178,6 +178,8 @@ jest.mock('../../src/components/FoodNutritionSummary', () => {
   return {
     __esModule: true,
     default: ({ name }: any) => <Text>{name}</Text>,
+    FoodNutritionHeader: ({ name }: any) => <Text>{name}</Text>,
+    FoodNutrientBreakdown: () => null,
   };
 });
 

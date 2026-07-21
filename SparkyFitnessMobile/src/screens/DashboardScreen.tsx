@@ -22,7 +22,7 @@ import CalorieRingCard from '../components/CalorieRingCard';
 import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { addDays, getTodayDate } from '../utils/dateUtils';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   setNativeHeaderDatePickerOptions,
   type NativeHeaderDatePickerNavigation,
@@ -59,39 +59,35 @@ type DashboardScreenProps = CompositeScreenProps<
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const queryClient = useQueryClient();
-  const [selectedDate, setSelectedDate] = useState(getTodayDate);
+  const selectedDate = useDiaryDateStore((s) => s.selectedDate);
+  const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
+  const goToPreviousDay = useDiaryDateStore((s) => s.goToPreviousDay);
+  const goToNextDay = useDiaryDateStore((s) => s.goToNextDay);
+  const goToToday = useDiaryDateStore((s) => s.goToToday);
+  const syncTodayRollover = useDiaryDateStore((s) => s.syncTodayRollover);
   const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
-  const lastKnownToday = useRef(getTodayDate());
   const scrollViewRef = useRef<ScrollView>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
 
   // Only reset to today when the calendar day has actually changed (midnight rollover)
   useFocusEffect(
     useCallback(() => {
-      const today = getTodayDate();
-      if (today !== lastKnownToday.current) {
-        lastKnownToday.current = today;
-        setSelectedDate(today);
-      }
-    }, [])
+      syncTodayRollover();
+    }, [syncTodayRollover])
   );
-
-  const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
-  const goToNextDay = useCallback(() => setSelectedDate(prev => addDays(prev, 1)), []);
-  const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
 
   // Re-tapping the active Dashboard tab acts as a quick return to
   // today's summary and the top of the screen.
   useEffect(() => {
     return navigation.addListener('tabPress', () => {
       if (navigation.isFocused()) {
-        setSelectedDate(getTodayDate());
+        goToToday();
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
       }
     });
-  }, [navigation]);
+  }, [navigation, goToToday]);
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
-  const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
+  const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), [setSelectedDate]);
   const usesNativeTabs = useNativeIOSTabsActive();
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const syncNativeHeaderDatePicker = useCallback(() => {

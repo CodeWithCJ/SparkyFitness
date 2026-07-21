@@ -16,11 +16,12 @@ import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
-import FoodNutritionSummary from '../components/FoodNutritionSummary';
+import { FoodNutritionHeader, FoodNutrientBreakdown } from '../components/FoodNutritionSummary';
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
-import { getTodayDate, getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
+import { addDays, getTodayDate, getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { prefillEntryTime, userHourMinute } from '@workspace/shared';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
@@ -183,9 +184,15 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const returnDepth = route.params?.returnDepth ?? 1;
   const ingredientIndex = route.params?.ingredientIndex;
   const isMealBuilderMode = pickerMode === 'meal-builder';
-  const [selectedDate, setSelectedDate] = useState(
-    initialDate ?? getTodayDate(),
+  const [selectedDate, setSelectedDateState] = useState(
+    initialDate ?? useDiaryDateStore.getState().selectedDate,
   );
+  // Logging always targets the Dashboard/Diary date; changing it here should
+  // carry back so the other views stay on the same day, not just inherit it.
+  const setSelectedDate = useCallback((date: string) => {
+    setSelectedDateState(date);
+    useDiaryDateStore.getState().setSelectedDate(date);
+  }, []);
   const calendarRef = useRef<CalendarSheetRef>(null);
   const timeSheetRef = useRef<TimeSheetRef>(null);
   const { mealTypes, defaultMealTypeId } = useMealTypes();
@@ -1314,7 +1321,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       {header}
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 pt-4 pb-4 gap-4">
-        <FoodNutritionSummary
+        <FoodNutritionHeader
           name={adjustedValues?.name || activeItem.name}
           brand={adjustedValues?.brand ?? activeItem.brand}
           values={displayValues}
@@ -1328,7 +1335,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           goalsLoading={isGoalsLoading}
           showNetCarbs={showNetCarbs}
           provider_verified={activeItem.provider_verified}
-          customNutrients={selectedCustomNutrients}
         />
 
         <View className="mt-2">
@@ -1435,7 +1441,14 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 />
               </TouchableOpacity>
 
-              {selectedDate !== getTodayDate() && (
+              {selectedDate === getTodayDate() ? (
+                <TouchableOpacity activeOpacity={0.7}
+                  className="flex-row items-center mx-4"
+                  onPress={() => setSelectedDate(addDays(getTodayDate(), -1))}
+                >
+                  <Text className="text-text-link text-sm font-medium mx-1.5">Use Yesterday</Text>
+                </TouchableOpacity>
+              ) : (
                 <TouchableOpacity activeOpacity={0.7}
                   className="flex-row items-center mx-4"
                   onPress={() => setSelectedDate(getTodayDate())}
@@ -1512,6 +1525,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             ) : null}
           </>
         ) : null}
+
+        <FoodNutrientBreakdown
+          values={displayValues}
+          servings={servings}
+          showNetCarbs={showNetCarbs}
+          customNutrients={selectedCustomNutrients}
+        />
 
       </ScrollView>
 

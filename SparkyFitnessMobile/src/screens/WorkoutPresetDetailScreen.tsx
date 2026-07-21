@@ -20,6 +20,7 @@ import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   buildPresetStartExercisesPayload,
   makeSparseExercise,
@@ -151,7 +152,11 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   }, [startLiveWorkout, preset]);
 
   const navigateToPresetWorkout = useCallback(() => {
-    navigation.navigate('WorkoutAdd', { preset, popCount: 2 });
+    navigation.navigate('WorkoutAdd', {
+      preset,
+      popCount: 2,
+      date: useDiaryDateStore.getState().selectedDate,
+    });
   }, [navigation, preset]);
 
   // The form path (retroactive logging) is the one that owns workout drafts,

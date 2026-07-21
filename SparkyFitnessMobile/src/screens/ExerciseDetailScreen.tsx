@@ -23,6 +23,7 @@ import {
 } from '../hooks';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   buildSingleExerciseStartPayload,
   formatRecentSessionSet,
@@ -294,6 +295,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     navigation.navigate('ActivityAdd', {
       selectedExercise: exercise,
       selectionNonce: Date.now(),
+      date: useDiaryDateStore.getState().selectedDate,
     });
   };
 

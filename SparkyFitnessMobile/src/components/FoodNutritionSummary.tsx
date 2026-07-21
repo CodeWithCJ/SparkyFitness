@@ -9,7 +9,7 @@ import type { FoodDisplayValues } from '../utils/foodDetails';
 import NutritionMacroCard, { type NutritionGoalPercentages } from './NutritionMacroCard';
 import { useCustomNutrients, useServerConnection } from '../hooks';
 
-interface FoodNutritionSummaryProps {
+interface FoodNutritionHeaderProps {
   name: string;
   brand?: string | null;
   values: FoodDisplayValues;
@@ -24,12 +24,11 @@ interface FoodNutritionSummaryProps {
   // enabled.
   showNetCarbs?: boolean;
   provider_verified?: boolean;
-  /** Raw custom nutrient values for this food/variant (key = nutrient name, value = amount per serving). */
-  customNutrients?: Record<string, string | number> | null;
   calorieGoal?: number;
 }
 
-const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
+/** Food name, brand, and the calorie ring / macro bars. */
+export const FoodNutritionHeader: React.FC<FoodNutritionHeaderProps> = ({
   name,
   brand,
   values,
@@ -38,8 +37,51 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
   goalsLoading,
   showNetCarbs = false,
   provider_verified = false,
-  customNutrients,
   calorieGoal,
+}) => {
+  const scale = (value: number) => value * servings;
+
+  return (
+    <View className="gap-4">
+      <View>
+        <View className="flex-row items-start gap-1.5">
+          <Text className="text-text-primary text-3xl font-bold flex-shrink">{name}</Text>
+          {provider_verified ? <VerifiedBadge size="md" style={{ marginTop: 5 }} /> : null}
+        </View>
+        {brand ? (
+          <Text className="text-text-secondary text-base mt-1">{brand}</Text>
+        ) : null}
+      </View>
+
+      <NutritionMacroCard
+        calories={scale(values.calories)}
+        protein={scale(values.protein)}
+        carbs={scale(values.carbs)}
+        fat={scale(values.fat)}
+        fiber={values.fiber !== undefined ? scale(values.fiber) : undefined}
+        goalPercentages={goalPercentages}
+        goalsLoading={goalsLoading}
+        showNetCarbs={showNetCarbs}
+        calorieGoal={calorieGoal}
+      />
+    </View>
+  );
+};
+
+interface FoodNutrientBreakdownProps {
+  values: FoodDisplayValues;
+  servings?: number;
+  showNetCarbs?: boolean;
+  /** Raw custom nutrient values for this food/variant (key = nutrient name, value = amount per serving). */
+  customNutrients?: Record<string, string | number> | null;
+}
+
+/** Full nutrient list (fiber, sugars, sodium, etc.) with the "show more" toggle. */
+export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
+  values,
+  servings = 1,
+  showNetCarbs = false,
+  customNutrients,
 }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const { isConnected } = useServerConnection();
@@ -109,28 +151,6 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
 
   return (
     <Animated.View className="gap-4" layout={layoutTransition}>
-      <View>
-        <View className="flex-row items-start gap-1.5">
-          <Text className="text-text-primary text-3xl font-bold flex-shrink">{name}</Text>
-          {provider_verified ? <VerifiedBadge size="md" style={{ marginTop: 5 }} /> : null}
-        </View>
-        {brand ? (
-          <Text className="text-text-secondary text-base mt-1">{brand}</Text>
-        ) : null}
-      </View>
-
-      <NutritionMacroCard
-        calories={scale(values.calories)}
-        protein={scale(values.protein)}
-        carbs={scale(values.carbs)}
-        fat={scale(values.fat)}
-        fiber={values.fiber !== undefined ? scale(values.fiber) : undefined}
-        goalPercentages={goalPercentages}
-        goalsLoading={goalsLoading}
-        showNetCarbs={showNetCarbs}
-        calorieGoal={calorieGoal}
-      />
-
       {primaryNutrients.length > 0 ? (
         <Animated.View className="rounded-xl" layout={layoutTransition}>
           {primaryNutrients.map((nutrient, index) => {
@@ -169,6 +189,19 @@ const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = ({
           </Button>
         </Animated.View>
       ) : null}
+    </Animated.View>
+  );
+};
+
+interface FoodNutritionSummaryProps extends FoodNutritionHeaderProps, FoodNutrientBreakdownProps {}
+
+/** Combined header + nutrient breakdown, preserved for existing single-block callers. */
+const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = (props) => {
+  const layoutTransition = LinearTransition.duration(250);
+  return (
+    <Animated.View className="gap-4" layout={layoutTransition}>
+      <FoodNutritionHeader {...props} />
+      <FoodNutrientBreakdown {...props} />
     </Animated.View>
   );
 };
