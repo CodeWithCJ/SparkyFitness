@@ -242,6 +242,10 @@ export function useHealthDataImport() {
       // processHealthData can write to except mood, which has its own key.
       invalidateDiaryQueries();
       queryClient.invalidateQueries({ queryKey: moodKeys.all });
+      // Mood-tag imports can auto-create custom mood definitions
+      // (ensureCustomMoodsExist on the server); this ad-hoc key is what
+      // useCustomMoods() reads, separate from moodKeys (mood entries).
+      queryClient.invalidateQueries({ queryKey: ['custom-moods'] });
       toast({
         title: t('healthDataImport.importComplete', 'Import complete'),
         description: t(
