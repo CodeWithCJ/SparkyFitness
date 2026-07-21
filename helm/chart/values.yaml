@@ -95,6 +95,10 @@ config:
       clientSecret: ""
       # -- Use an existing K8s Secret (keys: client_id, client_secret)
       existingSecret: ""
+      # -- Override the default keys used when existingSecret is set
+      existingSecretKeys:
+        clientId: client_id
+        clientSecret: client_secret
 
   # -- Email / SMTP notifications
   email:
@@ -116,6 +120,10 @@ config:
       password: ""
       # -- Use an existing K8s Secret (keys: username, password)
       existingSecret: ""
+      # -- Override the default keys used when existingSecret is set
+      existingSecretKeys:
+        username: username
+        password: password
 
   # -- Garmin Connect integration
   garmin:
@@ -260,6 +268,10 @@ server:
     betterAuthSecret: ""
     # -- Use an existing K8s Secret (keys: api_encryption_key, better_auth_secret)
     existingSecret: ""
+    # -- Override the default keys used when existingSecret is set
+    existingSecretKeys:
+      apiEncryptionKey: api_encryption_key
+      betterAuthSecret: better_auth_secret
   # -- Application database credentials (limited-privilege user for runtime queries)
   appDatabase:
     # -- Username for the limited-privilege app DB user
@@ -268,6 +280,10 @@ server:
     password: ""
     # -- Use an existing K8s Secret (keys: username, password)
     existingSecret: ""
+    # -- Override the default keys used when existingSecret is set
+    existingSecretKeys:
+      username: username
+      password: password
   persistence:
     backup:
       size: 5Gi
@@ -286,8 +302,8 @@ server:
     tempUploads:
       # -- Mount path inside the container for temporary uploads
       mountPath: /app/SparkyFitnessServer/temp_uploads
-  # -- Extra environment variables injected into the server container (key: value)
-  extraEnv: {}
+  # -- Extra environment variables injected into the server container (key: value or standard Kubernetes env array)
+  # extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the server container
   extraEnvFrom: []
   # -- Extra volumes to add to the server pod
@@ -390,8 +406,8 @@ frontend:
   #             kubernetes.io/metadata.name: ingress-nginx
   networkPolicy:
     from: []
-  # -- Extra environment variables injected into the frontend container (key: value)
-  extraEnv: {}
+  # -- Extra environment variables injected into the frontend container (key: value or standard Kubernetes env array)
+  # extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the frontend container
   extraEnvFrom: []
   # -- Extra volumes added to the frontend pod
@@ -461,8 +477,8 @@ garmin:
     readOnlyRootFilesystem: true
     capabilities:
       drop: [ALL]
-  # -- Extra environment variables injected into the garmin container (key: value)
-  extraEnv: {}
+  # -- Extra environment variables injected into the garmin container (key: value or standard Kubernetes env array)
+  # extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the garmin container
   extraEnvFrom: []
   # -- Extra volumes added to the garmin pod
@@ -625,6 +641,10 @@ externalDatabase:
     username: ""
     password: ""
     existingSecret: ""
+    # -- Override the default keys used when existingSecret is set
+    existingSecretKeys:
+      username: username
+      password: password
   # -- NetworkPolicy egress restriction for the external database.
   # Only relevant when networkPolicy.enabled=true and postgresql.enabled=false.
   # Set at least one of cidrs / namespaceSelector / podSelector to restrict the

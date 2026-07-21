@@ -56,9 +56,17 @@ spec:
               value: {{ .Values.frontend.port | quote }}
             - name: NGINX_RATE_LIMIT
               value: {{ .Values.frontend.rateLimit | default "5r/s" | quote }}
+            {{- if kindIs "slice" .Values.frontend.extraEnv }}
+            {{- toYaml .Values.frontend.extraEnv | nindent 12 }}
+            {{- else }}
             {{- range $k, $v := .Values.frontend.extraEnv }}
             - name: {{ $k }}
+              {{- if kindIs "map" $v }}
+              {{- toYaml $v | nindent 14 }}
+              {{- else }}
               value: {{ $v | quote }}
+              {{- end }}
+            {{- end }}
             {{- end }}
           {{- with .Values.frontend.containerSecurityContext }}
           securityContext:
