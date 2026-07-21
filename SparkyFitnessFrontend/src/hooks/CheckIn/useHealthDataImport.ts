@@ -17,8 +17,8 @@ import {
   importHealthDataCsv,
   HealthDataImportResult,
 } from '@/api/CheckIn/checkInService';
-import { checkInKeys } from '@/api/keys/checkin';
-import { dailyProgressKeys } from '@/api/keys/diary';
+import { moodKeys } from '@/api/keys/checkin';
+import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
 
 // Rows are POSTed in chunks so a large historical import stays within the
 // server's 5000-row cap and body-size limits.
@@ -36,6 +36,7 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
 export function useHealthDataImport() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const invalidateDiaryQueries = useDiaryInvalidation();
 
   const [category, setCategoryState] = useState<ImportCategory>('measurements');
   const [csvData, setCsvData] = useState<HealthImportRow[]>([]);
@@ -229,8 +230,18 @@ export function useHealthDataImport() {
         }
       }
       setResult(aggregate);
-      queryClient.invalidateQueries({ queryKey: checkInKeys.all });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+      // Only clear the working table once every row succeeded; if anything
+      // failed, leave the rows in place (with their errors shown below) so
+      // the user can fix and resubmit instead of retyping the whole import.
+      if (aggregate.errors.length === 0) {
+        setCsvData([]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+      // Covers check-in measurements, custom measurements, sleep, water,
+      // exercise, food entries, goals, and reports — every table
+      // processHealthData can write to except mood, which has its own key.
+      invalidateDiaryQueries();
+      queryClient.invalidateQueries({ queryKey: moodKeys.all });
       toast({
         title: t('healthDataImport.importComplete', 'Import complete'),
         description: t(

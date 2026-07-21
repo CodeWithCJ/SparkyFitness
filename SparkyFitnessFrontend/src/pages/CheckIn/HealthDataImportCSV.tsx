@@ -15,10 +15,124 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Download, Upload, Trash2, Copy } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Slider } from '@/components/ui/slider';
+import {
+  Plus,
+  Download,
+  Upload,
+  Trash2,
+  Copy,
+  CalendarIcon,
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { localDateToDay } from '@workspace/shared';
 import { HEALTH_IMPORT_CATEGORIES } from '@/constants/healthDataImport';
 import { useHealthDataImport } from '@/hooks/CheckIn/useHealthDataImport';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { getMoodDisplay } from '@/utils/moodUtils';
+import AliasChipInput from '@/components/Foods/AliasChipInput';
+
+// Calendar date-picker cell, matching the compact popover pattern used by
+// DayNavigator, so the date column respects the user's date-format
+// preference across every import category instead of free-typed text.
+const DateCell = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) => {
+  const { formatDate, parseDateInUserTimezone } = usePreferences();
+  const parsed = value ? parseDateInUserTimezone(value) : undefined;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full md:w-40 justify-start gap-2 font-normal"
+        >
+          <CalendarIcon className="h-4 w-4 shrink-0" />
+          {parsed ? (
+            <span className="truncate">{formatDate(parsed)}</span>
+          ) : (
+            <span className="text-muted-foreground">Pick a date</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={parsed}
+          onSelect={(date) => date && onChange(localDateToDay(date))}
+          yearsRange={10}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+// mood_value is a 10-100 intensity scale (see MoodMeter.tsx); a slider with
+// its live emoji/label is far less error-prone than typing a raw number.
+const MoodValueCell = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) => {
+  const parsed = parseInt(value, 10);
+  const clamped = Number.isNaN(parsed)
+    ? 50
+    : Math.min(100, Math.max(10, parsed));
+  const { emoji, label } = getMoodDisplay(clamped);
+  return (
+    <div className="flex items-center gap-2 w-full md:w-56">
+      <Slider
+        value={[clamped]}
+        min={10}
+        max={100}
+        step={10}
+        onValueChange={(vals) => onChange(String(vals[0] ?? 50))}
+        className="flex-1"
+      />
+      <span className="text-xs whitespace-nowrap">
+        {emoji} {label}
+      </span>
+    </div>
+  );
+};
+
+// Reuses the same chip/tag input as the custom-nutrient provider alias
+// field: type a tag, press Enter to add it as a removable chip. Stored in
+// the row as a single '|'-joined string, matching the CSV cell format.
+const MoodTagsCell = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) => {
+  const tags = value
+    ? value
+        .split('|')
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    : [];
+  return (
+    <AliasChipInput
+      value={tags}
+      onChange={(next) => onChange(next.join('|'))}
+      placeholder="Add mood tag"
+    />
+  );
+};
 
 const HealthDataImportCSV = () => {
   const { t } = useTranslation();
@@ -249,7 +363,22 @@ const HealthDataImportCSV = () => {
                           <span className="font-medium capitalize text-muted-foreground md:hidden mb-1 block">
                             {h.replace(/_/g, ' ')}
                           </span>
-                          {config.dropdownColumns?.[h] ? (
+                          {h === 'date' ? (
+                            <DateCell
+                              value={row[h] ?? ''}
+                              onChange={(val) => handleEditCell(row.id, h, val)}
+                            />
+                          ) : category === 'mood' && h === 'mood_value' ? (
+                            <MoodValueCell
+                              value={row[h] ?? ''}
+                              onChange={(val) => handleEditCell(row.id, h, val)}
+                            />
+                          ) : category === 'mood' && h === 'mood_tags' ? (
+                            <MoodTagsCell
+                              value={row[h] ?? ''}
+                              onChange={(val) => handleEditCell(row.id, h, val)}
+                            />
+                          ) : config.dropdownColumns?.[h] ? (
                             <Select
                               value={row[h] ?? ''}
                               onValueChange={(val) =>

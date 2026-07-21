@@ -310,6 +310,41 @@ const mapHydrationRow = (row: HealthImportRow): MappedRows => {
   };
 };
 
+const mapMoodRow = (row: HealthImportRow): MappedRows => {
+  const moodValueRaw = cell(row, 'mood_value');
+  if (isBlank(moodValueRaw)) return { items: [], errors: [] };
+  const moodValue = toNumber(moodValueRaw);
+  if (
+    moodValue === undefined ||
+    !Number.isInteger(moodValue) ||
+    moodValue < 10 ||
+    moodValue > 100
+  ) {
+    return {
+      items: [],
+      errors: [
+        {
+          error: `Invalid mood_value '${moodValueRaw}'. Must be an integer between 10 and 100.`,
+          entry: rowSnapshot(row),
+        },
+      ],
+    };
+  }
+  const item: HealthDataItem = {
+    ...baseFields(row),
+    type: 'Mood',
+    value: moodValue,
+  };
+  const tagsRaw = cell(row, 'mood_tags');
+  if (!isBlank(tagsRaw)) {
+    item['mood_tags'] = tagsRaw
+      .split('|')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag !== '');
+  }
+  return { items: [item], errors: [] };
+};
+
 // Transform editable rows into the flat items POSTed to the server plus any
 // client-side rejections (unrecognized units). This is the single place unit
 // conversion, numeric coercion, and the wide->tall fan-out for measurements
@@ -324,6 +359,7 @@ export const mapRowsToHealthItems = (
     vitals: mapVitalRow,
     activity: mapActivityRow,
     hydration: mapHydrationRow,
+    mood: mapMoodRow,
   };
   const items: HealthDataItem[] = [];
   const errors: ImportError[] = [];

@@ -20,7 +20,8 @@ export type ImportCategory =
   | 'sleep'
   | 'vitals'
   | 'activity'
-  | 'hydration';
+  | 'hydration'
+  | 'mood';
 
 export interface HealthImportTypeGuide {
   title: string;
@@ -267,6 +268,30 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
         value: '2100',
         unit: 'ml',
         source: 'CSV_Import',
+      },
+    ],
+  },
+  {
+    value: 'mood',
+    label: 'Mood',
+    description:
+      'One mood entry per day (re-importing a date overwrites it). ' +
+      'mood_value is 10-100: 10 Tired, 20 Sad, 30 Angry, 40 Worried, 50 Neutral, ' +
+      '60 Thoughtful, 70 Calm, 80 Confident, 90 Excited, 100 Happy. ' +
+      'mood_tags is optional, pipe-separated (e.g. grateful|energetic).',
+    requiredHeaders: ['date', 'mood_value', 'mood_tags', 'notes'],
+    sample: [
+      {
+        date: today,
+        mood_value: '80',
+        mood_tags: 'grateful|energetic',
+        notes: '',
+      },
+      {
+        date: yesterday,
+        mood_value: '40',
+        mood_tags: '',
+        notes: 'Rough day at work',
       },
     ],
   },

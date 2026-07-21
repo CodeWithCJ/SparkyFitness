@@ -4,6 +4,8 @@ import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import foodRepository from '../models/foodRepository.js';
+import moodRepository from '../models/moodRepository.js';
+import { BUILT_IN_MOODS } from '@workspace/shared';
 
 /**
  * Per-type handlers for processHealthData. Each handler owns the validation
@@ -951,6 +953,85 @@ const stressHandler: HealthTypeHandler = {
   handleBatch: stressHandleBatch,
 };
 
+// Names (slug or display name) already covered by the app's built-in mood
+// chips — an imported tag matching one of these needs no custom mood record.
+const BUILT_IN_MOOD_NAMES = new Set(
+  BUILT_IN_MOODS.flatMap((m) => [
+    m.name.toLowerCase(),
+    m.displayName.toLowerCase(),
+  ])
+);
+
+// Auto-creates a bare custom mood (name only, default icon/color) for any
+// imported tag that matches neither a built-in mood nor an existing custom
+// one, so it shows up in Settings > Manage Moods afterward. The existing-name
+// set is fetched once up front and never re-queried: moodRepository.
+// createCustomMood upserts on (user_id, name) and would overwrite an
+// existing mood's icon/color with null, so it must only be called for names
+// confirmed to be genuinely new.
+async function ensureCustomMoodsExist(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  tags: string[]
+): Promise<void> {
+  const unknownTags = tags.filter(
+    (tag) => !BUILT_IN_MOOD_NAMES.has(tag.toLowerCase())
+  );
+  if (unknownTags.length === 0) return;
+  const existing = await moodRepository.listCustomMoods(userId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const existingNames = new Set(existing.map((m: any) => m.name.toLowerCase()));
+  for (const tag of unknownTags) {
+    const normalized = tag.toLowerCase().trim();
+    if (!existingNames.has(normalized)) {
+      await moodRepository.createCustomMood(userId, { name: tag });
+      existingNames.add(normalized);
+    }
+  }
+}
+
+// Mood has its own dedicated table (mood_entries), upserted on
+// (user_id, entry_date) — unlike Stress it does not go through
+// custom_measurements. mood_value is a 10-100 scale (see MoodMeter.tsx /
+// moodUtils.ts for the band->label mapping); mood_tags is an optional array
+// of free-form tag names, auto-creating any unrecognized custom mood.
+const moodHandler: HealthTypeHandler = {
+  async handle(entry, ctx) {
+    const moodValue = parseInt(entry.value, 10);
+    if (isNaN(moodValue) || moodValue < 10 || moodValue > 100) {
+      return {
+        status: 'error',
+        error: 'Invalid value for Mood. Must be an integer between 10 and 100.',
+      };
+    }
+    const moodTags = Array.isArray(entry.mood_tags)
+      ? entry.mood_tags.filter(
+          (tag: unknown) => typeof tag === 'string' && tag.trim() !== ''
+        )
+      : null;
+    try {
+      if (moodTags && moodTags.length > 0) {
+        await ensureCustomMoodsExist(ctx.userId, moodTags);
+      }
+      const result = await moodRepository.createOrUpdateMoodEntry(
+        ctx.userId,
+        moodValue,
+        entry.notes ?? null,
+        ctx.parsedDate,
+        moodTags
+      );
+      return { status: 'success', data: result };
+    } catch (moodError) {
+      const message =
+        moodError instanceof Error ? moodError.message : String(moodError);
+      return {
+        status: 'error',
+        error: `Failed to process Mood entry: ${message}`,
+      };
+    }
+  },
+};
+
 const workoutHandler: HealthTypeHandler = {
   async handle(entry, ctx) {
     const { type, source = 'manual' } = entry;
@@ -1192,6 +1273,7 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   Workout: workoutHandler,
   Nutrition: nutritionHandler,
   sleep_entry: sleepEntryHandler,
+  Mood: moodHandler,
 };
 
 // Lookup-only normalization of incoming type spellings to canonical handler
@@ -1204,6 +1286,7 @@ export const TYPE_ALIASES: Record<string, string> = {
   body_fat_percentage: 'body_fat',
   Height: 'height',
   ExerciseSession: 'Workout',
+  mood: 'Mood',
 };
 
 /**
