@@ -183,7 +183,10 @@ const CheckIn = () => {
                   {t('healthDataImport.importCSV', 'Import CSV')}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto">
+              <DialogContent
+                requireConfirmation
+                className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto"
+              >
                 <DialogHeader>
                   <DialogTitle>
                     {t('healthDataImport.title', 'Import Health Data')}
