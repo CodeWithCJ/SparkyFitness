@@ -147,6 +147,7 @@ describe('WorkoutPresetDetailScreen', () => {
       expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd', {
         preset,
         popCount: 2,
+        date: expect.any(String),
       });
     });
     expect(startLiveWorkout).not.toHaveBeenCalled();

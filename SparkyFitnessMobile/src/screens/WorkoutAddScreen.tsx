@@ -23,7 +23,8 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import { useWorkoutForm, getWorkoutDraftSubmission } from '../hooks/useWorkoutForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
-import { formatDateLabel } from '../utils/dateUtils';
+import { addDays, formatDateLabel, getTodayDate } from '../utils/dateUtils';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
@@ -77,13 +78,19 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ungroupExercise,
     reorderExercises,
     setName,
-    setDate,
+    setDate: setFormDate,
     populate,
     populateFromPreset,
     hasDraftData,
     discardDraft,
     exercisesModifiedRef,
   } = useWorkoutForm({ isEditMode, skipDraftLoad, initialDate });
+  // Logging always targets the Dashboard/Diary date; changing it here should
+  // carry back so the other views stay on the same day, not just inherit it.
+  const setDate = useCallback((date: string) => {
+    setFormDate(date);
+    useDiaryDateStore.getState().setSelectedDate(date);
+  }, [setFormDate]);
 
   const [eligibleIds, setEligibleIds] = useState<Set<string>>(() => new Set());
 
@@ -321,17 +328,35 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 </View>
 
                 {/* Date row */}
-                <TouchableOpacity
-                  onPress={() => calendarSheetRef.current?.present()}
-                  activeOpacity={0.7}
-                  className="flex-row items-center mb-4"
-                >
-                  <Text className="text-text-secondary text-base">Date</Text>
-                  <Text className="text-text-primary text-base font-medium mx-1.5">
-                    {formatDateLabel(state.entryDate)}
-                  </Text>
-                  <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-                </TouchableOpacity>
+                <View className="flex-row items-center mb-4">
+                  <TouchableOpacity
+                    onPress={() => calendarSheetRef.current?.present()}
+                    activeOpacity={0.7}
+                    className="flex-row items-center"
+                  >
+                    <Text className="text-text-secondary text-base">Date</Text>
+                    <Text className="text-text-primary text-base font-medium mx-1.5">
+                      {formatDateLabel(state.entryDate)}
+                    </Text>
+                    <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
+                  </TouchableOpacity>
+
+                  {state.entryDate === getTodayDate() ? (
+                    <TouchableOpacity activeOpacity={0.7}
+                      className="flex-row items-center mx-4"
+                      onPress={() => setDate(addDays(getTodayDate(), -1))}
+                    >
+                      <Text className="text-text-link text-sm font-medium mx-1.5">Use Yesterday</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity activeOpacity={0.7}
+                      className="flex-row items-center mx-4"
+                      onPress={() => setDate(getTodayDate())}
+                    >
+                      <Text className="text-text-link text-sm font-medium mx-1.5">Use Today</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
                 {/* Full-bleed: cancel the scroll container's px-4 so the card
                     separators reach the screen edges. */}

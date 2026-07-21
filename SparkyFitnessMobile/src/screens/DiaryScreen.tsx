@@ -21,13 +21,13 @@ import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDi
 import { useMeasurements } from '../hooks/useMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { addDays, getTodayDate } from '../utils/dateUtils';
 import {
   setNativeHeaderDatePickerOptions,
   type NativeHeaderDatePickerNavigation,
 } from '../utils/nativeHeaderDatePicker';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -42,20 +42,20 @@ type DiaryScreenProps = CompositeScreenProps<
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const [selectedDate, setSelectedDate] = useState(getTodayDate);
-  const lastKnownToday = useRef(getTodayDate());
+  const selectedDate = useDiaryDateStore((s) => s.selectedDate);
+  const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
+  const goToPreviousDay = useDiaryDateStore((s) => s.goToPreviousDay);
+  const goToNextDay = useDiaryDateStore((s) => s.goToNextDay);
+  const goToToday = useDiaryDateStore((s) => s.goToToday);
+  const syncTodayRollover = useDiaryDateStore((s) => s.syncTodayRollover);
   const scrollViewRef = useRef<ScrollView>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
   const servingSheetRef = useRef<ServingAdjustSheetRef>(null);
 
   useFocusEffect(
     useCallback(() => {
-      const today = getTodayDate();
-      if (today !== lastKnownToday.current) {
-        lastKnownToday.current = today;
-        setSelectedDate(today);
-      }
-    }, [])
+      syncTodayRollover();
+    }, [syncTodayRollover])
   );
 
   // Re-tapping the active Diary tab acts as a quick return to today's
@@ -63,19 +63,16 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   useEffect(() => {
     return navigation.addListener('tabPress', () => {
       if (navigation.isFocused()) {
-        setSelectedDate(getTodayDate());
+        goToToday();
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
       }
     });
-  }, [navigation]);
+  }, [navigation, goToToday]);
 
   useEffect(() => {
     navigation.setParams({ selectedDate });
   }, [navigation, selectedDate]);
 
-  const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
-  const goToNextDay = useCallback(() => setSelectedDate(prev => addDays(prev, 1)), []);
-  const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const usesNativeTabs = useNativeIOSTabsActive();
@@ -120,7 +117,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
   ), [goToPreviousDay, goToNextDay]);
 
-  const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
+  const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), [setSelectedDate]);
   const openMealTypeDetail = useCallback((mealType: MealTypeKey) => {
     navigation.navigate('MealTypeDetail', { date: selectedDate, mealType });
   }, [navigation, selectedDate]);
