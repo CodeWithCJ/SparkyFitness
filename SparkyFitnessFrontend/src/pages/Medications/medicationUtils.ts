@@ -1,4 +1,6 @@
 import i18n from '@/i18n';
+import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
+import type { MedicationNutrients } from '@/types/medications';
 import {
   Pill,
   Syringe,
@@ -44,10 +46,56 @@ export const MED_TYPES = [
   'other',
 ];
 
+// Dose-forms offered on the supplement form. These reuse the medication `type_id`
+// text column (no schema change) — a supplement is an is_supplement medication row,
+// so its form lives in the same field a medication's type does.
+export const SUPPLEMENT_FORMS = [
+  'tablet',
+  'capsule',
+  'softgel',
+  'gummy',
+  'powder',
+  'liquid',
+] as const;
+
+export type MedSubtype = 'all' | 'meds' | 'supplements';
+
+// Partitions the medication list for the `All | Meds | Supplements` segmented filter.
+// Supplements are is_supplement medication rows, so this is a view filter over the same
+// list, not a separate data source — keeping the adherence engine and rollup untouched.
+export const filterMedsBySubtype = <T extends { is_supplement?: boolean }>(
+  meds: T[],
+  subtype: MedSubtype
+): T[] =>
+  meds.filter((med) =>
+    subtype === 'all'
+      ? true
+      : subtype === 'supplements'
+        ? Boolean(med.is_supplement)
+        : !med.is_supplement
+  );
+
+// Applies the same segmented filter to logged entries, which reference a medication by id.
+// `all` deliberately short-circuits: an entry can outlive its medication, and those orphans
+// have no id in `visibleMedIds`, so filtering on `all` would hide history the view exists
+// to show. The narrowed views still filter, because there is no way to classify an orphan
+// entry as a med or a supplement once its medication row is gone.
+export const filterEntriesBySubtype = <T extends { medication_id: string }>(
+  entries: T[],
+  visibleMedIds: Set<string>,
+  subtype: MedSubtype
+): T[] =>
+  subtype === 'all'
+    ? entries
+    : entries.filter((entry) => visibleMedIds.has(entry.medication_id));
+
 export const MED_TYPE_ICONS: Record<string, LucideIcon> = {
   pill: Pill,
   tablet: Tablets,
   capsule: Pill,
+  softgel: Pill,
+  gummy: Tablets,
+  powder: FlaskConical,
   liquid: FlaskConical,
   injection: Syringe,
   patch: Bandage,
@@ -63,6 +111,9 @@ export const MED_TYPE_COLORS: Record<string, string> = {
   pill: 'text-rose-500',
   tablet: 'text-amber-500',
   capsule: 'text-orange-500',
+  softgel: 'text-amber-500',
+  gummy: 'text-pink-500',
+  powder: 'text-emerald-500',
   liquid: 'text-cyan-500',
   injection: 'text-blue-500',
   patch: 'text-violet-500',
@@ -207,4 +258,28 @@ export const formatScheduleDescription = (
     default:
       return `${sched.schedule_type_id}${timeStr}${mealStr}`;
   }
+};
+
+// Normalises a free-text number input into a `dose_amount` the API will accept. The
+// server requires dose_amount to be positive, but these are plain number inputs saved
+// via onClick rather than a native form submit, so their `min` attribute never triggers
+// constraint validation — an empty, zero or negative entry has to become null ("no
+// dose" / "no override") here, or the save fails with a 400.
+export const positiveDoseOrNull = (value: string): number | null => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+
+// How many nutrient rows a supplement's per-dose payload carries. Used for the compact
+// "12 nutrients" badge — a multivitamin has ~26, which is correct but not worth listing
+// inline on a card.
+export const countMedicationNutrients = (
+  nutrients: MedicationNutrients | null | undefined
+): number => {
+  if (!nutrients) return 0;
+  const fixed = FOOD_VARIANT_NUTRIENT_FIELDS.filter(
+    (field) => typeof nutrients[field] === 'number'
+  ).length;
+  return fixed + Object.keys(nutrients.custom_nutrients ?? {}).length;
 };

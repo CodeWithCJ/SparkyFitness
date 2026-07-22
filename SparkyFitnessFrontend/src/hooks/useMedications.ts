@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 import * as medicationService from '@/api/Medications/medicationService';
 import { reportKeys } from '@/api/keys/reports';
+import { dailyProgressKeys, diaryReportKeys } from '@/api/keys/diary';
 import type {
   Medication,
   ListMedicationsOptions,
@@ -42,6 +43,23 @@ const invalidateReports = (queryClient: QueryClient) =>
     queryKey: reportKeys.all,
     refetchType: 'all',
   });
+
+// A supplement dose contributes its nutrient payload to the day's totals, so logging,
+// editing or undoing one moves the Diary's calories/macros and goal progress just as a
+// food entry does. Medication mutations historically touched only medication + report
+// keys, which left a cached Diary summary showing pre-dose numbers until it went stale.
+// Scoped to the diary summary keys rather than the blanket diary invalidation, since
+// nothing here can affect exercise, water or check-in data.
+const invalidateDiaryTotals = (queryClient: QueryClient) => {
+  queryClient.invalidateQueries({
+    queryKey: dailyProgressKeys.all,
+    refetchType: 'all',
+  });
+  queryClient.invalidateQueries({
+    queryKey: diaryReportKeys.nutritionTrends(),
+    refetchType: 'all',
+  });
+};
 
 // --- Queries ---------------------------------------------------------------
 
@@ -395,6 +413,7 @@ export const useCreateMedicationEntryMutation = () => {
       });
       queryClient.invalidateQueries({ queryKey: ['medications'] });
       invalidateReports(queryClient);
+      invalidateDiaryTotals(queryClient);
     },
     meta: {
       errorMessage: 'Could not log dose.',
@@ -420,6 +439,7 @@ export const useUpdateMedicationEntryMutation = () => {
       });
       queryClient.invalidateQueries({ queryKey: ['medications'] });
       invalidateReports(queryClient);
+      invalidateDiaryTotals(queryClient);
     },
     meta: {
       errorMessage: 'Could not update logged dose.',
@@ -439,6 +459,7 @@ export const useDeleteMedicationEntryMutation = () => {
       });
       queryClient.invalidateQueries({ queryKey: ['medications'] });
       invalidateReports(queryClient);
+      invalidateDiaryTotals(queryClient);
     },
     meta: {
       errorMessage: 'Could not remove logged dose.',

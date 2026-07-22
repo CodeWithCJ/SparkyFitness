@@ -166,19 +166,18 @@ const NutritionChartsGrid = ({
         const chartData = prepareChartData(effectiveNutritionData, chart.key);
         const yAxisDomain = getYAxisDomain(effectiveNutritionData, chart.key);
         const average = calculateAverage(chartData, chart.key);
-
-        let formattedAverage = '';
-        if (chart.key === 'calories') {
-          formattedAverage = Math.round(
-            convertEnergy(average, 'kcal', energyUnit)
-          ).toString();
-        } else {
-          formattedAverage = formatNutrientValue(
-            chart.key,
-            average,
-            customNutrients
-          );
-        }
+        const foodAverage = calculateAverage(chartData, `food_${chart.key}`);
+        const supplementAverage = calculateAverage(
+          chartData,
+          `supplement_${chart.key}`
+        );
+        const formatAverage = (value: number) =>
+          chart.key === 'calories'
+            ? Math.round(convertEnergy(value, 'kcal', energyUnit)).toString()
+            : formatNutrientValue(chart.key, value, customNutrients);
+        const formattedAverage = formatAverage(average);
+        const formattedFoodAverage = formatAverage(foodAverage);
+        const formattedSupplementAverage = formatAverage(supplementAverage);
 
         return (
           <ZoomableChart
@@ -192,10 +191,18 @@ const NutritionChartsGrid = ({
                     <CardTitle className="text-sm">
                       {chart.label} ({chart.unit})
                     </CardTitle>
-                    <span className="text-xs text-muted-foreground font-normal">
-                      {t('reports.average', 'Avg')}: {formattedAverage}{' '}
-                      {chart.unit}
-                    </span>
+                    <div className="text-right text-xs text-muted-foreground font-normal">
+                      <div>
+                        {t('reports.average', 'Avg')}: {formattedAverage}{' '}
+                        {chart.unit}
+                      </div>
+                      <div>
+                        {t('reports.fromFood', 'Food')}: {formattedFoodAverage}{' '}
+                        {chart.unit} ·{' '}
+                        {t('reports.fromSupplements', 'Supplements')}:{' '}
+                        {formattedSupplementAverage} {chart.unit}
+                      </div>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent
@@ -250,21 +257,27 @@ const NutritionChartsGrid = ({
                               | string
                               | number
                               | ReadonlyArray<string | number>
-                              | undefined
+                              | undefined,
+                            name: string | number | undefined
                           ) => {
                             if (value === null || value === undefined) {
-                              return 'N/A';
+                              return ['N/A', name];
                             }
 
                             const numValue = Number(
                               Array.isArray(value) ? value[0] : value
                             );
-
-                            if (chart.key === 'calories') {
-                              return `${Math.round(convertEnergy(numValue, 'kcal', energyUnit))} ${chart.unit}`;
-                            }
-
-                            return `${formatNutrientValue(chart.key, numValue, customNutrients)} ${chart.unit}`;
+                            const formattedValue =
+                              chart.key === 'calories'
+                                ? Math.round(
+                                    convertEnergy(numValue, 'kcal', energyUnit)
+                                  )
+                                : formatNutrientValue(
+                                    chart.key,
+                                    numValue,
+                                    customNutrients
+                                  );
+                            return [`${formattedValue} ${chart.unit}`, name];
                           }}
                           contentStyle={{
                             backgroundColor: 'hsl(var(--background))',
@@ -277,6 +290,27 @@ const NutritionChartsGrid = ({
                           strokeWidth={2}
                           dot={false}
                           isAnimationActive={false}
+                          name={chart.label}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey={`food_${chart.key}`}
+                          stroke={chart.color}
+                          strokeWidth={1.5}
+                          strokeDasharray="3 3"
+                          dot={false}
+                          isAnimationActive={false}
+                          name={t('reports.fromFood', 'Food')}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey={`supplement_${chart.key}`}
+                          stroke="#8b5cf6"
+                          strokeWidth={1.5}
+                          strokeDasharray="3 3"
+                          dot={false}
+                          isAnimationActive={false}
+                          name={t('reports.fromSupplements', 'Supplements')}
                         />
                         <Line
                           type="monotone"

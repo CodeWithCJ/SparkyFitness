@@ -21,6 +21,7 @@ import {
 } from '../../schemas/medicationSchemas.js';
 import { UuidParamSchema } from '../../schemas/measurementSchemas.js';
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
+import { canAccessUserData } from '../../utils/permissionUtils.js';
 import onBehalfOfMiddleware from '../../middleware/onBehalfOfMiddleware.js';
 import medicationRepository from '../../models/medicationRepository.js';
 import medicationPenRepository from '../../models/medicationPenRepository.js';
@@ -38,6 +39,48 @@ const router = express.Router();
 // gated by the 'diary' permission. Owners are unaffected.
 router.use(onBehalfOfMiddleware);
 router.use(checkPermissionMiddleware('medications'));
+
+// A supplement's nutrient payload is nutrition data: once doses are logged it moves
+// the owner's daily totals and report. Managing medications alone therefore does not
+// authorise writing it, and the client hiding the editor is only an affordance — the
+// API has to enforce this independently of the UI.
+//
+// Stripping rather than rejecting, because these are the same endpoints a caregiver
+// legitimately uses to rename a supplement or fix its schedule.
+//
+// `is_supplement` is treated differently on the two verbs, and the asymmetry matters:
+//   - create: the flag is KEPT. It is a classification, not nutrition, and a supplement
+//     with no payload rolls nothing up. Dropping it would silently turn a caregiver's
+//     "Add supplement" into a plain medication.
+//   - update: the flag is STRIPPED, because setting it on a medication that already
+//     carries a payload would start that payload counting — a way to enable nutrition
+//     the caller may not write. updateMedication is a sparse patch, so omitting the
+//     keys preserves whatever the owner already set.
+const stripNutrientFieldsWithoutDiaryAccess = ({
+  keepSupplementFlag,
+}: {
+  keepSupplementFlag: boolean;
+}): RequestHandler => {
+  return async (req, res, next) => {
+    const touchesNutrition =
+      req.body?.nutrients !== undefined ||
+      req.body?.is_supplement !== undefined;
+    if (!touchesNutrition) return next();
+
+    const authUserId =
+      req.originalUserId || req.authenticatedUserId || req.userId;
+    try {
+      const allowed = await canAccessUserData(req.userId, 'diary', authUserId);
+      if (!allowed) {
+        delete req.body.nutrients;
+        if (!keepSupplementFlag) delete req.body.is_supplement;
+      }
+      return next();
+    } catch (error) {
+      return next(error);
+    }
+  };
+};
 
 /**
  * @swagger
@@ -67,7 +110,7 @@ router.use(checkPermissionMiddleware('medications'));
  *       required: true
  *       content:
  *         application/json:
- *           schema: { type: object, required: [name], properties: { name: { type: string }, is_glp1: { type: boolean }, type_id: { type: string }, strength_value: { type: number }, strength_unit: { type: string } } }
+ *           schema: { type: object, required: [name], properties: { name: { type: string }, is_glp1: { type: boolean }, is_supplement: { type: boolean }, nutrients: { type: object, description: Fixed-key and custom nutrient amounts per dose }, type_id: { type: string }, strength_value: { type: number }, strength_unit: { type: string } } }
  *     responses:
  *       201: { description: Created. }
  *       400: { description: Invalid request. }
@@ -476,7 +519,11 @@ const deleteEntry: RequestHandler = async (req, res, next) => {
 };
 
 router.get('/', listMedications);
-router.post('/', createMedication);
+router.post(
+  '/',
+  stripNutrientFieldsWithoutDiaryAccess({ keepSupplementFlag: true }),
+  createMedication
+);
 router.get('/entries', listEntries);
 router.post('/entries', createEntry);
 router.put('/entries/:id', updateEntry);
@@ -547,7 +594,11 @@ router.delete(
 );
 
 router.get('/:id', getMedication);
-router.put('/:id', updateMedication);
+router.put(
+  '/:id',
+  stripNutrientFieldsWithoutDiaryAccess({ keepSupplementFlag: false }),
+  updateMedication
+);
 router.delete('/:id', deleteMedication);
 
 // --- Schedules ------------------------------------------------------------

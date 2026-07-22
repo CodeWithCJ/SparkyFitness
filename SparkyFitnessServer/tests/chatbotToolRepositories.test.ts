@@ -308,12 +308,15 @@ describe('reportRepository.getDailyNutritionTotalsRange', () => {
 
     expect(result).toBe(rows);
     const [sql, params] = mockClient.query.mock.calls[0];
+    // Food SUMs are COALESCE-wrapped and carry a dose-scaled supplement contribution now.
     expect(sql).toContain(
-      'SUM(dietary_fiber * quantity / NULLIF(serving_size, 0)) as fiber'
+      'COALESCE(SUM(dietary_fiber * quantity / NULLIF(serving_size, 0)), 0)'
     );
+    expect(sql).toContain(' as fiber');
     expect(sql).toContain(
-      'SUM(sugars * quantity / NULLIF(serving_size, 0)) as sugar'
+      'COALESCE(SUM(sugars * quantity / NULLIF(serving_size, 0)), 0)'
     );
+    expect(sql).toContain(' as sugar');
     expect(params).toEqual(['user-1', '2026-06-01', '2026-06-11']);
   });
 });

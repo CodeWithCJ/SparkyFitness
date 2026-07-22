@@ -12,6 +12,7 @@ import {
   Info,
   Pill,
   Syringe,
+  Plus,
 } from 'lucide-react';
 import {
   todayInZone,
@@ -39,6 +40,12 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import type { MedicationDetail } from '@/types/medications';
 import Glp1Coach from './Glp1Coach';
 import AddMedicationDialog, { MedTypeIcon } from './AddMedicationDialog';
+import {
+  countMedicationNutrients,
+  filterEntriesBySubtype,
+  filterMedsBySubtype,
+  type MedSubtype,
+} from './medicationUtils';
 import ScheduleManager from './ScheduleManager';
 import TodayMedications from './TodayMedications';
 import SymptomDashboard from './SymptomDashboard';
@@ -52,6 +59,22 @@ export default function Medications() {
     'today'
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // `All | Meds | Supplements` view filter. Persisted so it survives navigation, and it
+  // filters the shared meds list rather than fetching a separate one — the whole point of
+  // the middle-path approach (one page, one data source, one adherence engine).
+  const [subtype, setSubtype] = useState<MedSubtype>(() => {
+    // Validate rather than blind-cast: an unrecognised stored value would otherwise fall
+    // through to the "meds" branch with no segmented button highlighted.
+    const stored = localStorage.getItem('medications.subtypeFilter');
+    return stored === 'meds' || stored === 'supplements' || stored === 'all'
+      ? stored
+      : 'all';
+  });
+  const setSubtypeFilter = (next: MedSubtype) => {
+    setSubtype(next);
+    localStorage.setItem('medications.subtypeFilter', next);
+  };
 
   const [searchParams, setSearchParams] = useSearchParams();
   const dateParam = searchParams.get('date');
@@ -100,13 +123,53 @@ export default function Medications() {
     toDate: selectedDate,
   });
 
+  // The filtered list feeding both the Log view and the Cabinet list. Because
+  // TodayMedications derives its dose list AND the adherence overview from this prop,
+  // filtering here makes the adherence numbers respect the filter for free.
+  const visibleMeds = useMemo(
+    () => filterMedsBySubtype(meds as MedicationDetail[], subtype),
+    [meds, subtype]
+  );
+
+  // "Scheduled today" KPI honours the same subtype filter as the Cabinet list + tiles.
   const dueTodayCount = useMemo(() => {
-    return getDueDosesForDate(
-      meds as MedicationDetail[],
-      selectedDate,
-      timezone
-    ).length;
-  }, [meds, selectedDate, timezone]);
+    return getDueDosesForDate(visibleMeds, selectedDate, timezone).length;
+  }, [visibleMeds, selectedDate, timezone]);
+
+  // Logged entries belong to a medication, so the Today log has to respect the same filter
+  // as the dose list above it — otherwise "Supplements" still lists medication doses (with a
+  // broken icon lookup) and the counts disagree with what's shown.
+  //
+  // "All" must NOT filter, though: an entry whose medication has since been deleted has no
+  // match in `meds`, so filtering by id would silently drop that history from the one view
+  // that is supposed to show everything.
+  const visibleMedIds = useMemo(
+    () => new Set(visibleMeds.map((m) => m.id)),
+    [visibleMeds]
+  );
+  const visibleEntries = useMemo(
+    () => filterEntriesBySubtype(entries, visibleMedIds, subtype),
+    [entries, visibleMedIds, subtype]
+  );
+  const visibleRecentEntries = useMemo(
+    () => filterEntriesBySubtype(recentEntries, visibleMedIds, subtype),
+    [recentEntries, visibleMedIds, subtype]
+  );
+
+  // Supplement-only users land on the Supplements view — but only as a one-time soft
+  // default that never overrides a filter the user has already chosen and saved.
+  const [autoDefaulted, setAutoDefaulted] = useState(false);
+  useEffect(() => {
+    if (autoDefaulted || loadingMeds) return;
+    setAutoDefaulted(true);
+    if (
+      localStorage.getItem('medications.subtypeFilter') === null &&
+      meds.length > 0 &&
+      meds.every((m) => m.is_supplement)
+    ) {
+      setSubtype('supplements');
+    }
+  }, [autoDefaulted, loadingMeds, meds]);
 
   // Mutations
   const removeMedMutation = useDeleteMedicationMutation();
@@ -114,8 +177,9 @@ export default function Medications() {
   const handleDeleteMed = (id: string) =>
     removeMedMutation.mutate(id, { onSuccess: () => setSelectedId(null) });
 
-  const selected =
-    (meds.find((m) => m.id === selectedId) as MedicationDetail) ?? null;
+  // Resolve the detail pane from the FILTERED list, so switching the subtype filter clears
+  // a selection that is no longer visible instead of leaving its Edit/Delete card orphaned.
+  const selected = visibleMeds.find((m) => m.id === selectedId) ?? null;
 
   // If no medications AND no symptom entries exist (and user hasn't accepted
   // this session), show the disclaimer gate — similar to CycleOnboarding.
@@ -199,7 +263,27 @@ export default function Medications() {
           <span className="mx-2 text-muted-foreground/30 hidden sm:inline">
             |
           </span>
-          <AddMedicationDialog />
+          <AddMedicationDialog
+            trigger={
+              <Button size="sm" className="rounded-full h-9 gap-2">
+                <Plus className="h-4 w-4" />
+                <span className="text-xs font-semibold">
+                  {t('medications.cabinet.addMed', 'Add medication')}
+                </span>
+              </Button>
+            }
+          />
+          <AddMedicationDialog
+            defaultIsSupplement
+            trigger={
+              <Button size="sm" className="rounded-full h-9 gap-2">
+                <Plus className="h-4 w-4" />
+                <span className="text-xs font-semibold">
+                  {t('medications.cabinet.addSupplement', 'Add supplement')}
+                </span>
+              </Button>
+            }
+          />
         </div>
 
         {/* Vertical Divider (Desktop Only) */}
@@ -215,13 +299,44 @@ export default function Medications() {
         </div>
       </div>
 
+      {/* Subtype filter — reuses the sub-tab button styling for visual consistency.
+          Symptoms has no meds list, so the filter is hidden there. */}
+      {activeTab !== 'symptoms' && (
+        <div className="-mt-2 flex flex-wrap items-center justify-center gap-1 lg:justify-start">
+          {(
+            [
+              ['all', t('medications.subtype.all', 'All')],
+              ['meds', t('medications.subtype.meds', 'Meds')],
+              [
+                'supplements',
+                t('medications.subtype.supplements', 'Supplements'),
+              ],
+            ] as [MedSubtype, string][]
+          ).map(([value, label]) => (
+            <Button
+              key={value}
+              variant={subtype === value ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setSubtypeFilter(value)}
+              className={`rounded-full px-4 h-8 transition-all ${
+                subtype === value
+                  ? 'bg-slate-200/60 dark:bg-muted shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <span className="text-xs font-semibold">{label}</span>
+            </Button>
+          ))}
+        </div>
+      )}
+
       {activeTab === 'today' && (
         <TodayMedications
           selectedDate={selectedDate}
           today={today}
-          meds={meds as MedicationDetail[]}
-          entries={entries}
-          recentEntries={recentEntries}
+          meds={visibleMeds}
+          entries={visibleEntries}
+          recentEntries={visibleRecentEntries}
           loadingMeds={loadingMeds}
           loadingEntries={loadingEntries}
           onSelectDate={(d) => setSearchParams({ date: d })}
@@ -235,13 +350,14 @@ export default function Medications() {
             {[
               {
                 label: t('medications.cabinet.activeScripts', 'Active scripts'),
-                value: meds.filter((m) => m.is_active).length,
+                value: visibleMeds.filter((m) => m.is_active).length,
                 Icon: Pill,
                 color: 'text-rose-500',
               },
               {
                 label: t('medications.cabinet.glp1Meds', 'GLP-1 meds'),
-                value: meds.filter((m) => m.is_active && m.is_glp1).length,
+                value: visibleMeds.filter((m) => m.is_active && m.is_glp1)
+                  .length,
                 Icon: Syringe,
                 color: 'text-blue-500',
               },
@@ -256,7 +372,7 @@ export default function Medications() {
               },
               {
                 label: t('medications.cabinet.totalMeds', 'Total meds'),
-                value: meds.length,
+                value: visibleMeds.length,
                 Icon: Activity,
                 color: 'text-slate-500',
               },
@@ -282,14 +398,27 @@ export default function Medications() {
           <div className="grid gap-6 md:grid-cols-[380px_1fr]">
             {/* Medications List */}
             <div className="space-y-4">
-              {meds.length === 0 && (
+              {visibleMeds.length === 0 && (
                 <Card>
                   <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                    No medications yet. Add your first one to get started.
+                    {subtype === 'supplements'
+                      ? t(
+                          'medications.cabinet.emptySupplements',
+                          'No supplements yet. Add your first one to get started.'
+                        )
+                      : subtype === 'meds'
+                        ? t(
+                            'medications.cabinet.emptyMeds',
+                            'No medications yet. Add your first one to get started.'
+                          )
+                        : t(
+                            'medications.cabinet.empty',
+                            'No medications yet. Add your first one to get started.'
+                          )}
                   </CardContent>
                 </Card>
               )}
-              {meds.map((med) => (
+              {visibleMeds.map((med) => (
                 <Card
                   key={med.id}
                   onClick={() => setSelectedId(med.id)}
@@ -374,6 +503,22 @@ export default function Medications() {
                               GLP-1
                             </Badge>
                           )}
+                          {selected.is_supplement &&
+                            countMedicationNutrients(selected.nutrients) >
+                              0 && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0"
+                              >
+                                {t('medications.cabinet.nutrientCount', {
+                                  defaultValue: '{{count}} nutrient',
+                                  defaultValue_other: '{{count}} nutrients',
+                                  count: countMedicationNutrients(
+                                    selected.nutrients
+                                  ),
+                                })}
+                              </Badge>
+                            )}
                         </div>
                         <CardDescription className="text-xs mt-0.5">
                           {[

@@ -1,3 +1,4 @@
+import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 async function getNutritionData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -6,50 +7,68 @@ async function getNutritionData(
   startDate: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   endDate: any,
-  customNutrients = []
+  customNutrients: Array<{ name: string }> = []
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
+    const standardNutrientsSelectOuter = FOOD_VARIANT_NUTRIENT_FIELDS.map(
+      (nutrient) =>
+        `SUM(${nutrient}) AS ${nutrient},\n         COALESCE(SUM(${nutrient}) FILTER (WHERE nutrient_source = 'food'), 0) AS food_${nutrient},\n         COALESCE(SUM(${nutrient}) FILTER (WHERE nutrient_source = 'supplement'), 0) AS supplement_${nutrient}`
+    ).join(',\n         ');
     // Generate dynamic SQL parts for custom nutrients
     const customNutrientsSelectOuter = customNutrients
-      // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-      .map((cn) => `SUM("${cn.name}") AS "${cn.name}"`)
+      .map((cn) => {
+        const ident = cn.name.replace(/"/g, '""');
+        return `SUM("${ident}") AS "${ident}",\n         COALESCE(SUM("${ident}") FILTER (WHERE nutrient_source = 'food'), 0) AS "food_${ident}",\n         COALESCE(SUM("${ident}") FILTER (WHERE nutrient_source = 'supplement'), 0) AS "supplement_${ident}"`;
+      })
       .join(',\n         ');
+    const standardNutrientsSelectInner1 = FOOD_VARIANT_NUTRIENT_FIELDS.map(
+      (nutrient) =>
+        `(COALESCE(fe.${nutrient}, 0) * fe.quantity / fe.serving_size) AS ${nutrient}`
+    ).join(',\n           ');
     const customNutrientsSelectInner1 = customNutrients
-      .map(
-        (cn) =>
-          // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-          `(COALESCE(NULLIF(fe.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`
-      )
+      .map((cn) => {
+        const ident = cn.name.replace(/"/g, '""');
+        const lit = cn.name.replace(/'/g, "''");
+        return `(COALESCE(NULLIF(fe.custom_nutrients->>'${lit}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${ident}"`;
+      })
       .join(',\n           ');
     // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
+    const standardNutrientsSelectInner2 = FOOD_VARIANT_NUTRIENT_FIELDS.map(
+      (nutrient) =>
+        `SUM(COALESCE(fe_meal.${nutrient}, 0) * fe_meal.quantity / fe_meal.serving_size) AS ${nutrient}`
+    ).join(',\n           ');
     const customNutrientsSelectInner2 = customNutrients
-      .map(
-        (cn) =>
-          // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-          `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`
-      )
+      .map((cn) => {
+        const ident = cn.name.replace(/"/g, '""');
+        const lit = cn.name.replace(/'/g, "''");
+        return `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${lit}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${ident}"`;
+      })
+      .join(',\n           ');
+    // Each snapshot holds ONE dose's payload; multiply by the dose count taken in this
+    // entry. For a supplement `dose_amount` is a count (its strength is forced to 1), so
+    // `dose_amount_snapshot` — which createEntry derives from the schedule's dose override
+    // (COALESCE(ms.dose_amount, m.dose_amount)) — is the number of units this entry logged.
+    // Manual/unscheduled entries snapshot 1, so this is a no-op there. NULL-safe to 1, and
+    // GREATEST(..., 0) so a non-positive legacy value neutralises instead of subtracting.
+    // (This is NOT the previously-rejected scaling by a medication's mg strength.)
+    // Values are read from the immutable per-entry snapshot and parsed defensively so one
+    // malformed JSONB value can't error the whole query.
+    const standardNutrientsSelectSupplement = FOOD_VARIANT_NUTRIENT_FIELDS.map(
+      (nutrient) =>
+        `(COALESCE(public.sf_try_numeric(me.nutrients_snapshot->>'${nutrient}'), 0) * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) AS ${nutrient}`
+    ).join(',\n           ');
+    const customNutrientsSelectSupplement = customNutrients
+      .map((cn) => {
+        const ident = cn.name.replace(/"/g, '""');
+        const lit = cn.name.replace(/'/g, "''");
+        return `(COALESCE(public.sf_try_numeric(me.nutrients_snapshot->'custom_nutrients'->>'${lit}'), 0) * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) AS "${ident}"`;
+      })
       .join(',\n           ');
     const result = await client.query(
       `SELECT
          TO_CHAR(entry_date, 'YYYY-MM-DD') AS date,
-         SUM(calories) AS calories,
-         SUM(protein) AS protein,
-         SUM(carbs) AS carbs,
-         SUM(fat) AS fat,
-         SUM(saturated_fat) AS saturated_fat,
-         SUM(polyunsaturated_fat) AS polyunsaturated_fat,
-         SUM(monounsaturated_fat) AS monounsaturated_fat,
-         SUM(trans_fat) AS trans_fat,
-         SUM(cholesterol) AS cholesterol,
-         SUM(sodium) AS sodium,
-         SUM(potassium) AS potassium,
-         SUM(dietary_fiber) AS dietary_fiber,
-         SUM(sugars) AS sugars,
-         SUM(vitamin_a) AS vitamin_a,
-         SUM(vitamin_c) AS vitamin_c,
-         SUM(calcium) AS calcium,
-         SUM(iron) AS iron${
+         ${standardNutrientsSelectOuter}${
            customNutrientsSelectOuter
              ? ',\n         ' + customNutrientsSelectOuter
              : ''
@@ -57,23 +76,8 @@ async function getNutritionData(
        FROM (
          SELECT
            fe.entry_date,
-           (fe.calories * fe.quantity / fe.serving_size) AS calories,
-           (fe.protein * fe.quantity / fe.serving_size) AS protein,
-           (fe.carbs * fe.quantity / fe.serving_size) AS carbs,
-           (fe.fat * fe.quantity / fe.serving_size) AS fat,
-           (COALESCE(fe.saturated_fat, 0) * fe.quantity / fe.serving_size) AS saturated_fat,
-           (COALESCE(fe.polyunsaturated_fat, 0) * fe.quantity / fe.serving_size) AS polyunsaturated_fat,
-           (COALESCE(fe.monounsaturated_fat, 0) * fe.quantity / fe.serving_size) AS monounsaturated_fat,
-           (COALESCE(fe.trans_fat, 0) * fe.quantity / fe.serving_size) AS trans_fat,
-           (COALESCE(fe.cholesterol, 0) * fe.quantity / fe.serving_size) AS cholesterol,
-           (COALESCE(fe.sodium, 0) * fe.quantity / fe.serving_size) AS sodium,
-           (COALESCE(fe.potassium, 0) * fe.quantity / fe.serving_size) AS potassium,
-           (COALESCE(fe.dietary_fiber, 0) * fe.quantity / fe.serving_size) AS dietary_fiber,
-           (COALESCE(fe.sugars, 0) * fe.quantity / fe.serving_size) AS sugars,
-           (COALESCE(fe.vitamin_a, 0) * fe.quantity / fe.serving_size) AS vitamin_a,
-           (COALESCE(fe.vitamin_c, 0) * fe.quantity / fe.serving_size) AS vitamin_c,
-           (COALESCE(fe.calcium, 0) * fe.quantity / fe.serving_size) AS calcium,
-           (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron${
+           'food'::text AS nutrient_source,
+           ${standardNutrientsSelectInner1}${
              customNutrientsSelectInner1
                ? ',\n           ' + customNutrientsSelectInner1
                : ''
@@ -83,25 +87,10 @@ async function getNutritionData(
          UNION ALL
          SELECT
            fem.entry_date,
+           'food'::text AS nutrient_source,
            -- Note: fe_meal.quantity is already scaled by the meal quantity when created,
            -- so we should NOT multiply by fem.quantity again
-           SUM(fe_meal.calories * fe_meal.quantity / fe_meal.serving_size) AS calories,
-           SUM(fe_meal.protein * fe_meal.quantity / fe_meal.serving_size) AS protein,
-           SUM(fe_meal.carbs * fe_meal.quantity / fe_meal.serving_size) AS carbs,
-           SUM(fe_meal.fat * fe_meal.quantity / fe_meal.serving_size) AS fat,
-           SUM(COALESCE(fe_meal.saturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS saturated_fat,
-           SUM(COALESCE(fe_meal.polyunsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS polyunsaturated_fat,
-           SUM(COALESCE(fe_meal.monounsaturated_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS monounsaturated_fat,
-           SUM(COALESCE(fe_meal.trans_fat, 0) * fe_meal.quantity / fe_meal.serving_size) AS trans_fat,
-           SUM(COALESCE(fe_meal.cholesterol, 0) * fe_meal.quantity / fe_meal.serving_size) AS cholesterol,
-           SUM(COALESCE(fe_meal.sodium, 0) * fe_meal.quantity / fe_meal.serving_size) AS sodium,
-           SUM(COALESCE(fe_meal.potassium, 0) * fe_meal.quantity / fe_meal.serving_size) AS potassium,
-           SUM(COALESCE(fe_meal.dietary_fiber, 0) * fe_meal.quantity / fe_meal.serving_size) AS dietary_fiber,
-           SUM(COALESCE(fe_meal.sugars, 0) * fe_meal.quantity / fe_meal.serving_size) AS sugars,
-           SUM(COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_a,
-           SUM(COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_c,
-           SUM(COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) AS calcium,
-           SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron${
+           ${standardNutrientsSelectInner2}${
              customNutrientsSelectInner2
                ? ',\n           ' + customNutrientsSelectInner2
                : ''
@@ -110,6 +99,20 @@ async function getNutritionData(
          JOIN food_entries fe_meal ON fem.id = fe_meal.food_entry_meal_id
          WHERE fem.user_id = $1 AND fem.entry_date BETWEEN $2 AND $3
          GROUP BY fem.entry_date
+         UNION ALL
+         SELECT
+           me.entry_date,
+           'supplement'::text AS nutrient_source,
+           ${standardNutrientsSelectSupplement}${
+             customNutrientsSelectSupplement
+               ? ',\n           ' + customNutrientsSelectSupplement
+               : ''
+           }
+         FROM medication_entries me
+         WHERE me.user_id = $1
+           AND me.entry_date BETWEEN $2 AND $3
+           AND me.status IN ('taken', 'prn_taken')
+           AND me.nutrients_snapshot IS NOT NULL
        ) AS combined_nutrition
        GROUP BY entry_date
        ORDER BY entry_date`,
@@ -603,25 +606,42 @@ async function getDailyNutritionTotalsRange(
 ) {
   const client = await getClient(userId);
   try {
+    // Same fixed nutrient columns the query already reports, paired with the output alias
+    // (dietary_fiber -> fiber, sugars -> sugar). Each food SUM gets its dose-scaled
+    // supplement contribution for that date added, so trends include supplements too. NB:
+    // this arm only reaches dates that already have a food entry (the query groups
+    // food_entries); a date with ONLY supplements logged and no food is not surfaced here,
+    // which matches the pre-existing shape of this range query.
+    const rangeCols: [string, string][] = [
+      ['calories', 'calories'],
+      ['protein', 'protein'],
+      ['carbs', 'carbs'],
+      ['fat', 'fat'],
+      ['saturated_fat', 'saturated_fat'],
+      ['polyunsaturated_fat', 'polyunsaturated_fat'],
+      ['monounsaturated_fat', 'monounsaturated_fat'],
+      ['trans_fat', 'trans_fat'],
+      ['cholesterol', 'cholesterol'],
+      ['sodium', 'sodium'],
+      ['potassium', 'potassium'],
+      ['dietary_fiber', 'fiber'],
+      ['sugars', 'sugar'],
+      ['vitamin_a', 'vitamin_a'],
+      ['vitamin_c', 'vitamin_c'],
+      ['calcium', 'calcium'],
+      ['iron', 'iron'],
+    ];
+    const supplementFixed = (key: string) =>
+      `COALESCE((SELECT SUM(public.sf_try_numeric(me.nutrients_snapshot->>'${key}') * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) FROM medication_entries me WHERE me.user_id = $1 AND me.entry_date = food_entries.entry_date AND me.status IN ('taken', 'prn_taken') AND me.nutrients_snapshot IS NOT NULL), 0)`;
+    const rangeSelects = rangeCols
+      .map(
+        ([col, alias]) =>
+          `COALESCE(SUM(${col} * quantity / NULLIF(serving_size, 0)), 0) + ${supplementFixed(col)} as ${alias}`
+      )
+      .join(',\n              ');
     const result = await client.query(
       `SELECT entry_date,
-              SUM(calories * quantity / NULLIF(serving_size, 0)) as calories,
-              SUM(protein * quantity / NULLIF(serving_size, 0)) as protein,
-              SUM(carbs * quantity / NULLIF(serving_size, 0)) as carbs,
-              SUM(fat * quantity / NULLIF(serving_size, 0)) as fat,
-              SUM(saturated_fat * quantity / NULLIF(serving_size, 0)) as saturated_fat,
-              SUM(polyunsaturated_fat * quantity / NULLIF(serving_size, 0)) as polyunsaturated_fat,
-              SUM(monounsaturated_fat * quantity / NULLIF(serving_size, 0)) as monounsaturated_fat,
-              SUM(trans_fat * quantity / NULLIF(serving_size, 0)) as trans_fat,
-              SUM(cholesterol * quantity / NULLIF(serving_size, 0)) as cholesterol,
-              SUM(sodium * quantity / NULLIF(serving_size, 0)) as sodium,
-              SUM(potassium * quantity / NULLIF(serving_size, 0)) as potassium,
-              SUM(dietary_fiber * quantity / NULLIF(serving_size, 0)) as fiber,
-              SUM(sugars * quantity / NULLIF(serving_size, 0)) as sugar,
-              SUM(vitamin_a * quantity / NULLIF(serving_size, 0)) as vitamin_a,
-              SUM(vitamin_c * quantity / NULLIF(serving_size, 0)) as vitamin_c,
-              SUM(calcium * quantity / NULLIF(serving_size, 0)) as calcium,
-              SUM(iron * quantity / NULLIF(serving_size, 0)) as iron
+              ${rangeSelects}
        FROM food_entries
        WHERE user_id = $1 AND entry_date >= $2 AND entry_date <= $3
        GROUP BY entry_date

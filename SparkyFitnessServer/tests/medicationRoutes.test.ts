@@ -9,6 +9,7 @@ import titrationRepository from '../models/titrationRepository.js';
 import medicationEntryRepository from '../models/medicationEntryRepository.js';
 import medicationDisplayPreferenceRepository from '../models/medicationDisplayPreferenceRepository.js';
 import glp1Service from '../services/glp1Service.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 import medicationRoutes from '../routes/v2/medicationRoutes.js';
 
 vi.mock('../models/medicationRepository.js');
@@ -18,6 +19,9 @@ vi.mock('../models/titrationRepository.js');
 vi.mock('../models/medicationEntryRepository.js');
 vi.mock('../models/medicationDisplayPreferenceRepository.js');
 vi.mock('../services/glp1Service.js');
+vi.mock('../utils/permissionUtils.js', () => ({
+  canAccessUserData: vi.fn(),
+}));
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
   default: vi.fn(
     () =>
@@ -56,7 +60,11 @@ const UID = '550e8400-e29b-41d4-a716-446655440000';
 const cookie = ['userId=testUser'];
 
 describe('Medication Routes V2', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default to an actor who may write diary data (the ordinary self-serve case).
+    vi.mocked(canAccessUserData).mockResolvedValue(true);
+  });
 
   describe('GET /api/v2/medications', () => {
     it('lists medications for the user', async () => {
@@ -111,6 +119,96 @@ describe('Medication Routes V2', () => {
         .send({ is_glp1: true });
       expect(res.statusCode).toBe(400);
       expect(res.body).toHaveProperty('error', 'Invalid request');
+    });
+
+    // A supplement's nutrient payload feeds the owner's daily nutrition totals, so
+    // writing it needs diary permission on top of the medication permission that
+    // guards this router. The client hides the editor, but that is only an
+    // affordance — these cases pin the server-side half.
+    it('keeps nutrient fields when the actor has diary access', async () => {
+      vi.mocked(canAccessUserData).mockResolvedValue(true);
+      vi.mocked(medicationRepository.createMedication).mockResolvedValue({
+        id: UID,
+        name: 'Vitamin D',
+      });
+
+      await request(app)
+        .post('/api/v2/medications')
+        .set('Cookie', cookie)
+        .send({
+          name: 'Vitamin D',
+          is_supplement: true,
+          nutrients: { custom_nutrients: { 'Vitamin D': 25 } },
+        });
+
+      const body = vi.mocked(medicationRepository.createMedication).mock
+        .calls[0][1];
+      expect(body).toMatchObject({
+        is_supplement: true,
+        nutrients: { custom_nutrients: { 'Vitamin D': 25 } },
+      });
+    });
+
+    it('strips nutrient fields when the actor lacks diary access', async () => {
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+      vi.mocked(medicationRepository.createMedication).mockResolvedValue({
+        id: UID,
+        name: 'Vitamin D',
+      });
+
+      const res = await request(app)
+        .post('/api/v2/medications')
+        .set('Cookie', cookie)
+        .send({
+          name: 'Vitamin D',
+          is_supplement: true,
+          nutrients: { calories: 500 },
+        });
+
+      // Stripped rather than rejected: the caregiver may still manage the
+      // medication itself, they just cannot attach nutrition to it.
+      expect(res.statusCode).toBe(201);
+      const body = vi.mocked(medicationRepository.createMedication).mock
+        .calls[0][1];
+      expect(body).not.toHaveProperty('nutrients');
+      // The classification is KEPT on create: it is not nutrition, a supplement with
+      // no payload rolls nothing up, and dropping it would silently turn the
+      // caregiver's "Add supplement" into a plain medication.
+      expect(body).toMatchObject({ name: 'Vitamin D', is_supplement: true });
+    });
+
+    it('strips the supplement flag on UPDATE when the actor lacks diary access', async () => {
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+      vi.mocked(medicationRepository.updateMedication).mockResolvedValue({
+        id: UID,
+        name: 'Vitamin D',
+      });
+
+      // Unlike create, setting the flag on an existing medication could switch on a
+      // nutrient payload the owner already stored — nutrition this caller may not write.
+      await request(app)
+        .put(`/api/v2/medications/${UID}`)
+        .set('Cookie', cookie)
+        .send({ is_supplement: true, nutrients: { calories: 500 } });
+
+      const body = vi.mocked(medicationRepository.updateMedication).mock
+        .calls[0][2];
+      expect(body).not.toHaveProperty('nutrients');
+      expect(body).not.toHaveProperty('is_supplement');
+    });
+
+    it('does not consult diary permission for a plain medication', async () => {
+      vi.mocked(medicationRepository.createMedication).mockResolvedValue({
+        id: UID,
+        name: 'Metformin',
+      });
+
+      await request(app)
+        .post('/api/v2/medications')
+        .set('Cookie', cookie)
+        .send({ name: 'Metformin' });
+
+      expect(canAccessUserData).not.toHaveBeenCalled();
     });
   });
 

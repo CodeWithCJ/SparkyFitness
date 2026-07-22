@@ -2,6 +2,29 @@
 // api service (src/api) and page components can import them (page components are
 // not allowed to import from src/api directly — see eslint no-restricted-imports).
 
+export type MedicationNutrients = Partial<
+  Record<
+    | 'calories'
+    | 'protein'
+    | 'carbs'
+    | 'fat'
+    | 'saturated_fat'
+    | 'polyunsaturated_fat'
+    | 'monounsaturated_fat'
+    | 'trans_fat'
+    | 'cholesterol'
+    | 'sodium'
+    | 'potassium'
+    | 'dietary_fiber'
+    | 'sugars'
+    | 'vitamin_a'
+    | 'vitamin_c'
+    | 'calcium'
+    | 'iron',
+    number
+  >
+> & { custom_nutrients?: Record<string, number> };
+
 export interface Medication {
   id: string;
   user_id: string;
@@ -21,6 +44,8 @@ export interface Medication {
   is_active: boolean;
   is_quick: boolean;
   is_glp1: boolean;
+  is_supplement: boolean;
+  nutrients: MedicationNutrients;
   notes: string | null;
   source: string;
   prescriber?: string | null;
@@ -177,6 +202,12 @@ export interface MedicationEntry {
   custom_fields: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  /**
+   * Per-dose nutrient payload snapshotted at log time (server-derived from the
+   * medication for supplement entries). NULL for non-supplement entries. Read-only;
+   * not client-writable on create.
+   */
+  nutrients_snapshot?: MedicationNutrients | null;
   /**
    * 'injection' rows are GLP-1 injection logs merged into the entries feed by the server;
    * their id is an injection id, so deletes must go through the injection endpoint.

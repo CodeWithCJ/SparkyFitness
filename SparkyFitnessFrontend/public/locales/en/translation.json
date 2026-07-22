@@ -85,7 +85,8 @@
     "showAllRows": "Show All Rows ({{count}})"
   },
   "foods": {
-    "providerVerified": "Verified food"
+    "providerVerified": "Verified food",
+    "removeNutrient": "Remove {{nutrient}}"
   },
   "medications": {
     "tabs": {
@@ -317,9 +318,13 @@
     "cabinet": {
       "addMed": "Add medication",
       "editMed": "Edit medication",
+      "addSupplement": "Add supplement",
+      "editSupplement": "Edit supplement",
       "name": "Name",
       "namePlaceholder": "e.g. Wegovy",
+      "supplementNamePlaceholder": "e.g. Vitamin D3",
       "type": "Type",
+      "doseForm": "Form",
       "strength": "Strength",
       "strengthUnit": "Strength unit",
       "dose": "Dose",
@@ -329,6 +334,23 @@
       "glp1Med": "GLP-1 medication",
       "glp1Hint": "Unlocks the injection coach, PK curve & site rotation.",
       "glp1Drug": "GLP-1 drug (for the PK model)",
+      "nutritionPerDose": "Nutrition per dose",
+      "nutritionPerDoseHint": "Add the nutrients on the label, then enter the amount supplied by one dose.",
+      "clearNutrients": "Remove all",
+      "nutrientsNeedDiaryAccess": "Nutrition per dose needs food diary access for this profile. You can still save the supplement and track its schedule, reminders and doses.",
+      "addNutrient": "Add nutrient",
+      "searchNutrients": "Search nutrients…",
+      "noNutrientMatches": "No matches. Create it below.",
+      "nutrientGroupCatalog": "Vitamins & minerals",
+      "nutrientGroupCustom": "Your custom nutrients",
+      "createNutrient": "Not listed? Create your own",
+      "nutrientNamePlaceholder": "e.g. Ashwagandha",
+      "nutrientUnit": "Unit",
+      "nutrientExists": "That nutrient already exists — pick it from the list.",
+      "createAndAddShort": "Add",
+      "multivitaminPanel": "Multivitamin panel",
+      "nutrientCount_one": "{{count}} nutrient",
+      "nutrientCount_other": "{{count}} nutrients",
       "reason": "Reason / condition (optional)",
       "reasonPlaceholder": "e.g. Weight management, Type 2 diabetes",
       "prescriber": "Prescriber (optional)",
@@ -340,7 +362,23 @@
       "activeScripts": "Active scripts",
       "glp1Meds": "GLP-1 meds",
       "scheduledToday": "Scheduled today",
-      "totalMeds": "Total meds"
+      "totalMeds": "Total meds",
+      "empty": "No medications yet. Add your first one to get started.",
+      "emptyMeds": "No medications yet. Add your first one to get started.",
+      "emptySupplements": "No supplements yet. Add your first one to get started."
+    },
+    "subtype": {
+      "all": "All",
+      "meds": "Meds",
+      "supplements": "Supplements"
+    },
+    "forms": {
+      "tablet": "Tablet",
+      "capsule": "Capsule",
+      "softgel": "Softgel",
+      "gummy": "Gummy",
+      "powder": "Powder",
+      "liquid": "Liquid"
     },
     "schedule": {
       "heading": "Schedules & Reminders",
@@ -2105,6 +2143,8 @@
     "signInMessage": "Please sign in to view reports.",
     "loadingDateControls": "Loading date controls...",
     "loadingReports": "Loading reports...",
+    "fromFood": "Food",
+    "fromSupplements": "Supplements",
     "chartsTab": "Charts",
     "exerciseProgressTab": "Exercise Progress",
     "sleepTab": "Sleep",

@@ -213,26 +213,49 @@ async function removeFoodFavorite(userId: any, foodId: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// A logged supplement contributes its per-dose snapshot, scaled by the dose count taken
+// (GREATEST-clamped so a non-positive value can't subtract). These fragments let the diary
+// daily-summary aggregations count supplements exactly the way the report already does, so
+// they show against goals. userExpr/dateExpr are the SQL expressions to correlate on: bind
+// params ($1/$2) for the single-date query, or the grouped columns (fe.user_id/fe.entry_date)
+// for the per-date query.
+function supplementFixed(
+  key: string,
+  userExpr: string,
+  dateExpr: string
+): string {
+  return `COALESCE((SELECT SUM(public.sf_try_numeric(me.nutrients_snapshot->>'${key}') * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) FROM medication_entries me WHERE me.user_id = ${userExpr} AND me.entry_date = ${dateExpr} AND me.status IN ('taken', 'prn_taken') AND me.nutrients_snapshot IS NOT NULL), 0)`;
+}
+function supplementCustomUnion(userExpr: string, dateExpr: string): string {
+  return `
+                UNION ALL
+                SELECT key, public.sf_try_numeric(value) * GREATEST(COALESCE(me2.dose_amount_snapshot, 1), 0) AS scaled
+                FROM medication_entries me2
+                CROSS JOIN LATERAL jsonb_each_text(me2.nutrients_snapshot->'custom_nutrients')
+                WHERE me2.user_id = ${userExpr} AND me2.entry_date = ${dateExpr} AND me2.status IN ('taken', 'prn_taken') AND me2.nutrients_snapshot IS NOT NULL`;
+}
+
 async function getDailyNutritionSummary(userId: any, date: any) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `SELECT
-        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_calories,
-        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_protein,
-        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_carbs,
-        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_fat,
-        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_dietary_fiber,
+        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('calories', '$1', '$2')} AS total_calories,
+        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('protein', '$1', '$2')} AS total_protein,
+        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('carbs', '$1', '$2')} AS total_carbs,
+        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('fat', '$1', '$2')} AS total_fat,
+        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('dietary_fiber', '$1', '$2')} AS total_dietary_fiber,
         COALESCE(
           (
             SELECT jsonb_object_agg(key, value)
             FROM (
-              SELECT
-                key,
-                SUM((NULLIF(TRIM(value), '')::numeric) * fe2.quantity / NULLIF(fe2.serving_size, 0)) as value
-              FROM food_entries fe2
-              CROSS JOIN LATERAL jsonb_each_text(fe2.custom_nutrients)
-              WHERE fe2.user_id = $1 AND fe2.entry_date = $2
+              SELECT key, SUM(scaled) as value
+              FROM (
+                SELECT key, (NULLIF(TRIM(value), '')::numeric) * fe2.quantity / NULLIF(fe2.serving_size, 0) AS scaled
+                FROM food_entries fe2
+                CROSS JOIN LATERAL jsonb_each_text(fe2.custom_nutrients)
+                WHERE fe2.user_id = $1 AND fe2.entry_date = $2${supplementCustomUnion('$1', '$2')}
+              ) combined
               GROUP BY key
             ) custom_agg
           ),
@@ -257,21 +280,22 @@ async function getDailyNutritionSummariesByDates(
     const result = await client.query(
       `SELECT
         fe.entry_date,
-        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_calories,
-        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_protein,
-        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_carbs,
-        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_fat,
-        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) AS total_dietary_fiber,
+        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('calories', 'fe.user_id', 'fe.entry_date')} AS total_calories,
+        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('protein', 'fe.user_id', 'fe.entry_date')} AS total_protein,
+        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('carbs', 'fe.user_id', 'fe.entry_date')} AS total_carbs,
+        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('fat', 'fe.user_id', 'fe.entry_date')} AS total_fat,
+        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('dietary_fiber', 'fe.user_id', 'fe.entry_date')} AS total_dietary_fiber,
         COALESCE(
           (
             SELECT jsonb_object_agg(key, value)
             FROM (
-              SELECT
-                key,
-                SUM((NULLIF(TRIM(value), '')::numeric) * fe2.quantity / NULLIF(fe2.serving_size, 0)) as value
-              FROM food_entries fe2
-              CROSS JOIN LATERAL jsonb_each_text(fe2.custom_nutrients)
-              WHERE fe2.user_id = fe.user_id AND fe2.entry_date = fe.entry_date
+              SELECT key, SUM(scaled) as value
+              FROM (
+                SELECT key, (NULLIF(TRIM(value), '')::numeric) * fe2.quantity / NULLIF(fe2.serving_size, 0) AS scaled
+                FROM food_entries fe2
+                CROSS JOIN LATERAL jsonb_each_text(fe2.custom_nutrients)
+                WHERE fe2.user_id = fe.user_id AND fe2.entry_date = fe.entry_date${supplementCustomUnion('fe.user_id', 'fe.entry_date')}
+              ) combined
               GROUP BY key
             ) custom_agg
           ),
