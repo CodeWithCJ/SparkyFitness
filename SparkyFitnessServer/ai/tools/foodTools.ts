@@ -37,7 +37,10 @@ import {
 } from './schemas/food.js';
 import { optionalDateSchema, uuidSchema } from './schemas/common.js';
 import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
-import { normalizeServingUnit } from '../../utils/foodUtils.js';
+import {
+  normalizeServingUnit,
+  reconcileEntryUnitToVariant,
+} from '../../utils/foodUtils.js';
 
 const VALID_ACTIONS = [
   'search_food',
@@ -1170,13 +1173,10 @@ Actions:
                   match.id,
                   userId
                 );
-                let variantId =
-                  match.default_variant?.id || match.variants?.[0]?.id;
-                let unit =
-                  args.unit ||
-                  match.default_variant?.serving_unit ||
-                  match.variants?.[0]?.serving_unit ||
-                  'serving';
+                let chosenVariant: any =
+                  match.default_variant ||
+                  match.variants?.[0] ||
+                  (Array.isArray(variants) ? variants[0] : undefined);
                 if (args.unit && Array.isArray(variants)) {
                   const normalizedReqUnit = normalizeServingUnit(args.unit);
                   const matchedVariant = variants.find(
@@ -1184,26 +1184,33 @@ Actions:
                       normalizeServingUnit(v.serving_unit) === normalizedReqUnit
                   );
                   if (matchedVariant) {
-                    variantId = matchedVariant.id;
-                    unit = matchedVariant.serving_unit;
+                    chosenVariant = matchedVariant;
                   }
                 }
+                // Keep the stored entry's unit aligned with the variant's own
+                // serving_unit so the diary math does not read a whole-serving
+                // count as a gram/ml amount.
+                const logged = reconcileEntryUnitToVariant(
+                  quantity,
+                  args.unit,
+                  chosenVariant
+                );
                 const entry = await foodEntryService.createFoodEntry(
                   userId,
                   userId,
                   {
                     user_id: userId,
                     food_id: match.id,
-                    variant_id: variantId,
+                    variant_id: chosenVariant?.id,
                     entry_date: entryDate,
-                    quantity,
-                    unit,
+                    quantity: logged.quantity,
+                    unit: logged.unit,
                     meal_type: args.meal_type,
                     entry_time: args.entry_time,
                   }
                 );
                 return formatConfirmation(
-                  `"${entry.food_name}" was already in the food database — logged ${quantity} ${unit} for ${args.meal_type} on ${entryDate}.`
+                  `"${entry.food_name}" was already in the food database — logged ${logged.quantity} ${logged.unit} for ${args.meal_type} on ${entryDate}.`
                 );
               }
 
@@ -1310,7 +1317,7 @@ Actions:
 
               const dv = food.default_variant;
               let variantId = dv?.id;
-              let unit = args.unit || 'serving';
+              let chosenVariant: any = dv;
 
               if (args.unit) {
                 const normalizedReqUnit = normalizeServingUnit(args.unit);
@@ -1320,28 +1327,38 @@ Actions:
                 );
                 if (matchedAlt) {
                   variantId = matchedAlt.id;
-                  unit = matchedAlt.serving_unit;
+                  chosenVariant = matchedAlt;
                 } else if (
                   dv &&
                   normalizeServingUnit(dv.serving_unit) === normalizedReqUnit
                 ) {
                   variantId = dv.id;
-                  unit = dv.serving_unit;
+                  chosenVariant = dv;
                 }
               }
+
+              // Align the stored entry's unit with the chosen variant's own
+              // serving_unit. Newly imported foods are usually gram/ml denominated,
+              // so logging a bare "serving" count here made the diary math treat
+              // "1 serving" as "1 gram".
+              const logged = reconcileEntryUnitToVariant(
+                quantity,
+                args.unit,
+                chosenVariant
+              );
 
               await foodEntryService.createFoodEntry(userId, userId, {
                 user_id: userId,
                 food_id: food.id,
                 variant_id: variantId,
                 entry_date: entryDate,
-                quantity,
-                unit,
+                quantity: logged.quantity,
+                unit: logged.unit,
                 meal_type: args.meal_type,
                 entry_time: args.entry_time,
               });
               return formatConfirmation(
-                `Saved "${food.name}" from ${result.source} (${dv?.calories || 0} kcal per ${dv?.serving_size || 100}${dv?.serving_unit || 'g'}) and logged ${quantity} ${unit} to ${args.meal_type} on ${entryDate}.`
+                `Saved "${food.name}" from ${result.source} (${dv?.calories || 0} kcal per ${dv?.serving_size || 100}${dv?.serving_unit || 'g'}) and logged ${logged.quantity} ${logged.unit} to ${args.meal_type} on ${entryDate}.`
               );
             }
 
