@@ -1108,6 +1108,50 @@ async function clearUserIgnoredUpdate(userId: any, variantId: any) {
     client.release();
   }
 }
+// Name-only match for the diary CSV importer's food resolution. Restricted to
+// the caller-selected scopes (own always included; family/public opt-in) on
+// top of RLS visibility, so an unticked scope is never matched even if RLS
+// would otherwise allow reading it. Precedence own > family > public, with
+// most-recently-logged (then newest-created) breaking ties within a tier —
+// picks the food a "Chicken Breast" import most likely meant among several
+// same-named foods now that brand is not part of the match key.
+async function findVisibleFoodByName(
+  userId: string,
+  foodName: string,
+  scope: { family?: boolean; public?: boolean } = {}
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT f.id, f.name, f.brand, f.user_id, f.shared_with_public,
+              fv.id AS default_variant_id, fv.serving_size, fv.serving_unit,
+              ${DEFAULT_VARIANT_JSON_SQL}
+       FROM foods f
+       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
+       WHERE LOWER(f.name) = LOWER($2)
+         AND f.is_quick_food = FALSE
+         AND (
+           f.user_id = $1
+           OR ($3 AND f.user_id IS NOT NULL AND f.user_id != $1 AND f.shared_with_public = FALSE)
+           OR ($4 AND f.shared_with_public = TRUE)
+         )
+       ORDER BY
+         CASE
+           WHEN f.user_id = $1 THEN 0
+           WHEN f.shared_with_public = FALSE THEN 1
+           ELSE 2
+         END ASC,
+         (SELECT MAX(fe.entry_date) FROM food_entries fe WHERE fe.food_id = f.id) DESC NULLS LAST,
+         f.created_at DESC
+       LIMIT 1`,
+      [userId, foodName, !!scope.family, !!scope.public]
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function findFoodByProviderExternalId(
   userId: string,
@@ -1142,6 +1186,8 @@ async function updateFoodVariantNutrition(
 ) {
   const client = await getClient(userId);
   try {
+    // custom_nutrients is optional and COALESCE-guarded so existing callers
+    // (e.g. health-data ingest) that omit it keep the stored value untouched.
     await client.query(
       `UPDATE food_variants SET
         serving_size = $2,
@@ -1163,6 +1209,7 @@ async function updateFoodVariantNutrition(
         vitamin_c = $18,
         calcium = $19,
         iron = $20,
+        custom_nutrients = COALESCE($21::jsonb, custom_nutrients),
         updated_at = now()
       WHERE id = $1`,
       [
@@ -1186,6 +1233,9 @@ async function updateFoodVariantNutrition(
         sanitizeNumeric(nutritionData.vitamin_c),
         sanitizeNumeric(nutritionData.calcium),
         sanitizeNumeric(nutritionData.iron),
+        nutritionData.custom_nutrients
+          ? JSON.stringify(nutritionData.custom_nutrients)
+          : null,
       ]
     );
   } finally {
@@ -1199,6 +1249,7 @@ export { sanitizeBoolean };
 export { searchFoods };
 export { createFood };
 export { findFoodByBarcode };
+export { findVisibleFoodByName };
 export { findFoodByProviderExternalId };
 export { updateFoodVariantNutrition };
 export { getFoodById };
@@ -1220,6 +1271,7 @@ export default {
   searchFoods,
   createFood,
   findFoodByBarcode,
+  findVisibleFoodByName,
   findFoodByProviderExternalId,
   updateFoodVariantNutrition,
   getFoodById,

@@ -30,12 +30,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Food, CSVData, NutritionixItem } from '@/types/food';
+import type { Food, NutritionixItem } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useDatabaseFoodSearchQuery,
-  useImportCsvMutation,
   useRecentAndTopFoodsQuery,
 } from '@/hooks/Foods/useFoods.ts';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients.ts';
@@ -56,7 +55,6 @@ import {
 import { useFavoritesQuery } from '@/hooks/Foods/useFavorites.ts';
 import FoodResultCard from './FoodResultCard.tsx';
 import { BarcodeScannerDialog } from './BarcodeScannerDialog.tsx';
-import { CsvImportDialog } from './CsvImportDialog.tsx';
 import { FoodFormDialog } from './FoodFormDialog.tsx';
 import { useExternalProvidersQuery } from '@/hooks/Settings/useExternalProviderSettings.ts';
 import {
@@ -79,8 +77,6 @@ import {
   getProviderCategory,
   resolveFoodProviderId,
 } from '@/utils/settings.ts';
-
-type FoodDataForBackend = Omit<CSVData, 'id'>;
 
 // Stable empty fallback so the providers reference does not change each render
 // (an inline [] default would re-run the online search effect during loading).
@@ -211,7 +207,6 @@ const EnhancedFoodSearch = ({
     null
   );
   const [showAddFoodDialog, setShowAddFoodDialog] = useState(false);
-  const [showImportFromCsvDialog, setShowImportFromCsvDialog] = useState(false);
   const isSearchEmpty = !searchTerm.trim();
 
   const [manualProviderId, setManualProviderId] = useState<string | null>(null);
@@ -259,7 +254,6 @@ const EnhancedFoodSearch = ({
     topMeals,
     isLoading: isLoadingRecentMeals,
   } = useRecentAndTopMealsQuery(itemDisplayLimit, showMeals && isSearchEmpty);
-  const { mutateAsync: importCsvMutation } = useImportCsvMutation();
   const { data: searchData, isFetching: isFetchingSearch } =
     useDatabaseFoodSearchQuery(
       debouncedSearchTerm,
@@ -980,14 +974,6 @@ const EnhancedFoodSearch = ({
     }
   };
 
-  const handleImportFromCSV = async (
-    foodDataArray: FoodDataForBackend[],
-    overwrite: boolean
-  ) => {
-    await importCsvMutation({ foods: foodDataArray, overwrite });
-    setShowImportFromCsvDialog(false);
-  };
-
   const handleNutritionixEdit = async (
     item: NutritionixItem,
     providerIdOverride?: string
@@ -1176,14 +1162,6 @@ const EnhancedFoodSearch = ({
         >
           <Plus className="w-4 h-4 mr-2" />{' '}
           {t('enhancedFoodSearch.customFood', 'Custom Food')}
-        </Button>
-        <Button
-          onClick={() => setShowImportFromCsvDialog(true)}
-          className="whitespace-nowrap"
-          variant="outline"
-        >
-          <Plus className="w-4 h-4 mr-2" />{' '}
-          {t('enhancedFoodSearch.importFromCSV', 'Import from CSV')}
         </Button>
         <Button
           variant="outline"
@@ -1628,11 +1606,6 @@ const EnhancedFoodSearch = ({
         selectedProviderId={selectedBarcodeProvider}
         onProviderChange={setBarcodeProviderId}
         providers={foodDataProviders}
-      />
-      <CsvImportDialog
-        isOpen={showImportFromCsvDialog}
-        onOpenChange={setShowImportFromCsvDialog}
-        onSave={handleImportFromCSV}
       />
     </div>
   );

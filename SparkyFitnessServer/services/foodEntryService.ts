@@ -51,6 +51,533 @@ async function resolveMealTypeId(userId: any, mealTypeName: any) {
   return match ? match.id : null;
 }
 
+// ── Diary CSV import ────────────────────────────────────────────────────────
+//
+// Bulk-creates diary log entries (food_entries), as distinct from the
+// existing food-LIBRARY CSV import (foodCoreService.importFoodsInBulk /
+// foodRepository.createFoodsInBulk), which only writes master-data foods and
+// is untouched by this feature.
+//
+// Food resolution per row (see agent-docs plan "diary-csv-import"):
+//   1. Name-only match within the caller-selected visibility scope (own
+//      always included; family/public opt-in) — references the matched
+//      food directly, never clones it, mirroring how normal diary logging
+//      already stores another user's food_id for public/family foods.
+//   2. Else a prior csv_import-tagged food from an earlier import.
+//   3. Else auto-create a lightweight food+variant from the row's own
+//      nutrient columns — but only if at least one nutrient is filled in;
+//      otherwise the row is a per-row error (never a zero-nutrient food).
+//
+// Idempotency: every entry carries source='csv_import' plus a stable
+// source_id derived from the row's content and position, so re-uploading the
+// same file updates rows in place via food_entries' partial unique index on
+// (user_id, source, source_id) instead of duplicating. Saved-meal expansion
+// and ad-hoc meal groups are NOT idempotent (each import creates a new
+// food_entry_meals instance) — food_entry_meals has no equivalent upsert key.
+
+const DIARY_IMPORT_NUTRIENT_FIELDS = [
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+] as const;
+
+const isBlankCell = (value: unknown): boolean =>
+  value === undefined ||
+  value === null ||
+  (typeof value === 'string' && value.trim() === '');
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowHasNutrients = (row: any): boolean =>
+  DIARY_IMPORT_NUTRIENT_FIELDS.some((field) => !isBlankCell(row[field]));
+
+// Only includes columns the row actually filled in, so blanks fall back to
+// whatever the resolved food/variant already has (matched-food nutrients, or
+// the DB column default) rather than overwriting them with null. Coerced to
+// numbers; non-numeric cells are dropped rather than stored as NaN.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pickFilledNutrients(row: any): Record<string, number> {
+  const picked: Record<string, number> = {};
+  for (const field of DIARY_IMPORT_NUTRIENT_FIELDS) {
+    if (isBlankCell(row[field])) continue;
+    const num = Number(row[field]);
+    if (Number.isFinite(num)) picked[field] = num;
+  }
+  return picked;
+}
+
+// Custom nutrients arrive as a { name: value } object assembled client-side
+// from the CSV's extra (non-standard) columns. Returns a sanitized object or
+// undefined when none are present.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowCustomNutrients(row: any): Record<string, unknown> | undefined {
+  const cn = row.custom_nutrients;
+  if (cn && typeof cn === 'object' && Object.keys(cn).length > 0) {
+    return sanitizeCustomNutrients(cn);
+  }
+  return undefined;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowHasAnyNutrients(row: any): boolean {
+  return rowHasNutrients(row) || rowCustomNutrients(row) !== undefined;
+}
+
+// The entry snapshot override for a row. When the row supplies its own
+// nutrients they represent the totals for the portion in quantity+unit, so we
+// also pin serving_size/serving_unit to that portion — otherwise the diary
+// would rescale the provided totals by (quantity / matched-variant
+// serving_size) and show the wrong numbers for a matched food whose serving
+// differs from the row. With no nutrients supplied we override nothing and let
+// the matched/selected variant drive the (correctly scaled) snapshot.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildEntrySnapshotOverride(row: any): Record<string, unknown> {
+  const filled = pickFilledNutrients(row);
+  const customNutrients = rowCustomNutrients(row);
+  if (Object.keys(filled).length === 0 && !customNutrients) return {};
+  return {
+    serving_size: Number(row.quantity),
+    serving_unit: row.unit,
+    ...filled,
+    ...(customNutrients ? { custom_nutrients: customNutrients } : {}),
+  };
+}
+
+// Deterministic per-row idempotency key. Reordering/inserting rows between
+// re-imports shifts `index` and breaks the match for the shifted rows — an
+// accepted limitation documented in the diary-csv-import plan.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildFoodDiaryImportSourceId(row: any, index: number): string {
+  const parts = [
+    row.date,
+    row.meal_type,
+    row.meal_name || '',
+    row.food_name || '',
+    row.quantity,
+    index,
+  ];
+  return `csv:${parts.join('|')}`;
+}
+
+// Picks which of a food's variants a row should log against: an exact
+// serving_unit match (preferring the default among ties, else most recently
+// updated), else the food's default variant. Auto-created foods have a
+// single variant and never reach the ambiguous branches.
+function selectFoodDiaryVariantId(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  variants: any[],
+  unit: string | undefined,
+  defaultVariantId: string | undefined
+): string | undefined {
+  if (!variants || variants.length === 0) return defaultVariantId;
+  const unitMatches = unit
+    ? variants.filter(
+        (v) => (v.serving_unit || '').toLowerCase() === unit.toLowerCase()
+      )
+    : [];
+  if (unitMatches.length > 0) {
+    const defaultMatch = unitMatches.find((v) => v.is_default);
+    if (defaultMatch) return defaultMatch.id;
+    const newest = [...unitMatches].sort(
+      (a, b) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    )[0];
+    return newest.id;
+  }
+  const defaultVariant = variants.find((v) => v.is_default);
+  return defaultVariant ? defaultVariant.id : defaultVariantId;
+}
+
+interface FoodDiaryImportScope {
+  family?: boolean;
+  public?: boolean;
+}
+
+// Resolves (or auto-creates) the food + variant a row should log against.
+// Returns { error } instead of throwing so the caller can attribute the
+// failure to this one row without aborting the rest of the batch.
+async function resolveFoodDiaryImportFood(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  row: any,
+  scope: FoodDiaryImportScope,
+  overrideNutrition: boolean
+): Promise<{ foodId?: string; variantId?: string; error?: string }> {
+  const foodName = (row.food_name || '').trim();
+  if (!foodName) {
+    return { error: 'Missing food_name.' };
+  }
+  const hasNutrients = rowHasAnyNutrients(row);
+  const customNutrients = rowCustomNutrients(row);
+
+  // 1. Name-only match within the selected scope (own > family > public,
+  // most-recently-logged breaking ties) — reference directly, never clone.
+  const visible = await foodRepository.findVisibleFoodByName(
+    userId,
+    foodName,
+    scope
+  );
+  if (visible) {
+    const variants = await foodRepository.getFoodVariantsByFoodId(
+      visible.id,
+      userId
+    );
+    const variantId = selectFoodDiaryVariantId(
+      variants,
+      row.unit,
+      visible.default_variant_id || visible.default_variant?.id
+    );
+    if (!variantId) {
+      return { error: `Matched food '${foodName}' has no usable variant.` };
+    }
+    // Override option: rewrite the matched variant's stored nutrition with the
+    // imported values. Guarded to the user's OWN foods (the frontend also
+    // forces scope to mine-only when override is on, but we re-check here so a
+    // family/public food is never mutated). The variant's serving basis is
+    // pinned to the row's portion, matching the imported totals.
+    if (overrideNutrition && hasNutrients && visible.user_id === userId) {
+      await foodRepository.updateFoodVariantNutrition(variantId, userId, {
+        serving_size: row.quantity,
+        serving_unit: row.unit,
+        ...pickFilledNutrients(row),
+        custom_nutrients: customNutrients,
+      });
+    }
+    return { foodId: visible.id, variantId };
+  }
+
+  // 2. A food this importer previously created for this exact name.
+  const prior = await foodRepository.findFoodByProviderExternalId(
+    userId,
+    foodName,
+    'csv_import'
+  );
+  if (prior) {
+    const variantId = prior.default_variant_id || prior.default_variant?.id;
+    if (hasNutrients && variantId) {
+      await foodRepository.updateFoodVariantNutrition(variantId, userId, {
+        serving_size: row.quantity,
+        serving_unit: row.unit,
+        ...pickFilledNutrients(row),
+        custom_nutrients: customNutrients,
+      });
+    }
+    return { foodId: prior.id, variantId };
+  }
+
+  // 3. Auto-create — only if the row can describe its own nutrition.
+  if (!hasNutrients) {
+    return {
+      error: `No existing food matched '${foodName}' within the selected scope, and no nutrient values were provided to create it.`,
+    };
+  }
+  const created = await foodRepository.createFood({
+    name: foodName,
+    brand: row.brand || null,
+    user_id: userId,
+    is_custom: true,
+    is_quick_food: true,
+    shared_with_public: false,
+    provider_type: 'csv_import',
+    provider_external_id: foodName,
+    provider_verified: false,
+    serving_size: row.quantity,
+    serving_unit: row.unit,
+    source: 'imported',
+    ...pickFilledNutrients(row),
+    ...(customNutrients ? { custom_nutrients: customNutrients } : {}),
+  });
+  return { foodId: created.id, variantId: created.default_variant?.id };
+}
+
+// Imports a single-food row (no meal grouping) as one food_entries row.
+async function importSingleFoodDiaryRow(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  row: any,
+  scope: FoodDiaryImportScope,
+  overrideNutrition: boolean,
+  index: number
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
+  const quantity = Number(row.quantity);
+  if (!row.quantity || isNaN(quantity) || quantity <= 0) {
+    return { error: 'Invalid or missing quantity.', entry: row };
+  }
+  if (!row.date || !row.meal_type) {
+    return { error: 'Missing date or meal_type.', entry: row };
+  }
+  const resolution = await resolveFoodDiaryImportFood(
+    authenticatedUserId,
+    row,
+    scope,
+    overrideNutrition
+  );
+  if (resolution.error) {
+    return { error: resolution.error, entry: row };
+  }
+  try {
+    const created = await foodRepository.createFoodEntry(
+      {
+        user_id: authenticatedUserId,
+        food_id: resolution.foodId,
+        variant_id: resolution.variantId,
+        quantity,
+        unit: row.unit,
+        entry_date: row.date,
+        meal_type: row.meal_type,
+        source: 'csv_import',
+        source_id: buildFoodDiaryImportSourceId(row, index),
+        // CSV nutrient values are authoritative for this entry's snapshot
+        // when present, even when the food itself was matched — they never
+        // mutate the matched library food.
+        ...buildEntrySnapshotOverride(row),
+      },
+      actingUserId
+    );
+    return { data: created };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { error: message, entry: row };
+  }
+}
+
+// Ad-hoc meal group: a meal_name that doesn't match any saved meal template.
+// Creates one food_entry_meals parent plus one leaf food_entries row per row
+// in the group, each food resolved via resolveFoodDiaryImportFood.
+async function importAdHocFoodDiaryMealGroup(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any,
+  group: {
+    mealName: string;
+    date: string;
+    mealType: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rows: { row: any; index: number }[];
+  },
+  scope: FoodDiaryImportScope,
+  overrideNutrition: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<{ processed: any[]; errors: any[] }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const processed: any[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const errors: any[] = [];
+  let parent;
+  try {
+    parent = await foodEntryMealRepository.createFoodEntryMeal(
+      {
+        user_id: authenticatedUserId,
+        meal_type: group.mealType,
+        entry_date: group.date,
+        name: group.mealName,
+        quantity: 1,
+        unit: 'serving',
+      },
+      actingUserId
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    errors.push({
+      error: `Failed to create meal '${group.mealName}': ${message}`,
+      entry: { meal_name: group.mealName, date: group.date },
+    });
+    return { processed, errors };
+  }
+  for (const { row } of group.rows) {
+    const quantity = Number(row.quantity);
+    if (!row.quantity || isNaN(quantity) || quantity <= 0) {
+      errors.push({ error: 'Invalid or missing quantity.', entry: row });
+      continue;
+    }
+    const resolution = await resolveFoodDiaryImportFood(
+      authenticatedUserId,
+      row,
+      scope,
+      overrideNutrition
+    );
+    if (resolution.error) {
+      errors.push({ error: resolution.error, entry: row });
+      continue;
+    }
+    try {
+      // Meal leaves intentionally carry NO source/source_id: food_entry_meals
+      // has no upsert key, so each import creates a fresh parent. If leaves
+      // were keyed, a re-import would UPSERT the old leaves in place (the
+      // ON CONFLICT set does not touch food_entry_meal_id) and strand the new
+      // parent empty. Leaving them unkeyed makes re-import cleanly duplicate
+      // the whole meal, matching the documented non-idempotent meal behavior.
+      const created = await foodRepository.createFoodEntry(
+        {
+          user_id: authenticatedUserId,
+          food_id: resolution.foodId,
+          variant_id: resolution.variantId,
+          meal_type_id: parent.meal_type_id,
+          food_entry_meal_id: parent.id,
+          quantity,
+          unit: row.unit,
+          entry_date: group.date,
+          ...buildEntrySnapshotOverride(row),
+        },
+        actingUserId
+      );
+      processed.push({ data: created });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ error: message, entry: row });
+    }
+  }
+  return { processed, errors };
+}
+
+// Bulk-imports diary log rows from CSV. Groups rows by meal_name so a saved
+// meal is logged by expanding its template (createFoodEntryMeal), an
+// unrecognized meal_name becomes an ad-hoc meal group, and everything else
+// is a single food_entries row. Row failures are collected, not thrown, so
+// one bad row never aborts the rest of the batch.
+async function importFoodDiaryEntriesInBulk(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rows: any[],
+  scope: FoodDiaryImportScope = {},
+  overrideNutrition = false
+) {
+  // Overriding stored food nutrition is only ever allowed against the user's
+  // own foods, so ignore any family/public scope flags when it is on.
+  const effectiveScope: FoodDiaryImportScope = overrideNutrition ? {} : scope;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const processed: any[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const errors: any[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const singleRows: { row: any; index: number }[] = [];
+  const mealGroups = new Map<
+    string,
+    {
+      mealName: string;
+      date: string;
+      mealType: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rows: { row: any; index: number }[];
+    }
+  >();
+
+  rows.forEach((row, index) => {
+    const mealName = (row.meal_name || '').trim();
+    if (!mealName) {
+      singleRows.push({ row, index });
+      return;
+    }
+    const key = `${row.date}|${row.meal_type}|${mealName.toLowerCase()}`;
+    const existing = mealGroups.get(key);
+    if (existing) {
+      existing.rows.push({ row, index });
+    } else {
+      mealGroups.set(key, {
+        mealName,
+        date: row.date,
+        mealType: row.meal_type,
+        rows: [{ row, index }],
+      });
+    }
+  });
+
+  for (const { row, index } of singleRows) {
+    const result = await importSingleFoodDiaryRow(
+      authenticatedUserId,
+      actingUserId,
+      row,
+      effectiveScope,
+      overrideNutrition,
+      index
+    );
+    if (result.error) errors.push({ error: result.error, entry: result.entry });
+    else processed.push(result.data);
+  }
+
+  for (const group of mealGroups.values()) {
+    try {
+      const savedMeals = await mealRepository.searchMeals(
+        group.mealName,
+        authenticatedUserId,
+        5
+      );
+      const savedMeal = savedMeals.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (m: any) => m.name.toLowerCase() === group.mealName.toLowerCase()
+      );
+      const noRowHasFoodName = group.rows.every(
+        ({ row }) => !row.food_name || !row.food_name.trim()
+      );
+      if (savedMeal && noRowHasFoodName) {
+        const representative = group.rows[0]!.row;
+        const newMeal = await createFoodEntryMeal(
+          authenticatedUserId,
+          actingUserId,
+          {
+            meal_template_id: savedMeal.id,
+            meal_type: group.mealType,
+            entry_date: group.date,
+            quantity: Number(representative.quantity) || 1,
+            unit: representative.unit || 'serving',
+            user_id: authenticatedUserId,
+          }
+        );
+        processed.push(newMeal);
+      } else {
+        const adHoc = await importAdHocFoodDiaryMealGroup(
+          authenticatedUserId,
+          actingUserId,
+          group,
+          effectiveScope,
+          overrideNutrition
+        );
+        processed.push(...adHoc.processed);
+        errors.push(...adHoc.errors);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({
+        error: `Failed to process meal '${group.mealName}': ${message}`,
+        entry: { meal_name: group.mealName, rows: group.rows.length },
+      });
+    }
+  }
+
+  return {
+    message:
+      errors.length > 0
+        ? 'Some diary entries could not be processed.'
+        : 'All diary entries successfully processed.',
+    processed,
+    errors,
+    skipped: [],
+  };
+}
+
 async function createFoodEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -2714,6 +3241,7 @@ export { deleteFoodEntryMeal };
 export { exportAllDiaryEntriesToCSVStream };
 export { copyFoodEntriesFromUser };
 export { copyFoodEntriesToUser };
+export { importFoodDiaryEntriesInBulk };
 export default {
   createFoodEntry,
   deleteFoodEntry,
@@ -2733,4 +3261,5 @@ export default {
   exportAllDiaryEntriesToCSVStream,
   copyFoodEntriesFromUser,
   copyFoodEntriesToUser,
+  importFoodDiaryEntriesInBulk,
 };

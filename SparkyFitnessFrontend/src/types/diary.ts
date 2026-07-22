@@ -45,3 +45,29 @@ export interface FoodEntryUpdateData {
   meal_type_id?: string;
   entry_time?: string | null;
 }
+
+export interface FoodDiaryImportRow {
+  date: string;
+  meal_type: string;
+  meal_name?: string;
+  food_name?: string;
+  brand?: string;
+  quantity: string;
+  unit: string;
+  // Assembled client-side from the CSV's extra (non-standard) columns, keyed
+  // by custom-nutrient name.
+  custom_nutrients?: Record<string, number>;
+  [key: string]: string | Record<string, number> | undefined;
+}
+
+export interface FoodDiaryImportScope {
+  family?: boolean;
+  public?: boolean;
+}
+
+export interface FoodDiaryImportResult {
+  message: string;
+  processed: unknown[];
+  errors: { error: string; entry: unknown }[];
+  skipped: unknown[];
+}

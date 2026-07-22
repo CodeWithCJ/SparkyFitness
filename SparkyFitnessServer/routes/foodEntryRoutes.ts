@@ -57,6 +57,60 @@ router.get(
 
 /**
  * @swagger
+ * /food-entries/import-from-csv:
+ *   post:
+ *     summary: Import diary log entries from CSV
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Bulk-creates diary log entries (food_entries) from CSV rows, distinct
+ *       from /foods/import-from-csv which only imports food-library master
+ *       data. Unmatched foods are auto-created from the row's own nutrient
+ *       columns; a row with no match and no nutrients is a per-row error.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               entries:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               scope:
+ *                 type: object
+ *                 properties:
+ *                   family:
+ *                     type: boolean
+ *                   public:
+ *                     type: boolean
+ *     responses:
+ *       200:
+ *         description: Per-row import results (processed/errors/skipped).
+ *       400:
+ *         description: Entries are required.
+ */
+router.post('/import-from-csv', authenticate, async (req, res, next) => {
+  const { entries, scope, overrideNutrition } = req.body;
+  if (!entries || !Array.isArray(entries)) {
+    return res.status(400).json({ error: 'Entries are required.' });
+  }
+  try {
+    const result = await foodEntryService.importFoodDiaryEntriesInBulk(
+      req.userId,
+      req.authenticatedUserId || req.userId,
+      entries,
+      scope || {},
+      overrideNutrition === true
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
  * /food-entries:
  *   post:
  *     summary: Create a new food entry

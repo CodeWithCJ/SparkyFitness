@@ -22,7 +22,9 @@ import {
   copyFoodEntriesToUser,
   type CopyFoodEntriesFromUserPayload,
   type CopyFoodEntriesToUserPayload,
+  importFoodDiaryEntriesFromCsv,
 } from '@/api/Diary/foodEntryService';
+import type { FoodDiaryImportRow, FoodDiaryImportScope } from '@/types/diary';
 
 import { goalKeys } from '@/api/keys/goals';
 import { foodEntryKeys, foodEntryMealKeys } from '@/api/keys/diary';
@@ -90,6 +92,26 @@ export const useCreateFoodEntryMutation = () => {
       successMessage: t('diary.addSuccess', 'Food added successfully.'),
       errorMessage: t('diary.addError', 'Failed to add food.'),
     },
+  });
+};
+
+// Bulk-imports diary log entries from CSV — distinct from the food-library
+// CSV import mutation (useImportCsvMutation in hooks/Foods/useFoods.ts),
+// which only writes master-data foods.
+export const useImportFoodDiaryCsvMutation = () => {
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: ({
+      entries,
+      scope,
+      overrideNutrition,
+    }: {
+      entries: FoodDiaryImportRow[];
+      scope: FoodDiaryImportScope;
+      overrideNutrition: boolean;
+    }) => importFoodDiaryEntriesFromCsv(entries, scope, overrideNutrition),
+    onSuccess: () => invalidate(),
   });
 };
 

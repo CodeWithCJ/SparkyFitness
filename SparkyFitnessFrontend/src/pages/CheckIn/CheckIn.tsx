@@ -16,17 +16,9 @@ import { EditFastDialog } from '../Fasting/EditFastDialog';
 import { useUpdateFastMutation } from '@/hooks/Fasting/useFasting';
 import { FastingLog } from '@/types/fasting';
 import { CombinedMeasurement } from '@/types/checkin';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { Upload, Timer, Activity, Moon, Camera } from 'lucide-react';
+import { Timer, Activity, Moon, Camera } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import HealthDataImportCSV from './HealthDataImportCSV';
 
 const CheckIn = () => {
   const { user } = useAuth();
@@ -78,7 +70,6 @@ const CheckIn = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
-  const [importOpen, setImportOpen] = useState(false);
   const photoDates = useCheckInPhotoDates();
 
   const [editingFast, setEditingFast] = useState<FastingLog | null>(null);
@@ -154,7 +145,7 @@ const CheckIn = () => {
             })}
           </div>
 
-          {/* Date Filter & CSV Import on the Right */}
+          {/* Date Filter on the Right */}
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto lg:justify-end">
             <DayNavigator
               selectedDate={selectedDate}
@@ -172,29 +163,6 @@ const CheckIn = () => {
               )}
               className="grid-cols-none flex mb-0 items-center gap-2"
             />
-
-            <Dialog open={importOpen} onOpenChange={setImportOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 h-9"
-                >
-                  <Upload size={16} />
-                  {t('healthDataImport.importCSV', 'Import CSV')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent
-                requireConfirmation
-                className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto"
-              >
-                <DialogHeader>
-                  <DialogTitle>
-                    {t('healthDataImport.title', 'Import Health Data')}
-                  </DialogTitle>
-                </DialogHeader>
-                <HealthDataImportCSV />
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 

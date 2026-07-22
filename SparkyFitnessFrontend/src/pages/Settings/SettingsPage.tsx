@@ -42,6 +42,7 @@ import CycleSettings from './CycleSettings';
 import { PreferenceSettings } from './PreferenceSettings';
 import { ProfileInformation } from './ProfileInformation';
 import { DataManagementSettings } from './DataManagementSettings';
+import { DataImportSettings } from './DataImportSettings';
 
 export interface PasswordFormState {
   current_password: string;
@@ -197,13 +198,14 @@ const Settings = () => {
                 className="flex items-center gap-2 p-4 hover:no-underline"
                 description={t(
                   'settings.dataManagement.subtitle',
-                  'Export or manage your data'
+                  'Import, export, or manage your data'
                 )}
               >
                 <Database className="h-5 w-5" />
                 {t('settings.dataManagement.sectionTitle', 'Data Management')}
               </AccordionTrigger>
-              <AccordionContent className="p-4 pt-0">
+              <AccordionContent className="p-4 pt-0 space-y-6">
+                <DataImportSettings />
                 <DataManagementSettings />
               </AccordionContent>
             </AccordionItem>

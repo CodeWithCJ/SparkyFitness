@@ -2,7 +2,13 @@ import { apiCall } from '../api';
 import type { MealFood } from '@/types/meal';
 import type { FoodEntryMeal } from '@/types/meal';
 import type { FoodEntry } from '@/types/food';
-import { DayData, FoodEntryUpdateData } from '@/types/diary';
+import {
+  DayData,
+  FoodEntryUpdateData,
+  FoodDiaryImportRow,
+  FoodDiaryImportScope,
+  FoodDiaryImportResult,
+} from '@/types/diary';
 import { ExpandedGoals } from '@/types/goals';
 
 export interface FoodEntryCreateData {
@@ -55,6 +61,21 @@ export const createFoodEntry = async (
     body: data,
   });
   return response;
+};
+
+// Bulk-creates diary log entries (food_entries) from CSV rows — distinct
+// from the food-library CSV import (POST /foods/import-from-csv), which only
+// writes master-data foods and is untouched by this feature.
+export const importFoodDiaryEntriesFromCsv = async (
+  entries: FoodDiaryImportRow[],
+  scope: FoodDiaryImportScope,
+  overrideNutrition: boolean
+): Promise<FoodDiaryImportResult> => {
+  const response = await apiCall('/food-entries/import-from-csv', {
+    method: 'POST',
+    body: { entries, scope, overrideNutrition },
+  });
+  return response as FoodDiaryImportResult;
 };
 
 export const removeFoodEntry = async (id: string): Promise<void> => {
