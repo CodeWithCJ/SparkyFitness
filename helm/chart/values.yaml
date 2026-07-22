@@ -736,3 +736,14 @@ externalSecrets:
         property: username
       - secretKey: password
         property: password
+
+# ========================== 6. EXTRA OBJECTS =================================
+# -- Array of extra K8s manifests to deploy
+# extraObjects:
+#   - apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: extra-config
+#     data:
+#       key: value
+extraObjects: []
