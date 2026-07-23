@@ -87,6 +87,8 @@ export const useUpsertDailyLogMutation = () => {
         queryKey: cycleKeys.log(variables.date),
       });
       queryClient.invalidateQueries({ queryKey: cycleKeys.cycles() });
+      queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
+      queryClient.invalidateQueries({ queryKey: ['cycle-correlations'] });
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
     },
     meta: { errorMessage: 'Could not save your log.' },

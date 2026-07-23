@@ -7,7 +7,7 @@ import { getTodayDate, addDays } from '../utils/dateUtils';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useCycleSettings } from '../hooks/useCycleSettings';
-import { usePregnancyMutations } from '../hooks/usePregnancy';
+import { usePregnancyMutations, useCurrentPregnancy } from '../hooks/usePregnancy';
 import { bulkPutLogs } from '../services/api/cycleApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -50,7 +50,8 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
   ]) as [string, string, string];
 
   const { updateSettingsAsync } = useCycleSettings();
-  const { createPregnancyAsync } = usePregnancyMutations();
+  const { createPregnancyAsync, updatePregnancyAsync } = usePregnancyMutations();
+  const { pregnancy: currentPregnancy } = useCurrentPregnancy();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -100,15 +101,31 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
         }
       } else if (mode === 'pregnant') {
         const computedDueDate = eddFromLmp(lastPeriodStart);
-        await createPregnancyAsync({
-          due_date: computedDueDate,
-          due_date_basis: 'lmp',
-          lmp_date: lastPeriodStart,
-          conception_date: null,
-          fetus_count: 1,
-          status: 'active',
-          notes: null,
-        });
+        try {
+          await createPregnancyAsync({
+            due_date: computedDueDate,
+            due_date_basis: 'lmp',
+            lmp_date: lastPeriodStart,
+            conception_date: null,
+            fetus_count: 1,
+            status: 'active',
+            notes: null,
+          });
+        } catch (pregErr) {
+          if (currentPregnancy?.id) {
+            await updatePregnancyAsync({
+              id: currentPregnancy.id,
+              body: {
+                due_date: computedDueDate,
+                due_date_basis: 'lmp',
+                lmp_date: lastPeriodStart,
+                status: 'active',
+              },
+            });
+          } else {
+            throw pregErr;
+          }
+        }
       }
 
       Toast.show({

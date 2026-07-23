@@ -35,9 +35,16 @@ jest.mock('../../src/hooks/useCycleSettings', () => ({
   }),
 }));
 
+const mockUpdatePregnancyAsync = jest.fn().mockResolvedValue({});
+
 jest.mock('../../src/hooks/usePregnancy', () => ({
   usePregnancyMutations: () => ({
     createPregnancyAsync: mockCreatePregnancyAsync,
+    updatePregnancyAsync: mockUpdatePregnancyAsync,
+  }),
+  useCurrentPregnancy: () => ({
+    pregnancy: null,
+    isLoading: false,
   }),
 }));
 

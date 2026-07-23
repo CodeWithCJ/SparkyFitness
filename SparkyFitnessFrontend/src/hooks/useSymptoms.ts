@@ -123,6 +123,9 @@ export const useCreateSymptomEntryMutation = () => {
         queryKey: ['symptom-entries'],
         refetchType: 'all',
       });
+      queryClient.invalidateQueries({ queryKey: ['cycle-insights'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-correlations'] });
       invalidateReports(queryClient);
     },
     meta: {
@@ -141,6 +144,9 @@ export const useDeleteSymptomEntryMutation = () => {
         queryKey: ['symptom-entries'],
         refetchType: 'all',
       });
+      queryClient.invalidateQueries({ queryKey: ['cycle-insights'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['cycle-correlations'] });
       invalidateReports(queryClient);
     },
     meta: {
