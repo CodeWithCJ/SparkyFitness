@@ -18,7 +18,7 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useUpsertCheckIn } from '../hooks/useUpsertCheckIn';
 import { usePreferences } from '../hooks/usePreferences';
-import { formatDateLabel, getTodayDate } from '../utils/dateUtils';
+import { formatDateLabel } from '../utils/dateUtils';
 import {
   weightToKg,
   weightFromKg,
@@ -33,6 +33,7 @@ import { parseDecimalInput } from '../utils/numericInput';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -117,7 +118,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-text-secondary',
   ]) as [string, string, string];
 
-  const initialDate = route.params?.date ?? getTodayDate();
+  const initialDate = route.params?.date ?? useDiaryDateStore.getState().selectedDate;
   const [selectedDate, setSelectedDate] = useState<string>(initialDate);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [prefilledKeys, setPrefilledKeys] = useState<Set<FieldKey>>(() => new Set());
@@ -154,7 +155,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isLoading || isPreferencesLoading) {
       // Syncs the form to the latest measurements snapshot (cached-then-fresh)
       // with dirty-field tracking; a legitimate external-data sync effect.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(EMPTY_FORM);
       setPrefilledKeys(new Set());
       return;
@@ -226,6 +226,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleSelectDate = useCallback((date: string) => {
     setSelectedDate(date);
+    useDiaryDateStore.getState().setSelectedDate(date);
   }, []);
 
   const handleClose = useCallback(() => {

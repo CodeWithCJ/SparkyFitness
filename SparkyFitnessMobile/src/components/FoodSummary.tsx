@@ -45,7 +45,7 @@ const MealSection: React.FC<MealSectionProps> = ({
 
   const totalCalories = calculateMealNutrition(entries).values.calories;
   const targetCalories = React.useMemo(() => {
-    if (!goals || !calorieGoal || mealType === 'other') return 0;
+    if (!goals || !calorieGoal) return 0;
     const percentage = getMealPercentage(mealType, goals);
     return Math.round((calorieGoal * percentage) / 100);
   }, [goals, calorieGoal, mealType]);

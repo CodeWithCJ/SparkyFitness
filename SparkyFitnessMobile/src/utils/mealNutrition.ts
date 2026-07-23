@@ -112,10 +112,24 @@ export function getMealPercentage(mealName: string, goals?: DailyGoals): number 
 
   const key = mealName.toLowerCase();
 
-  if (goals.custom_meal_percentages && key in goals.custom_meal_percentages) {
-    return goals.custom_meal_percentages[key] ?? 0;
+  if (goals.custom_meal_percentages) {
+    if (key in goals.custom_meal_percentages) {
+      return goals.custom_meal_percentages[key] ?? 0;
+    }
+    const altKey = key.includes('_') ? key.replace(/_/g, ' ') : key.replace(/ /g, '_');
+    if (altKey in goals.custom_meal_percentages) {
+      return goals.custom_meal_percentages[altKey] ?? 0;
+    }
   }
 
   const legacyKey = `${key}_percentage` as keyof DailyGoals;
-  return (goals[legacyKey] as number) ?? 0;
+  if (legacyKey in goals && typeof goals[legacyKey] === 'number') {
+    return (goals[legacyKey] as number) ?? 0;
+  }
+  const altLegacyKey = `${key.replace(/ /g, '_')}_percentage` as keyof DailyGoals;
+  if (altLegacyKey in goals && typeof goals[altLegacyKey] === 'number') {
+    return (goals[altLegacyKey] as number) ?? 0;
+  }
+
+  return 0;
 }

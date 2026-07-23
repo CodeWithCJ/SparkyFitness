@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import { useHealthAppointments, useHealthAppointmentMutations } from '../../../hooks/useHealthAppointments';
-import { getTodayDate, formatDate } from '../../../utils/dateUtils';
+import { getTodayDate, formatDate, toLocalDateString } from '../../../utils/dateUtils';
 import CalendarSheet, { type CalendarSheetRef } from '../../CalendarSheet';
 import FormInput from '../../FormInput';
 import StepperInput from '../../StepperInput';
@@ -20,7 +20,8 @@ function formatScheduledAt(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  return `${formatDate(iso.slice(0, 10))} · ${time}`;
+  const localDateStr = toLocalDateString(d);
+  return `${formatDate(localDateStr)} · ${time}`;
 }
 
 const AppointmentsCard: React.FC = () => {
