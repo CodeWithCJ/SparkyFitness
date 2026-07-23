@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '../lib/auth-client';
 import { fetchIdentityUser, switchUserContext } from '@/api/Auth/auth';
+import { apiCall } from '@/api/api';
 
 export interface User {
   id: string;
@@ -138,9 +139,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const isSticky = now - lastManualSignIn < 2000;
 
       if (user !== null && !isSticky) {
-        console.log('[Auth Hook] No session found, clearing user state.');
-        setUser(null);
-        queryClient.clear();
+        // Better Auth's own session fetch bypasses apiCall, so an upstream
+        // auth gateway (e.g. Cloudflare Access) intercepting that request can
+        // resolve session to null without SparkyFitness ever seeing it. Before
+        // treating this as a real logout, confirm with a same-origin probe
+        // through apiCall, which knows how to recognize gateway interception
+        // (see isGatewayInterceptedResponse in src/api/api.ts) and will
+        // trigger a re-auth reload itself rather than resolving here.
+        apiCall('/ping')
+          .then(() => {
+            console.log('[Auth Hook] No session found, clearing user state.');
+            setUser(null);
+            queryClient.clear();
+          })
+          .catch((err) => {
+            console.error(
+              '[Auth Hook] Session probe failed; not clearing user state to avoid a false logout.',
+              err
+            );
+          });
       }
       setIsSyncing(false);
     }
