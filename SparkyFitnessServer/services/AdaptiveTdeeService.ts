@@ -268,9 +268,9 @@ function computeAdaptiveTdeeFromData(
   const daysInWindow = calculationWindow.length;
   const dailyWeightChange = weightChange / daysInWindow;
 
-  // TDEE = (Avg_Daily_Intake) - (Avg_Daily_Weight_Change_kg * 7700)
-  // human body tissue is approx 7700 kcal per kg
-  let adaptiveTdee = avgDailyIntake - dailyWeightChange * 7700;
+  // TDEE = (Avg_Daily_Intake) - (Avg_Daily_Weight_Change_kg * 6000)
+  // Human body tissue change mix (fat + lean/water) is approx 6000 kcal per kg
+  let adaptiveTdee = avgDailyIntake - dailyWeightChange * 6000;
   // Safety Capping: +/- 500 kcal from BMR-based fallback
   const maxTdee = fallbackTdee + 500;
   const minTdee = Math.max(1200, fallbackTdee - 500);

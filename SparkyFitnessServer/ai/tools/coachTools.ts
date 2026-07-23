@@ -313,8 +313,8 @@ async function generateCoachingPlan(
     );
     const avgCals = totalCals / calorieData.length;
 
-    // 1kg of fat ~ 7700 cals. Weight change over 14 days.
-    const dailyCaloricBalance = (weightChange * 7700) / 14;
+    // 1kg of mixed body tissue ~ 6000 cals. Weight change over 14 days.
+    const dailyCaloricBalance = (weightChange * 6000) / 14;
     estimatedTdee = Math.round(avgCals - dailyCaloricBalance);
   }
 
