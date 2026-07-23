@@ -106,6 +106,17 @@ export function defaultMealTypeForTime(
   }
   if (best) return best.name;
 
+  const configuredWithTime = mealTypes
+    .filter((mt) => isEntryTimeString(mt.default_time))
+    .sort(
+      (a, b) =>
+        timeToMinutes(a.default_time!) - timeToMinutes(b.default_time!),
+    );
+
+  if (configuredWithTime.length > 0) {
+    return configuredWithTime[0]!.name;
+  }
+
   const bucket = FALLBACK_MEAL_BUCKETS.find(
     (b) => now.hour < b.maxHourExclusive,
   );

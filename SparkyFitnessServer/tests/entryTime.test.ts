@@ -61,11 +61,34 @@ describe('defaultMealTypeForTime', () => {
     );
   });
 
-  it('falls back to hour buckets when no default time is <= now', () => {
-    // 07:00 is before Breakfast default (08:00) so it uses falls back to hour buckets:
-    // hour < 11 => Breakfast, hour < 15 => Lunch, hour < 20 => Dinner, else Snacks
+  it('falls back to earliest configured meal type when time is before all configured meal times', () => {
     expect(defaultMealTypeForTime(mealTypes, { hour: 7, minute: 0 })).toBe(
       'Breakfast'
+    );
+  });
+
+  it('correctly handles custom meal time orders like Snacks at 5 PM (17:00) and Dinner at 7 PM (19:00)', () => {
+    const customTypes = [
+      { name: 'Breakfast', default_time: '08:00' },
+      { name: 'Lunch', default_time: '12:00' },
+      { name: 'Snacks', default_time: '17:00' },
+      { name: 'Dinner', default_time: '19:00' },
+    ];
+
+    expect(defaultMealTypeForTime(customTypes, { hour: 14, minute: 30 })).toBe(
+      'Lunch'
+    );
+    expect(defaultMealTypeForTime(customTypes, { hour: 17, minute: 0 })).toBe(
+      'Snacks'
+    );
+    expect(defaultMealTypeForTime(customTypes, { hour: 18, minute: 15 })).toBe(
+      'Snacks'
+    );
+    expect(defaultMealTypeForTime(customTypes, { hour: 19, minute: 0 })).toBe(
+      'Dinner'
+    );
+    expect(defaultMealTypeForTime(customTypes, { hour: 21, minute: 45 })).toBe(
+      'Dinner'
     );
   });
 });
