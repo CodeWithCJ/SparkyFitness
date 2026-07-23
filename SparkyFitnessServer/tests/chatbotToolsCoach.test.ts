@@ -672,23 +672,23 @@ describe('sparky_generate_coaching_plan', () => {
       opts
     );
 
-    // avg 2400 kcal; +1kg over 14 days -> daily balance 550 -> TDEE 1850;
-    // weight_loss deficit -> 1350 target.
+    // avg 2400 kcal; +1kg over 14 days -> daily balance (1*6000)/14 = 429 -> TDEE 1971;
+    // weight_loss deficit -> 1471 target.
     expect(result).toBe(
       '# Coaching Plan\n\n' +
         JSON.stringify(
           {
             goal: 'weight_loss',
-            current_estimated_tdee: 1850,
+            current_estimated_tdee: 1971,
             recommended_targets: {
-              daily_calories: 1350,
-              protein_grams: 101,
-              carbs_grams: 135,
-              fat_grams: 45,
+              daily_calories: 1471,
+              protein_grams: 110,
+              carbs_grams: 147,
+              fat_grams: 49,
             },
             shopping_list_suggestions: ['Chicken Breast', 'Greek Yogurt'],
             coaching_insight:
-              'Your weight is currently trending up. To hit your weight loss goal, we need to bring daily calories down to 1350.',
+              'Your weight is currently trending up. To hit your weight loss goal, we need to bring daily calories down to 1471.',
           },
           null,
           2
