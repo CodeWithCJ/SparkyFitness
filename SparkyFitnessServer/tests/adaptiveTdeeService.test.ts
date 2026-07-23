@@ -352,4 +352,48 @@ describe('AdaptiveTdeeService', () => {
     );
     expect(result.confidence).toBe('HIGH');
   });
+
+  test('should calculate adaptive TDEE using ~6000 kcal/kg energy density constant', () => {
+    // BMR fallback = 1400 * 1.55 = 2170
+    // minTdee = 2170 - 500 = 1670, maxTdee = 2170 + 500 = 2670
+    // User eats 2000 kcal/day for 28 days and loses 1.0 kg (from 81.0 kg down to 80.0 kg)
+    // TDEE = 2000 - (-1.0 / 28) * 6000 = 2000 + 214.28 = 2214 kcal
+    // @ts-expect-error
+    bmrService.calculateBmr.mockReturnValue(1400);
+    bmrService.ActivityMultiplier = { moderate: 1.55 };
+
+    const checkInMeasurements = [];
+    // 70 days of history so tracking age >= 6 weeks and confidence is HIGH
+    for (let i = 0; i < 70; i++) {
+      let weight = 80;
+      if (i > 27) {
+        weight = 81.0;
+      } else {
+        // Linear weight loss from 81.0 down to 80.0 over the 28-day window
+        weight = 80.0 + (i / 27) * 1.0;
+      }
+      checkInMeasurements.push({
+        entry_date: format(subDays(calculationDate, i), 'yyyy-MM-dd'),
+        weight,
+      });
+    }
+
+    const testData = {
+      profile: { date_of_birth: '1990-01-01', gender: 'male' },
+      preferences: {
+        bmr_algorithm: 'Mifflin-St Jeor',
+        activity_level: 'moderate',
+      },
+      latestMeasurement: { weight: 80, height: 180 },
+      checkInMeasurements,
+      nutritionData: Array.from({ length: 91 }, (_, i) => ({
+        date: format(subDays(calculationDate, i), 'yyyy-MM-dd'),
+        calories: 2000,
+      })),
+    };
+
+    const result = computeAdaptiveTdeeFromData(testData, calculationDateStr);
+    // 2000 kcal intake + (~0.88 kg smoothed weight loss * 6000) / 28 = ~2190 kcal
+    expect(result.tdee).toBe(2190);
+  });
 });
