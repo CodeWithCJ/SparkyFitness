@@ -1,3 +1,4 @@
+import { defaultMealTypeForTime } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 import type { MealType } from '../types/mealTypes';
 
@@ -50,13 +51,21 @@ export function getMealTypeIcon(name: string): IconName {
 }
 
 /**
- * Returns the id of the best matching meal type based on the current time of day.
+ * Returns the id of the best matching meal type based on the current time of day
+ * and configured meal type default_time values.
  * Falls back to the first meal type's id, or null if the list is empty.
  */
-export function getDefaultMealTypeId(mealTypes: MealType[]): string | null {
+export function getDefaultMealTypeId(
+  mealTypes: MealType[],
+  now?: { hour: number; minute: number }
+): string | null {
   if (mealTypes.length === 0) return null;
 
-  const defaultName = getDefaultMealType();
-  const match = mealTypes.find((mt) => mt.name.toLowerCase().startsWith(defaultName));
+  const date = new Date();
+  const currentNow = now ?? { hour: date.getHours(), minute: date.getMinutes() };
+  const predictedName = defaultMealTypeForTime(mealTypes, currentNow);
+  const match = mealTypes.find(
+    (mt) => mt.name.toLowerCase() === predictedName.toLowerCase()
+  );
   return match?.id ?? mealTypes[0].id;
 }

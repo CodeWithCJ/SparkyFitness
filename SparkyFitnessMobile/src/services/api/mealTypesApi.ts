@@ -11,3 +11,19 @@ export const fetchMealTypes = async (): Promise<MealType[]> => {
     operation: 'fetch meal types',
   });
 };
+
+/**
+ * Updates a meal type by ID.
+ */
+export const updateMealType = async (
+  id: string,
+  data: Partial<Omit<MealType, 'id'>>
+): Promise<MealType> => {
+  return apiFetch<MealType>({
+    endpoint: `/api/meal-types/${id}`,
+    method: 'PUT',
+    body: data,
+    serviceName: 'Meal Types API',
+    operation: 'update meal type',
+  });
+};
