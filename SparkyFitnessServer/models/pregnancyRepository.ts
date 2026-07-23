@@ -65,6 +65,16 @@ async function createPregnancy(
          user_id, due_date, due_date_basis, lmp_date, conception_date, fetus_count,
          prenatal_medication_id, supplement_medication_id, notes)
        VALUES ($1, $2, COALESCE($3, 'lmp'), $4, $5, COALESCE($6, 1), $7, $8, $9)
+       ON CONFLICT (user_id) WHERE status = 'active' DO UPDATE SET
+         due_date = EXCLUDED.due_date,
+         due_date_basis = EXCLUDED.due_date_basis,
+         lmp_date = EXCLUDED.lmp_date,
+         conception_date = EXCLUDED.conception_date,
+         fetus_count = EXCLUDED.fetus_count,
+         prenatal_medication_id = COALESCE(EXCLUDED.prenatal_medication_id, pregnancies.prenatal_medication_id),
+         supplement_medication_id = COALESCE(EXCLUDED.supplement_medication_id, pregnancies.supplement_medication_id),
+         notes = COALESCE(EXCLUDED.notes, pregnancies.notes),
+         updated_at = NOW()
        RETURNING ${PREG_COLS}`,
       [
         userId,

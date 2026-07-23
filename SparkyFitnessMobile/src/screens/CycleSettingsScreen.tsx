@@ -62,7 +62,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
   } = useCycleSettings();
 
   const handleToggleEnabled = useCallback((value: boolean) => {
-    updateSettings({ enabled: value });
+    updateSettings({ enabled: value, mark_onboarded: value ? true : undefined });
   }, [updateSettings]);
 
   const handleModeChange = useCallback((value: string) => {

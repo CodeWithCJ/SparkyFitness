@@ -120,6 +120,7 @@ export default function CycleSettings() {
         show_fertile_window: showFertileWindow,
         terminology,
         discreet_mode: discreetMode,
+        mark_onboarded: enabled ? true : undefined,
       });
       toast({
         title: t('settings.cycle.successTitle', 'Success'),
@@ -223,7 +224,13 @@ export default function CycleSettings() {
           <Switch
             id="cycle-tracking-enabled"
             checked={enabled}
-            onCheckedChange={setEnabled}
+            onCheckedChange={(val) => {
+              setEnabled(val);
+              void upsert.mutateAsync({
+                enabled: val,
+                mark_onboarded: val ? true : undefined,
+              });
+            }}
           />
         </div>
 
