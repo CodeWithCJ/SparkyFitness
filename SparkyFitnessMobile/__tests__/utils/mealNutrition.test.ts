@@ -3,6 +3,7 @@ import {
   calculateMealNutrition,
   filterFoodEntriesByMealType,
   groupFoodEntriesByMealType,
+  getMealPercentage,
 } from '../../src/utils/mealNutrition';
 import type { FoodEntry } from '../../src/types/foodEntries';
 
@@ -106,5 +107,31 @@ describe('mealNutrition', () => {
       sodium: 300,
     });
     expect(nutrition.values.calcium).toBeUndefined();
+  });
+
+  describe('getMealPercentage', () => {
+    it('returns legacy percentage for standard meal types', () => {
+      const goals = { calories: 2000, lunch_percentage: 20 };
+      expect(getMealPercentage('lunch', goals)).toBe(20);
+      expect(getMealPercentage('dinner', goals)).toBe(0);
+    });
+
+    it('returns custom meal percentage when defined in custom_meal_percentages', () => {
+      const goals = {
+        calories: 2000,
+        custom_meal_percentages: {
+          other: 15,
+          'afternoon snack': 10,
+        },
+      };
+      expect(getMealPercentage('other', goals)).toBe(15);
+      expect(getMealPercentage('afternoon_snack', goals)).toBe(10);
+      expect(getMealPercentage('afternoon snack', goals)).toBe(10);
+    });
+
+    it('returns 0 when goals or percentages are missing', () => {
+      expect(getMealPercentage('lunch', undefined)).toBe(0);
+      expect(getMealPercentage('unknown', { calories: 2000 })).toBe(0);
+    });
   });
 });

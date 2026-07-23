@@ -43,7 +43,7 @@ type Props = RootStackScreenProps<'WorkoutAdd'>;
 const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const session = route.params?.session;
   const preset = route.params?.preset;
-  const initialDate = route.params?.date;
+  const initialDate = route.params?.date ?? useDiaryDateStore.getState().selectedDate;
   const popCount = route.params?.popCount ?? 1;
   const isEditMode = !!session;
   const skipDraftLoad =
@@ -155,7 +155,6 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // One-time initialization from the async-loaded session; setting state
     // synchronously here is intentional and mirrors the populate() side effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasPopulatedEdit(true);
     populate(session, weightUnit as 'kg' | 'lbs');
   }, [isEditMode, session, isPreferencesLoading, populate, weightUnit, hasPopulatedEdit]);
@@ -168,7 +167,6 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const populatedIds = populateFromPreset(preset, weightUnit as 'kg' | 'lbs', initialDate);
     // One-time initialization from the async-loaded preset; setting state
     // synchronously here is intentional and mirrors the populateFromPreset side effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEligibleIds(prev => {
       const next = new Set(prev);
       populatedIds.forEach(id => next.add(id));

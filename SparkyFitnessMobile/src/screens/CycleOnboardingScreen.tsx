@@ -7,6 +7,7 @@ import { getTodayDate, addDays } from '../utils/dateUtils';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useCycleSettings } from '../hooks/useCycleSettings';
+import { usePregnancyMutations } from '../hooks/usePregnancy';
 import { bulkPutLogs } from '../services/api/cycleApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -20,6 +21,7 @@ import Icon from '../components/Icon';
 import {
   BIRTH_CONTROL_METHODS,
   CYCLE_CONDITIONS,
+  eddFromLmp,
   type CycleMode,
 } from '@workspace/shared';
 
@@ -48,6 +50,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
   ]) as [string, string, string];
 
   const { updateSettingsAsync } = useCycleSettings();
+  const { createPregnancyAsync } = usePregnancyMutations();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -84,7 +87,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
         mark_onboarded: true,
       });
 
-      // 2. Seed Period Days (Standard/TTC Mode only)
+      // 2. Seed Period Days (Standard/TTC Mode) or create Pregnancy Record (Pregnant Mode)
       if (mode === 'standard' || mode === 'ttc') {
         const seedLogs = [];
         for (let i = 0; i < periodLength; i++) {
@@ -95,6 +98,17 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
         if (seedLogs.length > 0) {
           await bulkPutLogs(seedLogs);
         }
+      } else if (mode === 'pregnant') {
+        const computedDueDate = eddFromLmp(lastPeriodStart);
+        await createPregnancyAsync({
+          due_date: computedDueDate,
+          due_date_basis: 'lmp',
+          lmp_date: lastPeriodStart,
+          conception_date: null,
+          fetus_count: 1,
+          status: 'active',
+          notes: null,
+        });
       }
 
       Toast.show({

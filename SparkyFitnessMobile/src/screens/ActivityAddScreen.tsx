@@ -33,7 +33,7 @@ type Props = RootStackScreenProps<'ActivityAdd'>;
 
 const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const entry = route.params?.entry;
-  const initialDate = route.params?.date;
+  const initialDate = route.params?.date ?? useDiaryDateStore.getState().selectedDate;
   const popCount = route.params?.popCount ?? 1;
   const isEditMode = !!entry;
 

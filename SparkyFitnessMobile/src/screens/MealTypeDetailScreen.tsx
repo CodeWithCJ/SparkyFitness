@@ -53,7 +53,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   );
   const nutrition = useMemo(() => calculateMealNutrition(entries), [entries]);
   const targetCalories = useMemo(() => {
-    if (!summary?.goals || !summary?.calorieGoal || mealType === 'other') return 0;
+    if (!summary?.goals || !summary?.calorieGoal) return 0;
     const percentage = getMealPercentage(mealType, summary.goals);
     return Math.round((summary.calorieGoal * percentage) / 100);
   }, [summary, mealType]);
