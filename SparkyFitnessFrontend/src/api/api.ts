@@ -18,6 +18,43 @@ class HttpApiError extends Error {}
 export const API_BASE_URL = '/api';
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
 
+// A single-use guard so a reload triggered by gateway interception (see
+// isGatewayInterceptedResponse) can't loop if the gateway keeps intercepting.
+const GATEWAY_RELOAD_GUARD_KEY = 'sparky_gateway_reload_guard';
+const GATEWAY_RELOAD_GUARD_TTL_MS = 10000;
+
+// Detects when a reverse-proxy auth gateway (e.g. Cloudflare Access) has
+// intercepted an internal API call and returned its own login/redirect page
+// instead of letting the request reach the backend. Such responses are not a
+// real "logged out" signal from SparkyFitness and must not be treated as one.
+function isGatewayInterceptedResponse(response: Response): boolean {
+  if (response.type === 'opaqueredirect') {
+    return true;
+  }
+  if (response.redirected) {
+    try {
+      if (new URL(response.url).origin !== window.location.origin) {
+        return true;
+      }
+    } catch {
+      // Ignore malformed URLs; fall through to content-type check.
+    }
+  }
+  const contentType = response.headers.get('content-type') || '';
+  return contentType.includes('text/html');
+}
+
+function reloadOnceForGatewayInterception(): void {
+  const lastReload = Number(
+    sessionStorage.getItem(GATEWAY_RELOAD_GUARD_KEY) || 0
+  );
+  if (Date.now() - lastReload < GATEWAY_RELOAD_GUARD_TTL_MS) {
+    return;
+  }
+  sessionStorage.setItem(GATEWAY_RELOAD_GUARD_KEY, String(Date.now()));
+  window.location.reload();
+}
+
 export async function apiCall(
   endpoint: string,
   options?: ApiCallOptions
@@ -98,6 +135,16 @@ export async function apiCall(
       `API Call: Received response from ${url} with status:`,
       response.status
     );
+
+    if (!isExternal && isGatewayInterceptedResponse(response)) {
+      logging.error(
+        userLoggingLevel,
+        `API Call: Response for ${url} looks like it was intercepted by an upstream auth gateway (e.g. Cloudflare Access) rather than answered by the backend. Reloading to re-authenticate.`
+      );
+      reloadOnceForGatewayInterception();
+      // Reload is async; avoid processing this response as a real API result/error.
+      return new Promise(() => {});
+    }
 
     if (!response.ok) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
