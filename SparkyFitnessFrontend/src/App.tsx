@@ -17,6 +17,9 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import DraggableChatbotButton from '@/components/DraggableChatbotButton';
 import AboutDialog from '@/components/AboutDialog';
 import NewReleaseDialog, { ReleaseInfo } from '@/components/NewReleaseDialog';
+import AnnouncementDialog, {
+  AnnouncementInfo,
+} from '@/components/AnnouncementDialog';
 import AppSetup from '@/components/AppSetup';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -137,6 +140,10 @@ const Root = () => {
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [latestRelease, setLatestRelease] = useState<ReleaseInfo | null>(null);
   const [showNewReleaseDialog, setShowNewReleaseDialog] = useState(false);
+  const [announcement, setAnnouncement] = useState<AnnouncementInfo | null>(
+    null
+  );
+  const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
   const { data: appVersion } = useCurrentVersionQuery();
   const navigate = useNavigate();
   const invalidateGithubVersion = useInvalidateGithubVersion();
@@ -149,6 +156,11 @@ const Root = () => {
   const handleDismissRelease = (version: string) => {
     localStorage.setItem('dismissedReleaseVersion', version);
     setShowNewReleaseDialog(false);
+  };
+
+  const handleDismissAnnouncement = (id: string) => {
+    localStorage.setItem('dismissedAnnouncementId', id);
+    setShowAnnouncementDialog(false);
   };
 
   useEffect(() => {
@@ -169,6 +181,8 @@ const Root = () => {
                 <AppSetup
                   setLatestRelease={setLatestRelease}
                   setShowNewReleaseDialog={setShowNewReleaseDialog}
+                  setAnnouncement={setAnnouncement}
+                  setShowAnnouncementDialog={setShowAnnouncementDialog}
                 />
                 <Suspense
                   fallback={
@@ -235,6 +249,24 @@ const Root = () => {
                     onClose={() => setShowNewReleaseDialog(false)}
                     releaseInfo={latestRelease}
                     onDismissForVersion={handleDismissRelease}
+                  />
+                </ErrorBoundary>
+                <ErrorBoundary
+                  fallback={<ComponentFallback />}
+                  onError={(error, { componentStack }) => {
+                    logError(
+                      getUserLoggingLevel(),
+                      'AnnouncementDialog failed:',
+                      error,
+                      componentStack
+                    );
+                  }}
+                >
+                  <AnnouncementDialog
+                    isOpen={showAnnouncementDialog}
+                    onClose={() => setShowAnnouncementDialog(false)}
+                    announcement={announcement}
+                    onDismiss={handleDismissAnnouncement}
                   />
                 </ErrorBoundary>
                 <Toaster />

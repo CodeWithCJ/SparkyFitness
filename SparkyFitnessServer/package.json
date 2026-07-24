@@ -1,9 +1,10 @@
 {
   "name": "sparkyfitnessserver",
-  "version": "0.17.3",
+  "version": "1.6.0",
   "main": "SparkyFitnessServer.js",
   "type": "module",
   "scripts": {
+    "set-version": "pnpm -w run set-version",
     "start": "nodemon SparkyFitnessServer.ts",
     "test:migrations": "tsx tests/migrate.script.ts",
     "validate": "pnpm run typecheck && pnpm run lint && pnpm run format:check",

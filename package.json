@@ -1,7 +1,9 @@
 {
   "packageManager": "pnpm@10.33.4",
+  "type": "module",
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "set-version": "node scripts/set-version.js"
   },
   "devDependencies": {
     "husky": "^9.0.0",

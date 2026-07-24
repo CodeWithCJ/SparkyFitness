@@ -62,6 +62,7 @@ import adaptiveTdeeRoutes from './routes/adaptiveTdeeRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import globalSettingsRoutes from './routes/globalSettingsRoutes.js';
 import versionRoutes from './routes/versionRoutes.js';
+import announcementRoutes from './routes/announcementRoutes.js';
 import onboardingRoutes from './routes/onboardingRoutes.js';
 import customNutrientRoutes from './routes/customNutrientRoutes.js';
 import aiUnitConversionRoutes from './routes/aiUnitConversionRoutes.js';
@@ -449,6 +450,7 @@ const publicRoutes = [
   '/api/auth/web-login',
   '/api/health',
   '/api/version',
+  '/api/announcement',
   '/api/uploads',
   '/uploads',
   '/api/ping',
@@ -518,6 +520,7 @@ app.use('/api/synced-data', syncedDataRoutes);
 app.use('/api/integrations/garmin', garminRoutes);
 app.use('/api/withings', withingsRoutes);
 app.use('/api/version', versionRoutes);
+app.use('/api/announcement', announcementRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/admin/global-settings', globalSettingsRoutes);
 app.use('/api/global-settings', globalSettingsRoutes); // Public route for allow-user-ai-config

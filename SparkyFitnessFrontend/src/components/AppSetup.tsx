@@ -2,8 +2,12 @@ import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { info } from '@/utils/logging';
-import { useLatestReleaseQuery } from '@/hooks/useGeneralQueries';
+import {
+  useLatestReleaseQuery,
+  useAnnouncementQuery,
+} from '@/hooks/useGeneralQueries';
 import { ReleaseInfo } from './NewReleaseDialog';
+import { AnnouncementInfo } from './AnnouncementDialog';
 
 export interface LatestReleaseResponse {
   version: string;
@@ -13,11 +17,17 @@ export interface LatestReleaseResponse {
 interface AppSetupProps {
   setLatestRelease: React.Dispatch<React.SetStateAction<ReleaseInfo | null>>;
   setShowNewReleaseDialog: (show: boolean) => void;
+  setAnnouncement: React.Dispatch<
+    React.SetStateAction<AnnouncementInfo | null>
+  >;
+  setShowAnnouncementDialog: (show: boolean) => void;
 }
 
 const AppSetup = ({
   setLatestRelease,
   setShowNewReleaseDialog,
+  setAnnouncement,
+  setShowAnnouncementDialog,
 }: AppSetupProps): null => {
   const { user, loading } = useAuth();
   const { loggingLevel } = usePreferences();
@@ -25,6 +35,11 @@ const AppSetup = ({
   const { data: releaseData, isSuccess } = useLatestReleaseQuery({
     enabled: !loading && !!user,
   });
+
+  const { data: announcementData, isSuccess: isAnnouncementSuccess } =
+    useAnnouncementQuery({
+      enabled: !loading && !!user,
+    });
 
   useEffect(() => {
     info(loggingLevel, 'AppSetup useEffect: auth state', {
@@ -39,36 +54,41 @@ const AppSetup = ({
 
       const dismissedVersion = localStorage.getItem('dismissedReleaseVersion');
 
-      info(
-        loggingLevel,
-        'Dismissed release version from localStorage:',
-        dismissedVersion
-      );
-
       if (
         releaseData.isNewVersionAvailable &&
         dismissedVersion !== releaseData.version
       ) {
         info(loggingLevel, 'Showing new release dialog.');
         setShowNewReleaseDialog(true);
-      } else {
-        info(loggingLevel, 'New release dialog not shown.', {
-          isNewVersionAvailable: releaseData.isNewVersionAvailable,
-          dismissedVersion,
-          releaseDataVersion: releaseData.version,
-        });
       }
-    } else if (!user && !loading) {
-      info(loggingLevel, 'User not authenticated, skipping new release check.');
+    }
+
+    if (!loading && user && isAnnouncementSuccess && announcementData) {
+      if (announcementData.active) {
+        setAnnouncement(announcementData);
+        const dismissedId = localStorage.getItem('dismissedAnnouncementId');
+        if (dismissedId !== announcementData.id) {
+          info(
+            loggingLevel,
+            'Showing active announcement dialog:',
+            announcementData.id
+          );
+          setShowAnnouncementDialog(true);
+        }
+      }
     }
   }, [
     user,
     loading,
     isSuccess,
     releaseData,
+    isAnnouncementSuccess,
+    announcementData,
     loggingLevel,
     setLatestRelease,
     setShowNewReleaseDialog,
+    setAnnouncement,
+    setShowAnnouncementDialog,
   ]);
 
   return null;

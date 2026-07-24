@@ -22,6 +22,7 @@ import WhatsNewBanner, {
   WhatsNewBannerContent,
   useWhatsNewBannerState,
 } from './WhatsNewBanner';
+import { AnnouncementModal } from './AnnouncementModal';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
@@ -343,20 +344,24 @@ export function TabsLayout({
   rememberActiveTab,
   getLastActiveTab,
 }: { onAddPress?: () => void } & TabTrackingProps) {
-  if (useNativeIOSTabsActive()) {
-    return (
-      <NativeTabsLayout
-        onAddPress={onAddPress}
-        rememberActiveTab={rememberActiveTab}
-        getLastActiveTab={getLastActiveTab}
-      />
-    );
-  }
-  return (
+  const tabs = useNativeIOSTabsActive() ? (
+    <NativeTabsLayout
+      onAddPress={onAddPress}
+      rememberActiveTab={rememberActiveTab}
+      getLastActiveTab={getLastActiveTab}
+    />
+  ) : (
     <FallbackTabsLayout
       onAddPress={onAddPress}
       rememberActiveTab={rememberActiveTab}
       getLastActiveTab={getLastActiveTab}
     />
+  );
+
+  return (
+    <>
+      {tabs}
+      <AnnouncementModal />
+    </>
   );
 }
