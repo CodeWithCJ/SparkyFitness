@@ -1,10 +1,11 @@
 {
   "name": "sparkyfitnessfrontend",
   "private": true,
-  "version": "0.17.3",
+  "version": "1.6.0",
   "homepage": "https://github.com/CodeWithCJ/SparkyFitness",
   "type": "module",
   "scripts": {
+    "set-version": "pnpm -w run set-version",
     "dev": "vite",
     "typecheck": "tsc -b",
     "format:check": "prettier . --check",
