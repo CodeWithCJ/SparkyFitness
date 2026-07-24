@@ -99,6 +99,9 @@ const devAndroidPermissions = [
   'android.permission.health.WRITE_WHEELCHAIR_PUSHES',
 ];
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const packageJson = require('./package.json');
+
 export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
   const environment = process.env.APP_VARIANT || 'dev';
 
@@ -117,6 +120,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     ...config,
     name: APP_NAME,
     slug: APP_SLUG,
+    version: packageJson.version,
     ios: {
       bundleIdentifier: isDev
         ? DEV_BUNDLE_IDENTIFIER
