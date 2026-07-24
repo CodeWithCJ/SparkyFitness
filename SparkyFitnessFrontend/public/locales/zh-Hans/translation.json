@@ -22,5 +22,103 @@
     "externalApis": "对外API：",
     "wgerApi": "Wger API （锻炼记录数据）",
     "foodDataApis": "饮食数据API："
+  },
+  "medications": {
+    "tabs": {
+      "log": "日志",
+      "cabinet": "药柜",
+      "symptoms": "症状"
+    },
+    "common": {
+      "logging": "加载中…",
+      "saving": "保存中…",
+      "save": "保存",
+      "reset": "重置",
+      "custom": "自定义"
+    },
+    "today": {
+      "noIntake": "今天还没有记录.",
+      "doses": "剂量",
+      "dosesToday": "今日剂量",
+      "adherence14": "14天用药依从性",
+      "perfectDays": "完美天数（14天）",
+      "last14": "过去14天",
+      "streak": "连续{{count}}天",
+      "checklistToday": "今日待办事项",
+      "checklistMed": "用药清单",
+      "scheduled": "已安排",
+      "undo": "撤销",
+      "snooze": "稍后提醒",
+      "snoozed": "已稍后提醒",
+      "skip": "跳过",
+      "take": "服用"
+    },
+    "insights": {
+      "title": "副作用洞察与提示",
+      "subtitle": "结合近期用药时间的药动学关联分析",
+      "disclaimer": "以上分析基于滚动30天的数据窗口。这些内容仅为教育性估算，不构成任何临床医疗建议。"
+    },
+    "locations": {
+      "general": "常规",
+      "head": "头部",
+      "abdomen": "腹部",
+      "chest": "胸部",
+      "back": "背部",
+      "muscles": "肌肉",
+      "joints": "关节"
+    },
+    "symptomNames": {
+      "nausea": "恶心",
+      "fatigue": "疲劳",
+      "headache": "头痛",
+      "constipation": "便秘",
+      "diarrhea": "腹泻",
+      "vomiting": "呕吐",
+      "acid_reflux": "胃酸反流 / 胃食管反流病",
+      "stomach_pain": "胃痛 / 绞痛",
+      "dizziness": "头晕"
+    },
+    "scheduleDesc": {
+      "atTime": " 在 {{time}}",
+      "mealSuffix": " (在{{meal}} 餐后)",
+      "daily": "每日",
+      "weeklyOn": "每周 {{days}}",
+      "everyNDays": "每 {{n}} 天",
+      "cyclic": "周期: 用药{{on}} 天,停药 {{off}} 天",
+      "monthly": "每月第 {{day}}天",
+      "prn": "按需服用",
+      "taper": "减量 / 滴定"
+    },
+    "bodymap": {
+      "label": "注射部位身体图"
+    },
+    "calendar": {
+      "loggedCount_other": "{{count}} 记录的症状数",
+      "maxSeverity": "最高严重程度: {{n}}"
+    },
+    "gi": {
+      "subtitle": "过去30天的每周发生率",
+      "nausea": "恶心 / 周",
+      "vomiting": "呕吐 / 周",
+      "reflux": "反流 / 周",
+      "avgBristol": "平均布里斯托评分"
+    },
+    "symptoms": {
+      "logTitle": "记录症状",
+      "calendarTitle": "症状活动日历",
+      "logsTitle": "已记录的症状日志",
+      "subtitle": "记录副作用的严重程度和身体状况",
+      "symptom": "症状",
+      "addCustom": "添加自定义症状",
+      "customName": "症状名称 (内部)",
+      "saveCustom": "保存自定义症状",
+      "severity": "严重程度",
+      "moderate": "中等 (4-6)",
+      "mild": "轻微 (1-3)",
+      "severe": "高强度 (7-10)",
+      "primaryLocation": "主要部位",
+      "customLocationPlaceholder": "例如：左肩、下颌……",
+      "linkMed": "关联药物（可选）"
+    }
   }
 }

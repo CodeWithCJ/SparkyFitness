@@ -7,7 +7,9 @@
     "exercises": "Übungen",
     "goals": "Ziele",
     "settings": "Einstellungen",
-    "admin": "Administration"
+    "admin": "Administration",
+    "cycle": "Zyklus",
+    "pregnancy": "Schwangerschaft"
   },
   "settings": {
     "profileInformation": {
@@ -64,7 +66,9 @@
       "milliliters": "Milliliter (ml)",
       "fluidOunces": "Flüssigunzen (oz)",
       "cups": "Tassen (ca. 240 ml)",
-      "saveWaterDisplayUnit": "Wasseranzeigeeinheit speichern"
+      "saveWaterDisplayUnit": "Wasseranzeigeeinheit speichern",
+      "addExerciseWater": "Füge Wasserverlust durch Übungen zum täglichen Ziel hinzu",
+      "addExerciseWaterHint": "Erhöht das tägliche Trinkziel aufgrund des geschätzten Flüssigkeitsverlusten durch Aktivitäten."
     },
     "nutrientDisplay": {
       "title": "Nährwertanzeige",
@@ -72,7 +76,7 @@
     },
     "calculationSettings": {
       "title": "Berechnungseinstellungen",
-      "description": "Grundumsatz- und Körperfettberechnungseinstellungen verwalten"
+      "description": "Grundumsatz- und Körperfettberechnungseinstellungen verwalten."
     },
     "familyAccess": {
       "title": "Familienzugriff",
@@ -142,7 +146,10 @@
         "errorOriginalNotFound": "Ursprünglicher Dienst nicht gefunden.",
         "deleteConfirm": "Sind Sie sicher, dass Sie diesen globalen KI-Dienst löschen möchten?",
         "enterNewApiKey": "API Schlüssel hinzufügen oder updaten",
-        "syncFromEnv": "Aus Env synchronisieren"
+        "syncFromEnv": "Aus Env synchronisieren",
+        "testConnection": "Verbindung testen",
+        "testing": "Teste…",
+        "chatToolProfileFull": "Vollständig (alle Tools)"
       },
       "userSettings": {
         "title": "KI-Dienst",
@@ -226,7 +233,12 @@
         "revertConfirm": "Möchtest du wirklich alle deine benutzerdefinierten KI-Service-Einstellungen löschen und globale Einstellungen verwenden?",
         "successReverting": "Auf globale Einstellungen zurückgesetzt. Deine persönlichen Einstellungen wurden gelöscht.",
         "errorReverting": "Zurücksetzen zu globalen Einstellungen fehlgeschlagen",
-        "fillRequiredFields": "Bitte fülle alle benötigten Felder aus"
+        "fillRequiredFields": "Bitte fülle alle benötigten Felder aus",
+        "aiAssistedConversions": "KI-unterstützte Einheiten Umrechnung",
+        "activeProvider": "Aktive KI-Anbieter",
+        "testConnection": "Verbindung testen",
+        "testing": "Teste…",
+        "recommendedModel": "Empfohlen: {{- model}} — Eine gute Balance zwischen Kosten und Nutzen."
       },
       "serviceTypes": {
         "openai": "OpenAI",
@@ -237,7 +249,15 @@
         "groq": "Groq",
         "ollama": "Ollama",
         "openrouter": "OpenRouter",
-        "custom": "Benutzerdefiniert"
+        "custom": "Benutzerdefiniert",
+        "xai": "xAI (Grok)"
+      },
+      "test": {
+        "successTitle": "Erfolg",
+        "failureTitle": "Fehler",
+        "categories": {
+          "api_key_missing": "API Schlüssel fehlt oder ist fehlerhaft. Bitte füge einen gültigen Schlüssel hinzu und versuche es erneut."
+        }
       }
     },
     "apiKeyManagement": {
@@ -301,6 +321,22 @@
     "customMeals": {
       "title": "Eigene Mahlzeiten",
       "subtitle": "Erstelle und bearbeite eigene Mahlzeittypen"
+    },
+    "cycle": {
+      "title": "Zyklus und Schwangerschaft",
+      "enableLabel": "Zyklus und Schwangerschaft Tracking aktivieren",
+      "avgCycleOverride": "Durchschnittliche Zyklusdauer (Tage)",
+      "avgPeriodOverride": "Durchschnittliche Periodendauer (Tage)",
+      "successTitle": "Erfolgreich",
+      "successDesc": "Zyklus Einstellungen aktualisiert.",
+      "errorTitle": "Fehler",
+      "errorDesc": "Zyklus Einstellungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
+      "bcMethod": "Geburtskontrolle",
+      "terminology": "Terminologie",
+      "terminologyDefault": "Standard (Gegendert)",
+      "terminologyNeutral": "Geschlechtsneutral",
+      "showFertileWindow": "Zeige Voraussagen für Fruchtbarkeitsfenster",
+      "learned": "Aus Protokollen berechnet"
     }
   },
   "aboutDialog": {
@@ -404,7 +440,8 @@
       "caloriesBurnedBreakdownTitle": "Aufteilung verbrannter Kalorien",
       "netCalories": "Nettokalorien: {{netCalories}}",
       "netCaloriesBreakdown": "{{dailyIntakeCalories}} verzehrt - {{finalTotalCaloriesBurned}} verbrannt",
-      "dailyProgress": "Täglicher Fortschritt"
+      "dailyProgress": "Täglicher Fortschritt",
+      "bmrSourceExternal": "Gesundheitsapp"
     },
     "editExerciseEntryDialog": {
       "setLabel": "Satz",
@@ -694,7 +731,22 @@
     "fatSecret": "FatSecret",
     "importFromCSVDescription": "Importiere eine CSV-Datei, um mehrere Lebensmittel gleichzeitig hinzuzufügen.",
     "addNewFoodDescription": "Gebe die Details für ein neues Lebensmittel ein, den Du Deiner Datenbank hinzufügen möchten.",
-    "scanBarcodeDescription": "Positioniere den Produkt-Barcode vor Deiner Kamera."
+    "scanBarcodeDescription": "Positioniere den Produkt-Barcode vor Deiner Kamera.",
+    "yourFoods": "Deine Lebensmittel",
+    "yourMeals": "Deine Gerichte",
+    "noSavedFoods": "Keine gespeicherten Gerichte gefunden.",
+    "noSavedFoodsOrMeals": "Keine gespeicherten Lebensmittel oder Gerichte gefunden.",
+    "searchOnlineToImport": "Suche Lebensmittel von deinem Onlineanbieter.",
+    "onlineSearchFailed": "Fehler bei der Suche bei deinem Onlineanbieter.",
+    "loadMore": "Mehr laden",
+    "loadMoreFailed": "Fehler beim Laden von weiteren Ergebnissen.",
+    "scannedProduct": "Gescanntes Produkt",
+    "allProviders": "Alle Anbieter",
+    "topMatches": "Top Treffer",
+    "bySource": "Bei Quelle",
+    "noResults": "Keine Ergebnisse",
+    "couldntLoad": "Konnte nicht geladen werden",
+    "showAllResults": "Alle {{count}} {{provider}} Ergebnisse anzeigen"
   },
   "workoutPresetForm": {
     "createTitle": "Neue Trainingsvorlage erstellen",
@@ -1162,7 +1214,18 @@
       "iron": "Eisen",
       "calcium": "Calcium"
     },
-    "of": "von"
+    "of": "von",
+    "dailyEnergyGoal": "Tägliches Energieziel",
+    "waterIntake": "Wasseraufnahme",
+    "exercise": "Übung",
+    "widgets": {
+      "layout": "Layout anpassen",
+      "done": "Fertig",
+      "resetLayout": "Layout zurücksetzen",
+      "maximize": "Maximieren",
+      "restore": "Wiederherstellen",
+      "hide": "Verstecken"
+    }
   },
   "foodDiary": {
     "title": "Ernährungstagebuch",
@@ -1203,7 +1266,9 @@
       "selectMealTypePlaceholder": "Wähle Mahlzeit",
       "copyButton": "Kopieren"
     },
-    "selectMealType": "Wähle Mahlzeit Typ"
+    "selectMealType": "Wähle Mahlzeit Typ",
+    "pastDateWarning": "Warnung: Du fügst Lebensmittel für ein vergangenes Datum hinzu.",
+    "futureDateWarning": "Warnung: Du fügst Lebensmittel für ein zukünftiges Datum hinzu."
   },
   "mealCard": {
     "addFoodToMeal": "Lebensmittel zu {{mealName}} hinzufügen",
@@ -1261,7 +1326,23 @@
     "measurementDeletedSuccessfully": "Messung erfolgreich gelöscht",
     "failedToDeleteMeasurement": "Löschen der Messung fehlgeschlagen",
     "failedToLoadRecentMeasurements": "Laden der aktuellsten Messungen fehlgeschlagen",
-    "enterCustomCategory": "{{categoryName}} eingeben"
+    "enterCustomCategory": "{{categoryName}} eingeben",
+    "photos": {
+      "title": "Fortschrittsfotos",
+      "subtitle": "Fotos von vorne, hinten und der Seite hochladen, um deine Form zu verfolgen.",
+      "addPhotos": "Fortschrittsfotos hinzufügen",
+      "front": "Frontansicht",
+      "back": "Rückansicht",
+      "side": "Seitenansicht",
+      "tapToUpload": "Drücke zum Hochladen",
+      "upload": "Hochladen",
+      "replace": "Ersetzen",
+      "uploadSuccess": "Foto gespeichert",
+      "uploadError": "Hochladen fehlgeschlagen",
+      "tooLarge": "Bild ist zu groß (max. 10MB).",
+      "deleteSuccess": "Foto entfernt",
+      "deleteError": "Foto konnte nicht entfernt werden"
+    }
   },
   "sleepTimelineEditor": {
     "sleepTimeline": "Schlafverlauf",
@@ -1375,7 +1456,12 @@
     "hide": "Ausblenden",
     "forceDelete": "Löschen erzwingen",
     "addFoodToDatabaseTitle": "Lebensmittel zur Datenbank hinzufügen",
-    "addFoodToDatabaseDescription": "Lebensmittel suchen, um es zur persönlichen Datenbank hinzuzufügen."
+    "addFoodToDatabaseDescription": "Lebensmittel suchen, um es zur persönlichen Datenbank hinzuzufügen.",
+    "duplicateFood": "Lebensmittel duplizieren",
+    "duplicateFoodDialogTitle": "Lebensmittel duplizieren",
+    "duplicateFoodDialogDescription": "Lebensmitteldetails anpassen und als neues Lebensmittel speichern. Das Original bleibt unverändert.",
+    "copySuffix": "(kopieren)",
+    "duplicateFailed": "Konnte Lebensmittel nicht duplizieren."
   },
   "mealManagement": {
     "failedToLoadMeals": "Laden von Mahlzeiten fehlgeschlagen.",
@@ -1414,7 +1500,10 @@
     "usedByCurrentUserWarning": "Du verwendest diese Mahlzeit in deinen Speiseplänen. Löschst du sie hier, wird sie auch in den Plänen gelöscht.",
     "confirmPermanentDelete": "Bist du dir sicher, dass du diese Mahlzeit dauerhaft löschen möchtest?",
     "hide": "Ausblenden",
-    "delete": "Löschen"
+    "delete": "Löschen",
+    "duplicateMeal": "Mahlzeit duplizieren",
+    "duplicateMealDialogTitle": "Mahlzeit duplizieren",
+    "copySuffix": "(kopieren)"
   },
   "mealBuilder": {
     "errorTitle": "Fehler",
@@ -1658,7 +1747,8 @@
       "lapTableCaloriesHeader": "Kalorien",
       "heartRateTimeInZonesTitle": "Herzfrequenzzeit in Zonen",
       "timeInZoneSLabel": "Zeit in Zone (s)",
-      "cadence": "Frequenz"
+      "cadence": "Frequenz",
+      "waterLoss": "Wasserverlust"
     },
     "bodyBattery": "Energielevel",
     "charged": "Aufgeladen",
@@ -2252,5 +2342,295 @@
     "baselineError": "Berechnung des Schlafbedarfs Ausgangswertes fehlgeschlagen",
     "chronotype": "Chronotyp",
     "zone_wind-down": "Entspannungsphase"
+  },
+  "medications": {
+    "tabs": {
+      "symptoms": "Symptome",
+      "log": "Protokoll",
+      "cabinet": "Medizinschrank"
+    },
+    "common": {
+      "saving": "Speichern…",
+      "save": "Speichern",
+      "reset": "Zurücksetzen",
+      "custom": "Benutzerdefiniert",
+      "logging": "Protokollieren…"
+    },
+    "today": {
+      "noIntake": "Heute noch keine Einträge.",
+      "doses": "Dosis",
+      "dosesToday": "Heutige Dosis",
+      "perfectDays": "Perfekte Tage (14d)",
+      "last14": "Letzte 14 Tage",
+      "streak": "{{count}}-Tage in Folge",
+      "checklistToday": "Heutige Checkliste",
+      "checklistMed": "Medikamenten Checkliste",
+      "scheduled": "Geplant",
+      "undo": "Rückgängig",
+      "snooze": "Schlummern",
+      "snoozed": "Geschlummert",
+      "skip": "Überspringen",
+      "take": "Nehmen",
+      "adherence14": "14-tägige Einhaltung"
+    },
+    "insights": {
+      "title": "Nebenwirkungen Einsichten & Hinweise",
+      "disclaimer": "Einsichten werden über einen Zeitraum von 30 Tagen berechnet. Dies sind nur geschätzte Werte und ersetzen keinen Arzt.",
+      "subtitle": "Pharmakakokinetische Korrelation unter der Berücksichtigung der Aktuellen Dosierungszeitpunkte"
+    },
+    "locations": {
+      "general": "Generell",
+      "head": "Kopf",
+      "abdomen": "Bauchraum",
+      "chest": "Brust",
+      "back": "Rücken",
+      "muscles": "Muskeln",
+      "joints": "Gelenke"
+    },
+    "symptomNames": {
+      "nausea": "Übelkeit",
+      "fatigue": "Erschöpfung",
+      "headache": "Kopfschmerzen",
+      "constipation": "Verstopfung",
+      "diarrhea": "Durchfall",
+      "vomiting": "Erbrechen",
+      "acid_reflux": "Sodbrennen / GERD",
+      "stomach_pain": "Bauchschmerzen / Krämpfe",
+      "dizziness": "Schwindel"
+    },
+    "scheduleDesc": {
+      "atTime": " um {{time}}",
+      "mealSuffix": " ({{meal}} Mahlzeit)",
+      "daily": "Täglich",
+      "weeklyOn": "Wöchentlich an {{days}}",
+      "everyNDays": "Alle {{n}} Tage",
+      "cyclic": "Zyklus: {{on}} Tage aktiv, {{off}} Tage inaktiv",
+      "monthly": "Monatlich am {{day}}",
+      "prn": "Nach Bedarf",
+      "taper": "Abschwächung"
+    },
+    "bodymap": {
+      "label": "Körperkarte der Injektionsstellen"
+    },
+    "calendar": {
+      "loggedCount_one": "{{count}} eingetragenes Symptom",
+      "loggedCount_other": "{{count}} eingetragene Symptome",
+      "maxSeverity": "Maximale Schwere: {{n}}"
+    },
+    "gi": {
+      "subtitle": "Rate pro Woche in den letzten 30 Tagen",
+      "nausea": "Übelkeit / Woche",
+      "vomiting": "Erbrechen / Woche",
+      "reflux": "Reflux / Woche"
+    },
+    "symptoms": {
+      "logTitle": "Symptom protokollieren",
+      "calendarTitle": "Symptom-Aktivitätskalender",
+      "logsTitle": "Erfasste Symptomprotokolle",
+      "subtitle": "Protokollieren Sie den Schweregrad und den physischen Kontext Ihrer Nebenwirkungen",
+      "symptom": "Symptom",
+      "addCustom": "Benutzerdefiniertes Symptom hinzufügen",
+      "customName": "Symptom Name (intern)",
+      "customNamePlaceholder": "z. B. skin_rash",
+      "displayLabel": "Anzeige-Bezeichnung",
+      "displayLabelPlaceholder": "z. B. Hautausschlag",
+      "saveCustom": "Benutzerdefiniertes Symptom speichern",
+      "severity": "Schweregrad",
+      "mild": "Milde (1-3)",
+      "moderate": "Mäßig (4-6)",
+      "severe": "Schwerwiegend (7-10)",
+      "primaryLocation": "Primäre Stelle",
+      "customLocationPlaceholder": "z.B. Linke Schulter, Kiefer…",
+      "linkMed": "Link zum Medikament (optional)",
+      "noMedLinked": "Kein Medikament zugeordnet",
+      "context": "Kontext / Notizen",
+      "contextPlaceholder": "z.B. vier Stunden nach meiner Abenddosis aufgetreten.",
+      "bristol": "Stuhlgangprotokoll (Bristol-Stuhlskala)",
+      "bristolType": "Bristol Typ {{n}}"
+    },
+    "fasting": {
+      "complete": "Fasten vorbei - du kannst jetzt wieder essen.",
+      "waterOnly": "Nur Wasser",
+      "title": "GLP-1-Nüchtern-Timer zur oralen Einnahme",
+      "instructions": "Mit 100-150ml Wasser einnehmen, danach {{min}} Minuten warten vor dem Konsum von Essen oder Kaffee oder der Einnahme von Medikamenten.",
+      "start": "Tablette eingenommen – Timer starten"
+    },
+    "sites": {
+      "label": {
+        "abdomen_right": "Rechter Bauchraum",
+        "thigh_front_left": "Linker Oberschenkel (vorne)",
+        "thigh_front_right": "Rechter Oberschenkel (vorne)",
+        "upper_back_left": "Linker oberer Rücken",
+        "upper_back_right": "Rechter oberer Rücken",
+        "lower_back_left": "Linker unterer Rücken",
+        "lower_back_right": "Rechter unterer Rücken",
+        "buttock_left": "Linkes Gesäß",
+        "buttock_right": "Rechtes Gesäß",
+        "thigh_back_left": "Linker Oberschenkel (hinten)",
+        "thigh_back_right": "Rechter Oberschenkel (hinten)",
+        "upper_arm_left": "Linker Oberarm",
+        "upper_arm_right": "Rechter Oberarm",
+        "forearm_left": "Linker Unterarm",
+        "forearm_right": "Rechter Unterarm",
+        "abdomen_left": "Linker Bauchraum"
+      },
+      "customize": "Seiten individualisieren",
+      "dialogTitle": "Injektionsstellen",
+      "subtitle": "Schalte die von dir genutzten Websites um und ordne sie an – die Vorschläge für die Rotation folgen dieser Reihenfolge."
+    },
+    "glp1": {
+      "legendSuggested": "grün = vorgeschlagen",
+      "injectionSite": "Injektionsstelle",
+      "selected": "Ausgewählt:",
+      "doseMg": "Dosis (mg)",
+      "dateTime": "Datum und Uhrzeit",
+      "addPen": "Stift hinzufügen",
+      "addStep": "Schritt hinzufügen",
+      "statusPlanned": "Geplant",
+      "statusActive": "Aktiv (aktuell)",
+      "statusDone": "Erledigt",
+      "recentInjections": "Kürzliche Injektionen",
+      "noInjections": "Bisher keine Injektionen protokolliert.",
+      "logInjection": "Injektion protokollieren",
+      "logInjectionAt": "Injektion protokollieren — {{site}}",
+      "tapZone": "Wähle einen Bereich",
+      "deduct": "Vom Injektions-Pen/von Phiole abziehen",
+      "dontDeduct": "Nicht abziehen",
+      "penInventory": "Inventar an Injektions-Pens/Phiolen",
+      "noPens": "Keine Injektions-Pens/Phiolen protokolliert."
+    },
+    "types": {
+      "pill": "Tablette",
+      "capsule": "Kapsel",
+      "injection": "Injektion",
+      "patch": "Pflaster",
+      "inhaler": "Inhalator",
+      "drops": "Tropfen",
+      "cream": "Creme",
+      "other": "Andere",
+      "liquid": "Flüssigkeit",
+      "suppository": "Zäpfchen"
+    },
+    "cabinet": {
+      "addMed": "Medikament hinzufügen",
+      "editMed": "Medikament bearbeiten",
+      "name": "Name",
+      "type": "Typ",
+      "strength": "Stärke",
+      "prescriber": "Verschreibender Arzt (optional)",
+      "prescriberPlaceholder": "Dr. Chen",
+      "pharmacy": "Apotheke (optional)",
+      "rxPlaceholder": "Rx-482-93221",
+      "activeScripts": "Aktive Verschreibungen",
+      "scheduledToday": "Heute geplant",
+      "totalMeds": "Gesamte Medikamente",
+      "namePlaceholder": "z.B. Wegovy",
+      "glp1Med": "GLP-1 Behandlung",
+      "reason": "Grund / Zustand (optional)",
+      "reasonPlaceholder": "z.B. Gewichtsmanagement, Typ-2-Diabetes",
+      "pharmacyPlaceholder": "CVS #4421",
+      "glp1Meds": "GLP-1-Medikamente"
+    },
+    "schedule": {
+      "subheading": "Konfiguriere Erinnerungen und Einnahmeregeln",
+      "addRule": "Regel hinzufügen",
+      "title": "Geplante Regel hinzufügen",
+      "type": "Zeitplantyp",
+      "daily": "Jeden Tag",
+      "weekly": "Bestimmte Wochentage",
+      "everyNDays": "Alle N Tage",
+      "monthly": "Monatlich",
+      "timeOfDay": "Tageszeit",
+      "daysOfWeek": "Wochentage",
+      "interval": "Intervall (Tage)",
+      "dayOfMonth": "Tag des Monats (1-31)",
+      "daysOn": "Tage aktiv",
+      "daysOff": "Tage nicht aktiv",
+      "prnReason": "Begründung (optional)",
+      "prnReasonPlaceholder": "z.B. Schmerz",
+      "prnMax": "Maximale Dosis / Tag",
+      "doseOverride": "Dosis Menge (optional)",
+      "withMeal": "Mit Mahlzeit",
+      "anyTime": "Jederzeit",
+      "beforeMeal": "Vor dem Essen",
+      "withMealOpt": "Während des Essens",
+      "afterMeal": "Nach dem Essen",
+      "startDate": "Startdatum (optional)",
+      "endDate": "Enddatum (optional)",
+      "heading": "Zeitpläne & Erinnerungen",
+      "cyclic": "Zyklisch (an/aus)",
+      "prn": "Bei Bedarf (PRN)"
+    },
+    "checkin": {
+      "subtitle": "Verfolge, wie die Medikation dich beeinflusst — wird in deinen täglichen Messungen gespeichert, taucht also auch in deinen Check-Ins & Berichten auf.",
+      "save": "Check-In speichern",
+      "saveToday": "Heutigen Check-In speichern",
+      "metric": {
+        "hunger": "Hunger",
+        "food_noise": "Essgeräusche",
+        "fullness": "Fülle",
+        "energy": "Energie"
+      },
+      "title": "Tägliche GLP-1-Kontrolle"
+    }
+  },
+  "onboarding": {
+    "completeSetup": "Einrichtung abschließen"
+  },
+  "cycle": {
+    "tabs": {
+      "today": "Heute",
+      "calendar": "Kalender",
+      "insights": "Einsichten",
+      "care": "Pflege"
+    },
+    "comingSoon": {
+      "calendarTitle": "Zykluskalender",
+      "insightsTitle": "Zyklus Einsichten",
+      "placeholder": "Kommt bald",
+      "careTitle": "Pflege & Erinnerungen"
+    },
+    "onboarding": {
+      "stepIndicator": "Schritt {{step}} von 4",
+      "step1Title": "Wähle dein Tracking-Ziel aus",
+      "step1Desc": "Wähle den primären Modus für deinen Tracker.",
+      "step2Title": "Zyklus Daten und Längen",
+      "step3Title": "Dein Gesundheitsprofil",
+      "step3Desc": "Optimale Information um deine Prognose anzupassen (überspringbar).",
+      "successTitle": "Willkommen zum Zyklus Tracking!",
+      "successDesc": "Dein Zyklusprofil wurde erfolgreich initialisiert.",
+      "errorTitle": "Einrichtung fehlgeschlagen",
+      "complete": "Zustimmen und abschließen"
+    },
+    "disclaimer": {
+      "text2": "Prognosen sind Schätzungen und können je nach individueller Beständigkeit, gesundheitlichem Zustand oder Unregelmäßigkeiten im Zyklus variieren. Bei medizinischen Bedenken sollten Sie stets einen Arzt konsultieren."
+    },
+    "today": {
+      "late": "{{n}} Tage überfällig",
+      "periodIn": "Periode in {{n}} Tagen",
+      "nextPeriod": "Nächste Periode",
+      "ovulation": "Ovulation"
+    },
+    "legend": {
+      "period": "Periode",
+      "ovulation": "Ovulation"
+    },
+    "regularity": {
+      "regular": "Regulär",
+      "irregular": "Unregelmäßig"
+    },
+    "insight": {
+      "menstrual_iron": "Eisenhaltige Lebensmittel können dich während der Periode unterstützen."
+    },
+    "log": {
+      "title": "Heutiges Protokoll",
+      "saved": "Gespeichert",
+      "fewerProducts": "Weniger anzeigen",
+      "moreProducts": "+ weitere Produkte",
+      "moods": "Stimmung",
+      "energy": "Energie",
+      "notes": "Notizen",
+      "notesPlaceholder": "Gibt es noch etwas zu beachten…"
+    }
   }
 }

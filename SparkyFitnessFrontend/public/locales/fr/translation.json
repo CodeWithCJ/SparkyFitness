@@ -2254,5 +2254,28 @@
     "noDataDesc": "Commencez à suivre votre sommeil pour accéder à des informations plus approfondies.",
     "baselineCalculated": "Le besoin de sommeil de base a été calculé avec succès",
     "baselineError": "Échec du calcul des besoins de sommeil de base"
+  },
+  "medications": {
+    "common": {
+      "save": "Sauvegarder",
+      "reset": "Réinitialiser"
+    },
+    "today": {
+      "doses": "Doses",
+      "skip": "Passer"
+    },
+    "locations": {
+      "head": "Tête",
+      "abdomen": "Abdomen",
+      "chest": "Poitrine",
+      "back": "Dos",
+      "muscles": "Muscles"
+    },
+    "symptomNames": {
+      "nausea": "Nausée",
+      "headache": "Maux de tête",
+      "vomiting": "Vomissements",
+      "acid_reflux": "Reflux acide / RGO"
+    }
   }
 }

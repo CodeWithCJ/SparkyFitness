@@ -85,12 +85,12 @@
     "foodExerciseDataProviders": {
       "title": "Fornecedores de dados sobre alimentação e exercícios físicos",
       "description": "Configure fontes externas de dados de alimentação e exercícios e sincronize os dados com o Garmin Connect",
-      "invalidKeyLengthWarning": "Se você encontrar um erro de \"Invalid key length\", certifique-se de que suas chaves de criptografia e autenticação JWT nas variáveis de ambiente do servidor tenham 64 caracteres hexadecimais."
+      "invalidKeyLengthWarning": "Se você encontrar um erro de \"Invalid key length\", certifique-se de que sua chaves de criptografia nas variáveis de ambiente do servidor seja de 64 caracteres hexadecimais."
     },
     "aiService": {
       "title": "Serviço de IA",
       "description": "Gerenciar configurações para recursos com tecnologia de IA",
-      "invalidKeyLengthWarning": "Se você encontrar um erro de \"Invalid key length\", certifique-se de que suas chaves de criptografia e autenticação JWT nas variáveis de ambiente do servidor tenham 64 caracteres hexadecimais."
+      "invalidKeyLengthWarning": "Se você encontrar um erro de \"Invalid key length\", certifique-se de que sua chaves de criptografia nas variáveis de ambiente do servidor seja de 64 caracteres hexadecimais."
     },
     "apiKeyManagement": {
       "title": "Gerenciamento de chaves de API",
@@ -845,7 +845,7 @@
     "step": "Passo",
     "target": "Meta",
     "personalRecords": "Recordes pessoais (PRs)",
-    "prs": "PRs  - ",
+    "prs": "PRs - ",
     "estimated1RM": "1RM estimado",
     "maxWeight": "Peso máximo",
     "maxReps": "Repetições máximas",
@@ -979,7 +979,7 @@
       "title": "Configurações de Metas",
       "cascadingGoals": "Metas em Cascata",
       "dailyNutritionGoals": "Metas Diária de Nutrição",
-      "changesCascadeInfo": "(Mudanças em cascata por 6 meses a partir de hoje ou até sua próxima meta futura)",
+      "changesCascadeInfo": "(Atualize seus objetivos diários para os próximos 6 meses ou até sua próxima mudança de objetivo agendada)",
       "noGoalPresets": "Não há metas predefinidas ainda. Crie uma para começar!",
       "presetKcalMacros": "{{calories}} kcal, {{protein}}g P, {{carbs}}g C, {{fat}}g G",
       "deletePresetConfirm": "Tem certeza que deseja excluir essa meta predefinida?",
@@ -1553,7 +1553,7 @@
       "leaveUnchanged": "Deixe inalterado se *****",
       "scope": "Escopo",
       "redirectUri": "Redirecionar URI",
-      "redirectUriPlaceholder": "por exemplo, {{origin}}/oidc-callback",
+      "redirectUriPlaceholder": "por exemplo, {{uri}}",
       "tokenEndpointAuthMethod": "Token de Autenticação de Endpoint",
       "idTokenSignedAlg": "Algoritmo de assinatura do Token ID",
       "userinfoSignedAlg": "Algoritmo de assinatura de informações do usuário",
@@ -1783,11 +1783,11 @@
     "sunday": "Domingo",
     "day_short": {
       "sunday": "D",
-      "monday": "S",
+      "monday": "M",
       "tuesday": "T",
       "wednesday": "Q",
       "thursday": "Q",
-      "friday": "S",
+      "friday": "F",
       "saturday": "S"
     },
     "indefinite": "Indefinido",
@@ -1884,5 +1884,70 @@
     "syncCompleted_one": "Sincronizada {{count}} fonte com sucesso.",
     "syncCompleted_many": "Sincronizadas {{count}} fontes com sucesso.",
     "syncCompleted_other": "Sincronizadas {{count}} fontes com sucesso."
+  },
+  "medications": {
+    "tabs": {
+      "log": "Log",
+      "cabinet": "Gabinete",
+      "symptoms": "Sintomas"
+    },
+    "common": {
+      "logging": "Entrando…",
+      "saving": "Salvando…",
+      "save": "Salvar",
+      "reset": "Resetar",
+      "custom": "Personalizado"
+    },
+    "today": {
+      "noIntake": "Nenhuma entrada registrada hoje.",
+      "doses": "Doses",
+      "dosesToday": "Doses hoje",
+      "adherence14": "adesão de 14 dias",
+      "perfectDays": "Dias perfeitos (14d)",
+      "last14": "Últimos 14 dias",
+      "streak": "{{count}}-sequência de dias",
+      "checklistToday": "Lista de hoje",
+      "checklistMed": "Lista de Medicação",
+      "scheduled": "Agendado",
+      "undo": "Desfazer",
+      "snooze": "Soneca",
+      "skip": "Pular",
+      "take": "Tomar"
+    },
+    "insights": {
+      "title": "Informações e dicas sobre efeitos colaterais",
+      "subtitle": "Correlações farmacocinéticas sobrepostas aos horários de administração de doses recentes",
+      "disclaimer": "As informações são calculadas em uma janela de 30 dias. Tratam-se de estimativas educacionais, não de aconselhamento clínico."
+    },
+    "locations": {
+      "general": "Geral",
+      "head": "Cabeça",
+      "abdomen": "Abdômen",
+      "chest": "Peito",
+      "back": "Costas",
+      "muscles": "Músculos",
+      "joints": "Juntas"
+    },
+    "symptomNames": {
+      "nausea": "Náusea",
+      "fatigue": "Fatiga",
+      "headache": "Dor de Cabeça",
+      "constipation": "Constipação",
+      "diarrhea": "Diarreia",
+      "vomiting": "Vomito",
+      "acid_reflux": "Refluxo ácido / DRGE",
+      "stomach_pain": "Dor de estômago / Cólicas",
+      "dizziness": "Tontura"
+    },
+    "scheduleDesc": {
+      "atTime": " em {{time}}",
+      "mealSuffix": " ({{meal}} refeição)",
+      "daily": "Diariamente",
+      "weeklyOn": "Semanal em {{days}}",
+      "everyNDays": "Cada {{n}} dias",
+      "monthly": "Mensal no dia {{day}}",
+      "prn": "Conforme necessário (PRN)",
+      "taper": "Afinamento/titulação"
+    }
   }
 }
