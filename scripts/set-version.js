@@ -40,4 +40,17 @@ for (const relPath of targetFiles) {
   }
 }
 
-console.log(`\nSuccessfully updated ${updatedCount} package.json file(s) to version v${cleanVersion}!`);
+// Also update SparkyFitnessMobile/app.json (expo.version)
+const appJsonPath = path.join(rootDir, 'SparkyFitnessMobile/app.json');
+if (fs.existsSync(appJsonPath)) {
+  const content = fs.readFileSync(appJsonPath, 'utf8');
+  const json = JSON.parse(content);
+  if (json.expo) {
+    json.expo.version = cleanVersion;
+    fs.writeFileSync(appJsonPath, JSON.stringify(json, null, 2) + '\n');
+    console.log(`✓ Updated SparkyFitnessMobile/app.json (expo.version) -> ${cleanVersion}`);
+    updatedCount++;
+  }
+}
+
+console.log(`\nSuccessfully updated ${updatedCount} file(s) to version v${cleanVersion}!`);
