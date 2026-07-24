@@ -1214,17 +1214,17 @@
     "dailyCheckIn": "Dagelijkse Check-in",
     "bodyMeasurementsTitle": "Lichaamsmaten",
     "weight": "Gewicht",
-    "enterWeight": "Voer gewicht in in",
+    "enterWeight": "Voer gewicht in",
     "steps": "Stappen",
     "enterDailySteps": "Voer dagelijkse stappen in",
     "neck": "Nek",
-    "enterNeckMeasurement": "Voer de nekomtrek in in",
+    "enterNeckMeasurement": "Voer de nekomtrek in",
     "waist": "Taille",
-    "enterWaistMeasurement": "Voer de taillemaat in in",
+    "enterWaistMeasurement": "Voer de taillemaat in",
     "hips": "Heupen",
-    "enterHipsMeasurement": "Voer de heupomtrek in in",
+    "enterHipsMeasurement": "Voer de heupomtrek in",
     "height": "Lengte",
-    "enterHeight": "Voer de lengte in in",
+    "enterHeight": "Voer de lengte in",
     "bodyFatPercentage": "Lichaamsvet (%)",
     "useRecent": "Gebruik Recent",
     "useMostRecentForCalculation": "Gebruik de meest recente gegevens voor gewicht, lengte, taille, nek en heupen voor de berekening van het lichaamsvetpercentage",
@@ -1861,5 +1861,57 @@
     "carbohydrates": "Koolhydraten",
     "fat": "Vetten",
     "saturatedFat": "Verzadigde Vetten"
+  },
+  "medications": {
+    "tabs": {
+      "log": "Log",
+      "cabinet": "Medicijnkast",
+      "symptoms": "Symptomen"
+    },
+    "common": {
+      "saving": "Opslaan…",
+      "save": "Opslaan",
+      "reset": "Opnieuw instellen",
+      "custom": "Op maat"
+    },
+    "today": {
+      "noIntake": "Geen waardes ingevoerd vandaag.",
+      "doses": "Doseringen",
+      "dosesToday": "Doseringen van vandaag",
+      "undo": "Maak ongedaan",
+      "skip": "Sla over",
+      "checklistToday": "Takenlijst van vandaag",
+      "snooze": "Stel uit",
+      "snoozed": "Uitgesteld",
+      "perfectDays": "Perfecte dagen (14d)",
+      "last14": "Laatste 14 dagen",
+      "streak": "{{count}}-dagen reeks",
+      "take": "Neem in"
+    },
+    "insights": {
+      "title": "Inzichten en tips over bijwerkingen",
+      "subtitle": "Farmacokinetische correlaties op basis van recente doseringstijdstippen",
+      "disclaimer": "De inzichten worden berekend over een voortschrijdende periode van 30 dagen. Dit zijn informatieve schattingen, geen klinisch advies."
+    },
+    "locations": {
+      "general": "Generiek",
+      "head": "Hoofd",
+      "abdomen": "Buik",
+      "chest": "Borst",
+      "back": "Rug",
+      "muscles": "Spieren",
+      "joints": "Gewrichten"
+    },
+    "symptomNames": {
+      "nausea": "Misselijkheid",
+      "fatigue": "Vermoeidheid",
+      "headache": "Hoofdpijn",
+      "constipation": "Constipatie",
+      "diarrhea": "Diarree",
+      "vomiting": "Braken",
+      "acid_reflux": "Zuurbranden / GERD",
+      "stomach_pain": "Buikpijn / krampen",
+      "dizziness": "Duizeligheid"
+    }
   }
 }
