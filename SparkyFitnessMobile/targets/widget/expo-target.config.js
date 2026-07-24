@@ -1,4 +1,4 @@
-const { getIosAppGroup } = require('../../app.identifiers.js');
+const { getIosAppGroup, isDevVariant } = require('../../app.identifiers.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -35,11 +35,15 @@ const syncInfoPlist = (appGroup) => {
 /** @type {import('@bacons/apple-targets/app.plugin').ConfigFunction} */
 module.exports = (config) => {
   const appGroup = getIosAppGroup();
+  const isDev = isDevVariant();
   syncInfoPlist(appGroup);
 
   return {
     type: 'widget',
     name: 'CalorieTracker',
+    bundleIdentifier: isDev
+      ? 'org.SparkyApps.SparkyFitnessMobile1.dev.widget'
+      : 'com.SparkyApps.SparkyFitnessMobile.widget',
     icon: '../../assets/icons/adaptiveicon.png',
     entitlements: {
       'com.apple.security.application-groups': [appGroup],
