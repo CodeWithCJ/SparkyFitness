@@ -365,7 +365,7 @@ describe('AdaptiveTdeeService', () => {
     const checkInMeasurements = [];
     // 70 days of history so tracking age >= 6 weeks and confidence is HIGH
     for (let i = 0; i < 70; i++) {
-      let weight = 80;
+      let weight: number;
       if (i > 27) {
         weight = 81.0;
       } else {
