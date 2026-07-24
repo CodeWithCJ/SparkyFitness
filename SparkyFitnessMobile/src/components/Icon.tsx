@@ -168,6 +168,14 @@ const Icon: React.FC<IconProps> = ({
   accessibilityLabel,
 }) => {
   const mapping = ICON_MAP[name];
+
+  if (!mapping) {
+    if (__DEV__) {
+      console.warn(`[Icon] Unknown icon name: "${String(name)}"`);
+    }
+    return null;
+  }
+
   const useIoniconOnIOS = 'useIoniconOnIOS' in mapping && (mapping as { useIoniconOnIOS?: boolean }).useIoniconOnIOS;
 
   if (Platform.OS === 'ios' && !useIoniconOnIOS) {
