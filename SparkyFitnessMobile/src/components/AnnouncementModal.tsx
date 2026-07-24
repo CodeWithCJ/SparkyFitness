@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import MarkdownMessage from './chat/MarkdownMessage';
 import { apiFetch } from '../services/api/apiClient';
@@ -18,6 +19,8 @@ interface AnnouncementPayload {
 export const AnnouncementModal: React.FC = () => {
   const [announcement, setAnnouncement] = useState<AnnouncementPayload | null>(null);
   const [visible, setVisible] = useState(false);
+
+  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
 
   useEffect(() => {
     let active = true;
@@ -47,6 +50,10 @@ export const AnnouncementModal: React.FC = () => {
     };
   }, []);
 
+  const handleClose = () => {
+    setVisible(false);
+  };
+
   const handleDismiss = async () => {
     if (announcement?.id) {
       await AsyncStorage.setItem(DISMISSED_ANNOUNCEMENT_KEY, announcement.id);
@@ -61,26 +68,29 @@ export const AnnouncementModal: React.FC = () => {
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={handleDismiss}
+      onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           <View style={styles.header}>
             <View style={styles.titleRow}>
-              <Icon name="sparkles" size={20} color="#3b82f6" />
+              <Icon name="sparkles" size={20} color={accentPrimary || '#3b82f6'} />
               <Text style={styles.titleText}>{announcement.title || 'Announcement'}</Text>
             </View>
-            <Pressable onPress={handleDismiss} style={styles.closeButton}>
+            <Pressable onPress={handleClose} style={styles.closeButton}>
               <Icon name="close" size={18} color="#94a3b8" />
             </Pressable>
           </View>
 
           <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.bodyContent}>
-            <MarkdownMessage text={announcement.message} />
+            <MarkdownMessage text={announcement.message} color="#cbd5e1" streaming={false} />
           </ScrollView>
 
           <View style={styles.footer}>
-            <Pressable onPress={handleDismiss} style={styles.dismissButton}>
+            <Pressable
+              onPress={handleDismiss}
+              style={[styles.dismissButton, { backgroundColor: accentPrimary || '#3b82f6' }]}
+            >
               <Text style={styles.dismissButtonText}>Got it, don&apos;t show again</Text>
             </Pressable>
           </View>
@@ -93,7 +103,7 @@ export const AnnouncementModal: React.FC = () => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -104,7 +114,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e293b',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     overflow: 'hidden',
   },
   header: {
@@ -114,7 +124,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   titleRow: {
     flexDirection: 'row',
@@ -143,11 +153,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'flex-end',
   },
   dismissButton: {
-    backgroundColor: '#3b82f6',
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 8,

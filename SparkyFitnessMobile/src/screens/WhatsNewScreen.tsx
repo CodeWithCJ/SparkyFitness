@@ -313,6 +313,92 @@ const PhotoMockup: React.FC = () => {
   );
 };
 
+const CycleMockup: React.FC = () => {
+  const [catPink, textSecondary] = useCSSVariable([
+    '--color-cat-pink',
+    '--color-text-secondary',
+  ]) as [string, string];
+
+  return (
+    <View
+      className="h-44 items-center justify-center overflow-hidden"
+      style={{ backgroundColor: `${catPink}20` }}
+    >
+      <View
+        className="bg-surface rounded-2xl shadow-md justify-center px-4 py-3 border border-border-subtle"
+        style={{ width: 220, height: 110 }}
+      >
+        <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center gap-2">
+            <View
+              className="w-7 h-7 rounded-full items-center justify-center"
+              style={{ backgroundColor: `${catPink}30` }}
+            >
+              <Icon name="sparkles" size={14} color={catPink} />
+            </View>
+            <Text className="text-xs font-bold text-text-primary">Luteal Phase</Text>
+          </View>
+          <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: `${catPink}25` }}>
+            <Text className="text-[10px] font-semibold" style={{ color: catPink }}>
+              Day 18
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
+          <Text className="text-[11px]" style={{ color: textSecondary }}>
+            Symptom & Flow Log
+          </Text>
+          <Text className="text-[11px] font-medium text-text-primary">Mild • Normal</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const WorkoutMockup: React.FC = () => {
+  const [exercise, textSecondary] = useCSSVariable([
+    '--color-exercise',
+    '--color-text-secondary',
+  ]) as [string, string];
+
+  return (
+    <View
+      className="h-44 items-center justify-center overflow-hidden"
+      style={{ backgroundColor: `${exercise}20` }}
+    >
+      <View
+        className="bg-surface rounded-2xl shadow-md justify-center px-4 py-3 border border-border-subtle"
+        style={{ width: 220, height: 110 }}
+      >
+        <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center gap-2">
+            <View
+              className="w-7 h-7 rounded-full items-center justify-center"
+              style={{ backgroundColor: `${exercise}30` }}
+            >
+              <Icon name="exercise-weights" size={14} color={exercise} />
+            </View>
+            <Text className="text-xs font-bold text-text-primary">Bench Press</Text>
+          </View>
+          <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: `${exercise}25` }}>
+            <Text className="text-[10px] font-semibold" style={{ color: exercise }}>
+              3 Sets
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
+          <Text className="text-[11px]" style={{ color: textSecondary }}>
+            Set 1: 10 reps
+          </Text>
+          <Text className="text-[11px] font-medium text-text-primary">80 kg • Done</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -327,14 +413,16 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
     {
-      eyebrow: 'ASK SPARKY',
-      headline: 'Chat with your AI coach',
-      body: 'Ask Sparky to log meals, plan what to eat, and answer questions about your day through chat.',
-      hero: <ChatMockup />,
-      cta: {
-        label: 'Start chatting',
-        onPress: () => navigation.navigate('Chat'),
-      },
+      eyebrow: 'CYCLE & PREGNANCY',
+      headline: 'Track your cycle & pregnancy',
+      body: 'Comprehensive tracking for cycle phases, symptoms, flow, and pregnancy progress with tailored insights and goal adjustments.',
+      hero: <CycleMockup />,
+    },
+    {
+      eyebrow: 'WORKOUT & EXERCISES',
+      headline: 'Revamped workout workflows',
+      body: 'Streamlined exercise logging, updated exercise library management, and improved multi-set performance tracking.',
+      hero: <WorkoutMockup />,
     },
     ...(showLiquidGlassCard
       ? [
@@ -350,6 +438,16 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
           } satisfies Feature,
         ]
       : []),
+    {
+      eyebrow: 'ASK SPARKY',
+      headline: 'Chat with your AI coach',
+      body: 'Ask Sparky to log meals, plan what to eat, and answer questions about your day through chat.',
+      hero: <ChatMockup />,
+      cta: {
+        label: 'Start chatting',
+        onPress: () => navigation.navigate('Chat'),
+      },
+    },
     {
       eyebrow: 'HOME SCREEN WIDGET',
       headline: 'Calories on your home screen',

@@ -24,6 +24,25 @@ We will be upgrading servers on **August 1st**.
     expect(parsed.body).toContain('August 1st');
   });
 
+  test('should handle frontmatter with extra leading --- lines', () => {
+    const md = `---
+
+---
+id: notice-test-456
+active: true
+title: Extra Line Test
+---
+
+### Content Here
+`;
+
+    const parsed = parseFrontmatter(md);
+    expect(parsed.frontmatter.id).toBe('notice-test-456');
+    expect(parsed.frontmatter.active).toBe(true);
+    expect(parsed.frontmatter.title).toBe('Extra Line Test');
+    expect(parsed.body).toContain('### Content Here');
+  });
+
   test('should return local fallback announcement when offline or fetching', async () => {
     const result = await announcementService.getLatestAnnouncement();
     expect(result).toBeDefined();

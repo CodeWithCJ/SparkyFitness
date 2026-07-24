@@ -64,17 +64,32 @@ const AppSetup = ({
     }
 
     if (!loading && user && isAnnouncementSuccess && announcementData) {
+      info(loggingLevel, '[ANNOUNCEMENT CHECK]', {
+        active: announcementData.active,
+        id: announcementData.id,
+        title: announcementData.title,
+        dismissedId: localStorage.getItem('dismissedAnnouncementId'),
+      });
+
       if (announcementData.active) {
         setAnnouncement(announcementData);
         const dismissedId = localStorage.getItem('dismissedAnnouncementId');
         if (dismissedId !== announcementData.id) {
           info(
             loggingLevel,
-            'Showing active announcement dialog:',
+            '[ANNOUNCEMENT SHOWING] Opening dialog for id:',
             announcementData.id
           );
           setShowAnnouncementDialog(true);
+        } else {
+          info(
+            loggingLevel,
+            '[ANNOUNCEMENT SKIPPED] Already dismissed id:',
+            dismissedId
+          );
         }
+      } else {
+        info(loggingLevel, '[ANNOUNCEMENT SKIPPED] active is false');
       }
     }
   }, [
