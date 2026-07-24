@@ -1,6 +1,6 @@
 ---
 id: notice-2026-07-23-welcome
-active: false
+active: true
 title: Welcome to SparkyFitness
 ---
 
