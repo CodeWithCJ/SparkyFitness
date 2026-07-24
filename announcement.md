@@ -4,10 +4,9 @@ active: true
 title: Welcome to SparkyFitness
 ---
 
-### 🚀 Welcome to SparkyFitness!
+### 🚀 What's New in SparkyFitness
 
-We are excited to share new features and updates with you.
-
-- Track your daily calories, macros, and exercises effortlessly.
-- Explore adaptive TDEE insights tailored to your body composition trends.
-- Stay tuned for upcoming feature releases!
+- **🌸 CYCLE & PREGNANCY**: **Track your cycle & pregnancy** — Log cycle phases, symptoms, flow, and pregnancy progress with tailored insights and automated goal adjustments.
+- **🏋️ WORKOUT & EXERCISES**: **Revamped workout workflows** — Streamlined exercise logging, updated library management, and improved multi-set tracking for every routine.
+- **📊 ADAPTIVE TDEE**: **Personalized energy insights** — Intelligent TDEE expenditure calculations tailored directly to your body composition trends.
+- **📢 SYSTEM ANNOUNCEMENTS**: **Real-time broadcast updates** — Stay up to date with instant feature announcements across Web & Mobile.

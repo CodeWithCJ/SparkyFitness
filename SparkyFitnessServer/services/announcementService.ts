@@ -25,28 +25,50 @@ export function parseFrontmatter(markdownContent: string): {
   frontmatter: Record<string, any>;
   body: string;
 } {
-  const match = markdownContent.match(
-    /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/
-  );
-  if (!match) {
-    return { frontmatter: {}, body: markdownContent.trim() };
-  }
-  const yamlText = match[1]!;
-  const body = match[2]!.trim();
-  const frontmatter: Record<string, any> = {};
+  const matches = [
+    ...markdownContent.matchAll(/---[\r\n]+([\s\S]*?)[\r\n]+---/g),
+  ];
+  let yamlText = '';
+  let body = markdownContent.trim();
 
-  for (const line of yamlText.split(/\r?\n/)) {
-    const colonIndex = line.indexOf(':');
-    if (colonIndex > 0) {
-      const key = line.slice(0, colonIndex).trim();
-      let value: any = line.slice(colonIndex + 1).trim();
-      if (value === 'true') value = true;
-      else if (value === 'false') value = false;
-      else if (value.startsWith('"') && value.endsWith('"'))
-        value = value.slice(1, -1);
-      else if (value.startsWith("'") && value.endsWith("'"))
-        value = value.slice(1, -1);
-      frontmatter[key] = value;
+  for (const match of matches) {
+    const text = match[1] || '';
+    if (
+      text.includes('active:') ||
+      text.includes('id:') ||
+      text.includes('title:')
+    ) {
+      yamlText = text;
+      body = markdownContent.slice((match.index || 0) + match[0].length).trim();
+      break;
+    }
+  }
+
+  if (!yamlText) {
+    const singleMatch = markdownContent
+      .trimStart()
+      .match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+    if (singleMatch) {
+      yamlText = singleMatch[1]!;
+      body = singleMatch[2]!.trim();
+    }
+  }
+
+  const frontmatter: Record<string, any> = {};
+  if (yamlText) {
+    for (const line of yamlText.split(/\r?\n/)) {
+      const colonIndex = line.indexOf(':');
+      if (colonIndex > 0) {
+        const key = line.slice(0, colonIndex).trim();
+        let value: any = line.slice(colonIndex + 1).trim();
+        if (value === 'true') value = true;
+        else if (value === 'false') value = false;
+        else if (value.startsWith('"') && value.endsWith('"'))
+          value = value.slice(1, -1);
+        else if (value.startsWith("'") && value.endsWith("'"))
+          value = value.slice(1, -1);
+        frontmatter[key] = value;
+      }
     }
   }
 
@@ -97,16 +119,26 @@ function getLocalFallbackAnnouncement(): AnnouncementResponse {
       const content = fs.readFileSync(localPath, 'utf8');
       const stat = fs.statSync(localPath);
       const { frontmatter, body } = parseFrontmatter(content);
-      return {
+      const result: AnnouncementResponse = {
         id: String(frontmatter.id || 'notice-local'),
         active: Boolean(frontmatter.active ?? false),
         title: String(frontmatter.title || 'Announcement'),
         message: body,
         publishedAt: stat.mtime.toISOString(),
       };
+      log('info', '[ANNOUNCEMENT] Loaded local announcement.md:', {
+        id: result.id,
+        active: result.active,
+        title: result.title,
+      });
+      return result;
     }
   } catch (err) {
-    log('warn', 'Failed reading local announcement.md fallback:', err);
+    log(
+      'warn',
+      '[ANNOUNCEMENT] Failed reading local announcement.md fallback:',
+      err
+    );
   }
   return {
     id: 'none',
@@ -129,14 +161,16 @@ async function getLatestAnnouncement(
   }
 
   const rawUrl =
-    'https://raw.githubusercontent.com/CodeWithCJ/SparkyFitness/main/announcement.md';
+    isDev || bypassCache
+      ? `https://raw.githubusercontent.com/CodeWithCJ/SparkyFitness/main/announcement.md?_t=${Date.now()}`
+      : 'https://raw.githubusercontent.com/CodeWithCJ/SparkyFitness/main/announcement.md';
 
-  let rawContent: string;
+  let rawContent: string | null = null;
   let lastModifiedStr: string | undefined;
 
   try {
     const res = await axios.get(rawUrl, {
-      timeout: 8000,
+      timeout: 5000,
       headers: { 'User-Agent': 'SparkyFitness-App' },
     });
     rawContent = typeof res.data === 'string' ? res.data : String(res.data);
@@ -144,7 +178,7 @@ async function getLatestAnnouncement(
   } catch (axiosErr) {
     log(
       'warn',
-      'Failed fetching announcement via Axios, attempting direct HTTPS fallback...',
+      '[ANNOUNCEMENT] Axios fetch failed, trying direct HTTPS fallback:',
       axiosErr
     );
     try {
@@ -152,13 +186,16 @@ async function getLatestAnnouncement(
       rawContent = fallbackRes.data;
       lastModifiedStr = fallbackRes.lastModified;
     } catch (fallbackError) {
-      log(
-        'warn',
-        'GitHub announcement fetch failed, returning local file fallback:',
-        fallbackError
-      );
-      return getLocalFallbackAnnouncement();
+      log('warn', '[ANNOUNCEMENT] Direct fetch failed:', fallbackError);
     }
+  }
+
+  if (!rawContent) {
+    log(
+      'info',
+      '[ANNOUNCEMENT] GitHub fetch skipped/failed, using local announcement.md fallback'
+    );
+    return getLocalFallbackAnnouncement();
   }
 
   try {
