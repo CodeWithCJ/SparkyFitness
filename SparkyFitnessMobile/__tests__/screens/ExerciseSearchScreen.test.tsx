@@ -19,6 +19,7 @@ import type { ExternalExerciseItem } from '../../src/types/externalExercises';
 jest.mock('../../src/hooks', () => ({
   useExerciseSearch: jest.fn(),
   useExternalProviders: jest.fn(),
+  useProfile: jest.fn(() => ({ profile: undefined, isLoading: false })),
   useServerConnection: jest.fn(),
   useSuggestedExercises: jest.fn(),
 }));
