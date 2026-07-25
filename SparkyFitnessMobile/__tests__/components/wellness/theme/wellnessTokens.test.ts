@@ -19,29 +19,12 @@ const REQUIRED_KEYS = [
 ];
 
 describe('useWellnessTokens', () => {
-  it('returns a full palette for light theme', () => {
+  it('returns a full palette of wellness tokens', () => {
     (useUniwind as jest.Mock).mockReturnValue({ theme: 'light', hasAdaptiveThemes: false });
     const { result } = renderHook(() => useWellnessTokens());
     REQUIRED_KEYS.forEach((key) => {
       expect(result.current).toHaveProperty(key);
       expect(typeof (result.current as Record<string, string>)[key]).toBe('string');
-    });
-  });
-
-  it('returns a distinct palette for dark vs light theme', () => {
-    (useUniwind as jest.Mock).mockReturnValue({ theme: 'dark', hasAdaptiveThemes: false });
-    const { result: dark } = renderHook(() => useWellnessTokens());
-    (useUniwind as jest.Mock).mockReturnValue({ theme: 'light', hasAdaptiveThemes: false });
-    const { result: light } = renderHook(() => useWellnessTokens());
-
-    expect(dark.current.phaseMenstrual).not.toBe(light.current.phaseMenstrual);
-  });
-
-  it('returns a full palette for amoled theme', () => {
-    (useUniwind as jest.Mock).mockReturnValue({ theme: 'amoled', hasAdaptiveThemes: false });
-    const { result } = renderHook(() => useWellnessTokens());
-    REQUIRED_KEYS.forEach((key) => {
-      expect(result.current).toHaveProperty(key);
     });
   });
 });

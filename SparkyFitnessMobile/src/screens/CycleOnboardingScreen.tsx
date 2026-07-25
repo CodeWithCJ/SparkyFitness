@@ -148,11 +148,11 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
     }
   };
 
-  const backEnabled = step > 1;
-
   const header = useScreenHeader({
     title: `Setup: Step ${step} of 4`,
-    left: backEnabled ? { kind: 'primary', label: 'Back', onPress: () => setStep((s) => s - 1) } : undefined,
+    left: step > 1
+      ? { kind: 'primary', label: 'Back', onPress: () => setStep((s) => s - 1) }
+      : { kind: 'primary', label: 'Back', onPress: () => navigation.goBack() },
   });
 
   return (
@@ -302,12 +302,12 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
         {step === 4 && (
           <View className="gap-4">
             <Text className="text-xl font-bold text-text-primary">Disclaimer & Complete</Text>
-            <View className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <View className="bg-surface border border-border-subtle rounded-xl p-4 shadow-sm">
               <View className="flex-row items-center gap-2 mb-2">
                 <Icon name="warning" size={18} color="#D97706" />
-                <Text className="text-amber-800 font-bold">Medical Disclaimer</Text>
+                <Text className="text-text-primary font-bold">Medical Disclaimer</Text>
               </View>
-              <Text className="text-amber-800 text-sm leading-5">
+              <Text className="text-text-secondary text-sm leading-5">
                 The SparkyFitness Wellness and Reproductive Health Tracker is designed to help you track predictions, symptoms, and physiological parameters. It is NOT intended to be used as a contraceptive method or as a diagnostic/treatment tool.
                 {"\n\n"}
                 Always consult with a qualified medical professional for health concerns.
