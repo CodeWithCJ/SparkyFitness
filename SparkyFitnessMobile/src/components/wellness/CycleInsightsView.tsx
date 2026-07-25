@@ -76,7 +76,7 @@ const CycleInsightsView: React.FC = () => {
   return (
     <View className="gap-6">
       {/* 1. Stats Summary Card */}
-      <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-4">
+      <View className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm gap-4">
         <Text className="text-text-primary text-base font-bold">Cycle Summary</Text>
         <View className="flex-row justify-between">
           <View className="flex-1 items-center border-r border-border-subtle">
@@ -102,11 +102,11 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 2. Predictions & Confidence */}
       {predictions && predictions.cycles.length > 0 && (
-        <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
+        <View className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm gap-3">
           <View className="flex-row justify-between items-center">
             <Text className="text-text-primary text-base font-bold">Next Predictions</Text>
-            <View className="bg-blue-50 px-2 py-0.5 rounded-md">
-              <Text className="text-blue-600 text-xs font-semibold uppercase">
+            <View className="bg-surface border border-border-subtle px-2 py-0.5 rounded-md">
+              <Text className="text-text-primary text-xs font-semibold uppercase">
                 {predictions.confidence} confidence
               </Text>
             </View>
@@ -134,13 +134,13 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 3. Anomalies/Alerts */}
       {anomalies.length > 0 && (
-        <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
+        <View className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm gap-3">
           <Text className="text-text-primary text-base font-bold">Clinical Health Alerts</Text>
           <View className="gap-2">
             {anomalies.map((anom: { message: string }, idx: number) => (
               <View
                 key={idx}
-                className="flex-row items-start p-3 bg-red-50/50 rounded-xl border border-red-200"
+                className="flex-row items-start p-3 bg-surface rounded-xl border border-border-subtle"
               >
                 <View className="mr-2.5 mt-0.5">
                   <Icon name="warning" size={16} color={dangerColor} />
@@ -161,7 +161,7 @@ const CycleInsightsView: React.FC = () => {
       </View>
 
       {/* 5. Symptom Forecasting */}
-      <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
+      <View className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm gap-3">
         <Text className="text-text-primary text-base font-bold">Symptom Forecast</Text>
         {forecastEntries.length === 0 ? (
           <Text className="text-text-secondary text-xs italic text-center py-4">

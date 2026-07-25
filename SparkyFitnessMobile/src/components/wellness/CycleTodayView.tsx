@@ -125,7 +125,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
     <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
       <View className="gap-6 mt-4">
         {/* Flow Level */}
-        <View className="bg-surface rounded-2xl p-4 shadow-sm border border-border-subtle">
+        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
           <Text className="text-text-primary text-sm font-semibold mb-3">Flow Level</Text>
           <View className="flex-row justify-between">
             {FLOW_OPTIONS.map((opt) => {
@@ -135,11 +135,11 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
                   key={opt.value}
                   onPress={() => setFlowLevel(opt.value)}
                   className={`items-center justify-center rounded-xl p-2 flex-1 mx-1 border ${
-                    isSelected ? 'bg-red-50 border-red-500' : 'bg-raised border-transparent'
+                    isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                   }`}
                 >
                   <CycleIcon id={opt.icon} size={24} />
-                  <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-red-600' : 'text-text-secondary'}`}>
+                  <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -149,12 +149,12 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
         </View>
 
         {/* Symptoms */}
-        <View className="bg-surface rounded-2xl p-4 shadow-sm border border-border-subtle">
+        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
           <CycleSymptomPicker date={date} />
         </View>
 
         {/* Cervical Mucus */}
-        <View className="bg-surface rounded-2xl p-4 shadow-sm border border-border-subtle">
+        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
           <Text className="text-text-primary text-sm font-semibold mb-3">Cervical Mucus</Text>
           <View className="flex-row flex-wrap gap-2">
             {MUCUS_OPTIONS.map((opt) => {
@@ -164,10 +164,10 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
                   key={opt.value}
                   onPress={() => setMucus(mucus === opt.value ? null : opt.value)}
                   className={`rounded-full px-4 py-2 border ${
-                    isSelected ? 'bg-blue-50 border-blue-500' : 'bg-raised border-transparent'
+                    isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                   }`}
                 >
-                  <Text className={`text-xs font-semibold ${isSelected ? 'text-blue-600' : 'text-text-secondary'}`}>
+                  <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -178,7 +178,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
 
         {/* TTC: Intercourse + Cervical Position */}
         {isTtc && (
-          <View className="bg-surface rounded-2xl p-4 shadow-sm border border-border-subtle gap-4">
+          <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle gap-4">
             <View>
               <Text className="text-text-primary text-sm font-semibold mb-3">Intercourse</Text>
               <View className="flex-row gap-2">
@@ -193,10 +193,10 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
                       key={opt.label}
                       onPress={() => setIntercourse(opt.val)}
                       className={`rounded-full px-4 py-2 border ${
-                        isSelected ? 'bg-blue-50 border-blue-500' : 'bg-raised border-transparent'
+                        isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                       }`}
                     >
-                      <Text className={`text-xs font-semibold ${isSelected ? 'text-blue-600' : 'text-text-secondary'}`}>
+                      <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
                         {opt.label}
                       </Text>
                     </TouchableOpacity>
@@ -219,10 +219,10 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
                         key={opt.label}
                         onPress={() => setIntercourseProtected(opt.val)}
                         className={`rounded-full px-4 py-2 border ${
-                          isSelected ? 'bg-blue-50 border-blue-500' : 'bg-raised border-transparent'
+                          isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                         }`}
                       >
-                        <Text className={`text-xs font-semibold ${isSelected ? 'text-blue-600' : 'text-text-secondary'}`}>
+                        <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
                           {opt.label}
                         </Text>
                       </TouchableOpacity>
@@ -242,10 +242,10 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
                       key={opt.value}
                       onPress={() => setCervicalPosition(cervicalPosition === opt.value ? null : opt.value)}
                       className={`rounded-full px-4 py-2 border ${
-                        isSelected ? 'bg-blue-50 border-blue-500' : 'bg-raised border-transparent'
+                        isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                       }`}
                     >
-                      <Text className={`text-xs font-semibold ${isSelected ? 'text-blue-600' : 'text-text-secondary'}`}>
+                      <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
                         {opt.label}
                       </Text>
                     </TouchableOpacity>
@@ -257,7 +257,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
         )}
 
         {/* Basal Body Temperature */}
-        <View className="bg-surface rounded-2xl p-4 shadow-sm border border-border-subtle">
+        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
           <Text className="text-text-primary text-sm font-semibold mb-2">Basal Body Temperature</Text>
           <Text className="text-text-secondary text-xs mb-3">
             Track your waking temperature (°C) to identify biphasic shifts post-ovulation.
@@ -271,7 +271,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
         </View>
 
         {/* Notes */}
-        <View className="bg-surface rounded-2xl p-4 shadow-sm border border-border-subtle">
+        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
           <Text className="text-text-primary text-sm font-semibold mb-2">Notes</Text>
           <TextInput
             value={notes}

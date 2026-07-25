@@ -1,13 +1,16 @@
-import React, { useMemo } from 'react';
-import { View, Text, Pressable, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useCycleMode } from '../hooks/useCycleMode';
 import { useCurrentPregnancy, usePregnancyOverview } from '../hooks/usePregnancy';
-import { useCycleHistory } from '../hooks/useCycleHistory';
-import { predictNextCycles, phaseForDay, babyWeek, daysBetween, type DerivedCycle } from '@workspace/shared';
-import { getTodayDate, formatDate } from '../utils/dateUtils';
+import {
+  useCyclePredictionData,
+  getPhaseDisplayName,
+  getPhaseColor,
+} from '../utils/cycleDisplayUtils';
+import { formatDate } from '../utils/dateUtils';
 import WombScene from './wellness/pregnancy/WombScene';
 import CycleRing from './wellness/CycleRing';
 import { useWellnessTokens } from './wellness/theme/wellnessTokens';
@@ -24,15 +27,6 @@ type CycleCardNavigation = CompositeNavigationProp<
 interface CycleCardProps {
   navigation: CycleCardNavigation;
 }
-
-const PHASE_DISPLAY_NAMES: Record<string, string> = {
-  menstrual: 'Menstrual Phase',
-  follicular: 'Follicular Phase',
-  fertile: 'Fertile Window',
-  ovulation: 'Ovulation Day',
-  luteal: 'Luteal Phase',
-  unknown: 'Cycle Active',
-};
 
 function getModeTitle(mode?: string, discreetMode?: boolean): string {
   if (discreetMode) return 'Wellness';
@@ -56,70 +50,28 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
   const { settings } = useCycleSettings();
   const { discreetMode } = useCycleMode();
   const tokens = useWellnessTokens();
-  const [accentPrimary, catPink] = useCSSVariable(['--color-accent-primary', '--color-cat-pink']) as [string, string];
+  const [accentPrimary, catPink] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-cat-pink',
+  ]) as [string, string];
 
-  const title = getModeTitle(settings?.mode, discreetMode);
   const isSetup = !!settings?.onboarded_at && !!settings?.enabled;
   const isPregnant = settings?.mode === 'pregnant';
 
-  // Pregnancy details
+  // Pregnancy details (unconditional hook calls)
   const { pregnancy } = useCurrentPregnancy();
   const hasActivePregnancy = isPregnant && !!pregnancy && pregnancy.status === 'active';
   const { overview } = usePregnancyOverview(undefined, hasActivePregnancy);
 
-  // Cycle details
-  const { cycles } = useCycleHistory();
-  const today = getTodayDate();
+  // Extracted cycle statistics & predictions (unconditional hook call)
+  const cycleInfo = useCyclePredictionData();
 
-  const cycleInfo = useMemo(() => {
-    if (isPregnant || !settings || cycles.length === 0) return null;
+  // Comment 3: If feature is disabled by user, do not force/render card.
+  if (settings?.enabled === false) {
+    return null;
+  }
 
-    const completed = cycles.filter((c) => c.cycle_length && c.period_length);
-    const cycleLengths = completed.map((c) => c.cycle_length!);
-    const periodLengths = completed.map((c) => c.period_length!);
-
-    const avgCycleLength = settings.avg_cycle_length_override ?? (cycleLengths.length
-      ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length)
-      : 28);
-    const avgPeriodLength = settings.avg_period_length_override ?? (periodLengths.length
-      ? Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length)
-      : 5);
-
-    const stats = {
-      avgCycleLength,
-      avgPeriodLength,
-      regularity: 'regular' as const,
-      sampleSize: cycleLengths.length,
-      medianCycleLength: 28,
-      cycleLengthSd: 0,
-    };
-
-    const lastCycle = cycles[0];
-    if (!lastCycle || !lastCycle.start_date) return null;
-
-    const prediction = predictNextCycles(stats, lastCycle.start_date, settings);
-    const dayStats = phaseForDay(today, cycles as DerivedCycle[], prediction);
-    const dayNumber = dayStats.cycleDay ?? 0;
-
-    const next = prediction.cycles[0];
-    const toDay = (d: string | null | undefined): number | null =>
-      d && lastCycle.start_date ? daysBetween(lastCycle.start_date, d) + 1 : null;
-
-    const nextPeriodStart = next?.periodStart;
-    const daysLate = nextPeriodStart && today > nextPeriodStart ? daysBetween(nextPeriodStart, today) : 0;
-
-    return {
-      day: dayNumber,
-      phase: dayStats.phase,
-      avgCycleLength,
-      avgPeriodLength,
-      fertileStartDay: toDay(next?.fertileStart),
-      fertileEndDay: toDay(next?.fertileEnd),
-      ovulationDay: toDay(next?.ovulation),
-      nextPeriodStart,
-      daysLate,
-    };
-  }, [isPregnant, settings, cycles, today]);
+  const title = getModeTitle(settings?.mode, discreetMode);
 
   if (!isSetup) {
     return (
@@ -141,7 +93,9 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
         </View>
 
         <Text className="text-sm text-text-secondary mt-1">
-          Track cycle phases, predictions, symptoms, and pregnancy milestones.
+          {discreetMode
+            ? 'Track your wellness parameters and predictions.'
+            : 'Track cycle phases, predictions, symptoms, and pregnancy milestones.'}
         </Text>
       </Pressable>
     );
@@ -149,34 +103,30 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
 
   // Render Rich Content
   const renderCardContent = () => {
+    // Comment 4: When discreetMode is ON, hide revealing period/pregnancy/baby details!
+    if (discreetMode) {
+      const activeDay = cycleInfo?.day && cycleInfo.day > 0 ? cycleInfo.day : null;
+      return (
+        <View className="mt-1 flex-row items-center justify-between">
+          <Text className="text-base font-semibold text-text-primary">
+            {activeDay ? `Day ${activeDay}` : 'Wellness Tracking Active'}
+          </Text>
+          <Text className="text-sm text-text-secondary">Tap to view details</Text>
+        </View>
+      );
+    }
+
     if (isPregnant) {
       const ga = overview?.gestation;
-      const baby = ga ? babyWeek(ga.week) : null;
-
       if (ga) {
         return (
           <View className="flex-row items-center gap-3 mt-2">
-            {baby && <WombScene scene={baby.wombScene} size={72} />}
+            <WombScene scene={ga.week >= 28 ? 36 : ga.week >= 14 ? 20 : 8} size={72} />
             <View className="flex-1">
               <Text className="text-base font-bold text-text-primary">
                 Week {ga.week}, Day {ga.day}
               </Text>
-              {baby && (
-                <Text className="text-sm font-semibold mt-0.5" style={{ color: tokens.phasePregnant }}>
-                  Size of {baby.comparison}
-                </Text>
-              )}
               <View className="flex-row items-center gap-3 mt-1.5">
-                {baby?.lengthCm != null && (
-                  <Text className="text-xs text-text-secondary">
-                    <Text className="font-medium text-text-primary">{baby.lengthCm} cm</Text>
-                  </Text>
-                )}
-                {baby?.weightG != null && (
-                  <Text className="text-xs text-text-secondary">
-                    <Text className="font-medium text-text-primary">{baby.weightG} g</Text>
-                  </Text>
-                )}
                 <Text className="text-xs text-text-secondary">
                   {ga.daysRemaining > 0 ? `${ga.daysRemaining}d to due date` : 'Due now'}
                 </Text>
@@ -191,22 +141,15 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
             Pregnancy Tracking Active
           </Text>
           <Text className="text-sm text-text-secondary mt-0.5">
-            Tap to view gestational progress & baby growth.
+            Tap to view gestational progress.
           </Text>
         </View>
       );
     }
 
     if (cycleInfo) {
-      const phaseName = PHASE_DISPLAY_NAMES[cycleInfo.phase] ?? 'Cycle Active';
-      const phaseColor =
-        cycleInfo.phase === 'menstrual'
-          ? tokens.phaseMenstrual
-          : cycleInfo.phase === 'follicular'
-          ? tokens.phaseFollicular
-          : cycleInfo.phase === 'fertile' || cycleInfo.phase === 'ovulation'
-          ? tokens.phaseOvulation
-          : tokens.phaseLuteal;
+      const phaseName = getPhaseDisplayName(cycleInfo.phase, discreetMode);
+      const phaseColor = getPhaseColor(cycleInfo.phase, tokens);
 
       return (
         <View className="flex-row items-center gap-4 mt-2">
@@ -238,8 +181,8 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
             </View>
 
             {cycleInfo.daysLate > 0 ? (
-              <View className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 mt-1">
-                <Text className="text-xs font-semibold text-red-500">
+              <View className="bg-surface border border-border-subtle rounded-lg p-2 mt-1">
+                <Text className="text-xs font-semibold text-text-primary">
                   Period is expected & is {cycleInfo.daysLate} {cycleInfo.daysLate === 1 ? 'day' : 'days'} late
                 </Text>
               </View>
@@ -277,14 +220,12 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
           <Icon name="wellness" size={18} color={catPink || tokens.phaseMenstrual} />
           <Text className="text-md font-bold text-text-primary ml-2">{title}</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('CycleHub')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          className="flex-row items-center"
-        >
+
+        {/* Comment 6: View instead of nested TouchableOpacity */}
+        <View className="flex-row items-center">
           <Text className="text-sm text-accent-primary font-medium">Hub</Text>
           <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
-        </TouchableOpacity>
+        </View>
       </View>
 
       {renderCardContent()}

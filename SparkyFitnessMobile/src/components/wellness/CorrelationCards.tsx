@@ -48,7 +48,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
   const max = Math.max(...c.byPhase.map((p) => p.mean), 1);
 
   return (
-    <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3 mb-3">
+    <View className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm gap-3 mb-3">
       <View className="flex-row items-center gap-1.5">
         <Icon name="measurements" size={18} color={accentColor} />
         <Text className="text-text-primary text-sm font-semibold">
@@ -65,7 +65,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
               </Text>
               <View className="flex-1 h-2 rounded-full bg-raised overflow-hidden">
                 <View
-                  className="h-full bg-blue-500/70 rounded-full"
+                  className="h-full bg-accent-primary rounded-full"
                   style={{ width: `${percentage}%` }}
                 />
               </View>
@@ -102,7 +102,7 @@ const CorrelationCards: React.FC = () => {
 
   if (usable.length === 0 && flags.length === 0) {
     return (
-      <View className="bg-surface rounded-2xl p-6 border border-dashed border-border-subtle items-center gap-2">
+      <View className="bg-surface rounded-xl p-6 border border-dashed border-border-subtle items-center gap-2">
         <Icon name="wellness" size={24} color={textMuted} />
         <Text className="text-text-primary font-semibold text-sm">
           Correlations unlock with more data
@@ -119,12 +119,12 @@ const CorrelationCards: React.FC = () => {
       {flags.map((f) => (
         <View
           key={f.key}
-          className="flex-row items-start p-3 bg-amber-50/60 rounded-xl border border-amber-200"
+          className="flex-row items-start p-3 bg-surface rounded-xl border border-border-subtle"
         >
           <View className="mr-2 mt-0.5">
             <Icon name="warning" size={16} color={warningColor} />
           </View>
-          <Text className="flex-1 text-xs text-amber-800 leading-normal">
+          <Text className="flex-1 text-xs text-text-primary leading-normal">
             {CONDITION_LABELS[f.key] || ''}
           </Text>
         </View>

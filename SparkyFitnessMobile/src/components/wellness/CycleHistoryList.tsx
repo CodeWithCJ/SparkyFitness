@@ -136,7 +136,7 @@ const CycleHistoryList: React.FC = () => {
 
               <TouchableOpacity
                 onPress={() => c.id && deleteCycle(c.id)}
-                className="p-2 bg-red-50 rounded-full"
+                className="p-2 bg-surface rounded-full border border-border-subtle"
               >
                 <Icon name="trash" size={16} color={dangerColor} />
               </TouchableOpacity>
