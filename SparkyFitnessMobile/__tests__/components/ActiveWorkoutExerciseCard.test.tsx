@@ -222,6 +222,16 @@ describe('ActiveWorkoutExerciseCard', () => {
     expect(queryByLabelText('More options for Bench Press')).toBeNull();
   });
 
+  it('extends the collapsed expand target through the row padding on both sides', () => {
+    // The 16px chevron sits flush against the row's px-2 (8px) right padding;
+    // without right slop, taps aimed at the icon land in dead margin and the
+    // row never expands. Left slop covers the gap-3 strip next to the thumb.
+    const { getByLabelText } = renderCard(false);
+    const { hitSlop } = getByLabelText('Expand Bench Press').props;
+    expect(hitSlop.right).toBeGreaterThanOrEqual(8);
+    expect(hitSlop.left).toBeGreaterThanOrEqual(12);
+  });
+
   it('numbers only working sets; warmup/drop/failure rows repeat the previous number (they render letters)', () => {
     const base = makeExercise().sets[0];
     const utils = renderCard(true, {

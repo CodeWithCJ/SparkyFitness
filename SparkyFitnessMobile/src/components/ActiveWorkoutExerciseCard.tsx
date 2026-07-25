@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
+  FadeInDown,
+  FadeOutUp,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -381,6 +383,13 @@ function ActiveWorkoutExerciseCard({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
+  // The body's slide-in should fire only on user-driven expands: a card that
+  // mounts already expanded (forms default expanded; the live screen mounts
+  // the cursor's card open) renders its body statically. Render-time state
+  // adjust (not an effect) so the flip lands in the same commit as the collapse.
+  const [hasRenderedCollapsed, setHasRenderedCollapsed] = useState(!expanded);
+  if (!expanded && !hasRenderedCollapsed) setHasRenderedCollapsed(true);
+
   const metricAnchorRef = useRef<View>(null);
   const openMetricMenu = () => {
     measureAnchoredMenuTrigger(metricAnchorRef.current, onPressMetricHeader);
@@ -461,11 +470,16 @@ function ActiveWorkoutExerciseCard({
           </Pressable>
           {/* self-stretch fills the row's content height and hitSlop reaches
               into the row's py-3 padding, so the expand target spans the whole
-              row height instead of just the text box. */}
+              row height instead of just the text box. The horizontal slop
+              covers the row's own padding/gaps: right reaches through the px-2
+              to the card edge — the 16px chevron sits flush against it, and
+              taps aimed at the icon often land in that strip (the expanded
+              chevron's slopped target trains exactly that spot) — and left
+              covers the gap-3 next to the thumb. */}
           <Pressable
             onPress={() => onToggleExpanded(exercise.id)}
             onLongPress={longPressMenu}
-            hitSlop={{ top: 10, bottom: 10 }}
+            hitSlop={{ top: 10, bottom: 10, left: 12, right: 12 }}
             accessibilityRole="button"
             accessibilityLabel={`Expand ${name}`}
             className="flex-1 self-stretch flex-row items-center gap-3"
@@ -541,233 +555,241 @@ function ActiveWorkoutExerciseCard({
         </Pressable>
       </View>
 
-      {/* Per-exercise note: a subtle line under the name, shown when a note
-          already exists or the card ⋮ "Notes" editor was opened. Editable
-          wherever a commit handler is wired (live + workout forms); view mode
-          shows the saved note as plain text. */}
-      {!readOnly && onCommitExerciseNote != null && (!!exercise.notes || noteEditorOpen) && (
-        <View className="mt-2 px-1">
-          <WorkoutNotesField
-            value={exercise.notes}
-            onCommit={(text) => onCommitExerciseNote(exercise.id, text)}
-            label=""
-            placeholder="Add a note for this exercise…"
-            accessibilityLabel={`Notes for ${name}`}
-          />
-        </View>
-      )}
-      {readOnly && !!exercise.notes && (
-        <View className="mt-2 px-1">
-          <Text className="text-sm text-text-secondary" accessibilityLabel={`Notes for ${name}`}>
-            {exercise.notes}
-          </Text>
-        </View>
-      )}
-
-      {(showRestChip || bestDisplay != null || caloriesField || caloriesText != null) && (
-        // flex-wrap + gap-y so the rest chip and "Best" stack gracefully on
-        // narrow screens instead of shifting off the edge. "Last" lives in the
-        // per-set PREVIOUS column, not here.
-        <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1 px-1">
-          {showRestChip && (
-            <RestPeriodChip
-              value={exercise.sets[0]?.rest_time}
-              readOnly={readOnly}
-              onPress={
-                readOnly
-                  ? undefined
-                  : () => onPressRestChip?.(exercise.id, exercise.sets[0]?.rest_time ?? null)
-              }
+      {/* The revealed body slides down from the header on expand and folds
+          back up on collapse, in step with the host screens' LinearTransition
+          card wrappers. */}
+      <Animated.View
+        entering={hasRenderedCollapsed ? FadeInDown.duration(200) : undefined}
+        exiting={FadeOutUp.duration(150)}
+      >
+        {/* Per-exercise note: a subtle line under the name, shown when a note
+            already exists or the card ⋮ "Notes" editor was opened. Editable
+            wherever a commit handler is wired (live + workout forms); view mode
+            shows the saved note as plain text. */}
+        {!readOnly && onCommitExerciseNote != null && (!!exercise.notes || noteEditorOpen) && (
+          <View className="mt-2 px-1">
+            <WorkoutNotesField
+              value={exercise.notes}
+              onCommit={(text) => onCommitExerciseNote(exercise.id, text)}
+              label=""
+              placeholder="Add a note for this exercise…"
+              accessibilityLabel={`Notes for ${name}`}
             />
-          )}
-          {caloriesField && (caloriesEditing ? (
-            <View className="flex-row items-center gap-1">
-              <Icon name="flame" size={14} color={accentPrimary} />
-              <FormInput
-                value={exercise.editCaloriesText ?? ''}
-                onChangeText={(text) => onChangeCalories?.(exercise.id, text)}
-                onBlur={() => setCaloriesEditing(false)}
-                keyboardType="decimal-pad"
-                autoFocus
-                selectTextOnFocus
-                placeholder="–"
-                accessibilityLabel={`Calories burned for ${name}`}
-                className="text-center"
-                style={{
-                  paddingTop: 4,
-                  paddingBottom: 4,
-                  paddingLeft: 6,
-                  paddingRight: 6,
-                  fontSize: 14,
-                  lineHeight: 18,
-                  minWidth: 52,
-                }}
-              />
-              <Text className="text-sm text-text-secondary">Cal</Text>
-            </View>
-          ) : (
-            <Pressable
-              onPress={() => setCaloriesEditing(true)}
-              className="flex-row items-center gap-1"
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              accessibilityRole="button"
-              accessibilityLabel={`Edit calories burned for ${name}`}
-            >
-              <Icon name="flame" size={14} color={accentPrimary} />
-              <Text className="text-sm" style={{ color: accentPrimary }}>
-                {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} Cal
-              </Text>
-              <Icon name="chevron-down" size={10} color={accentPrimary} />
-            </Pressable>
-          ))}
-          {caloriesText != null && (
-            <View className="flex-row items-center">
-              <Icon name="flame" size={14} color={textMuted} />
-              <Text className="text-sm text-text-secondary ml-1">{caloriesText} Cal</Text>
-            </View>
-          )}
-          {bestDisplay != null && (
-            <View
-              className="flex-row items-center"
-              accessibilityLabel={`Best ${bestText}`}
-            >
-              <Icon
-                name="trophy-outline"
-                size={14}
-                color={bestIsPr ? prColor : textMuted}
-              />
-              <Text
-                className="text-sm ml-1"
-                style={{
-                  color: bestIsPr ? prColor : textSecondary,
-                  fontVariant: ['tabular-nums'],
-                }}
-              >
-                {bestText}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {exercise.sets.length > 0 && (
-        <View className="flex-row items-center px-1 py-1.5">
-          <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
-            Set
-          </Text>
-          {!readOnly && (
-            <Text className="w-20 text-center text-xs font-semibold uppercase text-text-muted">
-              Prev
-            </Text>
-          )}
-          <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-            {weightUnit === 'kg' ? 'KG' : 'LBS'}
-          </Text>
-          <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-            Reps
-          </Text>
-          <View ref={metricAnchorRef} collapsable={false} className="w-14 items-center">
-            <Pressable
-              onPress={openMetricMenu}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel="Change metric column"
-              className="flex-row items-center gap-0.5"
-            >
-              <Text
-                className="text-xs font-semibold uppercase"
-                style={{ color: accentPrimary }}
-              >
-                {METRIC_COLUMN_LABELS[metricColumn]}
-              </Text>
-              <Icon name="chevron-down" size={10} color={accentPrimary} />
-            </Pressable>
           </View>
-          <View className="w-10" />
-        </View>
-      )}
+        )}
+        {readOnly && !!exercise.notes && (
+          <View className="mt-2 px-1">
+            <Text className="text-sm text-text-secondary" accessibilityLabel={`Notes for ${name}`}>
+              {exercise.notes}
+            </Text>
+          </View>
+        )}
 
-      {exercise.sets.map((set, index) => {
-        const setId = String(set.id);
-        // Stable across an autosave id churn (view/edit: keyed by id). Used for
-        // the React key + focus/expand compares so the row instance — and its
-        // keyboard/draft — survives the set's id being reassigned.
-        const renderKey = setRenderKeys?.[setId] ?? setId;
-        // Edit mode never surfaces 'done' — completed sets stay editable and
-        // show the static completedBadge instead.
-        const state = isEdit
-          ? setId === activeSetId
-            ? 'current'
-            : 'upcoming'
-          : completedSetIds[setId]
-            ? 'done'
-            : setId === activeSetId
-              ? 'current'
-              : 'upcoming';
-        const nextSet = exercise.sets[index + 1];
-        return (
-          <React.Fragment key={renderKey}>
-            <ActiveWorkoutSetRow
-              set={set}
-              renderKey={renderKey}
-              displayNumber={workingSetNumbers[index]}
-              state={state}
-              metricColumn={metricColumn}
-              weightUnit={weightUnit}
-              previousSet={readOnly ? undefined : (previousSessionSets?.[index] ?? null)}
-              assumed={assumedSetValues?.[index] ?? null}
-              mode={mode}
-              onComplete={onComplete}
-              onUncomplete={onUncomplete}
-              onCommitField={onCommitField}
-              onDelete={onDeleteSet}
-              onLongPress={onLongPressSetKeyed}
-              onPressSetType={onPressSetType}
-              activeField={activeField}
-              isFocused={isLive && focusedSetKey === renderKey}
-              nextSetId={nextSet != null ? String(nextSet.id) : null}
-              entryId={exercise.id}
-              rpeEditable={rpeEditable}
-              completedBadge={isEdit && !!completedSetIds[setId]}
-              onToggleComplete={onToggleComplete}
-              onActivateSet={onActivateSetKeyed}
-              onActivateRpe={onActivateRpeKeyed}
-              onEditFieldChange={onEditFieldChange}
-              onAddSet={onAddSet}
-              onRegisterAccessoryHandle={onRegisterAccessoryHandle}
-            />
-            {/* Per-set note expand — live and edit, toggled by long-pressing
-                the set row. View mode shows a saved note as plain text. */}
-            {!readOnly && expandedSetKey === renderKey && onCommitField != null && (
-              <ActiveWorkoutSetDetail set={set} onCommitField={onCommitField} />
+        {(showRestChip || bestDisplay != null || caloriesField || caloriesText != null) && (
+          // flex-wrap + gap-y so the rest chip and "Best" stack gracefully on
+          // narrow screens instead of shifting off the edge. "Last" lives in the
+          // per-set PREVIOUS column, not here.
+          <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1 px-1">
+            {showRestChip && (
+              <RestPeriodChip
+                value={exercise.sets[0]?.rest_time}
+                readOnly={readOnly}
+                onPress={
+                  readOnly
+                    ? undefined
+                    : () => onPressRestChip?.(exercise.id, exercise.sets[0]?.rest_time ?? null)
+                }
+              />
             )}
-            {readOnly && !!set.notes && (
-              <View className="px-1 pb-2">
+            {caloriesField && (caloriesEditing ? (
+              <View className="flex-row items-center gap-1">
+                <Icon name="flame" size={14} color={accentPrimary} />
+                <FormInput
+                  value={exercise.editCaloriesText ?? ''}
+                  onChangeText={(text) => onChangeCalories?.(exercise.id, text)}
+                  onBlur={() => setCaloriesEditing(false)}
+                  keyboardType="decimal-pad"
+                  autoFocus
+                  selectTextOnFocus
+                  placeholder="–"
+                  accessibilityLabel={`Calories burned for ${name}`}
+                  className="text-center"
+                  style={{
+                    paddingTop: 4,
+                    paddingBottom: 4,
+                    paddingLeft: 6,
+                    paddingRight: 6,
+                    fontSize: 14,
+                    lineHeight: 18,
+                    minWidth: 52,
+                  }}
+                />
+                <Text className="text-sm text-text-secondary">Cal</Text>
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => setCaloriesEditing(true)}
+                className="flex-row items-center gap-1"
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit calories burned for ${name}`}
+              >
+                <Icon name="flame" size={14} color={accentPrimary} />
+                <Text className="text-sm" style={{ color: accentPrimary }}>
+                  {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} Cal
+                </Text>
+                <Icon name="chevron-down" size={10} color={accentPrimary} />
+              </Pressable>
+            ))}
+            {caloriesText != null && (
+              <View className="flex-row items-center">
+                <Icon name="flame" size={14} color={textMuted} />
+                <Text className="text-sm text-text-secondary ml-1">{caloriesText} Cal</Text>
+              </View>
+            )}
+            {bestDisplay != null && (
+              <View
+                className="flex-row items-center"
+                accessibilityLabel={`Best ${bestText}`}
+              >
+                <Icon
+                  name="trophy-outline"
+                  size={14}
+                  color={bestIsPr ? prColor : textMuted}
+                />
                 <Text
-                  className="text-xs text-text-secondary"
-                  accessibilityLabel={`Notes for set ${set.set_number}`}
+                  className="text-sm ml-1"
+                  style={{
+                    color: bestIsPr ? prColor : textSecondary,
+                    fontVariant: ['tabular-nums'],
+                  }}
                 >
-                  {set.notes}
+                  {bestText}
                 </Text>
               </View>
             )}
-          </React.Fragment>
-        );
-      })}
+          </View>
+        )}
 
-      {!readOnly && (
-        <Pressable
-          onPress={() => onAddSet?.(exercise.id)}
-          accessibilityRole="button"
-          accessibilityLabel={`Add set to ${name}`}
-          className="flex-row items-center justify-center gap-1.5 py-2.5 mt-1"
-        >
-          <Icon name="add" size={15} color={accentPrimary} />
-          <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
-            Add set
-          </Text>
-        </Pressable>
-      )}
+        {exercise.sets.length > 0 && (
+          <View className="flex-row items-center px-1 py-1.5">
+            <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
+              Set
+            </Text>
+            {!readOnly && (
+              <Text className="w-20 text-center text-xs font-semibold uppercase text-text-muted">
+                Prev
+              </Text>
+            )}
+            <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+              {weightUnit === 'kg' ? 'KG' : 'LBS'}
+            </Text>
+            <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+              Reps
+            </Text>
+            <View ref={metricAnchorRef} collapsable={false} className="w-14 items-center">
+              <Pressable
+                onPress={openMetricMenu}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Change metric column"
+                className="flex-row items-center gap-0.5"
+              >
+                <Text
+                  className="text-xs font-semibold uppercase"
+                  style={{ color: accentPrimary }}
+                >
+                  {METRIC_COLUMN_LABELS[metricColumn]}
+                </Text>
+                <Icon name="chevron-down" size={10} color={accentPrimary} />
+              </Pressable>
+            </View>
+            <View className="w-10" />
+          </View>
+        )}
+
+        {exercise.sets.map((set, index) => {
+          const setId = String(set.id);
+          // Stable across an autosave id churn (view/edit: keyed by id). Used for
+          // the React key + focus/expand compares so the row instance — and its
+          // keyboard/draft — survives the set's id being reassigned.
+          const renderKey = setRenderKeys?.[setId] ?? setId;
+          // Edit mode never surfaces 'done' — completed sets stay editable and
+          // show the static completedBadge instead.
+          const state = isEdit
+            ? setId === activeSetId
+              ? 'current'
+              : 'upcoming'
+            : completedSetIds[setId]
+              ? 'done'
+              : setId === activeSetId
+                ? 'current'
+                : 'upcoming';
+          const nextSet = exercise.sets[index + 1];
+          return (
+            <React.Fragment key={renderKey}>
+              <ActiveWorkoutSetRow
+                set={set}
+                renderKey={renderKey}
+                displayNumber={workingSetNumbers[index]}
+                state={state}
+                metricColumn={metricColumn}
+                weightUnit={weightUnit}
+                previousSet={readOnly ? undefined : (previousSessionSets?.[index] ?? null)}
+                assumed={assumedSetValues?.[index] ?? null}
+                mode={mode}
+                onComplete={onComplete}
+                onUncomplete={onUncomplete}
+                onCommitField={onCommitField}
+                onDelete={onDeleteSet}
+                onLongPress={onLongPressSetKeyed}
+                onPressSetType={onPressSetType}
+                activeField={activeField}
+                isFocused={isLive && focusedSetKey === renderKey}
+                nextSetId={nextSet != null ? String(nextSet.id) : null}
+                entryId={exercise.id}
+                rpeEditable={rpeEditable}
+                completedBadge={isEdit && !!completedSetIds[setId]}
+                onToggleComplete={onToggleComplete}
+                onActivateSet={onActivateSetKeyed}
+                onActivateRpe={onActivateRpeKeyed}
+                onEditFieldChange={onEditFieldChange}
+                onAddSet={onAddSet}
+                onRegisterAccessoryHandle={onRegisterAccessoryHandle}
+              />
+              {/* Per-set note expand — live and edit, toggled by long-pressing
+                  the set row. View mode shows a saved note as plain text. */}
+              {!readOnly && expandedSetKey === renderKey && onCommitField != null && (
+                <ActiveWorkoutSetDetail set={set} onCommitField={onCommitField} />
+              )}
+              {readOnly && !!set.notes && (
+                <View className="px-1 pb-2">
+                  <Text
+                    className="text-xs text-text-secondary"
+                    accessibilityLabel={`Notes for set ${set.set_number}`}
+                  >
+                    {set.notes}
+                  </Text>
+                </View>
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {!readOnly && (
+          <Pressable
+            onPress={() => onAddSet?.(exercise.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`Add set to ${name}`}
+            className="flex-row items-center justify-center gap-1.5 py-2.5 mt-1"
+          >
+            <Icon name="add" size={15} color={accentPrimary} />
+            <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
+              Add set
+            </Text>
+          </Pressable>
+        )}
+      </Animated.View>
     </View>
   );
 }

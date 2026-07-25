@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, View, Text, ScrollView } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/ui/Button';
@@ -264,8 +265,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
             return (
               // Grouped members carry a flat 3px left rail; interior rails run
               // to the wrapper's bottom so consecutive members read as one line.
-              <View
+              <Animated.View
                 key={cardExercise.id}
+                layout={LinearTransition.duration(300)}
                 style={supersetBorder ? { paddingLeft: 10 } : undefined}
               >
                 {supersetBorder && (
@@ -296,7 +298,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
                   onToggleExpanded={toggleExpanded}
                   onPressMetricHeader={handlePressMetricHeader}
                 />
-              </View>
+              </Animated.View>
             );
           })}
         </View>
