@@ -28,11 +28,7 @@ const CycleAlerts: React.FC<CycleAlertsProps> = ({ alerts }) => {
         return (
           <View
             key={alert.key}
-            className={`flex-row items-start p-3 rounded-xl border ${
-              isAttention
-                ? 'border-red-200 bg-red-50/50'
-                : 'border-blue-200 bg-blue-50/50'
-            }`}
+            className="flex-row items-start p-3 rounded-xl border border-border-subtle bg-surface"
           >
             <View className="mr-3 mt-0.5">
               <Icon

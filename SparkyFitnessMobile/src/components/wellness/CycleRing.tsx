@@ -159,11 +159,7 @@ const CycleRing: React.FC<CycleRingProps> = ({
         style={{ padding: size < 130 ? 2 : 16 }}
       >
         {!!centerLabel && (
-          <Text
-            className={`text-text-secondary uppercase font-semibold tracking-wider text-center ${
-              size < 130 ? 'text-[9px]' : 'text-xs'
-            }`}
-          >
+          <Text className="text-text-secondary text-xs uppercase font-semibold tracking-wider text-center">
             {centerLabel}
           </Text>
         )}
@@ -177,11 +173,7 @@ const CycleRing: React.FC<CycleRingProps> = ({
           {centerValue}
         </Text>
         {!!centerSub && (
-          <Text
-            className={`text-text-secondary text-center ${
-              size < 130 ? 'text-[9px] mt-0.5' : 'text-xs mt-1'
-            }`}
-          >
+          <Text className="text-text-secondary text-xs text-center mt-0.5">
             {centerSub}
           </Text>
         )}

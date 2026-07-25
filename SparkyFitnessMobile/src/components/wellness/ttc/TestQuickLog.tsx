@@ -61,7 +61,7 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
   };
 
   return (
-    <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm gap-3">
       <Text className="text-text-primary text-sm font-semibold">Log a Test</Text>
 
       {/* Test type toggle */}
@@ -73,10 +73,10 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
               key={t}
               onPress={() => setTestType(t)}
               className={`rounded-full px-4 py-2 border ${
-                isSelected ? 'bg-blue-50 border-blue-500' : 'bg-raised border-transparent'
+                isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
               }`}
             >
-              <Text className={`text-xs font-semibold ${isSelected ? 'text-blue-600' : 'text-text-secondary'}`}>
+              <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
                 {t === 'opk' ? 'Ovulation (OPK)' : 'Pregnancy (HPT)'}
               </Text>
             </TouchableOpacity>

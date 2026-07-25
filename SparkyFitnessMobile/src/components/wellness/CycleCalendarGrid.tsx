@@ -165,7 +165,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
   const monthName = new Date(year, monthVal - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
 
   return (
-    <View className="bg-surface rounded-2xl p-4 shadow-sm border border-border-subtle">
+    <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
       {/* Month Header Navigation */}
       <View className="flex-row justify-between items-center mb-4">
         <TouchableOpacity onPress={handlePrevMonth} className="p-2" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
