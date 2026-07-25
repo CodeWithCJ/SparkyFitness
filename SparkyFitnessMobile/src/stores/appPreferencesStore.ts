@@ -34,6 +34,7 @@ export const PREFERENCE_DEFAULTS = {
   notificationsEnabled: true,
   hydrationCardVisible: true,
   fastingCardVisible: true,
+  cycleCardVisible: true,
   askSparkyVisible: true,
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
@@ -48,6 +49,7 @@ export type AppPreferencesData = {
   notificationsEnabled: boolean;
   hydrationCardVisible: boolean;
   fastingCardVisible: boolean;
+  cycleCardVisible: boolean;
   askSparkyVisible: boolean;
   liquidGlassTabBarEnabled: boolean;
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
@@ -62,6 +64,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setNotificationsEnabled: (value: boolean) => void;
   setHydrationCardVisible: (value: boolean) => void;
   setFastingCardVisible: (value: boolean) => void;
+  setCycleCardVisible: (value: boolean) => void;
   setAskSparkyVisible: (value: boolean) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
@@ -116,6 +119,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setNotificationsEnabled: (value) => set({ notificationsEnabled: value }),
       setHydrationCardVisible: (value) => set({ hydrationCardVisible: value }),
       setFastingCardVisible: (value) => set({ fastingCardVisible: value }),
+      setCycleCardVisible: (value) => set({ cycleCardVisible: value }),
       setAskSparkyVisible: (value) => set({ askSparkyVisible: value }),
       setLiquidGlassTabBarEnabled: (value) => set({ liquidGlassTabBarEnabled: value }),
       setActiveWorkoutMetricColumn: (value) => set({ activeWorkoutMetricColumn: value }),
@@ -133,6 +137,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         notificationsEnabled: state.notificationsEnabled,
         hydrationCardVisible: state.hydrationCardVisible,
         fastingCardVisible: state.fastingCardVisible,
+        cycleCardVisible: state.cycleCardVisible,
         askSparkyVisible: state.askSparkyVisible,
         liquidGlassTabBarEnabled: state.liquidGlassTabBarEnabled,
         // Older persisted blobs without these keys backfill via the default
