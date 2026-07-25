@@ -201,18 +201,18 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
           let borderStyle: 'solid' | 'dashed' = 'solid';
 
           if (phase === 'period') {
-            cellBg = '#FDEDE9';
+            cellBg = tokens.phaseMenstrual + '26'; // ~15% opacity
             textColor = tokens.phaseMenstrual;
           } else if (phase === 'predicted-period') {
-            cellBg = '#FFF5F3';
+            cellBg = tokens.phaseMenstrual + '14'; // ~8% opacity
             textColor = tokens.phaseMenstrual;
             borderColor = tokens.phaseMenstrual;
             borderStyle = 'dashed';
           } else if (phase === 'fertile') {
-            cellBg = '#E9F3E6';
+            cellBg = tokens.phaseFollicular + '26';
             textColor = tokens.phaseFollicular;
           } else if (phase === 'ovulation') {
-            cellBg = '#E5F0FB';
+            cellBg = tokens.phaseOvulation + '26';
             textColor = tokens.phaseOvulation;
             borderColor = tokens.phaseOvulation;
           }
@@ -220,7 +220,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
           if (!isCurrentMonth) {
             textColor = textMuted;
             if (cellBg !== 'transparent') {
-              cellBg = 'rgba(230, 230, 230, 0.4)';
+              cellBg = textMuted + '15';
             }
           }
 

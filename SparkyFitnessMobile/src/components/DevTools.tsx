@@ -7,6 +7,7 @@ import { triggerManualSync } from '../services/backgroundSyncService';
 import { notifySessionExpired } from '../services/api/authService';
 import { getActiveServerConfig } from '../services/storage';
 import { resetWhatsNewBanner } from '../services/whatsNewBanner';
+import { resetAnnouncementModal } from './AnnouncementModal';
 import { FOOD_SEARCH_POPOVERS } from '../services/foodSearchPreferences';
 import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedPermissions } from 'react-native-health-connect';
 
@@ -215,6 +216,29 @@ const DevTools: React.FC = () => {
             }}
           >
             <Text className="text-white text-base font-bold">Reset Banner</Text>
+          </Button>
+        </View>
+      </View>
+
+      <View className="mt-5">
+        <Text className="text-sm text-text-primary">System Announcement</Text>
+        <Text className="text-text-muted mb-3 text-[13px]">
+          Clear the dismissed announcement flag so active system announcements re-appear.
+        </Text>
+        <View className="flex-row gap-2 flex-wrap">
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
+            onPress={async () => {
+              await resetAnnouncementModal();
+              Toast.show({
+                type: 'success',
+                text1: 'Reset',
+                text2: 'System announcement modal will re-appear.',
+              });
+            }}
+          >
+            <Text className="text-white text-base font-bold">Reset Announcement</Text>
           </Button>
         </View>
       </View>
