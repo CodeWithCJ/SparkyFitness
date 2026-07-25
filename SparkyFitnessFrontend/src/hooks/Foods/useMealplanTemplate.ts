@@ -2,6 +2,7 @@ import { mealPlanKeys } from '@/api/keys/meals';
 import {
   createMealPlanTemplate,
   deleteMealPlanTemplate,
+  duplicateMealPlanTemplate,
   getMealPlanTemplates,
   updateMealPlanTemplate,
 } from '@/api/Foods/mealPlanTemplate';
@@ -111,6 +112,37 @@ export const useDeleteMealPlanMutation = () => {
       successMessage: t(
         'mealManagement.mealPlanDeletedSuccessfully',
         'Meal plan deleted successfully.'
+      ),
+    },
+  });
+};
+
+export const useDuplicateMealPlanMutation = () => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  return useMutation({
+    mutationFn: ({
+      userId,
+      templateId,
+      currentClientDate,
+    }: {
+      userId: string;
+      templateId: string;
+      currentClientDate?: string;
+    }) => duplicateMealPlanTemplate(userId, templateId, currentClientDate),
+    onSuccess: (_data, variables) => {
+      return queryClient.invalidateQueries({
+        queryKey: mealPlanKeys.byUser(variables.userId),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'mealManagement.failedToDuplicateMealPlan',
+        'Failed to duplicate meal plan.'
+      ),
+      successMessage: t(
+        'mealManagement.mealPlanDuplicatedSuccessfully',
+        'Meal plan duplicated successfully.'
       ),
     },
   });
