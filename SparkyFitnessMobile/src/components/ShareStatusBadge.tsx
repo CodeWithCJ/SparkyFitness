@@ -14,11 +14,11 @@ const ShareStatusBadge: React.FC<ShareStatusBadgeProps> = ({ status }) => {
     '--color-border-subtle',
   ]) as [string, string, string, string];
 
-  if (!status) return null;
+  if (!status || status === 'private') return null;
 
   let borderColor = borderSubtleColor;
   let textColor = textSecondaryColor;
-  let label = 'Private';
+  let label = '';
 
   if (status === 'public') {
     borderColor = successColor || '#10B981';
@@ -28,10 +28,8 @@ const ShareStatusBadge: React.FC<ShareStatusBadgeProps> = ({ status }) => {
     borderColor = accentColor || '#3B82F6';
     textColor = accentColor || '#3B82F6';
     label = 'Family';
-  } else if (status === 'private') {
-    borderColor = borderSubtleColor || '#E5E7EB';
-    textColor = textSecondaryColor || '#6B7280';
-    label = 'Private';
+  } else {
+    return null;
   }
 
   return (

@@ -19,10 +19,10 @@ import Toast from 'react-native-toast-message';
 
 import Icon from './Icon';
 import FastingEditSheet, { type FastingEditSheetRef } from './FastingEditSheet';
+import { FastingProtocolBadge } from './FastingSharedComponents';
 import { useFastingHistory, useDeleteFast } from '../hooks/useFasting';
 import { formatHoursMinutes, relativeDayLabel } from '../utils/fasting';
 import { toLocalDateString } from '../utils/dateUtils';
-import { protocolBadgeLabel } from '../constants/fasting';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
 
@@ -91,9 +91,7 @@ const FastingHistoryRow: React.FC<FastingHistoryRowProps> = ({
             <Text className="text-base font-semibold text-text-primary capitalize">
               {dayLabel}
             </Text>
-            <Text className="text-sm text-text-secondary ml-2">
-              {protocolBadgeLabel(fast.fasting_type)}
-            </Text>
+            <FastingProtocolBadge protocol={fast.fasting_type ?? ''} variant="subtle" className="ml-2" />
           </View>
           <Text className="text-sm text-text-secondary mt-0.5">{timeRangeLabel}</Text>
         </View>

@@ -21,6 +21,7 @@ import {
   getMetabolicStageIndex,
   protocolBadgeLabel,
 } from '../constants/fasting';
+import { FastingStatCard, FastingProtocolBadge } from '../components/FastingSharedComponents';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'FastingDetail'>;
@@ -30,20 +31,6 @@ const RING_SIZE = 240;
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
-
-const StatCard: React.FC<{ label: string; value: string; unit?: string }> = ({
-  label,
-  value,
-  unit,
-}) => (
-  <View className="flex-1 bg-surface rounded-xl p-3 items-center">
-    <Text className="text-xs font-semibold uppercase text-text-muted tracking-wide">{label}</Text>
-    <View className="flex-row items-baseline mt-1">
-      <Text className="text-xl font-bold text-text-primary">{value}</Text>
-      {unit ? <Text className="text-sm text-text-muted ml-0.5">{unit}</Text> : null}
-    </View>
-  </View>
-);
 
 const DetailRow: React.FC<{ label: string; value: string; isLast?: boolean }> = ({
   label,
@@ -194,11 +181,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
           <>
             {/* Protocol pill */}
             <View className="items-center mt-2 mb-4">
-              <View className="bg-accent-primary/10 rounded-full px-4 py-1.5">
-                <Text className="text-sm font-semibold text-accent-primary">
-                  {protocolBadgeLabel(currentFast.fasting_type)} protocol
-                </Text>
-              </View>
+              <FastingProtocolBadge protocol={currentFast.fasting_type} />
             </View>
 
             {/* Ring + centered timer */}
@@ -237,9 +220,9 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
 
             {/* Stats row */}
             <View className="flex-row gap-3 mb-6">
-              <StatCard label="Avg Fast" value={statsDisplay.avgFastValue} unit={statsDisplay.avgFastUnit} />
-              <StatCard label="# Fasts" value={statsDisplay.fastsCount} />
-              <StatCard label="Total" value={statsDisplay.totalValue} unit={statsDisplay.totalUnit} />
+              <FastingStatCard label="Avg Fast" value={statsDisplay.avgFastValue} unit={statsDisplay.avgFastUnit} />
+              <FastingStatCard label="# Fasts" value={statsDisplay.fastsCount} />
+              <FastingStatCard label="Total" value={statsDisplay.totalValue} unit={statsDisplay.totalUnit} />
             </View>
 
             {/* Detail rows + End Fast action */}
@@ -301,9 +284,9 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
 
             {/* Stats row (history is independent of an active fast) */}
             <View className="flex-row gap-3 mb-6">
-              <StatCard label="Avg Fast" value={statsDisplay.avgFastValue} unit={statsDisplay.avgFastUnit} />
-              <StatCard label="# Fasts" value={statsDisplay.fastsCount} />
-              <StatCard label="Total" value={statsDisplay.totalValue} unit={statsDisplay.totalUnit} />
+              <FastingStatCard label="Avg Fast" value={statsDisplay.avgFastValue} unit={statsDisplay.avgFastUnit} />
+              <FastingStatCard label="# Fasts" value={statsDisplay.fastsCount} />
+              <FastingStatCard label="Total" value={statsDisplay.totalValue} unit={statsDisplay.totalUnit} />
             </View>
 
             {renderStagesList()}
