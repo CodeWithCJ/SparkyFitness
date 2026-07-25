@@ -22,6 +22,10 @@ const REST_COMPLETE_CATEGORY = 'rest-complete';
  */
 export const COMPLETE_SET_ACTION = 'complete-set';
 
+export const MEDICATION_REMINDER_CATEGORY = 'medication-reminder';
+export const MEDICATION_TAKEN_ACTION = 'medication-taken';
+export const MEDICATION_SKIP_ACTION = 'medication-skip';
+
 let initialized = false;
 let hasShownDeniedToast = false;
 
@@ -44,12 +48,15 @@ export async function initNotifications(): Promise<void> {
 
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: false,
-        shouldShowList: false,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
+      handleNotification: async (notification) => {
+        const isMedReminder = notification.request.content.categoryIdentifier === MEDICATION_REMINDER_CATEGORY;
+        return {
+          shouldShowBanner: isMedReminder,
+          shouldShowList: isMedReminder,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+        };
+      },
     });
 
     if (Platform.OS === 'android') {
@@ -63,6 +70,11 @@ export async function initNotifications(): Promise<void> {
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
       });
+      await Notifications.setNotificationChannelAsync('medication-reminders', {
+        name: 'Medication reminders',
+        importance: Notifications.AndroidImportance.HIGH,
+        enableVibrate: true,
+      });
     }
 
     // "Complete Set" button on the rest-complete ping. The press is handled
@@ -72,6 +84,19 @@ export async function initNotifications(): Promise<void> {
       {
         identifier: COMPLETE_SET_ACTION,
         buttonTitle: 'Complete Set',
+        options: { opensAppToForeground: false },
+      },
+    ]);
+
+    await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
+      {
+        identifier: MEDICATION_TAKEN_ACTION,
+        buttonTitle: 'Take',
+        options: { opensAppToForeground: false },
+      },
+      {
+        identifier: MEDICATION_SKIP_ACTION,
+        buttonTitle: 'Skip',
         options: { opensAppToForeground: false },
       },
     ]);

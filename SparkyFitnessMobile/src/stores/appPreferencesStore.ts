@@ -36,6 +36,9 @@ export const PREFERENCE_DEFAULTS = {
   fastingCardVisible: true,
   cycleCardVisible: true,
   askSparkyVisible: true,
+  medicationsCardVisible: true,
+  medicationRemindersEnabled: true,
+  medicationReminderRepeats: true,
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
@@ -51,6 +54,9 @@ export type AppPreferencesData = {
   fastingCardVisible: boolean;
   cycleCardVisible: boolean;
   askSparkyVisible: boolean;
+  medicationsCardVisible: boolean;
+  medicationRemindersEnabled: boolean;
+  medicationReminderRepeats: boolean;
   liquidGlassTabBarEnabled: boolean;
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
@@ -66,6 +72,9 @@ export interface AppPreferencesState extends AppPreferencesData {
   setFastingCardVisible: (value: boolean) => void;
   setCycleCardVisible: (value: boolean) => void;
   setAskSparkyVisible: (value: boolean) => void;
+  setMedicationsCardVisible: (value: boolean) => void;
+  setMedicationRemindersEnabled: (value: boolean) => void;
+  setMedicationReminderRepeats: (value: boolean) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
@@ -121,6 +130,9 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setFastingCardVisible: (value) => set({ fastingCardVisible: value }),
       setCycleCardVisible: (value) => set({ cycleCardVisible: value }),
       setAskSparkyVisible: (value) => set({ askSparkyVisible: value }),
+      setMedicationsCardVisible: (value) => set({ medicationsCardVisible: value }),
+      setMedicationRemindersEnabled: (value) => set({ medicationRemindersEnabled: value }),
+      setMedicationReminderRepeats: (value) => set({ medicationReminderRepeats: value }),
       setLiquidGlassTabBarEnabled: (value) => set({ liquidGlassTabBarEnabled: value }),
       setActiveWorkoutMetricColumn: (value) => set({ activeWorkoutMetricColumn: value }),
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
@@ -139,6 +151,9 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         fastingCardVisible: state.fastingCardVisible,
         cycleCardVisible: state.cycleCardVisible,
         askSparkyVisible: state.askSparkyVisible,
+        medicationsCardVisible: state.medicationsCardVisible,
+        medicationRemindersEnabled: state.medicationRemindersEnabled,
+        medicationReminderRepeats: state.medicationReminderRepeats,
         liquidGlassTabBarEnabled: state.liquidGlassTabBarEnabled,
         // Older persisted blobs without these keys backfill via the default
         // shallow merge — no version bump needed.

@@ -205,6 +205,9 @@ export type RootStackParamList = {
   AppSettings: undefined;
   About: undefined;
   WhatsNew: undefined;
+  MedicationsList: undefined;
+  MedicationDetail: { medicationId: string };
+  MedicationForm: { medicationId?: string };
 };
 
 declare global {

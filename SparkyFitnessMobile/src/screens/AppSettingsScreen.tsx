@@ -40,6 +40,10 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const soundsEnabled = useAppPreferencesStore((s) => s.soundsEnabled);
   const setSoundsEnabled = useAppPreferencesStore((s) => s.setSoundsEnabled);
   const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
+  const medicationRemindersEnabled = useAppPreferencesStore((s) => s.medicationRemindersEnabled);
+  const setMedicationRemindersEnabled = useAppPreferencesStore((s) => s.setMedicationRemindersEnabled);
+  const medicationReminderRepeats = useAppPreferencesStore((s) => s.medicationReminderRepeats);
+  const setMedicationReminderRepeats = useAppPreferencesStore((s) => s.setMedicationReminderRepeats);
   const liquidGlassEnabled = useAppPreferencesStore((s) => s.liquidGlassTabBarEnabled);
   const setLiquidGlassTabBarEnabled = useAppPreferencesStore(
     (s) => s.setLiquidGlassTabBarEnabled,
@@ -100,6 +104,37 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
           </View>
           <Text className="text-text-secondary text-sm mt-2">
             Alerts for workout rest timers and fasting goals.
+          </Text>
+        </View>
+
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base text-text-primary">Medication Reminders</Text>
+            <Switch
+              value={medicationRemindersEnabled}
+              onValueChange={setMedicationRemindersEnabled}
+              trackColor={{ false: formDisabled, true: formEnabled }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-2">
+            Reminders for scheduled medications.
+          </Text>
+        </View>
+
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base text-text-primary">Repeat Reminders</Text>
+            <Switch
+              value={medicationReminderRepeats}
+              onValueChange={setMedicationReminderRepeats}
+              trackColor={{ false: formDisabled, true: formEnabled }}
+              thumbColor="#FFFFFF"
+              disabled={!medicationRemindersEnabled}
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-2">
+            If not marked, repeat reminders every 10 minutes up to 3 times.
           </Text>
         </View>
 

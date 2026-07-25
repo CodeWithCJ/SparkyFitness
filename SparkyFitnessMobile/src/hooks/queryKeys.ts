@@ -135,3 +135,12 @@ export const pregnancyAppointmentsQueryKey = ['healthAppointments'] as const;
 export const pregnancyPhotosQueryKey = ['pregnancyPhotos'] as const;
 
 export const symptomEntriesQueryKey = (fromDate: string, toDate: string) => ['symptomEntries', fromDate, toDate] as const;
+
+// --- Medications ---
+export const medicationsRootQueryKey = ['medications'] as const;
+export const medicationsListQueryKey = (opts?: { activeOnly?: boolean }) =>
+  ['medications', 'list', opts ?? {}] as const;
+export const medicationDetailQueryKey = (id: string) =>
+  ['medications', 'detail', id] as const;
+export const medicationEntriesQueryKey = (opts?: { fromDate?: string; toDate?: string; medicationId?: string }) =>
+  ['medications', 'entries', opts ?? {}] as const;

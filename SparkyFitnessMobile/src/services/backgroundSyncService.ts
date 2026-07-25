@@ -22,6 +22,9 @@ import {
 } from './storage';
 import { queryClient } from '../hooks/queryClient';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
+import { listMedications, listEntries } from './api/medicationsApi';
+import { reconcileMedicationReminders } from './medicationReminderService';
+import { getTodayDate } from '../utils/dateUtils';
 
 const isAppActive = (): boolean => AppState.currentState === 'active';
 
@@ -184,6 +187,20 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await addLog(`[Background Sync] Writeback phase failed: ${message}`, 'ERROR');
+  }
+
+  // Fetch fresh schedules from the server and updates
+  // scheduled local notifications
+  try {
+    const today = getTodayDate();
+    const [medications, entries] = await Promise.all([
+      listMedications({ activeOnly: true }),
+      listEntries({ fromDate: today, toDate: today }),
+    ]);
+    await reconcileMedicationReminders(medications, entries);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(`[Background Sync] Medication reminder reconciliation failed: ${message}`, 'ERROR');
   }
 };
 
