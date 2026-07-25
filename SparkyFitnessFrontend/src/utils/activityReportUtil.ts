@@ -466,14 +466,44 @@ export function readActivityStats(
   };
 }
 
-/** Format seconds as H:MM:SS (>= 1 h) or M:SS (< 1 h). */
-export function formatDuration(totalSeconds: number): string {
+/** Format seconds as H:MM:SS (>= 1 h) or M:SS (< 1 h), optionally appending time unit (h:m:s or m:s). */
+export function formatDuration(
+  totalSeconds: number,
+  includeUnit: boolean = false
+): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = Math.round(totalSeconds % 60);
   const ss = String(s).padStart(2, '0');
   if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${ss}`;
+    const formatted = `${h}:${String(m).padStart(2, '0')}:${ss}`;
+    return includeUnit ? `${formatted} h:m:s` : formatted;
   }
-  return `${m}:${ss}`;
+  const formatted = `${m}:${ss}`;
+  return includeUnit ? `${formatted} m:s` : formatted;
+}
+
+/**
+ * Format decimal pace (minutes per km/mi) into M:SS min/km or M:SS min/mi.
+ * e.g. 6.88 min/km -> "6:53 min/km"
+ */
+export function formatPace(
+  paceMinPerUnit: number | null | undefined,
+  unit: DistanceUnit = 'km'
+): string | null {
+  if (
+    paceMinPerUnit == null ||
+    !Number.isFinite(paceMinPerUnit) ||
+    paceMinPerUnit <= 0
+  ) {
+    return null;
+  }
+  let minutes = Math.floor(paceMinPerUnit);
+  let seconds = Math.round((paceMinPerUnit - minutes) * 60);
+  if (seconds >= 60) {
+    minutes += 1;
+    seconds = 0;
+  }
+  const unitStr = unit === 'km' ? 'min/km' : 'min/mi';
+  return `${minutes}:${String(seconds).padStart(2, '0')} ${unitStr}`;
 }
