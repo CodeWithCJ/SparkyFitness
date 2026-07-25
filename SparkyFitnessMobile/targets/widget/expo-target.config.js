@@ -1,4 +1,4 @@
-const { getIosAppGroup, isDevVariant } = require('../../app.identifiers.js');
+const { getIosAppGroup, isDevVariant, DEV_BUNDLE_IDENTIFIER } = require('../../app.identifiers.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -42,7 +42,7 @@ module.exports = (config) => {
     type: 'widget',
     name: 'CalorieTracker',
     bundleIdentifier: isDev
-      ? 'org.SparkyApps.SparkyFitnessMobile1.dev.widget'
+      ? `${DEV_BUNDLE_IDENTIFIER}.widget`
       : 'com.SparkyApps.SparkyFitnessMobile.widget',
     icon: '../../assets/icons/adaptiveicon.png',
     entitlements: {
