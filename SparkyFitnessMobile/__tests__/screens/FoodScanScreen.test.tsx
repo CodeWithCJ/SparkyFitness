@@ -129,7 +129,10 @@ describe('FoodScanScreen', () => {
     expect(mockNavigation.replace).toHaveBeenCalledWith(
       'FoodEntryAdd',
       expect.objectContaining({
-        item: expect.objectContaining({ id: 'food-1' }),
+        item: expect.objectContaining({
+          id: 'food-1',
+          barcode: '012345678905',
+        }),
       }),
     );
   });
@@ -196,6 +199,9 @@ describe('FoodScanScreen', () => {
         expect.objectContaining({
           item: expect.objectContaining({
             source: 'external',
+            barcode: '1234567890123',
+            provider_type: 'yazio',
+            provider_external_id: 'yazio-apple-1',
             provider_verified: true,
             servingDescription: '1 piece (200 g)',
             externalVariants: [

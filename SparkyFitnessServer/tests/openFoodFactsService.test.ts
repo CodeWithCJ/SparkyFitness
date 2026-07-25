@@ -344,6 +344,44 @@ describe('openFoodFactsService', () => {
       expect(result.default_variant.allergens).toEqual(['soy']);
       expect(result.default_variant.traces).toBeNull();
     });
+
+    it('falls back to energy-kj when energy-kcal_100g is missing', () => {
+      const product = {
+        product_name: 'KJ Energy Product',
+        brands: 'TestBrand',
+        code: '9999999999999',
+        serving_quantity: 100,
+        nutriments: {
+          'energy-kj_100g': 836.8, // 836.8 / 4.184 = 200 kcal
+          proteins_100g: 5,
+        },
+      };
+      const result = mapOpenFoodFactsProduct(product);
+      expect(result.default_variant.calories).toBe(200);
+      expect(result.default_variant.protein).toBe(5);
+    });
+
+    it('falls back to *_serving nutriments when *_100g fields are missing', () => {
+      const product = {
+        product_name: 'Serving Only Product',
+        brands: 'TestBrand',
+        code: '8888888888888',
+        serving_quantity: 50,
+        nutriments: {
+          'energy-kcal_serving': 150, // 150 kcal per 50g -> 300 kcal per 100g
+          proteins_serving: 10, // 10g per 50g -> 20g per 100g
+          carbohydrates_serving: 20, // 20g per 50g -> 40g per 100g
+          fat_serving: 5, // 5g per 50g -> 10g per 100g
+        },
+      };
+      const result = mapOpenFoodFactsProduct(product);
+      // default_variant scales by serving_size / 100 (50 / 100 = 0.5)
+      expect(result.default_variant.serving_size).toBe(50);
+      expect(result.default_variant.calories).toBe(150);
+      expect(result.default_variant.protein).toBe(10);
+      expect(result.default_variant.carbs).toBe(20);
+      expect(result.default_variant.fat).toBe(5);
+    });
   });
 
   describe('mapOpenFoodFactsProduct serving unit derivation', () => {
