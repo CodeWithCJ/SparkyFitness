@@ -379,7 +379,7 @@ const MealPlanCalendar: React.FC = () => {
         },
       },
     ],
-    [t, handleTogglePlanActive, handleEdit, handleDelete]
+    [t, handleTogglePlanActive, handleEdit, handleDelete, handleDuplicate]
   );
 
   return (
