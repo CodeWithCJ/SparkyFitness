@@ -99,6 +99,7 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
       <BottomSheetModal
         ref={bottomSheetRef}
         enableDynamicSizing
+        enableContentPanningGesture={Platform.OS !== 'android'}
         backdropComponent={renderBackdrop}
         containerComponent={sheetContainer}
         backgroundStyle={{ backgroundColor: surfaceBg }}
