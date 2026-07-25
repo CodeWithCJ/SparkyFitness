@@ -317,7 +317,9 @@ jest.mock('react-native-reanimated', () => {
       exp: jest.fn(),
     },
     FadeIn: createAnimationMock(),
+    FadeInDown: createAnimationMock(),
     FadeOut: createAnimationMock(),
+    FadeOutUp: createAnimationMock(),
     LinearTransition: createAnimationMock(),
   };
 });
