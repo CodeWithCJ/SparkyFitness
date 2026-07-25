@@ -1,0 +1,78 @@
+import { addNotificationResponseListener, dismissDeliveredNotification, MEDICATION_TAKEN_ACTION, MEDICATION_SKIP_ACTION } from './notifications';
+import { createEntry, listEntries } from './api/medicationsApi';
+import { addLog } from '../services/LogService';
+import type { MedicationEntryStatus } from '../types/medications';
+
+let initialized = false;
+
+export function initMedicationNotificationActions(): void {
+  if (initialized) return;
+  initialized = true;
+
+  addNotificationResponseListener((response) => {
+    const actionId = response.actionIdentifier;
+
+    let status: MedicationEntryStatus | null = null;
+    if (actionId === MEDICATION_TAKEN_ACTION) {
+      status = 'taken';
+    } else if (actionId === MEDICATION_SKIP_ACTION) {
+      status = 'skipped';
+    }
+
+    if (!status) return;
+
+    const content = response.notification.request.content;
+    const data = content.data as Record<string, string | undefined>;
+    const medicationId = data?.medicationId;
+    const scheduleId = data?.scheduleId;
+    const entryDate = data?.entryDate;
+
+    if (!medicationId || !entryDate) {
+      addLog('[MedicationNotificationAction] Missing required data in notification', 'WARNING');
+      return;
+    }
+
+    void handleNotificationAction(status, medicationId, scheduleId ?? null, entryDate, response.notification.request.identifier);
+  });
+}
+
+async function handleNotificationAction(
+  status: MedicationEntryStatus,
+  medicationId: string,
+  scheduleId: string | null,
+  entryDate: string,
+  notificationId: string,
+): Promise<void> {
+  try {
+    const existing = await listEntries({ fromDate: entryDate, toDate: entryDate, medicationId });
+    const duplicate = existing.find(
+      (e) =>
+        e.medication_id === medicationId &&
+        ((scheduleId && e.schedule_id === scheduleId) || (!scheduleId && !e.schedule_id)) &&
+        (e.status === 'taken' || e.status === 'skipped'),
+    );
+
+    if (duplicate) {
+      await dismissDeliveredNotification(notificationId);
+      return;
+    }
+
+    await createEntry({
+      medication_id: medicationId,
+      schedule_id: scheduleId,
+      status,
+      entry_date: entryDate,
+      taken_at: status === 'taken' ? new Date().toISOString() : undefined,
+    });
+
+    await dismissDeliveredNotification(notificationId);
+    addLog(`[MedicationNotificationAction] Logged medication ${medicationId} as ${status}`, 'DEBUG');
+  } catch (error) {
+    addLog(`[MedicationNotificationAction] Failed to log medication: ${(error as Error).message}`, 'ERROR');
+  }
+}
+
+/** Test-only helper — resets module-level state. */
+export function __resetMedicationNotificationStateForTests(): void {
+  initialized = false;
+}

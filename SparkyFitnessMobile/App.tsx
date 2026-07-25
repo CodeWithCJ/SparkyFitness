@@ -74,6 +74,9 @@ import CycleOnboardingScreen from './src/screens/CycleOnboardingScreen';
 import CycleHubScreen from './src/screens/CycleHubScreen';
 import CycleLogModalScreen from './src/screens/CycleLogModalScreen';
 import PregnancySetupScreen from './src/screens/PregnancySetupScreen';
+import MedicationsListScreen from './src/screens/MedicationsListScreen';
+import MedicationDetailScreen from './src/screens/MedicationDetailScreen';
+import MedicationFormScreen from './src/screens/MedicationFormScreen';
 import DailyNutritionDetailsScreen from './src/screens/DailyNutritionDetailsScreen';
 import NutrientTrendsScreen from './src/screens/NutrientTrendsScreen';
 import ReauthModal from './src/components/ReauthModal';
@@ -105,6 +108,7 @@ import { initializeTheme } from './src/services/themeService';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { addLog, initLogService } from './src/services/LogService';
 import { initNotifications } from './src/services/notifications';
+import { initMedicationNotificationActions } from './src/services/medicationNotificationHandler';
 import { initWorkoutLiveActivity } from './src/services/workoutLiveActivity';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -239,6 +243,9 @@ const SafeCycleOnboarding = withErrorBoundary(CycleOnboardingScreen, 'CycleOnboa
 const SafeCycleHub = withErrorBoundary(CycleHubScreen, 'CycleHub', { canGoBack: true });
 const SafeCycleLogModal = withErrorBoundary(CycleLogModalScreen, 'CycleLogModal', { canGoBack: true });
 const SafePregnancySetup = withErrorBoundary(PregnancySetupScreen, 'PregnancySetup', { canGoBack: true });
+const SafeMedicationsList = withErrorBoundary(MedicationsListScreen, 'MedicationsList', { canGoBack: true });
+const SafeMedicationDetail = withErrorBoundary(MedicationDetailScreen, 'MedicationDetail', { canGoBack: true });
+const SafeMedicationForm = withErrorBoundary(MedicationFormScreen, 'MedicationForm', { canGoBack: true });
 
 function AppContent() {
   const { theme } = useUniwind();
@@ -618,6 +625,7 @@ function AppContent() {
     initializeApp();
 
     initWorkoutNotificationActions();
+    initMedicationNotificationActions();
 
     // iOS-only (no-op on Android): keeps the workout Live Activity in sync
     // with the active-workout store.
@@ -1220,6 +1228,28 @@ function AppContent() {
             name="PregnancySetup"
             component={SafePregnancySetup}
             options={createStackScreenOptions('Pregnancy Setup', {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
+            name="MedicationsList"
+            component={SafeMedicationsList}
+            options={createStackScreenOptions('Medications', { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="MedicationDetail"
+            component={SafeMedicationDetail}
+            options={({ route }) => createStackScreenOptions(
+              route.params.medicationId ? 'Medication' : 'Medication',
+              { headerBackTitle: 'Medications' },
+            )}
+          />
+          <Stack.Screen
+            name="MedicationForm"
+            component={SafeMedicationForm}
+            options={createStackScreenOptions('Medication', {
               presentation: 'modal',
               headerBackButtonDisplayMode: 'minimal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),

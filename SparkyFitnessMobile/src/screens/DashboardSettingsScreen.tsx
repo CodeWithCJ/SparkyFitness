@@ -53,6 +53,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
   const setHydrationCardVisible = useAppPreferencesStore((s) => s.setHydrationCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
   const setAskSparkyVisible = useAppPreferencesStore((s) => s.setAskSparkyVisible);
+  const medicationsCardVisible = useAppPreferencesStore((s) => s.medicationsCardVisible);
+  const setMedicationsCardVisible = useAppPreferencesStore((s) => s.setMedicationsCardVisible);
 
   const queryClient = useQueryClient();
   const { isConnected } = useServerConnection();
@@ -223,6 +225,18 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
               <Switch
                 value={cycleCardVisible}
                 onValueChange={setCycleCardVisible}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+          <SettingsRow
+            title="Medications"
+            subtitle="Show the medications card on the Dashboard"
+            rightAccessory={
+              <Switch
+                value={medicationsCardVisible}
+                onValueChange={setMedicationsCardVisible}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
               />
