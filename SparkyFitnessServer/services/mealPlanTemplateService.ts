@@ -2,17 +2,39 @@ import mealPlanTemplateRepository from '../models/mealPlanTemplateRepository.js'
 import foodRepository from '../models/foodRepository.js';
 import { log } from '../config/logging.js';
 import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createMealPlanTemplate(userId: any, planData: any) {
+
+export interface MealPlanAssignmentData {
+  id?: string;
+  day_of_week: number;
+  meal_type_id?: string;
+  meal_type?: string;
+  item_type: 'meal' | 'food';
+  meal_id?: string | null;
+  food_id?: string | null;
+  variant_id?: string | null;
+  quantity?: number;
+  unit?: string;
+}
+
+export interface MealPlanTemplateData {
+  id?: string;
+  user_id?: string;
+  plan_name: string;
+  description?: string;
+  start_date?: Date | string;
+  end_date?: Date | string | null;
+  is_active?: boolean;
+  assignments?: MealPlanAssignmentData[];
+  day_presets?: MealPlanAssignmentData[];
+  currentClientDate?: string;
+}
+
+async function createMealPlanTemplate(
+  userId: string,
+  planData: MealPlanTemplateData
+) {
   log('info', 'createMealPlanTemplate service - received planData:', planData);
   try {
-    if (planData.is_active) {
-      log(
-        'info',
-        `createMealPlanTemplate service - Deactivating all other meal plan templates for user ${userId}`
-      );
-      await mealPlanTemplateRepository.deactivateAllMealPlanTemplates(userId);
-    }
     const newPlan = await mealPlanTemplateRepository.createMealPlanTemplate({
       ...planData,
       user_id: userId,
@@ -40,26 +62,25 @@ async function createMealPlanTemplate(userId: any, planData: any) {
     }
     return newPlan;
   } catch (error) {
+    const err = error as Error;
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error creating meal plan template for user ${userId}: ${error.message}`,
+      `Error creating meal plan template for user ${userId}: ${err.message}`,
       error
     );
     throw new Error('Failed to create meal plan template.', { cause: error });
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealPlanTemplates(userId: any) {
+
+async function getMealPlanTemplates(userId: string) {
   try {
     const templates =
       await mealPlanTemplateRepository.getMealPlanTemplatesByUserId(userId);
     const templatesWithAssignments = await Promise.all(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      templates.map(async (template: any) => {
+      templates.map(async (template: MealPlanTemplateData) => {
         const assignments =
           await mealPlanTemplateRepository.getMealPlanTemplateAssignments(
-            template.id,
+            template.id!,
             userId
           );
         return { ...template, assignments };
@@ -75,8 +96,12 @@ async function getMealPlanTemplates(userId: any) {
     throw new Error('Failed to fetch meal plan templates.', { cause: error });
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateMealPlanTemplate(planId: any, userId: any, planData: any) {
+
+async function updateMealPlanTemplate(
+  planId: string,
+  userId: string,
+  planData: MealPlanTemplateData
+) {
   log(
     'info',
     `updateMealPlanTemplate service - received planData for plan ${planId}:`,
@@ -94,13 +119,6 @@ async function updateMealPlanTemplate(planId: any, userId: any, planData: any) {
       `updateMealPlanTemplate service - Deleting old food entries for template ${planId}`
     );
     await foodRepository.deleteFoodEntriesByTemplateId(planId, userId, today);
-    if (planData.is_active) {
-      log(
-        'info',
-        `updateMealPlanTemplate service - Deactivating all other meal plan templates for user ${userId}`
-      );
-      await mealPlanTemplateRepository.deactivateAllMealPlanTemplates(userId);
-    }
     const updatedPlan = await mealPlanTemplateRepository.updateMealPlanTemplate(
       planId,
       { ...planData, user_id: userId }
@@ -124,10 +142,10 @@ async function updateMealPlanTemplate(planId: any, userId: any, planData: any) {
     }
     return updatedPlan;
   } catch (error) {
+    const err = error as Error;
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error updating meal plan template ${planId} for user ${userId}: ${error.message}`,
+      `Error updating meal plan template ${planId} for user ${userId}: ${err.message}`,
       error
     );
     throw new Error('Failed to update meal plan template.', { cause: error });
@@ -135,12 +153,9 @@ async function updateMealPlanTemplate(planId: any, userId: any, planData: any) {
 }
 
 async function deleteMealPlanTemplate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  planId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  currentClientDate: any
+  planId: string,
+  userId: string,
+  currentClientDate?: string
 ) {
   try {
     const today = await resolveTemplateStartDay(userId, currentClientDate);
@@ -154,22 +169,67 @@ async function deleteMealPlanTemplate(
       userId
     );
   } catch (error) {
+    const err = error as Error;
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error deleting meal plan template ${planId} for user ${userId}: ${error.message}`,
+      `Error deleting meal plan template ${planId} for user ${userId}: ${err.message}`,
       error
     );
     throw new Error('Failed to delete meal plan template.', { cause: error });
   }
 }
+
+async function duplicateMealPlanTemplate(
+  planId: string,
+  userId: string,
+  currentClientDate?: string
+) {
+  try {
+    log(
+      'info',
+      `duplicateMealPlanTemplate service - duplicating template ${planId} for user ${userId}`
+    );
+    const templates = await getMealPlanTemplates(userId);
+    const sourceTemplate = templates.find(
+      (t: MealPlanTemplateData) => t.id === planId
+    );
+    if (!sourceTemplate) {
+      throw new Error(`Meal plan template ${planId} not found.`);
+    }
+
+    const clonedPlanData: MealPlanTemplateData = {
+      plan_name: `${sourceTemplate.plan_name} (Copy)`,
+      description: sourceTemplate.description || '',
+      start_date: new Date(),
+      end_date: sourceTemplate.end_date || null,
+      is_active: false,
+      assignments: sourceTemplate.assignments || [],
+      currentClientDate,
+    };
+
+    return await createMealPlanTemplate(userId, clonedPlanData);
+  } catch (error) {
+    const err = error as Error;
+    log(
+      'error',
+      `Error duplicating meal plan template ${planId} for user ${userId}: ${err.message}`,
+      error
+    );
+    throw new Error('Failed to duplicate meal plan template.', {
+      cause: error,
+    });
+  }
+}
+
 export { createMealPlanTemplate };
 export { getMealPlanTemplates };
 export { updateMealPlanTemplate };
 export { deleteMealPlanTemplate };
+export { duplicateMealPlanTemplate };
 export default {
   createMealPlanTemplate,
   getMealPlanTemplates,
   updateMealPlanTemplate,
   deleteMealPlanTemplate,
+  duplicateMealPlanTemplate,
 };

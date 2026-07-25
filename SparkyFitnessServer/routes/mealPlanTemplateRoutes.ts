@@ -137,7 +137,10 @@ router.put('/:id', authenticate, async (req, res, next) => {
  */
 router.delete('/:id', authenticate, async (req, res, next) => {
   try {
-    const { currentClientDate } = req.query;
+    const currentClientDate =
+      typeof req.query.currentClientDate === 'string'
+        ? req.query.currentClientDate
+        : undefined;
     await mealPlanTemplateService.deleteMealPlanTemplate(
       req.params.id,
 
@@ -149,4 +152,42 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+
+/**
+ * @swagger
+ * /meal-plan-templates/{id}/duplicate:
+ *   post:
+ *     summary: Duplicate a meal plan template
+ *     tags: [Nutrition & Meals]
+ *     description: Clones an existing meal plan template and its assignments.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the meal plan template to duplicate.
+ *     responses:
+ *       201:
+ *         description: The meal plan template was duplicated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MealPlanTemplate'
+ */
+router.post('/:id/duplicate', authenticate, async (req, res, next) => {
+  try {
+    const { currentClientDate } = req.body || {};
+    const newPlan = await mealPlanTemplateService.duplicateMealPlanTemplate(
+      req.params.id,
+      req.userId,
+      currentClientDate
+    );
+    res.status(201).json(newPlan);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
