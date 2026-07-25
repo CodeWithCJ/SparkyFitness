@@ -13,6 +13,7 @@ import {
   getEventTypeLabel,
   readActivityStats,
   formatDuration,
+  formatPace,
 } from '@/utils/activityReportUtil';
 import { info } from '@/utils/logging';
 import {
@@ -181,12 +182,9 @@ const ActivityReportVisualizer = ({
       : null;
 
   const durationFormatted =
-    durationSeconds != null ? formatDuration(durationSeconds) : null;
+    durationSeconds != null ? formatDuration(durationSeconds, true) : null;
 
-  const paceFormatted =
-    averagePaceForDisplay != null && averagePaceForDisplay > 0
-      ? `${averagePaceForDisplay.toFixed(2)} /${distanceUnit === 'km' ? 'km' : 'mi'}`
-      : null;
+  const paceFormatted = formatPace(averagePaceForDisplay, distanceUnit);
 
   const ascentFormatted =
     stats.ascent != null && stats.ascent > 0

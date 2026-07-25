@@ -23,6 +23,8 @@ import {
   getActivityIcon,
   getEventTypeLabel,
   readActivityStats,
+  formatDuration,
+  formatPace,
 } from '@/utils/activityReportUtil';
 import { ActivityDetailsResponse } from '@/types/exercises';
 import { ChartDataPoint } from '@/types/reports';
@@ -565,5 +567,44 @@ describe('readActivityStats – waterEstimated', () => {
 
     const stats = readActivityStats(activityData);
     expect(stats.waterEstimated).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 10. formatDuration & formatPace – issue #1907 unit and pace formatting
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('formatDuration', () => {
+  it('formats duration under 1 hour without unit by default', () => {
+    expect(formatDuration(2247)).toBe('37:27');
+  });
+
+  it('formats duration under 1 hour with m:s unit', () => {
+    expect(formatDuration(2247, true)).toBe('37:27 m:s');
+  });
+
+  it('formats duration over 1 hour with h:m:s unit when requested', () => {
+    expect(formatDuration(3685, true)).toBe('1:01:25 h:m:s');
+  });
+});
+
+describe('formatPace', () => {
+  it('returns null for null, undefined, 0 or negative pace', () => {
+    expect(formatPace(null)).toBeNull();
+    expect(formatPace(undefined)).toBeNull();
+    expect(formatPace(0)).toBeNull();
+    expect(formatPace(-5)).toBeNull();
+  });
+
+  it('formats decimal min/km into M:SS min/km (issue #1907 example: 6.88 -> 6:53 min/km)', () => {
+    expect(formatPace(6.88, 'km')).toBe('6:53 min/km');
+  });
+
+  it('formats decimal min/mi into M:SS min/mi when miles is specified', () => {
+    expect(formatPace(5.5, 'miles')).toBe('5:30 min/mi');
+  });
+
+  it('handles rounding when seconds round to 60', () => {
+    expect(formatPace(5.999, 'km')).toBe('6:00 min/km');
   });
 });
