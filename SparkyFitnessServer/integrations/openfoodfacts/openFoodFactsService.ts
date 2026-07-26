@@ -387,17 +387,13 @@ function extractOffProviderNutrients(
   const processedBases = new Set<string>();
 
   for (const key of Object.keys(nutriments)) {
-    let base = '';
-    let isServing = false;
+    const is100g = key.endsWith('_100g');
+    const isServing = key.endsWith('_serving');
+    if (!is100g && !isServing) continue;
 
-    if (key.endsWith('_100g')) {
-      base = key.slice(0, -'_100g'.length);
-    } else if (key.endsWith('_serving')) {
-      base = key.slice(0, -'_serving'.length);
-      isServing = true;
-    } else {
-      continue;
-    }
+    const base = is100g
+      ? key.slice(0, -'_100g'.length)
+      : key.slice(0, -'_serving'.length);
 
     if (processedBases.has(base) || OFF_NON_NUTRIENT_KEYS.has(base)) continue;
 
