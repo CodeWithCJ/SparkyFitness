@@ -14,8 +14,13 @@ interface BabyGrowthViewProps {
 const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
   const info = babyWeek(week);
   const tokens = useWellnessTokens();
-  const { settings, isLoading: isSettingsLoading } = useCycleSettings();
-  const discreetMode = isSettingsLoading || (settings?.discreet_mode ?? false);
+  const {
+    settings,
+    isLoading: isSettingsLoading,
+    isError: isSettingsError,
+  } = useCycleSettings();
+  const discreetMode =
+    isSettingsLoading || isSettingsError || settings?.discreet_mode === true;
 
   if (discreetMode) {
     return (
