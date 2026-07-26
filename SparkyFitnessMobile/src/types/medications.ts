@@ -70,14 +70,6 @@ export interface CreateMedicationEntryInput {
   notes?: string | null;
 }
 
-export interface UpdateMedicationEntryInput {
-  status?: MedicationEntryStatus;
-  taken_at?: string | null;
-  dose_amount?: number | null;
-  unit?: string | null;
-  notes?: string | null;
-}
-
 export interface CreateMedicationInput {
   name: string;
   type_id: string;
@@ -112,20 +104,6 @@ export interface UpdateMedicationInput {
   is_active?: boolean;
 }
 
-export interface CreateScheduleInput {
-  schedule_type_id: string;
-  time_of_day?: string | null;
-  days_of_week?: number[] | null;
-  interval_days?: number | null;
-  day_of_month?: number | null;
-  cycle_on_days?: number | null;
-  cycle_off_days?: number | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  dose_amount?: number | null;
-  with_meal?: string | null;
-}
-
 export const MEDICATION_TYPES = [
   { id: 'pill', label: 'Pill' },
   { id: 'tablet', label: 'Tablet' },
@@ -141,26 +119,6 @@ export const MEDICATION_TYPES = [
   { id: 'other', label: 'Other' },
 ] as const;
 
-export const SCHEDULE_TYPES = [
-  { id: 'daily', label: 'Daily' },
-  { id: 'specific_days', label: 'Specific Days' },
-  { id: 'every_n_days', label: 'Every N Days' },
-  { id: 'weekly', label: 'Weekly' },
-  { id: 'monthly', label: 'Monthly' },
-  { id: 'cyclic', label: 'Cyclic' },
-  { id: 'prn', label: 'As Needed (PRN)' },
-  { id: 'taper', label: 'Taper' },
-] as const;
 
-// not used yet..
-export const ROUTE_TYPES = [
-  { id: 'oral', label: 'Oral' },
-  { id: 'subcutaneous', label: 'Subcutaneous' },
-  { id: 'intramuscular', label: 'Intramuscular' },
-  { id: 'topical', label: 'Topical' },
-  { id: 'inhaled', label: 'Inhaled' },
-  { id: 'nasal', label: 'Nasal' },
-  { id: 'other', label: 'Other' },
-] as const;
 
 export const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;

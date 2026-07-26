@@ -157,9 +157,6 @@ export {
   useUpdateMedication,
   useDeleteMedication,
   useCreateMedicationEntry,
-  useUpdateMedicationEntry,
   useDeleteMedicationEntry,
-  useAddMedicationSchedule,
-  useDeleteMedicationSchedule,
 } from './useMedications';
 

@@ -6,8 +6,6 @@ import type {
   CreateMedicationInput,
   UpdateMedicationInput,
   CreateMedicationEntryInput,
-  UpdateMedicationEntryInput,
-  CreateScheduleInput,
 } from '../../types/medications';
 
 const SERVICE_NAME = 'Medications API';
@@ -59,26 +57,6 @@ export const deleteMedication = (id: string): Promise<void> =>
     method: 'DELETE',
   });
 
-export const addSchedule = (
-  medicationId: string,
-  body: CreateScheduleInput,
-): Promise<MedicationDetail['schedules'][number]> =>
-  apiFetch<MedicationDetail['schedules'][number]>({
-    endpoint: `/api/v2/medications/${medicationId}/schedules`,
-    serviceName: SERVICE_NAME,
-    operation: 'add schedule',
-    method: 'POST',
-    body,
-  });
-
-export const deleteSchedule = (id: string): Promise<void> =>
-  apiFetch<void>({
-    endpoint: `/api/v2/medications/schedules/${id}`,
-    serviceName: SERVICE_NAME,
-    operation: 'delete schedule',
-    method: 'DELETE',
-  });
-
 export const listEntries = async (opts?: {
   fromDate?: string;
   toDate?: string;
@@ -103,18 +81,6 @@ export const createEntry = (body: CreateMedicationEntryInput): Promise<Medicatio
     serviceName: SERVICE_NAME,
     operation: 'create entry',
     method: 'POST',
-    body,
-  });
-
-export const updateEntry = (
-  id: string,
-  body: UpdateMedicationEntryInput,
-): Promise<MedicationEntry> =>
-  apiFetch<MedicationEntry>({
-    endpoint: `/api/v2/medications/entries/${id}`,
-    serviceName: SERVICE_NAME,
-    operation: 'update entry',
-    method: 'PUT',
     body,
   });
 

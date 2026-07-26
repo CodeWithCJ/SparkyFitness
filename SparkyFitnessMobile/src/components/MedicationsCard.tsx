@@ -56,6 +56,14 @@ const SwipeableMedRow: React.FC<{
   const skipped = entry?.status === 'skipped';
   const completed = taken || skipped;
 
+  const [successBg, iconSuccess, iconDecorative, iconWarning, bgWarning] = useCSSVariable([
+    '--color-bg-success',
+    '--color-icon-success',
+    '--color-icon-decorative',
+    '--color-icon-warning',
+    '--color-bg-warning',
+  ]) as [string, string, string, string, string];
+
   const handleTake = () => {
     swipeableRef.current?.close();
     onTake(due);
@@ -84,7 +92,7 @@ const SwipeableMedRow: React.FC<{
     <View style={{ flexDirection: 'row' }}>
       <TouchableOpacity
         className="justify-center items-center"
-        style={{ width: ACTION_WIDTH, backgroundColor: '#22C55E' }}
+        style={{ width: ACTION_WIDTH, backgroundColor: successBg }}
         onPress={handleTake}
         activeOpacity={0.7}
       >
@@ -93,7 +101,7 @@ const SwipeableMedRow: React.FC<{
       </TouchableOpacity>
       <TouchableOpacity
         className="justify-center items-center"
-        style={{ width: ACTION_WIDTH, backgroundColor: '#F59E0B' }}
+        style={{ width: ACTION_WIDTH, backgroundColor: bgWarning }}
         onPress={handleSkip}
         activeOpacity={0.7}
       >
@@ -130,13 +138,13 @@ const SwipeableMedRow: React.FC<{
             className="w-6 h-6 rounded-full items-center justify-center mr-3"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={{
-              backgroundColor: taken ? '#22C55E' : skipped ? '#F59E0B' : 'transparent',
-              borderWidth: completed ? 0 : 1.5,
-              borderColor: '#6B7280',
+              backgroundColor: 'transparent',
+              borderWidth: 1.5,
+              borderColor: taken ? iconSuccess : skipped ? iconWarning : '#6B7280',
             }}
           >
-            {taken && <Icon name="checkmark" size={14} color="#FFFFFF" />}
-            {skipped && <Icon name="close" size={14} color="#FFFFFF" />}
+            {taken && <Icon name="checkmark" size={14} color={iconSuccess} />}
+            {skipped && <Icon name="close" size={14} color={iconWarning} />}
           </Pressable>
           <View className="flex-1">
             <Text className={`text-base ${completed ? 'text-text-muted' : 'text-text-primary'}`} numberOfLines={1}>
@@ -154,7 +162,7 @@ const SwipeableMedRow: React.FC<{
               ) : null}
             </View>
           </View>
-          <Icon name="chevron-forward" size={16} color="#9CA3AF" />
+          <Icon name="chevron-forward" size={16} color={iconDecorative} />
         </Pressable>
       </ReanimatedSwipeable>
     </Animated.View>
@@ -170,7 +178,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const createEntryMutation = useCreateMedicationEntry();
   const deleteEntryMutation = useDeleteMedicationEntry();
 
-  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
+  const [accentPrimary, iconSuccess, iconDecorative] = useCSSVariable(['--color-accent-primary', '--color-icon-success', '--color-icon-decorative']) as [string, string, string];
 
   const dueDoses = useMemo(() => {
     if (!medications) return [];
@@ -189,14 +197,6 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const entryForDue = useCallback(
     (due: DueDose) => entries?.find((e) => entryMatchesDue(e, due)),
     [entries],
-  );
-
-  const completedCount = useMemo(
-    () => dueDoses.filter((d) => {
-      const e = entryForDue(d);
-      return e && (e.status === 'taken' || e.status === 'skipped');
-    }).length,
-    [dueDoses, entryForDue],
   );
 
   const handleTake = useCallback(
@@ -308,29 +308,18 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
       <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-md font-bold text-text-secondary">Medications</Text>
-        <View className="flex-row items-center">
-          {dueDoses.length > 0 && (
-            <Text className="text-sm text-text-muted mr-3">
-              {completedCount}/{dueDoses.length}
-            </Text>
-          )}
-          <TouchableOpacity
-            onPress={() => navigation.navigate('MedicationsList')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityRole="button"
-            accessibilityLabel="Manage medications"
-            className="flex-row items-center"
-          >
-            <Text className="text-sm text-accent-primary font-medium">Manage</Text>
-            <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('MedicationsList')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go to medications list"
+        >
+          <Text className="text-md font-bold text-text-secondary">Medications</Text>
+        </TouchableOpacity>
       </View>
 
       {dueDoses.length > 0 && (
-        <View className="mb-3">
-          <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">Scheduled</Text>
+        <View>
           {dueDoses.map((due, index) => (
             <SwipeableMedRow
               key={`${due.medication.id}-${due.schedule.id}-${index}`}
@@ -347,7 +336,6 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
 
       {prnMeds.length > 0 && (
         <View>
-          <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">As Needed</Text>
           {prnMeds.map((med) => {
             const prnCount = entries?.filter(
               (e) => e.medication_id === med.id && e.status === 'prn_taken' && e.entry_date === selectedDate,
@@ -358,8 +346,10 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
                 className="py-2.5 px-1 flex-row items-center"
                 onPress={() => navigation.navigate('MedicationDetail', { medicationId: med.id })}
               >
-                <View className="w-6 h-6 rounded-full items-center justify-center mr-3" style={{ backgroundColor: 'transparent', borderWidth: 1.5, borderColor: prnCount > 0 ? '#22C55E' : '#6B7280' }}>
-                  {prnCount > 0 && <Text className="text-xs font-bold" style={{ color: '#22C55E' }}>{prnCount}</Text>}
+                <View className="w-6 h-6 rounded-full items-center justify-center mr-3" style={{ backgroundColor: 'transparent', borderWidth: 1.5, borderColor: prnCount > 0 ? iconSuccess : '#6B7280' }}>
+                  {prnCount > 0 ? (
+                    <Text className="text-xs font-bold" style={{ color: iconSuccess }}>{prnCount}</Text>
+                  ) : null}
                 </View>
                 <View className="flex-1">
                   <Text className={`text-base ${prnCount > 0 ? 'text-text-muted' : 'text-text-primary'}`} numberOfLines={1}>
@@ -383,7 +373,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
                 >
                   <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Log</Text>
                 </TouchableOpacity>
-                <Icon name="chevron-forward" size={16} color="#9CA3AF" style={{ marginLeft: 6 }} />
+                <Icon name="chevron-forward" size={16} color={iconDecorative} style={{ marginLeft: 6 }} />
               </Pressable>
             );
           })}

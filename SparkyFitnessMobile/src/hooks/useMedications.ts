@@ -8,10 +8,7 @@ import {
   updateMedication,
   deleteMedication,
   createEntry,
-  updateEntry,
   deleteEntry,
-  addSchedule,
-  deleteSchedule,
 } from '../services/api/medicationsApi';
 import {
   medicationsRootQueryKey,
@@ -24,8 +21,6 @@ import type {
   CreateMedicationInput,
   UpdateMedicationInput,
   CreateMedicationEntryInput,
-  UpdateMedicationEntryInput,
-  CreateScheduleInput,
 } from '../types/medications';
 
 interface QueryOptions {
@@ -109,18 +104,6 @@ export function useCreateMedicationEntry() {
   });
 }
 
-export function useUpdateMedicationEntry() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: UpdateMedicationEntryInput }) =>
-      updateEntry(id, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: medicationEntriesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
-    },
-  });
-}
-
 export function useDeleteMedicationEntry() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -132,23 +115,4 @@ export function useDeleteMedicationEntry() {
   });
 }
 
-export function useAddMedicationSchedule(medicationId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: CreateScheduleInput) => addSchedule(medicationId, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
-      queryClient.invalidateQueries({ queryKey: medicationDetailQueryKey(medicationId) });
-    },
-  });
-}
 
-export function useDeleteMedicationSchedule() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => deleteSchedule(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
-    },
-  });
-}

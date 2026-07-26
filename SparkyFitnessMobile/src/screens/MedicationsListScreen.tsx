@@ -17,7 +17,7 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const [accentColor, iconDecorative] = useCSSVariable(['--color-accent-primary', '--color-icon-decorative']) as [string, string];
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: medications, isLoading, isError, refetch } = useMedications();
@@ -55,7 +55,19 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
     setRefreshing(false);
   }, [refetch]);
 
-  const header = useScreenHeader({ title: 'Medications', left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: 'Medications',
+    left: { kind: 'back' },
+    right: {
+      kind: 'icon',
+      sfSymbol: 'plus',
+      ionicon: 'add-outline',
+      role: 'primary',
+      onPress: () => navigation.navigate('MedicationForm', {}),
+      accessibilityLabel: 'Add medication',
+      identifier: 'medications-list-add',
+    },
+  });
 
   const renderMedItem = ({ item }: { item: Medication }) => {
     const typeLabel = MEDICATION_TYPES.find((t) => t.id === item.type_id)?.label ?? item.type_id;
@@ -82,7 +94,7 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
             ) : null}
           </View>
         </View>
-        <Icon name="chevron-forward" size={16} color="#9CA3AF" />
+        <Icon name="chevron-forward" size={16} color={iconDecorative} />
       </TouchableOpacity>
     );
   };
@@ -107,7 +119,7 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
         </View>
       ) : sections.length === 0 ? (
         <View className="flex-1 items-center justify-center p-8">
-          <Icon name="wellness" size={48} color="#9CA3AF" />
+          <Icon name="wellness" size={48} color={iconDecorative} />
           <Text className="text-text-muted text-lg mt-4 text-center">No medications yet</Text>
           <Text className="text-text-muted text-sm mt-2 text-center">
             Add your first medication to start tracking.
@@ -142,16 +154,6 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
           contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />}
         />
-      )}
-      {sections.length > 0 && (
-        <TouchableOpacity
-          className="absolute bottom-6 right-6 w-14 h-14 bg-accent-primary rounded-full items-center justify-center shadow-lg"
-          style={{ bottom: insets.bottom + 80 + activeWorkoutBarPadding }}
-          onPress={() => navigation.navigate('MedicationForm', {})}
-          activeOpacity={0.8}
-        >
-          <Icon name="add" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
       )}
     </View>
   );
