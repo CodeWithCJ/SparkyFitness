@@ -114,16 +114,21 @@ const CycleInsightsView: React.FC = () => {
             {predictions.cycles.slice(0, 2).map((c, index) => (
               <View
                 key={index}
-                className="flex-row items-center justify-between py-2 border-b border-border-subtle last:border-b-0"
+                className="py-2 border-b border-border-subtle last:border-b-0 gap-1"
               >
-                <View>
+                <View className="flex-row items-center justify-between">
                   <Text className="text-text-primary font-semibold text-sm">
-                    Cycle starting {c.periodStart}
+                    Next Period: {formatDate(c.periodStart)}
                   </Text>
-                  <Text className="text-text-secondary text-xs mt-0.5">
-                    Period: {c.periodStart} - {c.periodEnd}
-                  </Text>
+                  {c.ovulation && (
+                    <Text className="text-accent-primary text-xs font-semibold">
+                      Est. Ovulation: {formatDate(c.ovulation)}
+                    </Text>
+                  )}
                 </View>
+                <Text className="text-text-secondary text-xs">
+                  Expected Period: {c.periodStart} to {c.periodEnd}
+                </Text>
               </View>
             ))}
           </View>
