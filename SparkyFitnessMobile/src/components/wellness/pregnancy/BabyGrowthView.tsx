@@ -4,6 +4,8 @@ import { babyWeek } from '@workspace/shared';
 import { useWellnessTokens } from '../theme/wellnessTokens';
 import WombScene from './WombScene';
 
+import { useCycleSettings } from '../../../hooks/useCycleSettings';
+
 interface BabyGrowthViewProps {
   week: number;
 }
@@ -12,6 +14,19 @@ interface BabyGrowthViewProps {
 const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
   const info = babyWeek(week);
   const tokens = useWellnessTokens();
+  const { settings } = useCycleSettings();
+  const discreetMode = settings?.discreet_mode ?? false;
+
+  if (discreetMode) {
+    return (
+      <View className="bg-surface rounded-2xl p-5 border border-border-subtle shadow-sm gap-2">
+        <Text className="text-text-primary text-sm font-semibold">Weekly Milestone</Text>
+        <Text className="text-text-secondary text-xs leading-5">
+          Week {week} active tracking.
+        </Text>
+      </View>
+    );
+  }
 
   // Shared BABY_DEVELOPMENT content starts at week 4, so the earliest weeks
   // have no entry. Show an intentional placeholder instead of vanishing.
