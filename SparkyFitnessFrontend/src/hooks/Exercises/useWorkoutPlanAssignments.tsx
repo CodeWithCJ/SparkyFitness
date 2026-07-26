@@ -265,7 +265,7 @@ export function useWorkoutPlanAssignments(
                 set_number: 1,
                 set_type: 'Working Set',
                 reps: 10,
-                weight: 0,
+                weight: null,
               },
             ],
           },
