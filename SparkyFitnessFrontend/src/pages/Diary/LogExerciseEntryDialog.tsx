@@ -120,7 +120,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     if (initialSets && initialSets.length > 0) {
       return initialSets.map((set) => ({
         ...set,
-        weight: Number(set.weight) || 0,
+        weight: set.weight != null ? Number(set.weight) : null,
         _dndId: uuidv4(),
       }));
     }
@@ -129,7 +129,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         set_number: 1,
         set_type: 'Working Set',
         reps: 10,
-        weight: 0,
+        weight: null,
         _dndId: uuidv4(),
       },
     ];
@@ -252,7 +252,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         exercise_id: exercise.id,
         sets: sets.map(({ _dndId, ...set }) => ({
           ...set,
-          weight: set.weight ?? 0,
+          weight: set.weight ?? null,
         })),
         notes,
         entry_date: selectedDate,

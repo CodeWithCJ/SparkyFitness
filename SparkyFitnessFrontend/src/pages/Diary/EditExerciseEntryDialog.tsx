@@ -75,7 +75,7 @@ const EditExerciseEntryDialog = ({
   const [sets, setSets] = useState<SortableSet[]>(() =>
     ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
       ...set,
-      weight: Number(set.weight) || 0,
+      weight: set.weight != null ? Number(set.weight) : null,
       _dndId: uuidv4(),
     }))
   );
@@ -158,7 +158,7 @@ const EditExerciseEntryDialog = ({
         set_number: 0,
         set_type: 'Working Set' as const,
         reps: 10,
-        weight: 0,
+        weight: null,
         _dndId: uuidv4(),
       };
       return [
@@ -242,7 +242,7 @@ const EditExerciseEntryDialog = ({
           entry_time: entryTime || null,
           sets: sets.map(({ _dndId, ...set }) => ({
             ...set,
-            weight: set.weight ?? 0,
+            weight: set.weight ?? null,
           })),
           imageFile,
           image_url: imageUrl,

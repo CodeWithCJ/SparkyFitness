@@ -47,7 +47,8 @@ export function useWorkoutPresetForm({
         sets: ex.sets.map((set) => ({
           ...set,
           id: set.id ? String(set.id) : generateClientId(),
-          weight: Number(set.weight) || 0, // Keep metric (kg)
+          // Keep metric (kg); null means no weight (e.g. a time-only set).
+          weight: set.weight != null ? Number(set.weight) : null,
         })),
       })) || []
     );
@@ -71,7 +72,7 @@ export function useWorkoutPresetForm({
             set_number: 1,
             set_type: 'Working Set',
             reps: 10,
-            weight: 0,
+            weight: null,
           },
         ],
         category: exercise.category ?? '',
@@ -280,7 +281,7 @@ export function useWorkoutPresetForm({
         sort_order: index,
         sets: ex.sets.map((set) => ({
           ...set,
-          weight: set.weight ?? 0, // already metric (kg) from UnitInput
+          weight: set.weight ?? null, // already metric (kg) from UnitInput
         })),
       })),
     });
