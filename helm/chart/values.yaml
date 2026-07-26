@@ -42,6 +42,8 @@ config:
 
   # -- Disable new user registrations
   disableSignup: false
+  # -- Stop the server from contacting github.com for announcements and the update check
+  disableUpstreamNotices: false
   # -- Email of the auto-admin user (leave empty to skip)
   adminEmail: ""
 

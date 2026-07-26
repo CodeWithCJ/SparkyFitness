@@ -14,6 +14,7 @@ data:
   SPARKY_FITNESS_DB_NAME: {{ include "sparkyfitness.databaseName" . | quote }}
   SPARKY_FITNESS_FRONTEND_URL: {{ include "sparkyfitness.frontendUrl" . | quote }}
   SPARKY_FITNESS_DISABLE_SIGNUP: {{ .Values.config.disableSignup | quote }}
+  SPARKY_FITNESS_DISABLE_UPSTREAM_NOTICES: {{ .Values.config.disableUpstreamNotices | quote }}
   {{- with .Values.config.adminEmail }}
   SPARKY_FITNESS_ADMIN_EMAIL: {{ . | quote }}
   {{- end }}

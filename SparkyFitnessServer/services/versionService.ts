@@ -94,10 +94,27 @@ function getAppVersion(): string {
   }
 }
 
+// Assume no update is available so the app functions normally without GitHub.
+function localVersionFallback(currentVersion: string): GitHubReleaseResponse {
+  return {
+    version: `v${currentVersion}`,
+    releaseNotes: '',
+    publishedAt: new Date().toISOString(),
+    htmlUrl: '',
+    isNewVersionAvailable: false,
+  };
+}
+
 async function getLatestGitHubRelease(
   bypassCache = false
 ): Promise<GitHubReleaseResponse> {
   const currentVersion = getAppVersion();
+
+  // Opt-out for deployments that must not reach out to github.com.
+  if (process.env.SPARKY_FITNESS_DISABLE_UPSTREAM_NOTICES === 'true') {
+    return localVersionFallback(currentVersion);
+  }
+
   const now = Date.now();
 
   const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
@@ -181,14 +198,7 @@ async function getLatestGitHubRelease(
       error
     );
 
-    // Graceful fallback: assume no update is available so the app functions normally
-    return {
-      version: `v${currentVersion}`,
-      releaseNotes: '',
-      publishedAt: new Date().toISOString(),
-      htmlUrl: '',
-      isNewVersionAvailable: false,
-    };
+    return localVersionFallback(currentVersion);
   }
 }
 

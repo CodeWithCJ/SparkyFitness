@@ -151,6 +151,12 @@ function getLocalFallbackAnnouncement(): AnnouncementResponse {
 async function getLatestAnnouncement(
   bypassCache = false
 ): Promise<AnnouncementResponse> {
+  // Opt-out for deployments that must not reach out to github.com. The local
+  // announcement.md fallback still applies, so an operator can ship their own.
+  if (process.env.SPARKY_FITNESS_DISABLE_UPSTREAM_NOTICES === 'true') {
+    return getLocalFallbackAnnouncement();
+  }
+
   const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 
   if (!bypassCache && !isDev) {
