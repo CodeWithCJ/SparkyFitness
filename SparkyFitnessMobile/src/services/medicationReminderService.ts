@@ -13,8 +13,12 @@ const REPEAT_MINUTES = [10, 20, 30];
 const LOOKAHEAD_DAYS = 7;
 const schedulingLock = new Set<string>();
 
-function medReminderKey(medicationId: string, scheduleId: string, date: string) {
-  return `med_${date}_${medicationId}_${scheduleId}`;
+function medReminderKey(medicationId: string, scheduleId: string, date: string, timeOfDay: string) {
+  return `med_${date}_${medicationId}_${scheduleId}_${timeOfDay}`;
+}
+
+function repeatMedReminderKey(baseKey: string, offset: number) {
+  return `${baseKey}_${offset}`;
 }
 
 async function cancelReminders(ids: string[]): Promise<void> {
@@ -113,7 +117,16 @@ export async function reconcileMedicationReminders(
         );
 
         if (!isLogged) {
-          unloggedKeys.add(medReminderKey(due.medication.id, due.schedule.id, date));
+          const timeOfDay = due.schedule.time_of_day;
+          if (timeOfDay) {
+            const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);
+            unloggedKeys.add(baseKey);
+            if (prefs.medicationReminderRepeats) {
+              for (const offset of REPEAT_MINUTES) {
+                unloggedKeys.add(repeatMedReminderKey(baseKey, offset));
+              }
+            }
+          }
         }
       }
     }
@@ -135,11 +148,11 @@ export async function reconcileMedicationReminders(
     );
 
     for (const { date, due } of allDueByDay) {
-      const key = medReminderKey(due.medication.id, due.schedule.id, date);
-      if (!unloggedKeys.has(key) || pendingKeys.has(key)) continue;
-
       const timeOfDay = due.schedule.time_of_day;
       if (!timeOfDay) continue;
+
+      const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);
+      if (!unloggedKeys.has(baseKey)) continue;
 
       const [hours, minutes] = timeOfDay.split(':').map(Number);
       const body = `Time to take ${due.medication.name}${due.medication.dose_amount != null ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})` : ''}`;
@@ -147,22 +160,25 @@ export async function reconcileMedicationReminders(
         medicationId: due.medication.id,
         scheduleId: due.schedule.id,
         entryDate: date,
-        key,
+        key: baseKey,
+        baseKey,
       };
 
       // Build trigger date for this specific day
       const [year, month, day] = date.split('-').map(Number);
       const triggerDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-      if (triggerDate.getTime() > Date.now()) {
+      if (triggerDate.getTime() > Date.now() && !pendingKeys.has(baseKey)) {
         await scheduleReminder(body, triggerDate, data);
       }
 
       // Repeat reminders (+10, +20, +30 min)
       if (prefs.medicationReminderRepeats) {
         for (const offset of REPEAT_MINUTES) {
+          const repeatKey = repeatMedReminderKey(baseKey, offset);
+          if (!unloggedKeys.has(repeatKey) || pendingKeys.has(repeatKey)) continue;
           const repeatDate = new Date(triggerDate.getTime() + offset * 60000);
           if (repeatDate.getTime() > Date.now()) {
-            await scheduleReminder(body, repeatDate, data);
+            await scheduleReminder(body, repeatDate, { ...data, key: repeatKey });
           }
         }
       }

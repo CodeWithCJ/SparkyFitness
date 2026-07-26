@@ -33,7 +33,7 @@ export function initMedicationNotificationActions(): void {
       return;
     }
 
-    void handleNotificationAction(status, medicationId, scheduleId ?? null, entryDate, response.notification.request.identifier, data?.key ?? null);
+    void handleNotificationAction(status, medicationId, scheduleId ?? null, entryDate, response.notification.request.identifier, data?.baseKey ?? data?.key ?? null);
   });
 }
 
@@ -69,8 +69,8 @@ async function handleNotificationAction(
 
     if (key) {
       const allPending = await Notifications.getAllScheduledNotificationsAsync();
-      const repeats = allPending.filter((n) => n.content.data?.key === key);
-      await Promise.all(repeats.map((n) =>
+      const toCancel = allPending.filter((n) => n.content.data?.baseKey === key);
+      await Promise.all(toCancel.map((n) =>
         Notifications.cancelScheduledNotificationAsync(n.identifier).catch(() => {}),
       ));
     }
