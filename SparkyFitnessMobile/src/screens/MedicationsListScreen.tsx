@@ -1,12 +1,14 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useMedications, useDeleteMedication } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
+import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Medication } from '../types/medications';
 import { MEDICATION_TYPES } from '../types/medications';
@@ -41,7 +43,16 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
           {
             text: 'Delete',
             style: 'destructive',
-            onPress: () => deleteMedicationMutation.mutate(med.id),
+            onPress: () =>
+              deleteMedicationMutation.mutate(med.id, {
+                onSuccess: () => {
+                  Toast.show({ type: 'success', text1: `'${med.name}' deleted` });
+                },
+                onError: (error) => {
+                  addLog(`Failed to delete medication: ${error.message}`, 'ERROR');
+                  Toast.show({ type: 'error', text1: 'Failed to delete medication' });
+                },
+              }),
           },
         ],
       );
