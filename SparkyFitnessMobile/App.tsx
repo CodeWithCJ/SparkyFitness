@@ -126,6 +126,7 @@ import ActiveWorkoutBar, {
   notifyActiveWorkoutBarSwipeProgress,
 } from './src/components/ActiveWorkoutBar';
 import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWorkoutTransitionProbe';
+import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 
@@ -1289,6 +1290,7 @@ function AppContent() {
           }}
         />
         <ActiveWorkoutBar />
+        <MedicationReminderReconciler />
         <SafeAreaToast />
       </SafeAreaProvider>
     </NavigationContainer>
