@@ -3,7 +3,6 @@ import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
-
 import { useCycleMode } from '../hooks/useCycleMode';
 import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useCycleHistory } from '../hooks/useCycleHistory';
@@ -13,17 +12,14 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
 import SegmentedControl from '../components/SegmentedControl';
-import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import CycleTodayView from '../components/wellness/CycleTodayView';
 import CycleCalendarGrid from '../components/wellness/CycleCalendarGrid';
 import CycleHistoryList from '../components/wellness/CycleHistoryList';
 import CycleInsightsView from '../components/wellness/CycleInsightsView';
 import CycleRing from '../components/wellness/CycleRing';
 import CycleAlerts from '../components/wellness/CycleAlerts';
 import FertilityCard from '../components/wellness/ttc/FertilityCard';
-import TestQuickLog from '../components/wellness/ttc/TestQuickLog';
-import PregnancyTodayView from '../components/wellness/pregnancy/PregnancyTodayView';
+import PregnancyOverviewView from '../components/wellness/pregnancy/PregnancyOverviewView';
 
 import {
   predictNextCycles,
@@ -37,7 +33,7 @@ import { getPhaseDisplayName } from '../utils/cycleDisplayUtils';
 
 type CycleHubScreenProps = RootStackScreenProps<'CycleHub'>;
 
-const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) => {
+const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
@@ -58,10 +54,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) =>
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const calendarRef = useRef<CalendarSheetRef>(null);
 
-  // Tabs State: 'today' | 'insights' | 'history'
-  const [activeTab, setActiveTab] = useState<'today' | 'insights' | 'history'>(
-    route.params?.initialTab === 'insights' ? 'insights' : 'today'
-  );
+  // Tabs State: 'insights' | 'history'
+  const [activeTab, setActiveTab] = useState<'insights' | 'history'>('insights');
 
   // Queries
   const { cycles, isLoading: isHistoryLoading } = useCycleHistory();
@@ -71,18 +65,6 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) =>
   });
 
   const isLoading = isModeLoading || isSettingsLoading || isHistoryLoading || isLogsLoading;
-
-  // Day Navigation Handlers
-  const handlePrevDay = () => {
-    setSelectedDate((d) => addDays(d, -1));
-  };
-
-  const handleNextDay = () => {
-    setSelectedDate((d) => addDays(d, 1));
-  };
-
-  const handleToday = () => setSelectedDate(getTodayDate());
-  const openCalendar = () => calendarRef.current?.present();
 
   // 2. Cycle Stats
   const cycleStats = useMemo(() => {
@@ -150,6 +132,13 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) =>
   const header = useScreenHeader({
     title: discreetMode ? 'Wellness' : mode === 'pregnant' ? 'Pregnancy Hub' : 'Cycle Hub',
     left: { kind: 'back' },
+    right: {
+      kind: 'icon',
+      ionicon: 'add-outline',
+      sfSymbol: 'plus',
+      accessibilityLabel: 'Log Entry',
+      onPress: () => navigation.navigate('CycleLogModal', { date: selectedDate }),
+    },
   });
 
   if (isLoading || !settings) {
@@ -167,11 +156,10 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) =>
     >
       {header}
 
-      {/* Segmented Control */}
+      {/* Header Bar with Segmented Control */}
       <View className="px-4 py-2 bg-background z-10 border-b border-border-subtle">
         <SegmentedControl
           segments={[
-            { key: 'today', label: 'Log' },
             { key: 'insights', label: 'Insights' },
             { key: 'history', label: 'History' },
           ]}
@@ -183,65 +171,43 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) =>
       <ScrollView
         contentContainerStyle={{
           padding: 16,
-          paddingTop: 4,
+          paddingTop: 12,
           paddingBottom: insets.bottom + 80,
         }}
       >
-        {activeTab === 'today' && mode === 'pregnant' && <PregnancyTodayView />}
-
-        {activeTab === 'today' && mode !== 'pregnant' && (
+        {activeTab === 'insights' && (
           <View className="gap-3">
-            {/* Compact Date Navigator Row */}
-            <View className="flex-row justify-end -mb-2.5">
-              <DateNavigator
-                title=""
-                selectedDate={selectedDate}
-                onPreviousDay={handlePrevDay}
-                onNextDay={handleNextDay}
-                onToday={handleToday}
-                onDatePress={openCalendar}
-                showDateAlways
-                skipTopInset
-                skipHorizontalPadding
-                compact
-              />
-            </View>
-            {/* Cycle Ring Visualisation */}
-            <View className="items-center py-4 bg-surface rounded-xl border border-border-subtle shadow-sm">
-              <CycleRing
-                cycleDay={dayStats.cycleDay}
-                cycleLength={cycleStats.avgCycleLength}
-                periodLength={cycleStats.avgPeriodLength}
-                fertileStartDay={ringMarkers.fertileStartDay}
-                fertileEndDay={ringMarkers.fertileEndDay}
-                ovulationDay={ringMarkers.ovulationDay}
-                centerLabel={activeSegmentLabel}
-                centerValue={dayStats.cycleDay !== null ? `Day ${dayStats.cycleDay}` : '—'}
-                centerSub={discreetMode ? undefined : `${cycleStats.avgCycleLength} day cycle`}
-              />
-            </View>
-
-            {/* Cycle Alerts */}
-            {alerts.length > 0 && (
-              <CycleAlerts alerts={alerts.map((a) => ({ key: a.key, severity: a.severity, message: a.message }))} />
-            )}
-
-            {/* TTC: fertility summary + test quick-log */}
-            {mode === 'ttc' && (
+            {/* Pregnancy View or Cycle Insights */}
+            {mode === 'pregnant' ? (
+              <PregnancyOverviewView />
+            ) : (
               <>
-                <FertilityCard date={selectedDate} />
-                <TestQuickLog date={selectedDate} />
+                {/* Cycle Ring Visualisation */}
+                <View className="items-center py-4 bg-surface rounded-xl border border-border-subtle shadow-sm">
+                  <CycleRing
+                    cycleDay={dayStats.cycleDay}
+                    cycleLength={cycleStats.avgCycleLength}
+                    periodLength={cycleStats.avgPeriodLength}
+                    fertileStartDay={ringMarkers.fertileStartDay}
+                    fertileEndDay={ringMarkers.fertileEndDay}
+                    ovulationDay={ringMarkers.ovulationDay}
+                    centerLabel={activeSegmentLabel}
+                    centerValue={dayStats.cycleDay !== null ? `Day ${dayStats.cycleDay}` : '—'}
+                    centerSub={discreetMode ? undefined : `${cycleStats.avgCycleLength} day cycle`}
+                  />
+                </View>
+
+                {/* Cycle Alerts */}
+                {alerts.length > 0 && (
+                  <CycleAlerts alerts={alerts.map((a) => ({ key: a.key, severity: a.severity, message: a.message }))} />
+                )}
+
+                {/* TTC: fertility summary */}
+                {mode === 'ttc' && <FertilityCard date={selectedDate} />}
+
+                <CycleInsightsView />
               </>
             )}
-
-            {/* Daily Log Entry Form */}
-            <CycleTodayView date={selectedDate} />
-          </View>
-        )}
-
-        {activeTab === 'insights' && (
-          <View className="gap-6">
-            <CycleInsightsView />
           </View>
         )}
 
@@ -251,7 +217,6 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) =>
               selectedDate={selectedDate}
               onSelectDate={(date) => {
                 setSelectedDate(date);
-                setActiveTab('today');
               }}
               cycles={cycles}
               logs={logs}
@@ -263,7 +228,11 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) =>
         )}
       </ScrollView>
 
-      <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      <CalendarSheet
+        ref={calendarRef}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
     </View>
   );
 };

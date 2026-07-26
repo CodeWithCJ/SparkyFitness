@@ -72,6 +72,7 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import CycleSettingsScreen from './src/screens/CycleSettingsScreen';
 import CycleOnboardingScreen from './src/screens/CycleOnboardingScreen';
 import CycleHubScreen from './src/screens/CycleHubScreen';
+import CycleLogModalScreen from './src/screens/CycleLogModalScreen';
 import PregnancySetupScreen from './src/screens/PregnancySetupScreen';
 import DailyNutritionDetailsScreen from './src/screens/DailyNutritionDetailsScreen';
 import NutrientTrendsScreen from './src/screens/NutrientTrendsScreen';
@@ -236,6 +237,7 @@ const SafeNutrientTrends = withErrorBoundary(NutrientTrendsScreen, 'NutrientTren
 const SafeCycleSettings = withErrorBoundary(CycleSettingsScreen, 'CycleSettings', { canGoBack: true });
 const SafeCycleOnboarding = withErrorBoundary(CycleOnboardingScreen, 'CycleOnboarding', { canGoBack: true });
 const SafeCycleHub = withErrorBoundary(CycleHubScreen, 'CycleHub', { canGoBack: true });
+const SafeCycleLogModal = withErrorBoundary(CycleLogModalScreen, 'CycleLogModal', { canGoBack: true });
 const SafePregnancySetup = withErrorBoundary(PregnancySetupScreen, 'PregnancySetup', { canGoBack: true });
 
 function AppContent() {
@@ -503,7 +505,7 @@ function AppContent() {
   }, [navigateFromSheet]);
 
   const handleOpenCycle = useCallback(() => {
-    navigateFromSheet('CycleHub');
+    navigateFromSheet('CycleLogModal');
   }, [navigateFromSheet]);
 
   const handleSyncHealthData = useCallback(async () => {
@@ -1204,6 +1206,15 @@ function AppContent() {
             name="CycleHub"
             component={SafeCycleHub}
             options={createStackScreenOptions('Wellness Hub', { headerBackTitle: 'Dashboard' })}
+          />
+          <Stack.Screen
+            name="CycleLogModal"
+            component={SafeCycleLogModal}
+            options={createStackScreenOptions('Log Daily Entry', {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="PregnancySetup"
