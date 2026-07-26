@@ -91,51 +91,39 @@ export async function reconcileMedicationReminders(
 
     const today = getTodayDate();
     const dueDoses = getDueDosesForDate(medications as any, today);
-    const allPending = await Notifications.getAllScheduledNotificationsAsync();
 
-    // Only consider notifications that are medication reminders (have medicationId in data)
-    const medReminders = allPending.filter((n) => n.content.data?.medicationId);
-    const todayPrefix = `med_${today}`;
-
-    // Cancel reminders for past dates
-    const staleReminders = medReminders.filter((n) => {
-      const key = n.content.data?.key as string | undefined;
-      return key && !key.startsWith(todayPrefix);
-    });
-    await cancelReminders(staleReminders.map((n) => n.identifier));
-
-    // Find which due doses don't have a logged entry
-    const unloggedDoses = dueDoses.filter((due) => {
-      return !entries.some(
-        (e) =>
-          e.medication_id === due.medication.id &&
-          e.schedule_id === due.schedule.id &&
-          (e.status === 'taken' || e.status === 'skipped'),
-      );
-    });
-
-    // Cancel reminders for doses that have been logged
-    const loggedKeys = new Set(
+    const unloggedKeys = new Set(
       dueDoses
-        .filter((due) => !unloggedDoses.includes(due))
+        .filter((due) =>
+          !entries.some(
+            (e) =>
+              e.medication_id === due.medication.id &&
+              e.schedule_id === due.schedule.id &&
+              (e.status === 'taken' || e.status === 'skipped'),
+          ),
+        )
         .map((due) => medReminderKey(due.medication.id, due.schedule.id, today)),
     );
-    const toCancel = medReminders.filter((n) => {
-      const key = n.content.data?.key as string | undefined;
-      return key && loggedKeys.has(key);
-    });
-    await cancelReminders(toCancel.map((n) => n.identifier));
 
-    // Schedule reminders for unlogged doses that don't already have one
-    const remainingKeys = new Set(
-      medReminders
-        .filter((n) => !toCancel.includes(n) && !staleReminders.includes(n))
+    const allPending = await Notifications.getAllScheduledNotificationsAsync();
+    const toCancel = allPending
+      .filter((n) => {
+        if (!n.content.data?.medicationId) return false;
+        const key = n.content.data.key as string | undefined;
+        return !key || !unloggedKeys.has(key);
+      })
+      .map((n) => n.identifier);
+    if (toCancel.length > 0) await cancelReminders(toCancel);
+
+    const pendingKeys = new Set(
+      allPending
+        .filter((n) => n.content.data?.medicationId && toCancel.indexOf(n.identifier) === -1)
         .map((n) => n.content.data?.key as string),
     );
 
-    for (const due of unloggedDoses) {
+    for (const due of dueDoses) {
       const key = medReminderKey(due.medication.id, due.schedule.id, today);
-      if (remainingKeys.has(key)) continue;
+      if (!unloggedKeys.has(key) || pendingKeys.has(key)) continue;
 
       const timeOfDay = due.schedule.time_of_day;
       if (!timeOfDay) continue;

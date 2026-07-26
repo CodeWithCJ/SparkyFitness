@@ -19,9 +19,8 @@ const MedicationReminderReconciler: React.FC = () => {
 
   useEffect(() => {
     if (isLoadingMeds || isLoadingEntries) return;
-    if (!medications || medications.length === 0) return;
 
-    reconcileMedicationReminders(medications, todayEntries ?? [])
+    reconcileMedicationReminders(medications ?? [], todayEntries ?? [])
       .catch((error) => {
         addLog(`Medication reminder reconciliation failed: ${(error as Error).message}`, 'ERROR');
       });
