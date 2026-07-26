@@ -29,4 +29,4 @@ EXPOSE 8000
 
 USER daemon
 # Run the FastAPI application using Uvicorn
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "main.py"]
