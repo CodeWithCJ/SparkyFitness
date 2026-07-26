@@ -133,10 +133,11 @@ async function processStravaActivities(
           ? parseFloat((activity.distance / 1000).toFixed(2))
           : null;
       // Strava: moving_time in seconds -> convert to minutes
-      const durationMinutes =
+      const durationSeconds =
         activity.moving_time !== null && activity.moving_time !== undefined
-          ? Math.round(activity.moving_time / 60)
+          ? Math.round(activity.moving_time)
           : 0;
+      const durationMinutes = Math.round(durationSeconds / 60);
       // Strava SummaryActivity often lacks calories, but DetailedActivity (if available) has it.
       // Default to 0 to satisfy the NOT NULL constraint in the database.
       const detailedActivity = detailedActivities[activity.id] as
@@ -167,7 +168,7 @@ async function processStravaActivities(
           {
             set_number: 1,
             set_type: 'Working Set',
-            duration: durationMinutes,
+            duration: durationSeconds,
             notes: 'Automatically created from Strava sync summary',
           },
         ],

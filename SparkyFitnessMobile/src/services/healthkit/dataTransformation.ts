@@ -508,7 +508,9 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       distance: parseFloat((totalDistanceMeters / 1000).toFixed(2)),
       notes: 'Source: HealthKit',
       raw_data: record,
-      sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }],
+      // duration_seconds instead of duration: servers without the seconds-based
+      // set model drop the unknown field rather than misreading it as minutes.
+      sets: [{ set_number: 1, set_type: 'Working Set', duration_seconds: Math.round(durationInSeconds) }],
       source_id: rec.uuid as string | undefined,
       ...timezone,
     };

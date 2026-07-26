@@ -183,7 +183,7 @@ export function useExerciseHistoryImport(
           reps: row.reps ? parseInt(row.reps) : undefined,
           weight: row.weight ? parseFloat(row.weight) : undefined,
           duration_min: row.duration_min
-            ? parseInt(row.duration_min)
+            ? parseFloat(row.duration_min)
             : undefined,
           rest_time_sec: row.rest_time_sec
             ? parseInt(row.rest_time_sec)

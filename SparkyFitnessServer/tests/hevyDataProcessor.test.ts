@@ -207,6 +207,18 @@ describe('processHevyWorkouts — field mapping', () => {
     // 90 + 90 = 180s → 3 min
     expect(entryArgForExercise('Plank').duration_minutes).toBe(3);
   });
+
+  it('stores per-set duration in integer seconds (issue #1903)', async () => {
+    await processHevyWorkouts(UID, CID, [sampleWorkout()], 'UTC');
+    expect(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      entryArgForExercise('Plank').sets.map((s: any) => s.duration)
+    ).toEqual([90, 90]);
+    expect(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      entryArgForExercise('Pull Up').sets.every((s: any) => s.duration === null)
+    ).toBe(true);
+  });
 });
 
 describe('processHevyWorkouts — workout-preset grouping', () => {

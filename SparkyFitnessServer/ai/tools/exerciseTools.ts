@@ -86,7 +86,9 @@ function toRepoSets(sets: ExerciseSetInput[]) {
     set_type: s.set_type || 'Working Set',
     reps: s.reps ?? null,
     weight: s.weight ?? null,
-    duration: s.duration ?? null,
+    // Sets may arrive as a JSON string that bypasses schema validation, so
+    // round here to keep the integer-seconds duration column safe.
+    duration: typeof s.duration === 'number' ? Math.round(s.duration) : null,
     rest_time: s.rest_time ?? null,
     rpe: s.rpe ?? null,
     notes: s.notes ?? null,

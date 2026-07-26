@@ -520,6 +520,47 @@ describe('log_exercise', () => {
     );
   });
 
+  it('rejects a fractional set duration (per-set duration is integer seconds)', async () => {
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        entry_date: '2026-06-10',
+        sets: [{ reps: 5, duration: 90.5 }],
+      },
+      opts
+    );
+
+    // The sets union collapses inner paths, so the issue is reported on 'sets'.
+    expect(result).toBe('Error [VALIDATION]: sets: Invalid input');
+    expect(exerciseService.createExerciseEntry).not.toHaveBeenCalled();
+  });
+
+  it('rounds fractional durations arriving through the JSON-string sets branch', async () => {
+    vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        entry_date: '2026-06-10',
+        sets: '[{"reps":5,"duration":90.6}]',
+      },
+      opts
+    );
+
+    expect(exerciseService.createExerciseEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        sets: [expect.objectContaining({ duration: 91 })],
+      }),
+      { skipDuplicateCheck: true }
+    );
+  });
+
   it('ignores an unparseable sets string and still logs', async () => {
     vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
       id: ENTRY_ID,

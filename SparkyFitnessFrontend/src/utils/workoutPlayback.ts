@@ -1,5 +1,5 @@
 import type { CreatePresetSessionRequest } from '@workspace/shared';
-import { instantHourMinute } from '@workspace/shared';
+import { instantHourMinute, setsDurationMinutes } from '@workspace/shared';
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 
 export const DEFAULT_REST_SECONDS = 90;
@@ -685,11 +685,7 @@ function toNullableNumber(value: number | null | undefined): number | null {
 }
 
 function deriveDurationMinutes(sets: WorkoutPlaybackSetDraft[]): number {
-  return sets.reduce((sum, set) => {
-    const duration = set.duration ?? 0;
-    const rest = (set.rest_time ?? 0) / 60;
-    return sum + duration + rest;
-  }, 0);
+  return setsDurationMinutes(sets);
 }
 
 function deriveExerciseDurationMinutes(

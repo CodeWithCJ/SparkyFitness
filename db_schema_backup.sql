@@ -1561,7 +1561,7 @@ CREATE TABLE public.exercise_entry_sets (
     set_type text DEFAULT 'Working Set'::text,
     reps integer,
     weight numeric(10,2),
-    duration numeric,
+    duration integer,
     rest_time integer,
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -3549,7 +3549,7 @@ CREATE TABLE public.workout_plan_assignment_sets (
     set_type text DEFAULT 'Working Set'::text,
     reps integer,
     weight numeric(10,2),
-    duration numeric,
+    duration integer,
     rest_time integer,
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -3662,7 +3662,7 @@ CREATE TABLE public.workout_preset_exercise_sets (
     set_type text DEFAULT 'Working Set'::text,
     reps integer,
     weight numeric(10,2),
-    duration numeric,
+    duration integer,
     rest_time integer,
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -3797,6 +3797,17 @@ CREATE SEQUENCE system.schema_migrations_id_seq
 --
 
 ALTER SEQUENCE system.schema_migrations_id_seq OWNED BY system.schema_migrations.id;
+
+
+--
+-- Name: set_duration_premigration_backup; Type: TABLE; Schema: system; Owner: -
+--
+
+CREATE TABLE system.set_duration_premigration_backup (
+    table_name text NOT NULL,
+    set_id integer NOT NULL,
+    duration_old numeric NOT NULL
+);
 
 
 --
@@ -4869,6 +4880,14 @@ ALTER TABLE ONLY system.schema_migrations
 
 ALTER TABLE ONLY system.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: set_duration_premigration_backup set_duration_premigration_backup_pkey; Type: CONSTRAINT; Schema: system; Owner: -
+--
+
+ALTER TABLE ONLY system.set_duration_premigration_backup
+    ADD CONSTRAINT set_duration_premigration_backup_pkey PRIMARY KEY (table_name, set_id);
 
 
 --

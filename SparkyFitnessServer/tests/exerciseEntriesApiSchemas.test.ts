@@ -371,6 +371,38 @@ describe('Exercise entry API schemas', () => {
     });
   });
 
+  describe('set duration (integer seconds)', () => {
+    const baseSetRequest = {
+      set_number: 1,
+      set_type: 'working',
+      reps: 10,
+      weight: 60,
+    };
+
+    it('accepts integer and null set durations', () => {
+      const withSeconds = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        duration: 90,
+      });
+      expect(withSeconds.success).toBe(true);
+      expect(withSeconds.data.duration).toBe(90);
+
+      const withNull = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        duration: null,
+      });
+      expect(withNull.success).toBe(true);
+    });
+
+    it('rejects fractional set durations (issue #1903)', () => {
+      const result = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        duration: 1.5,
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe('completed_at', () => {
     const baseSetRequest = {
       set_number: 1,

@@ -37,12 +37,18 @@ router.post('/', checkPermissionMiddleware('diary'), async (req, res, next) => {
     JSON.stringify(healthDataArray, null, 2)
   );
   try {
+    // Backwards compatibility (issue #1903): clients on the seconds-based set
+    // model send X-Workout-Model-Version: 2 (or higher). Older clients omit the
+    // header and send per-set duration in minutes.
+    const workoutModelVersion =
+      Number(req.header('x-workout-model-version')) || 1;
     const result = await measurementService.processHealthData(
       healthDataArray,
 
       req.userId,
 
-      req.userId
+      req.userId,
+      { legacyWorkoutSetMinutes: workoutModelVersion < 2 }
     );
     res.status(200).json(result);
   } catch (error) {

@@ -71,7 +71,8 @@ describe('Measurement Routes - POST /health-data', () => {
     expect(measurementService.processHealthData).toHaveBeenCalledWith(
       payload,
       'test-user-id',
-      'test-user-id'
+      'test-user-id',
+      { legacyWorkoutSetMinutes: true }
     );
   });
 
@@ -97,7 +98,8 @@ describe('Measurement Routes - POST /health-data', () => {
     expect(measurementService.processHealthData).toHaveBeenCalledWith(
       [payload],
       'test-user-id',
-      'test-user-id'
+      'test-user-id',
+      { legacyWorkoutSetMinutes: true }
     );
   });
 
@@ -126,7 +128,8 @@ describe('Measurement Routes - POST /health-data', () => {
         },
       ],
       'test-user-id',
-      'test-user-id'
+      'test-user-id',
+      { legacyWorkoutSetMinutes: true }
     );
   });
 
@@ -151,7 +154,38 @@ describe('Measurement Routes - POST /health-data', () => {
         { type: 'blood_pressure', value: 120 },
       ],
       'test-user-id',
-      'test-user-id'
+      'test-user-id',
+      { legacyWorkoutSetMinutes: true }
+    );
+  });
+
+  it('treats X-Workout-Model-Version >= 2 as the seconds-based set model', async () => {
+    const payload = [
+      {
+        type: 'Workout',
+        timestamp: '2026-05-05T10:00:00Z',
+        activityType: 'Plank',
+        sets: [{ set_number: 1, set_type: 'Working Set', duration: 300 }],
+      },
+    ];
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist
+    measurementService.processHealthData.mockResolvedValue({
+      success: true,
+      count: 1,
+    });
+
+    const res = await request(app)
+      .post('/api/measurements/health-data')
+      .set('Content-Type', 'application/json')
+      .set('X-Workout-Model-Version', '2')
+      .send(payload);
+
+    expect(res.statusCode).toBe(200);
+    expect(measurementService.processHealthData).toHaveBeenCalledWith(
+      payload,
+      'test-user-id',
+      'test-user-id',
+      { legacyWorkoutSetMinutes: false }
     );
   });
 

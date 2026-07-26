@@ -598,12 +598,13 @@ const options = {
                     type: 'number',
                   },
                   duration: {
-                    type: 'number',
+                    type: 'integer',
+                    description: 'Duration in seconds',
                   },
                 },
               },
               description:
-                'Details of sets performed (reps, weight, duration).',
+                'Details of sets performed (reps, weight, duration in seconds).',
             },
             reps: {
               type: 'number',

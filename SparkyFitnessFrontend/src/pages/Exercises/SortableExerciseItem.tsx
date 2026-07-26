@@ -120,7 +120,7 @@ export const SortableExerciseItem = ({
   const cardioSet = ex.sets?.[0];
   const cardioDuration =
     ('duration_minutes' in ex ? ex.duration_minutes : undefined) ??
-    cardioSet?.duration ??
+    (cardioSet?.duration != null ? cardioSet.duration / 60 : undefined) ??
     '';
   const cardioDistance = ('distance' in ex ? ex.distance : undefined) ?? '';
   const cardioCalories =
@@ -251,7 +251,10 @@ export const SortableExerciseItem = ({
           rpe={cardioRpe as number | ''}
           distanceUnit={distanceUnit}
           onDurationChange={(v) =>
-            handleCardioSetChange('duration', v === '' ? undefined : Number(v))
+            handleCardioSetChange(
+              'duration',
+              v === '' ? undefined : Math.round(Number(v) * 60)
+            )
           }
           onDistanceChange={(v) =>
             handleCardioSetChange(

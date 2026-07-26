@@ -14,7 +14,8 @@ export const workoutPresetSetResponseSchema = z.object({
   set_type: z.string().nullable(),
   reps: z.number().nullable(),
   weight: z.number().nullable(),
-  duration: z.number().nullable(),
+  // Per-set duration is integer SECONDS (issue #1903).
+  duration: z.number().int().nullable(),
   rest_time: z.number().nullable(),
   notes: z.string().nullable(),
 });
@@ -61,7 +62,8 @@ export const workoutPresetSetRequestSchema = z.object({
   set_type: z.string().nullable().optional(),
   reps: z.number().nullable().optional(),
   weight: z.number().nullable().optional(),
-  duration: z.number().nullable().optional(),
+  // Per-set duration is integer SECONDS (issue #1903).
+  duration: z.number().int().nullable().optional(),
   rest_time: z.number().nullable().optional(),
   notes: z.string().nullable().optional(),
 });

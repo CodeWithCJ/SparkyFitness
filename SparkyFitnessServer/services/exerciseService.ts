@@ -18,6 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
+import { setsDurationMinutes } from '@workspace/shared';
 
 import papa from 'papaparse';
 import {
@@ -323,18 +324,10 @@ async function prepareExerciseEntryForCreate(
   if (!exercise) {
     throw new Error('Exercise not found for snapshot.');
   }
-  const durationFromSets = Array.isArray(entryData.sets)
-    ? entryData.sets.reduce(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (sum: any, set: any) =>
-          sum + (set.duration || 0) + (set.rest_time || 0) / 60,
-        0
-      )
-    : 0;
   const durationMinutes =
     typeof entryData.duration_minutes === 'number'
       ? entryData.duration_minutes
-      : durationFromSets;
+      : setsDurationMinutes(entryData.sets);
   let calculatedCaloriesBurned = entryData.calories_burned;
   if (
     calculatedCaloriesBurned === undefined ||
@@ -1719,20 +1712,13 @@ function deriveDurationMinutes(
   exerciseData: any,
   { preserveLegacyPresetDurationFallback = false } = {}
 ) {
-  const durationFromSets =
-    exerciseData.sets?.reduce(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (sum: any, set: any) =>
-        sum + (set.duration || 0) + (set.rest_time || 0) / 60,
-      0
-    ) || 0;
   if (typeof exerciseData.duration_minutes === 'number') {
     return exerciseData.duration_minutes;
   }
-  if (preserveLegacyPresetDurationFallback && durationFromSets === 0) {
-    return 30;
-  }
-  return durationFromSets;
+  return setsDurationMinutes(
+    exerciseData.sets,
+    preserveLegacyPresetDurationFallback ? { fallbackMinutes: 30 } : undefined
+  );
 }
 
 async function createGroupedExerciseEntriesWithClient(

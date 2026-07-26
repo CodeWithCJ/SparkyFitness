@@ -109,8 +109,10 @@ async function processPolarExercises(
           exerciseDef = searchResults[0];
         }
       }
+      const durationSeconds = duration
+        ? Math.round(iso8601ToSeconds(duration))
+        : 0;
       if (!exerciseDef) {
-        const durationSeconds = duration ? iso8601ToSeconds(duration) : 0;
         const newExerciseData = {
           user_id: userId,
           name: exerciseName,
@@ -128,9 +130,7 @@ async function processPolarExercises(
         exerciseDef = await exerciseRepository.createExercise(newExerciseData);
       }
       const entryDate = startTime.split('T')[0];
-      const durationMinutes = duration
-        ? Math.round(iso8601ToSeconds(duration) / 60)
-        : 0;
+      const durationMinutes = Math.round(durationSeconds / 60);
       const heartRateObj =
         getVal(exercise, 'heart-rate') || getVal(exercise, 'heart_rate');
       const avgHeartRate = heartRateObj
@@ -154,7 +154,7 @@ async function processPolarExercises(
             set_type: 'Working Set',
             reps: 1,
             weight: 0,
-            duration: durationMinutes,
+            duration: durationSeconds,
             rest_time: 0,
             notes: '',
           },

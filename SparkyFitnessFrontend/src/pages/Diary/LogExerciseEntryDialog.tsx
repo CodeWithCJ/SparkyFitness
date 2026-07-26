@@ -47,6 +47,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   todayInZone,
   prefillEntryTime,
+  setsDurationMinutes,
   userHourMinute,
 } from '@workspace/shared';
 
@@ -245,10 +246,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         ? durationInput === ''
           ? 0
           : durationInput
-        : sets.reduce(
-            (acc, set) => acc + (set.duration || 0) + (set.rest_time || 0) / 60,
-            0
-          );
+        : setsDurationMinutes(sets);
 
       const entryData = {
         exercise_id: exercise.id,

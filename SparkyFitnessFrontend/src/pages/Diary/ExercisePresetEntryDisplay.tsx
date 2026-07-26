@@ -20,7 +20,11 @@ import {
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
 import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
-import { earliestEntryTime, toHourMinute } from '@workspace/shared';
+import {
+  earliestEntryTime,
+  setsDurationMinutes,
+  toHourMinute,
+} from '@workspace/shared';
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: PresetSessionEntry;
@@ -68,13 +72,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
 
   const totalMinutes =
     presetEntry.exercises?.reduce((sum, ex) => {
-      const setsDuration =
-        ex.sets && ex.sets.length > 0
-          ? ex.sets.reduce(
-              (s, set) => s + (set.duration || 0) + (set.rest_time || 0) / 60,
-              0
-            )
-          : 0;
+      const setsDuration = setsDurationMinutes(ex.sets);
       // Fall back to the entry-level duration when the sets carry no per-set
       // timers (e.g. rep-based sets synced from Hevy).
       return sum + (setsDuration > 0 ? setsDuration : ex.duration_minutes || 0);

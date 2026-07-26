@@ -86,8 +86,8 @@ export interface DailyExerciseEntry {
     set_type: string;
     reps: number;
     weight: number;
-    duration?: number;
-    rest_time?: number;
+    duration?: number; // seconds
+    rest_time?: number; // seconds
     notes?: string;
   }[];
   [key: string]: string | number | boolean | object | undefined;

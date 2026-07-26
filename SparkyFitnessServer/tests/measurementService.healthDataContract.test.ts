@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import measurementRepository from '../models/measurementRepository.js';
 import measurementService from '../services/measurementService.js';
+import exerciseDb from '../models/exercise.js';
+import exerciseEntryDb from '../models/exerciseEntry.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 vi.mock('../utils/timezoneLoader.js', () => ({
   loadUserTimezone: vi.fn(),
@@ -108,6 +110,127 @@ describe('processHealthData per-record error contract', () => {
     expect(result.processed).toHaveLength(1);
     expect(result.errors).toEqual([]);
     expect(result.skipped).toEqual([]);
+  });
+
+  it('converts legacy minute-based workout set durations to seconds (issue #1903)', async () => {
+    vi.mocked(exerciseDb.findExerciseByNameAndUserId).mockResolvedValue({
+      id: 'exercise-1',
+    });
+    vi.mocked(exerciseEntryDb.createExerciseEntry).mockResolvedValue({
+      id: 'entry-1',
+    });
+
+    const result = await measurementService.processHealthData(
+      [
+        {
+          type: 'Workout',
+          timestamp: '2025-02-01T10:00:00Z',
+          activityType: 'Plank',
+          duration: 300,
+          caloriesBurned: 50,
+          source: 'HealthKit',
+          sets: [
+            { set_number: 1, set_type: 'Working Set', duration: 5 },
+            { set_number: 2, set_type: 'Working Set', duration: null },
+          ],
+        },
+      ],
+      userId,
+      actingUserId,
+      { legacyWorkoutSetMinutes: true }
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(exerciseEntryDb.createExerciseEntry).toHaveBeenCalledWith(
+      userId,
+      expect.objectContaining({
+        duration_minutes: 5,
+        sets: [
+          { set_number: 1, set_type: 'Working Set', duration: 300 },
+          { set_number: 2, set_type: 'Working Set', duration: null },
+        ],
+      }),
+      actingUserId,
+      'HealthKit'
+    );
+  });
+
+  it('prefers duration_seconds over the legacy duration interpretation', async () => {
+    vi.mocked(exerciseDb.findExerciseByNameAndUserId).mockResolvedValue({
+      id: 'exercise-1',
+    });
+    vi.mocked(exerciseEntryDb.createExerciseEntry).mockResolvedValue({
+      id: 'entry-1',
+    });
+
+    const result = await measurementService.processHealthData(
+      [
+        {
+          type: 'Workout',
+          timestamp: '2025-02-01T10:00:00Z',
+          activityType: 'Plank',
+          duration: 300,
+          caloriesBurned: 50,
+          source: 'HealthKit',
+          sets: [
+            { set_number: 1, set_type: 'Working Set', duration_seconds: 300 },
+          ],
+        },
+      ],
+      userId,
+      actingUserId,
+      // Even under the legacy-minutes interpretation, an explicitly named
+      // duration_seconds field is always seconds.
+      { legacyWorkoutSetMinutes: true }
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(exerciseEntryDb.createExerciseEntry).toHaveBeenCalledWith(
+      userId,
+      expect.objectContaining({
+        duration_minutes: 5,
+        sets: [{ set_number: 1, set_type: 'Working Set', duration: 300 }],
+      }),
+      actingUserId,
+      'HealthKit'
+    );
+  });
+
+  it('passes seconds-based workout set durations through unchanged', async () => {
+    vi.mocked(exerciseDb.findExerciseByNameAndUserId).mockResolvedValue({
+      id: 'exercise-1',
+    });
+    vi.mocked(exerciseEntryDb.createExerciseEntry).mockResolvedValue({
+      id: 'entry-1',
+    });
+
+    const result = await measurementService.processHealthData(
+      [
+        {
+          type: 'Workout',
+          timestamp: '2025-02-01T10:00:00Z',
+          activityType: 'Plank',
+          duration: 300,
+          caloriesBurned: 50,
+          source: 'HealthKit',
+          sets: [{ set_number: 1, set_type: 'Working Set', duration: 300 }],
+        },
+      ],
+      userId,
+      actingUserId,
+      { legacyWorkoutSetMinutes: false }
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(exerciseEntryDb.createExerciseEntry).toHaveBeenCalledWith(
+      userId,
+      expect.objectContaining({
+        duration_minutes: 5,
+        sets: [{ set_number: 1, set_type: 'Working Set', duration: 300 }],
+      }),
+      actingUserId,
+      'HealthKit'
+    );
   });
 
   it('reports Nutrition records without source_id in skipped, not errors', async () => {
