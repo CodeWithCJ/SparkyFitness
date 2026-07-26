@@ -37,7 +37,7 @@ const ACTION_WIDTH = 80;
 
 function entryMatchesDue(entry: MedicationEntry, due: DueDose): boolean {
   if (entry.schedule_id && entry.schedule_id === due.schedule.id) return true;
-  if (entry.medication_id === due.medication.id && !entry.schedule_id) return true;
+  if (entry.medication_id === due.medication.id && !entry.schedule_id && entry.status !== 'prn_taken') return true;
   return false;
 }
 
