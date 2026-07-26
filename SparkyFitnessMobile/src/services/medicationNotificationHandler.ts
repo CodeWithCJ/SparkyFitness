@@ -1,3 +1,4 @@
+import * as Notifications from 'expo-notifications';
 import { addNotificationResponseListener, dismissDeliveredNotification, MEDICATION_TAKEN_ACTION, MEDICATION_SKIP_ACTION } from './notifications';
 import { createEntry, listEntries } from './api/medicationsApi';
 import { addLog } from '../services/LogService';
@@ -32,7 +33,7 @@ export function initMedicationNotificationActions(): void {
       return;
     }
 
-    void handleNotificationAction(status, medicationId, scheduleId ?? null, entryDate, response.notification.request.identifier);
+    void handleNotificationAction(status, medicationId, scheduleId ?? null, entryDate, response.notification.request.identifier, data?.key ?? null);
   });
 }
 
@@ -42,6 +43,7 @@ async function handleNotificationAction(
   scheduleId: string | null,
   entryDate: string,
   notificationId: string,
+  key: string | null,
 ): Promise<void> {
   try {
     const existing = await listEntries({ fromDate: entryDate, toDate: entryDate, medicationId });
@@ -64,6 +66,14 @@ async function handleNotificationAction(
       entry_date: entryDate,
       taken_at: status === 'taken' ? new Date().toISOString() : undefined,
     });
+
+    if (key) {
+      const allPending = await Notifications.getAllScheduledNotificationsAsync();
+      const repeats = allPending.filter((n) => n.content.data?.key === key);
+      await Promise.all(repeats.map((n) =>
+        Notifications.cancelScheduledNotificationAsync(n.identifier).catch(() => {}),
+      ));
+    }
 
     await dismissDeliveredNotification(notificationId);
     addLog(`[MedicationNotificationAction] Logged medication ${medicationId} as ${status}`, 'DEBUG');
