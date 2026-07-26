@@ -209,12 +209,42 @@ async function searchOpenFoodFactsByBarcodeFields(
       log('error', 'OpenFoodFacts Barcode Fields Search API error:', errorText);
       throw new Error(`OpenFoodFacts API error: ${errorText}`);
     }
-    const data = (await response.json()) as {
+    let data = (await response.json()) as {
       status: number;
       status_verbose: string;
       product?: OffProduct;
       [key: string]: unknown;
     };
+
+    if (data.status !== 1 || !data.product) {
+      let altBarcode: string | null = null;
+      if (barcode.length === 12) {
+        altBarcode = '0' + barcode;
+      } else if (barcode.length === 13 && barcode.startsWith('0')) {
+        altBarcode = barcode.slice(1);
+      }
+
+      if (altBarcode) {
+        const altUrl = `${baseUrl}/api/v2/product/${altBarcode}.json?fields=${fieldsParam}&lc=${language}`;
+        const altResponse = await fetchOpenFoodFacts(altUrl, {
+          authenticatedUserId,
+          providerId,
+          sessionCookie,
+        });
+        if (altResponse.ok) {
+          const altData = (await altResponse.json()) as {
+            status: number;
+            status_verbose: string;
+            product?: OffProduct;
+            [key: string]: unknown;
+          };
+          if (altData.status === 1 && altData.product) {
+            data = altData;
+          }
+        }
+      }
+    }
+
     return data;
   } catch (error) {
     log(
