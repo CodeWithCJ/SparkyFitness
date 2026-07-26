@@ -324,7 +324,36 @@ async function searchFatSecretByBarcode(
       },
     });
     if (!response.ok) {
-      if (response.status === 404) return null;
+      if (response.status === 404) {
+        let altBarcode: string | null = null;
+        if (barcode.length === 12) {
+          altBarcode = '0' + barcode;
+        } else if (barcode.length === 13 && barcode.startsWith('0')) {
+          altBarcode = barcode.slice(1);
+        }
+
+        if (altBarcode) {
+          const altUrl = `${FATSECRET_API_BASE_URL}/food/barcode/find-by-id/v2?${new URLSearchParams(
+            {
+              barcode: altBarcode,
+              format: 'json',
+            }
+          ).toString()}`;
+          const altResponse = await fetch(altUrl, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+          });
+          if (altResponse.ok) {
+            const data = await altResponse.json();
+            return data;
+          }
+        }
+        return null;
+      }
       const errorText = await response.text();
       log('error', 'FatSecret Barcode API error:', errorText);
       // If we get an error related to scope/permission, we know barcode API isn't available
