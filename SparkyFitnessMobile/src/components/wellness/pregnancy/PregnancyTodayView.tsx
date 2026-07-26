@@ -25,14 +25,14 @@ import type { RootStackParamList } from '../../../types/navigation';
 const PregnancyTodayView: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
-  const { settings } = useCycleSettings();
-  const discreetMode = settings?.discreet_mode ?? false;
+  const { settings, isLoading: isSettingsLoading } = useCycleSettings();
+  const discreetMode = isSettingsLoading || (settings?.discreet_mode ?? false);
 
   const { pregnancy, isLoading: isPregnancyLoading } = useCurrentPregnancy();
   const hasActive = !!pregnancy && pregnancy.status === 'active';
   const { overview, isLoading: isOverviewLoading } = usePregnancyOverview(undefined, hasActive);
 
-  if (isPregnancyLoading) {
+  if (isPregnancyLoading || isSettingsLoading) {
     return (
       <View className="items-center py-12">
         <ActivityIndicator size="large" color={accentColor} />
@@ -78,7 +78,7 @@ const PregnancyTodayView: React.FC = () => {
           />
           <BabyGrowthView week={gestationalAge.week} />
           {pregnancy && !discreetMode && <VitalsCard pregnancy={pregnancy} />}
-          {pregnancy?.id && (
+          {pregnancy?.id && !discreetMode && (
             <WeeklyChecklist pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
           )}
         </>

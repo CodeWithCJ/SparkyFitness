@@ -24,8 +24,8 @@ const TRIMESTER_LABEL: Record<string, string> = {
 const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
   const tokens = useWellnessTokens();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
-  const { settings } = useCycleSettings();
-  const discreetMode = settings?.discreet_mode ?? false;
+  const { settings, isLoading: isSettingsLoading } = useCycleSettings();
+  const discreetMode = isSettingsLoading || (settings?.discreet_mode ?? false);
   const pct = Math.max(0, Math.min(1, ga.progress));
 
   return (
