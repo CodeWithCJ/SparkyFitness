@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { Canvas, Circle as SkiaCircle, Path, Skia } from '@shopify/react-native-skia';
 import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useWellnessTokens } from './theme/wellnessTokens';
+import { getPhaseColor } from '../../utils/cycleDisplayUtils';
 
 interface CycleRingProps {
   cycleDay: number | null;
@@ -122,7 +123,7 @@ const CycleRing: React.FC<CycleRingProps> = ({
           path={periodPath}
           style="stroke"
           strokeWidth={strokeWidth}
-          color={tokens.phaseMenstrual}
+          color={getPhaseColor('menstrual', tokens)}
           strokeCap="round"
         />
         {/* Fertile Arc */}
@@ -130,7 +131,7 @@ const CycleRing: React.FC<CycleRingProps> = ({
           path={fertilePath}
           style="stroke"
           strokeWidth={strokeWidth}
-          color={tokens.phaseFollicular}
+          color={getPhaseColor('fertile', tokens)}
           strokeCap="round"
         />
         {/* Ovulation Tick */}
@@ -138,7 +139,7 @@ const CycleRing: React.FC<CycleRingProps> = ({
           path={ovulationPath}
           style="stroke"
           strokeWidth={strokeWidth + 4}
-          color={tokens.phaseOvulation}
+          color={getPhaseColor('ovulation', tokens)}
           strokeCap="round"
         />
         {/* Day Marker */}
