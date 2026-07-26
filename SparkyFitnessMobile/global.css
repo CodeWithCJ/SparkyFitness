@@ -83,6 +83,12 @@
       /* Deliberately distinct from --color-cat-amber, which also colors
          moderate RPE and a superset rail on the same live-workout screen. */
       --color-pr:                hsl(36, 92%, 44%);
+
+      --color-wellness-menstrual:  hsl(340, 75%, 55%);
+      --color-wellness-follicular: hsl(124, 54%, 38%);
+      --color-wellness-ovulation:  hsl(217, 80%, 52%);
+      --color-wellness-luteal:     hsl(265, 70%, 60%);
+      --color-wellness-pregnant:   hsl(340, 75%, 55%);
     }
       
     @variant dark {
@@ -150,6 +156,12 @@
       --color-icon-danger:       hsl(358, 80%, 65%);
 
       --color-pr:                hsl(42, 88%, 64%);
+
+      --color-wellness-menstrual:  hsl(340, 65%, 65%);
+      --color-wellness-follicular: hsl(125, 45%, 58%);
+      --color-wellness-ovulation:  hsl(217, 70%, 65%);
+      --color-wellness-luteal:     hsl(265, 60%, 68%);
+      --color-wellness-pregnant:   hsl(340, 65%, 65%);
     }
 
     @variant amoled {
@@ -216,6 +228,12 @@
       --color-icon-danger:       hsl(358, 80%, 65%);
 
       --color-pr:                hsl(42, 88%, 64%);
+
+      --color-wellness-menstrual:  hsl(340, 65%, 65%);
+      --color-wellness-follicular: hsl(125, 45%, 58%);
+      --color-wellness-ovulation:  hsl(217, 70%, 65%);
+      --color-wellness-luteal:     hsl(265, 60%, 68%);
+      --color-wellness-pregnant:   hsl(340, 65%, 65%);
     }
   }
 }

@@ -14,33 +14,37 @@ export interface WellnessPalette {
 
 export function useWellnessTokens(): WellnessPalette {
   const [
-    catPink,
-    catGreen,
-    catBlue,
-    catViolet,
-    catAmber,
+    phaseMenstrual,
+    phaseFollicular,
+    phaseOvulation,
+    phaseLuteal,
+    phasePregnant,
+    categoryAmber,
     surfaceBg,
     accentPrimary,
+    accentMuted,
   ] = useCSSVariable([
-    '--color-cat-pink',
-    '--color-cat-green',
-    '--color-cat-blue',
-    '--color-cat-violet',
+    '--color-wellness-menstrual',
+    '--color-wellness-follicular',
+    '--color-wellness-ovulation',
+    '--color-wellness-luteal',
+    '--color-wellness-pregnant',
     '--color-cat-amber',
     '--color-surface',
     '--color-accent-primary',
-  ]) as [string, string, string, string, string, string, string];
+    '--color-accent-muted',
+  ]) as [string, string, string, string, string, string, string, string, string];
 
   return {
-    accent: accentPrimary || '#e87ba4',
-    accentMuted: catPink || '#f3aec7',
-    surfaceTint: surfaceBg || '#fdf1f5',
-    phaseMenstrual: catPink || '#e34948',
-    phaseFollicular: catGreen || '#008300',
-    phaseOvulation: catBlue || '#2a78d6',
-    phaseLuteal: catViolet || '#4a3aa7',
-    phasePregnant: catPink || '#e87ba4',
-    categoryAmber: catAmber || '#eda100',
+    accent: accentPrimary,
+    accentMuted: accentMuted || phaseMenstrual,
+    surfaceTint: surfaceBg,
+    phaseMenstrual,
+    phaseFollicular,
+    phaseOvulation,
+    phaseLuteal,
+    phasePregnant,
+    categoryAmber,
   };
 }
 
