@@ -37,7 +37,10 @@ export const AnnouncementModal: React.FC = () => {
 
   useEffect(() => {
     let active = true;
+    let requestGen = 0;
+
     const fetchAnnouncement = async () => {
+      const currentGen = ++requestGen;
       try {
         const data = await apiFetch<AnnouncementPayload>({
           endpoint: '/api/announcement/current',
@@ -45,10 +48,10 @@ export const AnnouncementModal: React.FC = () => {
           operation: 'getCurrent',
         });
 
-        if (!active || !data || !data.active || !data.id) return;
+        if (!active || currentGen !== requestGen || !data || !data.active || !data.id) return;
 
         const dismissedId = await AsyncStorage.getItem(DISMISSED_ANNOUNCEMENT_KEY);
-        if (dismissedId !== data.id) {
+        if (active && currentGen === requestGen && dismissedId !== data.id) {
           setAnnouncement(data);
           setVisible(true);
         }

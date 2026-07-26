@@ -14,6 +14,7 @@ import BumpPhotoJournal from './BumpPhotoJournal';
 import FoodMedSafetySearch from './FoodMedSafetySearch';
 import AppointmentsCard from './AppointmentsCard';
 import Button from '../../ui/Button';
+import { useCycleSettings } from '../../../hooks/useCycleSettings';
 import type { RootStackParamList } from '../../../types/navigation';
 
 /**
@@ -24,6 +25,8 @@ import type { RootStackParamList } from '../../../types/navigation';
 const PregnancyTodayView: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
+  const { settings } = useCycleSettings();
+  const discreetMode = settings?.discreet_mode ?? false;
 
   const { pregnancy, isLoading: isPregnancyLoading } = useCurrentPregnancy();
   const hasActive = !!pregnancy && pregnancy.status === 'active';
@@ -74,14 +77,14 @@ const PregnancyTodayView: React.FC = () => {
             onEdit={() => navigation.navigate('PregnancySetup', { pregnancy })}
           />
           <BabyGrowthView week={gestationalAge.week} />
-          {pregnancy && <VitalsCard pregnancy={pregnancy} />}
+          {pregnancy && !discreetMode && <VitalsCard pregnancy={pregnancy} />}
           {pregnancy?.id && (
             <WeeklyChecklist pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
           )}
         </>
       )}
 
-      {pregnancy?.id && (
+      {pregnancy?.id && !discreetMode && (
         <>
           <KickCounter pregnancyId={pregnancy.id} />
           <ContractionTimer pregnancyId={pregnancy.id} />

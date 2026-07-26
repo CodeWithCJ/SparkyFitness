@@ -25,11 +25,13 @@ export const SettingsRowGroup: React.FC<SettingsRowGroupProps> = ({
     <SettingsRowGroupContext.Provider value={{ grouped: true }}>
       <View className={`bg-surface rounded-xl mb-4 shadow-sm ${className}`} style={style}>
         {title && (
-          <View className="px-4 pt-3.5 pb-1">
-            <Text className="text-base font-bold text-text-primary">{title}</Text>
-            {subtitle && (
-              <Text className="text-text-secondary text-xs mt-0.5">{subtitle}</Text>
-            )}
+          <View className="px-4 pt-3 pb-1">
+            <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider">{title}</Text>
+            {typeof subtitle === 'string' ? (
+              <Text className="text-xs text-text-secondary mt-0.5">{subtitle}</Text>
+            ) : subtitle ? (
+              <View className="mt-0.5">{subtitle}</View>
+            ) : null}
           </View>
         )}
         {items.map((child, i) => (

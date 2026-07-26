@@ -6,6 +6,8 @@ import { formatDate } from '../../../utils/dateUtils';
 import { useWellnessTokens } from '../theme/wellnessTokens';
 import Icon from '../../Icon';
 
+import { useCycleSettings } from '../../../hooks/useCycleSettings';
+
 interface WeekBannerProps {
   ga: GestationalAge;
   dueDate: string;
@@ -22,6 +24,8 @@ const TRIMESTER_LABEL: Record<string, string> = {
 const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
   const tokens = useWellnessTokens();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
+  const { settings } = useCycleSettings();
+  const discreetMode = settings?.discreet_mode ?? false;
   const pct = Math.max(0, Math.min(1, ga.progress));
 
   return (
@@ -29,17 +33,19 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
       <View className="flex-row items-start justify-between">
         <View>
           <Text className="text-text-secondary text-xs">
-            {TRIMESTER_LABEL[ga.trimester] ?? 'Pregnancy'}
+            {discreetMode ? 'Wellness Progress' : TRIMESTER_LABEL[ga.trimester] ?? 'Pregnancy'}
           </Text>
           <Text className="text-text-primary text-2xl font-bold">
-            {ga.week}w {ga.day}d
+            {discreetMode ? `Week ${ga.week}` : `${ga.week}w ${ga.day}d`}
           </Text>
         </View>
         <View className="flex-row items-center gap-3">
-          <View className="items-end">
-            <Text className="text-text-secondary text-xs">Due</Text>
-            <Text className="text-text-primary text-sm font-semibold">{formatDate(dueDate)}</Text>
-          </View>
+          {!discreetMode && (
+            <View className="items-end">
+              <Text className="text-text-secondary text-xs">Due</Text>
+              <Text className="text-text-primary text-sm font-semibold">{formatDate(dueDate)}</Text>
+            </View>
+          )}
           {onEdit && (
             <TouchableOpacity onPress={onEdit} hitSlop={8} testID="week-banner-edit">
               <Icon name="pencil" size={16} color={textMuted} />
@@ -56,9 +62,11 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
         />
       </View>
 
-      <Text className="text-text-secondary text-xs">
-        {ga.daysRemaining > 0 ? `${ga.daysRemaining} days to go` : 'Any day now'}
-      </Text>
+      {!discreetMode && (
+        <Text className="text-text-secondary text-xs">
+          {ga.daysRemaining > 0 ? `${ga.daysRemaining} days to go` : 'Any day now'}
+        </Text>
+      )}
     </View>
   );
 };

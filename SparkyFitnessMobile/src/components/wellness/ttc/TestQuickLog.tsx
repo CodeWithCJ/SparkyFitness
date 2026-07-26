@@ -96,7 +96,7 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
           <View className="bg-raised rounded-xl border border-border-subtle overflow-hidden">
             {tests.slice(0, 6).map((entry, idx) => (
               <View
-                key={entry.id}
+                key={entry.id ?? `test-${idx}`}
                 className={`flex-row items-center justify-between p-3 ${
                   idx < Math.min(tests.length, 6) - 1 ? 'border-b border-border-subtle' : ''
                 }`}

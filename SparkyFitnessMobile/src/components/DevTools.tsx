@@ -230,12 +230,20 @@ const DevTools: React.FC = () => {
             variant="primary"
             className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
             onPress={async () => {
-              await resetAnnouncementModal();
-              Toast.show({
-                type: 'success',
-                text1: 'Reset',
-                text2: 'System announcement modal will re-appear.',
-              });
+              try {
+                await resetAnnouncementModal();
+                Toast.show({
+                  type: 'success',
+                  text1: 'Reset',
+                  text2: 'System announcement modal will re-appear.',
+                });
+              } catch {
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'Could not reset announcement.',
+                });
+              }
             }}
           >
             <Text className="text-white text-base font-bold">Reset Announcement</Text>
@@ -256,12 +264,20 @@ const DevTools: React.FC = () => {
               variant="primary"
               className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
               onPress={async () => {
-                await popover.reset();
-                Toast.show({
-                  type: 'success',
-                  text1: 'Reset',
-                  text2: `${popover.resetLabel} popover will re-appear.`,
-                });
+                try {
+                  await popover.reset();
+                  Toast.show({
+                    type: 'success',
+                    text1: 'Reset',
+                    text2: `${popover.resetLabel} popover will re-appear.`,
+                  });
+                } catch {
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Could not reset popover.',
+                  });
+                }
               }}
             >
               <Text className="text-white text-base font-bold">

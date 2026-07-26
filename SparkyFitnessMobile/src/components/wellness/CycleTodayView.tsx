@@ -45,7 +45,10 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
   const { upsertLogAsync, isSaving } = useUpsertCycleLog();
   const { mode } = useCycleMode();
   const isTtc = mode === 'ttc';
-  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
+  const [accentColor, textMuted] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-muted',
+  ]) as [string, string];
 
   // Local draft state
   const [flowLevel, setFlowLevel] = useState<FlowLevel | null>(null);
@@ -290,7 +293,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
             onFocus={() => setIsNotesFocused(true)}
             onBlur={() => setIsNotesFocused(false)}
             placeholder="Log details about how you feel, energy level..."
-            placeholderTextColor="#8E8E93"
+            placeholderTextColor={textMuted}
             multiline
             numberOfLines={4}
             className={`bg-raised rounded-xl p-3 text-text-primary text-sm min-h-[80px] border ${

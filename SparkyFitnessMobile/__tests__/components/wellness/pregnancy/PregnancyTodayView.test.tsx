@@ -13,6 +13,9 @@ jest.mock('../../../../src/hooks/usePregnancy', () => ({
   useCurrentPregnancy: () => mockUseCurrentPregnancy(),
   usePregnancyOverview: () => mockUsePregnancyOverview(),
 }));
+jest.mock('../../../../src/hooks/useCycleSettings', () => ({
+  useCycleSettings: () => ({ settings: { discreet_mode: false } }),
+}));
 
 // Child cards are exercised by their own test files — stub them here so this
 // test stays focused on PregnancyTodayView's own null-guarding logic.
