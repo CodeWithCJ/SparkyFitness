@@ -15,6 +15,7 @@ import type { FlowLevel } from '@workspace/shared';
 
 interface CycleTodayViewProps {
   date: string;
+  onSaveSuccess?: () => void;
 }
 
 const FLOW_OPTIONS: { value: FlowLevel; label: string; icon: string }[] = [
@@ -39,7 +40,7 @@ const CERVICAL_POSITION_OPTIONS = [
   { value: 'high', label: 'High' },
 ];
 
-const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
+const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) => {
   const { log, isLoading, refetch } = useCycleLog({ date });
   const { upsertLogAsync, isSaving } = useUpsertCycleLog();
   const { mode } = useCycleMode();
@@ -106,6 +107,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
 
       // Refetch to pull latest server-hydrated BBT
       refetch();
+      onSaveSuccess?.();
     } catch (error) {
       addLog(`Failed to save cycle daily view: ${error}`, 'ERROR');
     } finally {
@@ -114,6 +116,8 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
   };
 
   const [isNotesFocused, setIsNotesFocused] = useState(false);
+
+  const isPregnant = mode === 'pregnant';
 
   if (isLoading) {
     return (
@@ -125,36 +129,39 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
 
   return (
     <View className="gap-3">
-      {/* Flow Level */}
-      <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
-        <Text className="text-text-primary text-sm font-semibold mb-3">Flow Level</Text>
-        <View className="flex-row justify-between">
-          {FLOW_OPTIONS.map((opt) => {
-            const isSelected = flowLevel === opt.value;
-            return (
-              <TouchableOpacity
-                key={opt.value}
-                onPress={() => setFlowLevel(opt.value)}
-                className={`items-center justify-center rounded-xl p-2 flex-1 mx-1 border ${
-                  isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-border-subtle'
-                }`}
-              >
-                <CycleIcon id={opt.icon} size={24} />
-                <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+      {/* Flow Level — Only for non-pregnant cycle tracking */}
+      {!isPregnant && (
+        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
+          <Text className="text-text-primary text-sm font-semibold mb-3">Flow Level</Text>
+          <View className="flex-row justify-between">
+            {FLOW_OPTIONS.map((opt) => {
+              const isSelected = flowLevel === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  onPress={() => setFlowLevel(opt.value)}
+                  className={`items-center justify-center rounded-xl p-2 flex-1 mx-1 border ${
+                    isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-border-subtle'
+                  }`}
+                >
+                  <CycleIcon id={opt.icon} size={24} />
+                  <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
+      )}
+
+      {/* Symptoms */}
+      <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
+        <CycleSymptomPicker date={date} />
       </View>
 
-        {/* Symptoms */}
-        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
-          <CycleSymptomPicker date={date} />
-        </View>
-
-        {/* Cervical Mucus */}
+      {/* Cervical Mucus — Only for non-pregnant cycle tracking */}
+      {!isPregnant && (
         <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
           <Text className="text-text-primary text-sm font-semibold mb-3">Cervical Mucus</Text>
           <View className="flex-row flex-wrap gap-2">
@@ -176,23 +183,50 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
             })}
           </View>
         </View>
+      )}
 
-        {/* TTC: Intercourse + Cervical Position */}
-        {isTtc && (
-          <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle gap-4">
+      {/* TTC: Intercourse + Cervical Position */}
+      {isTtc && (
+        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle gap-4">
+          <View>
+            <Text className="text-text-primary text-sm font-semibold mb-3">Intercourse</Text>
+            <View className="flex-row gap-2">
+              {[
+                { label: 'None', val: null as boolean | null },
+                { label: 'Yes', val: true },
+                { label: 'No', val: false },
+              ].map((opt) => {
+                const isSelected = intercourse === opt.val;
+                return (
+                  <TouchableOpacity
+                    key={opt.label}
+                    onPress={() => setIntercourse(opt.val)}
+                    className={`rounded-full px-4 py-2 border ${
+                      isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
+                    }`}
+                  >
+                    <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {intercourse === true && (
             <View>
-              <Text className="text-text-primary text-sm font-semibold mb-3">Intercourse</Text>
+              <Text className="text-text-primary text-sm font-semibold mb-3">Protection</Text>
               <View className="flex-row gap-2">
                 {[
-                  { label: 'None', val: null as boolean | null },
-                  { label: 'Yes', val: true },
-                  { label: 'No', val: false },
+                  { label: 'Protected', val: true },
+                  { label: 'Unprotected', val: false },
                 ].map((opt) => {
-                  const isSelected = intercourse === opt.val;
+                  const isSelected = intercourseProtected === opt.val;
                   return (
                     <TouchableOpacity
                       key={opt.label}
-                      onPress={() => setIntercourse(opt.val)}
+                      onPress={() => setIntercourseProtected(opt.val)}
                       className={`rounded-full px-4 py-2 border ${
                         isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                       }`}
@@ -205,33 +239,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
                 })}
               </View>
             </View>
-
-            {intercourse === true && (
-              <View>
-                <Text className="text-text-primary text-sm font-semibold mb-3">Protection</Text>
-                <View className="flex-row gap-2">
-                  {[
-                    { label: 'Protected', val: true },
-                    { label: 'Unprotected', val: false },
-                  ].map((opt) => {
-                    const isSelected = intercourseProtected === opt.val;
-                    return (
-                      <TouchableOpacity
-                        key={opt.label}
-                        onPress={() => setIntercourseProtected(opt.val)}
-                        className={`rounded-full px-4 py-2 border ${
-                          isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
-                        }`}
-                      >
-                        <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                          {opt.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
+          )}
 
             <View>
               <Text className="text-text-primary text-sm font-semibold mb-3">Cervical Position</Text>
@@ -257,19 +265,21 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
           </View>
         )}
 
-        {/* Basal Body Temperature */}
-        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
-          <Text className="text-text-primary text-sm font-semibold mb-2">Basal Body Temperature</Text>
-          <Text className="text-text-secondary text-xs mb-3">
-            Track your waking temperature (°C) to identify biphasic shifts post-ovulation.
-          </Text>
-          <FormInput
-            value={bbt}
-            onChangeText={setBbt}
-            placeholder="e.g. 36.5"
-            keyboardType="decimal-pad"
-          />
-        </View>
+        {/* Basal Body Temperature — Only for non-pregnant cycle tracking */}
+        {!isPregnant && (
+          <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
+            <Text className="text-text-primary text-sm font-semibold mb-2">Basal Body Temperature</Text>
+            <Text className="text-text-secondary text-xs mb-3">
+              Track your waking temperature (°C) to identify biphasic shifts post-ovulation.
+            </Text>
+            <FormInput
+              value={bbt}
+              onChangeText={setBbt}
+              placeholder="e.g. 36.5"
+              keyboardType="decimal-pad"
+            />
+          </View>
+        )}
 
         {/* Notes */}
         <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
