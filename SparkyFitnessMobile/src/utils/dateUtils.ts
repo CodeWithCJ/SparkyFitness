@@ -55,6 +55,13 @@ export const formatDate = (dateString: string): string => {
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
+// Format a YYYY-MM-DD date for short display ("Jun 30")
+export const formatShortDate = (dateString: string): string => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 // Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
 export const formatDateLabel = (dateString: string): string => {
   const today = getTodayDate();

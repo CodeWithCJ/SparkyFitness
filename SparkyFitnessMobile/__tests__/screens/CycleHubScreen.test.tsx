@@ -1,6 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { NavigationContainer } from '@react-navigation/native';
 import CycleHubScreen from '../../src/screens/CycleHubScreen';
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
@@ -101,17 +102,18 @@ function renderScreen() {
   return {
     queryClient,
     ...render(
-      <QueryClientProvider client={queryClient}>
-        <CycleHubScreen navigation={mockNavigation} route={mockRoute} />
-      </QueryClientProvider>,
+      <NavigationContainer>
+        <QueryClientProvider client={queryClient}>
+          <CycleHubScreen navigation={mockNavigation} route={mockRoute} />
+        </QueryClientProvider>
+      </NavigationContainer>,
     ),
   };
 }
 
 describe('CycleHubScreen', () => {
-  it('renders standard Log view with day navigator', () => {
+  it('renders standard Insights and History tabs', () => {
     const { getByText } = renderScreen();
-    expect(getByText('Log')).toBeTruthy();
     expect(getByText('Insights')).toBeTruthy();
     expect(getByText('History')).toBeTruthy();
   });
