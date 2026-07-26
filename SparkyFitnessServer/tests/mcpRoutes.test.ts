@@ -360,6 +360,48 @@ describe('POST /mcp', () => {
 // The route never registers dev tools for a non-admin, so a non-admin tools/call
 // returns MCP "tool not found" — the call-time guard can't be reached that way.
 // Exercise the guard directly on the built tool's execute() instead.
+describe('GET /mcp and DELETE /mcp', () => {
+  it('GET returns 405 with Allow: POST when authenticated', async () => {
+    const res = await request(app)
+      .get('/mcp')
+      .set('Authorization', 'Bearer valid');
+
+    expect(res.status).toBe(405);
+    expect(res.headers.allow).toBe('POST');
+    expect(res.text).toBe('');
+  });
+
+  it('DELETE returns 405 with Allow: POST when authenticated', async () => {
+    const res = await request(app)
+      .delete('/mcp')
+      .set('Authorization', 'Bearer valid');
+
+    expect(res.status).toBe(405);
+    expect(res.headers.allow).toBe('POST');
+    expect(res.text).toBe('');
+  });
+
+  it('GET still 405s when the client sends Accept: text/event-stream (the SSE Accept negotiation that triggered the bug)', async () => {
+    const res = await request(app)
+      .get('/mcp')
+      .set('Authorization', 'Bearer valid')
+      .set('Accept', 'text/event-stream');
+
+    expect(res.status).toBe(405);
+    expect(res.headers.allow).toBe('POST');
+  });
+
+  it('rejects unauthenticated GET with 401 (same gate as POST)', async () => {
+    const res = await request(app).get('/mcp');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects unauthenticated DELETE with 401', async () => {
+    const res = await request(app).delete('/mcp');
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('buildDevTools call-time guard', () => {
   // Registry handlers read only rawArgs; a stub satisfies the execute() signature.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
