@@ -115,6 +115,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
               onValueChange={setMedicationRemindersEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
+              disabled={!notificationsEnabled}
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">

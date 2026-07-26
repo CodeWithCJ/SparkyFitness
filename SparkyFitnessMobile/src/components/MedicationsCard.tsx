@@ -4,7 +4,6 @@ import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,7 +11,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from './Icon';
 import { useMedications, useMedicationEntries, useCreateMedicationEntry, useDeleteMedicationEntry } from '../hooks/useMedications';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getDueDosesForDate, type SharedScheduleRule } from '@workspace/shared';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import type { Medication, MedicationDetail, MedicationEntry, MedicationEntryStatus } from '../types/medications';
@@ -50,8 +48,6 @@ const SwipeableMedRow: React.FC<{
   onNavigate: (medicationId: string) => void;
 }> = ({ due, entry, onTake, onSkip, onToggleTaken, onNavigate }) => {
   const swipeableRef = useRef<SwipeableMethods | null>(null);
-  const rowHeight = useSharedValue<number | null>(null);
-  const isRemoving = useSharedValue(false);
   const taken = entry?.status === 'taken' || entry?.status === 'prn_taken';
   const skipped = entry?.status === 'skipped';
   const completed = taken || skipped;
@@ -73,20 +69,6 @@ const SwipeableMedRow: React.FC<{
     swipeableRef.current?.close();
     onSkip(due);
   };
-
-  const handleLayout = (event: { nativeEvent: { layout: { height: number } } }) => {
-    if (rowHeight.value === null) {
-      rowHeight.value = event.nativeEvent.layout.height;
-    }
-  };
-
-  const animatedStyle = useAnimatedStyle(() => {
-    if (!isRemoving.value || rowHeight.value === null) return {};
-    return {
-      height: rowHeight.value,
-      overflow: 'hidden' as const,
-    };
-  });
 
   const renderRightActions = () => (
     <View style={{ flexDirection: 'row' }}>
@@ -122,7 +104,6 @@ const SwipeableMedRow: React.FC<{
   const doseLabel = med.dose_amount != null ? `${med.dose_amount} ${med.dose_unit ?? ''}`.trim() : '';
 
   return (
-    <Animated.View style={animatedStyle} onLayout={handleLayout}>
       <ReanimatedSwipeable
         ref={swipeableRef}
         renderRightActions={renderRightActions}
@@ -140,7 +121,7 @@ const SwipeableMedRow: React.FC<{
             style={{
               backgroundColor: 'transparent',
               borderWidth: 1.5,
-              borderColor: taken ? iconSuccess : skipped ? iconWarning : '#6B7280',
+              borderColor: taken ? iconSuccess : skipped ? iconWarning : iconDecorative,
             }}
           >
             {taken && <Icon name="checkmark" size={14} color={iconSuccess} />}
@@ -165,13 +146,11 @@ const SwipeableMedRow: React.FC<{
           <Icon name="chevron-forward" size={16} color={iconDecorative} />
         </Pressable>
       </ReanimatedSwipeable>
-    </Animated.View>
   );
 };
 
 const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
-  const medicationsCardVisible = useAppPreferencesStore((s) => s.medicationsCardVisible);
 
   const { data: medications, isLoading: isLoadingMeds } = useMedications({ activeOnly: true });
   const { data: entries, isLoading: isLoadingEntries } = useMedicationEntries({ fromDate: selectedDate, toDate: selectedDate });
@@ -333,8 +312,6 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     [createEntryMutation, selectedDate],
   );
 
-  if (!medicationsCardVisible) return null;
-
   if (isLoadingMeds || isLoadingEntries) {
     return (
       <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
@@ -383,13 +360,14 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
             const prnCount = entries?.filter(
               (e) => e.medication_id === med.id && e.status === 'prn_taken' && e.entry_date === selectedDate,
             ).length ?? 0;
+            const typeMeta = MEDICATION_TYPES.find((t) => t.id === med.type_id);
             return (
               <Pressable
                 key={med.id}
                 className="py-2.5 px-1 flex-row items-center"
                 onPress={() => navigation.navigate('MedicationDetail', { medicationId: med.id })}
               >
-                <View className="w-6 h-6 rounded-full items-center justify-center mr-3" style={{ backgroundColor: 'transparent', borderWidth: 1.5, borderColor: prnCount > 0 ? iconSuccess : '#6B7280' }}>
+                <View className="w-6 h-6 rounded-full items-center justify-center mr-3" style={{ backgroundColor: 'transparent', borderWidth: 1.5, borderColor: prnCount > 0 ? iconSuccess : iconDecorative }}>
                   {prnCount > 0 ? (
                     <Text className="text-xs font-bold" style={{ color: iconSuccess }}>{prnCount}</Text>
                   ) : null}
@@ -399,8 +377,8 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
                     {med.name}
                   </Text>
                   <View className="flex-row items-center mt-0.5">
-                    {MEDICATION_TYPES.find((t) => t.id === med.type_id)?.label ? (
-                      <Text className="text-xs text-text-secondary" numberOfLines={1}>{MEDICATION_TYPES.find((t) => t.id === med.type_id)!.label}</Text>
+                    {typeMeta ? (
+                      <Text className="text-xs text-text-secondary" numberOfLines={1}>{typeMeta.label}</Text>
                     ) : null}
                     {med.dose_amount != null && med.dose_unit ? (
                       <Text className="text-xs text-text-secondary ml-2">{med.dose_amount} {med.dose_unit}</Text>
