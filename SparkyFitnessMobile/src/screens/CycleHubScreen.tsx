@@ -21,15 +21,9 @@ import CycleAlerts from '../components/wellness/CycleAlerts';
 import FertilityCard from '../components/wellness/ttc/FertilityCard';
 import PregnancyOverviewView from '../components/wellness/pregnancy/PregnancyOverviewView';
 
-import {
-  predictNextCycles,
-  phaseForDay,
-  buildCycleAlerts,
-  daysBetween,
-} from '@workspace/shared';
-import type { DerivedCycle, CyclePrediction } from '@workspace/shared';
+import { buildCycleAlerts } from '@workspace/shared';
 import { getTodayDate, addDays } from '../utils/dateUtils';
-import { getPhaseDisplayName } from '../utils/cycleDisplayUtils';
+import { getPhaseDisplayName, useCyclePredictionData } from '../utils/cycleDisplayUtils';
 
 type CycleHubScreenProps = RootStackScreenProps<'CycleHub'>;
 
@@ -66,64 +60,36 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
 
   const isLoading = isModeLoading || isSettingsLoading || isHistoryLoading || isLogsLoading;
 
-  // 2. Cycle Stats
+  // 2. Shared Cycle Prediction Hook
+  const sharedPrediction = useCyclePredictionData(selectedDate);
+
   const cycleStats = useMemo(() => {
-    const completed = cycles.filter((c) => c.cycle_length && c.period_length);
-    const cycleLengths = completed.map((c) => c.cycle_length!);
-    const periodLengths = completed.map((c) => c.period_length!);
-
     return {
-      avgCycleLength: settings?.avg_cycle_length_override ?? (cycleLengths.length
-        ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length)
-        : 28),
-      avgPeriodLength: settings?.avg_period_length_override ?? (periodLengths.length
-        ? Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length)
-        : 5),
-      regularity: 'regular' as const,
-      sampleSize: cycleLengths.length,
-      medianCycleLength: 28,
-      cycleLengthSd: 0,
+      avgCycleLength: sharedPrediction?.avgCycleLength ?? 28,
+      avgPeriodLength: sharedPrediction?.avgPeriodLength ?? 5,
     };
-  }, [cycles, settings]);
+  }, [sharedPrediction]);
 
-  // 3. Predictions
-  const prediction = useMemo(() => {
-    const lastCycle = cycles[0];
-    if (!lastCycle || !lastCycle.start_date || !settings) {
-      return { cycles: [], basis: 'settings', confidence: 'low' } as CyclePrediction;
-    }
-    return predictNextCycles(cycleStats, lastCycle.start_date, settings);
-  }, [cycles, cycleStats, settings]);
-
-  // 4. Phase and Day stats for selectedDate
   const dayStats = useMemo(() => {
-    return phaseForDay(selectedDate, cycles as DerivedCycle[], prediction);
-  }, [selectedDate, cycles, prediction]);
-
-  // Cycle-day numbers for the ring's fertile/ovulation markers. prediction.cycles[0]
-  // holds the *current* cycle's ovulation/fertile-window dates (they sit `luteal`
-  // days before the next predicted period), so convert those dates to 1-indexed
-  // cycle days relative to the current cycle's start (the prediction anchor).
-  const ringMarkers = useMemo(() => {
-    const anchor = cycles[0]?.start_date;
-    const next = prediction.cycles[0];
-    if (!anchor || !next) {
-      return { fertileStartDay: null, fertileEndDay: null, ovulationDay: null };
-    }
-    const toDay = (d: string | null): number | null =>
-      d ? daysBetween(anchor, d) + 1 : null;
     return {
-      fertileStartDay: toDay(next.fertileStart),
-      fertileEndDay: toDay(next.fertileEnd),
-      ovulationDay: toDay(next.ovulation),
+      phase: sharedPrediction?.phase ?? 'unknown',
+      cycleDay: sharedPrediction?.day ?? null,
     };
-  }, [cycles, prediction]);
+  }, [sharedPrediction]);
+
+  const ringMarkers = useMemo(() => {
+    return {
+      fertileStartDay: sharedPrediction?.fertileStartDay ?? null,
+      fertileEndDay: sharedPrediction?.fertileEndDay ?? null,
+      ovulationDay: sharedPrediction?.ovulationDay ?? null,
+    };
+  }, [sharedPrediction]);
 
   // 5. Alerts
   const alerts = useMemo(() => {
-    if (!settings || !prediction || !prediction.cycles || prediction.cycles.length === 0) return [];
-    return buildCycleAlerts(selectedDate, prediction, []);
-  }, [selectedDate, prediction, settings]);
+    if (!settings || !sharedPrediction?.prediction || !sharedPrediction.prediction.cycles || sharedPrediction.prediction.cycles.length === 0) return [];
+    return buildCycleAlerts(selectedDate, sharedPrediction.prediction, []);
+  }, [selectedDate, sharedPrediction, settings]);
 
   const activeSegmentLabel = useMemo(() => {
     return getPhaseDisplayName(dayStats.phase, discreetMode);
