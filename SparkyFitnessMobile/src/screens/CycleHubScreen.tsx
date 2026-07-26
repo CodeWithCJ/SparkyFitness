@@ -33,6 +33,7 @@ import {
 } from '@workspace/shared';
 import type { DerivedCycle, CyclePrediction } from '@workspace/shared';
 import { getTodayDate, addDays } from '../utils/dateUtils';
+import { getPhaseDisplayName } from '../utils/cycleDisplayUtils';
 
 type CycleHubScreenProps = RootStackScreenProps<'CycleHub'>;
 
@@ -143,13 +144,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) =>
   }, [selectedDate, prediction, settings]);
 
   const activeSegmentLabel = useMemo(() => {
-    if (dayStats.phase === 'menstrual') return 'Period';
-    if (dayStats.phase === 'fertile') return 'Fertile Window';
-    if (dayStats.phase === 'ovulation') return 'Ovulation Day';
-    if (dayStats.phase === 'luteal') return 'Luteal Phase';
-    if (dayStats.phase === 'follicular') return 'Follicular Phase';
-    return 'Cycle';
-  }, [dayStats]);
+    return getPhaseDisplayName(dayStats.phase, discreetMode);
+  }, [dayStats, discreetMode]);
 
   const header = useScreenHeader({
     title: discreetMode ? 'Wellness' : mode === 'pregnant' ? 'Pregnancy Hub' : 'Cycle Hub',

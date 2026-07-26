@@ -11,6 +11,7 @@ import {
   getPhaseColor,
 } from '../utils/cycleDisplayUtils';
 import { formatDate } from '../utils/dateUtils';
+import { babyWeek } from '@workspace/shared';
 import WombScene from './wellness/pregnancy/WombScene';
 import CycleRing from './wellness/CycleRing';
 import { useWellnessTokens } from './wellness/theme/wellnessTokens';
@@ -66,7 +67,6 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
   // Extracted cycle statistics & predictions (unconditional hook call)
   const cycleInfo = useCyclePredictionData();
 
-  // Comment 3: If feature is disabled by user, do not force/render card.
   if (settings?.enabled === false) {
     return null;
   }
@@ -103,7 +103,6 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
 
   // Render Rich Content
   const renderCardContent = () => {
-    // Comment 4: When discreetMode is ON, hide revealing period/pregnancy/baby details!
     if (discreetMode) {
       const activeDay = cycleInfo?.day && cycleInfo.day > 0 ? cycleInfo.day : null;
       return (
@@ -118,15 +117,31 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
 
     if (isPregnant) {
       const ga = overview?.gestation;
+      const baby = ga ? babyWeek(ga.week) : null;
       if (ga) {
         return (
           <View className="flex-row items-center gap-3 mt-2">
-            <WombScene scene={ga.week >= 28 ? 36 : ga.week >= 14 ? 20 : 8} size={72} />
+            {baby && <WombScene scene={baby.wombScene} size={72} />}
             <View className="flex-1">
               <Text className="text-base font-bold text-text-primary">
                 Week {ga.week}, Day {ga.day}
               </Text>
+              {baby && (
+                <Text className="text-sm font-semibold mt-0.5" style={{ color: tokens.phasePregnant }}>
+                  Size of {baby.comparison}
+                </Text>
+              )}
               <View className="flex-row items-center gap-3 mt-1.5">
+                {baby?.lengthCm != null && (
+                  <Text className="text-xs text-text-secondary">
+                    <Text className="font-medium text-text-primary">{baby.lengthCm} cm</Text>
+                  </Text>
+                )}
+                {baby?.weightG != null && (
+                  <Text className="text-xs text-text-secondary">
+                    <Text className="font-medium text-text-primary">{baby.weightG} g</Text>
+                  </Text>
+                )}
                 <Text className="text-xs text-text-secondary">
                   {ga.daysRemaining > 0 ? `${ga.daysRemaining}d to due date` : 'Due now'}
                 </Text>
@@ -221,7 +236,6 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
           <Text className="text-md font-bold text-text-primary ml-2">{title}</Text>
         </View>
 
-        {/* Comment 6: View instead of nested TouchableOpacity */}
         <View className="flex-row items-center">
           <Text className="text-sm text-accent-primary font-medium">Hub</Text>
           <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
