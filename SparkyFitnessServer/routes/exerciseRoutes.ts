@@ -446,6 +446,10 @@ router.get('/search', authenticate, async (req, res, next) => {
  *                       category:
  *                         type: string
  *                         nullable: true
+ *                       modality:
+ *                         type: string
+ *                         enum: [weight_reps, reps_only, duration, duration_distance]
+ *                         description: Derived from the provider category so import previews can pick a set editor.
  *                       calories_per_hour:
  *                         type: number
  *                         nullable: true
@@ -895,8 +899,8 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *             properties:
  *               exerciseData:
  *                 type: string
- *                 description: JSON string of exercise data (name, category, equipment, muscle_groups, description, instructions, is_public).
- *                 example: '{"name": "Push-up", "category": "Strength", "equipment": ["None"], "muscle_groups": ["Chest", "Triceps"], "description": "A classic bodyweight exercise.", "instructions": ["Start in a plank position.", "Lower your body until your chest nearly touches the floor.", "Push back up to the starting position."], "is_public": true}'
+ *                 description: JSON string of exercise data (name, category, modality, equipment, muscle_groups, description, instructions, is_public). modality is one of weight_reps, reps_only, duration, duration_distance; omitted or unrecognized values are derived from the category.
+ *                 example: '{"name": "Push-up", "category": "Strength", "modality": "reps_only", "equipment": ["None"], "muscle_groups": ["Chest", "Triceps"], "description": "A classic bodyweight exercise.", "instructions": ["Start in a plank position.", "Lower your body until your chest nearly touches the floor.", "Push back up to the starting position."], "is_public": true}'
  *               images:
  *                 type: array
  *                 items:
@@ -1100,8 +1104,8 @@ router.post('/import-json', authenticate, async (req, res, next) => {
  *             properties:
  *               exerciseData:
  *                 type: string
- *                 description: JSON string of exercise data to update (name, category, equipment, muscle_groups, description, instructions, is_public, images - existing image URLs).
- *                 example: '{"name": "Updated Push-up", "category": "Strength", "equipment": ["None"], "muscle_groups": ["Chest", "Triceps"], "description": "An updated classic bodyweight exercise.", "instructions": ["Start in a plank position.", "Lower your body until your chest nearly touches the floor.", "Push back up to the starting position."], "is_public": true, "images": ["http://example.com/old_image.jpg"]}'
+ *                 description: JSON string of exercise data to update (name, category, modality, equipment, muscle_groups, description, instructions, is_public, images - existing image URLs). modality is one of weight_reps, reps_only, duration, duration_distance; omitted or unrecognized values leave the stored modality untouched, and changing the category alone never re-derives it.
+ *                 example: '{"name": "Updated Push-up", "category": "Strength", "modality": "reps_only", "equipment": ["None"], "muscle_groups": ["Chest", "Triceps"], "description": "An updated classic bodyweight exercise.", "instructions": ["Start in a plank position.", "Lower your body until your chest nearly touches the floor.", "Push back up to the starting position."], "is_public": true, "images": ["http://example.com/old_image.jpg"]}'
  *               images:
  *                 type: array
  *                 items:

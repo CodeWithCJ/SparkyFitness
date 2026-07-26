@@ -1045,6 +1045,89 @@ describe('activeWorkoutStore', () => {
         );
       });
     });
+
+    describe('duration-modality adoption', () => {
+      /** The base empty session with ex-1 flipped to a duration exercise. */
+      function makeDurationSession(): PresetSessionResponse {
+        const session = makeEmptySession();
+        return {
+          ...session,
+          exercises: session.exercises.map((e, i) =>
+            i === 0
+              ? {
+                  ...e,
+                  exercise_snapshot: {
+                    ...e.exercise_snapshot,
+                    modality: 'duration',
+                  } as never,
+                  sets: e.sets.map((s) => ({ ...s, duration: null })),
+                }
+              : e,
+          ),
+        };
+      }
+
+      it('adopts the previous-session duration into an empty set on completion', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeDurationSession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', [
+          { setNumber: 1, setType: 'working', weight: null, reps: null, duration: 45 },
+          { setNumber: 2, setType: 'working', weight: null, reps: null, duration: 45 },
+        ]);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.duration).toBe(45);
+        expect(set0.weight).toBeNull();
+        expect(set0.reps).toBeNull();
+      });
+
+      it('never stamps legacy isometric reps onto a duration set at completion', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeDurationSession());
+        // Legacy history: seconds recorded in reps, no duration column.
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', [
+          { setNumber: 1, setType: 'working', weight: null, reps: 45 },
+        ]);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.reps).toBeNull();
+        expect(set0.weight).toBeNull();
+        expect(set0.duration).toBeNull();
+        expect(useActiveWorkoutStore.getState().completedSetIds['101']).toBe(FIXED_NOW);
+      });
+
+      it('leaves a typed duration alone on completion', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeDurationSession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', [
+          { setNumber: 1, setType: 'working', weight: null, reps: null, duration: 45 },
+        ]);
+        useActiveWorkoutStore.getState().updateSetField('101', { duration: 75 });
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        expect(
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0].duration,
+        ).toBe(75);
+      });
+
+      it('announces the next set\'s assumed duration target in the rest notification', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeDurationSession());
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', [
+          { setNumber: 1, setType: 'working', weight: null, reps: null, duration: 45 },
+          { setNumber: 2, setType: 'working', weight: null, reps: null, duration: 45 },
+        ]);
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        expect(mockSchedule).toHaveBeenCalledWith(
+          'Bench Press',
+          60,
+          expect.objectContaining({ body: expect.stringContaining('45s target') }),
+        );
+      });
+    });
   });
 
   describe('completeSet rest (supersets)', () => {
@@ -1713,6 +1796,18 @@ describe('activeWorkoutStore', () => {
         expect(set0.notes).toBe('felt heavy');
         expect(useActiveWorkoutStore.getState().hasUnsavedChanges).toBe(true);
       });
+
+      it('patches per-set duration, including clearing to null', () => {
+        useActiveWorkoutStore.getState().updateSetField('101', { duration: 45 });
+        expect(
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0].duration,
+        ).toBe(45);
+
+        useActiveWorkoutStore.getState().updateSetField('101', { duration: null });
+        expect(
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0].duration,
+        ).toBeNull();
+      });
     });
 
     describe('addSetToExercise', () => {
@@ -1757,6 +1852,38 @@ describe('activeWorkoutStore', () => {
       it('is a no-op for an unknown exercise entry id', () => {
         useActiveWorkoutStore.getState().addSetToExercise('nope');
         expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      });
+
+      it('clones a stored duration on non-duration exercises', () => {
+        useActiveWorkoutStore.getState().updateSetField('102', { duration: 90 });
+        useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-1');
+        expect(
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[2].duration,
+        ).toBe(90);
+      });
+
+      it('empties the cloned duration on duration-modality exercises', () => {
+        const session = makeSession();
+        const durationSession = {
+          ...session,
+          exercises: session.exercises.map((e, i) =>
+            i === 0
+              ? {
+                  ...e,
+                  exercise_snapshot: {
+                    ...e.exercise_snapshot,
+                    modality: 'duration',
+                  } as never,
+                }
+              : e,
+          ),
+        };
+        useActiveWorkoutStore.getState().startWorkout(durationSession);
+        useActiveWorkoutStore.getState().updateSetField('102', { duration: 90 });
+        useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-1');
+        expect(
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[2].duration,
+        ).toBeNull();
       });
     });
 
@@ -2909,6 +3036,33 @@ describe('activeWorkoutStore', () => {
         expect(state.sessionId).toBe('session-1');
         expect(state.completedSetIds).toEqual({ '101': 1_699_999_000_000 });
         expect(state.activeSetId).toBe('102');
+      });
+
+      it('keeps a pre-modality v5 payload (no duration keys) without discard', async () => {
+        // The modality upgrade deliberately did NOT bump the persist version:
+        // every added field is optional-tolerant, so an in-flight workout
+        // persisted before the upgrade must survive rehydration intact.
+        jest.useRealTimers();
+        const persisted = {
+          state: {
+            ...buildLegacyPayload(5).state,
+            completedSetIds: { '101': 1_699_999_000_000 },
+            plannedSetValues: { '102': { weight: 80, reps: 5 } },
+            previousSessionSets: {
+              'ex-1': [{ setNumber: 1, setType: 'working', weight: 100, reps: 8 }],
+            },
+          },
+          version: 5,
+        };
+        await AsyncStorage.setItem(
+          '@SparkyFitness/active-workout',
+          JSON.stringify(persisted),
+        );
+        await useActiveWorkoutStore.persist.rehydrate();
+        const state = useActiveWorkoutStore.getState();
+        expect(state.sessionId).toBe('session-1');
+        expect(state.plannedSetValues).toEqual({ '102': { weight: 80, reps: 5 } });
+        expect(state.previousSessionSets['ex-1']).toHaveLength(1);
       });
     });
 

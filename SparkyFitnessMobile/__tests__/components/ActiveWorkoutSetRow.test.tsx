@@ -4,6 +4,7 @@ import { act, render, fireEvent } from '@testing-library/react-native';
 import { useCSSVariable } from 'uniwind';
 import type {
   ExerciseEntrySetResponse,
+  ExerciseModality,
   ExerciseRecentSessionSet,
 } from '@workspace/shared';
 import ActiveWorkoutSetRow, {
@@ -55,13 +56,14 @@ function makeSet(overrides?: Partial<ExerciseEntrySetResponse>): ExerciseEntrySe
 
 interface RenderOverrides {
   set?: Partial<WorkoutCardSet>;
+  modality?: ExerciseModality;
   state?: SetRowState;
   metricColumn?: ActiveWorkoutMetricColumn;
   weightUnit?: 'kg' | 'lbs';
   displayNumber?: number;
   readOnly?: boolean;
   mode?: SetRowMode;
-  activeField?: 'weight' | 'reps' | 'rpe';
+  activeField?: 'weight' | 'reps' | 'duration' | 'rpe';
   isFocused?: boolean;
   nextSetId?: string | null;
   entryId?: string;
@@ -97,6 +99,7 @@ function renderRow(overrides?: RenderOverrides) {
   const buildElement = (current?: RenderOverrides) => (
     <ActiveWorkoutSetRow
       set={makeSet(current?.set as Partial<ExerciseEntrySetResponse>)}
+      modality={current?.modality}
       displayNumber={current?.displayNumber ?? 1}
       state={current?.state ?? 'current'}
       metricColumn={current?.metricColumn ?? 'rpe'}
@@ -534,13 +537,150 @@ describe('ActiveWorkoutSetRow', () => {
       expect(getByTestId('set-row')).toBeTruthy();
     });
 
-    it('shows the duration in the weight cell for time-based sets', () => {
-      const { getByText } = renderRow({
+    it('shows dashes for a weight_reps set that only stored a duration', () => {
+      // Time-based sets are duration-modality now; a stray duration on a
+      // weight_reps set is invisible structure, not a weight-cell fallback.
+      const { getAllByText } = renderRow({
         state: 'upcoming',
         readOnly: true,
         set: { weight: null, reps: null, duration: 90 },
       });
-      expect(getByText('1:30')).toBeTruthy();
+      expect(getAllByText('–').length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('modality matrix', () => {
+    describe('reps_only', () => {
+      it('drops the weight cell in live mode but keeps reps', () => {
+        const { queryByLabelText, getByLabelText } = renderRow({
+          modality: 'reps_only',
+          state: 'current',
+          set: { weight: null, reps: 12 },
+        });
+        expect(queryByLabelText('Weight')).toBeNull();
+        expect(getByLabelText('Reps').props.value).toBe('12');
+      });
+
+      it('drops the weight cell in view mode', () => {
+        const { queryByText, getByText } = renderRow({
+          modality: 'reps_only',
+          state: 'done',
+          readOnly: true,
+          set: { weight: 60, reps: 12 },
+        });
+        expect(getByText('12')).toBeTruthy();
+        expect(queryByText('60')).toBeNull();
+      });
+    });
+
+    describe.each(['duration', 'duration_distance'] as const)('%s', (modality) => {
+      it('renders a single seconds input in live mode', () => {
+        const { queryByLabelText, getByLabelText } = renderRow({
+          modality,
+          state: 'current',
+          set: { weight: null, reps: null, duration: 45 },
+        });
+        expect(queryByLabelText('Weight')).toBeNull();
+        expect(queryByLabelText('Reps')).toBeNull();
+        expect(getByLabelText('Duration').props.value).toBe('45');
+      });
+
+      it('renders flat seconds text in view mode', () => {
+        const { getByText } = renderRow({
+          modality,
+          state: 'done',
+          readOnly: true,
+          set: { weight: null, reps: null, duration: 90 },
+        });
+        expect(getByText('90')).toBeTruthy();
+      });
+
+      it('commits an edited duration on blur', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          modality,
+          state: 'current',
+          set: { weight: null, reps: null, duration: null },
+        });
+        const input = getByLabelText('Duration');
+        fireEvent.changeText(input, '75');
+        fireEvent(input, 'blur');
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { duration: 75 });
+      });
+
+      it('shows the assumed duration as the gray placeholder', () => {
+        const { getByLabelText } = renderRow({
+          modality,
+          state: 'current',
+          set: { weight: null, reps: null, duration: null },
+          assumed: { weight: null, reps: null, duration: 60 },
+        });
+        expect(getByLabelText('Duration').props.placeholder).toBe('60');
+      });
+
+      it('fills the duration from the previous set on PREV tap', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          modality,
+          state: 'current',
+          set: { weight: null, reps: null, duration: null },
+          previousSet: { setNumber: 1, setType: 'normal', weight: null, reps: null, duration: 45 },
+        });
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { duration: 45 });
+      });
+    });
+
+    describe('legacy reps-as-seconds fallback (duration modality only)', () => {
+      it('seeds the live cell from legacy reps and commits nothing untouched', () => {
+        const { getByLabelText, callbacks, rerenderRow } = renderRow({
+          modality: 'duration',
+          state: 'current',
+          isFocused: true,
+          activeField: 'duration',
+          set: { weight: null, reps: 45, duration: null },
+        });
+        expect(getByLabelText('Duration').props.value).toBe('45');
+
+        // Deactivating without edits flushes the drafts; the seeded legacy
+        // text must not write a duration (no silent reps → duration migration).
+        rerenderRow({
+          modality: 'duration',
+          state: 'current',
+          isFocused: false,
+          set: { weight: null, reps: 45, duration: null },
+        });
+        expect(callbacks.onCommitField).not.toHaveBeenCalled();
+      });
+
+      it('writes duration (reps untouched) once the user edits the legacy value', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          modality: 'duration',
+          state: 'current',
+          set: { weight: null, reps: 45, duration: null },
+        });
+        const input = getByLabelText('Duration');
+        fireEvent.changeText(input, '50');
+        fireEvent(input, 'blur');
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { duration: 50 });
+      });
+
+      it('never applies the fallback on duration_distance (seeded cardio reps)', () => {
+        const { getByLabelText } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          set: { weight: null, reps: 10, duration: null },
+        });
+        expect(getByLabelText('Duration').props.value).toBe('');
+      });
+
+      it('shows legacy seconds in the PREV column', () => {
+        const { getByText } = renderRow({
+          modality: 'duration',
+          state: 'current',
+          set: { weight: null, reps: null, duration: null },
+          previousSet: { setNumber: 1, setType: 'normal', weight: null, reps: 45 },
+        });
+        expect(getByText('45s')).toBeTruthy();
+      });
     });
   });
 
@@ -835,19 +975,31 @@ describe('ActiveWorkoutSetRow', () => {
         expect(callbacks.onLongPress).toHaveBeenCalledWith('101');
       });
 
-      it('shows the duration as the weight placeholder for time-based sets', () => {
+      it('renders a reducer-controlled duration cell on duration-modality rows', () => {
+        const { getByLabelText, queryByLabelText, callbacks } = renderRow({
+          mode: 'edit',
+          state: 'upcoming',
+          modality: 'duration',
+          set: { weight: null, reps: null, duration: 45 },
+        });
+        expect(queryByLabelText('Weight')).toBeNull();
+        expect(queryByLabelText('Reps')).toBeNull();
+        const input = getByLabelText('Duration');
+        expect(input.props.value).toBe('45');
+        fireEvent.changeText(input, '50');
+        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'duration', '50');
+      });
+
+      it('surfaces the legacy reps-as-seconds value as the duration placeholder', () => {
         const { getByLabelText } = renderRow({
           mode: 'edit',
           state: 'upcoming',
-          set: {
-            weight: null,
-            reps: null,
-            duration: 45,
-            editWeightText: '',
-            editRepsText: '',
-          },
+          modality: 'duration',
+          set: { weight: null, reps: 45, duration: null },
         });
-        expect(getByLabelText('Weight').props.placeholder).toBe('45s');
+        const input = getByLabelText('Duration');
+        expect(input.props.value).toBe('');
+        expect(input.props.placeholder).toBe('45');
       });
     });
   });

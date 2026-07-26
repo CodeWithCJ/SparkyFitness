@@ -24,7 +24,11 @@ import {
   ExerciseCategory,
 } from '@/constants/exercises';
 import { useState } from 'react';
-import { setsDurationMinutes, toHourMinute } from '@workspace/shared';
+import {
+  resolveExerciseModality,
+  setsDurationMinutes,
+  toHourMinute,
+} from '@workspace/shared';
 
 interface ExerciseEntryDisplayProps {
   exerciseEntry: ExerciseEntry;
@@ -89,6 +93,9 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
       : null;
 
   const isActiveCalories = snapshot?.name === 'Active Calories';
+  const isTimed =
+    resolveExerciseModality(snapshot?.modality, snapshot?.category) ===
+    'duration';
 
   const setsDuration = setsDurationMinutes(exerciseEntry.sets);
   // Sets carry their own timers (planks, holds, rest). When those sum to 0
@@ -208,9 +215,16 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           <div className="flex flex-wrap gap-1 mb-1.5">
             {exerciseEntry.sets!.map((set, index) => {
               const parts: string[] = [];
-              if (Number.isFinite(set.reps)) parts.push(`${set.reps} reps`);
+              if (Number.isFinite(set.reps))
+                parts.push(
+                  // Isometric sets predating the duration column stored their hold in `reps`.
+                  isTimed && set.duration == null
+                    ? `${set.reps}s`
+                    : `${set.reps} reps`
+                );
               if (set.weight && Number.isFinite(set.weight))
                 parts.push(formatWeight(set.weight, weightUnit));
+              if (set.duration != null) parts.push(`${set.duration}s`);
               if (Number.isFinite(set.rpe)) parts.push(`RPE ${set.rpe}`);
               if (parts.length === 0) return null;
               return (

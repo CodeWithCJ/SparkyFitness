@@ -22,7 +22,7 @@ import {
   exerciseFromDraft,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import type { SetRowAccessoryHandle } from './SetRowChrome';
+import type { SetInputField, SetRowAccessoryHandle } from './SetRowChrome';
 import type { ActiveSetPatch, CompletedSetMap } from '../stores/activeWorkoutStore';
 import { useSupersetBorders } from './ActiveWorkoutRail';
 import type { WorkoutDraftExercise, WorkoutSetMetaPatch } from '../types/drafts';
@@ -41,8 +41,8 @@ interface WorkoutFormExerciseListProps {
   excludePresetEntryId?: string;
   /** `${exerciseClientId}:${setClientId}` from useExerciseSetEditing. */
   activeSetKey: string | null;
-  activeSetField: 'weight' | 'reps' | 'rpe';
-  onActivateSet: (setKey: string, field: 'weight' | 'reps' | 'rpe') => void;
+  activeSetField: SetInputField;
+  onActivateSet: (setKey: string, field: SetInputField) => void;
   onDeactivateSet: () => void;
   /**
    * From the screen's useSetEditAccessoryBar: rows register their handles here
@@ -53,7 +53,7 @@ interface WorkoutFormExerciseListProps {
   updateSetField: (
     exerciseClientId: string,
     setClientId: string,
-    field: 'weight' | 'reps',
+    field: Exclude<SetInputField, 'rpe'>,
     value: string,
   ) => void;
   updateSetMeta: (
@@ -225,7 +225,7 @@ const WorkoutFormExerciseList = forwardRef<
     useSupersetBorders(exercisesForBorders);
 
   const handleActivateSet = useCallback(
-    (setId: string, field: 'weight' | 'reps') => {
+    (setId: string, field: Exclude<SetInputField, 'rpe'>) => {
       const owner = setOwnerByClientId.get(setId);
       if (owner) onActivateSet(`${owner}:${setId}`, field);
     },
@@ -242,7 +242,7 @@ const WorkoutFormExerciseList = forwardRef<
   );
 
   const handleEditFieldChange = useCallback(
-    (setId: string, field: 'weight' | 'reps', text: string) => {
+    (setId: string, field: Exclude<SetInputField, 'rpe'>, text: string) => {
       const owner = setOwnerByClientId.get(setId);
       if (owner) updateSetField(owner, setId, field, text);
     },
@@ -264,6 +264,14 @@ const WorkoutFormExerciseList = forwardRef<
       }
       if (patch.reps !== undefined) {
         updateSetField(owner, setId, 'reps', patch.reps == null ? '' : String(patch.reps));
+      }
+      if (patch.duration !== undefined) {
+        updateSetField(
+          owner,
+          setId,
+          'duration',
+          patch.duration == null ? '' : String(patch.duration),
+        );
       }
       if (patch.rpe !== undefined) {
         updateSetMeta(owner, setId, { rpe: patch.rpe });

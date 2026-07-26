@@ -158,6 +158,7 @@ describe('PresetSearchScreen', () => {
     expect(startLiveWorkout).toHaveBeenCalledWith({
       name: 'Push Day',
       exercises: buildPresetStartExercisesPayload(preset),
+      modalities: ['weight_reps'],
     });
     expect(navigation.navigate).not.toHaveBeenCalled();
   });
@@ -224,6 +225,7 @@ describe('PresetSearchScreen', () => {
     expect(startLiveWorkout).toHaveBeenCalledTimes(1);
     expect(startLiveWorkout).toHaveBeenCalledWith({
       exercises: buildSingleExerciseStartPayload(exercise),
+      modalities: ['weight_reps'],
     });
   });
 

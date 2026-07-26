@@ -1,0 +1,53 @@
+/**
+ * Exercise modality selects which per-set editor clients render
+ * (issue #1903 stage 2):
+ * - weight_reps: weight + reps inputs (default strength table)
+ * - reps_only: reps input, no weight column
+ * - duration: single duration-in-seconds input
+ * - duration_distance: entry-level cardio/activity editors; renders like
+ *   `duration` wherever a set table is forced
+ */
+export const EXERCISE_MODALITIES = [
+  "weight_reps",
+  "reps_only",
+  "duration",
+  "duration_distance",
+] as const;
+
+export type ExerciseModality = (typeof EXERCISE_MODALITIES)[number];
+
+export function isExerciseModality(value: unknown): value is ExerciseModality {
+  return (
+    typeof value === "string" &&
+    (EXERCISE_MODALITIES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Derive a modality from an exercise category. The rules must stay in sync
+ * with the backfill CASE in the `*_exercise_modality.sql` migration.
+ */
+export function deriveExerciseModality(
+  category: string | null | undefined,
+): ExerciseModality {
+  const normalized = category?.trim().toLowerCase();
+  if (normalized === "cardio") return "duration_distance";
+  if (normalized === "isometric" || normalized === "isometrics")
+    return "duration";
+  return "weight_reps";
+}
+
+/**
+ * Explicit modality when valid, else derived from category. The first arg is
+ * a plain string so unknown values (old servers, third-party callers) funnel
+ * through the guard; the server create path uses this as its sanitize+derive
+ * and clients use it as their old-server fallback.
+ */
+export function resolveExerciseModality(
+  modality: string | null | undefined,
+  category: string | null | undefined,
+): ExerciseModality {
+  return isExerciseModality(modality)
+    ? modality
+    : deriveExerciseModality(category);
+}

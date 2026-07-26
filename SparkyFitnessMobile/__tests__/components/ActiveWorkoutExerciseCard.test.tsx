@@ -208,6 +208,42 @@ describe('ActiveWorkoutExerciseCard', () => {
     mockCapturePrBaseline.mockClear();
   });
 
+  describe('column header per modality', () => {
+    const withModality = (modality: string | null, category: string | null = 'Strength') =>
+      makeExercise({
+        exercise_snapshot: {
+          ...makeExercise().exercise_snapshot!,
+          category,
+          modality,
+        } as never,
+      });
+
+    it('shows KG and Reps for weight_reps', () => {
+      const utils = renderCard(true, { exercise: withModality('weight_reps') });
+      expect(utils.getByText('KG')).toBeTruthy();
+      expect(utils.getByText('Reps')).toBeTruthy();
+      expect(utils.queryByText('Sec')).toBeNull();
+    });
+
+    it('drops the KG column for reps_only', () => {
+      const utils = renderCard(true, { exercise: withModality('reps_only') });
+      expect(utils.queryByText('KG')).toBeNull();
+      expect(utils.getByText('Reps')).toBeTruthy();
+    });
+
+    it.each(['duration', 'duration_distance'])('shows a single Sec column for %s', (m) => {
+      const utils = renderCard(true, { exercise: withModality(m) });
+      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.queryByText('KG')).toBeNull();
+      expect(utils.queryByText('Reps')).toBeNull();
+    });
+
+    it('derives from the snapshot category when modality is absent (old server)', () => {
+      const utils = renderCard(true, { exercise: withModality(null, 'Cardio') });
+      expect(utils.getByText('Sec')).toBeTruthy();
+    });
+  });
+
   it('renders the overflow trigger when expanded and fires onPressOverflow', () => {
     const { getByLabelText, callbacks } = renderCard(true);
 

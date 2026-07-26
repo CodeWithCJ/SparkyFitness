@@ -90,3 +90,47 @@ describe('useWorkoutPresetForm weight handling', () => {
     expect(result.current.exercises[1]?.sets[0]?.weight).toBeNull();
   });
 });
+
+describe('useWorkoutPresetForm modality seeding', () => {
+  const addExercise = (exercise: Partial<Exercise>) => {
+    const onSave = jest.fn();
+    const { result } = renderHook(() =>
+      useWorkoutPresetForm({ initialPreset: null, onSave })
+    );
+
+    act(() => {
+      result.current.handleAddExercise(exercise as Exercise);
+    });
+
+    return result.current.exercises[0];
+  };
+
+  it('seeds a blank timed set and stamps the modality for a duration exercise', () => {
+    const added = addExercise({
+      id: 'exercise-3',
+      name: 'Plank',
+      category: 'isometric',
+      images: [],
+    });
+
+    expect(added?.modality).toBe('duration');
+    expect(added?.sets[0]).toEqual(
+      expect.objectContaining({ reps: null, weight: null, duration: null })
+    );
+  });
+
+  it('honours an explicit modality over the category', () => {
+    const added = addExercise({
+      id: 'exercise-4',
+      name: 'Pull Up',
+      category: 'strength',
+      modality: 'reps_only',
+      images: [],
+    });
+
+    expect(added?.modality).toBe('reps_only');
+    expect(added?.sets[0]).toEqual(
+      expect.objectContaining({ reps: 10, weight: null })
+    );
+  });
+});

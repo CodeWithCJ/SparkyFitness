@@ -13,7 +13,14 @@ import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
-import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
+import {
+  buildActivitySetsPayload,
+  effectiveSetDurationSec,
+  getSourceLabel,
+  getWorkoutSummary,
+  isDurationModality,
+  resolveSnapshotModality,
+} from '../utils/workoutSession';
 import {
   useDeleteExerciseEntry,
   useUpdateExerciseEntry,
@@ -24,8 +31,7 @@ import { syncExerciseSessionInCache } from '../hooks/syncExerciseSessionInCache'
 import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
-import { distanceFromKm, weightFromKg, weightToKg } from '../utils/unitConversions';
-import { parseDecimalInput } from '../utils/numericInput';
+import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -88,9 +94,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const originalSetsRef = useRef<Map<string, ExerciseEntrySetResponse>>(new Map());
   const [draftSets, setDraftSets] = useState<WorkoutDraftSet[]>([]);
   const [activeSetKey, setActiveSetKey] = useState<string | null>(null);
-  const [activeSetField, setActiveSetField] = useState<'weight' | 'reps'>('weight');
+  const [activeSetField, setActiveSetField] = useState<'weight' | 'reps' | 'duration'>('weight');
+  const modality = resolveSnapshotModality(session.exercise_snapshot);
+  const durationLike = isDurationModality(modality);
+  const setFirstField = durationLike ? ('duration' as const) : ('weight' as const);
   const hasSets = session.sets.length > 1
-    || session.sets.some(s => s.weight != null || s.reps != null);
+    || session.sets.some(s => s.weight != null || s.reps != null || s.duration != null);
 
   const {
     state: formState,
@@ -118,6 +127,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
           : '',
         reps: set.reps != null ? String(set.reps) : '',
+        duration: set.duration,
       };
     });
     originalSetsRef.current = originals;
@@ -144,22 +154,38 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const id = `set-${nextSetIdRef.current++}`;
     setDraftSets(prev => {
       const lastSet = prev[prev.length - 1];
-      return [...prev, { clientId: id, weight: lastSet?.weight ?? '', reps: lastSet?.reps ?? '' }];
+      return [
+        ...prev,
+        {
+          clientId: id,
+          weight: lastSet?.weight ?? '',
+          reps: lastSet?.reps ?? '',
+          duration: lastSet?.duration ?? null,
+        },
+      ];
     });
     setActiveSetKey(`${SET_CLIENT_ID_PREFIX}:${id}`);
-    setActiveSetField('weight');
-  }, []);
+    setActiveSetField(setFirstField);
+  }, [setFirstField]);
 
   const removeDraftSet = useCallback((_exerciseId: string, setClientId: string) => {
     setDraftSets(prev => prev.filter(s => s.clientId !== setClientId));
     setActiveSetKey(null);
   }, []);
 
-  const updateDraftSetField = useCallback((_exerciseId: string, setClientId: string, field: 'weight' | 'reps', value: string) => {
-    setDraftSets(prev => prev.map(s => s.clientId === setClientId ? { ...s, [field]: value } : s));
+  const updateDraftSetField = useCallback((_exerciseId: string, setClientId: string, field: 'weight' | 'reps' | 'duration', value: string) => {
+    setDraftSets(prev => prev.map(s => {
+      if (s.clientId !== setClientId) return s;
+      // Drafts hold duration as `number | null`, mirroring the workout slice.
+      if (field === 'duration') {
+        const parsed = parseInt(value, 10);
+        return { ...s, duration: Number.isNaN(parsed) ? null : parsed };
+      }
+      return { ...s, [field]: value };
+    }));
   }, []);
 
-  const activateSet = useCallback((key: string, field: 'weight' | 'reps') => {
+  const activateSet = useCallback((key: string, field: 'weight' | 'reps' | 'duration') => {
     setActiveSetKey(key);
     setActiveSetField(field);
   }, []);
@@ -173,25 +199,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     const dateChanged = submission.entryDate !== normalizedDate;
 
-    const setsPayload = draftSets.map((set, index) => {
-      const w = parseDecimalInput(set.weight);
-      const r = parseInt(set.reps, 10);
-      const original = originalSetsRef.current.get(set.clientId);
-      return {
-        ...(original && {
-          id: original.id,
-          set_type: original.set_type,
-          duration: original.duration,
-          rest_time: original.rest_time,
-          notes: original.notes,
-          rpe: original.rpe,
-        }),
-        set_type: original?.set_type ?? 'Working Set',
-        set_number: index + 1,
-        weight: isNaN(w) ? null : weightToKg(w, weightUnit),
-        reps: isNaN(r) ? null : r,
-      };
-    });
+    const setsPayload = buildActivitySetsPayload(
+      draftSets,
+      originalSetsRef.current,
+      weightUnit,
+      modality,
+    );
 
     const payload = {
       exercise_id: submission.exerciseId,
@@ -560,6 +573,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 sets={draftSets}
                 activeSetKey={activeSetKey}
                 activeSetField={activeSetField}
+                modality={modality}
                 weightUnit={weightUnit}
                 onActivateSet={activateSet}
                 onDeactivateSet={deactivateSet}
@@ -575,19 +589,37 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
               <View className="flex-row py-1 mb-1">
                 <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
-                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
-                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+                {durationLike ? (
+                  <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Sec</Text>
+                ) : (
+                  <>
+                    {modality !== 'reps_only' && (
+                      <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
+                    )}
+                    <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+                  </>
+                )}
               </View>
               {session.sets.map(set => {
                 const displayWeight = set.weight != null
                   ? `${parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1))} ${weightUnit}`
                   : '-';
                 const displayReps = set.reps != null ? String(set.reps) : '-';
+                const seconds = effectiveSetDurationSec(set, modality);
+                const displayDuration = seconds != null ? String(seconds) : '-';
                 return (
                   <View key={set.id} className="flex-row py-1.5">
                     <Text className="text-sm text-text-muted w-10 text-center">{set.set_number}</Text>
-                    <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
-                    <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
+                    {durationLike ? (
+                      <Text className="text-sm text-text-primary flex-1 text-center">{displayDuration}</Text>
+                    ) : (
+                      <>
+                        {modality !== 'reps_only' && (
+                          <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
+                        )}
+                        <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
+                      </>
+                    )}
                   </View>
                 );
               })}

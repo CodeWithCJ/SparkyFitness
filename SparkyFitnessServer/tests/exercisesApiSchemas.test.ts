@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { deriveExerciseModality } from '@workspace/shared';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,9 +97,36 @@ describe('Exercises API schemas', () => {
       is_custom: true,
       shared_with_public: false,
       tags: ['private'],
+      modality: 'weight_reps',
     };
     const result = runSchema('exerciseLibraryItemSchema', item);
     expect(result).toEqual({ success: true, data: item });
+  });
+
+  it('rejects a library item whose modality is outside the enum', () => {
+    const result = runSchema('exerciseLibraryItemSchema', {
+      id: 'ex-1',
+      source: 'manual',
+      source_id: null,
+      name: 'Push Up',
+      force: null,
+      level: null,
+      mechanic: null,
+      equipment: [],
+      primary_muscles: [],
+      secondary_muscles: [],
+      instructions: [],
+      category: null,
+      images: [],
+      calories_per_hour: null,
+      description: null,
+      user_id: null,
+      is_custom: null,
+      shared_with_public: null,
+      tags: [],
+      modality: 'time_only',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('rejects library items missing the tags field (column drift guard)', () => {
@@ -139,5 +167,27 @@ describe('Exercises API schemas', () => {
     };
     const result = runSchema('paginatedExercisesResponseSchema', payload);
     expect(result).toEqual({ success: true, data: payload });
+  });
+});
+
+// These rules are duplicated as a SQL CASE in the exercise_modality migration
+// and as client-side fallbacks, so they are pinned here.
+describe('deriveExerciseModality', () => {
+  it('maps cardio categories to duration_distance regardless of case or padding', () => {
+    expect(deriveExerciseModality('Cardio')).toBe('duration_distance');
+    expect(deriveExerciseModality(' cardio ')).toBe('duration_distance');
+  });
+
+  it('maps both isometric spellings to duration', () => {
+    expect(deriveExerciseModality('isometric')).toBe('duration');
+    expect(deriveExerciseModality('Isometrics')).toBe('duration');
+  });
+
+  it('falls back to weight_reps for every other category', () => {
+    expect(deriveExerciseModality('strength')).toBe('weight_reps');
+    expect(deriveExerciseModality('custom')).toBe('weight_reps');
+    expect(deriveExerciseModality('')).toBe('weight_reps');
+    expect(deriveExerciseModality(null)).toBe('weight_reps');
+    expect(deriveExerciseModality(undefined)).toBe('weight_reps');
   });
 });

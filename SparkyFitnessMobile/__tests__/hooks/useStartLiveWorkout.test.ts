@@ -49,7 +49,12 @@ const mockFlushBeforeClear = flushActiveWorkoutBeforeClear as jest.MockedFunctio
   typeof flushActiveWorkoutBeforeClear
 >;
 
-const EXERCISES = buildSingleExerciseStartPayload({ id: 'ex-1' });
+const EXERCISES = buildSingleExerciseStartPayload({
+  id: 'ex-1',
+  modality: null,
+  category: null,
+});
+const MODALITIES = ['weight_reps' as const];
 
 function makeSession(): PresetSessionResponse {
   return {
@@ -132,7 +137,7 @@ describe('useStartLiveWorkout', () => {
     const { result, navigation, queryClient } = setup();
 
     await act(async () => {
-      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES });
+      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES, modalities: MODALITIES });
     });
 
     expect(mockCreateWorkout).toHaveBeenCalledWith({
@@ -160,7 +165,11 @@ describe('useStartLiveWorkout', () => {
     ];
 
     await act(async () => {
-      await result.current.startLiveWorkout({ name: 'Push Day', exercises: plannedExercises });
+      await result.current.startLiveWorkout({
+        name: 'Push Day',
+        exercises: plannedExercises,
+        modalities: MODALITIES,
+      });
     });
 
     // Sets are created empty — the plan is an assumption, not a result.
@@ -175,7 +184,7 @@ describe('useStartLiveWorkout', () => {
     );
     // The plan lands keyed to the created session's set ids for placeholders.
     expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
-      '101': { weight: 80, reps: 5 },
+      '101': { weight: 80, reps: 5, duration: null },
     });
   });
 
@@ -183,7 +192,7 @@ describe('useStartLiveWorkout', () => {
     const { result } = setup();
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
     });
 
     expect(mockCreateWorkout).toHaveBeenCalledWith(
@@ -199,7 +208,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
     });
 
     expect(sessionIdAtReplace).toBe('session-1');
@@ -209,7 +218,7 @@ describe('useStartLiveWorkout', () => {
     const { result, navigation } = setup({ connected: false });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
     });
 
     expect(alertSpy).toHaveBeenCalledWith('No Server Connected', expect.any(String));
@@ -224,7 +233,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
     });
 
     expect(alertSpy).toHaveBeenCalledWith(
@@ -254,7 +263,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
     });
 
     expect(navigation.navigate).toHaveBeenCalledWith('ActiveWorkout');
@@ -280,7 +289,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES });
+      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES, modalities: MODALITIES });
     });
 
     await waitFor(() => expect(mockCreateWorkout).toHaveBeenCalled());
@@ -292,7 +301,7 @@ describe('useStartLiveWorkout', () => {
     const { result } = setup();
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: [] });
+      await result.current.startLiveWorkout({ exercises: [], modalities: [] });
     });
 
     expect(mockToastShow).toHaveBeenCalledWith(
@@ -306,7 +315,7 @@ describe('useStartLiveWorkout', () => {
     mockCreateWorkout.mockRejectedValue(new Error('500'));
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
     });
 
     expect(navigation.replace).not.toHaveBeenCalled();
@@ -326,8 +335,8 @@ describe('useStartLiveWorkout', () => {
     await act(async () => {
       // The in-flight lock engages synchronously before the create await, so
       // the second call must be ignored even though the first hasn't resolved.
-      const first = result.current.startLiveWorkout({ exercises: EXERCISES });
-      const second = result.current.startLiveWorkout({ exercises: EXERCISES });
+      const first = result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
+      const second = result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
       resolveCreate(makeSession());
       await Promise.all([first, second]);
     });
@@ -339,7 +348,7 @@ describe('useStartLiveWorkout', () => {
     const { result, navigation } = setup({ focused: false });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
     });
 
     expect(useActiveWorkoutStore.getState().sessionId).toBe('session-1');

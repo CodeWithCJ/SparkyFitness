@@ -306,6 +306,7 @@ async function _updateExerciseEntryWithClient(
     calories_per_hour:
       updateData.calories_per_hour || currentEntry.calories_per_hour,
     category: updateData.category || currentEntry.category,
+    modality: updateData.modality || currentEntry.modality,
     source: entrySource || currentEntry.source, // Use provided entrySource or existing
     source_id: updateData.source_id || currentEntry.source_id,
     force: updateData.force || currentEntry.force,
@@ -337,6 +338,7 @@ async function _updateExerciseEntryWithClient(
     mergedData.exercise_name = exercise.name;
     mergedData.calories_per_hour = exercise.calories_per_hour;
     mergedData.category = exercise.category;
+    mergedData.modality = exercise.modality;
     mergedData.source_id = exercise.source_id;
     mergedData.force = exercise.force;
     mergedData.level = exercise.level;
@@ -377,6 +379,7 @@ async function _updateExerciseEntryWithClient(
       water_estimated = $26,
       superset_group = $27,
       entry_time = $30,
+      modality = $31,
       updated_at = now()
     WHERE id = $28 AND user_id = $29
     RETURNING id`,
@@ -411,6 +414,7 @@ async function _updateExerciseEntryWithClient(
       id,
       userId,
       mergedData.entry_time ?? null,
+      mergedData.modality ?? null,
     ]
   );
   // Handle sets update
@@ -527,7 +531,7 @@ async function _createExerciseEntryWithClient(
       // No existing entry, create a new one
       // 1. Fetch the exercise details to create the snapshot
       const exerciseSnapshotQuery = await client.query(
-        `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images
+        `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images, modality
          FROM exercises WHERE id = $1`,
         [entryData.exercise_id]
       );
@@ -539,7 +543,7 @@ async function _createExerciseEntryWithClient(
       // entry id (a new app adds an exercise mid-workout with its own uuid via
       // create-in-reconcile) is inserted explicitly so the entry keeps its
       // identity across saves; otherwise the column defaults to
-      // gen_random_uuid(). The id is appended as $31 to keep the base column
+      // gen_random_uuid(). The id is appended last to keep the base column
       // list unchanged.
       const entryValues = [
         userId,
@@ -572,10 +576,11 @@ async function _createExerciseEntryWithClient(
         entryData.water_estimated || null,
         entryData.superset_group ?? null,
         entryData.entry_time ?? null,
+        snapshot.modality,
       ];
       const hasClientId = entryData.id !== undefined && entryData.id !== null;
       const idColumn = hasClientId ? ', id' : '';
-      const idPlaceholder = hasClientId ? ', $31' : '';
+      const idPlaceholder = hasClientId ? ', $32' : '';
       if (hasClientId) entryValues.push(entryData.id);
       const entryResult = await client.query(
         `INSERT INTO exercise_entries (
@@ -584,8 +589,8 @@ async function _createExerciseEntryWithClient(
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
            distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated,
-           superset_group, entry_time${idColumn}
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30${idPlaceholder}) RETURNING id`,
+           superset_group, entry_time, modality${idColumn}
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31${idPlaceholder}) RETURNING id`,
         entryValues
       );
       newEntryId = entryResult.rows[0].id;
@@ -1017,6 +1022,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         const {
           exercise_name,
           category,
+          modality,
           calories_per_hour,
           source,
           source_id,
@@ -1040,6 +1046,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
             id: entryData.exercise_id, // Add the exercise_id here
             name: exercise_name,
             category: category,
+            modality: modality,
             calories_per_hour: calories_per_hour,
             source: source,
             source_id: source_id,
@@ -1275,6 +1282,7 @@ export interface RecentSessionRow {
         set_type: string | null;
         weight: number | null;
         reps: number | null;
+        duration: number | null;
       }[]
     | null;
 }
@@ -1291,10 +1299,10 @@ async function getRecentSessionsForExercise(
          ee.entry_date::TEXT AS entry_date,
          (SELECT json_agg(set_data ORDER BY set_data.set_number, set_data.id)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.weight, ees.reps
+              SELECT ees.id, ees.set_number, ees.set_type, ees.weight, ees.reps, ees.duration
                 FROM exercise_entry_sets ees
                WHERE ees.exercise_entry_id = ee.id
-                 AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL)
+                 AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL)
             ) AS set_data
          ) AS sets
        FROM exercise_entries ee
@@ -1304,7 +1312,7 @@ async function getRecentSessionsForExercise(
          AND EXISTS (
            SELECT 1 FROM exercise_entry_sets ees
             WHERE ees.exercise_entry_id = ee.id
-              AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL)
+              AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL)
          )
        ORDER BY ee.entry_date DESC, ee.created_at DESC, ee.id DESC
        LIMIT $4`,

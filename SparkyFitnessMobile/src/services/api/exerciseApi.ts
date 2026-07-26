@@ -5,8 +5,10 @@ import { getAuthHeaders, notifySessionExpired } from './authService';
 import { addLog } from '../LogService';
 import { UPLOAD_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
 import type { Exercise, SuggestedExercisesResponse } from '../../types/exercise';
+import { isExerciseModality } from '@workspace/shared';
 import type {
   ExerciseHistoryResponse,
+  ExerciseModality,
   ExerciseSessionResponse,
   ExerciseStatsResponse,
   CreatePresetSessionRequest,
@@ -131,6 +133,8 @@ export const fetchExercisesCount = async (): Promise<number> => {
 export interface CreateExercisePayload {
   name: string;
   category: string;
+  /** Silently dropped by pre-modality servers (they derive from category). */
+  modality?: ExerciseModality;
   /** Omit when blank — server defaults missing/falsy values to 0. */
   calories_per_hour?: number;
   description: string | null;
@@ -146,6 +150,8 @@ export interface CreateExercisePayload {
 export interface UpdateExercisePayload {
   name?: string;
   category?: string;
+  /** Sent only when the user changes it; omitted preserves (server COALESCEs). */
+  modality?: ExerciseModality;
   calories_per_hour?: number;
   /** Empty string clears, omitted/null preserves (server COALESCEs nulls). */
   description?: string | null;
@@ -212,6 +218,8 @@ export const transformExerciseRow = (row: Record<string, unknown>): Exercise => 
   id: String(row.id),
   name: String(row.name),
   category: (row.category as string | null) ?? null,
+  // Guarded: server rows are untyped, and pre-modality servers omit the field.
+  modality: isExerciseModality(row.modality) ? row.modality : null,
   equipment: parseJsonArray(row.equipment),
   primary_muscles: parseJsonArray(row.primary_muscles),
   secondary_muscles: parseJsonArray(row.secondary_muscles),

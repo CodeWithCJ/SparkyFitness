@@ -20,6 +20,7 @@ import {
   CATEGORY_ICON_MAP,
   buildPresetStartExercisesPayload,
   buildSingleExerciseStartPayload,
+  resolveSnapshotModality,
 } from '../utils/workoutSession';
 import SegmentedControl from '../components/SegmentedControl';
 import type { Exercise } from '../types/exercise';
@@ -95,6 +96,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     void startLiveWorkout({
       name: preset.name,
       exercises: buildPresetStartExercisesPayload(preset),
+      modalities: preset.exercises.map((e) => resolveSnapshotModality(e)),
     });
   }, [startLiveWorkout]);
 
@@ -112,7 +114,10 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   // session with it satisfies the server's ≥1-exercise rule for empty starts.
   const handleFirstExerciseSelected = useCallback((exercise: Exercise) => {
     setStartingId(EMPTY_START_ID);
-    void startLiveWorkout({ exercises: buildSingleExerciseStartPayload(exercise) });
+    void startLiveWorkout({
+      exercises: buildSingleExerciseStartPayload(exercise),
+      modalities: [resolveSnapshotModality(exercise)],
+    });
   }, [startLiveWorkout]);
 
   useSelectedExercise(route.params, handleFirstExerciseSelected);

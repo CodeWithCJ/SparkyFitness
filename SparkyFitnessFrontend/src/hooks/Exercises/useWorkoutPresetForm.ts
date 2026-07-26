@@ -20,6 +20,8 @@ import { Exercise } from '@/types/exercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '../use-toast';
 import { useTranslation } from 'react-i18next';
+import { resolveExerciseModality } from '@workspace/shared';
+import { defaultSetForModality } from '@/constants/exercises';
 
 interface WorkoutPresetFormProps {
   onSave: (
@@ -57,6 +59,10 @@ export function useWorkoutPresetForm({
 
   const handleAddExercise = (exercise: Exercise | undefined) => {
     if (exercise) {
+      const modality = resolveExerciseModality(
+        exercise.modality,
+        exercise.category
+      );
       const newExercise: WorkoutPresetExercise = {
         id: generateClientId(), // Stable ID for DND
         exercise_id: exercise.id,
@@ -66,16 +72,9 @@ export function useWorkoutPresetForm({
             ? exercise.images[0]
             : '',
         exercise: exercise,
-        sets: [
-          {
-            id: generateClientId(),
-            set_number: 1,
-            set_type: 'Working Set',
-            reps: 10,
-            weight: null,
-          },
-        ],
+        sets: [{ ...defaultSetForModality(modality), id: generateClientId() }],
         category: exercise.category ?? '',
+        modality,
       };
       setExercises((prev) => [...prev, newExercise]);
     }

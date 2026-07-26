@@ -12,13 +12,16 @@ import type {
 import type { Exercise } from '../types/exercise';
 import {
   describeActiveSetAssumed,
+  formatDurationSeconds,
   getDefaultRestSec,
   getSupersetRuns,
   isDropSetType,
+  isDurationModality,
   isPrSet,
   moveSessionExerciseItem,
   normalizeSessionSupersetGroups,
   resolveAssumedSetValues,
+  resolveSnapshotModality,
   seedPrFromSession,
   supersetSessionExercises,
   ungroupSessionExercise,
@@ -344,7 +347,7 @@ export interface ActiveWorkoutState {
 
 /** Fields the active-workout screen can edit on a set. */
 export type ActiveSetPatch = Partial<
-  Pick<ExerciseEntrySetResponse, 'weight' | 'reps' | 'rpe' | 'set_type' | 'notes'>
+  Pick<ExerciseEntrySetResponse, 'weight' | 'reps' | 'duration' | 'rpe' | 'set_type' | 'notes'>
 >;
 
 const initialData: Pick<
@@ -581,16 +584,33 @@ function adoptAssumedSetValues(
   if (!located) return session;
   const { exercise, setIndex } = located;
   const target = exercise.sets[setIndex];
-  if (target.weight != null && target.reps != null) return session;
+
+  // Only the fields the modality renders adopt: a duration set must not be
+  // stamped with legacy isometric reps from history, and a weighted set must
+  // not inherit a duration.
+  const modality = resolveSnapshotModality(exercise.exercise_snapshot);
+  const durationLike = isDurationModality(modality);
+  const relevantFilled = durationLike
+    ? target.duration != null
+    : modality === 'reps_only'
+      ? target.reps != null
+      : target.weight != null && target.reps != null;
+  if (relevantFilled) return session;
 
   const assumed = resolveAssumedSetValues(
     exercise.sets,
     state.previousSessionSets[exercise.exercise_id],
     state.plannedSetValues,
   )[setIndex];
-  const weight = target.weight ?? assumed.weight;
-  const reps = target.reps ?? assumed.reps;
-  if (weight == null && reps == null) return session;
+  const patch: ActiveSetPatch = durationLike
+    ? { duration: target.duration ?? assumed.duration ?? null }
+    : modality === 'reps_only'
+      ? { reps: target.reps ?? assumed.reps }
+      : {
+          weight: target.weight ?? assumed.weight,
+          reps: target.reps ?? assumed.reps,
+        };
+  if (Object.values(patch).every((v) => v == null)) return session;
 
   return {
     ...session,
@@ -599,7 +619,7 @@ function adoptAssumedSetValues(
         ? e
         : {
             ...e,
-            sets: e.sets.map((s, i) => (i === setIndex ? { ...s, weight, reps } : s)),
+            sets: e.sets.map((s, i) => (i === setIndex ? { ...s, ...patch } : s)),
           },
     ),
   };
@@ -764,7 +784,9 @@ function buildRestNotificationContent(
   if (desc != null) {
     const name = desc.exerciseName ?? fallbackExerciseName;
     let body = `${name} · Set ${desc.setNumber} of ${desc.setCount}`;
-    if (desc.reps != null) {
+    if (desc.durationSec != null) {
+      body += ` · ${formatDurationSeconds(desc.durationSec)} target`;
+    } else if (desc.reps != null) {
       body += ` · ${desc.reps} rep${desc.reps === 1 ? '' : 's'} target`;
     }
     return { title: 'Rest complete: next set up', body };
@@ -852,7 +874,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         opts?.plannedSetValues?.forEach((plannedSets, exerciseIndex) => {
           session.exercises[exerciseIndex]?.sets.forEach((s, setIndex) => {
             const planned = plannedSets[setIndex];
-            if (planned != null && (planned.weight != null || planned.reps != null)) {
+            if (
+              planned != null &&
+              (planned.weight != null || planned.reps != null || planned.duration != null)
+            ) {
               plannedSetValues[String(s.id)] = planned;
             }
           });
@@ -1338,10 +1363,15 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
 
         const tempId = nextTempSetId(session, state.setRenderKeys);
         const lastSet = exercise.sets[exercise.sets.length - 1];
-        // Clone the last set's structure (rest/type/duration) but not its
+        // Clone the last set's structure (rest/type) but not its
         // weight/reps — a new set starts empty and shows the row above's
         // values as its gray placeholder — nor its outcomes
         // (notes/rpe/completed_at/is_pr), which describe a performed set.
+        // On duration exercises the duration IS the value, so it empties like
+        // weight/reps; elsewhere it's invisible structure and clones along.
+        const durationLike = isDurationModality(
+          resolveSnapshotModality(exercise.exercise_snapshot),
+        );
         const newSet: ExerciseEntrySetResponse = lastSet
           ? {
               ...lastSet,
@@ -1349,6 +1379,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
               set_number: exercise.sets.length + 1,
               weight: null,
               reps: null,
+              ...(durationLike ? { duration: null } : {}),
               notes: null,
               rpe: null,
               completed_at: null,
@@ -1475,6 +1506,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           id: exercise.id,
           name: exercise.name,
           category: exercise.category ?? null,
+          modality: exercise.modality ?? null,
           images: exercise.images ?? null,
           primary_muscles: exercise.primary_muscles ?? null,
           secondary_muscles: exercise.secondary_muscles ?? null,
@@ -1534,6 +1566,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           id: exercise.id,
           name: exercise.name,
           category: exercise.category ?? null,
+          modality: exercise.modality ?? null,
           images: exercise.images ?? null,
           primary_muscles: exercise.primary_muscles ?? null,
           secondary_muscles: exercise.secondary_muscles ?? null,

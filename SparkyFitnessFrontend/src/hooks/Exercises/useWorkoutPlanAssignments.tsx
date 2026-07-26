@@ -16,6 +16,8 @@ import type { Exercise } from '@/types/exercises';
 import { useWorkoutPresets } from '@/hooks/Exercises/useWorkoutPresets';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAuth } from '@/hooks/useAuth';
+import { resolveExerciseModality } from '@workspace/shared';
+import { defaultSetForModality } from '@/constants/exercises';
 
 export function useWorkoutPlanAssignments(
   initialData?: WorkoutPlanTemplate | null
@@ -39,9 +41,13 @@ export function useWorkoutPlanAssignments(
           a.sets?.map((s) => ({
             ...s,
             id: s.id ? String(s.id) : generateClientId(),
-            weight: parseFloat(
-              convertWeight(s.weight ?? 0, 'kg', weightUnit).toFixed(1)
-            ),
+            // null means no weight (e.g. a time-only set) and must survive the round trip.
+            weight:
+              s.weight != null
+                ? parseFloat(
+                    convertWeight(s.weight, 'kg', weightUnit).toFixed(1)
+                  )
+                : null,
           })) || [],
       })) || []
   );
@@ -250,6 +256,10 @@ export function useWorkoutPlanAssignments(
         ]);
       } else {
         const exercise = item as Exercise;
+        const modality = resolveExerciseModality(
+          exercise.modality,
+          exercise.category
+        );
         setAssignments((prev) => [
           ...prev,
           {
@@ -259,14 +269,10 @@ export function useWorkoutPlanAssignments(
             workout_preset_id: undefined,
             exercise_id: exercise.id,
             exercise_name: exercise.name,
+            category: exercise.category ?? undefined,
+            modality,
             sets: [
-              {
-                id: generateClientId(),
-                set_number: 1,
-                set_type: 'Working Set',
-                reps: 10,
-                weight: null,
-              },
+              { ...defaultSetForModality(modality), id: generateClientId() },
             ],
           },
         ]);
@@ -340,9 +346,10 @@ export function useWorkoutPlanAssignments(
             sets:
               a.sets?.map((s) => ({
                 ...s,
-                weight: s.weight
-                  ? convertWeight(s.weight, weightUnit, 'kg')
-                  : 0,
+                weight:
+                  s.weight != null
+                    ? convertWeight(s.weight, weightUnit, 'kg')
+                    : null,
               })) || [],
           };
         }),

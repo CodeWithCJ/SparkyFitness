@@ -34,6 +34,7 @@ import {
   SetInputAccessoryBar,
   useDeactivateOnKeyboardDismiss,
   type SetAccessoryAction,
+  type SetInputField,
 } from '../components/SetRowChrome';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
 import ActiveWorkoutRestBar, {
@@ -650,11 +651,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // autosave id churn. Distinct from activeSetId (the cursor / log ring), so
   // tapping an earlier set to fix a value doesn't move the cursor.
   const [focusedSetKey, setFocusedSetKey] = useState<string | null>(null);
-  const [focusedField, setFocusedField] = useState<'weight' | 'reps' | 'rpe'>('weight');
-  const handleActivateSet = useCallback((setKey: string, field: 'weight' | 'reps') => {
-    setFocusedField(field);
-    setFocusedSetKey(setKey);
-  }, []);
+  const [focusedField, setFocusedField] = useState<SetInputField>('weight');
+  const handleActivateSet = useCallback(
+    (setKey: string, field: Exclude<SetInputField, 'rpe'>) => {
+      setFocusedField(field);
+      setFocusedSetKey(setKey);
+    },
+    [],
+  );
   // Tapping the RPE column focuses that row's RPE input directly (the row's
   // focus effect reads `focusedField`).
   const handleActivateRpe = useCallback((setKey: string) => {
@@ -998,12 +1002,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       ? null
       : (Object.keys(setRenderKeys).find((id) => setRenderKeys[id] === focusedSetKey) ??
         focusedSetKey);
-  // The keyboard walk: weight → reps → RPE (when that column is shown); the
-  // last field's bar drops Next and leads with Log.
+  // The keyboard walk: weight → reps → RPE (when that column is shown); a
+  // duration cell is its row's only value input, so it walks straight to RPE.
+  // The last field's bar drops Next and leads with Log.
   const accessoryNextField =
     focusedField === 'weight'
       ? ('reps' as const)
-      : focusedField === 'reps' && metricColumn === 'rpe'
+      : (focusedField === 'reps' || focusedField === 'duration') && metricColumn === 'rpe'
         ? ('rpe' as const)
         : null;
   const focusedSetCompleted = focusedSetId != null && completedSetIds[focusedSetId] != null;
