@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
-import { getTodayDate, addDays } from '../utils/dateUtils';
+import { getTodayDate } from '../utils/dateUtils';
 import { getDueDosesForDate } from '@workspace/shared';
 import { ensureNotificationPermission, MEDICATION_REMINDER_CATEGORY } from './notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -10,7 +10,6 @@ import { addLog } from './LogService';
 
 export const CHANNEL_ID = 'medication-reminders';
 const REPEAT_MINUTES = [10, 20, 30];
-const LOOKAHEAD_DAYS = 7;
 const schedulingLock = new Set<string>();
 
 function medReminderKey(medicationId: string, scheduleId: string, date: string, timeOfDay: string) {
@@ -58,7 +57,7 @@ async function scheduleReminder(
 }
 
 /**
- * Reconcile medication reminder notifications for today and the next 7 days.
+ * Reconcile medication reminder notifications for today.
  * Can be called from the foreground or background.
  *
  * Uses Notifications.getAllScheduledNotificationsAsync() instead of an
@@ -97,35 +96,30 @@ export async function reconcileMedicationReminders(
     }
 
     const today = getTodayDate();
+    const dueDoses = getDueDosesForDate(medications, today);
 
     const unloggedKeys = new Set<string>();
-    const allDueByDay: { date: string; due: ReturnType<typeof getDueDosesForDate>[number] }[] = [];
+    const unloggedDoses: { due: ReturnType<typeof getDueDosesForDate>[number]; timeOfDay: string }[] = [];
 
-    for (let i = 0; i <= LOOKAHEAD_DAYS; i++) {
-      const date = addDays(today, i);
-      const dueDoses = getDueDosesForDate(medications, date);
+    for (const due of dueDoses) {
+      const timeOfDay = due.schedule.time_of_day;
+      if (!timeOfDay) continue;
 
-      for (const due of dueDoses) {
-        allDueByDay.push({ date, due });
+      const isLogged = entries.some(
+        (e) =>
+          e.medication_id === due.medication.id &&
+          e.schedule_id === due.schedule.id &&
+          (e.status === 'taken' || e.status === 'skipped'),
+      );
 
-        const isLogged = i === 0 && entries.some(
-          (e) =>
-            e.medication_id === due.medication.id &&
-            e.schedule_id === due.schedule.id &&
-            e.entry_date === today &&
-            (e.status === 'taken' || e.status === 'skipped'),
-        );
+      if (!isLogged) {
+        const baseKey = medReminderKey(due.medication.id, due.schedule.id, today, timeOfDay);
+        unloggedKeys.add(baseKey);
+        unloggedDoses.push({ due, timeOfDay });
 
-        if (!isLogged) {
-          const timeOfDay = due.schedule.time_of_day;
-          if (timeOfDay) {
-            const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);
-            unloggedKeys.add(baseKey);
-            if (prefs.medicationReminderRepeats) {
-              for (const offset of REPEAT_MINUTES) {
-                unloggedKeys.add(repeatMedReminderKey(baseKey, offset));
-              }
-            }
+        if (prefs.medicationReminderRepeats) {
+          for (const offset of REPEAT_MINUTES) {
+            unloggedKeys.add(repeatMedReminderKey(baseKey, offset));
           }
         }
       }
@@ -147,35 +141,30 @@ export async function reconcileMedicationReminders(
         .map((n) => n.content.data?.key as string),
     );
 
-    for (const { date, due } of allDueByDay) {
-      const timeOfDay = due.schedule.time_of_day;
-      if (!timeOfDay) continue;
-
-      const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);
-      if (!unloggedKeys.has(baseKey)) continue;
+    for (const { due, timeOfDay } of unloggedDoses) {
+      const baseKey = medReminderKey(due.medication.id, due.schedule.id, today, timeOfDay);
+      if (pendingKeys.has(baseKey)) continue;
 
       const [hours, minutes] = timeOfDay.split(':').map(Number);
       const body = `Time to take ${due.medication.name}${due.medication.dose_amount != null ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})` : ''}`;
       const data = {
         medicationId: due.medication.id,
         scheduleId: due.schedule.id,
-        entryDate: date,
+        entryDate: today,
         key: baseKey,
         baseKey,
       };
 
-      // Build trigger date for this specific day
-      const [year, month, day] = date.split('-').map(Number);
+      const [year, month, day] = today.split('-').map(Number);
       const triggerDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-      if (triggerDate.getTime() > Date.now() && !pendingKeys.has(baseKey)) {
+      if (triggerDate.getTime() > Date.now()) {
         await scheduleReminder(body, triggerDate, data);
       }
 
-      // Repeat reminders (+10, +20, +30 min)
       if (prefs.medicationReminderRepeats) {
         for (const offset of REPEAT_MINUTES) {
           const repeatKey = repeatMedReminderKey(baseKey, offset);
-          if (!unloggedKeys.has(repeatKey) || pendingKeys.has(repeatKey)) continue;
+          if (pendingKeys.has(repeatKey)) continue;
           const repeatDate = new Date(triggerDate.getTime() + offset * 60000);
           if (repeatDate.getTime() > Date.now()) {
             await scheduleReminder(body, repeatDate, { ...data, key: repeatKey });

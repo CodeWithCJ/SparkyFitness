@@ -40,7 +40,6 @@ import FastingCard from '../components/FastingCard';
 import CycleCard from '../components/CycleCard';
 import FastingGoalReconciler from '../components/FastingGoalReconciler';
 import MedicationsCard from '../components/MedicationsCard';
-import MedicationReminderReconciler from '../components/MedicationReminderReconciler';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -437,7 +436,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             to `selectedDate`. Visibility is a local app setting toggled from
             Dashboard Settings. */}
         <FastingGoalReconciler />
-        <MedicationReminderReconciler />
         {fastingCardVisible && <FastingCard navigation={navigation} />}
         {cycleCardVisible && <CycleCard navigation={navigation} />}
 
