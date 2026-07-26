@@ -25,8 +25,13 @@ import type { RootStackParamList } from '../../../types/navigation';
 const PregnancyTodayView: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
-  const { settings, isLoading: isSettingsLoading } = useCycleSettings();
-  const discreetMode = isSettingsLoading || (settings?.discreet_mode ?? false);
+  const {
+    settings,
+    isLoading: isSettingsLoading,
+    isError: isSettingsError,
+  } = useCycleSettings();
+  const discreetMode =
+    isSettingsLoading || isSettingsError || settings?.discreet_mode === true;
 
   const { pregnancy, isLoading: isPregnancyLoading } = useCurrentPregnancy();
   const hasActive = !!pregnancy && pregnancy.status === 'active';
