@@ -182,12 +182,12 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
 
   const dueDoses = useMemo(() => {
     if (!medications) return [];
-    return getDueDosesForDate(medications as any, selectedDate) as DueDose[];
+    return getDueDosesForDate(medications, selectedDate) as DueDose[];
   }, [medications, selectedDate]);
 
   const prnMeds = useMemo(() => {
     if (!medications) return [];
-    return (medications as MedicationDetail[]).filter((med) => {
+    return medications.filter((med) => {
       if (!med.is_active) return false;
       if (!med.schedules || med.schedules.length === 0) return true;
       return med.schedules.some((s) => s.schedule_type_id === 'prn');

@@ -5,7 +5,7 @@ import { getTodayDate } from '../utils/dateUtils';
 import { getDueDosesForDate } from '@workspace/shared';
 import { ensureNotificationPermission, MEDICATION_REMINDER_CATEGORY } from './notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import type { Medication, MedicationEntry } from '../types/medications';
+import type { MedicationDetail, MedicationEntry } from '../types/medications';
 
 const CHANNEL_ID = 'medication-reminders';
 const REPEAT_MINUTES = [10, 20, 30];
@@ -61,7 +61,7 @@ async function scheduleReminder(
  * @param entries - Today's medication entries from the API
  */
 export async function reconcileMedicationReminders(
-  medications: Medication[],
+  medications: MedicationDetail[],
   entries: MedicationEntry[],
 ): Promise<void> {
   if (schedulingLock.has('medication-reminders')) return;
@@ -90,7 +90,7 @@ export async function reconcileMedicationReminders(
     }
 
     const today = getTodayDate();
-    const dueDoses = getDueDosesForDate(medications as any, today);
+    const dueDoses = getDueDosesForDate(medications, today);
 
     const unloggedKeys = new Set(
       dueDoses
