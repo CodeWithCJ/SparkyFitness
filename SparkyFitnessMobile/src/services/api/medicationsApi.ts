@@ -12,11 +12,11 @@ const SERVICE_NAME = 'Medications API';
 
 export const listMedications = async (opts?: {
   activeOnly?: boolean;
-}): Promise<Medication[]> => {
+}): Promise<MedicationDetail[]> => {
   const params = new URLSearchParams();
   if (opts?.activeOnly) params.set('activeOnly', 'true');
   const qs = params.toString();
-  const result = await apiFetch<Medication[] | null>({
+  const result = await apiFetch<MedicationDetail[] | null>({
     endpoint: `/api/v2/medications${qs ? `?${qs}` : ''}`,
     serviceName: SERVICE_NAME,
     operation: 'list medications',
