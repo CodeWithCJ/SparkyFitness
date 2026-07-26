@@ -7,12 +7,16 @@ const SettingsRowGroupContext = createContext<{ grouped: boolean }>({ grouped: f
 
 interface SettingsRowGroupProps {
   children: React.ReactNode;
+  title?: string;
+  subtitle?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   className?: string;
 }
 
 export const SettingsRowGroup: React.FC<SettingsRowGroupProps> = ({
   children,
+  title,
+  subtitle,
   style,
   className = '',
 }) => {
@@ -20,6 +24,14 @@ export const SettingsRowGroup: React.FC<SettingsRowGroupProps> = ({
   return (
     <SettingsRowGroupContext.Provider value={{ grouped: true }}>
       <View className={`bg-surface rounded-xl mb-4 shadow-sm ${className}`} style={style}>
+        {title && (
+          <View className="px-4 pt-3.5 pb-1">
+            <Text className="text-base font-bold text-text-primary">{title}</Text>
+            {subtitle && (
+              <Text className="text-text-secondary text-xs mt-0.5">{subtitle}</Text>
+            )}
+          </View>
+        )}
         {items.map((child, i) => (
           <React.Fragment key={i}>
             {child}

@@ -7,6 +7,8 @@ import Icon from '../../Icon';
 import { useCSSVariable } from 'uniwind';
 import type { SharedCycleTestEntry } from '@workspace/shared';
 
+import SegmentedControl from '../../SegmentedControl';
+
 interface TestQuickLogProps {
   date: string;
 }
@@ -27,10 +29,6 @@ const RESULTS: Record<TestType, { value: string; label: string }[]> = {
   ],
 };
 
-/**
- * TTC ovulation (OPK) / pregnancy (HPT) test quick-logger. Writes to
- * cycle_test_entries via POST/DELETE /v2/cycle/tests.
- */
 const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
   const [accentColor, dangerColor] = useCSSVariable([
     '--color-accent-primary',
@@ -38,7 +36,6 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
   ]) as [string, string];
   const [testType, setTestType] = useState<TestType>('opk');
 
-  // Show the last ~14 days of test history.
   const { tests, isLoading } = useCycleTests(addDays(date, -14), date);
   const { createTestEntryAsync, isCreating, deleteTestEntryAsync } = useCycleTestMutations();
 
@@ -64,28 +61,18 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
     <View className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm gap-3">
       <Text className="text-text-primary text-sm font-semibold">Log a Test</Text>
 
-      {/* Test type toggle */}
-      <View className="flex-row gap-2">
-        {(['opk', 'hpt'] as TestType[]).map((t) => {
-          const isSelected = testType === t;
-          return (
-            <TouchableOpacity
-              key={t}
-              onPress={() => setTestType(t)}
-              className={`rounded-full px-4 py-2 border ${
-                isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
-              }`}
-            >
-              <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                {t === 'opk' ? 'Ovulation (OPK)' : 'Pregnancy (HPT)'}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {/* SegmentedControl tabs */}
+      <SegmentedControl
+        segments={[
+          { key: 'opk', label: 'Ovulation (OPK)' },
+          { key: 'hpt', label: 'Pregnancy (HPT)' },
+        ]}
+        activeKey={testType}
+        onSelect={(key) => setTestType(key)}
+      />
 
       {/* Result buttons */}
-      <View className="flex-row flex-wrap gap-2">
+      <View className="flex-row flex-wrap gap-2 mt-1">
         {RESULTS[testType].map((r) => (
           <TouchableOpacity
             key={r.value}
@@ -98,22 +85,37 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
         ))}
       </View>
 
-      {/* Recent history */}
+      {/* Tabular scannable history list */}
       {isLoading ? (
         <ActivityIndicator color={accentColor} />
       ) : tests.length > 0 ? (
-        <View className="gap-1 mt-1">
-          <Text className="text-text-secondary text-xs mb-1">Recent</Text>
-          {tests.slice(0, 6).map((entry) => (
-            <View key={entry.id} className="flex-row items-center justify-between">
-              <Text className="text-text-primary text-xs">
-                {formatDate(entry.entry_date)} · {entry.test_type.toUpperCase()} · {entry.result}
-              </Text>
-              <TouchableOpacity onPress={() => handleDelete(entry)} hitSlop={8}>
-                <Icon name="trash" size={16} color={dangerColor} />
-              </TouchableOpacity>
-            </View>
-          ))}
+        <View className="gap-2 mt-2">
+          <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider">
+            Recent Logged Tests
+          </Text>
+          <View className="bg-raised rounded-xl border border-border-subtle overflow-hidden">
+            {tests.slice(0, 6).map((entry, idx) => (
+              <View
+                key={entry.id}
+                className={`flex-row items-center justify-between p-3 ${
+                  idx < Math.min(tests.length, 6) - 1 ? 'border-b border-border-subtle' : ''
+                }`}
+              >
+                <Text className="text-text-secondary text-xs w-24">
+                  {formatDate(entry.entry_date)}
+                </Text>
+                <Text className="text-text-primary text-xs font-semibold flex-1 text-center uppercase">
+                  {entry.test_type}
+                </Text>
+                <Text className="text-text-primary text-xs font-bold capitalize flex-1 text-center">
+                  {entry.result}
+                </Text>
+                <TouchableOpacity onPress={() => handleDelete(entry)} hitSlop={8} className="p-1">
+                  <Icon name="trash" size={16} color={dangerColor} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
         </View>
       ) : null}
     </View>

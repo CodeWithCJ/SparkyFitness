@@ -183,42 +183,43 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation, route }) =>
       <ScrollView
         contentContainerStyle={{
           padding: 16,
+          paddingTop: 4,
           paddingBottom: insets.bottom + 80,
         }}
       >
         {activeTab === 'today' && mode === 'pregnant' && <PregnancyTodayView />}
 
         {activeTab === 'today' && mode !== 'pregnant' && (
-          <View className="gap-6">
-            {/* Date Navigation Row (matches Dashboard's DateNavigator) */}
-            <DateNavigator
-              title=""
-              selectedDate={selectedDate}
-              onPreviousDay={handlePrevDay}
-              onNextDay={handleNextDay}
-              onToday={handleToday}
-              onDatePress={openCalendar}
-              showDateAlways
-              skipTopInset
-              skipHorizontalPadding
-            />
-
+          <View className="gap-3">
+            {/* Compact Date Navigator Row */}
+            <View className="flex-row justify-end -mb-2.5">
+              <DateNavigator
+                title=""
+                selectedDate={selectedDate}
+                onPreviousDay={handlePrevDay}
+                onNextDay={handleNextDay}
+                onToday={handleToday}
+                onDatePress={openCalendar}
+                showDateAlways
+                skipTopInset
+                skipHorizontalPadding
+                compact
+              />
+            </View>
             {/* Cycle Ring Visualisation */}
-            {(
-              <View className="items-center py-4 bg-surface rounded-2xl border border-border-subtle shadow-sm">
-                <CycleRing
-                  cycleDay={dayStats.cycleDay}
-                  cycleLength={cycleStats.avgCycleLength}
-                  periodLength={cycleStats.avgPeriodLength}
-                  fertileStartDay={ringMarkers.fertileStartDay}
-                  fertileEndDay={ringMarkers.fertileEndDay}
-                  ovulationDay={ringMarkers.ovulationDay}
-                  centerLabel={activeSegmentLabel}
-                  centerValue={dayStats.cycleDay !== null ? `Day ${dayStats.cycleDay}` : '—'}
-                  centerSub={discreetMode ? undefined : `${cycleStats.avgCycleLength} day cycle`}
-                />
-              </View>
-            )}
+            <View className="items-center py-4 bg-surface rounded-xl border border-border-subtle shadow-sm">
+              <CycleRing
+                cycleDay={dayStats.cycleDay}
+                cycleLength={cycleStats.avgCycleLength}
+                periodLength={cycleStats.avgPeriodLength}
+                fertileStartDay={ringMarkers.fertileStartDay}
+                fertileEndDay={ringMarkers.fertileEndDay}
+                ovulationDay={ringMarkers.ovulationDay}
+                centerLabel={activeSegmentLabel}
+                centerValue={dayStats.cycleDay !== null ? `Day ${dayStats.cycleDay}` : '—'}
+                centerSub={discreetMode ? undefined : `${cycleStats.avgCycleLength} day cycle`}
+              />
+            </View>
 
             {/* Cycle Alerts */}
             {alerts.length > 0 && (

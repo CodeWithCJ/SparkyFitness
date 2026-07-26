@@ -51,10 +51,9 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
   const { settings } = useCycleSettings();
   const { discreetMode } = useCycleMode();
   const tokens = useWellnessTokens();
-  const [accentPrimary, catPink] = useCSSVariable([
+  const [accentPrimary] = useCSSVariable([
     '--color-accent-primary',
-    '--color-cat-pink',
-  ]) as [string, string];
+  ]) as [string];
 
   const isSetup = !!settings?.onboarded_at && !!settings?.enabled;
   const isPregnant = settings?.mode === 'pregnant';
@@ -76,18 +75,15 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
   if (!isSetup) {
     return (
       <Pressable
-        className="bg-surface rounded-xl p-4 mb-3 shadow-sm border border-border-subtle"
+        className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
         onPress={() => navigation.navigate('CycleOnboarding')}
         accessibilityRole="button"
         accessibilityLabel="Set up cycle and pregnancy tracking"
       >
         <View className="flex-row items-center justify-between mb-2">
+          <Text className="text-md font-bold text-text-secondary">{title}</Text>
           <View className="flex-row items-center">
-            <Icon name="wellness" size={18} color={catPink || tokens.phaseMenstrual} />
-            <Text className="text-md font-bold text-text-primary ml-2">{title}</Text>
-          </View>
-          <View className="flex-row items-center">
-            <Text className="text-sm text-accent-primary font-semibold">Set Up</Text>
+            <Text className="text-md text-accent-primary font-medium">Set Up</Text>
             <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
           </View>
         </View>
@@ -167,8 +163,34 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
       const phaseColor = getPhaseColor(cycleInfo.phase, tokens);
 
       return (
-        <View className="flex-row items-center gap-4 mt-2">
-          {/* Visual Cycle Ring Chart */}
+        <View className="flex-row items-center justify-between gap-4 mt-2">
+          {/* Details on Left */}
+          <View className="flex-1 justify-center">
+            <View className="flex-row items-center flex-wrap gap-2 mb-1">
+              <View
+                className="px-2.5 py-0.5 rounded-full self-start"
+                style={{ backgroundColor: `${phaseColor}25` }}
+              >
+                <Text className="text-xs font-bold" style={{ color: phaseColor }}>
+                  {phaseName}
+                </Text>
+              </View>
+            </View>
+
+            {cycleInfo.daysLate > 0 ? (
+              <View className="bg-surface border border-border-subtle rounded-lg px-2.5 py-1.5 mt-1.5 self-start">
+                <Text className="text-xs font-semibold text-text-primary">
+                  Period {cycleInfo.daysLate} {cycleInfo.daysLate === 1 ? 'day' : 'days'} late
+                </Text>
+              </View>
+            ) : cycleInfo.nextPeriodStart ? (
+              <Text className="text-sm text-text-secondary mt-1">
+                Next period expected {formatDate(cycleInfo.nextPeriodStart)}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Visual Cycle Ring Chart on Right */}
           <CycleRing
             cycleDay={cycleInfo.day > 0 ? cycleInfo.day : null}
             cycleLength={cycleInfo.avgCycleLength}
@@ -179,34 +201,9 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
             centerLabel=""
             centerValue={cycleInfo.day > 0 ? `Day ${cycleInfo.day}` : 'Active'}
             centerSub=""
-            size={92}
-            strokeWidth={8}
+            size={88}
+            strokeWidth={7.5}
           />
-
-          <View className="flex-1 justify-center">
-            <View className="flex-row items-center flex-wrap gap-2 mb-1">
-              <View
-                className="px-2.5 py-0.5 rounded-full"
-                style={{ backgroundColor: `${phaseColor}25` }}
-              >
-                <Text className="text-xs font-bold" style={{ color: phaseColor }}>
-                  {phaseName}
-                </Text>
-              </View>
-            </View>
-
-            {cycleInfo.daysLate > 0 ? (
-              <View className="bg-surface border border-border-subtle rounded-lg p-2 mt-1">
-                <Text className="text-xs font-semibold text-text-primary">
-                  Period is expected & is {cycleInfo.daysLate} {cycleInfo.daysLate === 1 ? 'day' : 'days'} late
-                </Text>
-              </View>
-            ) : cycleInfo.nextPeriodStart ? (
-              <Text className="text-sm text-text-secondary mt-1">
-                Next period expected {formatDate(cycleInfo.nextPeriodStart)}
-              </Text>
-            ) : null}
-          </View>
         </View>
       );
     }
@@ -225,19 +222,16 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
 
   return (
     <Pressable
-      className="bg-surface rounded-xl p-4 mb-3 shadow-sm border border-border-subtle"
+      className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
       onPress={() => navigation.navigate('CycleHub')}
       accessibilityRole="button"
       accessibilityLabel="Open cycle and pregnancy tracking hub"
     >
-      <View className="flex-row items-center justify-between mb-1">
-        <View className="flex-row items-center">
-          <Icon name="wellness" size={18} color={catPink || tokens.phaseMenstrual} />
-          <Text className="text-md font-bold text-text-primary ml-2">{title}</Text>
-        </View>
+      <View className="flex-row items-center justify-between mb-2">
+        <Text className="text-md font-bold text-text-secondary">{title}</Text>
 
         <View className="flex-row items-center">
-          <Text className="text-sm text-accent-primary font-medium">Hub</Text>
+          <Text className="text-md text-accent-primary font-medium">Hub</Text>
           <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
         </View>
       </View>
