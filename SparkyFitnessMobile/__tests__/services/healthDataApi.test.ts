@@ -240,10 +240,34 @@ describe('healthDataApi', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Workout-Model-Version': '2',
             Authorization: 'Bearer test-api-key-12345',
           },
         }),
       );
+    });
+
+    test('declares the seconds-based workout model on every chunk', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      const data = Array.from({ length: CHUNK_SIZE + 1 }, (_, i) => ({
+        type: 'steps',
+        date: '2024-01-01',
+        value: i,
+      }));
+
+      await syncHealthData(data);
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      for (const call of mockFetch.mock.calls) {
+        expect(call[1].headers).toEqual(
+          expect.objectContaining({ 'X-Workout-Model-Version': '2' }),
+        );
+      }
     });
 
     test('ensures timezone bootstrap before syncing health data', async () => {

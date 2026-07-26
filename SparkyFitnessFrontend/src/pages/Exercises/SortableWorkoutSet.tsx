@@ -166,8 +166,8 @@ export const SortableSetItem = React.memo(
             <NumericInput
               className="h-8 text-sm"
               placeholder="—"
-              decimals={2}
-              step={0.01}
+              decimals={0}
+              step={1}
               value={set.duration ?? null}
               onValueChange={(v) =>
                 onSetChange(exerciseIndex, setIndex, 'duration', v ?? undefined)

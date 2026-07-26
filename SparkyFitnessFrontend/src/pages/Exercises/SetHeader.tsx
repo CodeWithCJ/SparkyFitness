@@ -34,7 +34,7 @@ export const SetColumnHeaders = ({ category }: SetColumnHeadersProps) => {
         </div>
         <div className={cell}>
           <Hourglass className="h-3 w-3 text-orange-500" />
-          {t('workout.durationMin', 'Duration (min)')}
+          {t('workout.durationSec', 'Duration (s)')}
         </div>
         <div className={cell}>
           <Timer className="h-3 w-3 text-purple-500" />

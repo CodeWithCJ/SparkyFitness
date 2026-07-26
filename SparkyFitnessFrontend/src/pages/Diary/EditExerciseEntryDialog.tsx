@@ -48,7 +48,11 @@ import { SetColumnHeaders } from '../Exercises/SetHeader';
 import { CardioLog } from '../Exercises/CardioLog';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { toHourMinute, userHourMinute } from '@workspace/shared';
+import {
+  setsDurationMinutes,
+  toHourMinute,
+  userHourMinute,
+} from '@workspace/shared';
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
   open: boolean;
@@ -222,10 +226,7 @@ const EditExerciseEntryDialog = ({
         ? durationInput === ''
           ? 0
           : Number(durationInput)
-        : sets.reduce(
-            (acc, set) => acc + (set.duration || 0) + (set.rest_time || 0) / 60,
-            0
-          );
+        : setsDurationMinutes(sets);
 
       const caloriesBurned =
         caloriesBurnedInput !== '' && caloriesBurnedInput !== 0

@@ -18,6 +18,7 @@ const exerciseSetSchema = z
     weight: z.coerce.number().min(0).optional().describe('Weight in kg'),
     duration: z.coerce
       .number()
+      .int()
       .min(0)
       .optional()
       .describe('Duration in seconds'),
@@ -396,7 +397,7 @@ export const manageExerciseInput = z.object({
         z.object({
           reps: z.coerce.number().int().min(0).optional(),
           weight: z.coerce.number().min(0).optional(),
-          duration: z.coerce.number().min(0).optional(),
+          duration: z.coerce.number().int().min(0).optional(),
           rest_time: z.coerce.number().min(0).optional(),
           set_type: setTypeEnum.optional(),
           rpe: z.coerce.number().min(0).max(10).optional(),

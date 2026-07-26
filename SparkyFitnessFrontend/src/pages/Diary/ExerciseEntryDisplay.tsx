@@ -24,7 +24,7 @@ import {
   ExerciseCategory,
 } from '@/constants/exercises';
 import { useState } from 'react';
-import { toHourMinute } from '@workspace/shared';
+import { setsDurationMinutes, toHourMinute } from '@workspace/shared';
 
 interface ExerciseEntryDisplayProps {
   exerciseEntry: ExerciseEntry;
@@ -90,13 +90,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
 
   const isActiveCalories = snapshot?.name === 'Active Calories';
 
-  const setsDuration =
-    exerciseEntry.sets && exerciseEntry.sets.length > 0
-      ? exerciseEntry.sets.reduce(
-          (sum, set) => sum + (set.duration || 0) + (set.rest_time || 0) / 60,
-          0
-        )
-      : 0;
+  const setsDuration = setsDurationMinutes(exerciseEntry.sets);
   // Sets carry their own timers (planks, holds, rest). When those sum to 0
   // (e.g. pure rep-based sets synced from Hevy), fall back to the entry-level
   // duration_minutes so the workout's session time still surfaces.

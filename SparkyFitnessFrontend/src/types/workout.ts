@@ -78,7 +78,7 @@ export interface ExerciseToLog extends Exercise {
   sets?: WorkoutPresetSet[];
   reps?: number;
   weight?: number;
-  duration?: number; // Duration in minutes (optional) - Changed from duration_minutes
+  duration?: number; // Entry-level duration in minutes; per-set `duration` is seconds
   notes?: string;
   image_url?: string;
   exercise_name?: string; // Added to match PresetExercise

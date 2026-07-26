@@ -194,7 +194,8 @@ export const calculateTimeUnderTensionData = (
   return exerciseData.map((d) => ({
     ...d,
     date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
-    timeUnderTension: d.sets.reduce((sum, set) => sum + (set.duration || 0), 0),
+    timeUnderTension:
+      d.sets.reduce((sum, set) => sum + (set.duration || 0), 0) / 60,
   }));
 };
 

@@ -541,7 +541,7 @@ const ReportsTables = ({
                   </TableHead>
                   <TableHead>{t('reportsTables.tonnage', 'Tonnage')}</TableHead>
                   <TableHead onClick={() => requestSort('duration')}>
-                    {t('reportsTables.durationMin', 'Duration (min)')}
+                    {t('reportsTables.durationSec', 'Duration (s)')}
                   </TableHead>
                   <TableHead onClick={() => requestSort('rest_time')}>
                     {t('reportsTables.restS', 'Rest (s)')}

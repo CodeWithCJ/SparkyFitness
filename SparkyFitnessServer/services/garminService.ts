@@ -544,7 +544,7 @@ async function processGarminWorkoutSession(
             set_type: setType,
             reps: Math.round(garminSet.repetitionCount || 0),
             weight: weightKg,
-            duration: Math.round(durationSeconds / 60),
+            duration: durationSeconds,
             rest_time: 0, // Default rest time
             notes: garminSet.notes || '',
           };

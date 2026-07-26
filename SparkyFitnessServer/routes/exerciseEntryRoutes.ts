@@ -100,8 +100,9 @@ router.use(checkPermissionMiddleware('diary'));
  *               weight:
  *                 type: number
  *               duration:
- *                 type: number
- *           description: Details of sets performed (reps, weight, duration).
+ *                 type: integer
+ *                 description: Duration in seconds.
+ *           description: Details of sets performed (reps, weight, duration in seconds).
  *         reps:
  *           type: number
  *           description: Total repetitions (if not detailed in sets).
@@ -450,7 +451,8 @@ router.post(
  *                           weight:
  *                             type: number
  *                           duration:
- *                             type: number
+ *                             type: integer
+ *                             description: Duration in seconds.
  *                     reps:
  *                       type: number
  *                     weight:
@@ -981,7 +983,8 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *                           weight:
  *                             type: number
  *                           duration:
- *                             type: number
+ *                             type: integer
+ *                             description: Duration in seconds.
  *                     reps:
  *                       type: number
  *                     weight:

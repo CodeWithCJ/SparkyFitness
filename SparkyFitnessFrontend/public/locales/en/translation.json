@@ -2375,7 +2375,7 @@
     "reps": "Reps",
     "weight": "Weight",
     "tonnage": "Tonnage",
-    "durationMin": "Duration (min)",
+    "durationSec": "Duration (s)",
     "restS": "Rest (s)",
     "notes": "Notes",
     "caloriesBurned": "Calories Burned",

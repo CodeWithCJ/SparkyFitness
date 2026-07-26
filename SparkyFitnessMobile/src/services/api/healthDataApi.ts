@@ -349,6 +349,9 @@ export const syncHealthData = async (
       `${url}/api/health-data`,
       {
         'Content-Type': 'application/json',
+        // Declares per-set exercise durations as integer seconds. Servers read an
+        // absent header as the legacy contract, where those durations are minutes.
+        'X-Workout-Model-Version': '2',
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
       },

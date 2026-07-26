@@ -97,7 +97,8 @@ const presetSessionResponseSchema = z
                 set_type: z.string().nullable(),
                 reps: z.number().nullable(),
                 weight: z.number().nullable(),
-                duration: z.number().nullable(),
+                // Per-set duration is integer SECONDS (issue #1903).
+                duration: z.number().int().nullable(),
                 rest_time: z.number().nullable(),
                 notes: z.string().nullable(),
                 rpe: z.number().nullable(),
