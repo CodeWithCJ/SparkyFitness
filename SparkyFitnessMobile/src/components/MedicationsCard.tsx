@@ -208,23 +208,45 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         return;
       }
       if (existing) {
-        deleteEntryMutation.mutate(existing.id);
-      }
-      createEntryMutation.mutate(
-        {
-          medication_id: due.medication.id,
-          schedule_id: due.schedule.id,
-          status: 'taken' as MedicationEntryStatus,
-          entry_date: selectedDate,
-          taken_at: new Date().toISOString(),
-        },
-        {
-          onSuccess: () => Toast.show({ type: 'success', text1: `${due.medication.name} taken` }),
-          onError: (error) => {
-            addLog(`Failed to log medication: ${error.message}`, 'ERROR');
+        deleteEntryMutation.mutateAsync(existing.id).then(
+          () => {
+            createEntryMutation.mutate(
+              {
+                medication_id: due.medication.id,
+                schedule_id: due.schedule.id,
+                status: 'taken' as MedicationEntryStatus,
+                entry_date: selectedDate,
+                taken_at: new Date().toISOString(),
+              },
+              {
+                onSuccess: () => Toast.show({ type: 'success', text1: `${due.medication.name} taken` }),
+                onError: (error) => {
+                  addLog(`Failed to log medication: ${error.message}`, 'ERROR');
+                },
+              },
+            );
           },
-        },
-      );
+          (error) => {
+            addLog(`Failed to delete existing medication entry: ${error.message}`, 'ERROR');
+          },
+        );
+      } else {
+        createEntryMutation.mutate(
+          {
+            medication_id: due.medication.id,
+            schedule_id: due.schedule.id,
+            status: 'taken' as MedicationEntryStatus,
+            entry_date: selectedDate,
+            taken_at: new Date().toISOString(),
+          },
+          {
+            onSuccess: () => Toast.show({ type: 'success', text1: `${due.medication.name} taken` }),
+            onError: (error) => {
+              addLog(`Failed to log medication: ${error.message}`, 'ERROR');
+            },
+          },
+        );
+      }
     },
     [entryForDue, createEntryMutation, deleteEntryMutation, selectedDate],
   );
@@ -238,22 +260,43 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         return;
       }
       if (existing) {
-        deleteEntryMutation.mutate(existing.id);
-      }
-      createEntryMutation.mutate(
-        {
-          medication_id: due.medication.id,
-          schedule_id: due.schedule.id,
-          status: 'skipped' as MedicationEntryStatus,
-          entry_date: selectedDate,
-        },
-        {
-          onSuccess: () => Toast.show({ type: 'info', text1: `${due.medication.name} skipped` }),
-          onError: (error) => {
-            addLog(`Failed to skip medication: ${error.message}`, 'ERROR');
+        deleteEntryMutation.mutateAsync(existing.id).then(
+          () => {
+            createEntryMutation.mutate(
+              {
+                medication_id: due.medication.id,
+                schedule_id: due.schedule.id,
+                status: 'skipped' as MedicationEntryStatus,
+                entry_date: selectedDate,
+              },
+              {
+                onSuccess: () => Toast.show({ type: 'info', text1: `${due.medication.name} skipped` }),
+                onError: (error) => {
+                  addLog(`Failed to skip medication: ${error.message}`, 'ERROR');
+                },
+              },
+            );
           },
-        },
-      );
+          (error) => {
+            addLog(`Failed to delete existing medication entry: ${error.message}`, 'ERROR');
+          },
+        );
+      } else {
+        createEntryMutation.mutate(
+          {
+            medication_id: due.medication.id,
+            schedule_id: due.schedule.id,
+            status: 'skipped' as MedicationEntryStatus,
+            entry_date: selectedDate,
+          },
+          {
+            onSuccess: () => Toast.show({ type: 'info', text1: `${due.medication.name} skipped` }),
+            onError: (error) => {
+              addLog(`Failed to skip medication: ${error.message}`, 'ERROR');
+            },
+          },
+        );
+      }
     },
     [entryForDue, createEntryMutation, deleteEntryMutation, selectedDate],
   );
