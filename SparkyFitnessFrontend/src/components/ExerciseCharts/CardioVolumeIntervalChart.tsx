@@ -165,8 +165,8 @@ export const CardioVolumeIntervalChart = ({
             />
             <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
             <Tooltip
-              formatter={(val: number) => [
-                `${val} ${metric === 'distance' ? unitLabel : metric === 'duration' ? 'mins' : 'kcal'}`,
+              formatter={(val: unknown) => [
+                `${String(val ?? 0)} ${metric === 'distance' ? unitLabel : metric === 'duration' ? 'mins' : 'kcal'}`,
                 metricLabel,
               ]}
               contentStyle={{ borderRadius: '8px', fontSize: '12px' }}

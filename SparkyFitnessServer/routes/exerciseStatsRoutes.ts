@@ -183,8 +183,12 @@ router.get('/prs', authenticate, async (req, res, next) => {
       }
     }
 
-    const prMatrix =
-      await exerciseStatsService.getPersonalRecordMatrix(targetUserId);
+    const unitSystem =
+      (req.query.unitSystem as 'metric' | 'imperial') || 'metric';
+    const prMatrix = await exerciseStatsService.getPersonalRecordMatrix(
+      targetUserId,
+      unitSystem
+    );
     res.status(200).json(prMatrix);
   } catch (error) {
     next(error);
@@ -222,8 +226,12 @@ router.get('/matched-courses', authenticate, async (req, res, next) => {
       }
     }
 
-    const matchedCourses =
-      await exerciseStatsService.getMatchedCourses(targetUserId);
+    const unitSystem =
+      (req.query.unitSystem as 'metric' | 'imperial') || 'metric';
+    const matchedCourses = await exerciseStatsService.getMatchedCourses(
+      targetUserId,
+      unitSystem
+    );
     res.status(200).json(matchedCourses);
   } catch (error) {
     next(error);

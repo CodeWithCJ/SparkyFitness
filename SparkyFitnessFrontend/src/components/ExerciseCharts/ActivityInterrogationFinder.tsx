@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Trophy, Calendar, Clock, MapPin } from 'lucide-react';
+import { Search, Calendar, Clock, MapPin } from 'lucide-react';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import type {
   ExerciseActivityQueryResponse,
   ExerciseActivityQueryItem,
@@ -26,31 +27,37 @@ interface ActivityInterrogationFinderProps {
 export const ActivityInterrogationFinder = ({
   onQueryFetch,
 }: ActivityInterrogationFinderProps) => {
+  const { distanceUnit } = usePreferences();
+  const isMiles = distanceUnit === 'miles';
+
   const [distancePreset, setDistancePreset] = useState<string>('half_marathon');
   const [keyword, setKeyword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [queryResult, setQueryResult] =
     useState<ExerciseActivityQueryResponse | null>(null);
 
-  const executeSearch = async (preset?: string, kw?: string) => {
-    if (!onQueryFetch) return;
-    setLoading(true);
-    try {
-      const res = await onQueryFetch({
-        distanceStandard: preset !== undefined ? preset : distancePreset,
-        searchKeyword: kw !== undefined ? kw : keyword,
-      });
-      setQueryResult(res);
-    } catch (err) {
-      console.error('Failed to query activities:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const executeSearch = useCallback(
+    async (preset?: string, kw?: string) => {
+      if (!onQueryFetch) return;
+      setLoading(true);
+      try {
+        const res = await onQueryFetch({
+          distanceStandard: preset !== undefined ? preset : distancePreset,
+          searchKeyword: kw !== undefined ? kw : keyword,
+        });
+        setQueryResult(res);
+      } catch (err) {
+        console.error('Failed to query activities:', err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onQueryFetch, distancePreset, keyword]
+  );
 
   useEffect(() => {
     executeSearch('half_marathon', '');
-  }, []);
+  }, [executeSearch]);
 
   return (
     <Card className="shadow-sm border">
@@ -82,13 +89,23 @@ export const ActivityInterrogationFinder = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Distances</SelectItem>
-                <SelectItem value="5k">5 km (3.1 mi)</SelectItem>
-                <SelectItem value="10k">10 km (6.2 mi)</SelectItem>
-                <SelectItem value="15k">15 km</SelectItem>
-                <SelectItem value="half_marathon">
-                  Half Marathon (21.1 km)
+                <SelectItem value="5k">
+                  {isMiles ? '5K (3.1 mi)' : '5 km (3.1 mi)'}
                 </SelectItem>
-                <SelectItem value="marathon">Marathon (42.2 km)</SelectItem>
+                <SelectItem value="10k">
+                  {isMiles ? '10K (6.2 mi)' : '10 km (6.2 mi)'}
+                </SelectItem>
+                <SelectItem value="15k">
+                  {isMiles ? '15K (9.3 mi)' : '15 km (9.3 mi)'}
+                </SelectItem>
+                <SelectItem value="half_marathon">
+                  {isMiles
+                    ? 'Half Marathon (13.1 mi)'
+                    : 'Half Marathon (21.1 km)'}
+                </SelectItem>
+                <SelectItem value="marathon">
+                  {isMiles ? 'Marathon (26.2 mi)' : 'Marathon (42.2 km)'}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -144,12 +161,15 @@ export const ActivityInterrogationFinder = ({
                     {item.distanceFormatted && (
                       <span className="flex items-center gap-1 font-medium text-foreground">
                         <MapPin className="w-3 h-3 text-blue-500" />
-                        {item.distanceFormatted} km
+                        {item.distanceFormatted} {isMiles ? 'mi' : 'km'}
                       </span>
                     )}
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {item.durationMinutes} mins
+                      {item.durationMinutes >= 10
+                        ? Math.round(item.durationMinutes)
+                        : Math.round(item.durationMinutes * 10) / 10}{' '}
+                      mins
                     </span>
                   </div>
                 </div>
@@ -179,7 +199,7 @@ export const ActivityInterrogationFinder = ({
                         Calories
                       </div>
                       <div className="font-semibold text-amber-600">
-                        {item.caloriesBurned} kcal
+                        {Math.round(item.caloriesBurned)} kcal
                       </div>
                     </div>
                   )}

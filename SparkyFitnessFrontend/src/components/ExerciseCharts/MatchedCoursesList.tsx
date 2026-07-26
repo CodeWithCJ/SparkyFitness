@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Route, Repeat, Zap, MapPin } from 'lucide-react';
+import { Route, Repeat } from 'lucide-react';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import type {
   MatchedCoursesResponse,
   MatchedCourseGroup,
@@ -12,6 +13,8 @@ interface MatchedCoursesListProps {
 export const MatchedCoursesList = ({
   matchedData,
 }: MatchedCoursesListProps) => {
+  const { distanceUnit } = usePreferences();
+  const isMiles = distanceUnit === 'miles';
   const courses = matchedData?.courses || [];
 
   if (courses.length === 0) {
@@ -49,7 +52,9 @@ export const MatchedCoursesList = ({
                 </span>
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-3">
-                <span>Avg: {course.totalDistanceFormatted} km</span>
+                <span>
+                  Avg: {course.totalDistanceFormatted} {isMiles ? 'mi' : 'km'}
+                </span>
                 <span className="font-medium text-foreground">
                   Best Pace: {course.bestPaceFormatted}
                 </span>

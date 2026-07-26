@@ -40,16 +40,11 @@ import { ActivityInterrogationFinder } from '@/components/ExerciseCharts/Activit
 import { CardioPRBadgesWidget } from '@/components/ExerciseCharts/CardioPRBadgesWidget';
 import { MatchedCoursesList } from '@/components/ExerciseCharts/MatchedCoursesList';
 import {
-  loadExerciseStatsSummary,
+  useExerciseStatsSummary,
+  useExercisePRs,
+  useMatchedCourses,
   queryExerciseActivities,
-  loadExercisePRs,
-  loadMatchedCourses,
-} from '@/api/Reports/exerciseStatsService';
-import type {
-  ExerciseStatsSummaryResponse,
-  ExercisePRMatrixResponse,
-  MatchedCoursesResponse,
-} from '@workspace/shared';
+} from '@/hooks/Reports/useExerciseStats';
 import { ExerciseProgressResponse } from '@workspace/shared';
 
 interface ExerciseReportsDashboardProps {
@@ -82,8 +77,11 @@ const ExerciseReportsDashboard = ({
   endDate,
 }: ExerciseReportsDashboardProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, weightUnit, convertWeight } =
+  const { formatDateInUserTimezone, weightUnit, distanceUnit, convertWeight } =
     usePreferences();
+  const unitSystem: 'metric' | 'imperial' =
+    distanceUnit === 'miles' ? 'imperial' : 'metric';
+
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(
     null
   );
@@ -92,34 +90,19 @@ const ExerciseReportsDashboard = ({
   const [aggregationLevel, setAggregationLevel] = useState<string>('daily'); // New state for aggregation level
   const [comparisonPeriod, setComparisonPeriod] = useState<string | null>(null); // New state for comparison period
 
-  const [statsSummary, setStatsSummary] = useState<
-    ExerciseStatsSummaryResponse | undefined
-  >(undefined);
-  const [prMatrix, setPrMatrix] = useState<
-    ExercisePRMatrixResponse | undefined
-  >(undefined);
-  const [matchedCourses, setMatchedCourses] = useState<
-    MatchedCoursesResponse | undefined
-  >(undefined);
   const [statsInterval, setStatsInterval] = useState<
     'day' | 'week' | 'month' | 'year'
   >('month');
 
-  useEffect(() => {
-    loadExerciseStatsSummary(statsInterval, startDate, endDate)
-      .then(setStatsSummary)
-      .catch((err) =>
-        console.error('Failed to load exercise stats summary:', err)
-      );
-
-    loadExercisePRs()
-      .then(setPrMatrix)
-      .catch((err) => console.error('Failed to load PR matrix:', err));
-
-    loadMatchedCourses()
-      .then(setMatchedCourses)
-      .catch((err) => console.error('Failed to load matched courses:', err));
-  }, [startDate, endDate, statsInterval]);
+  const { data: statsSummary } = useExerciseStatsSummary(
+    statsInterval,
+    startDate,
+    endDate,
+    undefined,
+    unitSystem
+  );
+  const { data: prMatrix } = useExercisePRs(undefined, unitSystem);
+  const { data: matchedCourses } = useMatchedCourses(undefined, unitSystem);
 
   const { data: availableEquipment = [], isLoading: equipmentLoading } =
     useAvailableEquipment();
@@ -554,7 +537,9 @@ const ExerciseReportsDashboard = ({
         <CardioPRBadgesWidget prData={prMatrix} />
 
         <ActivityInterrogationFinder
-          onQueryFetch={(params) => queryExerciseActivities(params)}
+          onQueryFetch={(params) =>
+            queryExerciseActivities({ ...params, unitSystem })
+          }
         />
 
         <MatchedCoursesList matchedData={matchedCourses} />

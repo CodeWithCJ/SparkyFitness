@@ -10,9 +10,10 @@ export const loadExerciseStatsSummary = async (
   interval: 'day' | 'week' | 'month' | 'year' = 'month',
   startDate?: string | null,
   endDate?: string | null,
-  userId?: string
+  userId?: string,
+  unitSystem: 'metric' | 'imperial' = 'metric'
 ): Promise<ExerciseStatsSummaryResponse> => {
-  const params = new URLSearchParams({ interval });
+  const params = new URLSearchParams({ interval, unitSystem });
   if (startDate) params.append('startDate', startDate);
   if (endDate) params.append('endDate', endDate);
   if (userId) params.append('userId', userId);
@@ -29,8 +30,10 @@ export const queryExerciseActivities = async (filters: {
   page?: number;
   pageSize?: number;
   userId?: string;
+  unitSystem?: 'metric' | 'imperial';
 }): Promise<ExerciseActivityQueryResponse> => {
   const params = new URLSearchParams();
+  if (filters.unitSystem) params.append('unitSystem', filters.unitSystem);
   if (filters.category) params.append('category', filters.category);
   if (filters.distanceStandard && filters.distanceStandard !== 'all') {
     params.append('distanceStandard', filters.distanceStandard);
@@ -47,9 +50,10 @@ export const queryExerciseActivities = async (filters: {
 };
 
 export const loadExercisePRs = async (
-  userId?: string
+  userId?: string,
+  unitSystem: 'metric' | 'imperial' = 'metric'
 ): Promise<ExercisePRMatrixResponse> => {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ unitSystem });
   if (userId) params.append('userId', userId);
   return await apiCall(`/exercise-stats/prs?${params.toString()}`, {
     method: 'GET',
@@ -57,9 +61,10 @@ export const loadExercisePRs = async (
 };
 
 export const loadMatchedCourses = async (
-  userId?: string
+  userId?: string,
+  unitSystem: 'metric' | 'imperial' = 'metric'
 ): Promise<MatchedCoursesResponse> => {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ unitSystem });
   if (userId) params.append('userId', userId);
   return await apiCall(`/exercise-stats/matched-courses?${params.toString()}`, {
     method: 'GET',

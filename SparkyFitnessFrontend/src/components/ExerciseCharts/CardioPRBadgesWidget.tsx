@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Zap, Calendar, Flame } from 'lucide-react';
+import { Trophy, Zap, Calendar } from 'lucide-react';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatWeight } from '@/utils/unitConversions';
 import type {
   ExercisePRMatrixResponse,
   ExercisePersonalRecordItem,
@@ -10,6 +12,7 @@ interface CardioPRBadgesWidgetProps {
 }
 
 export const CardioPRBadgesWidget = ({ prData }: CardioPRBadgesWidgetProps) => {
+  const { weightUnit } = usePreferences();
   const cardioPRs = prData?.cardioPRs || [];
   const strength1RMs = prData?.strength1RMs || [];
 
@@ -69,7 +72,7 @@ export const CardioPRBadgesWidget = ({ prData }: CardioPRBadgesWidgetProps) => {
           ) : (
             <div className="text-xs text-muted-foreground p-4 text-center border rounded-lg bg-muted/20">
               No cardio distance PRs recorded yet. Log or sync GPS activities
-              ($5\text{k}$, $10\text{k}$, Half Marathon).
+              (5k, 10k, Half Marathon).
             </div>
           )}
         </div>
@@ -91,10 +94,11 @@ export const CardioPRBadgesWidget = ({ prData }: CardioPRBadgesWidgetProps) => {
                   </div>
                   <div className="my-1">
                     <span className="text-lg font-bold text-blue-600">
-                      {st.estimatedOneRMKg} kg
+                      {formatWeight(st.estimatedOneRMKg, weightUnit)}
                     </span>
                     <span className="text-[10px] text-muted-foreground block">
-                      Best set: {st.weightKg} kg × {st.reps} reps
+                      Best set: {formatWeight(st.weightKg, weightUnit)} ×{' '}
+                      {st.reps} reps
                     </span>
                   </div>
                   <div className="text-[10px] text-muted-foreground">

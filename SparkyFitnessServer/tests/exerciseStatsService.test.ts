@@ -24,7 +24,7 @@ describe('exerciseStatsService', () => {
       mockClient.query.mockResolvedValueOnce({
         rows: [
           {
-            total_distance_meters: '42195',
+            total_distance_km: '42.2',
             total_duration_minutes: '210',
             total_calories_burned: '2800',
             workout_count: '4',
@@ -41,7 +41,7 @@ describe('exerciseStatsService', () => {
         rows: [
           {
             period_start: new Date('2026-07-01'),
-            distance_meters: '21097.5',
+            distance_km: '21.1',
             duration_minutes: '105',
             calories_burned: '1400',
             workout_count: '2',
@@ -49,7 +49,7 @@ describe('exerciseStatsService', () => {
           },
           {
             period_start: new Date('2026-07-15'),
-            distance_meters: '21097.5',
+            distance_km: '21.1',
             duration_minutes: '105',
             calories_burned: '1400',
             workout_count: '2',
@@ -61,7 +61,7 @@ describe('exerciseStatsService', () => {
       mockClient.query.mockResolvedValueOnce({
         rows: [
           {
-            total_distance_meters: '30000',
+            total_distance_km: '30.0',
             total_duration_minutes: '180',
             total_calories_burned: '2000',
             workout_count: '3',
@@ -79,7 +79,7 @@ describe('exerciseStatsService', () => {
         }
       );
 
-      expect(res.totals.totalDistanceMeters).toBe(42195);
+      expect(res.totals.totalDistanceMeters).toBe(42200);
       expect(res.totals.totalDistanceFormatted).toBe(42.2);
       expect(res.totals.totalDurationMinutes).toBe(210);
       expect(res.totals.workoutCount).toBe(4);
@@ -106,7 +106,7 @@ describe('exerciseStatsService', () => {
             entry_date: new Date('2026-06-15'),
             entry_time: '08:00',
             duration_minutes: 105,
-            distance: 21097.5,
+            distance: 21.1,
             avg_heart_rate: 158,
             calories_burned: 1450,
             source: 'garmin',
@@ -146,7 +146,7 @@ describe('exerciseStatsService', () => {
                 exercise_name: 'NYC Half Marathon',
                 entry_date: new Date('2026-03-20'),
                 duration_minutes: 100,
-                distance: 21097.5,
+                distance: 21.1,
               },
             ],
           });
@@ -189,7 +189,7 @@ describe('exerciseStatsService', () => {
             exercise_name: 'Central Park Loop',
             category: 'running',
             activity_count: '4',
-            avg_distance: 10000,
+            avg_distance_km: 10.0,
             min_duration: 45,
           },
         ],
@@ -202,7 +202,7 @@ describe('exerciseStatsService', () => {
             exercise_name: 'Central Park Loop',
             entry_date: new Date('2026-07-24'),
             duration_minutes: 45,
-            distance: 10000,
+            distance: 10.0,
             avg_heart_rate: 155,
           },
         ],
