@@ -87,6 +87,8 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
   }, []);
 
   const handleSave = useCallback(() => {
+    if (createMedication.isPending || updateMedication.isPending) return;
+
     if (!form.name.trim()) {
       Alert.alert('Required', 'Please enter a medication name.');
       return;
@@ -116,7 +118,10 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     if (isEditing && medicationId) {
       updateMedication.mutate(
         { id: medicationId, body: { ...base, is_active: form.isActive } },
-        { onSuccess: () => navigation.goBack() },
+        {
+          onSuccess: () => navigation.goBack(),
+          onError: (error) => Alert.alert('Error', `Failed to update medication: ${error.message}`),
+        },
       );
     } else {
       createMedication.mutate(
@@ -125,6 +130,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
           onSuccess: (med) => {
             navigation.replace('MedicationDetail', { medicationId: med.id });
           },
+          onError: (error) => Alert.alert('Error', `Failed to create medication: ${error.message}`),
         },
       );
     }
@@ -136,6 +142,8 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     right: {
       kind: 'primary',
       label: 'Save',
+      busy: createMedication.isPending || updateMedication.isPending,
+      busyLabel: 'Saving…',
       onPress: handleSave,
     },
   });
