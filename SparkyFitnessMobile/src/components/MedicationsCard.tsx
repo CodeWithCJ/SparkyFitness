@@ -411,6 +411,8 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
                   onPress={() => handleLogPrn(med)}
                   hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
                   activeOpacity={0.6}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Log ${med.name}`}
                   className="rounded-full px-3 py-1"
                   style={{ backgroundColor: accentPrimary + '18' }}
                 >
