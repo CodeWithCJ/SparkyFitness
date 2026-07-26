@@ -3,12 +3,11 @@ import * as Notifications from 'expo-notifications';
 
 import { getTodayDate } from '../utils/dateUtils';
 import { getDueDosesForDate } from '@workspace/shared';
-import { ensureNotificationPermission, MEDICATION_REMINDER_CATEGORY } from './notifications';
+import { ensureNotificationPermission, MEDICATION_REMINDER_CATEGORY, MEDICATION_REMINDER_CHANNEL_ID } from './notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { MedicationDetail, MedicationEntry } from '../types/medications';
 import { addLog } from './LogService';
 
-export const CHANNEL_ID = 'medication-reminders';
 const REPEAT_MINUTES = [10, 20, 30];
 const schedulingLock = new Set<string>();
 
@@ -47,7 +46,7 @@ async function scheduleReminder(
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: triggerDate,
-        channelId: CHANNEL_ID,
+        channelId: MEDICATION_REMINDER_CHANNEL_ID,
       },
     });
   } catch (err) {
@@ -88,7 +87,7 @@ export async function reconcileMedicationReminders(
     if (!granted) return;
 
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+      await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
         name: 'Medication reminders',
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
