@@ -35,6 +35,21 @@ import { BestSetRepRangeChart } from '@/components/ExerciseCharts/BestSetRepRang
 import { TrainingVolumeByMuscleGroupChart } from '@/components/ExerciseCharts/TrainingVolumeByMuscleGroupChart';
 import { PrVisualizationWidget } from '@/components/ExerciseCharts/PrVisualizationWidget';
 import { GarminActivityList } from '@/components/ExerciseCharts/GarminActivityList';
+import { CardioVolumeIntervalChart } from '@/components/ExerciseCharts/CardioVolumeIntervalChart';
+import { ActivityInterrogationFinder } from '@/components/ExerciseCharts/ActivityInterrogationFinder';
+import { CardioPRBadgesWidget } from '@/components/ExerciseCharts/CardioPRBadgesWidget';
+import { MatchedCoursesList } from '@/components/ExerciseCharts/MatchedCoursesList';
+import {
+  loadExerciseStatsSummary,
+  queryExerciseActivities,
+  loadExercisePRs,
+  loadMatchedCourses,
+} from '@/api/Reports/exerciseStatsService';
+import type {
+  ExerciseStatsSummaryResponse,
+  ExercisePRMatrixResponse,
+  MatchedCoursesResponse,
+} from '@workspace/shared';
 import { ExerciseProgressResponse } from '@workspace/shared';
 
 interface ExerciseReportsDashboardProps {
@@ -76,6 +91,35 @@ const ExerciseReportsDashboard = ({
   const [selectedExercise, setSelectedExercise] = useState<string>('All');
   const [aggregationLevel, setAggregationLevel] = useState<string>('daily'); // New state for aggregation level
   const [comparisonPeriod, setComparisonPeriod] = useState<string | null>(null); // New state for comparison period
+
+  const [statsSummary, setStatsSummary] = useState<
+    ExerciseStatsSummaryResponse | undefined
+  >(undefined);
+  const [prMatrix, setPrMatrix] = useState<
+    ExercisePRMatrixResponse | undefined
+  >(undefined);
+  const [matchedCourses, setMatchedCourses] = useState<
+    MatchedCoursesResponse | undefined
+  >(undefined);
+  const [statsInterval, setStatsInterval] = useState<
+    'day' | 'week' | 'month' | 'year'
+  >('month');
+
+  useEffect(() => {
+    loadExerciseStatsSummary(statsInterval, startDate, endDate)
+      .then(setStatsSummary)
+      .catch((err) =>
+        console.error('Failed to load exercise stats summary:', err)
+      );
+
+    loadExercisePRs()
+      .then(setPrMatrix)
+      .catch((err) => console.error('Failed to load PR matrix:', err));
+
+    loadMatchedCourses()
+      .then(setMatchedCourses)
+      .catch((err) => console.error('Failed to load matched courses:', err));
+  }, [startDate, endDate, statsInterval]);
 
   const { data: availableEquipment = [], isLoading: equipmentLoading } =
     useAvailableEquipment();
@@ -500,6 +544,22 @@ const ExerciseReportsDashboard = ({
 
   return (
     <div className="space-y-6">
+      {/* Garmin / Strava-style Exercise Analytics & Aggregations Dashboard */}
+      <div className="space-y-6">
+        <CardioVolumeIntervalChart
+          summaryData={statsSummary}
+          onIntervalChange={(newInterval) => setStatsInterval(newInterval)}
+        />
+
+        <CardioPRBadgesWidget prData={prMatrix} />
+
+        <ActivityInterrogationFinder
+          onQueryFetch={(params) => queryExerciseActivities(params)}
+        />
+
+        <MatchedCoursesList matchedData={matchedCourses} />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {loading && (
           <p>

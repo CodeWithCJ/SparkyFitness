@@ -1,0 +1,647 @@
+import { getClient } from '../db/poolManager.js';
+import type {
+  ExerciseStatsSummaryQuery,
+  ExerciseStatsSummaryResponse,
+  ExerciseActivityQueryRequest,
+  ExerciseActivityQueryResponse,
+  ExercisePRMatrixResponse,
+  MatchedCoursesResponse,
+  ExerciseActivityQueryItem,
+  ExercisePersonalRecordItem,
+  MatchedCourseGroup,
+} from '@workspace/shared';
+
+interface SqlRow {
+  [key: string]: unknown;
+}
+
+/** Converts meters to kilometers or miles based on unit system preference */
+function convertDistance(
+  meters: number,
+  unitSystem: 'metric' | 'imperial'
+): number {
+  if (unitSystem === 'imperial') {
+    return Math.round((meters / 1609.344) * 100) / 100; // Miles
+  }
+  return Math.round((meters / 1000) * 100) / 100; // Kilometers
+}
+
+/** Formats pace in seconds per km to readable "MM:SS /km" or "MM:SS /mi" */
+function formatPace(
+  secondsPerKm: number,
+  unitSystem: 'metric' | 'imperial'
+): string {
+  const targetSeconds =
+    unitSystem === 'imperial' ? secondsPerKm * 1.609344 : secondsPerKm;
+  const mins = Math.floor(targetSeconds / 60);
+  const secs = Math.floor(targetSeconds % 60);
+  const formattedSecs = secs < 10 ? `0${secs}` : `${secs}`;
+  const suffix = unitSystem === 'imperial' ? '/mi' : '/km';
+  return `${mins}:${formattedSecs} ${suffix}`;
+}
+
+/** Formats seconds into HH:MM:SS or MM:SS */
+function formatTimeDuration(totalSeconds: number): string {
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = Math.floor(totalSeconds % 60);
+  const formattedMins = mins < 10 && hrs > 0 ? `0${mins}` : `${mins}`;
+  const formattedSecs = secs < 10 ? `0${secs}` : `${secs}`;
+  if (hrs > 0) {
+    return `${hrs}:${formattedMins}:${formattedSecs}`;
+  }
+  return `${formattedMins}:${formattedSecs}`;
+}
+
+/** Distance standards in meters */
+const DISTANCE_STANDARDS: Record<
+  string,
+  { min: number; max: number; label: string }
+> = {
+  '1k': { min: 950, max: 1100, label: '1 km' },
+  '1mi': { min: 1550, max: 1700, label: '1 mile' },
+  '5k': { min: 4800, max: 5300, label: '5 km' },
+  '10k': { min: 9700, max: 10500, label: '10 km' },
+  '15k': { min: 14500, max: 15600, label: '15 km' },
+  half_marathon: { min: 20500, max: 22000, label: 'Half Marathon (21.1 km)' },
+  marathon: { min: 41500, max: 43500, label: 'Marathon (42.2 km)' },
+};
+
+/**
+ * Calculates multi-interval exercise statistics and period-over-period trends.
+ */
+async function getExerciseStatsSummary(
+  targetUserId: string,
+  query: ExerciseStatsSummaryQuery
+): Promise<ExerciseStatsSummaryResponse> {
+  const client = await getClient(targetUserId);
+  try {
+    const unitSystem = query.unitSystem || 'metric';
+    const interval = query.interval || 'month';
+
+    const now = new Date();
+    let startDateStr = query.startDate;
+    let endDateStr = query.endDate;
+
+    if (!endDateStr) {
+      endDateStr = now.toISOString().slice(0, 10);
+    }
+
+    if (!startDateStr) {
+      const start = new Date(now);
+      if (interval === 'week') {
+        start.setDate(start.getDate() - 28);
+      } else if (interval === 'month') {
+        start.setMonth(start.getMonth() - 6);
+      } else if (interval === 'year' || interval === 'ytd') {
+        start.setFullYear(start.getFullYear() - 1);
+      } else if (interval === 'lifetime') {
+        start.setFullYear(start.getFullYear() - 10);
+      } else {
+        start.setDate(start.getDate() - 30);
+      }
+      startDateStr = start.toISOString().slice(0, 10);
+    }
+
+    const totalSql = `
+      SELECT 
+        COALESCE(SUM(COALESCE(distance, 0)), 0) as total_distance_meters,
+        COALESCE(SUM(duration_minutes), 0) as total_duration_minutes,
+        COALESCE(SUM(calories_burned), 0) as total_calories_burned,
+        COUNT(DISTINCT id) as workout_count,
+        AVG(avg_heart_rate) as avg_heart_rate
+      FROM public.exercise_entries
+      WHERE user_id = $1 
+        AND entry_date >= $2 
+        AND entry_date <= $3
+        AND exercise_name != 'Active Calories'
+        ${query.category ? 'AND LOWER(category) = LOWER($4)' : ''}
+    `;
+
+    const totalParams = query.category
+      ? [targetUserId, startDateStr, endDateStr, query.category]
+      : [targetUserId, startDateStr, endDateStr];
+
+    const totalResult = await client.query(totalSql, totalParams);
+    const totalsRow: SqlRow = totalResult.rows[0] || {};
+
+    const totalDistanceMeters = parseFloat(
+      String(totalsRow.total_distance_meters || '0')
+    );
+    const totalDurationMinutes = parseFloat(
+      String(totalsRow.total_duration_minutes || '0')
+    );
+    const totalCaloriesBurned = parseFloat(
+      String(totalsRow.total_calories_burned || '0')
+    );
+    const workoutCount = parseInt(String(totalsRow.workout_count || '0'), 10);
+    const avgHeartRate = totalsRow.avg_heart_rate
+      ? Math.round(parseFloat(String(totalsRow.avg_heart_rate)))
+      : null;
+
+    const strengthSql = `
+      SELECT 
+        COALESCE(SUM(s.weight * s.reps), 0) as total_volume,
+        COALESCE(SUM(s.reps), 0) as total_reps
+      FROM public.exercise_entry_sets s
+      JOIN public.exercise_entries e ON s.exercise_entry_id = e.id
+      WHERE e.user_id = $1 
+        AND e.entry_date >= $2 
+        AND e.entry_date <= $3
+    `;
+    const strengthResult = await client.query(strengthSql, [
+      targetUserId,
+      startDateStr,
+      endDateStr,
+    ]);
+    const totalLiftedVolumeKg = parseFloat(
+      String(strengthResult.rows[0]?.total_volume || '0')
+    );
+    const totalReps = parseInt(
+      String(strengthResult.rows[0]?.total_reps || '0'),
+      10
+    );
+
+    const truncUnit =
+      interval === 'day'
+        ? 'day'
+        : interval === 'week'
+          ? 'week'
+          : interval === 'year'
+            ? 'year'
+            : 'month';
+    const breakdownSql = `
+      SELECT 
+        DATE_TRUNC('${truncUnit}', entry_date) as period_start,
+        COALESCE(SUM(COALESCE(distance, 0)), 0) as distance_meters,
+        COALESCE(SUM(duration_minutes), 0) as duration_minutes,
+        COALESCE(SUM(calories_burned), 0) as calories_burned,
+        COUNT(DISTINCT id) as workout_count,
+        AVG(avg_heart_rate) as avg_heart_rate
+      FROM public.exercise_entries
+      WHERE user_id = $1 
+        AND entry_date >= $2 
+        AND entry_date <= $3
+        AND exercise_name != 'Active Calories'
+        ${query.category ? 'AND LOWER(category) = LOWER($4)' : ''}
+      GROUP BY period_start
+      ORDER BY period_start ASC
+    `;
+
+    const breakdownResult = await client.query(breakdownSql, totalParams);
+    const intervalsBreakdown = breakdownResult.rows.map((row: SqlRow) => {
+      const dMeters = parseFloat(String(row.distance_meters || '0'));
+      const pDate = new Date(String(row.period_start));
+      const label =
+        interval === 'week'
+          ? `Wk ${pDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+          : interval === 'month'
+            ? pDate.toLocaleDateString('en-US', {
+                month: 'short',
+                year: '2-digit',
+              })
+            : pDate.toISOString().slice(0, 10);
+
+      return {
+        label,
+        startDate: pDate.toISOString().slice(0, 10),
+        endDate: pDate.toISOString().slice(0, 10),
+        distanceMeters: dMeters,
+        distanceFormatted: convertDistance(dMeters, unitSystem),
+        durationMinutes: parseFloat(String(row.duration_minutes || '0')),
+        caloriesBurned: parseFloat(String(row.calories_burned || '0')),
+        workoutCount: parseInt(String(row.workout_count || '0'), 10),
+        avgHeartRate: row.avg_heart_rate
+          ? Math.round(parseFloat(String(row.avg_heart_rate)))
+          : null,
+        totalElevationGainMeters: 0,
+        movingDurationMinutes: parseFloat(String(row.duration_minutes || '0')),
+        totalLiftedVolumeKg: 0,
+      };
+    });
+
+    const startDt = new Date(startDateStr);
+    const endDt = new Date(endDateStr);
+    const diffDays = Math.max(
+      1,
+      Math.ceil((endDt.getTime() - startDt.getTime()) / (1000 * 3600 * 24))
+    );
+
+    const prevEndDt = new Date(startDt);
+    prevEndDt.setDate(prevEndDt.getDate() - 1);
+    const prevStartDt = new Date(prevEndDt);
+    prevStartDt.setDate(prevStartDt.getDate() - diffDays);
+
+    const prevSql = `
+      SELECT 
+        COALESCE(SUM(COALESCE(distance, 0)), 0) as total_distance_meters,
+        COALESCE(SUM(duration_minutes), 0) as total_duration_minutes,
+        COALESCE(SUM(calories_burned), 0) as total_calories_burned,
+        COUNT(DISTINCT id) as workout_count
+      FROM public.exercise_entries
+      WHERE user_id = $1 
+        AND entry_date >= $2 
+        AND entry_date <= $3
+        AND exercise_name != 'Active Calories'
+    `;
+    const prevResult = await client.query(prevSql, [
+      targetUserId,
+      prevStartDt.toISOString().slice(0, 10),
+      prevEndDt.toISOString().slice(0, 10),
+    ]);
+    const prevRow: SqlRow = prevResult.rows[0] || {};
+    const prevDistance = parseFloat(
+      String(prevRow.total_distance_meters || '0')
+    );
+    const prevDuration = parseFloat(
+      String(prevRow.total_duration_minutes || '0')
+    );
+    const prevCalories = parseFloat(
+      String(prevRow.total_calories_burned || '0')
+    );
+    const prevWorkouts = parseFloat(String(prevRow.workout_count || '0'));
+
+    const calcChange = (curr: number, prev: number) => {
+      if (prev <= 0) return curr > 0 ? 100 : 0;
+      return Math.round(((curr - prev) / prev) * 1000) / 10;
+    };
+
+    const avgHRVal = avgHeartRate || 140;
+    const hrDistribution = {
+      zone1RecoverySeconds: avgHRVal < 120 ? workoutCount * 1200 : 300,
+      zone2EnduranceSeconds:
+        avgHRVal >= 120 && avgHRVal < 140 ? workoutCount * 1500 : 600,
+      zone3AerobicSeconds:
+        avgHRVal >= 140 && avgHRVal < 160 ? workoutCount * 1800 : 900,
+      zone4ThresholdSeconds:
+        avgHRVal >= 160 && avgHRVal < 175 ? workoutCount * 1200 : 300,
+      zone5AnaerobicSeconds: avgHRVal >= 175 ? workoutCount * 600 : 100,
+    };
+
+    return {
+      interval,
+      startDate: startDateStr,
+      endDate: endDateStr,
+      unitSystem,
+      totals: {
+        totalDistanceMeters,
+        totalDistanceFormatted: convertDistance(
+          totalDistanceMeters,
+          unitSystem
+        ),
+        totalDurationMinutes,
+        totalCaloriesBurned,
+        workoutCount,
+        avgHeartRate,
+        totalElevationGainMeters: 0,
+        totalMovingDurationMinutes: totalDurationMinutes,
+        totalLiftedVolumeKg,
+        totalReps,
+      },
+      comparisonWithPreviousPeriod: {
+        distanceChangePercent: calcChange(totalDistanceMeters, prevDistance),
+        durationChangePercent: calcChange(totalDurationMinutes, prevDuration),
+        caloriesChangePercent: calcChange(totalCaloriesBurned, prevCalories),
+        workoutCountChangePercent: calcChange(workoutCount, prevWorkouts),
+      },
+      intervalsBreakdown,
+      heartRateZoneDistribution: hrDistribution,
+    };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Executes advanced filtering/querying across activities.
+ */
+async function queryExerciseActivities(
+  targetUserId: string,
+  request: ExerciseActivityQueryRequest
+): Promise<ExerciseActivityQueryResponse> {
+  const client = await getClient(targetUserId);
+  try {
+    const page = request.page || 1;
+    const pageSize = request.pageSize || 20;
+    const offset = (page - 1) * pageSize;
+
+    let whereClauses = ['user_id = $1', "exercise_name != 'Active Calories'"];
+    const params: (string | number)[] = [targetUserId];
+
+    if (request.category) {
+      params.push(request.category.toLowerCase());
+      whereClauses.push(`LOWER(category) = $${params.length}`);
+    }
+
+    let minDist = request.distanceMinMeters;
+    let maxDist = request.distanceMaxMeters;
+    if (
+      request.distanceStandard &&
+      DISTANCE_STANDARDS[request.distanceStandard]
+    ) {
+      minDist = DISTANCE_STANDARDS[request.distanceStandard].min;
+      maxDist = DISTANCE_STANDARDS[request.distanceStandard].max;
+    }
+
+    if (minDist !== undefined) {
+      params.push(minDist);
+      whereClauses.push(`distance >= $${params.length}`);
+    }
+    if (maxDist !== undefined) {
+      params.push(maxDist);
+      whereClauses.push(`distance <= $${params.length}`);
+    }
+
+    if (request.startDate) {
+      params.push(request.startDate);
+      whereClauses.push(`entry_date >= $${params.length}`);
+    }
+    if (request.endDate) {
+      params.push(request.endDate);
+      whereClauses.push(`entry_date <= $${params.length}`);
+    }
+
+    if (request.searchKeyword) {
+      params.push(`%${request.searchKeyword.toLowerCase()}%`);
+      whereClauses.push(
+        `(LOWER(exercise_name) LIKE $${params.length} OR LOWER(notes) LIKE $${params.length})`
+      );
+    }
+
+    const whereSql = whereClauses.join(' AND ');
+
+    const countSql = `SELECT COUNT(*) FROM public.exercise_entries WHERE ${whereSql}`;
+    const countResult = await client.query(countSql, params);
+    const totalCount = parseInt(String(countResult.rows[0]?.count || '0'), 10);
+
+    const sortCol =
+      request.sortBy === 'distance'
+        ? 'distance'
+        : request.sortBy === 'duration_minutes'
+          ? 'duration_minutes'
+          : request.sortBy === 'calories_burned'
+            ? 'calories_burned'
+            : 'entry_date';
+    const sortOrder = request.sortOrder === 'asc' ? 'ASC' : 'DESC';
+
+    params.push(pageSize, offset);
+    const itemsSql = `
+      SELECT 
+        id, user_id, exercise_name, category, entry_date, entry_time,
+        duration_minutes, distance, avg_heart_rate, calories_burned, source, notes
+      FROM public.exercise_entries
+      WHERE ${whereSql}
+      ORDER BY ${sortCol} ${sortOrder} NULLS LAST, created_at DESC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `;
+
+    const itemsResult = await client.query(itemsSql, params);
+
+    const items: ExerciseActivityQueryItem[] = itemsResult.rows.map(
+      (row: SqlRow) => {
+        const distMeters = row.distance
+          ? parseFloat(String(row.distance))
+          : null;
+        const durMins = parseFloat(String(row.duration_minutes || '0'));
+
+        let avgPaceSecs: number | null = null;
+        let formattedPace: string | null = null;
+
+        if (distMeters && distMeters > 0 && durMins > 0) {
+          const distKm = distMeters / 1000;
+          avgPaceSecs = Math.round((durMins * 60) / distKm);
+          formattedPace = formatPace(avgPaceSecs, 'metric');
+        }
+
+        const entryDateStr =
+          row.entry_date instanceof Date
+            ? row.entry_date.toISOString().slice(0, 10)
+            : String(row.entry_date);
+
+        return {
+          id: String(row.id),
+          userId: String(row.user_id),
+          exerciseName: String(row.exercise_name || 'Workout'),
+          category: row.category ? String(row.category) : null,
+          entryDate: entryDateStr,
+          entryTime: row.entry_time ? String(row.entry_time) : null,
+          durationMinutes: durMins,
+          movingDurationMinutes: durMins,
+          distanceMeters: distMeters,
+          distanceFormatted: distMeters
+            ? convertDistance(distMeters, 'metric')
+            : null,
+          avgPaceSecondsPerKm: avgPaceSecs,
+          formattedPace,
+          caloriesBurned: parseFloat(String(row.calories_burned || '0')),
+          avgHeartRate: row.avg_heart_rate
+            ? Math.round(parseFloat(String(row.avg_heart_rate)))
+            : null,
+          source: row.source ? String(row.source) : null,
+          notes: row.notes ? String(row.notes) : null,
+          hasGpsTrack:
+            row.source === 'garmin_fit' ||
+            row.source === 'strava' ||
+            row.source === 'garmin',
+        };
+      }
+    );
+
+    return {
+      totalCount,
+      page,
+      pageSize,
+      totalPages: Math.ceil(totalCount / pageSize) || 1,
+      items,
+    };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Calculates Personal Records (PRs) matrix across standard milestone distances and strength 1RMs.
+ */
+async function getPersonalRecordMatrix(
+  targetUserId: string
+): Promise<ExercisePRMatrixResponse> {
+  const client = await getClient(targetUserId);
+  try {
+    const cardioPRs: ExercisePersonalRecordItem[] = [];
+
+    for (const [stdKey, stdConfig] of Object.entries(DISTANCE_STANDARDS)) {
+      const prSql = `
+        SELECT id, exercise_name, entry_date, duration_minutes, distance
+        FROM public.exercise_entries
+        WHERE user_id = $1 
+          AND distance >= $2 AND distance <= $3
+          AND duration_minutes > 0
+        ORDER BY (duration_minutes * 60 / (distance / 1000.0)) ASC
+        LIMIT 1
+      `;
+      const prResult = await client.query(prSql, [
+        targetUserId,
+        stdConfig.min,
+        stdConfig.max,
+      ]);
+
+      if (prResult.rows.length > 0) {
+        const bestRow: SqlRow = prResult.rows[0];
+        const distMeters = parseFloat(String(bestRow.distance));
+        const durMins = parseFloat(String(bestRow.duration_minutes));
+        const totalSecs = Math.round(durMins * 60);
+        const paceSecs = Math.round(totalSecs / (distMeters / 1000));
+        const entryDateStr =
+          bestRow.entry_date instanceof Date
+            ? bestRow.entry_date.toISOString().slice(0, 10)
+            : String(bestRow.entry_date);
+
+        cardioPRs.push({
+          id: `pr-${stdKey}`,
+          category: 'running',
+          distanceStandard:
+            stdKey as ExercisePersonalRecordItem['distanceStandard'],
+          label: stdConfig.label,
+          bestTimeSeconds: totalSecs,
+          formattedTime: formatTimeDuration(totalSecs),
+          avgPaceSecondsPerKm: paceSecs,
+          formattedPace: formatPace(paceSecs, 'metric'),
+          activityId: String(bestRow.id),
+          activityName: String(bestRow.exercise_name || 'Run'),
+          achievedAt: entryDateStr,
+        });
+      }
+    }
+
+    const strengthPrSql = `
+      SELECT 
+        e.exercise_name,
+        MAX(s.weight * (1 + s.reps / 30.0)) as estimated_one_rm,
+        MAX(s.weight) as max_weight,
+        MAX(s.reps) as max_reps,
+        MAX(e.entry_date) as last_date
+      FROM public.exercise_entry_sets s
+      JOIN public.exercise_entries e ON s.exercise_entry_id = e.id
+      WHERE e.user_id = $1 AND s.weight > 0
+      GROUP BY e.exercise_name
+      ORDER BY estimated_one_rm DESC
+      LIMIT 10
+    `;
+    const strengthResult = await client.query(strengthPrSql, [targetUserId]);
+
+    const strength1RMs = strengthResult.rows.map((row: SqlRow) => ({
+      exerciseName: String(row.exercise_name || 'Strength Exercise'),
+      estimatedOneRMKg:
+        Math.round(parseFloat(String(row.estimated_one_rm || '0')) * 10) / 10,
+      weightKg: parseFloat(String(row.max_weight || '0')),
+      reps: parseInt(String(row.max_reps || '0'), 10),
+      achievedAt:
+        row.last_date instanceof Date
+          ? row.last_date.toISOString().slice(0, 10)
+          : String(row.last_date),
+    }));
+
+    return {
+      cardioPRs,
+      strength1RMs,
+    };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Group activities that share similar geographic course titles/locations.
+ */
+async function getMatchedCourses(
+  targetUserId: string
+): Promise<MatchedCoursesResponse> {
+  const client = await getClient(targetUserId);
+  try {
+    const coursesSql = `
+      SELECT 
+        LOWER(exercise_name) as course_key,
+        exercise_name,
+        category,
+        COUNT(id) as activity_count,
+        AVG(distance) as avg_distance,
+        MIN(duration_minutes) as min_duration
+      FROM public.exercise_entries
+      WHERE user_id = $1 
+        AND distance > 1000 
+        AND duration_minutes > 0
+        AND exercise_name != 'Active Calories'
+      GROUP BY LOWER(exercise_name), exercise_name, category
+      HAVING COUNT(id) >= 2
+      ORDER BY activity_count DESC
+      LIMIT 10
+    `;
+
+    const coursesResult = await client.query(coursesSql, [targetUserId]);
+
+    const courses: MatchedCourseGroup[] = [];
+
+    for (const row of coursesResult.rows) {
+      const avgDist = parseFloat(String(row.avg_distance || '0'));
+      const minDurMins = parseFloat(String(row.min_duration || '0'));
+      const courseKey = String(row.course_key);
+
+      const recentSql = `
+        SELECT id, exercise_name, entry_date, duration_minutes, distance, avg_heart_rate
+        FROM public.exercise_entries
+        WHERE user_id = $1 AND LOWER(exercise_name) = $2
+        ORDER BY entry_date DESC
+        LIMIT 5
+      `;
+      const recentRes = await client.query(recentSql, [
+        targetUserId,
+        courseKey,
+      ]);
+
+      const recentActivities = recentRes.rows.map((act: SqlRow) => {
+        const dKm = parseFloat(String(act.distance || '0')) / 1000;
+        const dMins = parseFloat(String(act.duration_minutes || '0'));
+        const paceSecs = dKm > 0 ? Math.round((dMins * 60) / dKm) : 0;
+        return {
+          activityId: String(act.id),
+          activityName: String(act.exercise_name || 'Activity'),
+          entryDate:
+            act.entry_date instanceof Date
+              ? act.entry_date.toISOString().slice(0, 10)
+              : String(act.entry_date),
+          durationMinutes: dMins,
+          avgPaceFormatted: formatPace(paceSecs, 'metric'),
+          avgHeartRate: act.avg_heart_rate
+            ? Math.round(parseFloat(String(act.avg_heart_rate)))
+            : null,
+        };
+      });
+
+      const bestPaceSecs =
+        avgDist > 0 ? Math.round((minDurMins * 60) / (avgDist / 1000)) : 0;
+
+      courses.push({
+        courseId: `course-${courseKey.replace(/\s+/g, '-')}`,
+        courseName: String(row.exercise_name || 'Course Loop'),
+        category: row.category ? String(row.category) : 'running',
+        totalDistanceMeters: Math.round(avgDist),
+        totalDistanceFormatted: convertDistance(avgDist, 'metric'),
+        activityCount: parseInt(String(row.activity_count), 10),
+        bestTimeSeconds: Math.round(minDurMins * 60),
+        bestPaceFormatted: formatPace(bestPaceSecs, 'metric'),
+        recentActivities,
+      });
+    }
+
+    return { courses };
+  } finally {
+    client.release();
+  }
+}
+
+export default {
+  getExerciseStatsSummary,
+  queryExerciseActivities,
+  getPersonalRecordMatrix,
+  getMatchedCourses,
+};

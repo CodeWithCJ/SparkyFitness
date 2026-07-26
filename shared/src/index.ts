@@ -6,6 +6,7 @@ export * from "./schemas/api/DailyGoals.api.zod.ts";
 export * from "./schemas/api/NutrientGoalPreferences.api.zod.ts";
 export * from "./schemas/api/DailySummary.api.zod.ts";
 export * from "./schemas/api/ExerciseEntries.api.zod.ts";
+export * from "./schemas/api/ExerciseStats.api.zod.ts";
 export * from "./schemas/api/Exercises.api.zod.ts";
 export * from "./schemas/api/FoodEntries.api.zod.ts";
 export * from "./schemas/api/FoodPhotoEstimate.api.zod.ts";
