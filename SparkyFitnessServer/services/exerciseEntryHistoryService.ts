@@ -8,6 +8,7 @@ import {
   type ExerciseEntryResponse,
   type ExerciseEntrySetResponse,
   type ExerciseHistoryResponse,
+  type ExerciseModality,
   type ExerciseSessionResponse,
 } from '@workspace/shared';
 
@@ -84,6 +85,7 @@ function _buildExerciseEntryWithSnapshot(
   const {
     exercise_name,
     category,
+    modality,
     source,
     images,
     primary_muscles,
@@ -122,6 +124,7 @@ function _buildExerciseEntryWithSnapshot(
       id: entryData.exercise_id as string,
       name: exercise_name as string,
       category: (category as string) ?? null,
+      modality: (modality as ExerciseModality) ?? null,
       images: _parseJsonArray(images),
       primary_muscles: _parseJsonArray(primary_muscles),
       secondary_muscles: _parseJsonArray(secondary_muscles),

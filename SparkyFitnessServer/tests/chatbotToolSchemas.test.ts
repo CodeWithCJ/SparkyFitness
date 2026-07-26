@@ -153,6 +153,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'category',
         'calories_per_hour',
         'description',
+        'modality',
         'entry_date',
         'entry_time',
         'duration_minutes',

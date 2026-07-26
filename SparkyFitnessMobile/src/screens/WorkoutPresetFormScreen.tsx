@@ -47,7 +47,7 @@ interface PresetFormBodyProps {
   updateSetField: (
     exerciseClientId: string,
     setClientId: string,
-    field: 'weight' | 'reps',
+    field: 'weight' | 'reps' | 'duration',
     value: string,
   ) => void;
   updateSetMeta: (

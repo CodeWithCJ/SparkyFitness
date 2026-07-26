@@ -47,9 +47,14 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   todayInZone,
   prefillEntryTime,
+  resolveExerciseModality,
   setsDurationMinutes,
   userHourMinute,
 } from '@workspace/shared';
+import {
+  defaultSetForModality,
+  toSetTableModality,
+} from '@/constants/exercises';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -86,7 +91,11 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   const { loggingLevel, weightUnit, distanceUnit, convertDistance, timezone } =
     usePreferences();
 
-  const isCardio = exercise?.category === 'cardio';
+  const modality = resolveExerciseModality(
+    exercise?.modality,
+    exercise?.category
+  );
+  const isCardio = modality === 'duration_distance';
 
   const [notes, setNotes] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -124,15 +133,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         _dndId: uuidv4(),
       }));
     }
-    return [
-      {
-        set_number: 1,
-        set_type: 'Working Set',
-        reps: 10,
-        weight: null,
-        _dndId: uuidv4(),
-      },
-    ];
+    return [{ ...defaultSetForModality(modality), _dndId: uuidv4() }];
   });
 
   const handleSetChange = (
@@ -330,7 +331,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <SetColumnHeaders category={exercise?.category} />
+                <SetColumnHeaders modality={toSetTableModality(modality)} />
                 <SortableContext items={sets.map((set) => set._dndId)}>
                   <div className="space-y-0.5">
                     {sets.map((set, index) => (
@@ -346,6 +347,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                         onDuplicateSet={(_, sIdx) => handleDuplicateSet(sIdx)}
                         onRemoveSet={(_, sIdx) => handleRemoveSet(sIdx)}
                         weightUnit={weightUnit}
+                        modality={toSetTableModality(modality)}
                       />
                     ))}
                   </div>

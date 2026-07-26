@@ -79,6 +79,18 @@ describe('useSetEditAccessoryBar', () => {
     expect(utils.getByText('Next Set')).toBeTruthy();
   });
 
+  it('walks a duration cell straight to RPE, then Next Set', () => {
+    const handles = { set1: makeHandle() };
+    const props = { activeSetKey: 'ex1:set1', onDeactivateSet: jest.fn(), handles };
+    const utils = render(<Harness {...props} activeSetField="duration" />);
+    // Duration is the row's only value input — Next targets RPE directly.
+    fireEvent.press(utils.getByText('Next'));
+    expect(handles.set1.focusField).toHaveBeenCalledWith('rpe');
+
+    utils.rerender(<Harness {...props} activeSetField="duration" rpeEnabled={false} />);
+    expect(utils.getByText('Next Set')).toBeTruthy();
+  });
+
   it('skips the RPE hop when RPE is disabled (preset form) or another metric column shows', () => {
     const handles = { set1: makeHandle() };
     const props = { activeSetKey: 'ex1:set1', onDeactivateSet: jest.fn(), handles };

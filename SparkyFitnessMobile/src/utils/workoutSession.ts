@@ -1,20 +1,23 @@
 import type {
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
+  ExerciseModality,
   ExerciseRecentSessionSet,
   ExerciseSessionResponse,
   ExerciseSnapshotResponse,
   PresetSessionExerciseRequest,
   PresetSessionResponse,
 } from '@workspace/shared';
+import { isExerciseModality, resolveExerciseModality } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 // Type-only, so the store's runtime import of this module stays acyclic.
 import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
-import type { WorkoutDraftExercise } from '../types/drafts';
+import type { WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { WorkoutPreset, WorkoutPresetExercise } from '../types/workoutPresets';
 import type { WorkoutPresetExercisePayload } from '../services/api/workoutPresetsApi';
+import type { CreateExerciseEntryPayload } from '../services/api/exerciseApi';
 import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
 import { parseDecimalInput } from './numericInput';
 import { getDefaultRestSec } from './workoutSupersets';
@@ -370,6 +373,52 @@ export function getExerciseVolumeKg(exercise: { sets: WorkoutCardSet[] }): numbe
   );
 }
 
+// --- Exercise modality ---
+//
+// The modality decides which per-set cells a table renders (issue #1903).
+// Every mobile read of `modality` funnels through `resolveSnapshotModality`
+// so old-server responses (no modality field) degrade to the category-derived
+// value everywhere at once.
+
+/**
+ * Resolve an exercise's modality from any snapshot-shaped source — an
+ * `exercise_snapshot`, a full `Exercise`, or a preset exercise row. Explicit
+ * valid modality wins; otherwise derived from category (old servers, legacy
+ * rows).
+ */
+export function resolveSnapshotModality(
+  snapshot: { modality?: string | null; category?: string | null } | null | undefined,
+): ExerciseModality {
+  return resolveExerciseModality(snapshot?.modality, snapshot?.category ?? null);
+}
+
+/** True for the modalities whose set tables render a single duration cell. */
+export function isDurationModality(modality: ExerciseModality): boolean {
+  return modality === 'duration' || modality === 'duration_distance';
+}
+
+/**
+ * Duration in seconds a set displays/fills/adopts. Legacy isometric rows hold
+ * their seconds in `reps` (they predate the duration column), so `duration`
+ * modality — and ONLY that modality — falls back to reps-as-seconds. The
+ * fallback must never widen to `duration_distance`: backfilled cardio presets
+ * carry seeded `reps: 10` that would otherwise render as 10-second sets.
+ */
+export function effectiveSetDurationSec(
+  set: { duration?: number | null; reps?: number | null },
+  modality: ExerciseModality,
+): number | null {
+  return set.duration ?? (modality === 'duration' && set.reps != null ? set.reps : null);
+}
+
+/** Read-only duration prose: `45s` under a minute, `1:30` from there up. */
+export function formatDurationSeconds(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}:${rest.toString().padStart(2, '0')}`;
+}
+
 // --- Card-stack input shapes ---
 //
 // The active-workout card and set row accept these narrow structural
@@ -407,6 +456,7 @@ export interface WorkoutCardExercise {
   exercise_snapshot: {
     name?: string | null;
     category?: string | null;
+    modality?: string | null;
     images?: string[] | null;
   } | null;
   sets: WorkoutCardSet[];
@@ -432,6 +482,7 @@ export function draftExerciseToCardExercise(
     exercise_snapshot: exercise.snapshot ?? {
       name: exercise.exerciseName,
       category: exercise.exerciseCategory,
+      modality: exercise.exerciseModality ?? null,
       images: exercise.images,
     },
     sets: exercise.sets.map((set, index) => {
@@ -465,6 +516,7 @@ export function presetExerciseToCardExercise(
     exercise_snapshot: {
       name: exercise.exercise_name,
       category: exercise.category ?? null,
+      modality: exercise.modality ?? null,
       images: exercise.image_url ? [exercise.image_url] : [],
     },
     sets: exercise.sets.map((set, index) => ({
@@ -486,19 +538,29 @@ export function formatVolume(volumeKg: number, weightUnit: string): string {
   return `${Math.round(value).toLocaleString()} ${weightUnit}`;
 }
 
-/** Compact historical-set text, e.g. `W 60 × 8`, `100 × 5`, or `12 reps`; weight is unitless display units. */
+/** Compact historical-set text, e.g. `W 60 × 8`, `100 × 5`, `12 reps`, or `45s`; weight is unitless display units. */
 export function formatRecentSessionSet(
   set: ExerciseRecentSessionSet,
   weightUnit: 'kg' | 'lbs',
+  modality?: ExerciseModality,
 ): string {
+  const prefix = set.setType === 'warmup' ? 'W ' : '';
+  if (modality != null && isDurationModality(modality)) {
+    const seconds = effectiveSetDurationSec(
+      { duration: set.duration ?? null, reps: set.reps },
+      modality,
+    );
+    return seconds != null ? `${prefix}${formatDurationSeconds(seconds)}` : '–';
+  }
   const w =
     set.weight != null
       ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
       : null;
-  const prefix = set.setType === 'warmup' ? 'W ' : '';
   if (w != null && set.reps != null) return `${prefix}${w} × ${set.reps}`;
   if (w != null) return `${prefix}${w}`; // weight-only
-  return `${prefix}${set.reps} reps`; // reps-only set in a mixed history
+  if (set.reps != null) return `${prefix}${set.reps} reps`; // reps-only set in a mixed history
+  if (set.duration != null) return `${prefix}${formatDurationSeconds(set.duration)}`;
+  return '–';
 }
 
 /**
@@ -514,6 +576,8 @@ export interface ActiveSetDescription {
   setCount: number;
   reps: number | null;
   weightKg: number | null;
+  /** Effective duration in seconds; non-null only for duration-modality sets. */
+  durationSec: number | null;
 }
 
 /** Look up the session set matching the active-set cursor id. */
@@ -525,12 +589,15 @@ export function describeActiveSet(
   for (const exercise of session.exercises) {
     const set = exercise.sets.find((s) => String(s.id) === setId);
     if (!set) continue;
+    const modality = resolveSnapshotModality(exercise.exercise_snapshot);
+    const durationLike = isDurationModality(modality);
     return {
       exerciseName: exercise.exercise_snapshot?.name ?? null,
       setNumber: set.set_number,
       setCount: exercise.sets.length,
-      reps: set.reps ?? null,
-      weightKg: set.weight ?? null,
+      reps: durationLike ? null : set.reps ?? null,
+      weightKg: durationLike ? null : set.weight ?? null,
+      durationSec: durationLike ? effectiveSetDurationSec(set, modality) : null,
     };
   }
   return null;
@@ -546,9 +613,14 @@ export function describeActiveSet(
 export interface AssumedSetValues {
   weight: number | null;
   reps: number | null;
+  /**
+   * Integer seconds. Optional: `plannedSetValues` entries persisted before the
+   * modality upgrade rehydrate without the key; read through `?? null`.
+   */
+  duration?: number | null;
 }
 
-type AssumableSet = Pick<WorkoutCardSet, 'id' | 'set_type' | 'weight' | 'reps'>;
+type AssumableSet = Pick<WorkoutCardSet, 'id' | 'set_type' | 'weight' | 'reps' | 'duration'>;
 
 /**
  * Resolve the assumed (placeholder) weight/reps for every set of one exercise
@@ -578,8 +650,8 @@ export function resolveAssumedSetValues(
   plannedBySetId?: Record<string, AssumedSetValues>,
 ): AssumedSetValues[] {
   const lastEffective = {
-    warmup: { weight: null, reps: null } as AssumedSetValues,
-    working: { weight: null, reps: null } as AssumedSetValues,
+    warmup: { weight: null, reps: null, duration: null } as AssumedSetValues,
+    working: { weight: null, reps: null, duration: null } as AssumedSetValues,
   };
   return sets.map((set, index) => {
     const tier = set.set_type === 'warmup' ? 'warmup' : 'working';
@@ -588,9 +660,12 @@ export function resolveAssumedSetValues(
     const assumed: AssumedSetValues = {
       weight: previous?.weight ?? planned?.weight ?? lastEffective[tier].weight,
       reps: previous?.reps ?? planned?.reps ?? lastEffective[tier].reps,
+      duration:
+        previous?.duration ?? planned?.duration ?? lastEffective[tier].duration ?? null,
     };
     lastEffective[tier].weight = set.weight ?? assumed.weight;
     lastEffective[tier].reps = set.reps ?? assumed.reps;
+    lastEffective[tier].duration = set.duration ?? assumed.duration;
     return assumed;
   });
 }
@@ -608,17 +683,26 @@ export function describeActiveSetAssumed(
   plannedBySetId: Record<string, AssumedSetValues>,
 ): ActiveSetDescription | null {
   const desc = describeActiveSet(session, setId);
-  if (desc == null || session == null || (desc.weightKg != null && desc.reps != null)) {
-    return desc;
-  }
+  if (desc == null || session == null) return desc;
   for (const exercise of session.exercises) {
     const setIndex = exercise.sets.findIndex((s) => String(s.id) === setId);
     if (setIndex < 0) continue;
+    const modality = resolveSnapshotModality(exercise.exercise_snapshot);
+    if (isDurationModality(modality)) {
+      if (desc.durationSec != null) return desc;
+    } else if (desc.weightKg != null && desc.reps != null) {
+      return desc;
+    }
     const assumed = resolveAssumedSetValues(
       exercise.sets,
       previousSetsByExerciseId[exercise.exercise_id],
       plannedBySetId,
     )[setIndex];
+    // Only the fields the modality renders are backfilled, so a duration set
+    // can't inherit legacy reps and a weighted set can't inherit a duration.
+    if (isDurationModality(modality)) {
+      return { ...desc, durationSec: assumed.duration ?? null };
+    }
     return {
       ...desc,
       weightKg: desc.weightKg ?? assumed.weight,
@@ -661,13 +745,14 @@ export function formatRestCountdown(remainingMs: number): string {
 }
 
 /**
- * Target-load text for a set, e.g. `135 lbs × 8`, `8 reps`, or `60 kg`;
- * null when the set has neither weight nor reps.
+ * Target-load text for a set, e.g. `135 lbs × 8`, `8 reps`, `60 kg`, or `45s`;
+ * null when the set has no weight, reps, or duration.
  */
 export function formatSetLoad(
-  set: Pick<ActiveSetDescription, 'weightKg' | 'reps'>,
+  set: Pick<ActiveSetDescription, 'weightKg' | 'reps'> & { durationSec?: number | null },
   weightUnit: 'kg' | 'lbs',
 ): string | null {
+  if (set.durationSec != null) return formatDurationSeconds(set.durationSec);
   const w =
     set.weightKg != null
       ? `${parseFloat(weightFromKg(set.weightKg, weightUnit).toFixed(1))} ${weightUnit}`
@@ -1035,8 +1120,12 @@ export interface WorkoutCompletionExercise {
   totalSetCount: number;
   /** Completed working-set volume in kg; 0 when nothing weighted completed. */
   volumeKg: number;
-  /** Best completed working set by (weight, reps); reps-only best when nothing weighted. */
-  topSet: { weightKg: number | null; reps: number | null } | null;
+  /** Best completed working set by (weight, reps); reps-only best when nothing weighted; longest-duration best on duration exercises. */
+  topSet: {
+    weightKg: number | null;
+    reps: number | null;
+    durationSec?: number | null;
+  } | null;
   hasPr: boolean;
 }
 
@@ -1045,6 +1134,7 @@ export interface WorkoutCompletionPrRow {
   exerciseName: string;
   weightKg: number | null;
   reps: number | null;
+  durationSec?: number | null;
 }
 
 export interface WorkoutCompletionSummary {
@@ -1074,10 +1164,12 @@ export function buildWorkoutCompletionSummary(
 
   for (const exercise of session.exercises) {
     const name = exercise.exercise_snapshot?.name ?? 'Exercise';
+    const modality = resolveSnapshotModality(exercise.exercise_snapshot);
     let exerciseCompleted = 0;
     let exerciseVolumeKg = 0;
     let topWeighted: { weightKg: number; reps: number | null } | null = null;
     let topRepsOnly: { weightKg: null; reps: number } | null = null;
+    let topDurationSec: number | null = null;
     let hasPr = false;
 
     for (const set of exercise.sets) {
@@ -1094,6 +1186,12 @@ export function buildWorkoutCompletionSummary(
       }
       if (isWarmupSetType(set.set_type)) continue;
       exerciseVolumeKg += setVolumeKg(set);
+      if (isDurationModality(modality)) {
+        const seconds = effectiveSetDurationSec(set, modality);
+        if (seconds != null && (topDurationSec == null || seconds > topDurationSec)) {
+          topDurationSec = seconds;
+        }
+      }
       if (set.weight != null) {
         const contender = { weightKg: set.weight, reps: set.reps };
         if (
@@ -1105,7 +1203,12 @@ export function buildWorkoutCompletionSummary(
         ) {
           topWeighted = contender;
         }
-      } else if (set.reps != null && (topRepsOnly == null || set.reps > topRepsOnly.reps)) {
+      } else if (
+        !isDurationModality(modality) &&
+        set.reps != null &&
+        (topRepsOnly == null || set.reps > topRepsOnly.reps)
+      ) {
+        // On duration exercises reps are legacy hold-seconds, not a rep best.
         topRepsOnly = { weightKg: null, reps: set.reps };
       }
     }
@@ -1119,7 +1222,12 @@ export function buildWorkoutCompletionSummary(
       completedSetCount: exerciseCompleted,
       totalSetCount: exercise.sets.length,
       volumeKg: exerciseVolumeKg,
-      topSet: topWeighted ?? topRepsOnly,
+      topSet:
+        topWeighted ??
+        topRepsOnly ??
+        (topDurationSec != null
+          ? { weightKg: null, reps: null, durationSec: topDurationSec }
+          : null),
       hasPr,
     });
   }
@@ -1204,21 +1312,36 @@ export function extractPlannedSetValues(
   exercises: PresetSessionExerciseRequest[],
 ): AssumedSetValues[][] {
   return exercises.map((exercise) =>
-    exercise.sets.map((set) => ({ weight: set.weight ?? null, reps: set.reps ?? null })),
+    exercise.sets.map((set) => ({
+      weight: set.weight ?? null,
+      reps: set.reps ?? null,
+      duration: set.duration ?? null,
+    })),
   );
 }
 
 /**
  * Hevy-style live starts create every set with empty weight/reps: the plan is
  * an assumption, not a result, so it renders as a gray placeholder and only
- * becomes a real value when the set is completed or typed over.
+ * becomes a real value when the set is completed or typed over. `duration` is
+ * stripped only at duration-modality indexes (`modalities` is positional) —
+ * on a weight_reps exercise the field is invisible dead weight the editors
+ * never touch, and nulling it would wipe the stored value.
  */
 export function stripPlannedSetValues(
   exercises: PresetSessionExerciseRequest[],
+  modalities: ExerciseModality[],
 ): PresetSessionExerciseRequest[] {
-  return exercises.map((exercise) => ({
+  return exercises.map((exercise, index) => ({
     ...exercise,
-    sets: exercise.sets.map((set) => ({ ...set, weight: null, reps: null })),
+    sets: exercise.sets.map((set) => ({
+      ...set,
+      weight: null,
+      reps: null,
+      ...(isDurationModality(modalities[index] ?? 'weight_reps')
+        ? { duration: null }
+        : {}),
+    })),
   }));
 }
 
@@ -1236,6 +1359,7 @@ export function exerciseFromSnapshot(
     id: snapshot?.id ?? exerciseId,
     name: snapshot?.name ?? 'Exercise',
     category: snapshot?.category ?? null,
+    modality: snapshot?.modality ?? null,
     equipment: snapshot?.equipment ?? [],
     primary_muscles: snapshot?.primary_muscles ?? [],
     secondary_muscles: snapshot?.secondary_muscles ?? [],
@@ -1263,12 +1387,14 @@ export function makeSparseExercise(params: {
   id: string;
   name?: string | null;
   category?: string | null;
+  modality?: string | null;
   images?: string[] | null;
 }): Exercise {
   return {
     id: params.id,
     name: params.name ?? 'Exercise',
     category: params.category ?? null,
+    modality: isExerciseModality(params.modality) ? params.modality : null,
     equipment: [],
     primary_muscles: [],
     secondary_muscles: [],
@@ -1297,6 +1423,7 @@ export function exerciseFromExternalItem(item: ExternalExerciseItem): Exercise {
       id: item.id,
       name: item.name,
       category: item.category,
+      modality: item.modality ?? null,
       images: item.images,
     }),
     equipment: item.equipment ?? [],
@@ -1328,13 +1455,18 @@ export function exerciseFromDraft(exercise: WorkoutDraftExercise): Exercise {
     id: exercise.exerciseId,
     name: exercise.exerciseName,
     category: exercise.exerciseCategory,
+    modality: exercise.exerciseModality ?? null,
     images: exercise.images,
   });
 }
 
-/** Single-exercise payload for an empty live start (first-exercise-first flow). */
+/**
+ * Single-exercise payload for an empty live start (first-exercise-first flow).
+ * The param carries modality/category so every caller holds the same object it
+ * derives `useStartLiveWorkout`'s per-exercise modalities from.
+ */
 export function buildSingleExerciseStartPayload(
-  exercise: Pick<Exercise, 'id'>,
+  exercise: Pick<Exercise, 'id' | 'modality' | 'category'>,
 ): PresetSessionExerciseRequest[] {
   return [
     {
@@ -1345,6 +1477,44 @@ export function buildSingleExerciseStartPayload(
       sets: [makeDefaultStartSet(1)],
     },
   ];
+}
+
+type ActivitySetPayload = NonNullable<CreateExerciseEntryPayload['sets']>[number];
+
+/**
+ * Merge ActivityDetailScreen's edited set drafts back onto the original server
+ * sets. The server replaces the sets column wholesale on PUT, so fields the
+ * activity editor has no UI for (rest_time, rpe, notes, …) must ride along
+ * from the originals. Weight/reps always come from the drafts; `duration`
+ * comes from the drafts only on duration-modality exercises — elsewhere it is
+ * invisible structure and the original value rides along untouched.
+ */
+export function buildActivitySetsPayload(
+  draftSets: readonly WorkoutDraftSet[],
+  originals: ReadonlyMap<string, ExerciseEntrySetResponse>,
+  weightUnit: 'kg' | 'lbs',
+  modality: ExerciseModality,
+): ActivitySetPayload[] {
+  return draftSets.map((set, index) => {
+    const w = parseDecimalInput(set.weight);
+    const r = parseInt(set.reps, 10);
+    const original = originals.get(set.clientId);
+    return {
+      ...(original && {
+        id: original.id,
+        set_type: original.set_type,
+        duration: original.duration,
+        rest_time: original.rest_time,
+        notes: original.notes,
+        rpe: original.rpe,
+      }),
+      set_type: original?.set_type ?? 'Working Set',
+      set_number: index + 1,
+      weight: isNaN(w) ? null : weightToKg(w, weightUnit),
+      reps: isNaN(r) ? null : r,
+      ...(isDurationModality(modality) ? { duration: set.duration ?? null } : {}),
+    };
+  });
 }
 
 export function buildPresetExercisesPayload(

@@ -2,6 +2,7 @@ import {
   ExerciseEntryResponse,
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
+  ExerciseModality,
   PresetSessionResponse,
 } from '@workspace/shared';
 import { Exercise } from './exercises';
@@ -25,6 +26,7 @@ export interface WorkoutPresetExercise {
   exercise: Exercise; // Full exercise object
   sets: WorkoutPresetSet[];
   category?: string;
+  modality?: ExerciseModality | null; // Populated from backend join
 }
 
 export interface WorkoutPreset {
@@ -57,6 +59,7 @@ export interface WorkoutPlanAssignment {
   created_at?: string;
   updated_at?: string;
   category?: string;
+  modality?: ExerciseModality | null; // Populated from backend join
 }
 
 export interface WorkoutPlanTemplate {

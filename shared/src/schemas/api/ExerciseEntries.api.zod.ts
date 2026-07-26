@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { paginationSchema } from "./Pagination.api.zod.ts";
+import { exerciseModalitySchema } from "./Exercises.api.zod.ts";
 
 // --- Query contracts ---
 
@@ -39,6 +40,7 @@ export const exerciseSnapshotResponseSchema = z
     id: z.string(),
     name: z.string(),
     category: z.string().nullable(),
+    modality: exerciseModalitySchema.nullable().optional(),
     images: z.array(z.string()).nullable(),
     primary_muscles: z.array(z.string()).nullable(),
     secondary_muscles: z.array(z.string()).nullable(),
@@ -335,10 +337,12 @@ export const exerciseRecentSessionSetSchema = z
     setType: z.string().nullable(),
     weight: z.number().nullable(),
     reps: z.number().int().nullable(),
+    // Integer SECONDS (issue #1903). Optional: pre-modality servers omit it.
+    duration: z.number().int().nullable().optional(),
   })
   .strict()
-  .refine((s) => s.weight != null || s.reps != null, {
-    message: "Recent-session sets must have weight or reps",
+  .refine((s) => s.weight != null || s.reps != null || s.duration != null, {
+    message: "Recent-session sets must have weight, reps, or duration",
   });
 
 export const exerciseRecentSessionSchema = z

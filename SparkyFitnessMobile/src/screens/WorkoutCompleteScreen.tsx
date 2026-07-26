@@ -445,7 +445,10 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                     className="text-sm font-medium"
                     style={{ color: prColor, fontVariant: ['tabular-nums'] }}
                   >
-                    {formatSetLoad({ weightKg: pr.weightKg, reps: pr.reps }, weightUnit) ?? ''}
+                    {formatSetLoad(
+                      { weightKg: pr.weightKg, reps: pr.reps, durationSec: pr.durationSec },
+                      weightUnit,
+                    ) ?? ''}
                   </Text>
                 </View>
               ))}
@@ -472,7 +475,14 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             const entry = session.exercises.find((e) => e.id === row.entryId);
             const topText =
               row.topSet != null
-                ? formatSetLoad({ weightKg: row.topSet.weightKg, reps: row.topSet.reps }, weightUnit)
+                ? formatSetLoad(
+                    {
+                      weightKg: row.topSet.weightKg,
+                      reps: row.topSet.reps,
+                      durationSec: row.topSet.durationSec,
+                    },
+                    weightUnit,
+                  )
                 : null;
             return (
               <View

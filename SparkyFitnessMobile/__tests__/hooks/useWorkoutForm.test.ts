@@ -447,6 +447,28 @@ describe('workoutFormReducer', () => {
       });
       expect(result.exercises[0].sets[1].restTime).toBe(90);
     });
+
+    it('copies the previous set duration onto the new set', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        exercises: [
+          {
+            clientId: 'ex-abc',
+            exerciseId: 'ex-1',
+            exerciseName: 'Plank',
+            exerciseCategory: 'isometric',
+            sets: [{ clientId: 'set-1', weight: '', reps: '', duration: 45 }],
+          },
+        ],
+      };
+
+      const result = workoutFormReducer(state, {
+        type: 'ADD_SET',
+        exerciseClientId: 'ex-abc',
+        setClientId: 'set-new',
+      });
+      expect(result.exercises[0].sets[1].duration).toBe(45);
+    });
   });
 
   describe('SET_EXERCISE_REST', () => {
@@ -613,6 +635,48 @@ describe('workoutFormReducer', () => {
       expect(result.exercises[0].sets[0].reps).toBe('12');
       expect(result.exercises[0].sets[0].weight).toBe('135');
     });
+
+    it('parses duration text to integer seconds, clearing on empty/garbage', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        exercises: [
+          {
+            clientId: 'ex-abc',
+            exerciseId: 'ex-1',
+            exerciseName: 'Plank',
+            exerciseCategory: 'isometric',
+            sets: [{ clientId: 'set-1', weight: '', reps: '', duration: null }],
+          },
+        ],
+      };
+
+      const typed = workoutFormReducer(state, {
+        type: 'UPDATE_SET_FIELD',
+        exerciseClientId: 'ex-abc',
+        setClientId: 'set-1',
+        field: 'duration',
+        value: '75',
+      });
+      expect(typed.exercises[0].sets[0].duration).toBe(75);
+
+      const cleared = workoutFormReducer(typed, {
+        type: 'UPDATE_SET_FIELD',
+        exerciseClientId: 'ex-abc',
+        setClientId: 'set-1',
+        field: 'duration',
+        value: '',
+      });
+      expect(cleared.exercises[0].sets[0].duration).toBeNull();
+
+      const garbage = workoutFormReducer(typed, {
+        type: 'UPDATE_SET_FIELD',
+        exerciseClientId: 'ex-abc',
+        setClientId: 'set-1',
+        field: 'duration',
+        value: 'abc',
+      });
+      expect(garbage.exercises[0].sets[0].duration).toBeNull();
+    });
   });
 
   describe('RESET', () => {
@@ -727,6 +791,39 @@ describe('workoutFormReducer', () => {
       expect(result.exercises[0].sets[0].reps).toBe('10');
       expect(result.exercises[0].sets[1].weight).toBe('80');
       expect(result.exercises[0].sets[1].reps).toBe('8');
+    });
+
+    it('carries the snapshot modality onto the draft exercise', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession({
+        exercises: [
+          {
+            exercise_id: 'ex-1',
+            exercise_snapshot: {
+              id: 'ex-1',
+              name: 'Plank',
+              category: 'isometric',
+              modality: 'duration',
+              calories_per_hour: 200,
+              source: 'system',
+            },
+            duration_minutes: 5,
+            calories_burned: 20,
+            sets: [],
+          } as any,
+        ],
+      });
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
+
+      expect(result.exercises[0].exerciseModality).toBe('duration');
+      // Old-server sessions omit it — the draft records null and resolvers
+      // fall back to the category.
+      const bare = workoutFormReducer(state, {
+        type: 'POPULATE',
+        session: makeSession(),
+        weightUnit: 'kg',
+      });
+      expect(bare.exercises[0].exerciseModality).toBeNull();
     });
 
     it('round-trips set_type, duration, notes, rpe, and completed_at into the draft so edit-saves cannot wipe them', () => {

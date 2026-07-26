@@ -55,16 +55,25 @@ interface NutrientTotals {
 }
 
 export const calculateTotalTonnage = (
-  entries: { sets: { weight: number | string; reps: number | string }[] }[]
+  entries: {
+    sets: {
+      weight: number | string | null;
+      reps: number | string | null;
+    }[];
+  }[]
 ) => {
   return entries.reduce((totalTonnage, entry) => {
     return (
       totalTonnage +
       entry.sets.reduce((entryTonnage, set) => {
         const weight =
-          typeof set.weight === 'string' ? parseFloat(set.weight) : set.weight;
+          typeof set.weight === 'string'
+            ? parseFloat(set.weight)
+            : (set.weight ?? 0);
         const reps =
-          typeof set.reps === 'string' ? parseInt(set.reps, 10) : set.reps;
+          typeof set.reps === 'string'
+            ? parseInt(set.reps, 10)
+            : (set.reps ?? 0);
         return entryTonnage + weight * reps;
       }, 0)
     );

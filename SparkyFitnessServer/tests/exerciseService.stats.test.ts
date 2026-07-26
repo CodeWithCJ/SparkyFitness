@@ -208,6 +208,7 @@ describe('exerciseService.getExerciseStats', () => {
             set_type: null,
             weight: 100,
             reps: 5,
+            duration: null,
           },
           {
             id: 'set-2',
@@ -215,6 +216,7 @@ describe('exerciseService.getExerciseStats', () => {
             set_type: 'Drop Set',
             weight: null,
             reps: 12,
+            duration: null,
           },
         ],
       },
@@ -227,11 +229,57 @@ describe('exerciseService.getExerciseStats', () => {
       {
         entryDate: '2026-05-20',
         sets: [
-          { setNumber: 1, setType: null, weight: 100, reps: 5 },
-          { setNumber: 2, setType: 'Drop Set', weight: null, reps: 12 },
+          { setNumber: 1, setType: null, weight: 100, reps: 5, duration: null },
+          {
+            setNumber: 2,
+            setType: 'Drop Set',
+            weight: null,
+            reps: 12,
+            duration: null,
+          },
         ],
       },
       { entryDate: '2026-05-18', sets: [] },
+    ]);
+  });
+
+  it('maps duration-only sets from a timed exercise', async () => {
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getBestSetForExercise.mockResolvedValue(null);
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getLastSetForExercise.mockResolvedValue(null);
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getRecentSessionsForExercise.mockResolvedValue([
+      {
+        entry_date: '2026-05-20',
+        sets: [
+          {
+            id: 'set-1',
+            set_number: 1,
+            set_type: null,
+            weight: null,
+            reps: null,
+            duration: 60,
+          },
+        ],
+      },
+    ]);
+
+    const result = await exerciseService.getExerciseStats(userId, exerciseId);
+
+    expect(result.recentSessions).toEqual([
+      {
+        entryDate: '2026-05-20',
+        sets: [
+          {
+            setNumber: 1,
+            setType: null,
+            weight: null,
+            reps: null,
+            duration: 60,
+          },
+        ],
+      },
     ]);
   });
 

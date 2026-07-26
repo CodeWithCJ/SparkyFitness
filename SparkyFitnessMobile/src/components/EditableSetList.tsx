@@ -6,18 +6,27 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import EditableSetRow from './EditableSetRow';
+import { isDurationModality } from '../utils/workoutSession';
 import type { WorkoutDraftSet } from '../types/drafts';
+import type { ExerciseModality } from '@workspace/shared';
 
 interface EditableSetListProps {
   exerciseClientId: string;
   sets: WorkoutDraftSet[];
   activeSetKey: string | null;
   // 'rpe' comes from the shared editing hook but never occurs for activities.
-  activeSetField: 'weight' | 'reps' | 'rpe';
+  activeSetField: 'weight' | 'reps' | 'duration' | 'rpe';
+  /** The owning exercise's resolved modality; decides the column set. */
+  modality?: ExerciseModality;
   weightUnit: string;
-  onActivateSet: (setKey: string, field: 'weight' | 'reps') => void;
+  onActivateSet: (setKey: string, field: 'weight' | 'reps' | 'duration') => void;
   onDeactivateSet: () => void;
-  onUpdateSetField: (exerciseClientId: string, setClientId: string, field: 'weight' | 'reps', value: string) => void;
+  onUpdateSetField: (
+    exerciseClientId: string,
+    setClientId: string,
+    field: 'weight' | 'reps' | 'duration',
+    value: string,
+  ) => void;
   onRemoveSet: (exerciseClientId: string, setClientId: string) => void;
   onAddSet: (exerciseClientId: string) => void;
 }
@@ -27,6 +36,7 @@ function EditableSetList({
   sets,
   activeSetKey,
   activeSetField,
+  modality = 'weight_reps',
   weightUnit,
   onActivateSet,
   onDeactivateSet,
@@ -35,6 +45,7 @@ function EditableSetList({
   onAddSet,
 }: EditableSetListProps) {
   const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
+  const durationLike = isDurationModality(modality);
 
   return (
     <>
@@ -42,8 +53,16 @@ function EditableSetList({
         <Animated.View className="mt-2" layout={LinearTransition.duration(300)}>
           <View className="flex-row items-center py-1 mb-1">
             <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
-            <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
-            <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+            {durationLike ? (
+              <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Sec</Text>
+            ) : (
+              <>
+                {modality !== 'reps_only' && (
+                  <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
+                )}
+                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+              </>
+            )}
             <View style={{ width: 18 }} />
           </View>
           {sets.map((set, index) => {
@@ -61,9 +80,11 @@ function EditableSetList({
                   setClientId={set.clientId}
                   weight={set.weight}
                   reps={set.reps}
+                  duration={set.duration != null ? String(set.duration) : ''}
                   setNumber={index + 1}
                   isActive={activeSetKey === setKey}
                   activeField={activeSetKey === setKey ? activeSetField : undefined}
+                  modality={modality}
                   weightUnit={weightUnit}
                   nextSetKey={nextSet ? `${exerciseClientId}:${nextSet.clientId}` : null}
                   onActivateSet={onActivateSet}

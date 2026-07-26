@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { exerciseModalitySchema } from "./Exercises.api.zod.ts";
 
 // --- Response contracts ---
 //
@@ -28,6 +29,7 @@ export const workoutPresetExerciseResponseSchema = z.object({
   sort_order: z.number().nullable().optional(),
   exercise_name: z.string(),
   category: z.string().nullable(),
+  modality: exerciseModalitySchema.optional(),
   superset_group: z.number().int().nullable(),
   sets: z.array(workoutPresetSetResponseSchema),
 });

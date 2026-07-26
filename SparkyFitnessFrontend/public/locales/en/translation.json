@@ -411,6 +411,7 @@
       "importFitTab": "Import FIT",
       "nameLabel": "Name",
       "categoryLabel": "Category",
+      "modalityLabel": "Tracking type",
       "selectCategoryPlaceholder": "Select a category",
       "categoryGeneral": "General",
       "categoryStrength": "Strength",
@@ -446,6 +447,12 @@
       "importDuplicateTitle": "Import Failed: Duplicate Items Found",
       "importDuplicateDescription": "The following items already exist: {{duplicateList}}. Please remove them from your file and try again.",
       "importError": "Failed to import exercise data. Please try again."
+    },
+    "modality": {
+      "weightReps": "Weight & Reps",
+      "repsOnly": "Reps",
+      "duration": "Duration",
+      "durationDistance": "Duration & Distance"
     },
     "addWorkoutPresetDialog": {
       "searchPlaceholder": "Search your workout presets...",

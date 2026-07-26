@@ -31,6 +31,7 @@ import {
   buildSingleExerciseStartPayload,
   formatRecentSessionSet,
   normalizeWeightUnit,
+  resolveSnapshotModality,
 } from '../utils/workoutSession';
 import { formatDateLabel } from '../utils/dateUtils';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
@@ -169,7 +170,10 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
   const { startLiveWorkout, isStarting } = useStartLiveWorkout(navigation);
   const handleStartWorkout = () => {
-    void startLiveWorkout({ exercises: buildSingleExerciseStartPayload({ id: exercise.id }) });
+    void startLiveWorkout({
+      exercises: buildSingleExerciseStartPayload(exercise),
+      modalities: [resolveSnapshotModality(exercise)],
+    });
   };
 
   const imageSources = useMemo(() => {
@@ -438,6 +442,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             <ExerciseHistoryList
               exerciseId={item.id}
               weightUnit={weightUnit}
+              modality={resolveSnapshotModality(exercise)}
               bestSet={bestSet}
             />
           ) : resolvedTab === 'how-to' ? (
@@ -509,6 +514,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                           reps: bestSet.reps,
                         },
                         weightUnit,
+                        resolveSnapshotModality(exercise),
                       )}
                       sub={formatDateLabel(bestSet.entryDate)}
                     />
@@ -524,6 +530,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                           reps: lastSet.reps,
                         },
                         weightUnit,
+                        resolveSnapshotModality(exercise),
                       )}
                       sub={formatDateLabel(lastSet.entryDate)}
                     />

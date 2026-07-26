@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
+import type { SetInputField } from '../components/SetRowChrome';
 import type { Exercise } from '../types/exercise';
 
 interface ExerciseSetEditingActions {
@@ -17,8 +18,8 @@ interface ExerciseSetEditingActions {
 export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
   const [activeSetKey, setActiveSetKey] = useState<string | null>(null);
   // 'rpe' is only reachable on the card-based workout/preset forms (tapping the
-  // RPE column). The activity forms only ever set 'weight' | 'reps'.
-  const [activeSetField, setActiveSetField] = useState<'weight' | 'reps' | 'rpe'>('weight');
+  // RPE column). The activity forms only ever set 'weight' | 'reps' | 'duration'.
+  const [activeSetField, setActiveSetField] = useState<SetInputField>('weight');
 
   // Routes the next ExerciseSearch return to a Replace (holding the target's
   // clientId) instead of an Add. Consumed on selection; the owning screen must
@@ -69,7 +70,7 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property
   }, [actions.addSet]);
 
-  const activateSet = useCallback((setKey: string, field: 'weight' | 'reps' | 'rpe') => {
+  const activateSet = useCallback((setKey: string, field: SetInputField) => {
     setActiveSetField(field);
     setActiveSetKey(setKey);
   }, []);

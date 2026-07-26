@@ -39,6 +39,13 @@ import {
   getPrecision,
 } from '@workspace/shared';
 
+/** Timed sets carry no reps, so an entry made only of them has no range. */
+const formatRepRange = (sets: DailyExerciseEntry['sets']) => {
+  const reps = sets.map((s) => s.reps).filter((r): r is number => r != null);
+  if (reps.length === 0) return '-';
+  return `${Math.min(...reps)} - ${Math.max(...reps)}`;
+};
+
 interface ReportsTablesProps {
   tabularData: DailyFoodEntry[];
   exerciseEntries: DailyExerciseEntry[];
@@ -591,10 +598,7 @@ const ReportsTables = ({
                         <TableCell>{entry.exercises.name}</TableCell>
                         <TableCell>{entry.sets.length}</TableCell>
                         <TableCell></TableCell>
-                        <TableCell>
-                          {Math.min(...entry.sets.map((s) => s.reps))} -{' '}
-                          {Math.max(...entry.sets.map((s) => s.reps))}
-                        </TableCell>
+                        <TableCell>{formatRepRange(entry.sets)}</TableCell>
                         <TableCell>
                           {entry.sets.length > 0
                             ? formatWeight(
@@ -651,15 +655,19 @@ const ReportsTables = ({
                             <TableCell></TableCell>
                             <TableCell>{set.set_number}</TableCell>
                             <TableCell>{set.set_type}</TableCell>
-                            <TableCell>{set.reps}</TableCell>
+                            <TableCell>{set.reps ?? '-'}</TableCell>
                             <TableCell>
-                              {formatWeight(set.weight, weightUnit)}
+                              {set.weight != null
+                                ? formatWeight(set.weight, weightUnit)
+                                : '-'}
                             </TableCell>
                             <TableCell>
-                              {formatWeight(
-                                Number(set.weight) * Number(set.reps),
-                                weightUnit
-                              )}
+                              {set.weight != null
+                                ? formatWeight(
+                                    set.weight * Number(set.reps ?? 0),
+                                    weightUnit
+                                  )
+                                : '-'}
                             </TableCell>
                             <TableCell>{set.duration || '-'}</TableCell>
                             <TableCell>{set.rest_time || '-'}</TableCell>

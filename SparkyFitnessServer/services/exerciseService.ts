@@ -18,7 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
-import { setsDurationMinutes } from '@workspace/shared';
+import { deriveExerciseModality, setsDurationMinutes } from '@workspace/shared';
 
 import papa from 'papaparse';
 import {
@@ -235,6 +235,7 @@ function mapRecentSessionRow(row: RecentSessionRow) {
       setType: normalizeSetType(s.set_type),
       weight: s.weight,
       reps: s.reps,
+      duration: s.duration,
     })),
   };
 }
@@ -1011,6 +1012,7 @@ async function searchExternalExercises(
           id: exercise.id.toString(),
           name: exercise.name,
           category: exercise.category?.name ?? 'Uncategorized',
+          modality: deriveExerciseModality(exercise.category?.name),
           calories_per_hour: 0,
           source: 'wger',
           description: instructions[0] ?? exercise.name,
@@ -1056,6 +1058,7 @@ async function searchExternalExercises(
         id: exercise.id,
         name: exercise.name,
         category: exercise.category,
+        modality: deriveExerciseModality(exercise.category),
         calories_per_hour: 0,
         description: exercise.description,
         source: 'free-exercise-db',
@@ -2217,6 +2220,7 @@ async function updateExerciseEntriesSnapshot(
     const newSnapshotData = {
       exercise_name: exercise.name,
       calories_per_hour: exercise.calories_per_hour,
+      modality: exercise.modality,
     };
     // Update all relevant exercise entries for the authenticated user
     await exerciseRepository.updateExerciseEntriesSnapshot(

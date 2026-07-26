@@ -4,11 +4,33 @@ import { useTranslation } from 'react-i18next';
 import { History, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useExerciseHistory } from '@/hooks/Exercises/useExerciseEntries';
+import type { ExerciseEntrySetResponse } from '@workspace/shared';
 
 interface ExerciseHistoryDisplayProps {
   exerciseId: string;
   limit?: number;
 }
+
+/** Returns null for a set with nothing recorded, so the chip is skipped. */
+const formatHistorySet = (
+  set: ExerciseEntrySetResponse,
+  weightUnit: string,
+  toDisplayWeight: (kg: number) => number
+): string | null => {
+  const parts: string[] = [];
+  const weight =
+    set.weight != null
+      ? `${toDisplayWeight(set.weight).toFixed(1)}${weightUnit}`
+      : null;
+
+  if (set.reps != null && weight) parts.push(`${set.reps}x${weight}`);
+  else if (set.reps != null) parts.push(`${set.reps} reps`);
+  else if (weight) parts.push(weight);
+
+  if (set.duration != null) parts.push(`${set.duration}s`);
+
+  return parts.length > 0 ? parts.join(' · ') : null;
+};
 
 const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
   exerciseId,
@@ -74,18 +96,20 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
               </span>
               <div className="flex flex-wrap gap-2 text-muted-foreground">
                 {entry.sets &&
-                  entry.sets.map((set, i) => (
-                    <span
-                      key={i}
-                      className="bg-background px-1.5 py-0.5 rounded border text-[11px]"
-                    >
-                      {set.reps}x
-                      {convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(
-                        1
-                      )}
-                      {weightUnit}
-                    </span>
-                  ))}
+                  entry.sets.map((set, i) => {
+                    const label = formatHistorySet(set, weightUnit, (kg) =>
+                      convertWeight(kg, 'kg', weightUnit)
+                    );
+                    if (!label) return null;
+                    return (
+                      <span
+                        key={i}
+                        className="bg-background px-1.5 py-0.5 rounded border text-[11px]"
+                      >
+                        {label}
+                      </span>
+                    );
+                  })}
               </div>
               {entry.notes && (
                 <span className="italic mt-1 text-[10px] text-muted-foreground opacity-80">

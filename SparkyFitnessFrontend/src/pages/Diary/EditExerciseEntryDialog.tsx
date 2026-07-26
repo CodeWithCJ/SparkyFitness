@@ -45,10 +45,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ActivityDetailKeyValuePair, ExerciseEntry } from '@/types/exercises';
 import { SortableSetItem } from '../Exercises/SortableWorkoutSet';
 import { SetColumnHeaders } from '../Exercises/SetHeader';
+import {
+  defaultSetForModality,
+  toSetTableModality,
+} from '@/constants/exercises';
 import { CardioLog } from '../Exercises/CardioLog';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import {
+  resolveExerciseModality,
   setsDurationMinutes,
   toHourMinute,
   userHourMinute,
@@ -70,7 +75,11 @@ const EditExerciseEntryDialog = ({
   const { loggingLevel, weightUnit, distanceUnit, convertDistance, timezone } =
     usePreferences();
 
-  const isCardio = entry.exercise_snapshot?.category === 'cardio';
+  const modality = resolveExerciseModality(
+    entry.exercise_snapshot?.modality,
+    entry.exercise_snapshot?.category
+  );
+  const isCardio = modality === 'duration_distance';
 
   const [sets, setSets] = useState<SortableSet[]>(() =>
     ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
@@ -155,10 +164,7 @@ const EditExerciseEntryDialog = ({
   const handleAddSet = () => {
     setSets((prev) => {
       const lastSet = prev[prev.length - 1] ?? {
-        set_number: 0,
-        set_type: 'Working Set' as const,
-        reps: 10,
-        weight: null,
+        ...defaultSetForModality(modality),
         _dndId: uuidv4(),
       };
       return [
@@ -362,9 +368,7 @@ const EditExerciseEntryDialog = ({
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <SetColumnHeaders
-                  category={entry.exercise_snapshot?.category}
-                />
+                <SetColumnHeaders modality={toSetTableModality(modality)} />
                 <SortableContext items={sets.map((set) => set._dndId)}>
                   <div className="space-y-0.5">
                     {sets.map((set, setIndex) => (
@@ -380,6 +384,7 @@ const EditExerciseEntryDialog = ({
                         onDuplicateSet={(_, sIdx) => handleDuplicateSet(sIdx)}
                         onRemoveSet={(_, sIdx) => handleRemoveSet(sIdx)}
                         weightUnit={weightUnit}
+                        modality={toSetTableModality(modality)}
                       />
                     ))}
                   </div>

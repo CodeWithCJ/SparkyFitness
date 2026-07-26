@@ -1314,7 +1314,7 @@ describe('_createExerciseEntryWithClient id threading', () => {
     sets: [],
   };
 
-  it('inserts the client-provided uuid into the id column as $31', async () => {
+  it('inserts the client-provided uuid into the id column as $32', async () => {
     const client = makeClient();
     await create(
       client,
@@ -1328,11 +1328,11 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).toContain('$31');
-    expect(insert!.sql).toContain('entry_time, id');
-    // $31 is the last param — the client uuid.
-    expect(insert!.params).toHaveLength(31);
-    expect(insert!.params[30]).toBe('client-uuid-1');
+    expect(insert!.sql).toContain('$32');
+    expect(insert!.sql).toContain('modality, id');
+    // $32 is the last param — the client uuid.
+    expect(insert!.params).toHaveLength(32);
+    expect(insert!.params[31]).toBe('client-uuid-1');
   });
 
   it('omits the id column when no id is provided (defaults to gen_random_uuid)', async () => {
@@ -1349,8 +1349,8 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).not.toContain('$31');
-    expect(insert!.sql).not.toContain('entry_time, id');
-    expect(insert!.params).toHaveLength(30);
+    expect(insert!.sql).not.toContain('$32');
+    expect(insert!.sql).not.toContain('modality, id');
+    expect(insert!.params).toHaveLength(31);
   });
 });

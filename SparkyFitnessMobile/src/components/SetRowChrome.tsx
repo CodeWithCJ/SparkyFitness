@@ -182,6 +182,14 @@ export function useDeactivateOnKeyboardDismiss(onDeactivate: () => void): void {
 }
 
 /**
+ * The editable cells a set row can hold keyboard focus on. Which cells exist
+ * depends on the exercise's modality (`duration` rows have no weight/reps
+ * cell and vice versa), but the focus/accessory plumbing is modality-blind —
+ * a field only ever names an input the row actually rendered.
+ */
+export type SetInputField = 'weight' | 'reps' | 'duration' | 'rpe';
+
+/**
  * Imperative surface a set row registers with its owning screen so the shared
  * keyboard accessory bar (a screen-level KeyboardStickyView, not a per-input
  * iOS InputAccessoryView) can act on the focused row.
@@ -190,7 +198,7 @@ export interface SetRowAccessoryHandle {
   /** Live: flush the row's in-progress drafts, then complete the set. */
   log: () => void;
   /** Move the keyboard between the row's always-mounted inputs natively. */
-  focusField: (field: 'weight' | 'reps' | 'rpe') => void;
+  focusField: (field: SetInputField) => void;
   /** Edit: move on to the next set — or add one when this is the last row. */
   advance: () => void;
 }
@@ -214,7 +222,7 @@ export function useSetEditAccessoryBar({
 }: {
   /** `${exerciseClientId}:${setClientId}` from useExerciseSetEditing. */
   activeSetKey: string | null;
-  activeSetField: 'weight' | 'reps' | 'rpe';
+  activeSetField: SetInputField;
   onDeactivateSet: () => void;
   /** False when the form's sets store no RPE (the preset form). */
   rpeEnabled?: boolean;
@@ -246,13 +254,17 @@ export function useSetEditAccessoryBar({
     activeSetKey == null ? null : activeSetKey.slice(activeSetKey.indexOf(':') + 1);
 
   // The keyboard walk mirrors the live bar: weight → reps → RPE (when that
-  // column is shown), then on to the next set. In-row hops are native
-  // focusField moves through the handle; the row-crossing hop is advance().
+  // column is shown), then on to the next set. A duration cell is its row's
+  // only value input, so it walks straight to RPE / Next Set like reps does.
+  // In-row hops are native focusField moves through the handle; the
+  // row-crossing hop is advance().
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
   const nextField =
     activeSetField === 'weight'
       ? ('reps' as const)
-      : activeSetField === 'reps' && metricColumn === 'rpe' && rpeEnabled
+      : (activeSetField === 'reps' || activeSetField === 'duration') &&
+          metricColumn === 'rpe' &&
+          rpeEnabled
         ? ('rpe' as const)
         : null;
 

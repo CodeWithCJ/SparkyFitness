@@ -287,10 +287,51 @@ describe('create_exercise', () => {
       category: 'Cardio',
       calories_per_hour: 550,
       description: 'Indoor rower',
+      modality: undefined,
       is_custom: true,
       shared_with_public: false,
       source: 'manual',
     });
+  });
+
+  it('passes an explicit modality through to the service', async () => {
+    vi.mocked(exerciseService.searchExercises).mockResolvedValue([]);
+    vi.mocked(exerciseService.createExercise).mockResolvedValue({
+      id: EXERCISE_ID,
+      name: 'Plank',
+    });
+
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'create_exercise',
+        name: 'Plank',
+        category: 'Isometric',
+        modality: 'duration',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Exercise "Plank" created.');
+    expect(exerciseService.createExercise).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ name: 'Plank', modality: 'duration' })
+    );
+  });
+
+  it('rejects a modality outside the enum', async () => {
+    vi.mocked(exerciseService.searchExercises).mockResolvedValue([]);
+
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'create_exercise',
+        name: 'Plank',
+        modality: 'time_only',
+      } as never,
+      opts
+    );
+
+    expect(result).toContain('modality');
+    expect(exerciseService.createExercise).not.toHaveBeenCalled();
   });
 });
 

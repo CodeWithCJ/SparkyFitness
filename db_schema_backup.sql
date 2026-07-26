@@ -1506,7 +1506,9 @@ CREATE TABLE public.exercise_entries (
     steps integer,
     water_estimated integer,
     superset_group integer,
-    entry_time time without time zone
+    entry_time time without time zone,
+    modality text,
+    CONSTRAINT exercise_entries_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'duration'::text, 'duration_distance'::text])))
 );
 
 
@@ -1658,7 +1660,9 @@ CREATE TABLE public.exercises (
     secondary_muscles text,
     instructions text,
     images text,
-    is_quick_exercise boolean DEFAULT false
+    is_quick_exercise boolean DEFAULT false,
+    modality text DEFAULT 'weight_reps'::text NOT NULL,
+    CONSTRAINT exercises_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'duration'::text, 'duration_distance'::text])))
 );
 
 

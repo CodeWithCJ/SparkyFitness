@@ -1,7 +1,11 @@
+import type { ExerciseModality } from '@workspace/shared';
+
 export interface Exercise {
   id: string;
   name: string;
   category: string | null;
+  /** Absent/null on pre-modality servers; resolve via `resolveSnapshotModality`. */
+  modality?: ExerciseModality | null;
   equipment: string[];
   primary_muscles: string[];
   secondary_muscles: string[];

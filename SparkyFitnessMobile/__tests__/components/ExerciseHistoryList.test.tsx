@@ -129,6 +129,26 @@ describe('ExerciseHistoryList', () => {
     expect(screen.getByText('12 reps')).toBeTruthy();
   });
 
+  it('chips duration-modality sets as seconds, with the legacy reps fallback', () => {
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [
+        makeIndividualSession([
+          makeSet({ weight: null, reps: null, duration: 45 }),
+          makeSet({ weight: null, reps: null, duration: 90 }),
+          // Pre-modality isometric row: seconds stored in reps.
+          makeSet({ weight: null, reps: 30, duration: null }),
+        ]),
+      ],
+    });
+
+    const screen = renderList({ modality: 'duration' });
+
+    expect(screen.getByText('45s')).toBeTruthy();
+    expect(screen.getByText('1:30')).toBeTruthy();
+    expect(screen.getByText('30s')).toBeTruthy();
+  });
+
   it('shows only the matching exercise from a preset session, with the workout name', () => {
     mockUseExerciseHistory.mockReturnValue({
       ...baseHookResult,

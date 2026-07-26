@@ -9,7 +9,7 @@ export interface WorkoutDraftSet {
   /** Editable in the card forms via long-press (set type) and the RPE column. */
   setType?: string;
   rpe?: number | null;
-  /** Round-tripped from the preset/session on edit; the form has no UI for this. */
+  /** Integer seconds; edited in the card forms when the exercise is duration-modality. */
   duration?: number | null;
   /** Edited in the workout card forms via the long-press set-note panel. */
   notes?: string | null;
@@ -35,6 +35,8 @@ export interface WorkoutDraftExercise {
   exerciseId: string;
   exerciseName: string;
   exerciseCategory: string | null;
+  /** Absent/null on pre-modality servers; resolve via `resolveSnapshotModality`. */
+  exerciseModality?: import('@workspace/shared').ExerciseModality | null;
   images: string[];
   sets: WorkoutDraftSet[];
   /** Round-tripped from the session on edit; the form has no duration UI. */

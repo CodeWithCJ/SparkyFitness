@@ -70,6 +70,17 @@ const options = {
               description:
                 'The category of the exercise (e.g., "Strength", "Cardio").',
             },
+            modality: {
+              type: 'string',
+              enum: [
+                'weight_reps',
+                'reps_only',
+                'duration',
+                'duration_distance',
+              ],
+              description:
+                'Which per-set editor clients render for the exercise. Derived from the category when not supplied on create.',
+            },
             equipment: {
               type: 'array',
               items: {

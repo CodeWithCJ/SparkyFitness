@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EXERCISE_MODALITIES } from '@workspace/shared';
 import {
   dateSchema,
   optionalEntryTimeSchema,
@@ -76,6 +77,12 @@ const createExerciseSchema = z
       .max(1000)
       .optional()
       .describe('Description of the exercise'),
+    modality: z
+      .enum(EXERCISE_MODALITIES)
+      .optional()
+      .describe(
+        'Which set editor the exercise uses; defaults to a value derived from the category'
+      ),
   })
   .strict();
 
@@ -357,6 +364,12 @@ export const manageExerciseInput = z.object({
     .max(1000)
     .optional()
     .describe('Description of the exercise'),
+  modality: z
+    .enum(EXERCISE_MODALITIES)
+    .optional()
+    .describe(
+      'Which set editor the exercise uses; defaults to a value derived from the category'
+    ),
   // log
   entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
   entry_time: optionalEntryTimeSchema,

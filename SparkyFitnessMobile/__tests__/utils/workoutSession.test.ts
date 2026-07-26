@@ -52,6 +52,11 @@ import {
   exerciseFromExternalItem,
   makeSparseExercise,
   exerciseFromDraft,
+  resolveSnapshotModality,
+  isDurationModality,
+  effectiveSetDurationSec,
+  formatDurationSeconds,
+  buildActivitySetsPayload,
 } from '../../src/utils/workoutSession';
 import type {
   ExerciseEntryResponse,
@@ -1462,6 +1467,7 @@ describe('workoutSession', () => {
         expect(card.exercise_snapshot).toEqual({
           name: 'Bench Press',
           category: 'Strength',
+          modality: null,
           images: ['bench.png'],
         });
         expect(card.sets[0]).toMatchObject({
@@ -1559,6 +1565,7 @@ describe('workoutSession', () => {
         expect(card.exercise_snapshot).toEqual({
           name: 'Squat',
           category: 'legs',
+          modality: null,
           images: ['img.png'],
         });
         expect(card.sets[0]).toEqual({
@@ -2204,6 +2211,39 @@ describe('workoutSession', () => {
       expect(summary.volumeKg).toBe(0);
       expect(summary.exercises[0].topSet).toEqual({ weightKg: null, reps: 12 });
     });
+
+    it('surfaces the longest completed duration as the top set on duration exercises', () => {
+      const session = {
+        ...makePreset(),
+        exercises: [
+          {
+            id: 'ex-a',
+            notes: null,
+            exercise_snapshot: { name: 'Plank', modality: 'duration' },
+            sets: [
+              { id: 401, set_type: 'normal', weight: null, reps: null, duration: 45, rpe: null },
+              { id: 402, set_type: 'normal', weight: null, reps: null, duration: 60, rpe: null },
+              // Legacy reps-as-seconds row counts through the fallback.
+              { id: 403, set_type: 'normal', weight: null, reps: 90, duration: null, rpe: null },
+              // Warmups never claim the top set.
+              { id: 404, set_type: 'warmup', weight: null, reps: null, duration: 120, rpe: null },
+            ],
+          },
+        ],
+      } as unknown as PresetSession;
+
+      const summary = buildWorkoutCompletionSummary(
+        session,
+        { '401': 1_000, '402': 2_000, '403': 3_000, '404': 4_000 },
+        {},
+      );
+
+      expect(summary.exercises[0].topSet).toEqual({
+        weightKg: null,
+        reps: null,
+        durationSec: 90,
+      });
+    });
   });
 
   describe('live-start payload builders', () => {
@@ -2495,6 +2535,37 @@ describe('workoutSession', () => {
         expect(formatRecentSessionSet(recentSet(80, null), 'kg')).toBe('80');
         expect(formatRecentSessionSet(recentSet(null, 12), 'kg')).toBe('12 reps');
       });
+
+      it('formats duration-modality sets as seconds prose', () => {
+        expect(
+          formatRecentSessionSet(
+            { ...recentSet(null, null), duration: 45 },
+            'kg',
+            'duration',
+          ),
+        ).toBe('45s');
+        expect(
+          formatRecentSessionSet(
+            { ...recentSet(null, null, 'warmup'), duration: 90 },
+            'kg',
+            'duration_distance',
+          ),
+        ).toBe('W 1:30');
+      });
+
+      it('shows legacy reps as seconds only for duration modality', () => {
+        expect(formatRecentSessionSet(recentSet(null, 45), 'kg', 'duration')).toBe('45s');
+        expect(formatRecentSessionSet(recentSet(null, 10), 'kg', 'duration_distance')).toBe(
+          '–',
+        );
+      });
+
+      it('renders a dash for all-null sets and seconds without a modality', () => {
+        expect(formatRecentSessionSet(recentSet(null, null), 'kg')).toBe('–');
+        expect(
+          formatRecentSessionSet({ ...recentSet(null, null), duration: 30 }, 'kg'),
+        ).toBe('30s');
+      });
     });
 
     describe('getRpeTone', () => {
@@ -2597,6 +2668,7 @@ describe('workoutSession', () => {
           setCount: 2,
           reps: 8,
           weightKg: 70,
+          durationSec: null,
         });
       });
 
@@ -2607,6 +2679,7 @@ describe('workoutSession', () => {
           setCount: 1,
           reps: null,
           weightKg: null,
+          durationSec: null,
         });
       });
 
@@ -2614,6 +2687,38 @@ describe('workoutSession', () => {
         expect(describeActiveSet(null, '101')).toBeNull();
         expect(describeActiveSet(sessionWithSets, null)).toBeNull();
         expect(describeActiveSet(sessionWithSets, '999')).toBeNull();
+      });
+
+      it('describes a duration-modality set by its effective seconds', () => {
+        const durationSession = makePreset({
+          exercises: [
+            {
+              ...sessionWithSets.exercises[0],
+              exercise_snapshot: {
+                ...sessionWithSets.exercises[0].exercise_snapshot,
+                modality: 'duration',
+              },
+              sets: [
+                {
+                  ...sessionWithSets.exercises[0].sets[0],
+                  id: 301,
+                  reps: 45,
+                  weight: null,
+                  duration: null,
+                },
+              ],
+            },
+          ] as PresetSession['exercises'],
+        });
+        expect(describeActiveSet(durationSession, '301')).toEqual({
+          exerciseName: 'Bench Press',
+          setNumber: 1,
+          setCount: 1,
+          // Legacy isometric seconds surface as duration, never as a rep target.
+          reps: null,
+          weightKg: null,
+          durationSec: 45,
+        });
       });
 
       describe('describeActiveSetAssumed', () => {
@@ -2629,6 +2734,7 @@ describe('workoutSession', () => {
             setCount: 1,
             reps: 12,
             weightKg: 45,
+            durationSec: null,
           });
         });
 
@@ -2665,9 +2771,9 @@ describe('workoutSession', () => {
           [prev(100, 8), prev(100, 6), prev(95, 6)],
         );
         expect(result).toEqual([
-          { weight: 100, reps: 8 },
-          { weight: 100, reps: 6 },
-          { weight: 95, reps: 6 },
+          { weight: 100, reps: 8, duration: null },
+          { weight: 100, reps: 6, duration: null },
+          { weight: 95, reps: 6, duration: null },
         ]);
       });
 
@@ -2678,8 +2784,8 @@ describe('workoutSession', () => {
           [makeSet(1, { weight: 105 }), makeSet(2), makeSet(3)],
           [prev(110, 8), prev(100, 6), prev(95, 6)],
         );
-        expect(result[1]).toEqual({ weight: 100, reps: 6 });
-        expect(result[2]).toEqual({ weight: 95, reps: 6 });
+        expect(result[1]).toEqual({ weight: 100, reps: 6, duration: null });
+        expect(result[2]).toEqual({ weight: 95, reps: 6, duration: null });
       });
 
       it('mirrors the rows above onto sets with no history of their own', () => {
@@ -2689,21 +2795,21 @@ describe('workoutSession', () => {
           [makeSet(1, { weight: 100, reps: 8 }), makeSet(2), makeSet(3)],
           undefined,
         );
-        expect(typed[1]).toEqual({ weight: 100, reps: 8 });
-        expect(typed[2]).toEqual({ weight: 100, reps: 8 });
+        expect(typed[1]).toEqual({ weight: 100, reps: 8, duration: null });
+        expect(typed[2]).toEqual({ weight: 100, reps: 8, duration: null });
 
         // A set added beyond last time's count mirrors the row above's
         // resolved placeholder.
         const added = resolveAssumedSetValues([makeSet(1), makeSet(2)], [prev(100, 8)]);
-        expect(added[1]).toEqual({ weight: 100, reps: 8 });
+        expect(added[1]).toEqual({ weight: 100, reps: 8, duration: null });
       });
 
       it('falls back to the planned value when there is no history or session entry', () => {
         const result = resolveAssumedSetValues([makeSet(1), makeSet(2)], undefined, {
           '2': { weight: 80, reps: 5 },
         });
-        expect(result[0]).toEqual({ weight: null, reps: null });
-        expect(result[1]).toEqual({ weight: 80, reps: 5 });
+        expect(result[0]).toEqual({ weight: null, reps: null, duration: null });
+        expect(result[1]).toEqual({ weight: 80, reps: 5, duration: null });
       });
 
       it('prefers history over the plan, and both over typed entries above', () => {
@@ -2713,14 +2819,14 @@ describe('workoutSession', () => {
           [prev(100, 8), prev(100, 8)],
           planned,
         );
-        expect(withHistory[1]).toEqual({ weight: 100, reps: 8 });
+        expect(withHistory[1]).toEqual({ weight: 100, reps: 8, duration: null });
 
         const withEntry = resolveAssumedSetValues(
           [makeSet(1, { weight: 110, reps: 3 }), makeSet(2)],
           [prev(100, 8), prev(100, 8)],
           planned,
         );
-        expect(withEntry[1]).toEqual({ weight: 100, reps: 8 });
+        expect(withEntry[1]).toEqual({ weight: 100, reps: 8, duration: null });
       });
 
       it('keeps warmup and working mirrors separate', () => {
@@ -2730,22 +2836,50 @@ describe('workoutSession', () => {
           [makeSet(1, { set_type: 'warmup', weight: 60, reps: 10 }), makeSet(2), makeSet(3)],
           undefined,
         );
-        expect(result[1]).toEqual({ weight: null, reps: null });
-        expect(result[2]).toEqual({ weight: null, reps: null });
+        expect(result[1]).toEqual({ weight: null, reps: null, duration: null });
+        expect(result[2]).toEqual({ weight: null, reps: null, duration: null });
 
         // And a working entry doesn't retarget a later warmup row.
         const warmupAfter = resolveAssumedSetValues(
           [makeSet(1, { weight: 100, reps: 5 }), makeSet(2, { set_type: 'warmup' })],
           undefined,
         );
-        expect(warmupAfter[1]).toEqual({ weight: null, reps: null });
+        expect(warmupAfter[1]).toEqual({ weight: null, reps: null, duration: null });
       });
 
       it('resolves nothing for a brand-new exercise with no sources', () => {
         expect(resolveAssumedSetValues([makeSet(1), makeSet(2)], undefined)).toEqual([
-          { weight: null, reps: null },
-          { weight: null, reps: null },
+          { weight: null, reps: null, duration: null },
+          { weight: null, reps: null, duration: null },
         ]);
+      });
+
+      it('cascades duration through the same previous → planned → preceding chain', () => {
+        const withPrev = resolveAssumedSetValues(
+          [
+            { id: 1, set_type: 'normal', weight: null, reps: null, duration: null },
+            { id: 2, set_type: 'normal', weight: null, reps: null, duration: null },
+          ],
+          [{ setNumber: 1, setType: 'normal', weight: null, reps: null, duration: 45 }],
+        );
+        expect(withPrev[0].duration).toBe(45);
+        // Set 2 has no previous counterpart — it mirrors the row above.
+        expect(withPrev[1].duration).toBe(45);
+
+        const withPlanned = resolveAssumedSetValues(
+          [{ id: 1, set_type: 'normal', weight: null, reps: null, duration: null }],
+          undefined,
+          { '1': { weight: null, reps: null, duration: 60 } },
+        );
+        expect(withPlanned[0].duration).toBe(60);
+
+        // Rehydrated v5 planned entries lack the duration key entirely.
+        const legacyPlanned = resolveAssumedSetValues(
+          [{ id: 1, set_type: 'normal', weight: null, reps: null, duration: null }],
+          undefined,
+          { '1': { weight: 80, reps: 5 } },
+        );
+        expect(legacyPlanned[0]).toEqual({ weight: 80, reps: 5, duration: null });
       });
     });
 
@@ -2769,11 +2903,11 @@ describe('workoutSession', () => {
       it('captures the plan positionally and strips it from the create payload', () => {
         expect(extractPlannedSetValues(exercises)).toEqual([
           [
-            { weight: 80, reps: 5 },
-            { weight: 80, reps: 5 },
+            { weight: 80, reps: 5, duration: null },
+            { weight: 80, reps: 5, duration: null },
           ],
         ]);
-        const stripped = stripPlannedSetValues(exercises);
+        const stripped = stripPlannedSetValues(exercises, ['weight_reps']);
         expect(stripped[0].sets.map((s) => [s.weight, s.reps])).toEqual([
           [null, null],
           [null, null],
@@ -2782,6 +2916,31 @@ describe('workoutSession', () => {
         expect(stripped[0].sets.map((s) => s.rest_time)).toEqual([120, 120]);
         // The source payload is not mutated.
         expect(exercises[0].sets[0].weight).toBe(80);
+      });
+
+      it('strips duration only at duration-modality indexes', () => {
+        const timed = [
+          {
+            exercise_id: '11111111-1111-4111-8111-111111111111',
+            sort_order: 0,
+            duration_minutes: 0,
+            notes: null,
+            sets: [{ set_number: 1, weight: 60, reps: 5, duration: 90 }],
+          },
+          {
+            exercise_id: '22222222-2222-4222-8222-222222222222',
+            sort_order: 1,
+            duration_minutes: 0,
+            notes: null,
+            sets: [{ set_number: 1, weight: null, reps: null, duration: 45 }],
+          },
+        ];
+        const stripped = stripPlannedSetValues(timed, ['weight_reps', 'duration']);
+        // A weight_reps exercise keeps its (invisible) stored duration.
+        expect(stripped[0].sets[0].duration).toBe(90);
+        expect(stripped[0].sets[0].weight).toBeNull();
+        // A duration exercise starts empty like weight/reps do.
+        expect(stripped[1].sets[0].duration).toBeNull();
       });
     });
 
@@ -2798,6 +2957,149 @@ describe('workoutSession', () => {
 
       it('returns null when the set has neither weight nor reps', () => {
         expect(formatSetLoad({ weightKg: null, reps: null }, 'kg')).toBeNull();
+      });
+
+      it('prefers a duration over weight/reps text', () => {
+        expect(formatSetLoad({ weightKg: null, reps: null, durationSec: 45 }, 'kg')).toBe(
+          '45s',
+        );
+        expect(formatSetLoad({ weightKg: 60, reps: 8, durationSec: 90 }, 'kg')).toBe(
+          '1:30',
+        );
+      });
+    });
+
+    describe('modality helpers', () => {
+      describe('resolveSnapshotModality', () => {
+        it('prefers a valid explicit modality over the category', () => {
+          expect(
+            resolveSnapshotModality({ modality: 'duration', category: 'strength' }),
+          ).toBe('duration');
+        });
+
+        it('derives from category when modality is absent or invalid', () => {
+          expect(resolveSnapshotModality({ category: 'Cardio' })).toBe(
+            'duration_distance',
+          );
+          expect(
+            resolveSnapshotModality({ modality: 'garbage', category: 'isometric' }),
+          ).toBe('duration');
+          expect(resolveSnapshotModality(null)).toBe('weight_reps');
+          expect(resolveSnapshotModality({ category: null })).toBe('weight_reps');
+        });
+      });
+
+      it('isDurationModality covers the two duration-like values only', () => {
+        expect(isDurationModality('duration')).toBe(true);
+        expect(isDurationModality('duration_distance')).toBe(true);
+        expect(isDurationModality('weight_reps')).toBe(false);
+        expect(isDurationModality('reps_only')).toBe(false);
+      });
+
+      describe('effectiveSetDurationSec', () => {
+        it('prefers the stored duration', () => {
+          expect(effectiveSetDurationSec({ duration: 30, reps: 45 }, 'duration')).toBe(30);
+        });
+
+        it('falls back to legacy reps-as-seconds for duration modality only', () => {
+          expect(effectiveSetDurationSec({ duration: null, reps: 45 }, 'duration')).toBe(45);
+          // Backfilled cardio presets carry seeded reps that must NOT render
+          // as seconds.
+          expect(
+            effectiveSetDurationSec({ duration: null, reps: 10 }, 'duration_distance'),
+          ).toBeNull();
+          expect(effectiveSetDurationSec({ duration: null, reps: 45 }, 'weight_reps')).toBeNull();
+        });
+
+        it('returns null when nothing is available', () => {
+          expect(effectiveSetDurationSec({ duration: null, reps: null }, 'duration')).toBeNull();
+        });
+      });
+
+      it('formatDurationSeconds renders 45s under a minute and m:ss above', () => {
+        expect(formatDurationSeconds(45)).toBe('45s');
+        expect(formatDurationSeconds(60)).toBe('1:00');
+        expect(formatDurationSeconds(90)).toBe('1:30');
+        expect(formatDurationSeconds(605)).toBe('10:05');
+      });
+
+      describe('buildActivitySetsPayload', () => {
+        const originals = new Map([
+          [
+            'set-0',
+            {
+              id: 7,
+              set_number: 1,
+              set_type: 'Working Set',
+              reps: 45,
+              weight: null,
+              duration: 60,
+              rest_time: 30,
+              notes: 'hold',
+              rpe: 8,
+              completed_at: null,
+              is_pr: false,
+            },
+          ],
+        ]);
+
+        it('rides original fields along and takes weight/reps from the drafts', () => {
+          const payload = buildActivitySetsPayload(
+            [{ clientId: 'set-0', weight: '50', reps: '5' }],
+            originals,
+            'kg',
+            'weight_reps',
+          );
+          expect(payload[0]).toMatchObject({
+            id: 7,
+            set_number: 1,
+            weight: 50,
+            reps: 5,
+            duration: 60,
+            rest_time: 30,
+            notes: 'hold',
+            rpe: 8,
+          });
+        });
+
+        it('takes duration from the drafts on duration-modality exercises', () => {
+          const payload = buildActivitySetsPayload(
+            [{ clientId: 'set-0', weight: '', reps: '45', duration: 75 }],
+            originals,
+            'kg',
+            'duration',
+          );
+          expect(payload[0].duration).toBe(75);
+          // Legacy reps ride along untouched — no silent migration.
+          expect(payload[0].reps).toBe(45);
+        });
+
+        it('clears a duration the user emptied on duration exercises', () => {
+          const payload = buildActivitySetsPayload(
+            [{ clientId: 'set-0', weight: '', reps: '', duration: null }],
+            originals,
+            'kg',
+            'duration_distance',
+          );
+          expect(payload[0].duration).toBeNull();
+        });
+
+        it('defaults new sets with no original', () => {
+          const payload = buildActivitySetsPayload(
+            [{ clientId: 'set-9', weight: '', reps: '', duration: 30 }],
+            originals,
+            'kg',
+            'duration',
+          );
+          expect(payload[0]).toMatchObject({
+            set_type: 'Working Set',
+            set_number: 1,
+            weight: null,
+            reps: null,
+            duration: 30,
+          });
+          expect(payload[0].id).toBeUndefined();
+        });
       });
     });
 

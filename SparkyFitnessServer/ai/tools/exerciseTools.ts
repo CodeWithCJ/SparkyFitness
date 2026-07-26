@@ -352,7 +352,7 @@ export function buildExerciseTools(userId: string, tz: string) {
 
 Actions:
 - search_exercises(searchTerm, muscleGroup?, equipment?, limit?, offset?)
-- create_exercise(name, category?, calories_per_hour?, description?)
+- create_exercise(name, category?, calories_per_hour?, description?, modality?:weight_reps|reps_only|duration|duration_distance)
 - log_exercise(entry_date, exercise_id?|exercise_name?, duration_minutes?, calories_burned?, notes?, distance?, avg_heart_rate?, steps?, sets?:JSON string or array of [{reps,weight,duration,rest_time,set_type,rpe,notes}]) — distance/avg_heart_rate/steps are for cardio
 - list_exercise_diary(entry_date)
 - get_workout_presets()
@@ -451,6 +451,7 @@ Actions:
                   category: args.category || 'custom',
                   calories_per_hour: args.calories_per_hour || 300,
                   description: args.description || null,
+                  modality: args.modality,
                   is_custom: true,
                   shared_with_public: false,
                   source: 'manual',

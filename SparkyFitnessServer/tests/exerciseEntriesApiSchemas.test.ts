@@ -263,7 +263,54 @@ describe('Exercise entry API schemas', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects recent-session sets with both weight and reps null', () => {
+  // Duration-only sets are what a `duration` or `duration_distance` exercise
+  // records; before #1903 stage 2 they could never reach the parse.
+  it('accepts recent-session sets carrying only a duration', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [
+        {
+          entryDate: '2026-05-19',
+          sets: [
+            {
+              setNumber: 1,
+              setType: null,
+              weight: null,
+              reps: null,
+              duration: 45,
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.recentSessions[0].sets[0].duration).toBe(45);
+  });
+
+  it('rejects recent-session sets with weight, reps and duration all null', () => {
+    const result = runSchema('exerciseStatsResponseSchema', {
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [
+        {
+          entryDate: '2026-05-19',
+          sets: [
+            {
+              setNumber: 1,
+              setType: null,
+              weight: null,
+              reps: null,
+              duration: null,
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects recent-session sets with weight and reps null and no duration key', () => {
     const result = runSchema('exerciseStatsResponseSchema', {
       bestSet: null,
       lastSet: null,
@@ -288,6 +335,52 @@ describe('Exercise entry API schemas', () => {
       recentSessions: [session, session, session, session],
     });
     expect(result.success).toBe(false);
+  });
+
+  describe('exercise snapshot modality', () => {
+    const baseSnapshot = {
+      id: exerciseId,
+      name: 'Plank',
+      category: 'Isometric',
+      images: null,
+      primary_muscles: null,
+      secondary_muscles: null,
+      equipment: null,
+      instructions: null,
+      force: null,
+      level: null,
+      mechanic: null,
+    };
+
+    it('round-trips a snapshot modality', () => {
+      const result = runSchema('exerciseSnapshotResponseSchema', {
+        ...baseSnapshot,
+        modality: 'duration',
+      });
+      expect(result.success).toBe(true);
+      expect(result.data.modality).toBe('duration');
+    });
+
+    it('accepts a null modality and a snapshot from a pre-modality server', () => {
+      const withNull = runSchema('exerciseSnapshotResponseSchema', {
+        ...baseSnapshot,
+        modality: null,
+      });
+      expect(withNull.success).toBe(true);
+      expect(withNull.data.modality).toBeNull();
+
+      const omitted = runSchema('exerciseSnapshotResponseSchema', baseSnapshot);
+      expect(omitted.success).toBe(true);
+      expect(omitted.data).not.toHaveProperty('modality');
+    });
+
+    it('rejects a snapshot modality outside the enum', () => {
+      const result = runSchema('exerciseSnapshotResponseSchema', {
+        ...baseSnapshot,
+        modality: 'time_only',
+      });
+      expect(result.success).toBe(false);
+    });
   });
 
   describe('superset_group', () => {

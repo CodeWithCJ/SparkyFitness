@@ -80,6 +80,7 @@ describe('presetFormReducer', () => {
       exerciseId: 'ex-1',
       exerciseName: 'Bench Press',
       exerciseCategory: 'strength',
+      exerciseModality: null,
       images: ['bench.png'],
       sets: [{ clientId: 's1', weight: '', reps: '', restTime: DEFAULT_REST_SEC }],
     });
@@ -131,7 +132,13 @@ describe('presetFormReducer', () => {
     const sets = next.exercises[0].sets;
     expect(sets).toHaveLength(3);
     // Inherits the last set's weight/reps...
-    expect(sets[2]).toEqual({ clientId: 's3', weight: '110', reps: '3', restTime: 120 });
+    expect(sets[2]).toEqual({
+      clientId: 's3',
+      weight: '110',
+      reps: '3',
+      duration: null,
+      restTime: 120,
+    });
   });
 
   it('ADD_SET falls back to empty values and the default rest when the exercise has no sets', () => {
@@ -155,7 +162,7 @@ describe('presetFormReducer', () => {
       setClientId: 's1',
     });
     expect(next.exercises[0].sets).toEqual([
-      { clientId: 's1', weight: '', reps: '', restTime: DEFAULT_REST_SEC },
+      { clientId: 's1', weight: '', reps: '', duration: null, restTime: DEFAULT_REST_SEC },
     ]);
   });
 

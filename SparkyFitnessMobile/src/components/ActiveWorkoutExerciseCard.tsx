@@ -14,6 +14,7 @@ import CompletionCheck from './CompletionCheck';
 import FormInput from './FormInput';
 import RestPeriodChip from './RestPeriodChip';
 import ActiveWorkoutSetRow, { type SetRowAccessoryHandle } from './ActiveWorkoutSetRow';
+import type { SetInputField } from './SetRowChrome';
 import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
 import WorkoutNotesField from './WorkoutNotesField';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
@@ -25,7 +26,9 @@ import {
   compareSetRecords,
   formatVolume,
   getExerciseVolumeKg,
+  isDurationModality,
   resolveAssumedSetValues,
+  resolveSnapshotModality,
   setTypeLetter,
   type WorkoutCardExercise,
   type WorkoutCardSet,
@@ -136,7 +139,7 @@ interface ActiveWorkoutExerciseCardProps {
    * field, seeding the tapped row before its Next chain takes over (`'rpe'` is
    * live-only, set by tapping the RPE column).
    */
-  activeField?: 'weight' | 'reps' | 'rpe';
+  activeField?: SetInputField;
   /**
    * Live only: the tap-focused render key (distinct from `activeSetId`, the
    * cursor). Marks which row renders inputs; the cursor still owns the log ring.
@@ -146,12 +149,16 @@ interface ActiveWorkoutExerciseCardProps {
   rpeEditable?: boolean;
   /** Prefill the first empty set from "last time" once stats arrive. */
   eligibleForPrefill?: boolean;
-  onActivateSet?: (setId: string, field: 'weight' | 'reps') => void;
+  onActivateSet?: (setId: string, field: Exclude<SetInputField, 'rpe'>) => void;
   /** Live only: tap the RPE column to focus the RPE input on that row. */
   onActivateRpe?: (setId: string) => void;
   /** Edit only: tap the last-column check to toggle a set's completion. */
   onToggleComplete?: (setId: string) => void;
-  onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
+  onEditFieldChange?: (
+    setId: string,
+    field: Exclude<SetInputField, 'rpe'>,
+    text: string,
+  ) => void;
   /** Live/edit: rows register their sticky-bar handles here (keyed by render key). */
   onRegisterAccessoryHandle?: (key: string, handle: SetRowAccessoryHandle | null) => void;
 }
@@ -241,6 +248,9 @@ function ActiveWorkoutExerciseCard({
   ]) as [string, string, string, string];
 
   const name = exercise.exercise_snapshot?.name ?? 'Exercise';
+  // Resolved once per exercise; every row and the column header derive from it.
+  const modality = resolveSnapshotModality(exercise.exercise_snapshot);
+  const durationLike = isDurationModality(modality);
   // Live and edit fetch the stats baseline with the active/edited session
   // excluded so its own sets don't pollute it. View mode fetches only when the
   // owner supplies the viewed session's id to exclude — without it (e.g. the
@@ -415,7 +425,7 @@ function ActiveWorkoutExerciseCard({
   const onActivateSetKeyed = useMemo(
     () =>
       onActivateSet
-        ? (id: string, field: 'weight' | 'reps') =>
+        ? (id: string, field: Exclude<SetInputField, 'rpe'>) =>
             onActivateSet(translateSetKey(id), field)
         : undefined,
     [onActivateSet, translateSetKey],
@@ -681,12 +691,22 @@ function ActiveWorkoutExerciseCard({
                 Prev
               </Text>
             )}
-            <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-              {weightUnit === 'kg' ? 'KG' : 'LBS'}
-            </Text>
-            <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-              Reps
-            </Text>
+            {durationLike ? (
+              <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+                Sec
+              </Text>
+            ) : (
+              <>
+                {modality !== 'reps_only' && (
+                  <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+                    {weightUnit === 'kg' ? 'KG' : 'LBS'}
+                  </Text>
+                )}
+                <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+                  Reps
+                </Text>
+              </>
+            )}
             <View ref={metricAnchorRef} collapsable={false} className="w-14 items-center">
               <Pressable
                 onPress={openMetricMenu}
@@ -730,6 +750,7 @@ function ActiveWorkoutExerciseCard({
             <React.Fragment key={renderKey}>
               <ActiveWorkoutSetRow
                 set={set}
+                modality={modality}
                 renderKey={renderKey}
                 displayNumber={workingSetNumbers[index]}
                 state={state}
