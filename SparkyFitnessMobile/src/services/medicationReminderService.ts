@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 
 import { getTodayDate } from '../utils/dateUtils';
@@ -8,32 +7,11 @@ import { ensureNotificationPermission, MEDICATION_REMINDER_CATEGORY } from './no
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { Medication, MedicationEntry } from '../types/medications';
 
-const STORAGE_KEY = '@Medications:reminderNotifications';
 const CHANNEL_ID = 'medication-reminders';
 const REPEAT_MINUTES = [10, 20, 30];
 
-interface StoredReminder {
-  key: string;
-  notificationIds: string[];
-}
-
-async function readStoredReminders(): Promise<StoredReminder[]> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeStoredReminders(reminders: StoredReminder[]): Promise<void> {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
-  } catch {
-    // best-effort
-  }
+function medReminderKey(medicationId: string, scheduleId: string, date: string) {
+  return `med_${date}_${medicationId}_${scheduleId}`;
 }
 
 async function cancelReminders(ids: string[]): Promise<void> {
@@ -73,7 +51,10 @@ async function scheduleReminder(
 
 /**
  * Reconcile medication reminder notifications for today.
- * Can be called from the foreground or background
+ * Can be called from the foreground or background.
+ *
+ * Uses Notifications.getAllScheduledNotificationsAsync() instead of an
+ * AsyncStorage ledger — every pending request already carries its content.data.
  *
  * @param medications - Active medications from the API
  * @param entries - Today's medication entries from the API
@@ -84,11 +65,11 @@ export async function reconcileMedicationReminders(
 ): Promise<void> {
   const prefs = useAppPreferencesStore.getState();
   if (!prefs.medicationRemindersEnabled || !prefs.notificationsEnabled) {
-    const stored = await readStoredReminders();
-    if (stored.length > 0) {
-      await Promise.all(stored.map((r) => cancelReminders(r.notificationIds)));
-      await writeStoredReminders([]);
-    }
+    const all = await Notifications.getAllScheduledNotificationsAsync();
+    const medIds = all
+      .filter((n) => n.content.data?.medicationId)
+      .map((n) => n.identifier);
+    if (medIds.length > 0) await cancelReminders(medIds);
     return;
   }
 
@@ -105,13 +86,18 @@ export async function reconcileMedicationReminders(
 
   const today = getTodayDate();
   const dueDoses = getDueDosesForDate(medications as any, today);
-  const stored = await readStoredReminders();
+  const allPending = await Notifications.getAllScheduledNotificationsAsync();
+
+  // Only consider notifications that are medication reminders (have medicationId in data)
+  const medReminders = allPending.filter((n) => n.content.data?.medicationId);
   const todayPrefix = `med_${today}`;
 
   // Cancel reminders for past dates
-  const staleReminders = stored.filter((r) => !r.key.startsWith(todayPrefix));
-  await Promise.all(staleReminders.map((r) => cancelReminders(r.notificationIds)));
-  const freshStored = stored.filter((r) => r.key.startsWith(todayPrefix));
+  const staleReminders = medReminders.filter((n) => {
+    const key = n.content.data?.key as string | undefined;
+    return key && !key.startsWith(todayPrefix);
+  });
+  await cancelReminders(staleReminders.map((n) => n.identifier));
 
   // Find which due doses don't have a logged entry
   const unloggedDoses = dueDoses.filter((due) => {
@@ -127,19 +113,24 @@ export async function reconcileMedicationReminders(
   const loggedKeys = new Set(
     dueDoses
       .filter((due) => !unloggedDoses.includes(due))
-      .map((due) => `med_${today}_${due.medication.id}_${due.schedule.id}`),
+      .map((due) => medReminderKey(due.medication.id, due.schedule.id, today)),
   );
-  const toCancel = freshStored.filter((r) => loggedKeys.has(r.key));
-  await Promise.all(toCancel.map((r) => cancelReminders(r.notificationIds)));
-  const afterCancel = freshStored.filter((r) => !loggedKeys.has(r.key));
+  const toCancel = medReminders.filter((n) => {
+    const key = n.content.data?.key as string | undefined;
+    return key && loggedKeys.has(key);
+  });
+  await cancelReminders(toCancel.map((n) => n.identifier));
 
   // Schedule reminders for unlogged doses that don't already have one
-  const existingKeys = new Set(afterCancel.map((r) => r.key));
-  const newReminders: StoredReminder[] = [];
+  const remainingKeys = new Set(
+    medReminders
+      .filter((n) => !toCancel.includes(n) && !staleReminders.includes(n))
+      .map((n) => n.content.data?.key as string),
+  );
 
   for (const due of unloggedDoses) {
-    const key = `med_${today}_${due.medication.id}_${due.schedule.id}`;
-    if (existingKeys.has(key)) continue;
+    const key = medReminderKey(due.medication.id, due.schedule.id, today);
+    if (remainingKeys.has(key)) continue;
 
     const timeOfDay = due.schedule.time_of_day;
     if (!timeOfDay) continue;
@@ -150,16 +141,14 @@ export async function reconcileMedicationReminders(
       medicationId: due.medication.id,
       scheduleId: due.schedule.id,
       entryDate: today,
+      key,
     };
-
-    const notificationIds: string[] = [];
 
     // Initial reminder
     const triggerDate = new Date();
     triggerDate.setHours(hours, minutes, 0, 0);
     if (triggerDate.getTime() > Date.now()) {
-      const id = await scheduleReminder(body, triggerDate, data);
-      if (id) notificationIds.push(id);
+      await scheduleReminder(body, triggerDate, data);
     }
 
     // Repeat reminders (+10, +20, +30 min)
@@ -167,19 +156,9 @@ export async function reconcileMedicationReminders(
       for (const offset of REPEAT_MINUTES) {
         const repeatDate = new Date(triggerDate.getTime() + offset * 60000);
         if (repeatDate.getTime() > Date.now()) {
-          const id = await scheduleReminder(body, repeatDate, data);
-          if (id) notificationIds.push(id);
+          await scheduleReminder(body, repeatDate, data);
         }
       }
     }
-
-    if (notificationIds.length > 0) {
-      newReminders.push({ key, notificationIds });
-    }
-  }
-
-  if (newReminders.length > 0 || toCancel.length > 0) {
-    const updated = [...afterCancel, ...newReminders];
-    await writeStoredReminders(updated);
   }
 }
