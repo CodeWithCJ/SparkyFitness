@@ -7,10 +7,6 @@ import { getTodayDate } from '../utils/dateUtils';
 import { reconcileMedicationReminders } from '../services/medicationReminderService';
 import { addLog } from '../services/LogService';
 
-const schedulingLock = new Set<string>();
-
-const LOCK_KEY = 'medication-reminders';
-
 const MedicationReminderReconciler: React.FC = () => {
   const medicationRemindersEnabled = useAppPreferencesStore((s) => s.medicationRemindersEnabled);
   const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
@@ -24,15 +20,10 @@ const MedicationReminderReconciler: React.FC = () => {
   useEffect(() => {
     if (isLoadingMeds || isLoadingEntries) return;
     if (!medications || medications.length === 0) return;
-    if (schedulingLock.has(LOCK_KEY)) return;
 
-    schedulingLock.add(LOCK_KEY);
     reconcileMedicationReminders(medications, todayEntries ?? [])
       .catch((error) => {
         addLog(`Medication reminder reconciliation failed: ${(error as Error).message}`, 'ERROR');
-      })
-      .finally(() => {
-        schedulingLock.delete(LOCK_KEY);
       });
   }, [medications, todayEntries, isLoadingMeds, isLoadingEntries, medicationRemindersEnabled, notificationsEnabled, medicationReminderRepeats, today]);
 
