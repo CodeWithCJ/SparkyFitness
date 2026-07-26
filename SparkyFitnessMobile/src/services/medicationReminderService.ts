@@ -6,8 +6,9 @@ import { getDueDosesForDate } from '@workspace/shared';
 import { ensureNotificationPermission, MEDICATION_REMINDER_CATEGORY } from './notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { MedicationDetail, MedicationEntry } from '../types/medications';
+import { addLog } from './LogService';
 
-const CHANNEL_ID = 'medication-reminders';
+export const CHANNEL_ID = 'medication-reminders';
 const REPEAT_MINUTES = [10, 20, 30];
 const schedulingLock = new Set<string>();
 
@@ -45,7 +46,8 @@ async function scheduleReminder(
         channelId: CHANNEL_ID,
       },
     });
-  } catch {
+  } catch (err) {
+    addLog(`scheduleReminder failed: ${(err as Error).message}`, 'ERROR');
     return null;
   }
 }

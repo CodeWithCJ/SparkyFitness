@@ -190,8 +190,8 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
             {todayPrnDoses.length === 0 ? (
               <Text className="text-sm text-text-muted py-2">No doses logged today.</Text>
             ) : (
-              todayPrnDoses.map((dose) => (
-                <View key={dose.id} className="flex-row items-center justify-between py-2 border-b border-chrome-border last:border-b-0">
+              todayPrnDoses.map((dose, index) => (
+                <View key={dose.id} className={`flex-row items-center justify-between py-2${index < todayPrnDoses.length - 1 ? ' border-b border-chrome-border' : ''}`}>
                   <View className="flex-1">
                     <Text className="text-base text-text-primary">
                       {dose.taken_at

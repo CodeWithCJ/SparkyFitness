@@ -5,10 +5,8 @@ import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import { fireSuccessHaptic } from './haptics';
 import { ExactAlarmBridge } from './ExactAlarmBridge';
-import {
-  useAppPreferencesStore,
-  __resetAppPreferencesStoreForTests,
-} from '../stores/appPreferencesStore';
+import { useAppPreferencesStore, __resetAppPreferencesStoreForTests } from '../stores/appPreferencesStore';
+import { CHANNEL_ID as MEDICATION_CHANNEL_ID } from './medicationReminderService';
 
 const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
@@ -70,7 +68,7 @@ export async function initNotifications(): Promise<void> {
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
       });
-      await Notifications.setNotificationChannelAsync('medication-reminders', {
+      await Notifications.setNotificationChannelAsync(MEDICATION_CHANNEL_ID, {
         name: 'Medication reminders',
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,

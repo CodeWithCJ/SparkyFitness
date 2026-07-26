@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, SectionList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
@@ -143,21 +143,14 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={sections}
-          keyExtractor={(section) => section.title}
-          renderItem={({ item: section }) => (
-            <View>
-              <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide px-4 pt-4 pb-1">
-                {section.title}
-              </Text>
-              {section.data.map((med) => (
-                <View key={med.id}>
-                  {renderMedItem({ item: med })}
-                  <View className="h-px bg-chrome-border ml-4" />
-                </View>
-              ))}
-            </View>
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMedItem}
+          renderSectionHeader={({ section }) => (
+            <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide px-4 pt-4 pb-1">
+              {section.title}
+            </Text>
           )}
           contentContainerStyle={{
             paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
