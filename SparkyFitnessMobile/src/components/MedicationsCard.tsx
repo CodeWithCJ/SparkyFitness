@@ -182,8 +182,10 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     (due: DueDose) => {
       const existing = entryForDue(due);
       if (existing && (existing.status === 'taken' || existing.status === 'prn_taken')) {
-        deleteEntryMutation.mutate(existing.id);
-        Toast.show({ type: 'info', text1: `${due.medication.name} unmarked` });
+        deleteEntryMutation.mutate(existing.id, {
+          onSuccess: () => Toast.show({ type: 'info', text1: `${due.medication.name} unmarked` }),
+          onError: (error) => addLog(`Failed to unmark medication: ${error.message}`, 'ERROR'),
+        });
         return;
       }
       if (existing) {
@@ -234,8 +236,10 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     (due: DueDose) => {
       const existing = entryForDue(due);
       if (existing && existing.status === 'skipped') {
-        deleteEntryMutation.mutate(existing.id);
-        Toast.show({ type: 'info', text1: `${due.medication.name} unskipped` });
+        deleteEntryMutation.mutate(existing.id, {
+          onSuccess: () => Toast.show({ type: 'info', text1: `${due.medication.name} unskipped` }),
+          onError: (error) => addLog(`Failed to unskip medication: ${error.message}`, 'ERROR'),
+        });
         return;
       }
       if (existing) {
@@ -284,7 +288,9 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     (due: DueDose) => {
       const existing = entryForDue(due);
       if (existing) {
-        deleteEntryMutation.mutate(existing.id);
+        deleteEntryMutation.mutate(existing.id, {
+          onError: (error) => addLog(`Failed to toggle medication: ${error.message}`, 'ERROR'),
+        });
         return;
       }
       handleTake(due);
