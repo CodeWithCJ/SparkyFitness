@@ -1363,11 +1363,23 @@ Actions:
             }
 
             case 'create_food': {
-              const targetUnit = args.unit || 'serving';
+              const rawUnit = args.unit || 'serving';
+              // A unit that already encodes a count ("4 pieces", "2 cups") must be
+              // split into a numeric serving_size and a bare unit. Stored verbatim it
+              // becomes serving_size=1, serving_unit="4 pieces" — which then renders as
+              // the nonsense "14 pieces" (serving_size concatenated with serving_unit)
+              // and scales wrong. Peel a leading positive number off as a multiplier.
+              const countPrefix = /^\s*(\d+(?:\.\d+)?)\s+(\S.*)$/.exec(rawUnit);
+              const unitMultiplier =
+                countPrefix && Number(countPrefix[1]) > 0
+                  ? Number(countPrefix[1])
+                  : 1;
+              const targetUnit = countPrefix ? countPrefix[2].trim() : rawUnit;
               const isCountUnit = COUNT_BASED_UNITS.includes(
                 targetUnit.toLowerCase()
               );
-              const targetQuantity = args.quantity || (isCountUnit ? 1 : 100);
+              const targetQuantity =
+                (args.quantity || (isCountUnit ? 1 : 100)) * unitMultiplier;
               // The `|| null` on optional fields is MCP's storage quirk
               // (an explicit 0 is stored as null), ported as-is.
               const food = await foodCoreService.createFood(userId, {
