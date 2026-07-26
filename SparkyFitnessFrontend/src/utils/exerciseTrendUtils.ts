@@ -1,18 +1,33 @@
 import { ExerciseProgressResponse } from '@workspace/shared';
 
+const getTrendDateFormat = (aggregationLevel?: string) => {
+  if (aggregationLevel === 'weekly' || aggregationLevel === 'week') {
+    return "'Wk' MMM dd";
+  }
+  if (aggregationLevel === 'monthly' || aggregationLevel === 'month') {
+    return 'MMM yyyy';
+  }
+  if (aggregationLevel === 'yearly' || aggregationLevel === 'year') {
+    return 'yyyy';
+  }
+  return 'MMM dd, yyyy';
+};
+
 export const calculateVolumeTrendData = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
-  parseISO: (dateString: string) => Date
+  parseISO: (dateString: string) => Date,
+  aggregationLevel: string = 'daily'
 ) => {
+  const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
           parseISO(entry.entry_date),
-          'MMM dd, yyyy'
+          formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
 
@@ -49,15 +64,17 @@ export const calculateMaxWeightTrendData = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
-  parseISO: (dateString: string) => Date
+  parseISO: (dateString: string) => Date,
+  aggregationLevel: string = 'daily'
 ) => {
+  const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
           parseISO(entry.entry_date),
-          'MMM dd, yyyy'
+          formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
 
@@ -98,15 +115,17 @@ export const calculateEstimated1RMTrendData = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
-  parseISO: (dateString: string) => Date
+  parseISO: (dateString: string) => Date,
+  aggregationLevel: string = 'daily'
 ) => {
+  const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
           parseISO(entry.entry_date),
-          'MMM dd, yyyy'
+          formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
 
