@@ -108,6 +108,7 @@ export async function reconcileMedicationReminders(
           (e) =>
             e.medication_id === due.medication.id &&
             e.schedule_id === due.schedule.id &&
+            e.entry_date === today &&
             (e.status === 'taken' || e.status === 'skipped'),
         );
 
