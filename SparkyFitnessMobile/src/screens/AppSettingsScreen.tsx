@@ -134,7 +134,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">
-            If not marked, repeat reminders every 10 minutes up to 3 times.
+            Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.
           </Text>
         </View>
 
