@@ -95,6 +95,11 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     const strengthNum = form.strengthValue ? parseFloat(form.strengthValue) : null;
     const doseNum = form.doseAmount ? parseFloat(form.doseAmount) : null;
 
+    if ((form.strengthValue && !Number.isFinite(strengthNum)) || (form.doseAmount && !Number.isFinite(doseNum))) {
+      Alert.alert('Invalid number', 'Please enter valid numeric values for strength and dose.');
+      return;
+    }
+
     const base = {
       name: form.name.trim(),
       type_id: form.typeId,
