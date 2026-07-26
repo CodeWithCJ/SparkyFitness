@@ -5,6 +5,7 @@ import { buildMonthGrid, addDays, compareDays, isHormonalBc } from '@workspace/s
 import type { SharedCycle, SharedCycleDailyLog, SharedCycleSettings } from '@workspace/shared';
 import Icon from '../Icon';
 import { useWellnessTokens } from './theme/wellnessTokens';
+import { getPhaseColor } from '../../utils/cycleDisplayUtils';
 
 interface CycleCalendarGridProps {
   selectedDate: string; // YYYY-MM-DD
@@ -201,20 +202,24 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
           let borderStyle: 'solid' | 'dashed' = 'solid';
 
           if (phase === 'period') {
-            cellBg = tokens.phaseMenstrual + '26'; // ~15% opacity
-            textColor = tokens.phaseMenstrual;
+            const pColor = getPhaseColor('menstrual', tokens);
+            cellBg = pColor + '26'; // ~15% opacity
+            textColor = pColor;
           } else if (phase === 'predicted-period') {
-            cellBg = tokens.phaseMenstrual + '14'; // ~8% opacity
-            textColor = tokens.phaseMenstrual;
-            borderColor = tokens.phaseMenstrual;
+            const pColor = getPhaseColor('menstrual', tokens);
+            cellBg = pColor + '14'; // ~8% opacity
+            textColor = pColor;
+            borderColor = pColor;
             borderStyle = 'dashed';
           } else if (phase === 'fertile') {
-            cellBg = tokens.phaseFollicular + '26';
-            textColor = tokens.phaseFollicular;
+            const pColor = getPhaseColor('fertile', tokens);
+            cellBg = pColor + '26';
+            textColor = pColor;
           } else if (phase === 'ovulation') {
-            cellBg = tokens.phaseOvulation + '26';
-            textColor = tokens.phaseOvulation;
-            borderColor = tokens.phaseOvulation;
+            const pColor = getPhaseColor('ovulation', tokens);
+            cellBg = pColor + '26';
+            textColor = pColor;
+            borderColor = pColor;
           }
 
           if (!isCurrentMonth) {
