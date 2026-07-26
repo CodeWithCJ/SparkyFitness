@@ -1,9 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useCSSVariable } from 'uniwind';
-import { BUILT_IN_CYCLE_SYMPTOMS, SYMPTOM_CATEGORY_COLOR, type CycleSymptomDef } from '@workspace/shared';
+import { BUILT_IN_CYCLE_SYMPTOMS, type CycleSymptomDef } from '@workspace/shared';
 import { useSymptomEntries, useSymptomMutations } from '../../hooks/useSymptoms';
-import { useWellnessTokens, resolveSymptomCategoryColor } from './theme/wellnessTokens';
 import CycleIcon from './CycleIcon';
 
 interface CycleSymptomPickerProps {
@@ -13,11 +11,6 @@ interface CycleSymptomPickerProps {
 const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ date }) => {
   const { entries, isLoading } = useSymptomEntries({ fromDate: date, toDate: date });
   const { createEntry, deleteEntry } = useSymptomMutations(date, date);
-  const tokens = useWellnessTokens();
-  const [textMuted, textPrimary] = useCSSVariable([
-    '--color-text-muted',
-    '--color-text-primary',
-  ]) as [string, string];
 
   const activeSymptomSnapshots = entries
     .filter((e) => e.source === 'cycle')
@@ -55,36 +48,21 @@ const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ date }) => {
       <View className="flex-row flex-wrap gap-2">
         {BUILT_IN_CYCLE_SYMPTOMS.map((s) => {
           const isActive = activeSymptomSnapshots.includes(s.displayName.toLowerCase());
-          const catColor = resolveSymptomCategoryColor(
-            SYMPTOM_CATEGORY_COLOR[s.category],
-            tokens,
-            textMuted,
-          );
 
           return (
             <TouchableOpacity
               key={s.name}
               onPress={() => handleToggleSymptom(s)}
               activeOpacity={0.7}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: isActive ? catColor : 'rgba(150,150,150,0.1)',
-                paddingVertical: 6,
-                paddingHorizontal: 12,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: isActive ? catColor : 'transparent',
-              }}
+              className={`flex-row items-center rounded-full px-3 py-1.5 border ${
+                isActive ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-border-subtle'
+              }`}
             >
-              <CycleIcon id={s.icon} size={18} />
+              <CycleIcon id={s.icon} size={16} />
               <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '500',
-                  color: isActive ? '#FFFFFF' : textPrimary,
-                  marginLeft: 6,
-                }}
+                className={`text-xs ml-1.5 ${
+                  isActive ? 'text-text-primary font-bold' : 'text-text-secondary font-medium'
+                }`}
               >
                 {s.displayName}
               </Text>

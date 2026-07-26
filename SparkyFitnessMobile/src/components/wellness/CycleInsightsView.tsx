@@ -12,11 +12,10 @@ import BBTLineChart from './BBTLineChart';
 import CorrelationCards from './CorrelationCards';
 
 const CycleInsightsView: React.FC = () => {
-  const [accentColor, textMuted, dangerColor] = useCSSVariable([
+  const [accentColor, dangerColor] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-muted',
     '--color-icon-danger',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const { insights, isLoading: isInsightsLoading } = useCycleInsights();
   const { cycles, isLoading: isHistoryLoading } = useCycleHistory();
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
@@ -125,7 +124,6 @@ const CycleInsightsView: React.FC = () => {
                     Period: {c.periodStart} - {c.periodEnd}
                   </Text>
                 </View>
-                <Icon name="logs" size={20} color={textMuted} />
               </View>
             ))}
           </View>
@@ -135,7 +133,7 @@ const CycleInsightsView: React.FC = () => {
       {/* 3. Anomalies/Alerts */}
       {anomalies.length > 0 && (
         <View className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm gap-3">
-          <Text className="text-text-primary text-base font-bold">Clinical Health Alerts</Text>
+          <Text className="text-text-primary text-base font-bold">Health Alerts</Text>
           <View className="gap-2">
             {anomalies.map((anom: { message: string }, idx: number) => (
               <View

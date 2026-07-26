@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, Switch, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Switch, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
@@ -14,7 +14,6 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import StepperInput from '../components/StepperInput';
-import Button from '../components/ui/Button';
 
 import {
   BIRTH_CONTROL_METHODS,
@@ -190,10 +189,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
 
         {settings.enabled && (
           <>
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Feature Configuration
-            </Text>
-            <SettingsRowGroup>
+            <SettingsRowGroup title="Feature Configuration">
               <SettingsRow
                 title="Tracking Mode"
                 rightAccessory={
@@ -220,10 +216,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               />
             </SettingsRowGroup>
 
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Cycle Calculations Overrides
-            </Text>
-            <SettingsRowGroup>
+            <SettingsRowGroup title="Cycle Calculations Overrides">
               <SettingsRow
                 title="Average Cycle Length"
                 subtitle={settings.avg_cycle_length_override ? 'Custom override' : 'Default/History'}
@@ -274,10 +267,10 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               />
             </SettingsRowGroup>
 
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Conditions
-            </Text>
-            <SettingsRowGroup>
+            <SettingsRowGroup
+              title="Conditions"
+              subtitle="Tailors health articles and care insights based on your selected conditions."
+            >
               {CYCLE_CONDITIONS.map((cond) => (
                 <SettingsRow
                   key={cond.value}
@@ -295,10 +288,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               ))}
             </SettingsRowGroup>
 
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Display & Terminology
-            </Text>
-            <SettingsRowGroup>
+            <SettingsRowGroup title="Display Options">
               <SettingsRow
                 title="Show Fertile Window"
                 subtitle="Highlight fertile days on calendar"
@@ -326,7 +316,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                 }
               />
               <SettingsRow
-                title="Language / Terminology"
+                title="Terminology"
                 rightAccessory={
                   <BottomSheetPicker
                     value={settings.terminology}
@@ -339,17 +329,18 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               />
             </SettingsRowGroup>
 
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Actions
-            </Text>
-            <View className="gap-3 mt-2">
-              <Button variant="secondary" onPress={handleExportData}>
-                Export Cycle & Pregnancy Data
-              </Button>
-              <Button variant="outline" tone="neutral" onPress={handleResetOnboarding}>
-                Reset Onboarding Wizard
-              </Button>
-            </View>
+            <SettingsRowGroup title="Actions">
+              <SettingsRow
+                title="Export Cycle & Pregnancy Data"
+                subtitle="Download JSON data export"
+                onPress={handleExportData}
+              />
+              <SettingsRow
+                title="Reset Onboarding Wizard"
+                subtitle="Restart setup walkthrough"
+                onPress={handleResetOnboarding}
+              />
+            </SettingsRowGroup>
           </>
         )}
       </ScrollView>

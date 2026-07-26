@@ -111,11 +111,13 @@ const CycleHistoryList: React.FC = () => {
           <Text className="text-text-secondary text-sm">No logged cycles yet.</Text>
         </View>
       ) : (
-        <View className="gap-3">
-          {cycles.map((c) => (
+        <View className="bg-surface rounded-xl border border-border-subtle overflow-hidden">
+          {cycles.map((c, idx) => (
             <View
               key={c.id || c.start_date}
-              className="bg-surface rounded-xl p-3 border border-border-subtle flex-row justify-between items-center"
+              className={`p-3.5 flex-row justify-between items-center ${
+                idx < cycles.length - 1 ? 'border-b border-border-subtle' : ''
+              }`}
             >
               <View className="flex-1 mr-4">
                 <Text className="text-text-primary font-semibold text-sm">

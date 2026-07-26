@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useCycleLog } from '../../hooks/useCycleLogs';
 import { useUpsertCycleLog } from '../../hooks/useUpsertCycleLog';
@@ -113,6 +113,8 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
     }
   };
 
+  const [isNotesFocused, setIsNotesFocused] = useState(false);
+
   if (isLoading) {
     return (
       <View className="flex-1 justify-center items-center py-12">
@@ -122,31 +124,30 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
   }
 
   return (
-    <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
-      <View className="gap-6 mt-4">
-        {/* Flow Level */}
-        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
-          <Text className="text-text-primary text-sm font-semibold mb-3">Flow Level</Text>
-          <View className="flex-row justify-between">
-            {FLOW_OPTIONS.map((opt) => {
-              const isSelected = flowLevel === opt.value;
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  onPress={() => setFlowLevel(opt.value)}
-                  className={`items-center justify-center rounded-xl p-2 flex-1 mx-1 border ${
-                    isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
-                  }`}
-                >
-                  <CycleIcon id={opt.icon} size={24} />
-                  <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+    <View className="gap-3">
+      {/* Flow Level */}
+      <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
+        <Text className="text-text-primary text-sm font-semibold mb-3">Flow Level</Text>
+        <View className="flex-row justify-between">
+          {FLOW_OPTIONS.map((opt) => {
+            const isSelected = flowLevel === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => setFlowLevel(opt.value)}
+                className={`items-center justify-center rounded-xl p-2 flex-1 mx-1 border ${
+                  isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-border-subtle'
+                }`}
+              >
+                <CycleIcon id={opt.icon} size={24} />
+                <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
+      </View>
 
         {/* Symptoms */}
         <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
@@ -276,23 +277,27 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date }) => {
           <TextInput
             value={notes}
             onChangeText={setNotes}
+            onFocus={() => setIsNotesFocused(true)}
+            onBlur={() => setIsNotesFocused(false)}
             placeholder="Log details about how you feel, energy level..."
+            placeholderTextColor="#8E8E93"
             multiline
             numberOfLines={4}
-            className="bg-raised rounded-xl p-3 text-text-primary text-sm min-h-[80px]"
+            className={`bg-raised rounded-xl p-3 text-text-primary text-sm min-h-[80px] border ${
+              isNotesFocused ? 'border-accent-primary' : 'border-transparent'
+            }`}
             style={{ textAlignVertical: 'top' }}
           />
         </View>
 
         {/* Save Button */}
-        <View className="px-4">
+        <View className="w-full">
           <Button variant="primary" disabled={isSaving || submitting} onPress={handleSave}>
             {isSaving || submitting ? 'Saving...' : 'Save Log Entry'}
           </Button>
         </View>
       </View>
-    </ScrollView>
-  );
+    );
 };
 
 export default CycleTodayView;

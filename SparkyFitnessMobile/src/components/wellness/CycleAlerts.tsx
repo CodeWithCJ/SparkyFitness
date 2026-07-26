@@ -28,7 +28,7 @@ const CycleAlerts: React.FC<CycleAlertsProps> = ({ alerts }) => {
         return (
           <View
             key={alert.key}
-            className="flex-row items-start p-3 rounded-xl border border-border-subtle bg-surface"
+            className="flex-row items-center p-4 rounded-xl border border-border-subtle bg-surface shadow-sm"
           >
             <View className="mr-3 mt-0.5">
               <Icon
