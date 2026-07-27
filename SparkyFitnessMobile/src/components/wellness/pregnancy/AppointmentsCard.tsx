@@ -81,7 +81,7 @@ const AppointmentsCard: React.FC = () => {
   const sorted = [...appointments].sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
 
   return (
-    <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
       <View className="flex-row items-center justify-between">
         <Text className="text-text-primary text-base font-bold">Appointments</Text>
         <TouchableOpacity

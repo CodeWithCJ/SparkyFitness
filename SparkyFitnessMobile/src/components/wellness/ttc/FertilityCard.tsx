@@ -75,8 +75,8 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
       <View className="flex-row items-center justify-between">
         <Text className="text-text-primary text-sm font-semibold">Fertility</Text>
         {isFertileToday && (
-          <View className="rounded-full bg-green-100 px-3 py-1">
-            <Text className="text-green-700 text-xs font-semibold">Fertile window</Text>
+          <View className="rounded-full bg-emerald-500/15 px-3 py-1">
+            <Text className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold">Fertile window</Text>
           </View>
         )}
       </View>

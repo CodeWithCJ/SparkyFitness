@@ -35,7 +35,7 @@ const PregnancyOverviewView: React.FC = () => {
 
   if (!hasActive) {
     return (
-      <View className="bg-surface rounded-2xl p-6 border border-border-subtle shadow-sm gap-4 items-center">
+      <View className="bg-surface rounded-xl p-6 border-0 shadow-sm gap-4 items-center">
         <Text className="text-text-primary text-base font-semibold">Set up your pregnancy</Text>
         <Text className="text-text-secondary text-sm text-center">
           Add your due date to track baby&apos;s growth week by week, count kicks, and time contractions.

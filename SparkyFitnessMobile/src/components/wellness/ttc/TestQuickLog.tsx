@@ -58,7 +58,7 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
   };
 
   return (
-    <View className="bg-surface rounded-xl p-4 border border-border-subtle shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
       <Text className="text-text-primary text-sm font-semibold">Log a Test</Text>
 
       {/* SegmentedControl tabs */}

@@ -13,12 +13,15 @@ import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { getTodayDate, addDays } from '../utils/dateUtils';
 
+import { useDiscreetMode } from '../hooks/useDiscreetMode';
+
 type CycleLogModalScreenProps = RootStackScreenProps<'CycleLogModal'>;
 
 const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const { mode, discreetMode } = useCycleMode();
+  const { mode } = useCycleMode();
+  const discreetMode = useDiscreetMode();
   const calendarRef = useRef<CalendarSheetRef>(null);
 
   const [selectedDate, setSelectedDate] = React.useState(route.params?.date || getTodayDate());

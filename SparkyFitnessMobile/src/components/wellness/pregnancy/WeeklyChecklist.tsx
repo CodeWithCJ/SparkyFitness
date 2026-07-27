@@ -77,7 +77,7 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
   };
 
   return (
-    <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-2">
+    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-2">
       <Text className="text-text-primary text-base font-bold mb-1">This Week&apos;s To-Do</Text>
       {isLoading ? (
         <ActivityIndicator color={accentColor} />

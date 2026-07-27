@@ -77,7 +77,7 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
   };
 
   return (
-    <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
       <View className="flex-row items-center justify-between">
         <Text className="text-text-primary text-base font-bold">Bump Photos</Text>
         <TouchableOpacity

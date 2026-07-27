@@ -81,7 +81,7 @@ const ContractionTimer: React.FC<ContractionTimerProps> = ({ pregnancyId }) => {
   const isActive = activeId != null;
 
   return (
-    <View className="bg-surface rounded-2xl p-5 border border-border-subtle shadow-sm gap-4">
+    <View className="bg-surface rounded-xl p-5 border-0 shadow-sm gap-4">
       <Text className="text-text-primary text-sm font-semibold">Contraction Timer</Text>
 
       {isActive ? (
