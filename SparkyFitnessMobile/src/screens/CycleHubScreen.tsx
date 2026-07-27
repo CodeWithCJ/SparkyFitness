@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
+import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useCycleMode } from '../hooks/useCycleMode';
 import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useCycleHistory } from '../hooks/useCycleHistory';
@@ -12,7 +13,6 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
 import SegmentedControl from '../components/SegmentedControl';
-import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import CycleCalendarGrid from '../components/wellness/CycleCalendarGrid';
 import CycleHistoryList from '../components/wellness/CycleHistoryList';
 import CycleInsightsView from '../components/wellness/CycleInsightsView';
@@ -23,7 +23,8 @@ import PregnancyOverviewView from '../components/wellness/pregnancy/PregnancyOve
 
 import { buildCycleAlerts } from '@workspace/shared';
 import { getTodayDate, addDays } from '../utils/dateUtils';
-import { getPhaseDisplayName, useCyclePredictionData } from '../utils/cycleDisplayUtils';
+import { getPhaseDisplayName } from '../utils/cycleDisplayUtils';
+import { useCyclePredictionData } from '../hooks/useCyclePredictionData';
 
 type CycleHubScreenProps = RootStackScreenProps<'CycleHub'>;
 
@@ -32,8 +33,9 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
 
-  const { mode, enabled, discreetMode, isLoading: isModeLoading, onboardedAt } = useCycleMode();
+  const { mode, enabled, isLoading: isModeLoading, onboardedAt } = useCycleMode();
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
+  const { discreetMode } = useDiscreetMode();
 
   // Redirect to Onboarding if not enabled or not onboarded
   useEffect(() => {
@@ -46,7 +48,6 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
 
   // Selected Date State
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
-  const calendarRef = useRef<CalendarSheetRef>(null);
 
   // Tabs State: 'insights' | 'history'
   const [activeTab, setActiveTab] = useState<'insights' | 'history'>('insights');
@@ -95,8 +96,11 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
     return getPhaseDisplayName(dayStats.phase, discreetMode);
   }, [dayStats, discreetMode]);
 
+  const hubTitle = discreetMode ? 'Wellness' : mode === 'pregnant' ? 'Pregnancy Hub' : 'Cycle Hub';
+
   const header = useScreenHeader({
-    title: discreetMode ? 'Wellness' : mode === 'pregnant' ? 'Pregnancy Hub' : 'Cycle Hub',
+    title: hubTitle,
+    nativeTitle: hubTitle,
     left: { kind: 'back' },
     right: {
       kind: 'icon',
@@ -149,7 +153,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
             ) : (
               <>
                 {/* Cycle Ring Visualisation */}
-                <View className="items-center py-4 bg-surface rounded-xl border border-border-subtle shadow-sm">
+                <View className="items-center py-4 bg-surface rounded-xl shadow-sm border-0">
                   <CycleRing
                     cycleDay={dayStats.cycleDay}
                     cycleLength={cycleStats.avgCycleLength}
@@ -183,6 +187,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
               selectedDate={selectedDate}
               onSelectDate={(date) => {
                 setSelectedDate(date);
+                navigation.navigate('CycleLogModal', { date });
               }}
               cycles={cycles}
               logs={logs}
@@ -193,12 +198,6 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
           </View>
         )}
       </ScrollView>
-
-      <CalendarSheet
-        ref={calendarRef}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-      />
     </View>
   );
 };

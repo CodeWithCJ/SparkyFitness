@@ -6,7 +6,7 @@ import { formatDate } from '../../../utils/dateUtils';
 import { useWellnessTokens } from '../theme/wellnessTokens';
 import Icon from '../../Icon';
 
-import { useCycleSettings } from '../../../hooks/useCycleSettings';
+import { useDiscreetMode } from '../../../hooks/useDiscreetMode';
 
 interface WeekBannerProps {
   ga: GestationalAge;
@@ -24,17 +24,11 @@ const TRIMESTER_LABEL: Record<string, string> = {
 const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
   const tokens = useWellnessTokens();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
-  const {
-    settings,
-    isLoading: isSettingsLoading,
-    isError: isSettingsError,
-  } = useCycleSettings();
-  const discreetMode =
-    isSettingsLoading || isSettingsError || settings?.discreet_mode === true;
+  const { discreetMode } = useDiscreetMode();
   const pct = Math.max(0, Math.min(1, ga.progress));
 
   return (
-    <View className="bg-surface rounded-2xl p-5 border border-border-subtle shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-5 shadow-sm border-0 gap-3">
       <View className="flex-row items-start justify-between">
         <View>
           <Text className="text-text-secondary text-xs">

@@ -57,7 +57,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
     settings,
     isLoading,
     updateSettings,
-    isUpdating,
   } = useCycleSettings();
 
   const handleToggleEnabled = useCallback((value: boolean) => {
@@ -181,7 +180,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                 onValueChange={handleToggleEnabled}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
-                disabled={isUpdating}
               />
             }
           />
@@ -260,7 +258,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                       updateSettings({ luteal_phase_length: isNaN(v) ? 14 : v });
                     }}
                     onIncrement={() => updateSettings({ luteal_phase_length: lutealLengthVal + 1 })}
-                    onDecrement={() => updateSettings({ luteal_phase_length: Math.max(8, lutealLengthVal - 1) })}
+                    onDecrement={() => updateSettings({ luteal_phase_length: Math.max(1, lutealLengthVal - 1) })}
                     keyboardType="number-pad"
                   />
                 }
@@ -281,7 +279,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                       onValueChange={(val) => handleToggleCondition(cond.value, val)}
                       trackColor={{ false: formDisabled, true: formEnabled }}
                       thumbColor="#FFFFFF"
-                      disabled={isUpdating}
                     />
                   }
                 />
@@ -298,7 +295,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                     onValueChange={handleToggleFertileWindow}
                     trackColor={{ false: formDisabled, true: formEnabled }}
                     thumbColor="#FFFFFF"
-                    disabled={isUpdating}
                   />
                 }
               />
@@ -311,7 +307,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                     onValueChange={handleToggleDiscreetMode}
                     trackColor={{ false: formDisabled, true: formEnabled }}
                     thumbColor="#FFFFFF"
-                    disabled={isUpdating}
                   />
                 }
               />

@@ -37,7 +37,7 @@ export function useWellnessTokens(): WellnessPalette {
 
   return {
     accent: accentPrimary,
-    accentMuted: accentMuted || phaseMenstrual,
+    accentMuted: accentMuted || phasePregnant,
     surfaceTint: surfaceBg,
     phaseMenstrual,
     phaseFollicular,
