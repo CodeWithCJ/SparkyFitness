@@ -225,11 +225,21 @@ export function buildSessionSubtitle(
 ): string {
   if (session.type === 'preset') {
     const exerciseCount = session.exercises.length;
-    const totalSets = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
-    const totalVolumeKg = session.exercises.reduce(
-      (sum, ex) => ex.sets.reduce((s, set) => s + (set.weight ?? 0) * (set.reps ?? 0), sum),
-      0,
-    );
+    // A cardio effort's backing set is an implementation detail (every read
+    // surface renders it as duration+distance), so cardio exercises stay out
+    // of the set count and contribute their distance instead \u2014 the cardio
+    // analog of strength volume.
+    let totalSets = 0;
+    let totalVolumeKg = 0;
+    let totalDistanceKm = 0;
+    for (const ex of session.exercises) {
+      if (isCardioModality(resolveSnapshotModality(ex.exercise_snapshot))) {
+        totalDistanceKm += ex.distance ?? 0;
+        continue;
+      }
+      totalSets += ex.sets.length;
+      for (const set of ex.sets) totalVolumeKg += (set.weight ?? 0) * (set.reps ?? 0);
+    }
 
     const parts: string[] = [];
     parts.push(`${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}`);
@@ -237,6 +247,10 @@ export function buildSessionSubtitle(
     if (totalVolumeKg > 0) {
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
       parts.push(`${vol.toLocaleString()} ${weightUnit}`);
+    }
+    if (totalDistanceKm > 0) {
+      const dist = distanceFromKm(totalDistanceKm, distanceUnit);
+      parts.push(`${dist.toFixed(1)} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
     }
     if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
     return parts.join(' \u00b7 ');

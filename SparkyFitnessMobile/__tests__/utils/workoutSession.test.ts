@@ -510,6 +510,47 @@ describe('workoutSession', () => {
         expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 2 sets · 300 Cal');
       });
 
+      it('excludes cardio efforts from the set count and shows their distance instead', () => {
+        const session = makePreset({
+          exercises: [
+            {
+              exercise_id: 'ex-1',
+              exercise_snapshot: { modality: 'duration_distance' } as any,
+              distance: 5.2,
+              sets: [{ weight: null, reps: null, duration: 1500 }],
+              calories_burned: 200,
+              duration_minutes: 25,
+            } as any,
+            {
+              exercise_id: 'ex-2',
+              exercise_snapshot: null as any,
+              sets: [{ weight: 100, reps: 5 }],
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+          ],
+        });
+        expect(buildSessionSubtitle(session, 40, 300)).toBe(
+          '2 exercises · 1 sets · 500 kg · 5.2 km · 300 Cal',
+        );
+      });
+
+      it('drops the sets segment entirely for a cardio-only workout', () => {
+        const cardio = (id: string, distance: number, duration: number) =>
+          ({
+            exercise_id: id,
+            exercise_snapshot: { modality: 'duration_distance' } as any,
+            distance,
+            sets: [{ weight: null, reps: null, duration }],
+            calories_burned: 200,
+            duration_minutes: duration / 60,
+          }) as any;
+        const session = makePreset({
+          exercises: [cardio('ex-1', 5, 1500), cardio('ex-2', 10, 1800)],
+        });
+        expect(buildSessionSubtitle(session, 55, 500)).toBe('2 exercises · 15.0 km · 500 Cal');
+      });
+
       it('omits sets count when no sets exist', () => {
         const session = makePreset({
           exercises: [
