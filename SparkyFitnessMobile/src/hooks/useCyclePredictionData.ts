@@ -3,6 +3,7 @@ import {
   predictNextCycles,
   phaseForDay,
   daysBetween,
+  isHormonalBc,
   type DerivedCycle,
   type CyclePrediction,
 } from '@workspace/shared';
@@ -66,16 +67,28 @@ export function useCyclePredictionData(dateString?: string): CyclePredictionData
     const dayStats = phaseForDay(date, cycles as DerivedCycle[], prediction);
     const dayNumber = dayStats.cycleDay ?? 0;
 
+    const suppressFertility =
+      isHormonalBc(settings.birth_control_method) ||
+      settings.show_fertile_window === false ||
+      settings.mode === 'postpartum' ||
+      settings.mode === 'menopause';
+
+    let phase = dayStats.phase;
+    if (suppressFertility && (phase === 'fertile' || phase === 'ovulation')) {
+      const halfCycle = Math.floor(avgCycleLength / 2);
+      phase = dayNumber <= halfCycle ? 'follicular' : 'luteal';
+    }
+
     const next = prediction.cycles[0];
     const toDay = (d: string | null | undefined): number | null =>
-      d && lastCycle.start_date ? daysBetween(lastCycle.start_date, d) + 1 : null;
+      !suppressFertility && d && lastCycle.start_date ? daysBetween(lastCycle.start_date, d) + 1 : null;
 
     const nextPeriodStart = next?.periodStart;
     const daysLate = nextPeriodStart && date > nextPeriodStart ? daysBetween(nextPeriodStart, date) : 0;
 
     return {
       day: dayNumber,
-      phase: dayStats.phase,
+      phase,
       avgCycleLength,
       avgPeriodLength,
       fertileStartDay: toDay(next?.fertileStart),

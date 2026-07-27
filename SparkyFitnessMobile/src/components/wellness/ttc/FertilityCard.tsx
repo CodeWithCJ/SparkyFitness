@@ -46,9 +46,15 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
   }, [fertility, effectiveFertileStart, effectiveFertileEnd, referenceDate]);
 
   const daysUntilNextPeriod = useMemo(() => {
-    if (fertility?.daysUntilNextPeriod != null) return fertility.daysUntilNextPeriod;
+    if (fertility?.daysUntilNextPeriod != null) {
+      return fertility.daysUntilNextPeriod >= 0 ? fertility.daysUntilNextPeriod : null;
+    }
     const nextStart = predictionData?.prediction.cycles[0]?.periodStart;
-    return nextStart != null ? daysBetween(referenceDate, nextStart) : null;
+    if (nextStart != null) {
+      const days = daysBetween(referenceDate, nextStart);
+      return days >= 0 ? days : null;
+    }
+    return null;
   }, [fertility, predictionData, referenceDate]);
 
   if (isLoading && !predictionData) {
