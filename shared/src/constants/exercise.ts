@@ -36,7 +36,8 @@ export function isCardioModality(modality: ExerciseModality): boolean {
 
 /**
  * Derive a modality from an exercise category. The rules must stay in sync
- * with the backfill CASE in the `*_exercise_modality.sql` migration.
+ * with the backfill CASE in the `*_set_duration_seconds_modality_distance.sql`
+ * migration.
  */
 export function deriveExerciseModality(
   category: string | null | undefined,

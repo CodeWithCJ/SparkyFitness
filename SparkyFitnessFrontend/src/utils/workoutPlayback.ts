@@ -684,10 +684,6 @@ function toNullableNumber(value: number | null | undefined): number | null {
   return value === undefined ? null : value;
 }
 
-function deriveDurationMinutes(sets: WorkoutPlaybackSetDraft[]): number {
-  return setsDurationMinutes(sets);
-}
-
 function deriveExerciseDurationMinutes(
   exercise: WorkoutPlaybackExerciseDraft,
   nowMs: number = Date.now()
@@ -700,7 +696,7 @@ function deriveExerciseDurationMinutes(
     }
   }
 
-  return deriveDurationMinutes(exercise.sets);
+  return setsDurationMinutes(exercise.sets);
 }
 
 export function buildPresetSessionCreateRequestFromDraft(

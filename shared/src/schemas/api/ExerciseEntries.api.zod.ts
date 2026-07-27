@@ -71,14 +71,14 @@ export const exerciseEntrySetResponseSchema = z
     set_type: z.string().nullable(),
     reps: z.number().nullable(),
     weight: z.number().nullable(),
-    // Per-set duration is integer SECONDS (issue #1903).
+    // Per-set duration is integer SECONDS.
     duration: z.number().int().nullable(),
     rest_time: z.number().nullable(),
     notes: z.string().nullable(),
     rpe: z.number().nullable(),
     completed_at: z.string().nullable(),
     is_pr: z.boolean(),
-    // Km (issue #1903). Optional: pre-distance servers omit it.
+    // Km. Optional: pre-distance servers omit it.
     distance: z.number().nullable().optional(),
   })
   .strict();
@@ -102,14 +102,14 @@ export const exerciseEntrySetRequestSchema = z
     set_type: z.string().nullable().optional(),
     reps: z.number().nullable().optional(),
     weight: z.number().nullable().optional(),
-    // Per-set duration is integer SECONDS (issue #1903).
+    // Per-set duration is integer SECONDS.
     duration: z.number().int().nullable().optional(),
     rest_time: z.number().nullable().optional(),
     notes: z.string().nullable().optional(),
     rpe: z.number().nullable().optional(),
     completed_at: z.iso.datetime().nullable().optional(),
     is_pr: z.boolean().optional(),
-    // Km; only meaningful on duration_distance sets (issue #1903).
+    // Km; only meaningful on duration_distance sets.
     distance: z.number().nullable().optional(),
   })
   .strict();
@@ -341,9 +341,9 @@ export const exerciseRecentSessionSetSchema = z
     setType: z.string().nullable(),
     weight: z.number().nullable(),
     reps: z.number().int().nullable(),
-    // Integer SECONDS (issue #1903). Optional: pre-modality servers omit it.
+    // Integer SECONDS. Optional: pre-modality servers omit it.
     duration: z.number().int().nullable().optional(),
-    // Km (issue #1903). Optional: pre-distance servers omit it.
+    // Km. Optional: pre-distance servers omit it.
     distance: z.number().nullable().optional(),
   })
   .strict()
