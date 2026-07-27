@@ -262,7 +262,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
           <View className="gap-4">
             <Text className="text-xl font-bold text-text-primary">Profile & Conditions</Text>
             <Text className="text-text-secondary text-sm">
-              Any underlying conditions or birth control methods? This helps filter health insights.
+              Select any relevant conditions or birth control methods to personalize your tracking.
             </Text>
             <SettingsRowGroup>
               <SettingsRow

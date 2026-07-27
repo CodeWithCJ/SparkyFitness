@@ -270,7 +270,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
 
             <SettingsRowGroup
               title="Conditions"
-              subtitle="Tailors health articles and care insights based on your selected conditions."
+              subtitle="Select applicable conditions to personalize your tracking."
             >
               {CYCLE_CONDITIONS.map((cond) => (
                 <SettingsRow
