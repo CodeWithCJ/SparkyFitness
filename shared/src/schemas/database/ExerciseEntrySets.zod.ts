@@ -16,7 +16,7 @@ export const exerciseEntrySetsSchema = z.object({
   set_type: z.string().nullable(),
   reps: z.number().nullable(),
   weight: z.number().nullable(),
-  // Per-set duration is integer SECONDS (issue #1903).
+  // Per-set duration is integer SECONDS.
   duration: z.number().int().nullable(),
   rest_time: z.number().nullable(),
   notes: z.string().nullable(),
@@ -24,7 +24,7 @@ export const exerciseEntrySetsSchema = z.object({
   updated_at: z.date().nullable(),
   rpe: z.number().nullable(),
   completed_at: z.date().nullable(),
-  // Km; only meaningful on duration_distance sets (issue #1903).
+  // Km; only meaningful on duration_distance sets.
   distance: z.number().nullable(),
 });
 
@@ -35,7 +35,7 @@ export const exerciseEntrySetsInitializerSchema = z.object({
   set_type: z.string().optional().nullable(),
   reps: z.number().optional().nullable(),
   weight: z.number().optional().nullable(),
-  // Per-set duration is integer SECONDS (issue #1903).
+  // Per-set duration is integer SECONDS.
   duration: z.number().int().optional().nullable(),
   rest_time: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -43,7 +43,7 @@ export const exerciseEntrySetsInitializerSchema = z.object({
   updated_at: z.date().optional().nullable(),
   rpe: z.number().optional().nullable(),
   completed_at: z.date().optional().nullable(),
-  // Km; only meaningful on duration_distance sets (issue #1903).
+  // Km; only meaningful on duration_distance sets.
   distance: z.number().optional().nullable(),
 });
 
@@ -54,7 +54,7 @@ export const exerciseEntrySetsMutatorSchema = z.object({
   set_type: z.string().optional().nullable(),
   reps: z.number().optional().nullable(),
   weight: z.number().optional().nullable(),
-  // Per-set duration is integer SECONDS (issue #1903).
+  // Per-set duration is integer SECONDS.
   duration: z.number().int().optional().nullable(),
   rest_time: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -62,7 +62,7 @@ export const exerciseEntrySetsMutatorSchema = z.object({
   updated_at: z.date().optional().nullable(),
   rpe: z.number().optional().nullable(),
   completed_at: z.date().optional().nullable(),
-  // Km; only meaningful on duration_distance sets (issue #1903).
+  // Km; only meaningful on duration_distance sets.
   distance: z.number().optional().nullable(),
 });
 
