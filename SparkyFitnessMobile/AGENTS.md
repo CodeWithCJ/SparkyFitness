@@ -33,7 +33,7 @@ pnpm run android
 pnpm run lint
 pnpm run typecheck
 pnpm run validate
-pnpm run test:run -- --watchman=false --runInBand
+pnpm exec jest --watchman=false --runInBand
 pnpm exec jest --watchman=false --runInBand <test-path>
 pnpm run test:coverage -- --watchman=false --runInBand
 npx expo prebuild --clean

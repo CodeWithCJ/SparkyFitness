@@ -15,6 +15,7 @@ import type { ExternalFoodVariant } from '../types/externalFoods';
 import type { FoodVariantDetail } from '../types/foods';
 import {
   baseServingVariantKey,
+  hasDistinctMetricServingContext,
   servingVariantKey,
 } from '../utils/foodDetails';
 import { persistExternalVariants } from '../utils/persistExternalVariants';
@@ -36,35 +37,72 @@ interface UseAddFoodEntryOptions {
   onSuccess?: (entry: FoodEntry) => void;
 }
 
+type StoredServingReference = Pick<
+  FoodVariantDetail,
+  'id' | 'serving_size' | 'serving_unit'
+>;
+
+const SELECTED_VARIANT_RESOLUTION_ERROR =
+  'Could not uniquely resolve the selected serving variant';
+
 /**
- * Resolve the stored variant for the user's selected serving. Prefer an exact
- * encoded unit; only fall back to a legacy unencoded unit when it is unique.
+ * Resolve the stored variant for the user's selected serving. Prefer one exact
+ * encoded unit; only fall back to one legacy unencoded unit. The server-returned
+ * default is safe only when its normalized identity exactly matches selection.
  */
 async function resolveSelectedVariant(
   foodId: string,
   selectedServingSize: number,
   selectedServingUnit: string,
-): Promise<FoodVariantDetail | undefined> {
-  try {
-    const allVariants = await fetchFoodVariants(foodId);
-    const selectedIdentity = {
-      serving_size: selectedServingSize,
-      serving_unit: selectedServingUnit,
-    };
-    const exactKey = servingVariantKey(selectedIdentity);
-    const exactMatch = allVariants.find(
-      variant => servingVariantKey(variant) === exactKey,
-    );
-    if (exactMatch) return exactMatch;
+  defaultVariant:
+    | {
+        id?: string;
+        serving_size: number;
+        serving_unit: string;
+      }
+    | null
+    | undefined,
+): Promise<StoredServingReference> {
+  const selectedIdentity = {
+    serving_size: selectedServingSize,
+    serving_unit: selectedServingUnit,
+  };
+  const exactKey = servingVariantKey(selectedIdentity);
+  const exactDefault =
+    defaultVariant?.id && servingVariantKey(defaultVariant) === exactKey
+      ? {
+          id: defaultVariant.id,
+          serving_size: defaultVariant.serving_size,
+          serving_unit: defaultVariant.serving_unit,
+        }
+      : undefined;
 
-    const baseKey = baseServingVariantKey(selectedIdentity);
-    const legacyMatches = allVariants.filter(
-      variant => baseServingVariantKey(variant) === baseKey,
-    );
-    return legacyMatches.length === 1 ? legacyMatches[0] : undefined;
+  let allVariants: FoodVariantDetail[];
+  try {
+    allVariants = await fetchFoodVariants(foodId);
   } catch {
-    return undefined;
+    if (exactDefault) return exactDefault;
+    throw new Error(SELECTED_VARIANT_RESOLUTION_ERROR);
   }
+
+  const exactMatches = allVariants.filter(
+    variant => servingVariantKey(variant) === exactKey,
+  );
+  if (exactMatches.length === 1) return exactMatches[0];
+  if (exactMatches.length > 1) {
+    throw new Error(SELECTED_VARIANT_RESOLUTION_ERROR);
+  }
+  if (exactDefault) return exactDefault;
+
+  const baseKey = baseServingVariantKey(selectedIdentity);
+  const legacyMatches = allVariants.filter(
+    variant =>
+      !hasDistinctMetricServingContext(variant) &&
+      baseServingVariantKey(variant) === baseKey,
+  );
+  if (legacyMatches.length === 1) return legacyMatches[0];
+
+  throw new Error(SELECTED_VARIANT_RESOLUTION_ERROR);
 }
 
 export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
@@ -100,11 +138,10 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
             saved.id,
             selectedServingSize,
             selectedServingUnit,
+            saved.default_variant,
           );
-          if (resolvedVariant) {
-            variantId = resolvedVariant.id;
-            unit = resolvedVariant.serving_unit;
-          }
+          variantId = resolvedVariant.id;
+          unit = resolvedVariant.serving_unit;
         }
 
         if (!variantId) {

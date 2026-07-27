@@ -704,16 +704,28 @@ export function groupEquivalentVariants<
         !hasConflictingMetricServingContext(g.base, variant),
     );
     if (match) {
-      // Promote the non-reference variant to base when a reference serving
+      // Prefer a context-rich persisted serving over its matching legacy row so
+      // variants such as package (200 g) and package (400 g) remain separate
+      // visible options even when the undecorated package row was loaded first.
+      const shouldPromoteMetricContext =
+        !hasDistinctMetricServingContext(match.base) &&
+        hasDistinctMetricServingContext(variant) &&
+        baseServingVariantKey(match.base) === baseServingVariantKey(variant);
+
+      // Also promote a non-reference variant when a reference serving
       // (100g/100ml) was matched first — the picker option should carry the
-      // user-friendly name (e.g. \"piece\") with the metric equivalent inline,
+      // user-friendly name (e.g. "piece") with the metric equivalent inline,
       // not the other way around. Without this swap, the reference variant
       // becomes the lone base option and the selected non-reference variant
-      // is pushed into a fallback, producing a duplicate \"gram entry\" in the
+      // is pushed into a fallback, producing a duplicate "gram entry" in the
       // picker alongside the correct serving.
       if (
-        isReferenceServing(match.base.serving_size, match.base.serving_unit) &&
-        !isReferenceServing(variant.serving_size, variant.serving_unit)
+        shouldPromoteMetricContext ||
+        (isReferenceServing(
+          match.base.serving_size,
+          match.base.serving_unit,
+        ) &&
+          !isReferenceServing(variant.serving_size, variant.serving_unit))
       ) {
         match.equivalents.push(toEquivalentUnit(match.base));
         match.base = variant;
@@ -725,7 +737,17 @@ export function groupEquivalentVariants<
       // (for example provider rounding) is still one picker option.
       const sizeMatch = groups.find(g => isSameVariant(g.base, variant));
       if (sizeMatch) {
-        sizeMatch.equivalents.push(toEquivalentUnit(variant));
+        const shouldPromoteMetricContext =
+          !hasDistinctMetricServingContext(sizeMatch.base) &&
+          hasDistinctMetricServingContext(variant) &&
+          baseServingVariantKey(sizeMatch.base) ===
+            baseServingVariantKey(variant);
+        if (shouldPromoteMetricContext) {
+          sizeMatch.equivalents.push(toEquivalentUnit(sizeMatch.base));
+          sizeMatch.base = variant;
+        } else {
+          sizeMatch.equivalents.push(toEquivalentUnit(variant));
+        }
       } else {
         groups.push({ base: variant, equivalents: [] });
       }
