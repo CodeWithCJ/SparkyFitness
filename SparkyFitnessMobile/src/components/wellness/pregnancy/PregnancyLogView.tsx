@@ -12,6 +12,8 @@ import Button from '../../ui/Button';
 import type { RootStackParamList } from '../../../types/navigation';
 import { getTodayDate } from '../../../utils/dateUtils';
 
+import CycleTodayView from '../CycleTodayView';
+
 interface PregnancyLogViewProps {
   date?: string;
   onSaveSuccess?: () => void;
@@ -40,7 +42,7 @@ const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({ date = getTodayDate
 
   if (!hasActive) {
     return (
-      <View className="bg-surface rounded-2xl p-6 border border-border-subtle shadow-sm gap-4 items-center">
+      <View className="bg-surface rounded-2xl p-6 shadow-sm gap-4 items-center">
         <Text className="text-text-primary text-base font-semibold">Set up your pregnancy</Text>
         <Text className="text-text-secondary text-sm text-center">
           Add your due date to track baby&apos;s growth week by week, count kicks, and time contractions.
@@ -70,6 +72,9 @@ const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({ date = getTodayDate
           />
         </>
       )}
+
+      {/* Daily symptom & notes log for selected date */}
+      <CycleTodayView date={date} onSaveSuccess={onSaveSuccess} />
     </View>
   );
 };

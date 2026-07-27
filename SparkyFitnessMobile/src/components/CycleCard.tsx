@@ -3,13 +3,10 @@ import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { useCycleSettings } from '../hooks/useCycleSettings';
-import { useCycleMode } from '../hooks/useCycleMode';
+import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useCurrentPregnancy, usePregnancyOverview } from '../hooks/usePregnancy';
-import {
-  useCyclePredictionData,
-  getPhaseDisplayName,
-  getPhaseColor,
-} from '../utils/cycleDisplayUtils';
+import { useCyclePredictionData } from '../hooks/useCyclePredictionData';
+import { getPhaseDisplayName, getPhaseColor } from '../utils/cycleDisplayUtils';
 import { formatDate } from '../utils/dateUtils';
 import { babyWeek } from '@workspace/shared';
 import WombScene from './wellness/pregnancy/WombScene';
@@ -48,17 +45,15 @@ function getModeTitle(mode?: string, discreetMode?: boolean): string {
 }
 
 const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
-  const { settings } = useCycleSettings();
-  const { discreetMode } = useCycleMode();
+  const { settings, isLoading: isSettingsLoading } = useCycleSettings();
+  const { discreetMode } = useDiscreetMode();
   const tokens = useWellnessTokens();
   const [accentPrimary] = useCSSVariable([
     '--color-accent-primary',
   ]) as [string];
 
-  const isSetup = !!settings?.onboarded_at && !!settings?.enabled;
-  const isPregnant = settings?.mode === 'pregnant';
-
   // Pregnancy details (unconditional hook calls)
+  const isPregnant = settings?.mode === 'pregnant';
   const { pregnancy } = useCurrentPregnancy();
   const hasActivePregnancy = isPregnant && !!pregnancy && pregnancy.status === 'active';
   const { overview } = usePregnancyOverview(undefined, hasActivePregnancy);
@@ -66,11 +61,18 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
   // Extracted cycle statistics & predictions (unconditional hook call)
   const cycleInfo = useCyclePredictionData();
 
-  if (settings?.enabled === false) {
+  // Hide while settings are loading to prevent layout flash (Issue 3)
+  if (isSettingsLoading) {
     return null;
   }
 
-  const title = getModeTitle(settings?.mode, discreetMode);
+  // Hide card if settings are null (un-opted user) or explicitly disabled (Issue 2)
+  if (!settings || settings.enabled === false) {
+    return null;
+  }
+
+  const isSetup = !!settings.onboarded_at && !!settings.enabled;
+  const title = getModeTitle(settings.mode, discreetMode);
 
   if (!isSetup) {
     return (

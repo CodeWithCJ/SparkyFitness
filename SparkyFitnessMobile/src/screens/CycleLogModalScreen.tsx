@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, ScrollView } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useCycleMode } from '../hooks/useCycleMode';
@@ -10,6 +10,7 @@ import PregnancyLogView from '../components/wellness/pregnancy/PregnancyLogView'
 import FertilityCard from '../components/wellness/ttc/FertilityCard';
 import TestQuickLog from '../components/wellness/ttc/TestQuickLog';
 import DateNavigator from '../components/DateNavigator';
+import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { getTodayDate, addDays } from '../utils/dateUtils';
 
 type CycleLogModalScreenProps = RootStackScreenProps<'CycleLogModal'>;
@@ -18,6 +19,7 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { mode, discreetMode } = useCycleMode();
+  const calendarRef = useRef<CalendarSheetRef>(null);
 
   const [selectedDate, setSelectedDate] = React.useState(route.params?.date || getTodayDate());
 
@@ -34,6 +36,7 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
 
   const header = useScreenHeader({
     title: headerTitle,
+    nativeTitle: headerTitle,
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
   });
 
@@ -44,31 +47,31 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
     >
       {header}
 
+      {/* Integrated Header Date Bar */}
+      <View className="px-4 py-2 bg-background border-b border-border-subtle flex-row items-center justify-between z-10">
+        <Text className="text-sm font-semibold text-text-secondary">Selected Date</Text>
+        <DateNavigator
+          title=""
+          selectedDate={selectedDate}
+          onPreviousDay={handlePrevDay}
+          onNextDay={handleNextDay}
+          onToday={handleToday}
+          onDatePress={() => calendarRef.current?.present()}
+          showDateAlways
+          skipTopInset
+          skipHorizontalPadding
+          compact
+        />
+      </View>
+
       <ScrollView
         contentContainerStyle={{
           padding: 16,
-          paddingTop: 8,
+          paddingTop: 12,
           paddingBottom: insets.bottom + 40,
         }}
       >
         <View className="gap-3">
-          {/* Date Selector in Modal Header area */}
-          {mode !== 'pregnant' && (
-            <View className="flex-row justify-end -mb-1">
-              <DateNavigator
-                title=""
-                selectedDate={selectedDate}
-                onPreviousDay={handlePrevDay}
-                onNextDay={handleNextDay}
-                onToday={handleToday}
-                showDateAlways
-                skipTopInset
-                skipHorizontalPadding
-                compact
-              />
-            </View>
-          )}
-
           {/* Mode-aware entry view */}
           {mode === 'pregnant' && (
             <PregnancyLogView date={selectedDate} onSaveSuccess={() => navigation.goBack()} />
@@ -83,10 +86,19 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
           )}
 
           {mode !== 'pregnant' && mode !== 'ttc' && (
-            <CycleTodayView date={selectedDate} onSaveSuccess={() => navigation.goBack()} />
+            <>
+              <FertilityCard date={selectedDate} />
+              <CycleTodayView date={selectedDate} onSaveSuccess={() => navigation.goBack()} />
+            </>
           )}
         </View>
       </ScrollView>
+
+      <CalendarSheet
+        ref={calendarRef}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
     </View>
   );
 };

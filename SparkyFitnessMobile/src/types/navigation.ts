@@ -37,7 +37,7 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList>;
   CycleSettings: undefined;
   CycleOnboarding: undefined;
-  CycleHub: { initialTab?: 'today' | 'insights' | 'care' } | undefined;
+  CycleHub: undefined;
   CycleLogModal: { date?: string } | undefined;
   PregnancySetup: { pregnancy?: SharedPregnancy } | undefined;
   FoodsLibrary: undefined;

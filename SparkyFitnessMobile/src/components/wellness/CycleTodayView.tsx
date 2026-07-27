@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useCycleLog } from '../../hooks/useCycleLogs';
 import { useUpsertCycleLog } from '../../hooks/useUpsertCycleLog';
@@ -11,6 +11,7 @@ import CycleSymptomPicker from './CycleSymptomPicker';
 import Button from '../ui/Button';
 import FormInput from '../FormInput';
 import { useCSSVariable } from 'uniwind';
+import BottomSheetPicker from '../BottomSheetPicker';
 import type { FlowLevel } from '@workspace/shared';
 
 interface CycleTodayViewProps {
@@ -45,6 +46,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
   const { upsertLogAsync, isSaving } = useUpsertCycleLog();
   const { mode } = useCycleMode();
   const isTtc = mode === 'ttc';
+  const isPregnant = mode === 'pregnant';
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -59,6 +61,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
   const [intercourseProtected, setIntercourseProtected] = useState<boolean | null>(null);
   const [cervicalPosition, setCervicalPosition] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isNotesFocused, setIsNotesFocused] = useState(false);
 
   useEffect(() => {
     if (log) {
@@ -118,97 +121,34 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
     }
   };
 
-  const [isNotesFocused, setIsNotesFocused] = useState(false);
-
-  const isPregnant = mode === 'pregnant';
-
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center py-12">
+      <View className="items-center py-12">
         <ActivityIndicator size="large" color={accentColor} />
       </View>
     );
   }
 
   return (
-    <View className="gap-3">
-      {/* Flow Level — Only for non-pregnant cycle tracking */}
-      {!isPregnant && (
-        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
-          <Text className="text-text-primary text-sm font-semibold mb-3">Flow Level</Text>
-          <View className="flex-row justify-between">
-            {FLOW_OPTIONS.map((opt) => {
-              const isSelected = flowLevel === opt.value;
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  onPress={() => setFlowLevel(opt.value)}
-                  className={`items-center justify-center rounded-xl p-2 flex-1 mx-1 border ${
-                    isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-border-subtle'
-                  }`}
-                >
-                  <CycleIcon id={opt.icon} size={24} />
-                  <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {/* Symptoms */}
-      <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
-        <CycleSymptomPicker date={date} />
-      </View>
-
-      {/* Cervical Mucus — Only for non-pregnant cycle tracking */}
-      {!isPregnant && (
-        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
-          <Text className="text-text-primary text-sm font-semibold mb-3">Cervical Mucus</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {MUCUS_OPTIONS.map((opt) => {
-              const isSelected = mucus === opt.value;
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  onPress={() => setMucus(mucus === opt.value ? null : opt.value)}
-                  className={`rounded-full px-4 py-2 border ${
-                    isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
-                  }`}
-                >
-                  <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {/* TTC: Intercourse + Cervical Position */}
-      {isTtc && (
-        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle gap-4">
-          <View>
-            <Text className="text-text-primary text-sm font-semibold mb-3">Intercourse</Text>
-            <View className="flex-row gap-2">
-              {[
-                { label: 'None', val: null as boolean | null },
-                { label: 'Yes', val: true },
-                { label: 'No', val: false },
-              ].map((opt) => {
-                const isSelected = intercourse === opt.val;
+    <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <View className="gap-4">
+        {/* Period / Flow Selector — Only for non-pregnant cycle tracking */}
+        {!isPregnant && (
+          <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
+            <Text className="text-text-primary text-sm font-semibold mb-3">Menstrual Flow</Text>
+            <View className="flex-row justify-between">
+              {FLOW_OPTIONS.map((opt) => {
+                const isSelected = flowLevel === opt.value;
                 return (
                   <TouchableOpacity
-                    key={opt.label}
-                    onPress={() => setIntercourse(opt.val)}
-                    className={`rounded-full px-4 py-2 border ${
+                    key={opt.value}
+                    onPress={() => setFlowLevel(opt.value)}
+                    className={`items-center justify-center rounded-xl p-2 flex-1 mx-1 border ${
                       isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                     }`}
                   >
-                    <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
+                    <CycleIcon id={opt.icon} size={24} />
+                    <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
                       {opt.label}
                     </Text>
                   </TouchableOpacity>
@@ -216,20 +156,43 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
               })}
             </View>
           </View>
+        )}
 
-          {intercourse === true && (
+        {/* Symptoms */}
+        <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
+          <CycleSymptomPicker date={date} />
+        </View>
+
+        {/* Cervical Mucus — Bottom Sheet Picker */}
+        {!isPregnant && (
+          <View className="bg-surface rounded-xl p-4 shadow-sm border-0 gap-2">
+            <Text className="text-text-primary text-sm font-semibold">Cervical Mucus</Text>
+            <BottomSheetPicker
+              title="Select Cervical Mucus"
+              options={MUCUS_OPTIONS}
+              value={mucus || ''}
+              onSelect={setMucus}
+              placeholder="Tap to select..."
+            />
+          </View>
+        )}
+
+        {/* TTC: Intercourse + Cervical Position */}
+        {isTtc && (
+          <View className="bg-surface rounded-xl p-4 shadow-sm border-0 gap-4">
             <View>
-              <Text className="text-text-primary text-sm font-semibold mb-3">Protection</Text>
+              <Text className="text-text-primary text-sm font-semibold mb-3">Intercourse</Text>
               <View className="flex-row gap-2">
                 {[
-                  { label: 'Protected', val: true },
-                  { label: 'Unprotected', val: false },
+                  { label: 'None', val: null as boolean | null },
+                  { label: 'Yes', val: true },
+                  { label: 'No', val: false },
                 ].map((opt) => {
-                  const isSelected = intercourseProtected === opt.val;
+                  const isSelected = intercourse === opt.val;
                   return (
                     <TouchableOpacity
                       key={opt.label}
-                      onPress={() => setIntercourseProtected(opt.val)}
+                      onPress={() => setIntercourse(opt.val)}
                       className={`rounded-full px-4 py-2 border ${
                         isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                       }`}
@@ -242,35 +205,50 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
                 })}
               </View>
             </View>
-          )}
 
-            <View>
-              <Text className="text-text-primary text-sm font-semibold mb-3">Cervical Position</Text>
-              <View className="flex-row gap-2">
-                {CERVICAL_POSITION_OPTIONS.map((opt) => {
-                  const isSelected = cervicalPosition === opt.value;
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      onPress={() => setCervicalPosition(cervicalPosition === opt.value ? null : opt.value)}
-                      className={`rounded-full px-4 py-2 border ${
-                        isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
-                      }`}
-                    >
-                      <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+            {intercourse === true && (
+              <View>
+                <Text className="text-text-primary text-sm font-semibold mb-3">Protection</Text>
+                <View className="flex-row gap-2">
+                  {[
+                    { label: 'Protected', val: true },
+                    { label: 'Unprotected', val: false },
+                  ].map((opt) => {
+                    const isSelected = intercourseProtected === opt.val;
+                    return (
+                      <TouchableOpacity
+                        key={opt.label}
+                        onPress={() => setIntercourseProtected(opt.val)}
+                        className={`rounded-full px-4 py-2 border ${
+                          isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
+                        }`}
+                      >
+                        <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
+                          {opt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
+            )}
+
+            <View className="gap-2">
+              <Text className="text-text-primary text-sm font-semibold">Cervical Position</Text>
+              <BottomSheetPicker
+                title="Select Cervical Position"
+                options={CERVICAL_POSITION_OPTIONS}
+                value={cervicalPosition || ''}
+                onSelect={setCervicalPosition}
+                placeholder="Tap to select..."
+              />
             </View>
           </View>
         )}
 
         {/* Basal Body Temperature — Only for non-pregnant cycle tracking */}
         {!isPregnant && (
-          <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
+          <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
             <Text className="text-text-primary text-sm font-semibold mb-2">Basal Body Temperature</Text>
             <Text className="text-text-secondary text-xs mb-3">
               Track your waking temperature (°C) to identify biphasic shifts post-ovulation.
@@ -285,7 +263,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
         )}
 
         {/* Notes */}
-        <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
+        <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
           <Text className="text-text-primary text-sm font-semibold mb-2">Notes</Text>
           <TextInput
             value={notes}
@@ -297,20 +275,21 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
             multiline
             numberOfLines={4}
             className={`bg-raised rounded-xl p-3 text-text-primary text-sm min-h-[80px] border ${
-              isNotesFocused ? 'border-accent-primary' : 'border-transparent'
+              isNotesFocused ? 'border-accent-primary' : 'border-border-subtle'
             }`}
             style={{ textAlignVertical: 'top' }}
           />
         </View>
 
         {/* Save Button */}
-        <View className="w-full">
+        <View className="px-4">
           <Button variant="primary" disabled={isSaving || submitting} onPress={handleSave}>
             {isSaving || submitting ? 'Saving...' : 'Save Log Entry'}
           </Button>
         </View>
       </View>
-    );
+    </ScrollView>
+  );
 };
 
 export default CycleTodayView;

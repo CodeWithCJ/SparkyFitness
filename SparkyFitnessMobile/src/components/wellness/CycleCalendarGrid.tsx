@@ -268,6 +268,50 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
           );
         })}
       </View>
+
+      {/* Calendar Color Legend */}
+      <View className="mt-4 pt-3 border-t border-border-subtle flex-row flex-wrap justify-between gap-y-2 px-1">
+        <View className="flex-row items-center gap-1.5">
+          <View
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: getPhaseColor('menstrual', tokens) + '26',
+              borderWidth: 1,
+              borderColor: getPhaseColor('menstrual', tokens),
+              borderStyle: 'dashed',
+            }}
+          />
+          <Text className="text-text-secondary text-xs">Predicted Period</Text>
+        </View>
+
+        <View className="flex-row items-center gap-1.5">
+          <View
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: getPhaseColor('fertile', tokens) + '35',
+            }}
+          />
+          <Text className="text-text-secondary text-xs">Fertile Window</Text>
+        </View>
+
+        <View className="flex-row items-center gap-1.5">
+          <View
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: getPhaseColor('ovulation', tokens) + '26',
+              borderWidth: 1.5,
+              borderColor: getPhaseColor('ovulation', tokens),
+            }}
+          />
+          <Text className="text-text-secondary text-xs">Est. Ovulation</Text>
+        </View>
+      </View>
     </View>
   );
 };
