@@ -91,6 +91,7 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
       <BottomSheetModal
         ref={bottomSheetRef}
         enableDynamicSizing
+        enableContentPanningGesture={Platform.OS !== 'android'}
         backdropComponent={renderBackdrop}
         containerComponent={sheetContainer}
         backgroundStyle={{ backgroundColor: surfaceBg }}
