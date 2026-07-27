@@ -1,4 +1,5 @@
 import { log } from '../../config/logging.js';
+import { altBarcode } from '../../utils/foodUtils.js';
 
 interface FatSecretServing {
   serving_id?: string;
@@ -325,17 +326,12 @@ async function searchFatSecretByBarcode(
     });
     if (!response.ok) {
       if (response.status === 404) {
-        let altBarcode: string | null = null;
-        if (barcode.length === 12) {
-          altBarcode = '0' + barcode;
-        } else if (barcode.length === 13 && barcode.startsWith('0')) {
-          altBarcode = barcode.slice(1);
-        }
+        const alt = altBarcode(barcode);
 
-        if (altBarcode) {
+        if (alt) {
           const altUrl = `${FATSECRET_API_BASE_URL}/food/barcode/find-by-id/v2?${new URLSearchParams(
             {
-              barcode: altBarcode,
+              barcode: alt,
               format: 'json',
             }
           ).toString()}`;
