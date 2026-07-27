@@ -657,6 +657,43 @@ describe('groupEquivalentVariants', () => {
     expect(groupEquivalentVariants([package200, package400])).toHaveLength(2);
   });
 
+  test.each([
+    ['matches the 200 g variant', 100],
+    ['matches neither metric variant', 50],
+  ])(
+    'keeps persisted metric packages visible when legacy nutrition %s',
+    (_scenario, legacyCalories) => {
+      const legacy = makeLocalVariant({
+        id: 'legacy-package',
+        serving_size: 1,
+        serving_unit: 'package',
+        calories: legacyCalories,
+      });
+      const package200 = makeLocalVariant({
+        id: 'package-200',
+        serving_size: 1,
+        serving_unit: 'package (200 g)',
+        calories: 100,
+      });
+      const package400 = makeLocalVariant({
+        id: 'package-400',
+        serving_size: 1,
+        serving_unit: 'package (400 g)',
+        calories: 200,
+      });
+
+      const groups = groupEquivalentVariants([legacy, package200, package400]);
+
+      expect(groups.map(group => group.base.id)).toEqual([
+        'package-200',
+        'package-400',
+      ]);
+      expect(groups[0].equivalents.map(equivalent => equivalent.id)).toEqual([
+        'legacy-package',
+      ]);
+    },
+  );
+
   test('promotes non-reference variant to base when 100g matches first', () => {
     const reference = makeLocalVariant({
       id: 'a',
