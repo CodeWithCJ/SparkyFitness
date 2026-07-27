@@ -701,6 +701,56 @@ describe('useAddFoodEntry', () => {
     },
   );
 
+  test('uses an exact saved default to resolve multiple exact stored variants', async () => {
+    mockSaveFood.mockResolvedValue({
+      id: 'food-1',
+      name: 'Duplicate Packages',
+      default_variant: {
+        id: 'package-400-default',
+        serving_size: 1,
+        serving_unit: 'package (400 g)',
+      },
+    } as unknown as Awaited<ReturnType<typeof saveFood>>);
+    mockFetchFoodVariants.mockResolvedValue([
+      makeStoredVariant('package-400-a', 'package (400 g)', 200),
+      makeStoredVariant('package-400-b', 'package (400 g)', 210),
+    ]);
+
+    const { result } = renderHook(() => useAddFoodEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.addEntryAsync({
+        saveFoodPayload: {
+          name: 'Duplicate Packages',
+          brand: null,
+          serving_size: 1,
+          serving_unit: 'package (400 g)',
+          calories: 200,
+          protein: 2,
+          carbs: 20,
+          fat: 2,
+        },
+        createEntryPayload: {
+          meal_type_id: 'meal-type-1',
+          quantity: 1,
+          unit: 'package (400 g)',
+          entry_date: '2026-04-25',
+        },
+      });
+    });
+
+    expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      meal_type_id: 'meal-type-1',
+      quantity: 1,
+      unit: 'package (400 g)',
+      entry_date: '2026-04-25',
+      food_id: 'food-1',
+      variant_id: 'package-400-default',
+    });
+  });
+
   test('uses an exact saved default when the variant refresh fails', async () => {
     mockSaveFood.mockResolvedValue({
       id: 'food-1',
