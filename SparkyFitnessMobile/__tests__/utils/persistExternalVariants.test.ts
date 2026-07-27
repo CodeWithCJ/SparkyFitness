@@ -71,6 +71,75 @@ describe('persistExternalVariants', () => {
     );
   });
 
+  it('persists both a named YAZIO serving and its metric equivalent', async () => {
+    mockedFetchFoodVariants.mockResolvedValue([
+      {
+        id: 'default-variant',
+        food_id: 'food-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 50,
+        protein: 5,
+        carbs: 6,
+        fat: 1,
+      },
+    ]);
+
+    await persistExternalVariants(
+      {
+        id: 'food-1',
+        default_variant: { serving_size: 100, serving_unit: 'g' },
+      },
+      [
+        {
+          serving_size: 100,
+          serving_unit: 'g',
+          serving_description: '100 g',
+          calories: 50,
+          protein: 5,
+          carbs: 6,
+          fat: 1,
+        },
+        {
+          serving_size: 1,
+          serving_unit: 'package',
+          serving_description: '1 package (200 g)',
+          calories: 100,
+          protein: 10,
+          carbs: 12,
+          fat: 2,
+        },
+        {
+          serving_size: 200,
+          serving_unit: 'g',
+          serving_description: '200 g',
+          calories: 100,
+          protein: 10,
+          carbs: 12,
+          fat: 2,
+        },
+      ],
+    );
+
+    expect(mockedCreateFoodVariant).toHaveBeenCalledTimes(2);
+    expect(mockedCreateFoodVariant).toHaveBeenCalledWith(
+      expect.objectContaining({
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'package',
+        calories: 100,
+      }),
+    );
+    expect(mockedCreateFoodVariant).toHaveBeenCalledWith(
+      expect.objectContaining({
+        food_id: 'food-1',
+        serving_size: 200,
+        serving_unit: 'g',
+        calories: 100,
+      }),
+    );
+  });
+
   it('does not update an existing provider variant with provider display metadata', async () => {
     mockedFetchFoodVariants.mockResolvedValue([
       {

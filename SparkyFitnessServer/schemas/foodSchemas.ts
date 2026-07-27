@@ -5,6 +5,10 @@ export const FoodVariantSchema = z.object({
   user_id: z.string().optional(),
   serving_size: z.number(),
   serving_unit: z.string(),
+  serving_description: z.preprocess(
+    (value) => (value === null ? undefined : value),
+    z.string().optional()
+  ),
   calories: z.number(),
   protein: z.number(),
   carbs: z.number(),

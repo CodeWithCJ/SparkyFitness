@@ -152,7 +152,7 @@ describe('FoodScanScreen', () => {
     expect(mockNavigation.replace).not.toHaveBeenCalled();
   });
 
-  it('passes verified Yazio barcode results with serving descriptions to FoodEntryAdd', async () => {
+  it('passes all verified Yazio barcode portions with gram descriptions to FoodEntryAdd', async () => {
     mockLookupBarcodeV2.mockResolvedValue({
       source: 'yazio',
       food: {
@@ -184,6 +184,26 @@ describe('FoodScanScreen', () => {
             carbs: 10,
             fat: 1,
           },
+          {
+            id: 'remote-variant-2',
+            serving_size: 200,
+            serving_unit: 'g',
+            serving_description: '200 g',
+            calories: 50,
+            protein: 1,
+            carbs: 10,
+            fat: 1,
+          },
+          {
+            id: 'remote-variant-3',
+            serving_size: 1,
+            serving_unit: 'package',
+            serving_description: '1 package (400 g)',
+            calories: 100,
+            protein: 2,
+            carbs: 20,
+            fat: 2,
+          },
         ],
       },
     } as any);
@@ -204,13 +224,23 @@ describe('FoodScanScreen', () => {
             provider_external_id: 'yazio-apple-1',
             provider_verified: true,
             servingDescription: '1 piece (200 g)',
-            externalVariants: [
+            externalVariants: expect.arrayContaining([
               expect.objectContaining({
                 serving_size: 1,
                 serving_unit: 'piece',
                 serving_description: '1 piece (200 g)',
               }),
-            ],
+              expect.objectContaining({
+                serving_size: 200,
+                serving_unit: 'g',
+                serving_description: '200 g',
+              }),
+              expect.objectContaining({
+                serving_size: 1,
+                serving_unit: 'package',
+                serving_description: '1 package (400 g)',
+              }),
+            ]),
           }),
         }),
       );

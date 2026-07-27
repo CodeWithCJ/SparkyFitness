@@ -215,7 +215,7 @@ describe('yazioService', () => {
     expect(smallKiwi).toMatchObject({
       serving_size: 1,
       serving_unit: 'Frucht, klein',
-      serving_description: 'Frucht, klein (70 g)',
+      serving_description: '1 Frucht, klein (70 g)',
       calories: 43,
       carbs: 6.4,
       protein: 0.7,
@@ -241,13 +241,13 @@ describe('yazioService', () => {
       result?.variants?.map((variant) => variant.serving_description)
     ).toEqual([
       '100 g',
-      'Frucht, halb (45 g)',
+      '1 Frucht, halb (45 g)',
       '45 g',
-      'Frucht, klein (70 g)',
+      '1 Frucht, klein (70 g)',
       '70 g',
-      'Frucht, mittel (90 g)',
+      '1 Frucht, mittel (90 g)',
       '90 g',
-      'Frucht, groß (115 g)',
+      '1 Frucht, groß (115 g)',
       '115 g',
       '1 g',
     ]);
@@ -288,6 +288,101 @@ describe('yazioService', () => {
     expect(Number.isFinite(pieceVariant?.calories ?? Number.NaN)).toBe(true);
   });
 
+  it('maps a search candidate top-level portion with its metric equivalent', () => {
+    const result = mapYazioProduct({
+      product_id: 'package-search-result',
+      name: 'Protein Dessert',
+      serving: 'package',
+      serving_quantity: 1,
+      amount: 200,
+      base_unit: 'g',
+      nutrients: {
+        'energy.energy': 0.81,
+        'nutrient.protein': 0.05,
+        'nutrient.carb': 0.1,
+        'nutrient.fat': 0.02,
+      },
+    });
+
+    expect(
+      result?.variants.map((variant) => variant.serving_description)
+    ).toEqual(['100 g', '1 package (200 g)', '200 g']);
+    expect(result?.variants[1]).toMatchObject({
+      serving_size: 1,
+      serving_unit: 'package',
+      calories: 162,
+    });
+  });
+
+  it('keeps a non-unit serving quantity in the structured variant and description', () => {
+    const result = mapYazioProduct({
+      product_id: 'multi-package-search-result',
+      name: 'Protein Dessert Multipack',
+      serving: 'package',
+      serving_quantity: 2,
+      amount: 200,
+      base_unit: 'g',
+      nutrients: {
+        'energy.energy': 0.81,
+        'nutrient.protein': 0.05,
+        'nutrient.carb': 0.1,
+        'nutrient.fat': 0.02,
+      },
+    });
+
+    expect(result?.variants[1]).toMatchObject({
+      serving_size: 2,
+      serving_unit: 'package',
+      serving_description: '2 package (200 g)',
+      calories: 162,
+    });
+    expect(result?.variants[2]).toMatchObject({
+      serving_size: 200,
+      serving_unit: 'g',
+      serving_description: '200 g',
+      calories: 162,
+    });
+  });
+
+  it('keeps every metric equivalent when YAZIO repeats a serving name at different weights', () => {
+    const result = mapYazioProduct({
+      id: 'repeated-package-weights',
+      name: 'Twin Pack Product',
+      producer: 'YAZIO',
+      base_unit: 'g',
+      nutrients: {
+        'energy.energy': 1,
+        'nutrient.protein': 0.05,
+        'nutrient.carb': 0.1,
+        'nutrient.fat': 0.02,
+      },
+      servings: [
+        {
+          serving: 'package',
+          serving_quantity: 1,
+          amount: 200,
+          base_unit: 'g',
+        },
+        {
+          serving: 'package',
+          serving_quantity: 1,
+          amount: 400,
+          base_unit: 'g',
+        },
+      ],
+    });
+
+    expect(
+      result?.variants.map((variant) => variant.serving_description)
+    ).toEqual([
+      '100 g',
+      '1 package (200 g)',
+      '200 g',
+      '1 package (400 g)',
+      '400 g',
+    ]);
+  });
+
   it('authenticates and searches products with pagination', async () => {
     const product = {
       product_id: '7c91b431-a2b5-4f11-8f52-f346dc941f2a',
@@ -308,7 +403,24 @@ describe('yazioService', () => {
       .mockResolvedValueOnce(
         makeFetchResponse({ access_token: 'token-1', expires_in: 3600 })
       )
-      .mockResolvedValueOnce(makeFetchResponse([product, product]))
+      .mockResolvedValueOnce(
+        makeFetchResponse([
+          product,
+          {
+            ...product,
+            serving: 'package',
+            serving_quantity: 1,
+            amount: 200,
+          },
+          {
+            name: 'Unmappable result without product id',
+            serving: 'package',
+            serving_quantity: 1,
+            amount: 500,
+            base_unit: 'g',
+          },
+        ])
+      )
       .mockResolvedValueOnce(
         makeFetchResponse({
           ...product,
@@ -347,11 +459,14 @@ describe('yazioService', () => {
     );
     expect(result.foods).toHaveLength(1);
     expect(result.foods[0]?.provider_verified).toBe(true);
+    expect(
+      result.foods[0]?.variants.map((variant) => variant.serving_description)
+    ).toEqual(['100 g', '1 package (200 g)', '200 g']);
     expect(result.pagination).toEqual({
       page: 1,
       pageSize: 1,
-      totalCount: 2,
-      hasMore: true,
+      totalCount: 1,
+      hasMore: false,
     });
   });
 
@@ -520,6 +635,67 @@ describe('yazioService', () => {
     );
     expect(result?.provider_verified).toBe(true);
     expect(result?.barcode).toBe('0094395000172');
+  });
+
+  it('merges every barcode candidate portion for the matching YAZIO product', async () => {
+    const productId = 'multi-serving-barcode-product';
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeFetchResponse({ access_token: 'token-multi', expires_in: 3600 })
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse([
+          {
+            product_id: productId,
+            name: 'Multi Portion Pudding',
+            serving: 'serving',
+            serving_quantity: 1,
+            amount: 200,
+            base_unit: 'g',
+            is_verified: true,
+          },
+          {
+            product_id: productId,
+            name: 'Multi Portion Pudding',
+            serving: 'package',
+            serving_quantity: 1,
+            amount: 400,
+            base_unit: 'g',
+            is_verified: true,
+          },
+        ])
+      )
+      .mockResolvedValueOnce(
+        makeFetchResponse({
+          id: productId,
+          name: 'Multi Portion Pudding',
+          base_unit: 'g',
+          servings: [],
+          eans: ['4008400401621'],
+          nutrients: {
+            'energy.energy': 0.81,
+            'nutrient.protein': 0.05,
+            'nutrient.carb': 0.1,
+            'nutrient.fat': 0.02,
+          },
+        })
+      );
+
+    const result = await searchYazioByBarcode('4008400401621', {
+      username: 'barcode-portions@example.com',
+      password: 'secret',
+      ...yazioClientCredentials,
+    });
+
+    expect(
+      result?.variants.map((variant) => variant.serving_description)
+    ).toEqual([
+      '100 g',
+      '1 serving (200 g)',
+      '200 g',
+      '1 package (400 g)',
+      '400 g',
+    ]);
   });
 
   it('skips non-matching detail EANs and returns null when no candidate matches', async () => {
