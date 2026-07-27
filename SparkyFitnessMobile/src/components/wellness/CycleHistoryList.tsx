@@ -55,7 +55,7 @@ const CycleHistoryList: React.FC = () => {
       </View>
 
       {showAddForm && (
-        <View className="bg-surface rounded-xl p-4 border border-border-subtle gap-3">
+        <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
           <Text className="text-text-primary font-semibold text-sm">Log Manual Cycle</Text>
           
           <View>
@@ -107,11 +107,11 @@ const CycleHistoryList: React.FC = () => {
       )}
 
       {cycles.length === 0 ? (
-        <View className="bg-surface rounded-xl p-4 border border-border-subtle items-center">
+        <View className="bg-surface rounded-xl p-4 border-0 shadow-sm items-center">
           <Text className="text-text-secondary text-sm">No logged cycles yet.</Text>
         </View>
       ) : (
-        <View className="bg-surface rounded-xl border border-border-subtle overflow-hidden">
+        <View className="bg-surface rounded-xl border-0 shadow-sm overflow-hidden">
           {cycles.map((c, idx) => (
             <View
               key={c.id || c.start_date}

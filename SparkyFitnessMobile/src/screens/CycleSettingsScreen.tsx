@@ -9,6 +9,7 @@ import { File, Paths } from 'expo-file-system';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCycleSettings } from '../hooks/useCycleSettings';
+import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -139,8 +140,10 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
     }
   }, []);
 
+  const discreetMode = useDiscreetMode();
+
   const header = useScreenHeader({
-    title: settings?.discreet_mode ? 'Wellness Settings' : 'Cycle Settings',
+    title: discreetMode ? 'Wellness Settings' : 'Cycle Settings',
     left: { kind: 'back' },
   });
 

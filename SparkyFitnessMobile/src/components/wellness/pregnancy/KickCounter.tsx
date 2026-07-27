@@ -82,7 +82,7 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
   const lastSession = sessions.find((s) => s.ended_at);
 
   return (
-    <View className="bg-surface rounded-2xl p-5 border border-border-subtle shadow-sm gap-4">
+    <View className="bg-surface rounded-xl p-5 border-0 shadow-sm gap-4">
       <View className="flex-row items-center justify-between">
         <Text className="text-text-primary text-sm font-semibold">Kick Counter</Text>
         {isActive && <Text className="text-text-secondary text-xs">{formatElapsed(elapsed)}</Text>}

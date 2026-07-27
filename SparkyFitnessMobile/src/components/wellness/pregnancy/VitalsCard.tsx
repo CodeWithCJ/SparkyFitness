@@ -51,7 +51,7 @@ const VitalsCard: React.FC<VitalsCardProps> = ({ pregnancy }) => {
   const displayWeight = displayValue ? `${displayValue} ${weightUnit}` : '—';
 
   return (
-    <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
       <Text className="text-text-primary text-base font-bold">Vitals</Text>
 
       <View className="flex-row items-center justify-between">

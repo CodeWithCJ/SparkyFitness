@@ -31,7 +31,7 @@ const FoodMedSafetySearch: React.FC = () => {
   }, [debouncedQuery, category]);
 
   return (
-    <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
       <Text className="text-text-primary text-base font-bold">Food & Medication Safety</Text>
 
       <SegmentedControl

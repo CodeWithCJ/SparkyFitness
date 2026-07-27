@@ -126,8 +126,8 @@ const CycleInsightsView: React.FC = () => {
 
                 <View className="flex-row gap-2.5">
                   {/* Next Period Tile */}
-                  <View className="flex-1 bg-surface border border-border-subtle rounded-xl p-3 flex-row items-center gap-2.5">
-                    <View className="w-8 h-8 rounded-xl bg-raised border border-border-subtle items-center justify-center">
+                  <View className="flex-1 bg-surface rounded-xl p-3 flex-row items-center gap-2.5 shadow-sm">
+                    <View className="w-8 h-8 rounded-xl bg-raised items-center justify-center">
                       <CycleIcon id="flow-medium" size={18} />
                     </View>
                     <View className="flex-1">
@@ -142,8 +142,8 @@ const CycleInsightsView: React.FC = () => {
 
                   {/* Est. Ovulation Tile */}
                   {c.ovulation && (
-                    <View className="flex-1 bg-surface border border-border-subtle rounded-xl p-3 flex-row items-center gap-2.5">
-                      <View className="w-8 h-8 rounded-xl bg-raised border border-border-subtle items-center justify-center">
+                    <View className="flex-1 bg-surface rounded-xl p-3 flex-row items-center gap-2.5 shadow-sm">
+                      <View className="w-8 h-8 rounded-xl bg-raised items-center justify-center">
                         <Icon name="sparkles" size={16} color={accentColor} />
                       </View>
                       <View className="flex-1">
