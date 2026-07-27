@@ -511,4 +511,105 @@ describe('useAddFoodEntry', () => {
       variant_id: 'one-portion-variant',
     });
   });
+
+  test('uses one unambiguous legacy variant for a described provider serving', async () => {
+    mockSaveFood.mockResolvedValue({
+      id: 'food-1',
+      name: 'Legacy Food',
+      default_variant: {
+        id: 'default-variant',
+        serving_size: 100,
+        serving_unit: 'g',
+      },
+    } as unknown as Awaited<ReturnType<typeof saveFood>>);
+
+    const storedVariants = [
+      {
+        id: 'default-variant',
+        food_id: 'food-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 100,
+        protein: 1,
+        carbs: 10,
+        fat: 1,
+      },
+      {
+        id: 'legacy-serving',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'serving',
+        calories: 80,
+        protein: 1,
+        carbs: 8,
+        fat: 1,
+      },
+    ] as Awaited<ReturnType<typeof fetchFoodVariants>>;
+    mockFetchFoodVariants
+      .mockResolvedValueOnce(storedVariants)
+      .mockResolvedValueOnce(storedVariants);
+    mockCreateFoodEntry.mockResolvedValue({
+      id: 'entry-1',
+      food_id: 'food-1',
+      variant_id: 'legacy-serving',
+      meal_type: 'breakfast',
+      meal_type_id: 'meal-type-1',
+      quantity: 1,
+      unit: 'serving',
+      entry_date: '2026-04-25',
+      food_name: 'Legacy Food',
+      brand_name: null,
+      serving_size: 1,
+      serving_unit: 'serving',
+      calories: 80,
+      protein: 1,
+      carbs: 8,
+      fat: 1,
+    });
+
+    const { result } = renderHook(() => useAddFoodEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.addEntryAsync({
+        saveFoodPayload: {
+          name: 'Legacy Food',
+          serving_size: 1,
+          serving_unit: 'serving (80 g)',
+          calories: 80,
+          protein: 1,
+          carbs: 8,
+          fat: 1,
+        },
+        externalVariants: [
+          {
+            serving_size: 1,
+            serving_unit: 'serving',
+            serving_description: '1 serving (80 g)',
+            calories: 80,
+            protein: 1,
+            carbs: 8,
+            fat: 1,
+          },
+        ],
+        createEntryPayload: {
+          meal_type_id: 'meal-type-1',
+          quantity: 1,
+          unit: 'serving',
+          entry_date: '2026-04-25',
+        },
+      });
+    });
+
+    expect(mockCreateFoodVariant).not.toHaveBeenCalled();
+    expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      meal_type_id: 'meal-type-1',
+      quantity: 1,
+      unit: 'serving',
+      entry_date: '2026-04-25',
+      food_id: 'food-1',
+      variant_id: 'legacy-serving',
+    });
+  });
 });
