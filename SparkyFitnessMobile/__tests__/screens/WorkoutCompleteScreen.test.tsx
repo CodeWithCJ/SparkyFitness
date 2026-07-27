@@ -187,6 +187,45 @@ describe('WorkoutCompleteScreen', () => {
     expect(getByText('360 kg')).toBeTruthy();
   });
 
+  it('derives duration like the flush: cardio set sums + split, ignoring stale stamps', () => {
+    const cardioSnapshot = (id: string, name: string) => ({
+      id,
+      name,
+      category: 'Cardio',
+      modality: 'duration_distance',
+      images: [],
+      calories_per_hour: 600,
+    });
+    const session = makeSession();
+    // Two completed cardio efforts (25 + 5 min); the strength entries logged
+    // nothing but carry stale 14-minute stamps that must not be counted.
+    session.exercises = [
+      makeExercise('ex-a', 'Bench Press', [makeSet(101)], { duration_minutes: 14 }),
+      makeExercise('ex-b', 'Squat', [makeSet(201)], { duration_minutes: 14 }),
+      makeExercise(
+        'ex-c',
+        'Run',
+        [makeSet(301, { reps: null, weight: null, duration: 1500, rest_time: 0, distance: 5 })],
+        { duration_minutes: 25, exercise_snapshot: cardioSnapshot('x-ex-c', 'Run') },
+      ),
+      makeExercise(
+        'ex-d',
+        'Walk',
+        [makeSet(401, { reps: null, weight: null, duration: 300, rest_time: 0, distance: 0.5 })],
+        { duration_minutes: 5, exercise_snapshot: cardioSnapshot('x-ex-d', 'Walk') },
+      ),
+    ];
+
+    const { getByText } = renderScreen({
+      session,
+      completedSetIds: { '301': 60_000, '401': 120_000 },
+      prSetIds: {},
+      startedAt: 0,
+    });
+
+    expect(getByText('30 min')).toBeTruthy();
+  });
+
   it('shows the records card with one row per PR set and fires the success haptic', () => {
     const { getByText } = renderScreen();
 

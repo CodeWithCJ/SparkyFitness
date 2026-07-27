@@ -906,9 +906,12 @@ export function buildSessionExercisesPayload(
  * Wall-clock live-workout durations: the span from `startedAtMs` to the last
  * completed set, split across exercises proportionally by completed-set count
  * (an exercise with nothing completed gets 0). Returns null — "leave existing
- * durations alone" — when `startedAtMs` is absent or nothing has been
+ * durations alone" — when `startedAtMs` is absent or nothing at all has been
  * completed after it (e.g. a resumed session whose seeded completions predate
- * this start).
+ * this start). When only cardio completed after start, the session is still
+ * live and authoritative: strength entries that logged nothing are stamped 0
+ * so a stale duration (say, from a completion that was later un-checked)
+ * can't survive to the diary and the completion screen.
  */
 export function buildSessionDurationMinutes(
   session: PresetSessionResponse,
@@ -919,23 +922,37 @@ export function buildSessionDurationMinutes(
 
   let lastCompletedMs = 0;
   let totalCompleted = 0;
+  let anyCompletedAfterStart = false;
   const completedCountByEntryId = new Map<string, number>();
   for (const exercise of session.exercises) {
     // Cardio entries own their duration (the sum of their set durations) and
     // stay out of the split entirely — counting their sets would siphon
-    // wall-clock minutes away from the strength entries.
-    if (isCardioModality(resolveSnapshotModality(exercise.exercise_snapshot))) continue;
+    // wall-clock minutes away from the strength entries. Their completions
+    // still prove the session is live.
+    const cardio = isCardioModality(resolveSnapshotModality(exercise.exercise_snapshot));
     let count = 0;
     for (const s of exercise.sets) {
       const ms = completedSetIds[String(s.id)];
       if (ms == null) continue;
+      if (ms > startedAtMs) anyCompletedAfterStart = true;
+      if (cardio) continue;
       count++;
       totalCompleted++;
       if (ms > lastCompletedMs) lastCompletedMs = ms;
     }
-    completedCountByEntryId.set(exercise.id, count);
+    if (!cardio) completedCountByEntryId.set(exercise.id, count);
   }
-  if (totalCompleted === 0 || lastCompletedMs <= startedAtMs) return null;
+  if (totalCompleted === 0 || lastCompletedMs <= startedAtMs) {
+    if (!anyCompletedAfterStart) return null;
+    // Cardio-only session: zero the never-completed strength entries; one
+    // with (pre-start) completions keeps its existing duration by staying
+    // out of the map.
+    const zeroed = new Map<string, number>();
+    for (const [entryId, count] of completedCountByEntryId) {
+      if (count === 0) zeroed.set(entryId, 0);
+    }
+    return zeroed;
+  }
 
   const totalMinutes = (lastCompletedMs - startedAtMs) / 60_000;
   const byEntryId = new Map<string, number>();

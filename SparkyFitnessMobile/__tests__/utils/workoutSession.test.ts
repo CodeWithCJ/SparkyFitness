@@ -1980,7 +1980,7 @@ describe('workoutSession', () => {
         expect(payload[1].duration_minutes).toBe(30); // 1800s set sum
       });
 
-      it('derives a cardio-only session from its sets even though the split yields null', () => {
+      it('derives a cardio-only session from its sets even though the split prices nothing', () => {
         const session = makePreset({
           exercises: [
             makeExercise({
@@ -1994,6 +1994,50 @@ describe('workoutSession', () => {
         });
         const payload = buildSessionExercisesPayload(session, { '101': min(25) }, {}, startedAt);
         expect(payload[0].duration_minutes).toBe(25);
+      });
+
+      it('zeroes a stale strength duration when only cardio completed (regression: 25+5 showing as 58)', () => {
+        const session = makePreset({
+          exercises: [
+            // Stale estimate from an earlier flush; nothing here was completed.
+            makeExercise({ duration_minutes: 28, sets: [makeSet({ id: 101 })] }),
+            makeExercise({
+              id: ENTRY_B,
+              exercise_id: EX_2,
+              exercise_snapshot: cardioSnapshot,
+              sets: [
+                makeSet({ id: 201, reps: null, weight: null, duration: 1500, rest_time: 0 }),
+              ],
+            }),
+          ],
+        });
+        const payload = buildSessionExercisesPayload(session, { '201': min(25) }, {}, startedAt);
+        expect(payload[0].duration_minutes).toBe(0);
+        expect(payload[1].duration_minutes).toBe(25);
+      });
+
+      it('keeps a strength duration whose completions predate the start while cardio completed after it', () => {
+        const session = makePreset({
+          exercises: [
+            makeExercise({ duration_minutes: 25, sets: [makeSet({ id: 101 })] }),
+            makeExercise({
+              id: ENTRY_B,
+              exercise_id: EX_2,
+              exercise_snapshot: cardioSnapshot,
+              sets: [
+                makeSet({ id: 201, reps: null, weight: null, duration: 300, rest_time: 0 }),
+              ],
+            }),
+          ],
+        });
+        const payload = buildSessionExercisesPayload(
+          session,
+          { '101': startedAt - 60_000, '201': min(5) },
+          {},
+          startedAt,
+        );
+        expect(payload[0].duration_minutes).toBe(25);
+        expect(payload[1].duration_minutes).toBe(5);
       });
     });
 
