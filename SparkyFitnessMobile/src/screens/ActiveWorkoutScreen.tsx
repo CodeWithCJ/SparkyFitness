@@ -71,6 +71,7 @@ import {
   exerciseFromSnapshot,
   formatDuration,
   formatSetLoad,
+  rendersCardioEffortForm,
   summarizeWorkoutSpan,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -585,6 +586,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const entry = session.exercises.find((e) => e.id === entryId);
     const entryHasCompleted =
       entry?.sets.some((s) => completedSetIds[String(s.id)] != null) ?? false;
+    // The cardio effort form owns completion inline (tap the check to un-log),
+    // so the set-table Clear action would be redundant set-speak there.
+    const entryIsCardioForm =
+      entry != null &&
+      rendersCardioEffortForm(entry.exercise_snapshot, entry.sets.length);
 
     const items: ActionSheetItem[] = [];
     items.push({
@@ -626,7 +632,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       label: 'Replace exercise',
       onPress: () => handleReplaceExercise(entryId),
     });
-    if (entryHasCompleted) {
+    if (entryHasCompleted && !entryIsCardioForm) {
       items.push({
         key: 'clear',
         label: 'Clear logged sets',
@@ -1009,11 +1015,23 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       ? null
       : (Object.keys(setRenderKeys).find((id) => setRenderKeys[id] === focusedSetKey) ??
         focusedSetKey);
+  // The cardio effort form has its own two-field walk (duration → distance)
+  // and no RPE cell, so the bar's Next must not aim at inputs it lacks.
+  const focusedEntryIsCardioForm =
+    focusedSetId != null &&
+    session.exercises.some(
+      (e) =>
+        e.sets.some((s) => String(s.id) === focusedSetId) &&
+        rendersCardioEffortForm(e.exercise_snapshot, e.sets.length),
+    );
   // The keyboard walk: weight → reps → RPE (when that column is shown); a
   // duration cell is its row's only value input, so it walks straight to RPE.
   // The last field's bar drops Next and leads with Log.
-  const accessoryNextField =
-    focusedField === 'weight'
+  const accessoryNextField = focusedEntryIsCardioForm
+    ? focusedField === 'duration'
+      ? ('distance' as const)
+      : null
+    : focusedField === 'weight'
       ? ('reps' as const)
       : (focusedField === 'reps' || focusedField === 'duration') && metricColumn === 'rpe'
         ? ('rpe' as const)
@@ -1034,8 +1052,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       : []),
     // A completed set has no Log, so its last field would dead-end with only
     // Done — Next Set moves on to the following row (or adds one on the last
-    // set), matching the edit forms' bar.
-    ...(accessoryNextField == null && focusedSetCompleted
+    // set), matching the edit forms' bar. The cardio form is its exercise's
+    // whole log, so there is no set to move on to and its bar ends at Done.
+    ...(accessoryNextField == null && focusedSetCompleted && !focusedEntryIsCardioForm
       ? [
           {
             key: 'next-set',

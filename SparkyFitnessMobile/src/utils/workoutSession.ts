@@ -423,6 +423,20 @@ export function isDurationModality(modality: ExerciseModality): boolean {
 export { isCardioModality };
 
 /**
+ * True when a workout card renders the Duration+Distance cardio form in place
+ * of a set table: a cardio exercise with at most one set. Multi-set cardio
+ * (imports, future intervals) keeps the duration-style table so no set is
+ * hidden. Surfaces that can disable the form entirely (the preset editor)
+ * AND this with their own `cardioFormEnabled` gate.
+ */
+export function rendersCardioEffortForm(
+  snapshot: { modality?: string | null; category?: string | null } | null | undefined,
+  setCount: number,
+): boolean {
+  return isCardioModality(resolveSnapshotModality(snapshot)) && setCount <= 1;
+}
+
+/**
  * Duration in seconds a set displays/fills/adopts. Legacy isometric rows hold
  * their seconds in `reps` (they predate the duration column), so `duration`
  * modality — and ONLY that modality — falls back to reps-as-seconds. The
