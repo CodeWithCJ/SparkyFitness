@@ -325,6 +325,21 @@ describe('ActiveWorkoutExerciseCard', () => {
       );
     });
 
+    it('clamps the metric column to RPE on reps_only tables and reports it', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('reps_only'),
+        metricColumn: 'volume',
+      });
+      expect(utils.getByText('RPE')).toBeTruthy();
+      expect(utils.queryByText('Vol')).toBeNull();
+
+      fireEvent.press(utils.getByLabelText('Change metric column'));
+      expect(utils.callbacks.onPressMetricHeader).toHaveBeenCalledWith(
+        expect.anything(),
+        true,
+      );
+    });
+
     it('leaves the metric column alone on weight tables', () => {
       const utils = renderCard(true, {
         exercise: withModality('weight_reps'),

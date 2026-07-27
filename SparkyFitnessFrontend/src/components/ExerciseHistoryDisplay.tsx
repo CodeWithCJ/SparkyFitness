@@ -15,7 +15,9 @@ interface ExerciseHistoryDisplayProps {
 const formatHistorySet = (
   set: ExerciseEntrySetResponse,
   weightUnit: string,
-  toDisplayWeight: (kg: number) => number
+  toDisplayWeight: (kg: number) => number,
+  distanceUnit: string,
+  toDisplayDistance: (km: number) => number
 ): string | null => {
   const parts: string[] = [];
   const weight =
@@ -28,7 +30,8 @@ const formatHistorySet = (
   else if (weight) parts.push(weight);
 
   if (set.duration != null) parts.push(`${set.duration}s`);
-  if (set.distance != null) parts.push(`${set.distance}km`);
+  if (set.distance != null)
+    parts.push(`${toDisplayDistance(set.distance).toFixed(2)}${distanceUnit}`);
 
   return parts.length > 0 ? parts.join(' · ') : null;
 };
@@ -38,7 +41,8 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
   limit = 3,
 }) => {
   const { t } = useTranslation();
-  const { weightUnit, convertWeight } = usePreferences();
+  const { weightUnit, convertWeight, distanceUnit, convertDistance } =
+    usePreferences();
   const [isMinimized, setIsMinimized] = useState(true);
   const { data: history, isLoading: loading } = useExerciseHistory(
     exerciseId,
@@ -98,8 +102,12 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
               <div className="flex flex-wrap gap-2 text-muted-foreground">
                 {entry.sets &&
                   entry.sets.map((set, i) => {
-                    const label = formatHistorySet(set, weightUnit, (kg) =>
-                      convertWeight(kg, 'kg', weightUnit)
+                    const label = formatHistorySet(
+                      set,
+                      weightUnit,
+                      (kg) => convertWeight(kg, 'kg', weightUnit),
+                      distanceUnit,
+                      (km) => convertDistance(km, 'km', distanceUnit)
                     );
                     if (!label) return null;
                     return (

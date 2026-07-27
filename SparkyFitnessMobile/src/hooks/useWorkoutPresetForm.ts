@@ -60,6 +60,7 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
           exerciseId: exercise.exercise_id,
           exerciseName: exercise.exercise_name,
           exerciseCategory: exercise.category ?? null,
+          exerciseModality: exercise.modality ?? null,
           images: exercise.image_url ? [exercise.image_url] : [],
           supersetGroup: exercise.superset_group ?? null,
           sets: exercise.sets.map((set, setIdx) => ({
@@ -92,6 +93,7 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
           exerciseId: exercise.exercise_id,
           exerciseName: exercise.exercise_snapshot?.name ?? 'Unknown',
           exerciseCategory: exercise.exercise_snapshot?.category ?? null,
+          exerciseModality: exercise.exercise_snapshot?.modality ?? null,
           images: exercise.exercise_snapshot?.images ?? [],
           supersetGroup: exercise.superset_group ?? null,
           sets: exercise.sets.map((set, setIdx) => ({

@@ -117,4 +117,15 @@ describe('ReportsTables duration-only exercise sets', () => {
     expect(cells.some((c) => c.textContent?.includes('0 - 0'))).toBe(false);
     expect(cells.some((c) => c.textContent?.includes('NaN'))).toBe(false);
   });
+
+  it('renders dashes for avg weight and tonnage instead of a bogus 0 lbs', () => {
+    renderTable([durationOnlyExerciseEntry]);
+
+    const cells = screen.getAllByRole('cell');
+    expect(cells.some((c) => c.textContent?.includes('lbs'))).toBe(false);
+    // Rep range, avg weight, and tonnage all fall back to the dash.
+    expect(
+      cells.filter((c) => c.textContent === '-').length
+    ).toBeGreaterThanOrEqual(3);
+  });
 });

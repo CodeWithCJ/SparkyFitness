@@ -15,6 +15,8 @@ jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     weightUnit: 'kg',
     convertWeight: (value: number) => value,
+    distanceUnit: 'km',
+    convertDistance: (value: number) => value,
   }),
 }));
 
@@ -68,7 +70,18 @@ describe('ExerciseHistoryDisplay set chips', () => {
     ];
     renderExpanded();
 
-    expect(screen.getByText('1800s \u00b7 5.2km')).toBeInTheDocument();
+    expect(screen.getByText('1800s \u00b7 5.20km')).toBeInTheDocument();
+  });
+
+  it('rounds float-tailed distances from unit conversion', () => {
+    mockHistory = [
+      makeEntry([
+        { reps: null, weight: null, duration: 1800, distance: 4.988966 },
+      ]),
+    ];
+    renderExpanded();
+
+    expect(screen.getByText('1800s \u00b7 4.99km')).toBeInTheDocument();
   });
 
   it('skips a set with nothing recorded', () => {
