@@ -382,6 +382,21 @@ describe('openFoodFactsService', () => {
       expect(result.default_variant.carbs).toBe(20);
       expect(result.default_variant.fat).toBe(5);
     });
+
+    it('does not apply *_serving fallbacks when serving_quantity is missing from product', () => {
+      const product = {
+        product_name: 'Serving Only Product No Size',
+        brands: 'TestBrand',
+        code: '7777777777777',
+        nutriments: {
+          'energy-kcal_serving': 150,
+          proteins_serving: 10,
+        },
+      };
+      const result = mapOpenFoodFactsProduct(product);
+      expect(result.default_variant.calories).toBe(0);
+      expect(result.default_variant.protein).toBe(0);
+    });
   });
 
   describe('mapOpenFoodFactsProduct serving unit derivation', () => {
