@@ -1535,6 +1535,26 @@ describe('externalFoodSearchApi', () => {
               fat: 4,
               is_default: false,
             },
+            {
+              serving_size: 1,
+              serving_unit: 'serving',
+              serving_description: '1 serving (400 g)',
+              calories: 324,
+              protein: 20,
+              carbs: 40,
+              fat: 8,
+              is_default: false,
+            },
+            {
+              serving_size: 400,
+              serving_unit: 'g',
+              serving_description: '400 g',
+              calories: 324,
+              protein: 20,
+              carbs: 40,
+              fat: 8,
+              is_default: false,
+            },
           ],
         };
 
@@ -1544,6 +1564,8 @@ describe('externalFoodSearchApi', () => {
           '1 serving (200 g)',
           '100 g',
           '200 g',
+          '1 serving (400 g)',
+          '400 g',
         ]);
       });
 

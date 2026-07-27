@@ -79,6 +79,7 @@ import {
   formatVariantServingLabel,
   resolveFoodDisplayValues,
   resolveLocalPickerVariantId,
+  toPersistedServingUnit,
   unitVariantToDisplayValues,
   type FoodDisplayValues,
 } from '../utils/foodDetails';
@@ -766,7 +767,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         provider_verified: activeItem.provider_verified === true,
         is_custom: activeItem.is_custom ?? true,
         serving_size: saveFoodSourceValues.servingSize,
-        serving_unit: saveFoodSourceValues.servingUnit,
+        serving_unit: toPersistedServingUnit({
+          serving_size: saveFoodSourceValues.servingSize,
+          serving_unit: saveFoodSourceValues.servingUnit,
+          serving_description: saveFoodSourceValues.servingDescription,
+        }),
         calories: saveFoodSourceValues.calories,
         protein: saveFoodSourceValues.protein,
         carbs: saveFoodSourceValues.carbs,

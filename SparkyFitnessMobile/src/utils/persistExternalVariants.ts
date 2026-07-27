@@ -4,7 +4,12 @@ import {
   type CreateFoodVariantPayload,
 } from '../services/api/foodsApi';
 import type { ExternalFoodVariant } from '../types/externalFoods';
-import type { FoodVariantDetail } from '../types/foods';
+import {
+  baseServingVariantKey,
+  hasDistinctMetricServingContext,
+  servingVariantKey,
+  toPersistedServingUnit,
+} from './foodDetails';
 
 type SavedFoodWithDefaultVariant = {
   id: string;
@@ -13,12 +18,6 @@ type SavedFoodWithDefaultVariant = {
     serving_unit?: string;
   } | null;
 };
-
-function variantKey(
-  variant: { serving_size?: number; serving_unit?: string } | null | undefined,
-) {
-  return `${variant?.serving_size}:${variant?.serving_unit}`;
-}
 
 /**
  * Persist all external provider variants as local food_variants for a saved food.
@@ -33,35 +32,56 @@ export async function persistExternalVariants(
 ) {
   if (!externalVariants || externalVariants.length === 0) return;
 
-  let existingByKey = new Map<string, FoodVariantDetail>();
+  const existingKeys = new Set<string>();
+  const legacyExistingBaseKeyCounts = new Map<string, number>();
   let fetchedExistingVariants = false;
   try {
     const existing = await fetchFoodVariants(savedFood.id);
-    existingByKey = new Map(
-      existing.map(variant => [variantKey(variant), variant]),
-    );
+    existing.forEach(variant => {
+      existingKeys.add(servingVariantKey(variant));
+      if (!hasDistinctMetricServingContext(variant)) {
+        const baseKey = baseServingVariantKey(variant);
+        legacyExistingBaseKeyCounts.set(
+          baseKey,
+          (legacyExistingBaseKeyCounts.get(baseKey) ?? 0) + 1,
+        );
+      }
+    });
     fetchedExistingVariants = true;
   } catch {
     // If we can't check existing variants, fall back to the saved default only.
     // A possible duplicate is less harmful than missing all alternate servings.
   }
 
-  const defaultKey = variantKey(savedFood.default_variant);
+  const defaultKey = servingVariantKey(savedFood.default_variant ?? {});
+  const externalBaseKeyCounts = externalVariants.reduce((counts, variant) => {
+    const key = baseServingVariantKey(variant);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    return counts;
+  }, new Map<string, number>());
+
+  const variantsToCreate = externalVariants.filter(variant => {
+    const key = servingVariantKey(variant);
+    if (existingKeys.has(key)) return false;
+    const baseKey = baseServingVariantKey(variant);
+    if (
+      externalBaseKeyCounts.get(baseKey) === 1 &&
+      legacyExistingBaseKeyCounts.get(baseKey) === 1
+    ) {
+      return false;
+    }
+    if (!fetchedExistingVariants && key === defaultKey) return false;
+    existingKeys.add(key);
+    return true;
+  });
 
   await Promise.all(
-    externalVariants.map(async variant => {
-      const key = variantKey(variant);
-      const existingVariant = existingByKey.get(key);
-      if (existingVariant) {
-        return;
-      }
-      if (!fetchedExistingVariants && key === defaultKey) return;
-
+    variantsToCreate.map(async variant => {
       try {
         await createFoodVariant({
           food_id: savedFood.id,
           serving_size: variant.serving_size,
-          serving_unit: variant.serving_unit,
+          serving_unit: toPersistedServingUnit(variant),
           calories: variant.calories,
           protein: variant.protein,
           carbs: variant.carbs,
@@ -77,7 +97,7 @@ export async function persistExternalVariants(
           cholesterol: variant.cholesterol,
           vitamin_a: variant.vitamin_a,
           vitamin_c: variant.vitamin_c,
-        } as CreateFoodVariantPayload);
+        } satisfies CreateFoodVariantPayload);
       } catch {
         // Non-blocking: one provider variant failing should not prevent logging.
       }
