@@ -89,10 +89,10 @@ async function resolveSelectedVariant(
     variant => servingVariantKey(variant) === exactKey,
   );
   if (exactMatches.length === 1) return exactMatches[0];
+  if (exactDefault) return exactDefault;
   if (exactMatches.length > 1) {
     throw new Error(SELECTED_VARIANT_RESOLUTION_ERROR);
   }
-  if (exactDefault) return exactDefault;
 
   const baseKey = baseServingVariantKey(selectedIdentity);
   const legacyMatches = allVariants.filter(
