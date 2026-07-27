@@ -146,7 +146,7 @@ describe('CardioEffortForm', () => {
         exerciseName="Run"
         mode="live"
         distanceUnit="km"
-        completed
+        state="done"
         onCommitField={jest.fn()}
         onComplete={jest.fn()}
         onUncomplete={onUncomplete}
@@ -154,6 +154,114 @@ describe('CardioEffortForm', () => {
     );
     fireEvent.press(getByLabelText('Mark Run incomplete'));
     expect(onUncomplete).toHaveBeenCalledWith('101');
+  });
+
+  it('reports focused fields in live mode so the screen bar can target them', () => {
+    const onActivateSet = jest.fn();
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        onCommitField={jest.fn()}
+        onActivateSet={onActivateSet}
+      />,
+    );
+    fireEvent(getByLabelText('Duration in minutes for Run'), 'focus');
+    expect(onActivateSet).toHaveBeenCalledWith('101', 'duration');
+    fireEvent(getByLabelText('Distance in km for Run'), 'focus');
+    expect(onActivateSet).toHaveBeenCalledWith('101', 'distance');
+  });
+
+  it('does not report focus outside live mode', () => {
+    const onActivateSet = jest.fn();
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="edit"
+        distanceUnit="km"
+        onCommitField={jest.fn()}
+        onActivateSet={onActivateSet}
+      />,
+    );
+    fireEvent(getByLabelText('Duration in minutes for Run'), 'focus');
+    expect(onActivateSet).not.toHaveBeenCalled();
+  });
+
+  it('registers a live accessory handle whose log adopts drafts then completes', () => {
+    const handles: Record<string, { log: () => void }> = {};
+    const onRegisterAccessoryHandle = (key: string, handle: { log: () => void } | null) => {
+      if (handle == null) delete handles[key];
+      else handles[key] = handle;
+    };
+    const onCommitField = jest.fn();
+    const onComplete = jest.fn();
+    const { getByLabelText, unmount } = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        renderKey="rk-101"
+        onCommitField={onCommitField}
+        onComplete={onComplete}
+        onRegisterAccessoryHandle={onRegisterAccessoryHandle}
+      />,
+    );
+
+    expect(handles['rk-101']).toBeDefined();
+    fireEvent.changeText(getByLabelText('Duration in minutes for Run'), '30');
+    handles['rk-101'].log();
+    expect(onCommitField).toHaveBeenCalledWith('101', { duration: 1800 });
+    expect(onComplete).toHaveBeenCalledWith('101');
+
+    unmount();
+    expect(handles['rk-101']).toBeUndefined();
+  });
+
+  it('registers no accessory handle outside live mode', () => {
+    const onRegisterAccessoryHandle = jest.fn();
+    render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="edit"
+        distanceUnit="km"
+        onCommitField={jest.fn()}
+        onRegisterAccessoryHandle={onRegisterAccessoryHandle}
+      />,
+    );
+    expect(onRegisterAccessoryHandle).not.toHaveBeenCalled();
+  });
+
+  it('matches the set rows: done check, pulsing cursor ring, muted upcoming ring', () => {
+    const renderWithState = (state: 'done' | 'current' | 'upcoming') =>
+      render(
+        <CardioEffortForm
+          set={makeSet()}
+          exerciseName="Run"
+          mode="live"
+          distanceUnit="km"
+          state={state}
+          onCommitField={jest.fn()}
+          onComplete={jest.fn()}
+          onUncomplete={jest.fn()}
+        />,
+      );
+
+    const done = renderWithState('done');
+    expect(done.getByTestId('cardio-complete-badge')).toBeTruthy();
+    expect(done.queryByTestId('cardio-log-ring')).toBeNull();
+
+    const current = renderWithState('current');
+    expect(current.getByTestId('cardio-log-ring')).toBeTruthy();
+    expect(current.queryByTestId('cardio-complete-badge')).toBeNull();
+
+    const upcoming = renderWithState('upcoming');
+    expect(upcoming.getByTestId('cardio-upcoming-ring')).toBeTruthy();
+    expect(upcoming.queryByTestId('cardio-log-ring')).toBeNull();
   });
 
   it('renders flat text in view mode', () => {

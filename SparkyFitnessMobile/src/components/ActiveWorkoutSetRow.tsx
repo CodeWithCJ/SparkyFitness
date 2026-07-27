@@ -1,23 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Platform,
   Pressable,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
-import FormInput from './FormInput';
-import CompletionCheck from './CompletionCheck';
+import CompletionCheck, { LogCircle } from './CompletionCheck';
 import {
+  SetCellInput,
   SetSwipeDeleteAction,
   type SetInputField,
   type SetRowAccessoryHandle,
@@ -183,150 +176,6 @@ interface ActiveWorkoutSetRowProps {
    * Next/Log/advance to the focused row. Called with `null` on unmount.
    */
   onRegisterAccessoryHandle?: (key: string, handle: SetRowAccessoryHandle | null) => void;
-}
-
-/** Pulsing accent ring — the tap-to-log target on the current row. */
-function LogCircle({ color }: { color: string }) {
-  const pulse = useSharedValue(1);
-  useEffect(() => {
-    pulse.value = withRepeat(withTiming(0.45, { duration: 800 }), -1, true);
-    return () => {
-      pulse.value = 1;
-    };
-  }, [pulse]);
-  const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
-  return (
-    <Animated.View
-      style={[style, { borderColor: color }]}
-      className="h-7 w-7 rounded-full border-2 items-center justify-center"
-    >
-      <View className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
-    </Animated.View>
-  );
-}
-
-/**
- * Plain number cell used for the weight/reps/RPE inputs on a set row (both
- * `live` and `edit`). Replaces the `−/number/+` stepper: tap to type, with an
- * accent focus ring. Delegates to {@link FormInput}: on iOS its base styling
- * carries both the fontSize/lineHeight alignment fix and the themed
- * subtle→accent focus chrome; on Android the chrome moves to a wrapper View
- * and the input itself stays bone-stock (see the comment inside). The parent
- * owns the value + commit semantics.
- */
-interface SetCellInputProps {
-  value: string;
-  onChangeText: (text: string) => void;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  keyboardType: 'decimal-pad' | 'number-pad';
-  accessibilityLabel: string;
-  inputRef: React.Ref<TextInput>;
-  className?: string;
-  /** Shown while the cell is empty; the assumed value when one resolves. */
-  placeholder?: string;
-  /**
-   * Live grid cells: render as plain text (no chip background or border, the
-   * display-cell type size) until focused — every live cell is an input, but
-   * a grid of chips would read as a form, not a log. The chip chrome and
-   * accent ring come back on the focused cell only, marking the keyboard
-   * target.
-   */
-  flat?: boolean;
-  /** Tint for the input text (e.g. the RPE effort tone). */
-  textColor?: string;
-}
-
-function SetCellInput({
-  value,
-  onChangeText,
-  onFocus,
-  onBlur,
-  keyboardType,
-  accessibilityLabel,
-  inputRef,
-  className,
-  placeholder = '–',
-  flat = false,
-  textColor,
-}: SetCellInputProps) {
-  const [focused, setFocused] = useState(false);
-  const [raisedBg, borderSubtle, accentPrimary] = useCSSVariable([
-    '--color-raised',
-    '--color-border-subtle',
-    '--color-accent-primary',
-  ]) as [string, string, string];
-
-  // Android's EditText mislays its text on the first focus when it is styled
-  // like a chip — borders, vertical padding, or a forced line box shift the
-  // digits half out of view, persisting after blur (facebook/react-native
-  // #28078 family; the offset direction varies by device font). The only
-  // shape proven immune on-device is StepperInput's: a bone-stock EditText
-  // (explicit height, zero vertical padding, lineHeight = fontSize + 2, no
-  // background or border) with the chip chrome on a wrapper View. iOS keeps
-  // the chrome on the input itself.
-  const input = (
-    <FormInput
-      ref={inputRef}
-      value={value}
-      onChangeText={onChangeText}
-      onFocus={() => {
-        setFocused(true);
-        onFocus?.();
-      }}
-      onBlur={() => {
-        setFocused(false);
-        onBlur?.();
-      }}
-      keyboardType={keyboardType}
-      selectTextOnFocus
-      placeholder={placeholder}
-      accessibilityLabel={accessibilityLabel}
-      className={`text-center ${className ?? ''}`}
-      style={{
-        // Tighter than FormInput's default 12 so the cell fits the 5-column row.
-        paddingLeft: 4,
-        paddingRight: 4,
-        ...(Platform.OS === 'android'
-          ? {
-              height: 32,
-              paddingTop: 0,
-              paddingBottom: 0,
-              backgroundColor: 'transparent',
-              borderWidth: 0,
-              ...(flat ? { fontSize: 14, lineHeight: 16 } : { lineHeight: 18 }),
-            }
-          : {
-              paddingTop: 6,
-              paddingBottom: 6,
-              ...(flat ? { fontSize: 14, lineHeight: 18 } : null),
-              // Transparent (not zero-width) border so the cell doesn't shift
-              // when the focus ring appears; FormInput's own focus styling
-              // supplies the raised background + accent border while focused.
-              ...(flat && !focused
-                ? { backgroundColor: 'transparent', borderColor: 'transparent' }
-                : null),
-            }),
-        ...(textColor != null ? { color: textColor } : null),
-      }}
-    />
-  );
-
-  if (Platform.OS !== 'android') return input;
-
-  const chipVisible = focused || !flat;
-  return (
-    <View
-      className="rounded-lg"
-      style={{
-        borderWidth: 1,
-        borderColor: chipVisible ? (focused ? accentPrimary : borderSubtle) : 'transparent',
-        backgroundColor: chipVisible ? raisedBg : 'transparent',
-      }}
-    >
-      {input}
-    </View>
-  );
 }
 
 function ActiveWorkoutSetRow({
@@ -765,7 +614,7 @@ function ActiveWorkoutSetRow({
       ? openSetTypeMenu
       : undefined;
 
-  const setNumberControl = (
+  const setNumberAnchor = (
     <View ref={setNumberRef} collapsable={false} className="w-9 items-center">
       {onPressSetType ? (
         <Pressable
@@ -780,6 +629,14 @@ function ActiveWorkoutSetRow({
         setIndicator
       )}
     </View>
+  );
+  // Duration tables spread their content columns equally (see the card's
+  // header row); the anchor view stays w-9 so the set-type menu anchors to
+  // the number itself, not the whole column.
+  const setNumberControl = durationLike ? (
+    <View className="flex-1 items-center">{setNumberAnchor}</View>
+  ) : (
+    setNumberAnchor
   );
 
   const checkControl = (() => {
@@ -864,7 +721,7 @@ function ActiveWorkoutSetRow({
   const previousCell =
     previousSet !== undefined ? (
       <Pressable
-        className="w-20 items-center py-1"
+        className={`${durationLike ? 'flex-1' : 'w-20'} items-center py-1`}
         onPress={handleFillFromPrevious}
         onLongPress={longPress}
         disabled={!canFillFromPrevious}

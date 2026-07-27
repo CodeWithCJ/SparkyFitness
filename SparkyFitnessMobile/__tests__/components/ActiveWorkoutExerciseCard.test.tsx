@@ -280,6 +280,36 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(utils.getByText('Duration (min)')).toBeTruthy();
     });
 
+    it('reports cardio form focus through onActivateSet with translated keys', () => {
+      const onActivateSet = jest.fn();
+      const utils = renderCard(true, {
+        exercise: withModality('duration_distance'),
+        onActivateSet,
+        setRenderKeys: { '101': 'rk-101' },
+      });
+      fireEvent(utils.getByLabelText('Duration in minutes for Bench Press'), 'focus');
+      expect(onActivateSet).toHaveBeenCalledWith('rk-101', 'duration');
+      fireEvent(utils.getByLabelText('Distance in km for Bench Press'), 'focus');
+      expect(onActivateSet).toHaveBeenCalledWith('rk-101', 'distance');
+    });
+
+    it('shows the summed duration on a collapsed duration exercise', () => {
+      const base = withModality('duration');
+      const holdSet = base.sets[0];
+      const utils = renderCard(false, {
+        mode: 'view',
+        exercise: {
+          ...base,
+          sets: [
+            { ...holdSet, weight: null, reps: null, duration: 45 },
+            // Legacy isometric row: seconds live in reps (pre-duration data).
+            { ...holdSet, id: 102, set_number: 2, weight: null, reps: 30, duration: null },
+          ],
+        },
+      });
+      expect(utils.getByText('2 sets · 1:15')).toBeTruthy();
+    });
+
     it('clamps the metric column to RPE on duration-like tables and reports it', () => {
       const utils = renderCard(true, {
         exercise: withModality('duration'),

@@ -13,7 +13,10 @@ import SafeImage from './SafeImage';
 import CompletionCheck from './CompletionCheck';
 import FormInput from './FormInput';
 import RestPeriodChip from './RestPeriodChip';
-import ActiveWorkoutSetRow, { type SetRowAccessoryHandle } from './ActiveWorkoutSetRow';
+import ActiveWorkoutSetRow, {
+  type SetRowAccessoryHandle,
+  type SetRowState,
+} from './ActiveWorkoutSetRow';
 import type { SetInputField } from './SetRowChrome';
 import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
 import CardioEffortForm from './CardioEffortForm';
@@ -25,10 +28,12 @@ import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
 import {
   CATEGORY_ICON_MAP,
   compareSetRecords,
+  effectiveSetDurationSec,
+  formatDurationSeconds,
   formatVolume,
   getExerciseVolumeKg,
-  isCardioModality,
   isDurationModality,
+  rendersCardioEffortForm,
   resolveAssumedSetValues,
   resolveSnapshotModality,
   setTypeLetter,
@@ -270,10 +275,9 @@ function ActiveWorkoutExerciseCard({
   // Resolved once per exercise; every row and the column header derive from it.
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const durationLike = isDurationModality(modality);
-  // A ≤1-set cardio exercise renders the Duration+Distance form instead of a
-  // set table; multi-set cardio (imports, future intervals) keeps the table.
   const cardioForm =
-    cardioFormEnabled && isCardioModality(modality) && exercise.sets.length <= 1;
+    cardioFormEnabled &&
+    rendersCardioEffortForm(exercise.exercise_snapshot, exercise.sets.length);
   // Vol/1RM/10RM are weight-derived and always empty on duration-like tables;
   // clamp the display to RPE. Never written back to the shared preference.
   const effectiveMetricColumn = durationLike ? 'rpe' : metricColumn;
@@ -500,10 +504,30 @@ function ActiveWorkoutExerciseCard({
         cardioParts.push(`${dist} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
       }
     }
+    // Duration tables have no volume, so their collapsed line carries the
+    // summed set duration instead (legacy-aware via effectiveSetDurationSec).
+    const totalDurationSec = durationLike
+      ? exercise.sets.reduce(
+          (sum, s) =>
+            sum +
+            (effectiveSetDurationSec(
+              { duration: s.duration ?? null, reps: s.reps },
+              modality,
+            ) ?? 0),
+          0,
+        )
+      : 0;
+    const detail = durationLike
+      ? totalDurationSec > 0
+        ? ` · ${formatDurationSeconds(totalDurationSec)}`
+        : ''
+      : volumeKg > 0
+        ? ` · ${formatVolume(volumeKg, weightUnit)}`
+        : '';
     const subtitle = cardioForm
       ? cardioParts.join(' · ')
       : readOnly || isEdit || anyComplete
-        ? `${exercise.sets.length} sets${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
+        ? `${exercise.sets.length} sets${detail}`
         : `${exercise.sets.length} sets`;
 
     // The root → header row → thumb <Pressable> wrappers mirror the expanded
@@ -733,23 +757,43 @@ function ActiveWorkoutExerciseCard({
             exerciseName={name}
             mode={mode}
             distanceUnit={distanceUnit}
-            completed={
-              exercise.sets[0] != null &&
-              !!completedSetIds[String(exercise.sets[0].id)]
+            state={((): SetRowState => {
+              // Same state derivation as the table rows, so the form's log
+              // affordance matches: done check, pulsing cursor ring, or muted
+              // upcoming ring.
+              const set = exercise.sets[0];
+              if (set == null) return 'upcoming';
+              if (completedSetIds[String(set.id)]) return 'done';
+              return String(set.id) === activeSetId ? 'current' : 'upcoming';
+            })()}
+            renderKey={
+              exercise.sets[0] != null
+                ? translateSetKey(String(exercise.sets[0].id))
+                : undefined
             }
             onCommitField={onCommitField}
             onComplete={isLive ? onComplete : undefined}
             onUncomplete={isLive ? onUncomplete : undefined}
+            onActivateSet={onActivateSetKeyed}
+            onRegisterAccessoryHandle={onRegisterAccessoryHandle}
           />
         )}
 
         {!cardioForm && exercise.sets.length > 0 && (
           <View className="flex-row items-center px-1 py-1.5">
-            <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
+            {/* Duration tables have a single value column; against it the
+                5-column fixed Set/Prev widths read squished, so their content
+                columns share the width equally instead of aligning with
+                neighboring cards. Keep in sync with ActiveWorkoutSetRow. */}
+            <Text
+              className={`${durationLike ? 'flex-1' : 'w-9'} text-center text-xs font-semibold uppercase text-text-muted`}
+            >
               Set
             </Text>
             {!readOnly && (
-              <Text className="w-20 text-center text-xs font-semibold uppercase text-text-muted">
+              <Text
+                className={`${durationLike ? 'flex-1' : 'w-20'} text-center text-xs font-semibold uppercase text-text-muted`}
+              >
                 Prev
               </Text>
             )}

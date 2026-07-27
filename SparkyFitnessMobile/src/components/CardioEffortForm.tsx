@@ -1,8 +1,13 @@
-import { useCallback, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, Text, View, type TextInput } from 'react-native';
 import { useCSSVariable } from 'uniwind';
-import FormInput from './FormInput';
-import CompletionCheck from './CompletionCheck';
+import CompletionCheck, { LogCircle } from './CompletionCheck';
+import {
+  SetCellInput,
+  type SetInputField,
+  type SetRowAccessoryHandle,
+} from './SetRowChrome';
+import type { SetRowState } from './ActiveWorkoutSetRow';
 import { distanceFromKm, distanceToKm } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
 import { formatDurationSeconds, type WorkoutCardSet } from '../utils/workoutSession';
@@ -30,8 +35,12 @@ interface CardioEffortFormProps {
   exerciseName: string;
   mode: 'live' | 'view' | 'edit';
   distanceUnit: 'km' | 'miles';
-  /** Live only: the set's completion state (drives the log affordance). */
-  completed?: boolean;
+  /**
+   * Live only: the set's row state, derived by the card exactly like a table
+   * row's — it picks the same log affordance the set rows use (done check /
+   * pulsing cursor ring / muted upcoming ring).
+   */
+  state?: SetRowState;
   /**
    * Commit a duration (seconds) or distance (km) patch for the set. Live
    * commits to the store; the form lists convert back to draft text.
@@ -40,6 +49,24 @@ interface CardioEffortFormProps {
   /** Live only: the completion affordance, so the workout cursor advances. */
   onComplete?: (setId: string) => void;
   onUncomplete?: (setId: string) => void;
+  /**
+   * Stable render key for the backing set (the store's `setRenderKeys`
+   * mapping) — accessory-handle registration is keyed by it so the screen
+   * bar keeps dispatching here across an autosave id churn. Defaults to the
+   * set id.
+   */
+  renderKey?: string;
+  /**
+   * Live only: report a focused input so the screen can mark the focused set
+   * and target its sticky accessory bar. The form's field walk is
+   * duration → distance.
+   */
+  onActivateSet?: (setId: string, field: Exclude<SetInputField, 'rpe'>) => void;
+  /** Live only: register the form's accessory handle, keyed by render key. */
+  onRegisterAccessoryHandle?: (
+    key: string,
+    handle: SetRowAccessoryHandle | null,
+  ) => void;
 }
 
 /**
@@ -55,12 +82,19 @@ export default function CardioEffortForm({
   exerciseName,
   mode,
   distanceUnit,
-  completed = false,
+  state = 'upcoming',
   onCommitField,
   onComplete,
   onUncomplete,
+  renderKey,
+  onActivateSet,
+  onRegisterAccessoryHandle,
 }: CardioEffortFormProps) {
-  const successColor = String(useCSSVariable('--color-icon-success'));
+  const [accentPrimary, textMuted] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-muted',
+  ]) as [string, string];
+  const completed = state === 'done';
   const distanceLabel = distanceUnit === 'miles' ? 'mi' : 'km';
 
   const setId = set != null ? String(set.id) : null;
@@ -145,6 +179,49 @@ export default function CardioEffortForm({
     onUncomplete,
   ]);
 
+  // Log from the accessory bar: adopt what's on screen, then complete. The
+  // bar only offers Log while the set is uncompleted.
+  const handleLog = useCallback(() => {
+    if (setId == null) return;
+    commitMinutes(minutesDraft);
+    commitDistance(distanceDraft);
+    if (!completed) onComplete?.(setId);
+  }, [
+    setId,
+    minutesDraft,
+    distanceDraft,
+    commitMinutes,
+    commitDistance,
+    completed,
+    onComplete,
+  ]);
+  const handleLogRef = useRef(handleLog);
+  useEffect(() => {
+    handleLogRef.current = handleLog;
+  });
+
+  const durationInputRef = useRef<TextInput>(null);
+  const distanceInputRef = useRef<TextInput>(null);
+
+  // Register the form's accessory handle (live only) so the screen's sticky
+  // keyboard bar can dispatch Next/Log to the focused field, exactly like a
+  // set row. `advance` is deliberately inert: the form owns exactly one set,
+  // and adding another from the bar would flip the exercise to the fallback
+  // set table.
+  useEffect(() => {
+    if (mode !== 'live' || onRegisterAccessoryHandle == null || setId == null) return;
+    const key = renderKey ?? setId;
+    onRegisterAccessoryHandle(key, {
+      log: () => handleLogRef.current(),
+      focusField: (field) => {
+        const ref = field === 'distance' ? distanceInputRef : durationInputRef;
+        ref.current?.focus();
+      },
+      advance: () => {},
+    });
+    return () => onRegisterAccessoryHandle(key, null);
+  }, [mode, renderKey, setId, onRegisterAccessoryHandle]);
+
   if (mode === 'view') {
     const parts: string[] = [];
     if (set?.duration != null) parts.push(formatDurationSeconds(set.duration));
@@ -168,38 +245,48 @@ export default function CardioEffortForm({
 
   return (
     <View className="mt-2 px-1 pb-2 flex-row items-end gap-3">
-      <View className="flex-1">
-        <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
+      <View className="flex-1 items-center">
+        <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
           Duration (min)
         </Text>
-        <FormInput
+        <SetCellInput
+          inputRef={durationInputRef}
           value={minutesDraft}
           onChangeText={handleMinutesChange}
-          onFocus={() => setFocusedField('duration')}
+          onFocus={() => {
+            setFocusedField('duration');
+            if (mode === 'live' && setId != null) onActivateSet?.(setId, 'duration');
+          }}
           onBlur={() => {
             setFocusedField(null);
             commitMinutes(minutesDraft);
           }}
           keyboardType="decimal-pad"
-          placeholder="–"
           accessibilityLabel={`Duration in minutes for ${exerciseName}`}
+          className="w-16"
+          flat
         />
       </View>
-      <View className="flex-1">
-        <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
+      <View className="flex-1 items-center">
+        <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
           Distance ({distanceLabel})
         </Text>
-        <FormInput
+        <SetCellInput
+          inputRef={distanceInputRef}
           value={distanceDraft}
           onChangeText={handleDistanceChange}
-          onFocus={() => setFocusedField('distance')}
+          onFocus={() => {
+            setFocusedField('distance');
+            if (mode === 'live' && setId != null) onActivateSet?.(setId, 'distance');
+          }}
           onBlur={() => {
             setFocusedField(null);
             commitDistance(distanceDraft);
           }}
           keyboardType="decimal-pad"
-          placeholder="–"
           accessibilityLabel={`Distance in ${distanceLabel} for ${exerciseName}`}
+          className="w-16"
+          flat
         />
       </View>
       {mode === 'live' && onComplete != null && (
@@ -214,16 +301,16 @@ export default function CardioEffortForm({
           className="pb-1"
         >
           {completed ? (
-            <CompletionCheck size={36} testID="cardio-complete-badge" />
+            <CompletionCheck size={28} testID="cardio-complete-badge" />
+          ) : state === 'current' ? (
+            <View testID="cardio-log-ring">
+              <LogCircle color={accentPrimary} />
+            </View>
           ) : (
             <View
-              className="items-center justify-center rounded-full"
-              style={{
-                width: 36,
-                height: 36,
-                borderWidth: 2,
-                borderColor: successColor,
-              }}
+              testID="cardio-upcoming-ring"
+              className="h-7 w-7 rounded-full border-2 items-center justify-center"
+              style={{ borderColor: textMuted }}
             />
           )}
         </Pressable>

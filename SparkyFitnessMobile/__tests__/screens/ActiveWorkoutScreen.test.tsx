@@ -76,17 +76,35 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
         />
         {props.exercise.sets.map((set: any) => {
           const key = String(set.id);
+          const registerHandle = () => {
+            const handle = { log: jest.fn(), focusField: jest.fn(), advance: jest.fn() };
+            mockAccessoryHandles[key] = handle;
+            props.onRegisterAccessoryHandle?.(key, handle);
+          };
           return (
-            <Pressable
-              key={key}
-              testID={`focus-rpe-${key}`}
-              onPress={() => {
-                const handle = { log: jest.fn(), focusField: jest.fn(), advance: jest.fn() };
-                mockAccessoryHandles[key] = handle;
-                props.onRegisterAccessoryHandle?.(key, handle);
-                props.onActivateRpe?.(key);
-              }}
-            />
+            <React.Fragment key={key}>
+              <Pressable
+                testID={`focus-rpe-${key}`}
+                onPress={() => {
+                  registerHandle();
+                  props.onActivateRpe?.(key);
+                }}
+              />
+              <Pressable
+                testID={`focus-duration-${key}`}
+                onPress={() => {
+                  registerHandle();
+                  props.onActivateSet?.(key, 'duration');
+                }}
+              />
+              <Pressable
+                testID={`focus-distance-${key}`}
+                onPress={() => {
+                  registerHandle();
+                  props.onActivateSet?.(key, 'distance');
+                }}
+              />
+            </React.Fragment>
           );
         })}
       </View>
@@ -311,6 +329,29 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     expect(sheetItemKeys()).not.toContain('clear');
   });
 
+  it('omits Clear logged sets for a completed cardio effort form', () => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    const cardio = makeExercise('ex-d', 'Running', [
+      makeSet(401, {
+        completed_at: '2026-07-01T10:00:00.000Z',
+        reps: null,
+        weight: null,
+        duration: 1800,
+        distance: 5,
+      }),
+    ]);
+    cardio.exercise_snapshot.modality = 'duration_distance';
+    session.exercises.push(cardio);
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByTestId } = renderScreen();
+
+    fireEvent.press(getByTestId('card-ex-d-overflow'));
+
+    expect(mockSheet.props?.title).toBe('Running');
+    expect(sheetItemKeys()).not.toContain('clear');
+  });
+
   it('swaps to the candidate pick list in place and back', () => {
     const { getByTestId } = renderScreen();
     fireEvent.press(getByTestId('card-ex-a-overflow'));
@@ -386,6 +427,56 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
     expect(queryByText('Next Set')).toBeNull();
     fireEvent.press(getByText('Log'));
     expect(mockAccessoryHandles['102'].log).toHaveBeenCalledTimes(1);
+  });
+
+  const startWithCardio = (completed: boolean) => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    const cardio = makeExercise('ex-d', 'Running', [
+      makeSet(401, {
+        completed_at: completed ? '2026-07-01T10:00:00.000Z' : null,
+        reps: null,
+        weight: null,
+        duration: 1800,
+        distance: 5,
+      }),
+    ]);
+    cardio.exercise_snapshot.modality = 'duration_distance';
+    session.exercises.push(cardio);
+    useActiveWorkoutStore.getState().startWorkout(session);
+  };
+
+  it('walks Next from a cardio duration field to distance', () => {
+    startWithCardio(false);
+    const { getByTestId, getByText } = renderScreen();
+
+    fireEvent.press(getByTestId('focus-duration-401'));
+    fireEvent.press(getByText('Next'));
+
+    expect(mockAccessoryHandles['401'].focusField).toHaveBeenCalledWith('distance');
+  });
+
+  it('offers Log on an uncompleted cardio distance field, never Next Set', () => {
+    startWithCardio(false);
+    const { getByTestId, getByText, queryByText } = renderScreen();
+
+    fireEvent.press(getByTestId('focus-distance-401'));
+
+    expect(queryByText('Next')).toBeNull();
+    expect(queryByText('Next Set')).toBeNull();
+    fireEvent.press(getByText('Log'));
+    expect(mockAccessoryHandles['401'].log).toHaveBeenCalledTimes(1);
+  });
+
+  it('ends a completed cardio bar at Done — no Next Set into a second set', () => {
+    startWithCardio(true);
+    const { getByTestId, queryByText } = renderScreen();
+
+    fireEvent.press(getByTestId('focus-distance-401'));
+
+    expect(queryByText('Next')).toBeNull();
+    expect(queryByText('Next Set')).toBeNull();
+    expect(queryByText('Log')).toBeNull();
   });
 });
 

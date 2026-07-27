@@ -20,6 +20,7 @@ import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
 import {
   draftExerciseToCardExercise,
   exerciseFromDraft,
+  rendersCardioEffortForm,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { SetInputField, SetRowAccessoryHandle } from './SetRowChrome';
@@ -92,7 +93,8 @@ interface WorkoutFormExerciseListProps {
   onReplaceExercise?: (clientId: string) => void;
   /**
    * Enables the ⋮ "Clear logged sets" item, shown only when the exercise has
-   * a completed set (workout edit). Absent for forms whose drafts never carry
+   * a completed set and renders a set table — cardio-effort-form exercises
+   * hide it (workout edit). Absent for forms whose drafts never carry
    * completions.
    */
   clearExerciseCompletions?: (clientId: string) => void;
@@ -504,7 +506,14 @@ const WorkoutFormExerciseList = forwardRef<
     }
     if (clearExerciseCompletions) {
       const target = exercises.find(e => e.clientId === clientId);
-      if (target?.sets.some(s => s.completedAt != null)) {
+      // The cardio effort form shows no completion state in the forms, so a
+      // Clear item there would toggle something invisible.
+      const card = cardExercises.find(c => c.id === clientId);
+      const cardioForm =
+        cardioFormEnabled &&
+        card != null &&
+        rendersCardioEffortForm(card.exercise_snapshot, card.sets.length);
+      if (!cardioForm && target?.sets.some(s => s.completedAt != null)) {
         items.push({
           key: 'clear',
           label: 'Clear logged sets',
@@ -526,6 +535,8 @@ const WorkoutFormExerciseList = forwardRef<
   }, [
     overflowMenu,
     exercises,
+    cardExercises,
+    cardioFormEnabled,
     supersetRuns,
     supersetWith,
     ungroupExercise,
