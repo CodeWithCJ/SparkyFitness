@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { View, Text, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import NotificationPermissionBanner, {
+  type NotificationPermissionBannerHandle,
+} from '../components/NotificationPermissionBanner';
 import {
   useThemePreference,
   setThemePreference,
   type ThemePreference,
 } from '../services/themeService';
-import { setNotificationsEnabled } from '../services/notifications';
+import {
+  requestNotificationPermissionWithGuidance,
+  setNotificationsEnabled,
+} from '../services/notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -50,6 +56,30 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   );
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const bannerRef = useRef<NotificationPermissionBannerHandle>(null);
+
+  const handleNotificationsToggle = useCallback(async (value: boolean) => {
+    if (!value) {
+      await setNotificationsEnabled(false);
+      return;
+    }
+    await setNotificationsEnabled(true);
+    await requestNotificationPermissionWithGuidance();
+    bannerRef.current?.refresh();
+  }, []);
+
+  const handleMedicationRemindersToggle = useCallback(
+    async (value: boolean) => {
+      if (!value) {
+        setMedicationRemindersEnabled(false);
+        return;
+      }
+      await requestNotificationPermissionWithGuidance();
+      bannerRef.current?.refresh();
+      setMedicationRemindersEnabled(true);
+    },
+    [setMedicationRemindersEnabled],
+  );
 
   const header = useScreenHeader({ title: 'App Settings', left: { kind: 'back' } });
 
@@ -63,6 +93,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
+        <NotificationPermissionBanner ref={bannerRef} />
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
@@ -76,6 +107,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
             />
           </View>
         </View>
+
         {supportsLiquidGlassTabBar && (
           <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
             <View className="flex-row justify-between items-center">
@@ -97,7 +129,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
             <Text className="text-base text-text-primary">Notifications</Text>
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={handleNotificationsToggle}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
             />
@@ -107,37 +139,39 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
           </Text>
         </View>
 
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Medication Reminders</Text>
-            <Switch
-              value={medicationRemindersEnabled}
-              onValueChange={setMedicationRemindersEnabled}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
-              disabled={!notificationsEnabled}
-            />
+        {notificationsEnabled && (
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base text-text-primary">Medication Reminders</Text>
+              <Switch
+                value={medicationRemindersEnabled}
+                onValueChange={handleMedicationRemindersToggle}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <Text className="text-text-secondary text-sm mt-2">
+              Reminders for scheduled medications.
+            </Text>
           </View>
-          <Text className="text-text-secondary text-sm mt-2">
-            Reminders for scheduled medications.
-          </Text>
-        </View>
+        )}
 
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Repeat Reminders</Text>
-            <Switch
-              value={medicationReminderRepeats}
-              onValueChange={setMedicationReminderRepeats}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
-              disabled={!medicationRemindersEnabled}
-            />
+        {medicationRemindersEnabled && (
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base text-text-primary">Repeat Reminders</Text>
+              <Switch
+                value={medicationReminderRepeats}
+                onValueChange={setMedicationReminderRepeats}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <Text className="text-text-secondary text-sm mt-2">
+              Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.
+            </Text>
           </View>
-          <Text className="text-text-secondary text-sm mt-2">
-            Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.
-          </Text>
-        </View>
+        )}
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">

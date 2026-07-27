@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 
 import { getTodayDate } from '../utils/dateUtils';
 import { getDueDosesForDate } from '@workspace/shared';
-import { ensureNotificationPermission, MEDICATION_REMINDER_CATEGORY, MEDICATION_REMINDER_CHANNEL_ID } from './notifications';
+import { hasNotificationPermission, MEDICATION_REMINDER_CATEGORY, MEDICATION_REMINDER_CHANNEL_ID } from './notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { MedicationDetail, MedicationEntry } from '../types/medications';
 import { addLog } from './LogService';
@@ -83,8 +83,15 @@ export async function reconcileMedicationReminders(
       return;
     }
 
-    const granted = await ensureNotificationPermission();
-    if (!granted) return;
+    const granted = await hasNotificationPermission();
+    if (!granted) {
+      const all = await Notifications.getAllScheduledNotificationsAsync();
+      const medIds = all
+        .filter((n) => n.content.data?.medicationId)
+        .map((n) => n.identifier);
+      if (medIds.length > 0) await cancelReminders(medIds);
+      return;
+    }
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {

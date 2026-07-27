@@ -40,6 +40,7 @@ import FastingCard from '../components/FastingCard';
 import CycleCard from '../components/CycleCard';
 import FastingGoalReconciler from '../components/FastingGoalReconciler';
 import MedicationsCard from '../components/MedicationsCard';
+import NotificationPermissionBanner from '../components/NotificationPermissionBanner';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -279,6 +280,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor || '#3B82F6'} />
         }
       >
+        <NotificationPermissionBanner />
+
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || goal > 0) && (
           <CalorieRingCard
             caloriesConsumed={eaten}

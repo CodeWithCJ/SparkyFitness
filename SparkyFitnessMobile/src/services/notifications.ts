@@ -1,4 +1,4 @@
-import { Alert, Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
@@ -23,6 +23,8 @@ export const COMPLETE_SET_ACTION = 'complete-set';
 export const MEDICATION_REMINDER_CATEGORY = 'medication-reminder';
 export const MEDICATION_TAKEN_ACTION = 'medication-taken';
 export const MEDICATION_SKIP_ACTION = 'medication-skip';
+
+export type AppNotificationPermission = 'granted' | 'denied' | 'undetermined';
 
 let initialized = false;
 let hasShownDeniedToast = false;
@@ -127,6 +129,98 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   }
 }
 
+export async function hasNotificationPermission(): Promise<boolean> {
+  return (await getNotificationPermissionStatus()) === 'granted';
+}
+
+export async function getNotificationPermissionStatus(): Promise<AppNotificationPermission> {
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.status === 'granted') return 'granted';
+    if (current.status === 'denied') return 'denied';
+    return 'undetermined';
+  } catch (err) {
+    addLog(`getNotificationPermissionStatus failed: ${(err as Error).message}`, 'ERROR');
+    return 'undetermined';
+  }
+}
+
+export async function openSystemNotificationSettings(): Promise<void> {
+  try {
+    if (Platform.OS === 'ios') {
+      try {
+        await Linking.openURL('app-settings:root=NOTIFICATIONS_ID');
+        return;
+      } catch (err) {
+        addLog(
+          `Direct notification-settings deep-link failed, falling back to app-settings:: ${(err as Error).message}`,
+          'WARNING',
+        );
+        await Linking.openURL('app-settings:');
+      }
+      return;
+    }
+    await Linking.openSettings();
+  } catch (err) {
+    addLog(`openSystemNotificationSettings failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
+function showNotificationsDisabledAlert(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    Alert.alert(
+      'Notification permission needed',
+      "SparkyFitness can't deliver alerts without notification permission. Tap Open Settings to grant it, or disable notifications to continue without alerts.",
+      [
+        { text: 'Not Now', style: 'cancel', onPress: () => resolve() },
+        {
+          text: 'Disable notifications',
+          style: 'destructive',
+          onPress: () => {
+            void setNotificationsEnabled(false).finally(() => resolve());
+          },
+        },
+        {
+          text: 'Open Settings',
+          onPress: () => {
+            void openSystemNotificationSettings().finally(() => resolve());
+          },
+        },
+      ],
+    );
+  });
+}
+
+export async function requestNotificationPermissionWithGuidance(): Promise<AppNotificationPermission> {
+  let currentStatus: AppNotificationPermission;
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.status === 'granted') return 'granted';
+    currentStatus = current.status === 'denied' ? 'denied' : 'undetermined';
+  } catch (err) {
+    addLog(`requestNotificationPermissionWithGuidance probe failed: ${(err as Error).message}`, 'ERROR');
+    return 'undetermined';
+  }
+
+  if (currentStatus === 'denied') {
+    await showNotificationsDisabledAlert();
+    return 'denied';
+  }
+
+  try {
+    const requested = await Notifications.requestPermissionsAsync();
+    if (requested.status === 'granted') return 'granted';
+    await showNotificationsDisabledAlert();
+    return requested.status === 'denied' ? 'denied' : 'undetermined';
+  } catch (err) {
+    addLog(
+      `Notifications.requestPermissionsAsync failed: ${(err as Error).message}`,
+      'ERROR',
+    );
+    return 'undetermined';
+  }
+}
+
 /**
  * One-time Android prompt for the "Alarms & reminders" special access.
  * Without it, expo-notifications schedules inexact alarms that the OS batches
@@ -137,8 +231,7 @@ export async function maybePromptForExactAlarmPermission(): Promise<void> {
   if (!ExactAlarmBridge.isAvailable) return;
   if (!useAppPreferencesStore.getState().notificationsEnabled) return;
   try {
-    const current = await Notifications.getPermissionsAsync();
-    if (current.status !== 'granted') return;
+    if (!(await hasNotificationPermission())) return;
     if (await ExactAlarmBridge.canScheduleExactAlarms()) return;
     if ((await AsyncStorage.getItem(EXACT_ALARM_PROMPT_KEY)) === 'true') return;
     await AsyncStorage.setItem(EXACT_ALARM_PROMPT_KEY, 'true');
