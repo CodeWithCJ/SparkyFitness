@@ -16,16 +16,18 @@ import RestPeriodChip from './RestPeriodChip';
 import ActiveWorkoutSetRow, { type SetRowAccessoryHandle } from './ActiveWorkoutSetRow';
 import type { SetInputField } from './SetRowChrome';
 import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
+import CardioEffortForm from './CardioEffortForm';
 import WorkoutNotesField from './WorkoutNotesField';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
-import { weightFromKg } from '../utils/unitConversions';
+import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
 import {
   CATEGORY_ICON_MAP,
   compareSetRecords,
   formatVolume,
   getExerciseVolumeKg,
+  isCardioModality,
   isDurationModality,
   resolveAssumedSetValues,
   resolveSnapshotModality,
@@ -61,6 +63,16 @@ interface ActiveWorkoutExerciseCardProps {
   activeSetId: string | null;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
+  distanceUnit?: 'km' | 'miles';
+  /**
+   * False keeps cardio (`duration_distance`) exercises on the duration-style
+   * set table — the preset surfaces, whose sets have no distance column. When
+   * true (default), a cardio exercise with at most one set renders the
+   * Duration+Distance form instead of a set table; multi-set cardio entries
+   * (imports, future intervals) still fall back to the table so no rows are
+   * hidden.
+   */
+  cardioFormEnabled?: boolean;
   getImageSource: GetImageSource;
   /**
    * 'view' renders the read-only variant (workout detail): no logging,
@@ -99,7 +111,12 @@ interface ActiveWorkoutExerciseCardProps {
   onPressThumb?: (entryId: string) => void;
   onToggleExpanded: (entryId: string) => void;
   onPressRestChip?: (entryId: string, currentSec: number | null) => void;
-  onPressMetricHeader: (anchor: AnchorRect) => void;
+  /**
+   * `clampedToRpe` is true when this card's metric column is display-clamped
+   * to RPE (duration-like tables, where the weight metrics are always empty);
+   * owners restrict the shared MetricColumnMenu accordingly.
+   */
+  onPressMetricHeader: (anchor: AnchorRect, clampedToRpe: boolean) => void;
   onPressOverflow?: (entryId: string) => void;
   onComplete?: (setId: string) => void;
   onUncomplete?: (setId: string) => void;
@@ -205,6 +222,8 @@ function ActiveWorkoutExerciseCard({
   activeSetId,
   metricColumn,
   weightUnit,
+  distanceUnit = 'km',
+  cardioFormEnabled = true,
   getImageSource,
   mode = 'live',
   excludePresetEntryId,
@@ -251,6 +270,13 @@ function ActiveWorkoutExerciseCard({
   // Resolved once per exercise; every row and the column header derive from it.
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const durationLike = isDurationModality(modality);
+  // A ≤1-set cardio exercise renders the Duration+Distance form instead of a
+  // set table; multi-set cardio (imports, future intervals) keeps the table.
+  const cardioForm =
+    cardioFormEnabled && isCardioModality(modality) && exercise.sets.length <= 1;
+  // Vol/1RM/10RM are weight-derived and always empty on duration-like tables;
+  // clamp the display to RPE. Never written back to the shared preference.
+  const effectiveMetricColumn = durationLike ? 'rpe' : metricColumn;
   // Live and edit fetch the stats baseline with the active/edited session
   // excluded so its own sets don't pollute it. View mode fetches only when the
   // owner supplies the viewed session's id to exclude — without it (e.g. the
@@ -402,7 +428,9 @@ function ActiveWorkoutExerciseCard({
 
   const metricAnchorRef = useRef<View>(null);
   const openMetricMenu = () => {
-    measureAnchoredMenuTrigger(metricAnchorRef.current, onPressMetricHeader);
+    measureAnchoredMenuTrigger(metricAnchorRef.current, (anchor) =>
+      onPressMetricHeader(anchor, durationLike),
+    );
   };
 
   const openOverflowMenu = () => onPressOverflow?.(exercise.id);
@@ -457,9 +485,24 @@ function ActiveWorkoutExerciseCard({
     const volumeKg = getExerciseVolumeKg(exercise);
     // "planned" describes a live workout that hasn't reached the exercise yet;
     // historical/imported workouts (view mode) and form drafts (edit mode)
-    // never show it.
-    const subtitle =
-      readOnly || isEdit || anyComplete
+    // never show it. A cardio form card summarizes its effort instead of a
+    // set count.
+    const cardioParts: string[] = [];
+    if (cardioForm) {
+      const firstCardioSet = exercise.sets[0];
+      if (firstCardioSet?.duration != null) {
+        cardioParts.push(`${parseFloat((firstCardioSet.duration / 60).toFixed(1))} min`);
+      }
+      if (firstCardioSet?.distance != null) {
+        const dist = parseFloat(
+          distanceFromKm(firstCardioSet.distance, distanceUnit).toFixed(2),
+        );
+        cardioParts.push(`${dist} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
+      }
+    }
+    const subtitle = cardioForm
+      ? cardioParts.join(' · ')
+      : readOnly || isEdit || anyComplete
         ? `${exercise.sets.length} sets${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
         : `${exercise.sets.length} sets`;
 
@@ -595,12 +638,15 @@ function ActiveWorkoutExerciseCard({
           </View>
         )}
 
-        {(showRestChip || bestDisplay != null || caloriesField || caloriesText != null) && (
+        {((showRestChip && !cardioForm) ||
+          bestDisplay != null ||
+          caloriesField ||
+          caloriesText != null) && (
           // flex-wrap + gap-y so the rest chip and "Best" stack gracefully on
           // narrow screens instead of shifting off the edge. "Last" lives in the
           // per-set PREVIOUS column, not here.
           <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1 px-1">
-            {showRestChip && (
+            {showRestChip && !cardioForm && (
               <RestPeriodChip
                 value={exercise.sets[0]?.rest_time}
                 readOnly={readOnly}
@@ -681,7 +727,23 @@ function ActiveWorkoutExerciseCard({
           </View>
         )}
 
-        {exercise.sets.length > 0 && (
+        {cardioForm && (
+          <CardioEffortForm
+            set={exercise.sets[0] ?? null}
+            exerciseName={name}
+            mode={mode}
+            distanceUnit={distanceUnit}
+            completed={
+              exercise.sets[0] != null &&
+              !!completedSetIds[String(exercise.sets[0].id)]
+            }
+            onCommitField={onCommitField}
+            onComplete={isLive ? onComplete : undefined}
+            onUncomplete={isLive ? onUncomplete : undefined}
+          />
+        )}
+
+        {!cardioForm && exercise.sets.length > 0 && (
           <View className="flex-row items-center px-1 py-1.5">
             <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
               Set
@@ -719,7 +781,7 @@ function ActiveWorkoutExerciseCard({
                   className="text-xs font-semibold uppercase"
                   style={{ color: accentPrimary }}
                 >
-                  {METRIC_COLUMN_LABELS[metricColumn]}
+                  {METRIC_COLUMN_LABELS[effectiveMetricColumn]}
                 </Text>
                 <Icon name="chevron-down" size={10} color={accentPrimary} />
               </Pressable>
@@ -728,7 +790,7 @@ function ActiveWorkoutExerciseCard({
           </View>
         )}
 
-        {exercise.sets.map((set, index) => {
+        {!cardioForm && exercise.sets.map((set, index) => {
           const setId = String(set.id);
           // Stable across an autosave id churn (view/edit: keyed by id). Used for
           // the React key + focus/expand compares so the row instance — and its
@@ -754,7 +816,7 @@ function ActiveWorkoutExerciseCard({
                 renderKey={renderKey}
                 displayNumber={workingSetNumbers[index]}
                 state={state}
-                metricColumn={metricColumn}
+                metricColumn={effectiveMetricColumn}
                 weightUnit={weightUnit}
                 previousSet={readOnly ? undefined : (previousSessionSets?.[index] ?? null)}
                 assumed={assumedSetValues?.[index] ?? null}
@@ -797,7 +859,7 @@ function ActiveWorkoutExerciseCard({
           );
         })}
 
-        {!readOnly && (
+        {!readOnly && !cardioForm && (
           <Pressable
             onPress={() => onAddSet?.(exercise.id)}
             accessibilityRole="button"

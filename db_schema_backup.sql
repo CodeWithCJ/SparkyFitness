@@ -1570,7 +1570,8 @@ CREATE TABLE public.exercise_entry_sets (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     rpe numeric(3,1),
     completed_at timestamp with time zone,
-    is_pr boolean DEFAULT false NOT NULL
+    is_pr boolean DEFAULT false NOT NULL,
+    distance numeric
 );
 
 

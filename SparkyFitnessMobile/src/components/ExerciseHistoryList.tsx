@@ -15,6 +15,7 @@ import { formatDateLabel } from '../utils/dateUtils';
 interface ExerciseHistoryListProps {
   exerciseId: string;
   weightUnit: 'kg' | 'lbs';
+  distanceUnit?: 'km' | 'miles';
   /** The exercise's resolved modality — duration exercises chip as `45s`. */
   modality?: ExerciseModality;
   /** All-time best (from the stats endpoint) — sets tying it get the outlined chip. */
@@ -24,9 +25,10 @@ interface ExerciseHistoryListProps {
 const SetChip: React.FC<{
   set: ExerciseEntrySetResponse;
   weightUnit: 'kg' | 'lbs';
+  distanceUnit: 'km' | 'miles';
   modality?: ExerciseModality;
   bestSet?: ExerciseSetStats | null;
-}> = ({ set, weightUnit, modality, bestSet }) => {
+}> = ({ set, weightUnit, distanceUnit, modality, bestSet }) => {
   const isPr = set.is_pr === true;
   const isPrMatch = !isPr && matchesSetRecord(set, bestSet);
   const label = formatRecentSessionSet(
@@ -36,9 +38,11 @@ const SetChip: React.FC<{
       weight: set.weight,
       reps: set.reps,
       duration: set.duration,
+      distance: set.distance,
     },
     weightUnit,
     modality,
+    distanceUnit,
   );
   return (
     <View
@@ -76,9 +80,10 @@ const SessionCard: React.FC<{
   session: ExerciseSessionResponse;
   exerciseId: string;
   weightUnit: 'kg' | 'lbs';
+  distanceUnit: 'km' | 'miles';
   modality?: ExerciseModality;
   bestSet?: ExerciseSetStats | null;
-}> = ({ session, exerciseId, weightUnit, modality, bestSet }) => {
+}> = ({ session, exerciseId, weightUnit, distanceUnit, modality, bestSet }) => {
   // The history endpoint filters at the session level, so a preset session
   // still carries every exercise it contains — show only this exercise's sets.
   const entries =
@@ -87,7 +92,13 @@ const SessionCard: React.FC<{
       : [session];
   const sets = entries
     .flatMap((entry) => entry.sets)
-    .filter((set) => set.weight != null || set.reps != null || set.duration != null);
+    .filter(
+      (set) =>
+        set.weight != null ||
+        set.reps != null ||
+        set.duration != null ||
+        set.distance != null,
+    );
   const presetName = session.type === 'preset' ? session.name : null;
 
   return (
@@ -109,6 +120,7 @@ const SessionCard: React.FC<{
               key={set.id}
               set={set}
               weightUnit={weightUnit}
+              distanceUnit={distanceUnit}
               modality={modality}
               bestSet={bestSet}
             />
@@ -130,6 +142,7 @@ const SessionCard: React.FC<{
 const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   exerciseId,
   weightUnit,
+  distanceUnit = 'km',
   modality,
   bestSet,
 }) => {
@@ -171,6 +184,7 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
           session={session}
           exerciseId={exerciseId}
           weightUnit={weightUnit}
+          distanceUnit={distanceUnit}
           modality={modality}
           bestSet={bestSet}
         />

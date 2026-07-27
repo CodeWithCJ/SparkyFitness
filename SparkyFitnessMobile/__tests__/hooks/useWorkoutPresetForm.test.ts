@@ -82,7 +82,9 @@ describe('presetFormReducer', () => {
       exerciseCategory: 'strength',
       exerciseModality: null,
       images: ['bench.png'],
-      sets: [{ clientId: 's1', weight: '', reps: '', restTime: DEFAULT_REST_SEC }],
+      sets: [
+        { clientId: 's1', weight: '', reps: '', distance: '', restTime: DEFAULT_REST_SEC },
+      ],
     });
   });
 
@@ -136,6 +138,7 @@ describe('presetFormReducer', () => {
       clientId: 's3',
       weight: '110',
       reps: '3',
+      distance: '',
       duration: null,
       restTime: 120,
     });
@@ -162,7 +165,14 @@ describe('presetFormReducer', () => {
       setClientId: 's1',
     });
     expect(next.exercises[0].sets).toEqual([
-      { clientId: 's1', weight: '', reps: '', duration: null, restTime: DEFAULT_REST_SEC },
+      {
+        clientId: 's1',
+        weight: '',
+        reps: '',
+        distance: '',
+        duration: null,
+        restTime: DEFAULT_REST_SEC,
+      },
     ]);
   });
 

@@ -527,8 +527,22 @@ describe('workoutSession', () => {
     });
 
     describe('individual with multiple sets', () => {
+      // The default fixture's Cardio category would route these through the
+      // cardio/activity branch; strength-set behavior needs a strength snapshot.
+      const makeStrengthIndividual = (
+        overrides?: Partial<IndividualSession>,
+      ): IndividualSession =>
+        makeIndividual({
+          exercise_snapshot: {
+            ...makeIndividual().exercise_snapshot!,
+            name: 'Bench Press',
+            category: 'Strength',
+          },
+          ...overrides,
+        });
+
       it('shows sets count with duration and calories', () => {
-        const session = makeIndividual({
+        const session = makeStrengthIndividual({
           sets: [
             { weight: null, reps: null },
             { weight: null, reps: null },
@@ -539,7 +553,7 @@ describe('workoutSession', () => {
       });
 
       it('includes volume when sets have weight and reps', () => {
-        const session = makeIndividual({
+        const session = makeStrengthIndividual({
           sets: [
             { weight: 60, reps: 10 },  // 600 kg
             { weight: 60, reps: 8 },   // 480 kg
@@ -550,7 +564,7 @@ describe('workoutSession', () => {
       });
 
       it('converts volume to lbs', () => {
-        const session = makeIndividual({
+        const session = makeStrengthIndividual({
           sets: [
             { weight: 50, reps: 10 },  // 500 kg
             { weight: 50, reps: 10 },  // 500 kg
@@ -562,7 +576,7 @@ describe('workoutSession', () => {
       });
 
       it('omits volume when weights are zero', () => {
-        const session = makeIndividual({
+        const session = makeStrengthIndividual({
           sets: [
             { weight: 0, reps: 10 },
             { weight: 0, reps: 10 },
@@ -572,7 +586,7 @@ describe('workoutSession', () => {
       });
 
       it('omits duration when zero', () => {
-        const session = makeIndividual({
+        const session = makeStrengthIndividual({
           sets: [
             { weight: 40, reps: 10 },
             { weight: 40, reps: 10 },
@@ -583,7 +597,7 @@ describe('workoutSession', () => {
       });
 
       it('omits calories when zero', () => {
-        const session = makeIndividual({
+        const session = makeStrengthIndividual({
           sets: [
             { weight: null, reps: null },
             { weight: null, reps: null },
@@ -593,13 +607,32 @@ describe('workoutSession', () => {
       });
 
       it('shows only set count when volume, duration, and calories are all zero', () => {
-        const session = makeIndividual({
+        const session = makeStrengthIndividual({
           sets: [
             { weight: 0, reps: 0 },
             { weight: null, reps: null },
           ] as any,
         });
         expect(buildSessionSubtitle(session, 0, 0)).toBe('2 sets');
+      });
+
+      it('routes a set-backed cardio activity through the entry totals (never "1 set")', () => {
+        const session = makeIndividual({
+          distance: 5.2,
+          sets: [{ weight: null, reps: null, duration: 1800, distance: 5.2 }] as any,
+        });
+        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 5.2 km · 300 Cal');
+      });
+
+      it('routes multi-set cardio through the entry totals too', () => {
+        const session = makeIndividual({
+          distance: 4,
+          sets: [
+            { weight: null, reps: null, duration: 600, distance: 2 },
+            { weight: null, reps: null, duration: 600, distance: 2 },
+          ] as any,
+        });
+        expect(buildSessionSubtitle(session, 20, 200)).toBe('20 min · 4.0 km · 200 Cal');
       });
     });
 
@@ -648,6 +681,11 @@ describe('workoutSession', () => {
 
       it('shows set/volume info for a single-set strength session', () => {
         const session = makeIndividual({
+          exercise_snapshot: {
+            ...makeIndividual().exercise_snapshot!,
+            name: 'Bench Press',
+            category: 'Strength',
+          },
           sets: [{ weight: 100, reps: 10 }] as any,
           distance: 5,
         });
@@ -897,7 +935,7 @@ describe('workoutSession', () => {
     });
 
     it('defaults duration_minutes to 0 when the draft has none', () => {
-      const payload = buildExercisesPayload([makeDraftExercise()], 'kg');
+      const payload = buildExercisesPayload([makeDraftExercise()], 'kg', 'km');
       expect(payload[0].duration_minutes).toBe(0);
     });
 
@@ -905,6 +943,7 @@ describe('workoutSession', () => {
       const payload = buildExercisesPayload(
         [makeDraftExercise({ durationMinutes: 23.5 })],
         'kg',
+        'km',
       );
       expect(payload[0].duration_minutes).toBe(23.5);
     });
@@ -913,12 +952,14 @@ describe('workoutSession', () => {
       const seeded = buildExercisesPayload(
         [makeDraftExercise({ calories: '150', caloriesManuallySet: false })],
         'kg',
+        'km',
       );
       expect(seeded[0]).not.toHaveProperty('calories_burned');
 
       const edited = buildExercisesPayload(
         [makeDraftExercise({ calories: '150', caloriesManuallySet: true })],
         'kg',
+        'km',
       );
       expect(edited[0].calories_burned).toBe(150);
     });
@@ -927,6 +968,7 @@ describe('workoutSession', () => {
       const payload = buildExercisesPayload(
         [makeDraftExercise({ calories: '', caloriesManuallySet: true })],
         'kg',
+        'km',
       );
       expect(payload[0]).not.toHaveProperty('calories_burned');
     });
@@ -938,7 +980,7 @@ describe('workoutSession', () => {
           { clientId: 's2', weight: '90', reps: '8' },
         ],
       });
-      const payload = buildExercisesPayload([exercise], 'kg');
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
       expect(payload[0].sets[0].set_number).toBe(1);
       expect(payload[0].sets[1].set_number).toBe(2);
     });
@@ -947,7 +989,7 @@ describe('workoutSession', () => {
       const exercise = makeDraftExercise({
         sets: [{ clientId: 's1', weight: '100', reps: '10' }],
       });
-      const payload = buildExercisesPayload([exercise], 'kg');
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
       expect(payload[0].sets[0].weight).toBe(100);
       expect(payload[0].sets[0].reps).toBe(10);
     });
@@ -956,17 +998,68 @@ describe('workoutSession', () => {
       const exercise = makeDraftExercise({
         sets: [{ clientId: 's1', weight: '225', reps: '5' }],
       });
-      const payload = buildExercisesPayload([exercise], 'lbs');
+      const payload = buildExercisesPayload([exercise], 'lbs', 'km');
       // 225 lbs * 0.45359237 ≈ 102.06
       expect(payload[0].sets[0].weight).toBeCloseTo(102.058, 1);
       expect(payload[0].sets[0].reps).toBe(5);
+    });
+
+    it('emits set distance in km as-is when unit is km', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: '', reps: '', distance: '5.2', duration: 1800 }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
+      expect(payload[0].sets[0].distance).toBe(5.2);
+    });
+
+    it('converts set distance from miles to km when unit is miles', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: '', reps: '', distance: '3.1', duration: 1800 }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg', 'miles');
+      // 3.1 mi * 1.609344 ≈ 4.99
+      expect(payload[0].sets[0].distance).toBeCloseTo(4.989, 2);
+    });
+
+    it('emits null distance for empty or missing distance text', () => {
+      const exercise = makeDraftExercise({
+        sets: [
+          { clientId: 's1', weight: '100', reps: '10', distance: '' },
+          { clientId: 's2', weight: '90', reps: '8' },
+        ],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
+      expect(payload[0].sets[0].distance).toBeNull();
+      expect(payload[0].sets[1].distance).toBeNull();
+    });
+
+    it('derives cardio duration_minutes from the sets, ignoring the round-tripped value', () => {
+      const exercise = makeDraftExercise({
+        exerciseModality: 'duration_distance',
+        durationMinutes: 99,
+        sets: [
+          { clientId: 's1', weight: '', reps: '', distance: '5', duration: 1800, restTime: 0 },
+        ],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
+      expect(payload[0].duration_minutes).toBe(30);
+    });
+
+    it('keeps round-tripped duration_minutes on non-cardio exercises', () => {
+      const exercise = makeDraftExercise({
+        exerciseModality: 'weight_reps',
+        durationMinutes: 23.5,
+        sets: [{ clientId: 's1', weight: '100', reps: '10', duration: 1800 }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
+      expect(payload[0].duration_minutes).toBe(23.5);
     });
 
     it('returns null for weight when value is not a number', () => {
       const exercise = makeDraftExercise({
         sets: [{ clientId: 's1', weight: '', reps: '10' }],
       });
-      const payload = buildExercisesPayload([exercise], 'kg');
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
       expect(payload[0].sets[0].weight).toBeNull();
     });
 
@@ -974,7 +1067,7 @@ describe('workoutSession', () => {
       const exercise = makeDraftExercise({
         sets: [{ clientId: 's1', weight: '100', reps: '' }],
       });
-      const payload = buildExercisesPayload([exercise], 'kg');
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
       expect(payload[0].sets[0].reps).toBeNull();
     });
 
@@ -982,7 +1075,7 @@ describe('workoutSession', () => {
       const exercise = makeDraftExercise({
         sets: [{ clientId: 's1', weight: '', reps: '' }],
       });
-      const payload = buildExercisesPayload([exercise], 'kg');
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
       expect(payload[0].sets[0].weight).toBeNull();
       expect(payload[0].sets[0].reps).toBeNull();
     });
@@ -991,7 +1084,7 @@ describe('workoutSession', () => {
       const exercise = makeDraftExercise({
         sets: [{ clientId: 's1', weight: 'abc', reps: 'xyz' }],
       });
-      const payload = buildExercisesPayload([exercise], 'kg');
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
       expect(payload[0].sets[0].weight).toBeNull();
       expect(payload[0].sets[0].reps).toBeNull();
     });
@@ -1000,7 +1093,7 @@ describe('workoutSession', () => {
       const exercise = makeDraftExercise({
         sets: [{ clientId: 's1', weight: '62.5', reps: '8' }],
       });
-      const payload = buildExercisesPayload([exercise], 'kg');
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
       expect(payload[0].sets[0].weight).toBe(62.5);
     });
 
@@ -1008,12 +1101,12 @@ describe('workoutSession', () => {
       const exercise = makeDraftExercise({
         sets: [{ clientId: 's1', weight: '100', reps: '8.7' }],
       });
-      const payload = buildExercisesPayload([exercise], 'kg');
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
       expect(payload[0].sets[0].reps).toBe(8);
     });
 
     it('returns empty array for empty exercises', () => {
-      expect(buildExercisesPayload([], 'kg')).toEqual([]);
+      expect(buildExercisesPayload([], 'kg', 'km')).toEqual([]);
     });
 
     it('round-trips supersetGroup opaquely and defaults missing values to null', () => {
@@ -1024,6 +1117,7 @@ describe('workoutSession', () => {
           makeDraftExercise(),
         ],
         'kg',
+        'km',
       );
       expect(payload[0].superset_group).toBe(2);
       expect(payload[1].superset_group).toBeNull();
@@ -1042,6 +1136,7 @@ describe('workoutSession', () => {
           }),
         ],
         'kg',
+        'km',
       );
       expect(payload[0].sets[0].completed_at).toBe(completedAt);
       // A new form set has no completion — the server stores null.
@@ -1050,7 +1145,7 @@ describe('workoutSession', () => {
 
     it('handles exercise with empty sets array', () => {
       const exercise = makeDraftExercise({ sets: [] });
-      const payload = buildExercisesPayload([exercise], 'kg');
+      const payload = buildExercisesPayload([exercise], 'kg', 'km');
       expect(payload[0].sets).toEqual([]);
     });
 
@@ -1068,6 +1163,7 @@ describe('workoutSession', () => {
             }),
           ],
           'kg',
+          'km',
         );
         expect(payload[0]).not.toHaveProperty('id');
         expect(payload[0].sets[0]).not.toHaveProperty('id');
@@ -1093,6 +1189,7 @@ describe('workoutSession', () => {
             }),
           ],
           'kg',
+          'km',
         );
         expect((payload[0] as any).id).toBe(UUID_A);
         expect((payload[0].sets[0] as any).id).toBe(101);
@@ -1121,6 +1218,7 @@ describe('workoutSession', () => {
             }),
           ],
           'kg',
+          'km',
         );
         expect((payload[0].sets[0] as any).rest_time).toBe(120);
       });
@@ -1143,6 +1241,7 @@ describe('workoutSession', () => {
             }),
           ],
           'kg',
+          'km',
         );
         expect(payload[0].sets[0]).not.toHaveProperty('rest_time');
       });
@@ -1162,6 +1261,7 @@ describe('workoutSession', () => {
             }),
           ],
           'kg',
+          'km',
         );
         expect(payload[0]).not.toHaveProperty('id');
         expect(payload[0].sets[0]).not.toHaveProperty('id');
@@ -1181,6 +1281,7 @@ describe('workoutSession', () => {
             }),
           ],
           'kg',
+          'km',
         );
         expect(payload[0].sets[0].set_type).toBeNull();
         expect(payload[0].sets[0].duration).toBeNull();
@@ -1206,6 +1307,7 @@ describe('workoutSession', () => {
             }),
           ],
           'kg',
+          'km',
         );
         expect(payload[0].sets[0].set_type).toBe('warmup');
         expect(payload[0].sets[0].duration).toBe(45);
@@ -1224,6 +1326,7 @@ describe('workoutSession', () => {
             }),
           ],
           'kg',
+          'km',
         );
         expect(payload[0].sets[0].is_pr).toBe(true);
         expect(payload[0].sets[1].is_pr).toBe(false);
@@ -1460,6 +1563,7 @@ describe('workoutSession', () => {
         const card = draftExerciseToCardExercise(
           makeDraftExercise({ supersetGroup: 2 }),
           'kg',
+          'km',
         );
         expect(card.id).toBe('c1');
         expect(card.exercise_id).toBe('ex-1');
@@ -1486,6 +1590,7 @@ describe('workoutSession', () => {
         const card = draftExerciseToCardExercise(
           makeDraftExercise({ snapshot: snapshot as never }),
           'kg',
+          'km',
         );
         expect(card.exercise_snapshot).toBe(snapshot);
       });
@@ -1494,6 +1599,7 @@ describe('workoutSession', () => {
         const card = draftExerciseToCardExercise(
           makeDraftExercise({ sets: [{ clientId: 's1', weight: '', reps: '' }] }),
           'kg',
+          'km',
         );
         expect(card.sets[0].weight).toBeNull();
         expect(card.sets[0].reps).toBeNull();
@@ -1526,6 +1632,7 @@ describe('workoutSession', () => {
             ],
           }),
           'kg',
+          'km',
         );
         expect(card.sets[0].set_type).toBe('warmup');
         expect(card.sets[0].rpe).toBe(8.5);
@@ -1667,6 +1774,7 @@ describe('workoutSession', () => {
         reps: 12,
         weight: 40,
         duration: null,
+        distance: null,
         rest_time: 90,
         notes: null,
         rpe: null,
@@ -1680,6 +1788,7 @@ describe('workoutSession', () => {
         reps: 10,
         weight: 60,
         duration: null,
+        distance: null,
         rest_time: 90,
         notes: 'felt heavy',
         rpe: 9,
@@ -1834,6 +1943,74 @@ describe('workoutSession', () => {
         const payload = buildSessionExercisesPayload(session, { '101': min(10) }, {});
         expect(payload[0].duration_minutes).toBe(25);
       });
+
+      const cardioSnapshot = {
+        modality: 'duration_distance',
+      } as SessionExercise['exercise_snapshot'];
+
+      it('excludes cardio entries from the split; their duration is the set sum', () => {
+        const session = makePreset({
+          exercises: [
+            makeExercise({
+              sets: [makeSet({ id: 101 }), makeSet({ id: 102, set_number: 2 })],
+            }),
+            makeExercise({
+              id: ENTRY_B,
+              exercise_id: EX_2,
+              exercise_snapshot: cardioSnapshot,
+              sets: [
+                makeSet({
+                  id: 201,
+                  reps: null,
+                  weight: null,
+                  duration: 1800,
+                  rest_time: 0,
+                  distance: 5.2,
+                }),
+              ],
+            }),
+          ],
+        });
+
+        // The cardio set completed last: without the exclusion it would both
+        // join the split and stretch the strength entries' span.
+        const completed = { '101': min(5), '102': min(12), '201': min(45) };
+        const payload = buildSessionExercisesPayload(session, completed, {}, startedAt);
+        expect(payload[0].duration_minutes).toBe(12); // full strength span
+        expect(payload[1].duration_minutes).toBe(30); // 1800s set sum
+      });
+
+      it('derives a cardio-only session from its sets even though the split yields null', () => {
+        const session = makePreset({
+          exercises: [
+            makeExercise({
+              exercise_snapshot: cardioSnapshot,
+              duration_minutes: 0,
+              sets: [
+                makeSet({ id: 101, reps: null, weight: null, duration: 1500, rest_time: 0 }),
+              ],
+            }),
+          ],
+        });
+        const payload = buildSessionExercisesPayload(session, { '101': min(25) }, {}, startedAt);
+        expect(payload[0].duration_minutes).toBe(25);
+      });
+    });
+
+    it('emits per-set distance and nulls it when absent', () => {
+      const session = makePreset({
+        exercises: [
+          makeExercise({
+            sets: [
+              makeSet({ id: 101, distance: 5.2 }),
+              makeSet({ id: 102, set_number: 2 }),
+            ],
+          }),
+        ],
+      });
+      const payload = buildSessionExercisesPayload(session, {}, {});
+      expect(payload[0].sets[0].distance).toBe(5.2);
+      expect(payload[0].sets[1].distance).toBeNull();
     });
 
     it('emits explicit nulls for absent exercise notes', () => {
@@ -2140,6 +2317,35 @@ describe('workoutSession', () => {
       expect(summary.volumeKg).toBe(860);
       // Only completed sets that logged an RPE: 8 and the warmup's 6.
       expect(summary.averageRpe).toBe(7);
+      expect(summary.totalDistanceKm).toBe(0);
+    });
+
+    it('accumulates completed-set distance for cardio efforts', () => {
+      const session = {
+        ...makePreset(),
+        exercises: [
+          {
+            id: 'ex-run',
+            notes: null,
+            exercise_snapshot: { name: 'Run', modality: 'duration_distance' },
+            sets: [
+              { id: 301, set_type: 'normal', weight: null, reps: null, duration: 1800, distance: 5.2, rpe: null },
+            ],
+          },
+          {
+            id: 'ex-skip',
+            notes: null,
+            exercise_snapshot: { name: 'Bike', modality: 'duration_distance' },
+            // Skipped — its distance must not count.
+            sets: [
+              { id: 302, set_type: 'normal', weight: null, reps: null, duration: 600, distance: 3, rpe: null },
+            ],
+          },
+        ],
+      } as unknown as PresetSession;
+
+      const summary = buildWorkoutCompletionSummary(session, { '301': 1_000 }, {});
+      expect(summary.totalDistanceKm).toBe(5.2);
     });
 
     it('builds per-exercise rows with top completed working set and notes', () => {
@@ -2323,6 +2529,7 @@ describe('workoutSession', () => {
                 reps: 12,
                 weight: 60,
                 duration: 45,
+                distance: null,
                 rest_time: 60,
                 notes: 'slow tempo',
                 rpe: null,
@@ -2386,6 +2593,7 @@ describe('workoutSession', () => {
             reps: null,
             weight: null,
             duration: null,
+            distance: null,
             rest_time: DEFAULT_REST_SEC,
             notes: null,
             rpe: null,
@@ -2427,6 +2635,7 @@ describe('workoutSession', () => {
                 reps: null,
                 weight: null,
                 duration: null,
+                distance: null,
                 rest_time: DEFAULT_REST_SEC,
                 notes: null,
                 rpe: null,
@@ -2565,6 +2774,44 @@ describe('workoutSession', () => {
         expect(
           formatRecentSessionSet({ ...recentSet(null, null), duration: 30 }, 'kg'),
         ).toBe('30s');
+      });
+
+      it('appends distance to cardio sets, converting for the display unit', () => {
+        expect(
+          formatRecentSessionSet(
+            { ...recentSet(null, null), duration: 1920, distance: 5.2 },
+            'kg',
+            'duration_distance',
+          ),
+        ).toBe('32:00 · 5.2 km');
+        expect(
+          formatRecentSessionSet(
+            { ...recentSet(null, null), duration: 1920, distance: 1.609344 },
+            'kg',
+            'duration_distance',
+            'miles',
+          ),
+        ).toBe('32:00 · 1 mi');
+      });
+
+      it('renders distance-only cardio sets without a dangling separator', () => {
+        expect(
+          formatRecentSessionSet(
+            { ...recentSet(null, null), duration: null, distance: 5 },
+            'kg',
+            'duration_distance',
+          ),
+        ).toBe('5 km');
+      });
+
+      it('never appends distance on hold (duration) sets', () => {
+        expect(
+          formatRecentSessionSet(
+            { ...recentSet(null, null), duration: 45, distance: 5 },
+            'kg',
+            'duration',
+          ),
+        ).toBe('45s');
       });
     });
 
@@ -3099,6 +3346,75 @@ describe('workoutSession', () => {
             duration: 30,
           });
           expect(payload[0].id).toBeUndefined();
+        });
+
+        it('rides original distance along on the multi-set fallback', () => {
+          const cardioOriginals = new Map([
+            [
+              'set-0',
+              {
+                id: 7,
+                set_number: 1,
+                set_type: 'Working Set',
+                reps: null,
+                weight: null,
+                duration: 900,
+                distance: 2.5,
+                rest_time: 0,
+                notes: null,
+                rpe: null,
+                completed_at: null,
+                is_pr: false,
+              },
+            ],
+          ]);
+          const payload = buildActivitySetsPayload(
+            [{ clientId: 'set-0', weight: '', reps: '', duration: 950 }],
+            cardioOriginals,
+            'kg',
+            'duration_distance',
+          );
+          expect(payload[0].distance).toBe(2.5);
+          expect(payload[0].duration).toBe(950);
+        });
+
+        it('builds the single set from the cardio form values', () => {
+          const payload = buildActivitySetsPayload(
+            [{ clientId: 'set-0', weight: '', reps: '' }],
+            originals,
+            'kg',
+            'duration_distance',
+            { durationSec: 1800, distanceKm: 5.2 },
+          );
+          expect(payload).toHaveLength(1);
+          expect(payload[0]).toMatchObject({
+            id: 7,
+            set_number: 1,
+            duration: 1800,
+            distance: 5.2,
+            rest_time: 0,
+          });
+        });
+
+        it('fabricates one cardio set for a legacy set-less entry', () => {
+          const payload = buildActivitySetsPayload(
+            [],
+            new Map(),
+            'kg',
+            'duration_distance',
+            { durationSec: 1800, distanceKm: 5.2 },
+          );
+          expect(payload).toEqual([
+            {
+              set_number: 1,
+              set_type: 'Working Set',
+              weight: null,
+              reps: null,
+              duration: 1800,
+              distance: 5.2,
+              rest_time: 0,
+            },
+          ]);
         });
       });
     });

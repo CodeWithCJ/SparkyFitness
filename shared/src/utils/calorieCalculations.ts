@@ -193,6 +193,30 @@ export function setsDurationMinutes(
   return minutes;
 }
 
+/** A set row carrying per-set distance in KM. */
+export interface DistanceSetLike {
+  distance?: number | null;
+}
+
+/**
+ * Total distance in km across sets, or null when no set carries one.
+ * Distinguishing "no distance recorded" (null) from an explicit 0 lets
+ * entry-total derivation preserve existing values for distance-less sets.
+ */
+export function setsDistanceKm(
+  sets: readonly DistanceSetLike[] | null | undefined,
+): number | null {
+  const rows = Array.isArray(sets) ? sets : [];
+  let total: number | null = null;
+  for (const set of rows) {
+    // Values flow through pg drivers and legacy call sites, so coerce defensively.
+    const km = set.distance == null ? null : Number(set.distance);
+    if (km == null || Number.isNaN(km)) continue;
+    total = (total ?? 0) + km;
+  }
+  return total;
+}
+
 export type GoalMode = "maintain" | "recomp" | "cut" | "high_cut" | "manual";
 export type GoalModeCalculationMethod = "adaptive" | "manual";
 

@@ -136,6 +136,11 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     return [{ ...defaultSetForModality(modality), _dndId: uuidv4() }];
   });
 
+  // Cardio renders the entry-level Duration/Distance form only while it has
+  // at most one set; a multi-set cardio source (e.g. an interval preset)
+  // keeps the duration set table so no rows are hidden.
+  const cardioForm = isCardio && sets.length <= 1;
+
   const handleSetChange = (
     index: number,
     field: keyof WorkoutPresetSet,
@@ -243,17 +248,36 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         }))
         .filter((detail) => detail.detail_type !== '');
 
-      const totalDuration = isCardio
+      const totalDuration = cardioForm
         ? durationInput === ''
           ? 0
           : durationInput
         : setsDurationMinutes(sets);
+
+      // Cardio performance also lives on its single backing set (issue
+      // #1903): duration in seconds + distance in km, no between-set rest.
+      // These agree with the entry-level totals below by construction. A
+      // multi-set cardio entry keeps its rows untouched instead.
+      const cardioSetValues = cardioForm
+        ? {
+            duration:
+              durationInput === ''
+                ? null
+                : Math.round(Number(durationInput) * 60),
+            distance:
+              distanceInput === ''
+                ? null
+                : convertDistance(Number(distanceInput), distanceUnit, 'km'),
+            rest_time: 0,
+          }
+        : null;
 
       const entryData = {
         exercise_id: exercise.id,
         sets: sets.map(({ _dndId, ...set }) => ({
           ...set,
           weight: set.weight ?? null,
+          ...(cardioSetValues ?? {}),
         })),
         notes,
         entry_date: selectedDate,
@@ -304,7 +328,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
 
         <div className="space-y-4 py-2">
           {/* ── Cardio log or strength sets ── */}
-          {isCardio ? (
+          {cardioForm ? (
             <CardioLog
               durationMinutes={durationInput}
               distance={distanceInput}
@@ -451,7 +475,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
 
             <CollapsibleContent className="space-y-3 pt-2">
               {/* Calories — only for strength (cardio shows it in CardioLog) */}
-              {!isCardio && (
+              {!cardioForm && (
                 <div className="space-y-1.5">
                   <Label htmlFor="calories-burned" className="text-sm">
                     {t(
@@ -495,7 +519,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
               )}
 
               {/* Avg heart rate — only for strength (cardio shows it in CardioLog) */}
-              {!isCardio && (
+              {!cardioForm && (
                 <div className="space-y-1.5">
                   <Label htmlFor="avg-heart-rate" className="text-sm">
                     {t(

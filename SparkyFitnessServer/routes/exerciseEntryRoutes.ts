@@ -734,6 +734,12 @@ router.put(
           .json({ error: 'Invalid format for activity_details.' });
       }
     }
+    if (updateData.distance === '') {
+      // FormData cannot carry null; an empty string is the client's explicit
+      // "clear distance" — without it the omitted field would fall back to
+      // derive-from-sets/preserve instead of clearing.
+      updateData.distance = null;
+    }
     // Extract new fields from updateData
     const { distance, avg_heart_rate } = updateData;
     if (updateData.entry_time === '') {

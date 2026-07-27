@@ -167,6 +167,12 @@ export const updateExerciseEntry = async (
       formData.append('entry_time', '');
     }
 
+    // Same contract for distance: omitting it would make the server derive
+    // from sets or preserve the old value instead of clearing.
+    if (entryData.distance === null) {
+      formData.append('distance', '');
+    }
+
     return apiCall(`/exercise-entries/${entryId}`, {
       method: 'PUT',
       body: formData,

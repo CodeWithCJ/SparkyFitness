@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { setsDurationMinutes } from '@workspace/shared';
+import { setsDistanceKm, setsDurationMinutes } from '@workspace/shared';
 
 describe('setsDurationMinutes', () => {
   it('sums per-set duration seconds into minutes', () => {
@@ -50,5 +50,32 @@ describe('setsDurationMinutes', () => {
     expect(
       setsDurationMinutes('nope' as unknown as [], { fallbackMinutes: 30 })
     ).toBe(30);
+  });
+});
+
+describe('setsDistanceKm', () => {
+  it('sums per-set distances in km', () => {
+    expect(setsDistanceKm([{ distance: 5.2 }, { distance: 1.3 }])).toBe(6.5);
+  });
+
+  it('ignores sets without a distance', () => {
+    expect(setsDistanceKm([{ distance: 5 }, {}, { distance: null }])).toBe(5);
+  });
+
+  it('returns null when no set carries a distance', () => {
+    expect(setsDistanceKm([{}, { distance: null }])).toBeNull();
+    expect(setsDistanceKm([])).toBeNull();
+    expect(setsDistanceKm(undefined)).toBeNull();
+    expect(setsDistanceKm(null)).toBeNull();
+  });
+
+  it('keeps an explicit 0 distinct from absent', () => {
+    expect(setsDistanceKm([{ distance: 0 }])).toBe(0);
+  });
+
+  it('coerces string-numeric values from pg numeric columns', () => {
+    expect(
+      setsDistanceKm([{ distance: '5.2' } as unknown as { distance: number }])
+    ).toBe(5.2);
   });
 });

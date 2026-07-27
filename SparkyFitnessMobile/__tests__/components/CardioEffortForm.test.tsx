@@ -1,0 +1,173 @@
+import React from 'react';
+import { render, fireEvent } from '@testing-library/react-native';
+import CardioEffortForm from '../../src/components/CardioEffortForm';
+import type { WorkoutCardSet } from '../../src/utils/workoutSession';
+
+jest.mock('uniwind', () => ({
+  useCSSVariable: jest.fn(() => '#000'),
+}));
+
+const makeSet = (overrides?: Partial<WorkoutCardSet>): WorkoutCardSet => ({
+  id: 101,
+  set_number: 1,
+  set_type: 'normal',
+  weight: null,
+  reps: null,
+  duration: 1800,
+  distance: 5.2,
+  rest_time: 0,
+  ...overrides,
+});
+
+describe('CardioEffortForm', () => {
+  it('seeds minutes from the set duration and km from the set distance', () => {
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+      />,
+    );
+    expect(getByLabelText('Duration in minutes for Run').props.value).toBe('30');
+    expect(getByLabelText('Distance in km for Run').props.value).toBe('5.2');
+  });
+
+  it('converts the seeded distance into miles for a miles user', () => {
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet({ distance: 1.609344 })}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="miles"
+      />,
+    );
+    expect(getByLabelText('Distance in mi for Run').props.value).toBe('1');
+  });
+
+  it('commits rounded seconds and quantized km on blur in live mode', () => {
+    const onCommitField = jest.fn();
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        onCommitField={onCommitField}
+      />,
+    );
+
+    const duration = getByLabelText('Duration in minutes for Run');
+    fireEvent.changeText(duration, '30.5');
+    expect(onCommitField).not.toHaveBeenCalled();
+    fireEvent(duration, 'blur');
+    expect(onCommitField).toHaveBeenCalledWith('101', { duration: 1830 });
+
+    const distance = getByLabelText('Distance in km for Run');
+    fireEvent.changeText(distance, '5.2');
+    fireEvent(distance, 'blur');
+    expect(onCommitField).toHaveBeenCalledWith('101', { distance: 5.2 });
+  });
+
+  it('converts a miles entry to km on commit', () => {
+    const onCommitField = jest.fn();
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet({ distance: null })}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="miles"
+        onCommitField={onCommitField}
+      />,
+    );
+    const distance = getByLabelText('Distance in mi for Run');
+    fireEvent.changeText(distance, '1');
+    fireEvent(distance, 'blur');
+    expect(onCommitField).toHaveBeenCalledWith('101', { distance: 1.609 });
+  });
+
+  it('clears with null when a field is emptied', () => {
+    const onCommitField = jest.fn();
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        onCommitField={onCommitField}
+      />,
+    );
+    const distance = getByLabelText('Distance in km for Run');
+    fireEvent.changeText(distance, '');
+    fireEvent(distance, 'blur');
+    expect(onCommitField).toHaveBeenCalledWith('101', { distance: null });
+  });
+
+  it('commits every keystroke in edit mode so a header Save reads current state', () => {
+    const onCommitField = jest.fn();
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="edit"
+        distanceUnit="km"
+        onCommitField={onCommitField}
+      />,
+    );
+    fireEvent.changeText(getByLabelText('Duration in minutes for Run'), '25');
+    expect(onCommitField).toHaveBeenCalledWith('101', { duration: 1500 });
+  });
+
+  it('offers the completion affordance in live mode and commits drafts first', () => {
+    const onCommitField = jest.fn();
+    const onComplete = jest.fn();
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        onCommitField={onCommitField}
+        onComplete={onComplete}
+        onUncomplete={jest.fn()}
+      />,
+    );
+    fireEvent.changeText(getByLabelText('Duration in minutes for Run'), '30');
+    fireEvent.press(getByLabelText('Complete Run'));
+    expect(onCommitField).toHaveBeenCalledWith('101', { duration: 1800 });
+    expect(onComplete).toHaveBeenCalledWith('101');
+  });
+
+  it('uncompletes a completed effort', () => {
+    const onUncomplete = jest.fn();
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        completed
+        onCommitField={jest.fn()}
+        onComplete={jest.fn()}
+        onUncomplete={onUncomplete}
+      />,
+    );
+    fireEvent.press(getByLabelText('Mark Run incomplete'));
+    expect(onUncomplete).toHaveBeenCalledWith('101');
+  });
+
+  it('renders flat text in view mode', () => {
+    const { getByText, queryByLabelText } = render(
+      <CardioEffortForm set={makeSet()} exerciseName="Run" mode="view" distanceUnit="km" />,
+    );
+    expect(getByText('30:00 · 5.2 km')).toBeTruthy();
+    expect(queryByLabelText('Duration in minutes for Run')).toBeNull();
+  });
+
+  it('view mode reads sensibly for a legacy set-less entry', () => {
+    const { getByText } = render(
+      <CardioEffortForm set={null} exerciseName="Run" mode="view" distanceUnit="km" />,
+    );
+    expect(getByText('No duration recorded')).toBeTruthy();
+  });
+});

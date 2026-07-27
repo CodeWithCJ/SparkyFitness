@@ -138,7 +138,7 @@ async function _getExerciseEntryByIdWithClient(client: any, id: any) {
              COALESCE(
                (SELECT json_agg(set_data ORDER BY set_data.set_number)
                 FROM (
-                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr
+                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
                   FROM exercise_entry_sets ees
                   WHERE ees.exercise_entry_id = ee.id
                 ) AS set_data
@@ -438,9 +438,10 @@ async function _updateExerciseEntryWithClient(
         set.rpe,
         set.completed_at ?? null,
         set.is_pr ?? false,
+        set.distance ?? null,
       ]);
       const setsQuery = format(
-        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr) VALUES %L',
+        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr, distance) VALUES %L',
         setsValues
       );
       await client.query(setsQuery);
@@ -568,7 +569,7 @@ async function _createExerciseEntryWithClient(
         snapshot.secondary_muscles,
         snapshot.instructions,
         snapshot.images,
-        entryData.distance || null, // Ensure distance is not undefined
+        entryData.distance ?? null, // Ensure distance is not undefined
         entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
         exercisePresetEntryId, // New parameter
         entryData.sort_order || 0,
@@ -608,9 +609,10 @@ async function _createExerciseEntryWithClient(
           set.rpe,
           set.completed_at ?? null,
           set.is_pr ?? false,
+          set.distance ?? null,
         ]);
         const setsQuery = format(
-          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr) VALUES %L',
+          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr, distance) VALUES %L',
           setsValues
         );
         await client.query(setsQuery);
@@ -763,9 +765,10 @@ async function updateExerciseEntry(
           set.rpe,
           set.completed_at ?? null,
           set.is_pr ?? false,
+          set.distance ?? null,
         ]);
         const setsQuery = format(
-          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr) VALUES %L',
+          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr, distance) VALUES %L',
           setsValues
         );
         await client.query(setsQuery);
@@ -897,8 +900,9 @@ async function _reconcileExerciseEntrySetsWithClient(
            notes = $7,
            rpe = $8,
            completed_at = $9,
-           is_pr = $10
-       WHERE id = $11 AND exercise_entry_id = $12`,
+           is_pr = $10,
+           distance = $11
+       WHERE id = $12 AND exercise_entry_id = $13`,
       [
         set.set_number,
         set.set_type ?? null,
@@ -910,6 +914,7 @@ async function _reconcileExerciseEntrySetsWithClient(
         set.rpe ?? null,
         set.completed_at ?? null,
         set.is_pr ?? false,
+        set.distance ?? null,
         set.id,
         exerciseEntryId,
       ]
@@ -930,9 +935,10 @@ async function _reconcileExerciseEntrySetsWithClient(
       set.rpe ?? null,
       set.completed_at ?? null,
       set.is_pr ?? false,
+      set.distance ?? null,
     ]);
     const setsQuery = format(
-      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr) VALUES %L',
+      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr, distance) VALUES %L',
       setsValues
     );
     await client.query(setsQuery);
@@ -972,7 +978,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1160,7 +1166,7 @@ async function getExerciseProgressData(
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1194,7 +1200,7 @@ async function getExerciseHistory(userId: any, exerciseId: any, limit = 5) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1283,6 +1289,7 @@ export interface RecentSessionRow {
         weight: number | null;
         reps: number | null;
         duration: number | null;
+        distance: number | null;
       }[]
     | null;
 }
@@ -1299,10 +1306,10 @@ async function getRecentSessionsForExercise(
          ee.entry_date::TEXT AS entry_date,
          (SELECT json_agg(set_data ORDER BY set_data.set_number, set_data.id)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.weight, ees.reps, ees.duration
+              SELECT ees.id, ees.set_number, ees.set_type, ees.weight, ees.reps, ees.duration, ees.distance
                 FROM exercise_entry_sets ees
                WHERE ees.exercise_entry_id = ee.id
-                 AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL)
+                 AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL OR ees.distance IS NOT NULL)
             ) AS set_data
          ) AS sets
        FROM exercise_entries ee
@@ -1312,7 +1319,7 @@ async function getRecentSessionsForExercise(
          AND EXISTS (
            SELECT 1 FROM exercise_entry_sets ees
             WHERE ees.exercise_entry_id = ee.id
-              AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL)
+              AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL OR ees.distance IS NOT NULL)
          )
        ORDER BY ee.entry_date DESC, ee.created_at DESC, ee.id DESC
        LIMIT $4`,

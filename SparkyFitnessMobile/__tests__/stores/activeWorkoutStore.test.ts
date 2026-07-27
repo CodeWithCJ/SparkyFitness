@@ -1177,6 +1177,31 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('completeSet rest (cardio zero-rest sets)', () => {
+    /** makeSession with the first exercise as cardio: zero-rest duration sets. */
+    function makeCardioSession(): PresetSessionResponse {
+      const session = makeSession();
+      const cardio = session.exercises[0];
+      (cardio.exercise_snapshot as { modality?: string }).modality = 'duration_distance';
+      for (const set of cardio.sets) {
+        set.rest_time = 0;
+        set.reps = null;
+        set.weight = null;
+        set.duration = 1800;
+      }
+      return session;
+    }
+
+    it('schedules no rest after a zero-rest cardio set', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeCardioSession());
+      useActiveWorkoutStore.getState().completeSet('101');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('102');
+      expect(state.rest.state).toBe('ready');
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+  });
+
   describe('completeSet rest (drop sets)', () => {
     /** makeSession with set 102 marked as a drop of 101. */
     function makeDropSession(): PresetSessionResponse {
@@ -1885,6 +1910,32 @@ describe('activeWorkoutStore', () => {
           useActiveWorkoutStore.getState().session!.exercises[0].sets[2].duration,
         ).toBeNull();
       });
+
+      it('empties the cloned distance and duration on cardio exercises', () => {
+        const session = makeSession();
+        const cardioSession = {
+          ...session,
+          exercises: session.exercises.map((e, i) =>
+            i === 0
+              ? {
+                  ...e,
+                  exercise_snapshot: {
+                    ...e.exercise_snapshot,
+                    modality: 'duration_distance',
+                  } as never,
+                }
+              : e,
+          ),
+        };
+        useActiveWorkoutStore.getState().startWorkout(cardioSession);
+        useActiveWorkoutStore
+          .getState()
+          .updateSetField('102', { duration: 1800, distance: 5.2 });
+        useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-1');
+        const added = useActiveWorkoutStore.getState().session!.exercises[0].sets[2];
+        expect(added.duration).toBeNull();
+        expect(added.distance).toBeNull();
+      });
     });
 
     describe('addExercise', () => {
@@ -1912,6 +1963,22 @@ describe('activeWorkoutStore', () => {
           expect(added.sets[0].rest_time).toBe(150);
           expect(added.sets[0].weight).toBeNull();
           expect(added.sets[0].reps).toBeNull();
+          expect(added.sets[0].distance).toBeNull();
+        } finally {
+          __resetAppPreferencesStoreForTests();
+        }
+      });
+
+      it('seeds a cardio exercise with zero rest instead of the default', () => {
+        useAppPreferencesStore.getState().setDefaultRestSec(150);
+        try {
+          useActiveWorkoutStore
+            .getState()
+            .addExercise({ ...rowExercise, id: 'ex-run', name: 'Run', modality: 'duration_distance' });
+          const entries = useActiveWorkoutStore.getState().session!.exercises;
+          const added = entries[entries.length - 1];
+          expect(added.sets[0].rest_time).toBe(0);
+          expect(added.sets[0].distance).toBeNull();
         } finally {
           __resetAppPreferencesStoreForTests();
         }

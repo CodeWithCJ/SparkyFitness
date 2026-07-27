@@ -8,7 +8,7 @@ import {
   type DraftExercisesAction,
 } from './draftExercisesSlice';
 import { getTodayDate, normalizeDate } from '../utils/dateUtils';
-import { weightFromKg } from '../utils/unitConversions';
+import { weightFromKg, distanceFromKm } from '../utils/unitConversions';
 import { buildExercisesPayload } from '../utils/workoutSession';
 import type { WorkoutDraft, WorkoutDraftExercise } from '../types/drafts';
 import type { PresetSessionResponse } from '@workspace/shared';
@@ -51,6 +51,7 @@ export interface WorkoutDraftSubmission {
 export function getWorkoutDraftSubmission(
   state: WorkoutDraft,
   weightUnit: 'kg' | 'lbs',
+  distanceUnit: 'km' | 'miles',
 ): WorkoutDraftSubmission {
   const exercisesWithSets = state.exercises.filter(exercise => exercise.sets.length > 0);
 
@@ -60,7 +61,7 @@ export function getWorkoutDraftSubmission(
     exercisesWithSets,
     exerciseCount: exercisesWithSets.length,
     canSave: exercisesWithSets.length > 0,
-    payloadExercises: buildExercisesPayload(exercisesWithSets, weightUnit),
+    payloadExercises: buildExercisesPayload(exercisesWithSets, weightUnit, distanceUnit),
   };
 }
 
@@ -74,7 +75,12 @@ type WorkoutFormAction =
   | { type: 'SET_DATE'; date: string }
   | { type: 'SET_NAME'; name: string }
   | { type: 'RESET' }
-  | { type: 'POPULATE'; session: PresetSessionResponse; weightUnit: 'kg' | 'lbs' }
+  | {
+      type: 'POPULATE';
+      session: PresetSessionResponse;
+      weightUnit: 'kg' | 'lbs';
+      distanceUnit: 'km' | 'miles';
+    }
   | {
       type: 'POPULATE_FROM_PRESET';
       preset: WorkoutPreset;
@@ -143,6 +149,9 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
               ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
               : '',
             reps: set.reps != null ? String(set.reps) : '',
+            distance: set.distance != null
+              ? String(parseFloat(distanceFromKm(set.distance, action.distanceUnit).toFixed(2)))
+              : '',
           })),
         })),
       };
@@ -174,6 +183,8 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
               ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
               : '',
             reps: set.reps != null ? String(set.reps) : '',
+            // Presets have no distance column.
+            distance: '',
           })),
         })),
       };
@@ -249,10 +260,17 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     }
   }, [clearPersistedDraft, isEditMode]);
 
-  const populate = useCallback((session: PresetSessionResponse, weightUnit: 'kg' | 'lbs') => {
-    exercisesModifiedRef.current = false;
-    dispatch({ type: 'POPULATE', session, weightUnit });
-  }, [exercisesModifiedRef]);
+  const populate = useCallback(
+    (
+      session: PresetSessionResponse,
+      weightUnit: 'kg' | 'lbs',
+      distanceUnit: 'km' | 'miles',
+    ) => {
+      exercisesModifiedRef.current = false;
+      dispatch({ type: 'POPULATE', session, weightUnit, distanceUnit });
+    },
+    [exercisesModifiedRef],
+  );
 
   const populateFromPreset = useCallback(
     (preset: WorkoutPreset, weightUnit: 'kg' | 'lbs', date?: string): string[] => {

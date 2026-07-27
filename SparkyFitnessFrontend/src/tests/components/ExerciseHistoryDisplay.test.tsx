@@ -62,6 +62,15 @@ describe('ExerciseHistoryDisplay set chips', () => {
     expect(screen.getByText('12 reps')).toBeInTheDocument();
   });
 
+  it('renders duration and distance together for a cardio set', () => {
+    mockHistory = [
+      makeEntry([{ reps: null, weight: null, duration: 1800, distance: 5.2 }]),
+    ];
+    renderExpanded();
+
+    expect(screen.getByText('1800s \u00b7 5.2km')).toBeInTheDocument();
+  });
+
   it('skips a set with nothing recorded', () => {
     mockHistory = [
       makeEntry([

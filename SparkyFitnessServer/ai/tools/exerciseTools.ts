@@ -72,6 +72,7 @@ interface ExerciseSetInput {
   reps?: number;
   weight?: number;
   duration?: number;
+  distance?: number;
   rest_time?: number;
   set_type?: string;
   rpe?: number;
@@ -567,6 +568,7 @@ Actions:
                         if (isSet(s.reps)) parts.push(`${s.reps}r`);
                         if (isSet(s.weight)) parts.push(`${s.weight}kg`);
                         if (isSet(s.duration)) parts.push(`${s.duration}s`);
+                        if (isSet(s.distance)) parts.push(`${s.distance}km`);
                         if (isSet(s.rpe)) parts.push(`RPE ${s.rpe}`);
                         let str = parts.join('×');
                         if (isSet(s.rest_time))

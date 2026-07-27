@@ -283,6 +283,48 @@ describe('exerciseService.getExerciseStats', () => {
     ]);
   });
 
+  it('maps distance on cardio sets', async () => {
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getBestSetForExercise.mockResolvedValue(null);
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getLastSetForExercise.mockResolvedValue(null);
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getRecentSessionsForExercise.mockResolvedValue([
+      {
+        entry_date: '2026-07-26',
+        sets: [
+          {
+            id: 'set-1',
+            set_number: 1,
+            set_type: null,
+            weight: null,
+            reps: null,
+            duration: 1800,
+            distance: 5.2,
+          },
+        ],
+      },
+    ]);
+
+    const result = await exerciseService.getExerciseStats(userId, exerciseId);
+
+    expect(result.recentSessions).toEqual([
+      {
+        entryDate: '2026-07-26',
+        sets: [
+          {
+            setNumber: 1,
+            setType: null,
+            weight: null,
+            reps: null,
+            duration: 1800,
+            distance: 5.2,
+          },
+        ],
+      },
+    ]);
+  });
+
   it('normalizes warmup set_type variants and passes other values through', async () => {
     // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
     exerciseEntryDb.getBestSetForExercise.mockResolvedValue(null);

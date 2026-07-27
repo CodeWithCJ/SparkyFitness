@@ -69,6 +69,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
   const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
@@ -94,10 +95,16 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Metric column is shared with the active-workout screen; changing it on
   // either screen changes both (intended).
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
-  const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
-  const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
-    setMetricMenuAnchor(anchor);
-  }, []);
+  const [metricMenu, setMetricMenu] = useState<{
+    anchor: AnchorRect;
+    clampedToRpe: boolean;
+  } | null>(null);
+  const handlePressMetricHeader = useCallback(
+    (anchor: AnchorRect, clampedToRpe: boolean) => {
+      setMetricMenu({ anchor, clampedToRpe });
+    },
+    [],
+  );
 
   // Active workout state (narrow selector to avoid re-rendering on unrelated
   // changes). The Diary routes the live session to ActiveWorkout instead of
@@ -160,8 +167,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     exercisesModifiedRef,
   } = useWorkoutForm({ isEditMode: true, skipDraftLoad: true });
   const submission = useMemo(
-    () => getWorkoutDraftSubmission(formState, weightUnit as 'kg' | 'lbs'),
-    [formState, weightUnit],
+    () => getWorkoutDraftSubmission(formState, weightUnit as 'kg' | 'lbs', distanceUnit),
+    [formState, weightUnit, distanceUnit],
   );
   const hasEditedExercisesWithSets = submission.canSave;
 
@@ -225,11 +232,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const startEditing = useCallback(() => {
-    populate(session, weightUnit as 'kg' | 'lbs');
+    populate(session, weightUnit as 'kg' | 'lbs', distanceUnit);
     setEditNotes(session.notes ?? '');
     setEligibleIds(new Set());
     setIsEditing(true);
-  }, [populate, session, weightUnit]);
+  }, [populate, session, weightUnit, distanceUnit]);
 
   const cancelEditing = useCallback(() => {
     setIsEditing(false);
@@ -421,6 +428,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             activeSetId={null}
             metricColumn={metricColumn}
             weightUnit={weightUnit as 'kg' | 'lbs'}
+            distanceUnit={distanceUnit}
             getImageSource={getImageSource}
             excludePresetEntryId={session.id}
             showRestChip={isSparky}
@@ -690,6 +698,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               ref={exerciseListRef}
               exercises={formState.exercises}
               weightUnit={weightUnit as 'kg' | 'lbs'}
+              distanceUnit={distanceUnit}
               getImageSource={getImageSource}
               excludePresetEntryId={session.id}
               activeSetKey={activeSetKey}
@@ -775,8 +784,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       />
 
       <MetricColumnMenu
-        anchor={metricMenuAnchor}
-        onClose={() => setMetricMenuAnchor(null)}
+        anchor={metricMenu?.anchor ?? null}
+        onClose={() => setMetricMenu(null)}
+        includeWeightMetrics={!metricMenu?.clampedToRpe}
       />
 
       <ActionSheet
