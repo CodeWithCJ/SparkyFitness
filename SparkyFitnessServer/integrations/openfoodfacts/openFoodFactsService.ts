@@ -9,6 +9,7 @@ import package$0 from '../../package.json' with { type: 'json' };
 import {
   normalizeBarcode,
   normalizeServingUnit,
+  altBarcode,
 } from '../../utils/foodUtils.js';
 const { name, version } = package$0;
 const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
@@ -217,15 +218,10 @@ async function searchOpenFoodFactsByBarcodeFields(
     };
 
     if (data.status !== 1 || !data.product) {
-      let altBarcode: string | null = null;
-      if (barcode.length === 12) {
-        altBarcode = '0' + barcode;
-      } else if (barcode.length === 13 && barcode.startsWith('0')) {
-        altBarcode = barcode.slice(1);
-      }
+      const alt = altBarcode(barcode);
 
-      if (altBarcode) {
-        const altUrl = `${baseUrl}/api/v2/product/${altBarcode}.json?fields=${fieldsParam}&lc=${language}`;
+      if (alt) {
+        const altUrl = `${baseUrl}/api/v2/product/${alt}.json?fields=${fieldsParam}&lc=${language}`;
         const altResponse = await fetchOpenFoodFacts(altUrl, {
           authenticatedUserId,
           providerId,
@@ -368,14 +364,6 @@ function getOffNutrient100g(
     }
   }
 
-  const dataPer = String(nutriments['nutrition_data_per'] || '');
-  if (dataPer === '100g' || dataPer === '100 ml') {
-    const valValue = parseOffNumber(nutriments[`${baseKey}_value`]);
-    if (valValue !== null) return valValue;
-    const baseVal = parseOffNumber(nutriments[baseKey]);
-    if (baseVal !== null) return baseVal;
-  }
-
   return 0;
 }
 
@@ -397,18 +385,20 @@ function getOffEnergyKcal100g(
   );
   if (kj100g > 0) return kj100g / 4.184;
 
+  // OFF's legacy `energy_100g` field stores kJ (not kcal), regardless of
+  // what `energy_unit` says — that field records what the contributor typed
+  // in the data-entry form, not the unit of the stored _100g value.
   const energy100g = parseOffNumber(nutriments['energy_100g']);
   if (energy100g !== null && energy100g > 0) {
-    const unit = String(nutriments['energy_unit'] || '').toLowerCase();
-    return unit === 'kj' ? energy100g / 4.184 : energy100g;
+    return energy100g / 4.184;
   }
 
   if (declaredServingQuantity !== null && declaredServingQuantity > 0) {
+    // Same rule applies to `energy_serving`: always kJ.
     const energyServing = parseOffNumber(nutriments['energy_serving']);
     if (energyServing !== null && energyServing > 0) {
       const per100g = (energyServing / declaredServingQuantity) * 100;
-      const unit = String(nutriments['energy_unit'] || '').toLowerCase();
-      return unit === 'kj' ? per100g / 4.184 : per100g;
+      return per100g / 4.184;
     }
   }
 

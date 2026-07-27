@@ -261,10 +261,23 @@ function normalizeBarcode(barcode: any) {
   }
   return barcode;
 }
+
+/**
+ * Returns the alternate barcode for EAN/UPC interoperability:
+ *   12-digit UPC-A  → 13-digit EAN-13 (prepend '0')
+ *   13-digit EAN-13 starting with '0' → 12-digit UPC-A (strip leading '0')
+ * Returns null when no alternate form exists.
+ */
+function altBarcode(barcode: string): string | null {
+  if (barcode.length === 12) return '0' + barcode;
+  if (barcode.length === 13 && barcode.startsWith('0')) return barcode.slice(1);
+  return null;
+}
 export { sanitizeCustomNutrients };
 export { normalizeServingUnit };
 export { reconcileEntryUnitToVariant };
 export { normalizeBarcode };
+export { altBarcode };
 export { buildAliasIndex };
 export { applyCustomNutrientMatches };
 export default {
@@ -272,6 +285,7 @@ export default {
   normalizeServingUnit,
   reconcileEntryUnitToVariant,
   normalizeBarcode,
+  altBarcode,
   buildAliasIndex,
   applyCustomNutrientMatches,
 };
