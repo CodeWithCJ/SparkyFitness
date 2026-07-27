@@ -356,14 +356,16 @@ function parseOffNumber(val: unknown): number | null {
 function getOffNutrient100g(
   nutriments: Record<string, unknown>,
   baseKey: string,
-  servingQuantity: number
+  declaredServingQuantity: number | null
 ): number {
   const direct100g = parseOffNumber(nutriments[`${baseKey}_100g`]);
   if (direct100g !== null) return direct100g;
 
-  const servingVal = parseOffNumber(nutriments[`${baseKey}_serving`]);
-  if (servingVal !== null && servingQuantity > 0) {
-    return (servingVal / servingQuantity) * 100;
+  if (declaredServingQuantity !== null && declaredServingQuantity > 0) {
+    const servingVal = parseOffNumber(nutriments[`${baseKey}_serving`]);
+    if (servingVal !== null) {
+      return (servingVal / declaredServingQuantity) * 100;
+    }
   }
 
   const dataPer = String(nutriments['nutrition_data_per'] || '');
@@ -379,16 +381,20 @@ function getOffNutrient100g(
 
 function getOffEnergyKcal100g(
   nutriments: Record<string, unknown>,
-  servingQuantity: number
+  declaredServingQuantity: number | null
 ): number {
   const kcal100g = getOffNutrient100g(
     nutriments,
     'energy-kcal',
-    servingQuantity
+    declaredServingQuantity
   );
   if (kcal100g > 0) return kcal100g;
 
-  const kj100g = getOffNutrient100g(nutriments, 'energy-kj', servingQuantity);
+  const kj100g = getOffNutrient100g(
+    nutriments,
+    'energy-kj',
+    declaredServingQuantity
+  );
   if (kj100g > 0) return kj100g / 4.184;
 
   const energy100g = parseOffNumber(nutriments['energy_100g']);
@@ -397,11 +403,13 @@ function getOffEnergyKcal100g(
     return unit === 'kj' ? energy100g / 4.184 : energy100g;
   }
 
-  const energyServing = parseOffNumber(nutriments['energy_serving']);
-  if (energyServing !== null && energyServing > 0 && servingQuantity > 0) {
-    const per100g = (energyServing / servingQuantity) * 100;
-    const unit = String(nutriments['energy_unit'] || '').toLowerCase();
-    return unit === 'kj' ? per100g / 4.184 : per100g;
+  if (declaredServingQuantity !== null && declaredServingQuantity > 0) {
+    const energyServing = parseOffNumber(nutriments['energy_serving']);
+    if (energyServing !== null && energyServing > 0) {
+      const per100g = (energyServing / declaredServingQuantity) * 100;
+      const unit = String(nutriments['energy_unit'] || '').toLowerCase();
+      return unit === 'kj' ? per100g / 4.184 : per100g;
+    }
   }
 
   return 0;
@@ -410,7 +418,7 @@ function getOffEnergyKcal100g(
 function extractOffProviderNutrients(
   nutriments: Record<string, unknown>,
   scale: number,
-  servingQuantity: number
+  declaredServingQuantity: number | null
 ): { values: Record<string, number>; units: Record<string, string> } {
   const values: Record<string, number> = {};
   const units: Record<string, string> = {};
@@ -428,10 +436,15 @@ function extractOffProviderNutrients(
     if (processedBases.has(base) || OFF_NON_NUTRIENT_KEYS.has(base)) continue;
 
     let value = parseOffNumber(nutriments[`${base}_100g`]);
-    if (value === null && isServing && servingQuantity > 0) {
+    if (
+      value === null &&
+      isServing &&
+      declaredServingQuantity !== null &&
+      declaredServingQuantity > 0
+    ) {
       const servingVal = parseOffNumber(nutriments[`${base}_serving`]);
       if (servingVal !== null) {
-        value = (servingVal / servingQuantity) * 100;
+        value = (servingVal / declaredServingQuantity) * 100;
       }
     }
     if (value === null) continue;
@@ -454,95 +467,124 @@ function mapOpenFoodFactsProduct(
   { autoScale = true, language = 'en' } = {}
 ) {
   const nutriments = product.nutriments || {};
-  const servingQuantity =
+  const declaredServingQuantity =
     product.serving_quantity && product.serving_quantity > 0
       ? product.serving_quantity
-      : 100;
+      : null;
+  const servingQuantity = declaredServingQuantity ?? 100;
   const servingSize = autoScale ? servingQuantity : 100;
   const scale = servingSize / 100;
   const defaultVariant = {
     serving_size: servingSize,
     serving_unit: deriveOffServingUnit(product),
     calories: Math.round(
-      getOffEnergyKcal100g(nutriments, servingQuantity) * scale
+      getOffEnergyKcal100g(nutriments, declaredServingQuantity) * scale
     ),
     protein:
       Math.round(
-        getOffNutrient100g(nutriments, 'proteins', servingQuantity) * scale * 10
+        getOffNutrient100g(nutriments, 'proteins', declaredServingQuantity) *
+          scale *
+          10
       ) / 10,
     carbs:
       Math.round(
-        getOffNutrient100g(nutriments, 'carbohydrates', servingQuantity) *
+        getOffNutrient100g(
+          nutriments,
+          'carbohydrates',
+          declaredServingQuantity
+        ) *
           scale *
           10
       ) / 10,
     fat:
       Math.round(
-        getOffNutrient100g(nutriments, 'fat', servingQuantity) * scale * 10
+        getOffNutrient100g(nutriments, 'fat', declaredServingQuantity) *
+          scale *
+          10
       ) / 10,
     saturated_fat:
       Math.round(
-        getOffNutrient100g(nutriments, 'saturated-fat', servingQuantity) *
+        getOffNutrient100g(
+          nutriments,
+          'saturated-fat',
+          declaredServingQuantity
+        ) *
           scale *
           10
       ) / 10,
     sodium: Math.round(
-      getOffNutrient100g(nutriments, 'sodium', servingQuantity) * 1000 * scale
+      getOffNutrient100g(nutriments, 'sodium', declaredServingQuantity) *
+        1000 *
+        scale
     ),
     dietary_fiber:
       Math.round(
-        getOffNutrient100g(nutriments, 'fiber', servingQuantity) * scale * 10
+        getOffNutrient100g(nutriments, 'fiber', declaredServingQuantity) *
+          scale *
+          10
       ) / 10,
     sugars:
       Math.round(
-        getOffNutrient100g(nutriments, 'sugars', servingQuantity) * scale * 10
+        getOffNutrient100g(nutriments, 'sugars', declaredServingQuantity) *
+          scale *
+          10
       ) / 10,
     polyunsaturated_fat:
       Math.round(
-        getOffNutrient100g(nutriments, 'polyunsaturated-fat', servingQuantity) *
+        getOffNutrient100g(
+          nutriments,
+          'polyunsaturated-fat',
+          declaredServingQuantity
+        ) *
           scale *
           10
       ) / 10,
     monounsaturated_fat:
       Math.round(
-        getOffNutrient100g(nutriments, 'monounsaturated-fat', servingQuantity) *
+        getOffNutrient100g(
+          nutriments,
+          'monounsaturated-fat',
+          declaredServingQuantity
+        ) *
           scale *
           10
       ) / 10,
     trans_fat:
       Math.round(
-        getOffNutrient100g(nutriments, 'trans-fat', servingQuantity) *
+        getOffNutrient100g(nutriments, 'trans-fat', declaredServingQuantity) *
           scale *
           10
       ) / 10,
     cholesterol: Math.round(
-      getOffNutrient100g(nutriments, 'cholesterol', servingQuantity) *
+      getOffNutrient100g(nutriments, 'cholesterol', declaredServingQuantity) *
         1000 *
         scale
     ),
     potassium: Math.round(
-      getOffNutrient100g(nutriments, 'potassium', servingQuantity) *
+      getOffNutrient100g(nutriments, 'potassium', declaredServingQuantity) *
         1000 *
         scale
     ),
     vitamin_a: Math.round(
-      getOffNutrient100g(nutriments, 'vitamin-a', servingQuantity) *
+      getOffNutrient100g(nutriments, 'vitamin-a', declaredServingQuantity) *
         1000000 *
         scale
     ),
     vitamin_c:
       Math.round(
-        getOffNutrient100g(nutriments, 'vitamin-c', servingQuantity) *
+        getOffNutrient100g(nutriments, 'vitamin-c', declaredServingQuantity) *
           1000 *
           scale *
           10
       ) / 10,
     calcium: Math.round(
-      getOffNutrient100g(nutriments, 'calcium', servingQuantity) * 1000 * scale
+      getOffNutrient100g(nutriments, 'calcium', declaredServingQuantity) *
+        1000 *
+        scale
     ),
     iron:
       Math.round(
-        getOffNutrient100g(nutriments, 'iron', servingQuantity) *
+        getOffNutrient100g(nutriments, 'iron', declaredServingQuantity) *
           1000 *
           scale *
           10
@@ -551,7 +593,7 @@ function mapOpenFoodFactsProduct(
       const extracted = extractOffProviderNutrients(
         nutriments,
         scale,
-        servingQuantity
+        declaredServingQuantity
       );
       return {
         provider_nutrients: extracted.values,
