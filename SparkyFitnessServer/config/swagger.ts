@@ -612,10 +612,14 @@ const options = {
                     type: 'integer',
                     description: 'Duration in seconds',
                   },
+                  distance: {
+                    type: 'number',
+                    description: 'Distance in km',
+                  },
                 },
               },
               description:
-                'Details of sets performed (reps, weight, duration in seconds).',
+                'Details of sets performed (reps, weight, duration in seconds, distance in km).',
             },
             reps: {
               type: 'number',

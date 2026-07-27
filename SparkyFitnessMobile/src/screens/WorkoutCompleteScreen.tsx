@@ -27,7 +27,7 @@ import { usePreferences } from '../hooks/usePreferences';
 import { getWorkout } from '../services/api/exerciseApi';
 import { fireSuccessHaptic } from '../services/haptics';
 import { withAlpha } from '../utils/colors';
-import { weightFromKg } from '../utils/unitConversions';
+import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
 import {
   buildWorkoutCompletionSummary,
   formatDuration,
@@ -250,6 +250,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
 
   const { preferences } = usePreferences();
   const weightUnit = normalizeWeightUnit(preferences?.default_weight_unit);
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
 
@@ -394,6 +395,21 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
               )}
             </StatTile>
           </View>
+
+          {summary.totalDistanceKm > 0 && (
+            <View className="flex-row gap-2 mt-2">
+              <StatTile icon="exercise-running" label="Distance">
+                <StatValue
+                  value={String(
+                    parseFloat(
+                      distanceFromKm(summary.totalDistanceKm, distanceUnit).toFixed(2),
+                    ),
+                  )}
+                  unit={distanceUnit === 'miles' ? 'mi' : 'km'}
+                />
+              </StatTile>
+            </View>
+          )}
 
           {summary.averageRpe != null && rpeTone != null && (
             <View className="flex-row items-center bg-surface rounded-xl shadow-sm px-3.5 py-3 mt-2">

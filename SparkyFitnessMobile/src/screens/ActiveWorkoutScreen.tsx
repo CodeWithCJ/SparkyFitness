@@ -177,6 +177,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
   const { flush } = useActiveWorkoutAutosave();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
@@ -491,10 +492,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   }, []);
 
   // Metric column picker.
-  const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
-  const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
-    setMetricMenuAnchor(anchor);
-  }, []);
+  const [metricMenu, setMetricMenu] = useState<{
+    anchor: AnchorRect;
+    clampedToRpe: boolean;
+  } | null>(null);
+  const handlePressMetricHeader = useCallback(
+    (anchor: AnchorRect, clampedToRpe: boolean) => {
+      setMetricMenu({ anchor, clampedToRpe });
+    },
+    [],
+  );
 
   // Rename dialog.
   const [renameVisible, setRenameVisible] = useState(false);
@@ -1126,6 +1133,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               activeField={focusedField}
               metricColumn={metricColumn}
               weightUnit={weightUnit}
+              distanceUnit={distanceUnit}
               getImageSource={getImageSource}
               onPressThumb={handlePressThumb}
               onToggleExpanded={handleToggleExpanded}
@@ -1239,8 +1247,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       />
 
       <MetricColumnMenu
-        anchor={metricMenuAnchor}
-        onClose={() => setMetricMenuAnchor(null)}
+        anchor={metricMenu?.anchor ?? null}
+        onClose={() => setMetricMenu(null)}
+        includeWeightMetrics={!metricMenu?.clampedToRpe}
       />
 
       <ActionSheet

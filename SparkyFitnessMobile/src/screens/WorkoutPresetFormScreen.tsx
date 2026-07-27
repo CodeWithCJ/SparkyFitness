@@ -47,7 +47,7 @@ interface PresetFormBodyProps {
   updateSetField: (
     exerciseClientId: string,
     setClientId: string,
-    field: 'weight' | 'reps' | 'duration',
+    field: 'weight' | 'reps' | 'duration' | 'distance',
     value: string,
   ) => void;
   updateSetMeta: (
@@ -124,6 +124,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           ref={listRef}
           exercises={state.exercises}
           weightUnit={weightUnit}
+          cardioFormEnabled={false}
           getImageSource={getImageSource}
           activeSetKey={exerciseSetEditing.activeSetKey}
           activeSetField={exerciseSetEditing.activeSetField}

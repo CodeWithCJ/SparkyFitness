@@ -18,6 +18,7 @@ import {
   effectiveSetDurationSec,
   getSourceLabel,
   getWorkoutSummary,
+  isCardioModality,
   isDurationModality,
   resolveSnapshotModality,
 } from '../utils/workoutSession';
@@ -98,8 +99,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const modality = resolveSnapshotModality(session.exercise_snapshot);
   const durationLike = isDurationModality(modality);
   const setFirstField = durationLike ? ('duration' as const) : ('weight' as const);
+  // A ≤1-set cardio entry is edited through the entry-level Duration/Distance
+  // form; its single backing set is written from those values at save. Only
+  // multi-set cardio (imports, future intervals) surfaces a set table.
+  const cardioEffort = isCardioModality(modality) && session.sets.length <= 1;
   const hasSets = session.sets.length > 1
-    || session.sets.some(s => s.weight != null || s.reps != null || s.duration != null);
+    || (!cardioEffort
+      && session.sets.some(s => s.weight != null || s.reps != null || s.duration != null));
 
   const {
     state: formState,
@@ -128,6 +134,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           : '',
         reps: set.reps != null ? String(set.reps) : '',
         duration: set.duration,
+        distance: set.distance != null
+          ? String(parseFloat(distanceFromKm(set.distance, distanceUnit).toFixed(2)))
+          : '',
       };
     });
     originalSetsRef.current = originals;
@@ -161,6 +170,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           weight: lastSet?.weight ?? '',
           reps: lastSet?.reps ?? '',
           duration: lastSet?.duration ?? null,
+          // A distance is a recorded result, never structure to clone.
+          distance: '',
         },
       ];
     });
@@ -204,6 +215,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       originalSetsRef.current,
       weightUnit,
       modality,
+      cardioEffort
+        ? {
+            durationSec: submission.hasDuration
+              ? Math.round(submission.durationMinutes * 60)
+              : null,
+            distanceKm: submission.distanceKm,
+          }
+        : undefined,
     );
 
     const payload = {
@@ -565,7 +584,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Sets section */}
         {isEditing ? (
-          draftSets.length > 0 || hasSets ? (
+          !cardioEffort && (draftSets.length > 0 || hasSets) ? (
             <View className="py-4">
               <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
               <EditableSetList

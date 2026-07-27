@@ -28,6 +28,7 @@ const formatHistorySet = (
   else if (weight) parts.push(weight);
 
   if (set.duration != null) parts.push(`${set.duration}s`);
+  if (set.distance != null) parts.push(`${set.distance}km`);
 
   return parts.length > 0 ? parts.join(' · ') : null;
 };

@@ -508,6 +508,85 @@ describe('exerciseService grouped workouts', () => {
       expect(client.query).toHaveBeenCalledWith('COMMIT');
     });
 
+    it('derives entry distance from set distances via reconcile', async () => {
+      setupExistingSession();
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 30,
+              sets: [{ id: 1, set_number: 1, duration: 1800, distance: 5.2 }],
+            },
+            {
+              id: 'entry-b',
+              exercise_id: exerciseBId,
+              sort_order: 1,
+              duration_minutes: 0,
+              sets: [{ id: 2, set_number: 1, reps: 5, weight: 200 }],
+            },
+          ],
+        }
+      );
+
+      const [firstCall, secondCall] = vi.mocked(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).mock.calls;
+      expect(firstCall[3]).toMatchObject({ distance: 5.2 });
+      // A distance-less strength entry with no prior distance stays null.
+      expect(secondCall[3]).toMatchObject({ distance: null });
+    });
+
+    it('preserves existing entry distance when reconcile sets carry none', async () => {
+      setupExistingSession();
+      (getGroupedExerciseSessionByIdWithClient as unknown as Mock).mockReset();
+      const sessionWithDistance = {
+        ...existingSession,
+        exercises: [
+          { ...existingSession.exercises[0], distance: 7.5 },
+          existingSession.exercises[1],
+        ],
+      };
+      (getGroupedExerciseSessionByIdWithClient as unknown as Mock)
+        .mockResolvedValueOnce(sessionWithDistance)
+        .mockResolvedValueOnce(sessionWithDistance);
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 0,
+              sets: [{ id: 1, set_number: 1, reps: 10, weight: 110 }],
+            },
+            {
+              id: 'entry-b',
+              exercise_id: exerciseBId,
+              sort_order: 1,
+              duration_minutes: 0,
+              sets: [{ id: 2, set_number: 1, reps: 5, weight: 200 }],
+            },
+          ],
+        }
+      );
+
+      const [firstCall] = vi.mocked(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).mock.calls;
+      expect(firstCall[3]).toMatchObject({ distance: 7.5 });
+    });
+
     it('recomputes calories_burned when duration_minutes changes', async () => {
       setupExistingSession();
       vi.mocked(
@@ -1162,6 +1241,31 @@ describe('_reconcileExerciseEntrySetsWithClient', () => {
     );
     expect(insert).toBeDefined();
     expect(insert!.sql).toContain('is_pr');
+  });
+
+  it('writes distance on updates and inserts, clearing it when omitted', async () => {
+    const client = makeClient([1, 2]);
+    await reconcile(client, 'entry-a', [
+      { id: 1, set_number: 1, duration: 1800, distance: 5.2 },
+      { id: 2, set_number: 2, reps: 8 },
+      { set_number: 3, duration: 600, distance: 1.5 },
+    ]);
+
+    const updates = client.calls.filter(({ sql }) =>
+      /UPDATE exercise_entry_sets/.test(sql)
+    );
+    expect(updates).toHaveLength(2);
+    expect(updates[0].sql).toMatch(/distance = \$11/);
+    expect(updates[0].params[10]).toBe(5.2);
+    // Omitted distance means "no distance recorded" and must clear the column.
+    expect(updates[1].params[10]).toBeNull();
+
+    const insert = client.calls.find(({ sql }) =>
+      /INSERT INTO exercise_entry_sets/.test(sql)
+    );
+    expect(insert).toBeDefined();
+    expect(insert!.sql).toContain('distance');
+    expect(insert!.sql).toContain('1.5');
   });
 });
 

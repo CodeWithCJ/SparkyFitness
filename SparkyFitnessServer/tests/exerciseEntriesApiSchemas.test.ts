@@ -496,6 +496,92 @@ describe('Exercise entry API schemas', () => {
     });
   });
 
+  describe('set distance (km)', () => {
+    const baseSetRequest = {
+      set_number: 1,
+      set_type: 'working',
+      reps: null,
+      weight: null,
+    };
+
+    const baseSetResponse = {
+      id: 7,
+      set_number: 1,
+      set_type: 'working',
+      reps: null,
+      weight: null,
+      duration: 1800,
+      rest_time: null,
+      notes: null,
+      rpe: null,
+      completed_at: null,
+      is_pr: false,
+    };
+
+    it('accepts fractional, null, and omitted set distances on requests', () => {
+      const withKm = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        duration: 1800,
+        distance: 5.2,
+      });
+      expect(withKm.success).toBe(true);
+      expect(withKm.data.distance).toBe(5.2);
+
+      const withNull = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        reps: 10,
+        distance: null,
+      });
+      expect(withNull.success).toBe(true);
+
+      const omitted = runSchema('exerciseEntrySetRequestSchema', {
+        ...baseSetRequest,
+        reps: 10,
+      });
+      expect(omitted.success).toBe(true);
+      expect(omitted.data).not.toHaveProperty('distance');
+    });
+
+    it('accepts distance on set responses and tolerates pre-distance servers omitting it', () => {
+      const withKm = runSchema('exerciseEntrySetResponseSchema', {
+        ...baseSetResponse,
+        distance: 5.2,
+      });
+      expect(withKm.success).toBe(true);
+      expect(withKm.data.distance).toBe(5.2);
+
+      const omitted = runSchema(
+        'exerciseEntrySetResponseSchema',
+        baseSetResponse
+      );
+      expect(omitted.success).toBe(true);
+    });
+
+    it('accepts recent-session sets carrying only a distance', () => {
+      const result = runSchema('exerciseStatsResponseSchema', {
+        bestSet: null,
+        lastSet: null,
+        recentSessions: [
+          {
+            entryDate: '2026-07-26',
+            sets: [
+              {
+                setNumber: 1,
+                setType: 'working',
+                weight: null,
+                reps: null,
+                duration: null,
+                distance: 5.2,
+              },
+            ],
+          },
+        ],
+      });
+      expect(result.success).toBe(true);
+      expect(result.data.recentSessions[0].sets[0].distance).toBe(5.2);
+    });
+  });
+
   describe('completed_at', () => {
     const baseSetRequest = {
       set_number: 1,

@@ -231,16 +231,82 @@ describe('ActiveWorkoutExerciseCard', () => {
       expect(utils.getByText('Reps')).toBeTruthy();
     });
 
-    it.each(['duration', 'duration_distance'])('shows a single Sec column for %s', (m) => {
-      const utils = renderCard(true, { exercise: withModality(m) });
+    it('shows a single Sec column for duration', () => {
+      const utils = renderCard(true, { exercise: withModality('duration') });
       expect(utils.getByText('Sec')).toBeTruthy();
       expect(utils.queryByText('KG')).toBeNull();
       expect(utils.queryByText('Reps')).toBeNull();
     });
 
+    it('renders the Duration+Distance form for a ≤1-set cardio exercise', () => {
+      const utils = renderCard(true, { exercise: withModality('duration_distance') });
+      expect(utils.queryByText('Sec')).toBeNull();
+      expect(utils.getByText('Duration (min)')).toBeTruthy();
+      expect(utils.getByText('Distance (km)')).toBeTruthy();
+      expect(utils.queryByLabelText('Add set to Bench Press')).toBeNull();
+    });
+
+    it('labels the distance input in miles when that is the display unit', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('duration_distance'),
+        distanceUnit: 'miles',
+      });
+      expect(utils.getByText('Distance (mi)')).toBeTruthy();
+    });
+
+    it('falls back to the Sec table for multi-set cardio (no rows hidden)', () => {
+      const base = withModality('duration_distance');
+      const utils = renderCard(true, {
+        exercise: {
+          ...base,
+          sets: [base.sets[0], { ...base.sets[0], id: 102, set_number: 2 }],
+        },
+      });
+      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.queryByText('Duration (min)')).toBeNull();
+    });
+
+    it('keeps the Sec table for cardio when the form is disabled (preset surfaces)', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('duration_distance'),
+        cardioFormEnabled: false,
+      });
+      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.queryByText('Duration (min)')).toBeNull();
+    });
+
     it('derives from the snapshot category when modality is absent (old server)', () => {
       const utils = renderCard(true, { exercise: withModality(null, 'Cardio') });
-      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.getByText('Duration (min)')).toBeTruthy();
+    });
+
+    it('clamps the metric column to RPE on duration-like tables and reports it', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('duration'),
+        metricColumn: 'volume',
+      });
+      expect(utils.getByText('RPE')).toBeTruthy();
+      expect(utils.queryByText('Vol')).toBeNull();
+
+      fireEvent.press(utils.getByLabelText('Change metric column'));
+      expect(utils.callbacks.onPressMetricHeader).toHaveBeenCalledWith(
+        expect.anything(),
+        true,
+      );
+    });
+
+    it('leaves the metric column alone on weight tables', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('weight_reps'),
+        metricColumn: 'volume',
+      });
+      expect(utils.getByText('Vol')).toBeTruthy();
+
+      fireEvent.press(utils.getByLabelText('Change metric column'));
+      expect(utils.callbacks.onPressMetricHeader).toHaveBeenCalledWith(
+        expect.anything(),
+        false,
+      );
     });
   });
 
@@ -355,6 +421,7 @@ describe('ActiveWorkoutExerciseCard', () => {
           width: expect.any(Number),
           height: expect.any(Number),
         }),
+        false,
       );
     });
 

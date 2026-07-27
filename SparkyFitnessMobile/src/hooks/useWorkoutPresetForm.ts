@@ -70,6 +70,8 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
                 ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
                 : '',
             reps: set.reps != null ? String(set.reps) : '',
+            // Presets have no distance column.
+            distance: '',
             setType: set.set_type ?? undefined,
             duration: set.duration,
             notes: set.notes,
@@ -103,6 +105,8 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
                 ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
                 : '',
             reps: set.reps != null ? String(set.reps) : '',
+            // Presets have no distance column.
+            distance: '',
           })),
         })),
       };

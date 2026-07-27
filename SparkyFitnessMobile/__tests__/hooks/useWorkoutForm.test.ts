@@ -241,7 +241,7 @@ describe('workoutFormReducer', () => {
       expect(replaced.exerciseName).toBe('Incline Press');
       expect(replaced.images).toEqual(['incline.png']);
       expect(replaced.sets).toEqual([
-        { clientId: 'new-set', weight: '', reps: '', restTime: 90 },
+        { clientId: 'new-set', weight: '', reps: '', distance: '', restTime: 90 },
       ]);
       expect(replaced.serverId).toBeUndefined();
       expect(replaced.snapshot).toBeNull();
@@ -1593,7 +1593,7 @@ describe('workoutFormReducer', () => {
         ],
       };
 
-      const result = getWorkoutDraftSubmission(state, 'kg');
+      const result = getWorkoutDraftSubmission(state, 'kg', 'km');
 
       expect(result.name).toBe('Push Day');
       expect(result.entryDate).toBe('2026-03-20');
@@ -1614,6 +1614,7 @@ describe('workoutFormReducer', () => {
               reps: 5,
               set_type: null,
               duration: null,
+              distance: null,
               notes: null,
               rpe: null,
               completed_at: null,

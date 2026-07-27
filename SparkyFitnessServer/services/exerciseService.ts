@@ -18,7 +18,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
-import { deriveExerciseModality, setsDurationMinutes } from '@workspace/shared';
+import {
+  deriveExerciseModality,
+  setsDistanceKm,
+  setsDurationMinutes,
+} from '@workspace/shared';
 
 import papa from 'papaparse';
 import {
@@ -236,6 +240,7 @@ function mapRecentSessionRow(row: RecentSessionRow) {
       weight: s.weight,
       reps: s.reps,
       duration: s.duration,
+      distance: s.distance,
     })),
   };
 }
@@ -352,7 +357,9 @@ async function prepareExerciseEntryForCreate(
     duration_minutes: durationMinutes ?? 0,
     workout_plan_assignment_id: entryData.workout_plan_assignment_id || null,
     image_url: entryData.image_url || null,
-    distance: entryData.distance ?? null,
+    // Explicit client value wins; otherwise derive the total from per-set
+    // distances (null when no set carries one).
+    distance: entryData.distance ?? setsDistanceKm(entryData.sets),
     avg_heart_rate: entryData.avg_heart_rate ?? null,
   };
 }
@@ -518,7 +525,12 @@ async function updateExerciseEntry(
           updateData.image_url === undefined
             ? existingEntry.image_url
             : updateData.image_url,
-        distance: updateData.distance ?? existingEntry.distance,
+        // Explicit value (including null-to-clear) wins; omitted derives the
+        // total from per-set distances, else preserves the existing value.
+        distance:
+          updateData.distance !== undefined
+            ? updateData.distance
+            : (setsDistanceKm(updateData.sets) ?? existingEntry.distance),
         avg_heart_rate:
           updateData.avg_heart_rate ?? existingEntry.avg_heart_rate,
         steps: updateData.steps ?? existingEntry.steps,
@@ -2041,7 +2053,13 @@ async function updateGroupedWorkoutSession(
               notes: preparedEntry.notes,
               sort_order: preparedEntry.sort_order ?? 0,
               superset_group: preparedEntry.superset_group ?? null,
-              distance: preparedEntry.distance,
+              // The grouped request has no entry-level distance, so
+              // preparedEntry.distance is the set-derived total; preserve the
+              // existing value when no set carries a distance.
+              distance:
+                preparedEntry.distance ??
+                existingById.get(ex.id)?.distance ??
+                null,
               avg_heart_rate: preparedEntry.avg_heart_rate,
               duration_minutes: preparedEntry.duration_minutes,
               calories_burned: preparedEntry.calories_burned,

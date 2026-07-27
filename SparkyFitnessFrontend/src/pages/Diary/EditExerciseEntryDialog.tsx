@@ -81,13 +81,24 @@ const EditExerciseEntryDialog = ({
   );
   const isCardio = modality === 'duration_distance';
 
-  const [sets, setSets] = useState<SortableSet[]>(() =>
-    ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
+  const [sets, setSets] = useState<SortableSet[]>(() => {
+    const entrySets = ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
       ...set,
       weight: set.weight != null ? Number(set.weight) : null,
       _dndId: uuidv4(),
-    }))
-  );
+    }));
+    // A legacy cardio entry logged before sets-backed cardio has no rows;
+    // seed one so the save below has a set to write duration/distance into.
+    if (entrySets.length === 0 && isCardio) {
+      return [{ ...defaultSetForModality(modality), _dndId: uuidv4() }];
+    }
+    return entrySets;
+  });
+
+  // Cardio renders the entry-level Duration/Distance form only while it has
+  // at most one set; a multi-set cardio entry (import, intervals) keeps the
+  // duration set table so no rows are hidden.
+  const cardioForm = isCardio && sets.length <= 1;
   const [notes, setNotes] = useState(entry.notes || '');
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(entry.entry_time) || ''
@@ -228,7 +239,7 @@ const EditExerciseEntryDialog = ({
       );
       const caloriesPerHour = exerciseData?.calories_per_hour || 300;
 
-      const totalDuration = isCardio
+      const totalDuration = cardioForm
         ? durationInput === ''
           ? 0
           : Number(durationInput)
@@ -238,6 +249,24 @@ const EditExerciseEntryDialog = ({
         caloriesBurnedInput !== '' && caloriesBurnedInput !== 0
           ? caloriesBurnedInput
           : Math.round((caloriesPerHour / 60) * totalDuration);
+
+      // Cardio performance also lives on its single backing set (issue
+      // #1903): duration in seconds + distance in km, no between-set rest.
+      // These agree with the entry-level totals below by construction. A
+      // multi-set cardio entry keeps its rows untouched instead.
+      const cardioSetValues = cardioForm
+        ? {
+            duration:
+              durationInput === ''
+                ? null
+                : Math.round(Number(durationInput) * 60),
+            distance:
+              distanceInput === ''
+                ? null
+                : convertDistance(Number(distanceInput), distanceUnit, 'km'),
+            rest_time: 0,
+          }
+        : null;
 
       await updateExerciseEntry({
         id: entry.id,
@@ -249,6 +278,7 @@ const EditExerciseEntryDialog = ({
           sets: sets.map(({ _dndId, ...set }) => ({
             ...set,
             weight: set.weight ?? null,
+            ...(cardioSetValues ?? {}),
           })),
           imageFile,
           image_url: imageUrl,
@@ -341,7 +371,7 @@ const EditExerciseEntryDialog = ({
           </div>
 
           {/* ── Cardio log or strength sets ── */}
-          {isCardio ? (
+          {cardioForm ? (
             <CardioLog
               durationMinutes={durationInput}
               distance={distanceInput}
@@ -488,7 +518,7 @@ const EditExerciseEntryDialog = ({
 
             <CollapsibleContent className="space-y-3 pt-2">
               {/* Calories override — strength only */}
-              {!isCardio && (
+              {!cardioForm && (
                 <div className="space-y-1.5">
                   <Label htmlFor="calories-burned" className="text-sm">
                     {t(
@@ -530,7 +560,7 @@ const EditExerciseEntryDialog = ({
               )}
 
               {/* Avg heart rate — strength only */}
-              {!isCardio && (
+              {!cardioForm && (
                 <div className="space-y-1.5">
                   <Label htmlFor="avg-heart-rate" className="text-sm">
                     {t(

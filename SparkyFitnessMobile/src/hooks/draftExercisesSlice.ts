@@ -36,7 +36,7 @@ export type DraftExercisesAction =
       type: 'UPDATE_SET_FIELD';
       exerciseClientId: string;
       setClientId: string;
-      field: 'weight' | 'reps' | 'duration';
+      field: 'weight' | 'reps' | 'duration' | 'distance';
       value: string;
     }
   | { type: 'UPDATE_SET_META'; exerciseClientId: string; setClientId: string; patch: WorkoutSetMetaPatch }
@@ -63,7 +63,13 @@ export function draftExercisesReducer(
           exerciseModality: action.exercise.modality ?? null,
           images: action.exercise.images ?? [],
           sets: [
-            { clientId: action.setClientId, weight: '', reps: '', restTime: getDefaultRestSec() },
+            {
+              clientId: action.setClientId,
+              weight: '',
+              reps: '',
+              distance: '',
+              restTime: getDefaultRestSec(),
+            },
           ],
         },
       ];
@@ -91,7 +97,13 @@ export function draftExercisesReducer(
           exerciseModality: action.exercise.modality ?? null,
           images: action.exercise.images ?? [],
           sets: [
-            { clientId: action.setClientId, weight: '', reps: '', restTime: getDefaultRestSec() },
+            {
+              clientId: action.setClientId,
+              weight: '',
+              reps: '',
+              distance: '',
+              restTime: getDefaultRestSec(),
+            },
           ],
         };
       });
@@ -122,6 +134,9 @@ export function draftExercisesReducer(
           clientId: action.setClientId,
           weight: lastSet?.weight ?? '',
           reps: lastSet?.reps ?? '',
+          // A distance is a recorded result, never structure — cloning it
+          // would fabricate data on the new set.
+          distance: '',
           duration: lastSet?.duration ?? null,
           restTime: firstSet?.restTime ?? getDefaultRestSec(),
         };
@@ -234,7 +249,7 @@ export function useDraftExerciseActions(
   updateSetField: (
     exerciseClientId: string,
     setClientId: string,
-    field: 'weight' | 'reps' | 'duration',
+    field: 'weight' | 'reps' | 'duration' | 'distance',
     value: string,
   ) => void;
   updateSetMeta: (
@@ -287,7 +302,7 @@ export function useDraftExerciseActions(
       updateSetField: (
         exerciseClientId: string,
         setClientId: string,
-        field: 'weight' | 'reps' | 'duration',
+        field: 'weight' | 'reps' | 'duration' | 'distance',
         value: string,
       ) => {
         exercisesModifiedRef.current = true;

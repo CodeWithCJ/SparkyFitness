@@ -24,20 +24,33 @@ const METRIC_MENU_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
  * shared preference read/write; callers only manage the anchor.
  * `includeRpe: false` (preset surfaces — preset sets store no RPE) drops the
  * RPE option and shows an 'rpe' selection as Volume.
+ * `includeWeightMetrics: false` (duration-like tables, whose cards clamp the
+ * column to RPE) drops the weight-derived options instead — selecting one
+ * would silently change the preference for every other card while this card
+ * kept showing RPE.
  */
 export function MetricColumnMenu({
   anchor,
   onClose,
   includeRpe = true,
+  includeWeightMetrics = true,
 }: {
   anchor: AnchorRect | null;
   onClose: () => void;
   includeRpe?: boolean;
+  includeWeightMetrics?: boolean;
 }) {
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
   const setMetricColumn = useAppPreferencesStore((s) => s.setActiveWorkoutMetricColumn);
-  const options = includeRpe ? METRIC_OPTIONS : METRIC_OPTIONS.filter((o) => o !== 'rpe');
-  const effectiveColumn = !includeRpe && metricColumn === 'rpe' ? 'volume' : metricColumn;
+  const options = METRIC_OPTIONS.filter(
+    (o) => (includeRpe || o !== 'rpe') && (includeWeightMetrics || o === 'rpe'),
+  );
+  const effectiveColumn = !includeWeightMetrics
+    ? 'rpe'
+    : !includeRpe && metricColumn === 'rpe'
+      ? 'volume'
+      : metricColumn;
+  if (options.length === 0) return null;
   return (
     <AnchoredMenu
       visible={anchor != null}

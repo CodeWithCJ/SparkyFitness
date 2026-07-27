@@ -8,7 +8,12 @@ import type {
   PresetSessionExerciseRequest,
   PresetSessionResponse,
 } from '@workspace/shared';
-import { isExerciseModality, resolveExerciseModality } from '@workspace/shared';
+import {
+  isCardioModality,
+  isExerciseModality,
+  resolveExerciseModality,
+  setsDurationMinutes,
+} from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 // Type-only, so the store's runtime import of this module stays acyclic.
 import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
@@ -18,7 +23,7 @@ import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { WorkoutPreset, WorkoutPresetExercise } from '../types/workoutPresets';
 import type { WorkoutPresetExercisePayload } from '../services/api/workoutPresetsApi';
 import type { CreateExerciseEntryPayload } from '../services/api/exerciseApi';
-import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
+import { weightToKg, weightFromKg, distanceFromKm, distanceToKm } from './unitConversions';
 import { parseDecimalInput } from './numericInput';
 import { getDefaultRestSec } from './workoutSupersets';
 
@@ -237,8 +242,11 @@ export function buildSessionSubtitle(
     return parts.join(' \u00b7 ');
   }
 
-  // Individual with sets: show sets info + duration/calories
-  if (session.sets.length > 0) {
+  // Individual with sets: show sets info + duration/calories. Cardio is
+  // excluded even though it is set-backed \u2014 "1 set" would hide the run;
+  // its entry totals render through the activity branch below instead.
+  const cardio = isCardioModality(resolveSnapshotModality(session.exercise_snapshot));
+  if (!cardio && session.sets.length > 0) {
     const totalSets = session.sets.length;
     const totalVolumeKg = session.sets.reduce(
       (sum, set) => sum + (set.weight ?? 0) * (set.reps ?? 0), 0,
@@ -254,7 +262,7 @@ export function buildSessionSubtitle(
     return parts.join(' \u00b7 ');
   }
 
-  // Individual activity: duration, distance, calories
+  // Individual activity (and set-backed cardio): duration, distance, calories
   const parts: string[] = [];
   if (duration > 0) parts.push(formatDuration(duration));
   if (session.distance != null && session.distance > 0) {
@@ -269,6 +277,7 @@ export function buildSessionSubtitle(
 export function buildExercisesPayload(
   exercises: WorkoutDraftExercise[],
   weightUnit: 'kg' | 'lbs',
+  distanceUnit: 'km' | 'miles',
 ) {
   // Server enforces "all or none" for exercise IDs on preset-session update
   // (exerciseService.js ~L1713). If any exercise is new, we strip IDs from all
@@ -286,15 +295,50 @@ export function buildExercisesPayload(
       ? parseDecimalInput(exercise.calories ?? '')
       : NaN;
 
+    const sets = exercise.sets.map((set, setIndex) => {
+      const weight = parseDecimalInput(set.weight);
+      const reps = parseInt(set.reps, 10);
+      const distance = parseDecimalInput(set.distance ?? '');
+      // The server set UPDATE writes every column with `set.x ?? null`, so
+      // fields the form has no UI for must still be round-tripped
+      // explicitly — omitting them silently wipes the stored values.
+      return {
+        ...(allExercisesHaveServerId && set.serverId !== undefined
+          ? { id: set.serverId }
+          : {}),
+        set_number: setIndex + 1,
+        set_type: set.setType ?? null,
+        weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
+        reps: isNaN(reps) ? null : reps,
+        duration: set.duration ?? null,
+        distance: isNaN(distance) ? null : distanceToKm(distance, distanceUnit),
+        ...(set.restTime != null ? { rest_time: set.restTime } : {}),
+        notes: set.notes ?? null,
+        rpe: set.rpe ?? null,
+        completed_at: set.completedAt ?? null,
+        is_pr: set.isPr ?? false,
+      };
+    });
+
+    const modality = resolveSnapshotModality({
+      modality: exercise.exerciseModality,
+      category: exercise.exerciseCategory,
+    });
+
     return {
       ...(allExercisesHaveServerId && exercise.serverId !== undefined
         ? { id: exercise.serverId }
         : {}),
       exercise_id: exercise.exerciseId,
       sort_order: index,
-      // Round-tripped from the session (the form has no duration UI); sending 0
-      // would zero the stored duration and the calories derived from it.
-      duration_minutes: exercise.durationMinutes ?? 0,
+      // Cardio duration is the sum of its set durations — the sets are the
+      // source of truth, and an explicit entry value would beat the server's
+      // own derivation. Elsewhere the value round-trips from the session (the
+      // form has no duration UI); sending 0 would zero the stored duration
+      // and the calories derived from it.
+      duration_minutes: isCardioModality(modality)
+        ? setsDurationMinutes(sets)
+        : (exercise.durationMinutes ?? 0),
       ...(!isNaN(caloriesOverride) && caloriesOverride >= 0
         ? { calories_burned: caloriesOverride }
         : {}),
@@ -305,28 +349,7 @@ export function buildExercisesPayload(
       // The form has no superset UI; round-trip the value opaquely so manual
       // edits don't flatten grouping (the server nulls omitted fields).
       superset_group: exercise.supersetGroup ?? null,
-      sets: exercise.sets.map((set, setIndex) => {
-        const weight = parseDecimalInput(set.weight);
-        const reps = parseInt(set.reps, 10);
-        // The server set UPDATE writes all nine columns with `set.x ?? null`,
-        // so fields the form has no UI for must still be round-tripped
-        // explicitly — omitting them silently wipes the stored values.
-        return {
-          ...(allExercisesHaveServerId && set.serverId !== undefined
-            ? { id: set.serverId }
-            : {}),
-          set_number: setIndex + 1,
-          set_type: set.setType ?? null,
-          weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
-          reps: isNaN(reps) ? null : reps,
-          duration: set.duration ?? null,
-          ...(set.restTime != null ? { rest_time: set.restTime } : {}),
-          notes: set.notes ?? null,
-          rpe: set.rpe ?? null,
-          completed_at: set.completedAt ?? null,
-          is_pr: set.isPr ?? false,
-        };
-      }),
+      sets,
     };
   });
 }
@@ -397,6 +420,8 @@ export function isDurationModality(modality: ExerciseModality): boolean {
   return modality === 'duration' || modality === 'duration_distance';
 }
 
+export { isCardioModality };
+
 /**
  * Duration in seconds a set displays/fills/adopts. Legacy isometric rows hold
  * their seconds in `reps` (they predate the duration column), so `duration`
@@ -439,6 +464,8 @@ export interface WorkoutCardSet {
   rest_time?: number | null;
   notes?: string | null;
   duration?: number | null;
+  /** ALWAYS km — display conversion happens in the cardio form. */
+  distance?: number | null;
   /** Raw draft strings backing the edit-mode controlled inputs (draft mapper only). */
   editWeightText?: string;
   editRepsText?: string;
@@ -472,6 +499,7 @@ export interface WorkoutCardExercise {
 export function draftExerciseToCardExercise(
   exercise: WorkoutDraftExercise,
   weightUnit: 'kg' | 'lbs',
+  distanceUnit: 'km' | 'miles' = 'km',
 ): WorkoutCardExercise {
   return {
     id: exercise.clientId,
@@ -488,6 +516,7 @@ export function draftExerciseToCardExercise(
     sets: exercise.sets.map((set, index) => {
       const weight = parseDecimalInput(set.weight);
       const reps = parseInt(set.reps, 10);
+      const distance = parseDecimalInput(set.distance ?? '');
       return {
         id: set.clientId,
         set_number: index + 1,
@@ -498,6 +527,7 @@ export function draftExerciseToCardExercise(
         rest_time: set.restTime ?? null,
         notes: set.notes ?? null,
         duration: set.duration ?? null,
+        distance: isNaN(distance) ? null : distanceToKm(distance, distanceUnit),
         editWeightText: set.weight,
         editRepsText: set.reps,
       };
@@ -538,11 +568,12 @@ export function formatVolume(volumeKg: number, weightUnit: string): string {
   return `${Math.round(value).toLocaleString()} ${weightUnit}`;
 }
 
-/** Compact historical-set text, e.g. `W 60 × 8`, `100 × 5`, `12 reps`, or `45s`; weight is unitless display units. */
+/** Compact historical-set text, e.g. `W 60 × 8`, `100 × 5`, `12 reps`, `45s`, or `30:00 · 5.2 km`; weight is unitless display units. */
 export function formatRecentSessionSet(
   set: ExerciseRecentSessionSet,
   weightUnit: 'kg' | 'lbs',
   modality?: ExerciseModality,
+  distanceUnit: 'km' | 'miles' = 'km',
 ): string {
   const prefix = set.setType === 'warmup' ? 'W ' : '';
   if (modality != null && isDurationModality(modality)) {
@@ -550,7 +581,13 @@ export function formatRecentSessionSet(
       { duration: set.duration ?? null, reps: set.reps },
       modality,
     );
-    return seconds != null ? `${prefix}${formatDurationSeconds(seconds)}` : '–';
+    const parts: string[] = [];
+    if (seconds != null) parts.push(formatDurationSeconds(seconds));
+    if (isCardioModality(modality) && set.distance != null) {
+      const dist = parseFloat(distanceFromKm(set.distance, distanceUnit).toFixed(2));
+      parts.push(`${dist} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
+    }
+    return parts.length > 0 ? `${prefix}${parts.join(' · ')}` : '–';
   }
   const w =
     set.weight != null
@@ -822,8 +859,11 @@ export function buildSessionExercisesPayload(
     id: exercise.id,
     exercise_id: exercise.exercise_id,
     sort_order: index,
-    duration_minutes:
-      durationByEntryId?.get(exercise.id) ?? exercise.duration_minutes ?? 0,
+    // Cardio duration is always the sum of its set durations; the wall-clock
+    // split below deliberately excludes cardio entries.
+    duration_minutes: isCardioModality(resolveSnapshotModality(exercise.exercise_snapshot))
+      ? setsDurationMinutes(exercise.sets)
+      : (durationByEntryId?.get(exercise.id) ?? exercise.duration_minutes ?? 0),
     notes: exercise.notes ?? null,
     // `?? null` also normalizes `undefined` from sessions persisted before
     // the superset upgrade.
@@ -837,6 +877,7 @@ export function buildSessionExercisesPayload(
         reps: set.reps ?? null,
         weight: set.weight ?? null,
         duration: set.duration ?? null,
+        distance: set.distance ?? null,
         rest_time: set.rest_time ?? null,
         notes: set.notes ?? null,
         rpe: set.rpe ?? null,
@@ -866,6 +907,10 @@ export function buildSessionDurationMinutes(
   let totalCompleted = 0;
   const completedCountByEntryId = new Map<string, number>();
   for (const exercise of session.exercises) {
+    // Cardio entries own their duration (the sum of their set durations) and
+    // stay out of the split entirely — counting their sets would siphon
+    // wall-clock minutes away from the strength entries.
+    if (isCardioModality(resolveSnapshotModality(exercise.exercise_snapshot))) continue;
     let count = 0;
     for (const s of exercise.sets) {
       const ms = completedSetIds[String(s.id)];
@@ -1143,6 +1188,8 @@ export interface WorkoutCompletionSummary {
   skippedSetCount: number;
   /** Completed working-set volume in kg across the whole session. */
   volumeKg: number;
+  /** Completed-set distance in km across the whole session (cardio efforts). */
+  totalDistanceKm: number;
   /** Mean RPE across completed sets that logged one; null when none did. */
   averageRpe: number | null;
   prRows: WorkoutCompletionPrRow[];
@@ -1157,6 +1204,7 @@ export function buildWorkoutCompletionSummary(
   let completedSetCount = 0;
   let totalSetCount = 0;
   let volumeKg = 0;
+  let totalDistanceKm = 0;
   let rpeSum = 0;
   let rpeCount = 0;
   const prRows: WorkoutCompletionPrRow[] = [];
@@ -1186,6 +1234,7 @@ export function buildWorkoutCompletionSummary(
       }
       if (isWarmupSetType(set.set_type)) continue;
       exerciseVolumeKg += setVolumeKg(set);
+      if (set.distance != null) totalDistanceKm += set.distance;
       if (isDurationModality(modality)) {
         const seconds = effectiveSetDurationSec(set, modality);
         if (seconds != null && (topDurationSec == null || seconds > topDurationSec)) {
@@ -1237,6 +1286,7 @@ export function buildWorkoutCompletionSummary(
     totalSetCount,
     skippedSetCount: totalSetCount - completedSetCount,
     volumeKg,
+    totalDistanceKm,
     averageRpe: rpeCount > 0 ? rpeSum / rpeCount : null,
     prRows,
     exercises,
@@ -1250,14 +1300,20 @@ export function buildWorkoutCompletionSummary(
  * Request-shaped sibling of activeWorkoutStore's `makeDefaultSet` (which
  * builds the response shape with a placeholder id) — keep the two in sync.
  */
-function makeDefaultStartSet(setNumber: number): ExerciseEntrySetRequest {
+function makeDefaultStartSet(
+  setNumber: number,
+  modality: ExerciseModality,
+): ExerciseEntrySetRequest {
   return {
     set_number: setNumber,
     set_type: 'normal',
     reps: null,
     weight: null,
     duration: null,
-    rest_time: getDefaultRestSec(),
+    distance: null,
+    // Cardio efforts carry no between-set rest; a nonzero value would both
+    // start the rest timer and inflate the server's set-derived duration.
+    rest_time: isCardioModality(modality) ? 0 : getDefaultRestSec(),
     notes: null,
     rpe: null,
     completed_at: null,
@@ -1278,28 +1334,34 @@ function makeDefaultStartSet(setNumber: number): ExerciseEntrySetRequest {
 export function buildPresetStartExercisesPayload(
   preset: WorkoutPreset,
 ): PresetSessionExerciseRequest[] {
-  return preset.exercises.map((exercise, index) => ({
-    exercise_id: exercise.exercise_id,
-    sort_order: index,
-    duration_minutes: 0,
-    notes: null,
-    // Live sessions started from a preset inherit its superset grouping.
-    superset_group: exercise.superset_group ?? null,
-    sets:
-      exercise.sets.length === 0
-        ? [makeDefaultStartSet(1)]
-        : exercise.sets.map((set, setIndex) => ({
-            set_number: setIndex + 1,
-            set_type: set.set_type ?? 'normal',
-            reps: set.reps ?? null,
-            weight: set.weight ?? null,
-            duration: set.duration ?? null,
-            rest_time: set.rest_time ?? null,
-            notes: set.notes ?? null,
-            rpe: null,
-            completed_at: null,
-          })),
-  }));
+  return preset.exercises.map((exercise, index) => {
+    const modality = resolveSnapshotModality(exercise);
+    return {
+      exercise_id: exercise.exercise_id,
+      sort_order: index,
+      duration_minutes: 0,
+      notes: null,
+      // Live sessions started from a preset inherit its superset grouping.
+      superset_group: exercise.superset_group ?? null,
+      sets:
+        exercise.sets.length === 0
+          ? [makeDefaultStartSet(1, modality)]
+          : exercise.sets.map((set, setIndex) => ({
+              set_number: setIndex + 1,
+              set_type: set.set_type ?? 'normal',
+              reps: set.reps ?? null,
+              weight: set.weight ?? null,
+              duration: set.duration ?? null,
+              distance: null,
+              // Presets have no distance column and cardio takes no
+              // between-set rest.
+              rest_time: isCardioModality(modality) ? 0 : (set.rest_time ?? null),
+              notes: set.notes ?? null,
+              rpe: null,
+              completed_at: null,
+            })),
+    };
+  });
 }
 
 /**
@@ -1474,12 +1536,18 @@ export function buildSingleExerciseStartPayload(
       sort_order: 0,
       duration_minutes: 0,
       notes: null,
-      sets: [makeDefaultStartSet(1)],
+      sets: [makeDefaultStartSet(1, resolveSnapshotModality(exercise))],
     },
   ];
 }
 
 type ActivitySetPayload = NonNullable<CreateExerciseEntryPayload['sets']>[number];
+
+/** The entry-level cardio form values a single set is built from. */
+export interface CardioEffortValues {
+  durationSec: number | null;
+  distanceKm: number | null;
+}
 
 /**
  * Merge ActivityDetailScreen's edited set drafts back onto the original server
@@ -1488,13 +1556,33 @@ type ActivitySetPayload = NonNullable<CreateExerciseEntryPayload['sets']>[number
  * from the originals. Weight/reps always come from the drafts; `duration`
  * comes from the drafts only on duration-modality exercises — elsewhere it is
  * invisible structure and the original value rides along untouched.
+ *
+ * `cardio` is the entry-level Duration/Distance form state — the single
+ * source of truth for a ≤1-set cardio entry. When passed, the one set (or a
+ * fabricated one for legacy set-less entries) takes its duration/distance
+ * from it with zero rest. Multi-set cardio fallbacks must NOT pass it; their
+ * set distances ride along from the originals instead.
  */
 export function buildActivitySetsPayload(
   draftSets: readonly WorkoutDraftSet[],
   originals: ReadonlyMap<string, ExerciseEntrySetResponse>,
   weightUnit: 'kg' | 'lbs',
   modality: ExerciseModality,
+  cardio?: CardioEffortValues,
 ): ActivitySetPayload[] {
+  if (cardio && draftSets.length === 0) {
+    return [
+      {
+        set_number: 1,
+        set_type: 'Working Set',
+        weight: null,
+        reps: null,
+        duration: cardio.durationSec,
+        distance: cardio.distanceKm,
+        rest_time: 0,
+      },
+    ];
+  }
   return draftSets.map((set, index) => {
     const w = parseDecimalInput(set.weight);
     const r = parseInt(set.reps, 10);
@@ -1504,6 +1592,7 @@ export function buildActivitySetsPayload(
         id: original.id,
         set_type: original.set_type,
         duration: original.duration,
+        distance: original.distance,
         rest_time: original.rest_time,
         notes: original.notes,
         rpe: original.rpe,
@@ -1513,6 +1602,13 @@ export function buildActivitySetsPayload(
       weight: isNaN(w) ? null : weightToKg(w, weightUnit),
       reps: isNaN(r) ? null : r,
       ...(isDurationModality(modality) ? { duration: set.duration ?? null } : {}),
+      ...(cardio
+        ? {
+            duration: cardio.durationSec,
+            distance: cardio.distanceKm,
+            rest_time: 0,
+          }
+        : {}),
     };
   });
 }

@@ -167,8 +167,9 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const isPending = isCreating || isUpdating;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
-  const submission = getWorkoutDraftSubmission(state, weightUnit as 'kg' | 'lbs');
+  const submission = getWorkoutDraftSubmission(state, weightUnit as 'kg' | 'lbs', distanceUnit);
 
   // Populate the edit form once after the preferences query settles so
   // the initial unit conversion is correct without overwriting later edits.
@@ -188,8 +189,8 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     // One-time initialization from the async-loaded session; setting state
     // synchronously here is intentional and mirrors the populate() side effect.
     setHasPopulatedEdit(true);
-    populate(session, weightUnit as 'kg' | 'lbs');
-  }, [isEditMode, session, isPreferencesLoading, populate, weightUnit, hasPopulatedEdit]);
+    populate(session, weightUnit as 'kg' | 'lbs', distanceUnit);
+  }, [isEditMode, session, isPreferencesLoading, populate, weightUnit, distanceUnit, hasPopulatedEdit]);
 
   // Populate from preset once after preferences load
   const hasPopulatedPresetRef = useRef(false);
@@ -409,6 +410,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     ref={exerciseListRef}
                     exercises={state.exercises}
                     weightUnit={weightUnit as 'kg' | 'lbs'}
+                    distanceUnit={distanceUnit}
                     getImageSource={getImageSource}
                     excludePresetEntryId={session?.id}
                     activeSetKey={activeSetKey}

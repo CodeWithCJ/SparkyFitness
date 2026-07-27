@@ -78,6 +78,8 @@ export const exerciseEntrySetResponseSchema = z
     rpe: z.number().nullable(),
     completed_at: z.string().nullable(),
     is_pr: z.boolean(),
+    // Km (issue #1903). Optional: pre-distance servers omit it.
+    distance: z.number().nullable().optional(),
   })
   .strict();
 
@@ -107,6 +109,8 @@ export const exerciseEntrySetRequestSchema = z
     rpe: z.number().nullable().optional(),
     completed_at: z.iso.datetime().nullable().optional(),
     is_pr: z.boolean().optional(),
+    // Km; only meaningful on duration_distance sets (issue #1903).
+    distance: z.number().nullable().optional(),
   })
   .strict();
 
@@ -339,11 +343,17 @@ export const exerciseRecentSessionSetSchema = z
     reps: z.number().int().nullable(),
     // Integer SECONDS (issue #1903). Optional: pre-modality servers omit it.
     duration: z.number().int().nullable().optional(),
+    // Km (issue #1903). Optional: pre-distance servers omit it.
+    distance: z.number().nullable().optional(),
   })
   .strict()
-  .refine((s) => s.weight != null || s.reps != null || s.duration != null, {
-    message: "Recent-session sets must have weight, reps, or duration",
-  });
+  .refine(
+    (s) =>
+      s.weight != null || s.reps != null || s.duration != null || s.distance != null,
+    {
+      message: "Recent-session sets must have weight, reps, duration, or distance",
+    },
+  );
 
 export const exerciseRecentSessionSchema = z
   .object({

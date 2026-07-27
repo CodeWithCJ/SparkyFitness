@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type {
   ExerciseEntryResponse,
   ExerciseEntrySetResponse,
+  ExerciseModality,
   ExerciseRecentSessionSet,
   ExerciseSnapshotResponse,
   PresetSessionResponse,
@@ -15,6 +16,7 @@ import {
   formatDurationSeconds,
   getDefaultRestSec,
   getSupersetRuns,
+  isCardioModality,
   isDropSetType,
   isDurationModality,
   isPrSet,
@@ -347,7 +349,10 @@ export interface ActiveWorkoutState {
 
 /** Fields the active-workout screen can edit on a set. */
 export type ActiveSetPatch = Partial<
-  Pick<ExerciseEntrySetResponse, 'weight' | 'reps' | 'duration' | 'rpe' | 'set_type' | 'notes'>
+  Pick<
+    ExerciseEntrySetResponse,
+    'weight' | 'reps' | 'duration' | 'distance' | 'rpe' | 'set_type' | 'notes'
+  >
 >;
 
 const initialData: Pick<
@@ -534,7 +539,11 @@ function nextTempSetId(
   return min - 1;
 }
 
-function makeDefaultSet(id: number, setNumber: number): ExerciseEntrySetResponse {
+function makeDefaultSet(
+  id: number,
+  setNumber: number,
+  modality: ExerciseModality,
+): ExerciseEntrySetResponse {
   return {
     id,
     set_number: setNumber,
@@ -542,7 +551,10 @@ function makeDefaultSet(id: number, setNumber: number): ExerciseEntrySetResponse
     reps: null,
     weight: null,
     duration: null,
-    rest_time: getDefaultRestSec(),
+    distance: null,
+    // Cardio efforts carry no between-set rest; a nonzero value would both
+    // start the rest timer and inflate the server's set-derived duration.
+    rest_time: isCardioModality(modality) ? 0 : getDefaultRestSec(),
     notes: null,
     rpe: null,
     completed_at: null,
@@ -1369,9 +1381,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // (notes/rpe/completed_at/is_pr), which describe a performed set.
         // On duration exercises the duration IS the value, so it empties like
         // weight/reps; elsewhere it's invisible structure and clones along.
-        const durationLike = isDurationModality(
-          resolveSnapshotModality(exercise.exercise_snapshot),
-        );
+        // Cardio distance is likewise a per-set value, never structure.
+        const modality = resolveSnapshotModality(exercise.exercise_snapshot);
+        const durationLike = isDurationModality(modality);
         const newSet: ExerciseEntrySetResponse = lastSet
           ? {
               ...lastSet,
@@ -1380,12 +1392,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
               weight: null,
               reps: null,
               ...(durationLike ? { duration: null } : {}),
+              ...(isCardioModality(modality) ? { distance: null } : {}),
               notes: null,
               rpe: null,
               completed_at: null,
               is_pr: false,
             }
-          : makeDefaultSet(tempId, 1);
+          : makeDefaultSet(tempId, 1, modality);
 
         const next: PresetSessionResponse = {
           ...session,
@@ -1534,7 +1547,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           superset_group: null,
           exercise_snapshot: snapshot,
           activity_details: [],
-          sets: [makeDefaultSet(nextTempSetId(session, state.setRenderKeys), 1)],
+          sets: [
+            makeDefaultSet(
+              nextTempSetId(session, state.setRenderKeys),
+              1,
+              resolveSnapshotModality(snapshot),
+            ),
+          ],
         };
 
         const next: PresetSessionResponse = {
@@ -1588,7 +1607,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
                   ...e,
                   exercise_id: exercise.id,
                   exercise_snapshot: snapshot,
-                  sets: [makeDefaultSet(nextTempSetId(session, state.setRenderKeys), 1)],
+                  sets: [
+                    makeDefaultSet(
+                      nextTempSetId(session, state.setRenderKeys),
+                      1,
+                      resolveSnapshotModality(snapshot),
+                    ),
+                  ],
                 }
               : e,
           ),

@@ -334,6 +334,8 @@ export interface CreateExerciseEntryPayload {
     weight: number | null;
     reps: number | null;
     duration?: number | null;
+    /** Km; only meaningful on duration_distance sets. */
+    distance?: number | null;
     rest_time?: number | null;
     notes?: string | null;
     rpe?: number | null;

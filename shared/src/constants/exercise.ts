@@ -4,8 +4,10 @@
  * - weight_reps: weight + reps inputs (default strength table)
  * - reps_only: reps input, no weight column
  * - duration: single duration-in-seconds input
- * - duration_distance: entry-level cardio/activity editors; renders like
- *   `duration` wherever a set table is forced
+ * - duration_distance: cardio backed by a single set carrying duration
+ *   (seconds) + distance (km); clients render a duration+distance form for
+ *   entries with at most one set and fall back to a duration-style set
+ *   table for multi-set entries
  */
 export const EXERCISE_MODALITIES = [
   "weight_reps",
@@ -21,6 +23,15 @@ export function isExerciseModality(value: unknown): value is ExerciseModality {
     typeof value === "string" &&
     (EXERCISE_MODALITIES as readonly string[]).includes(value)
   );
+}
+
+/**
+ * Cardio: sets carry duration + distance and clients prefer the
+ * duration+distance form over a set table. Distinct from duration-LIKE
+ * (holds are duration-like but never cardio).
+ */
+export function isCardioModality(modality: ExerciseModality): boolean {
+  return modality === "duration_distance";
 }
 
 /**

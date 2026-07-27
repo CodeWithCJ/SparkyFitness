@@ -109,6 +109,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
   const { preferences } = usePreferences();
   const weightUnit = normalizeWeightUnit(preferences?.default_weight_unit);
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   // Same UUID guard as hydration: the stats and history routes 400 on non-UUID
   // ids (e.g. external-provider exercises), so those get no History tab.
   const historyAvailable = isConnected && UUID_REGEX.test(item.id);
@@ -442,6 +443,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             <ExerciseHistoryList
               exerciseId={item.id}
               weightUnit={weightUnit}
+              distanceUnit={distanceUnit}
               modality={resolveSnapshotModality(exercise)}
               bestSet={bestSet}
             />

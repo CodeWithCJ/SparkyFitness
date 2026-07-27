@@ -26,7 +26,10 @@ import { usePreferences } from '../hooks/usePreferences';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import { addDays, formatDateLabel, getTodayDate } from '../utils/dateUtils';
+import { buildActivitySetsPayload, isCardioModality } from '../utils/workoutSession';
+import { resolveExerciseModality } from '@workspace/shared';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
+import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ActivityAdd'>;
@@ -98,7 +101,21 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [isEditMode, entry, preferences, populate, distanceUnit]);
 
-  useSelectedExercise(route.params, setExercise);
+  // The draft only persists the exercise's category, so a restored draft
+  // falls back to the category-derived modality; a fresh selection (and edit
+  // mode's snapshot) keeps the explicit one.
+  const [selectedModality, setSelectedModality] = useState<string | null>(
+    entry?.exercise_snapshot?.modality ?? null,
+  );
+  const handleSetExercise = useCallback(
+    (exercise: Exercise) => {
+      setSelectedModality(exercise.modality ?? null);
+      setExercise(exercise);
+    },
+    [setExercise],
+  );
+  useSelectedExercise(route.params, handleSetExercise);
+  const modality = resolveExerciseModality(selectedModality, state.exerciseCategory);
 
   const submission = getActivityDraftSubmission(state, distanceUnit);
   const canSave = submission.canSave;
@@ -124,6 +141,13 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSave = useCallback(async () => {
     if (!submission.exerciseId || !submission.canSave) return;
 
+    // Cardio is logged as a single set carrying duration+distance (issue
+    // #1903). Non-cardio activities must NOT get a fabricated set — it would
+    // grow a set table on plain activities — and an existing multi-set cardio
+    // entry keeps its rows (both server update paths delete unreferenced
+    // sets, so sending fewer sets than the entry has would truncate it).
+    const sendCardioSet =
+      isCardioModality(modality) && (entry == null || entry.sets.length <= 1);
     const payload = {
       exercise_id: submission.exerciseId,
       exercise_name: submission.exerciseName,
@@ -133,6 +157,30 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
       distance: submission.distanceKm,
       avg_heart_rate: submission.avgHeartRate,
       notes: submission.notes,
+      ...(sendCardioSet
+        ? {
+            sets: buildActivitySetsPayload(
+              // Draft rows echo the entry's stored values as kg text (the
+              // builder gets 'kg' below) so an existing set's weight/reps
+              // ride through unchanged.
+              (entry?.sets ?? []).map((set, i) => ({
+                clientId: `set-${i}`,
+                weight: set.weight != null ? String(set.weight) : '',
+                reps: set.reps != null ? String(set.reps) : '',
+                distance: '',
+              })),
+              new Map((entry?.sets ?? []).map((set, i) => [`set-${i}`, set])),
+              'kg',
+              modality,
+              {
+                durationSec: submission.hasDuration
+                  ? Math.round(submission.durationMinutes * 60)
+                  : null,
+                distanceKm: submission.distanceKm,
+              },
+            ),
+          }
+        : {}),
     };
 
     try {
@@ -151,7 +199,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
       Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
     }
   }, [
-    submission, isEditMode, entry, popCount,
+    submission, isEditMode, entry, popCount, modality,
     createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, discardDraft, navigation,
   ]);
 
