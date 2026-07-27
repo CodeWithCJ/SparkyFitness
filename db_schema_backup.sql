@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 2fch36TUbeX3PUGdkdRgGe8u0dKG2Unn4XZdchelSlLo04dOsNOWRB0uSPwFIfm
+\restrict urj2OAVFvPTJdH8PZAYX8q12SbkE440UOncTimowmwwqIEbZV4TD3kGkjkfAIU8
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1908,6 +1908,7 @@ CREATE TABLE public.food_favorites (
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT food_favorites_one_target CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL))))
 );
+
 
 --
 -- Name: food_variants; Type: TABLE; Schema: public; Owner: -
@@ -4121,6 +4122,7 @@ ALTER TABLE ONLY public.food_entry_meals
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_pkey PRIMARY KEY (id);
 
+
 --
 -- Name: food_favorites food_favorites_unique_food; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -4128,12 +4130,14 @@ ALTER TABLE ONLY public.food_favorites
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_unique_food UNIQUE (user_id, food_id);
 
+
 --
 -- Name: food_favorites food_favorites_unique_meal; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_unique_meal UNIQUE (user_id, meal_id);
+
 
 --
 -- Name: food_variants food_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -5157,6 +5161,7 @@ CREATE INDEX idx_food_favorites_meal_id ON public.food_favorites USING btree (me
 
 CREATE INDEX idx_food_favorites_user_id ON public.food_favorites USING btree (user_id);
 
+
 --
 -- Name: idx_foods_provider_external_id_provider_type; Type: INDEX; Schema: public; Owner: -
 --
@@ -5554,13 +5559,6 @@ CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries U
 --
 
 CREATE INDEX idx_workout_preset_exercise_sets_preset_exercise_id ON public.workout_preset_exercise_sets USING btree (workout_preset_exercise_id);
-
-
---
--- Name: one_active_meal_plan_per_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX one_active_meal_plan_per_user ON public.meal_plan_templates USING btree (user_id) WHERE (is_active = true);
 
 
 --
@@ -6329,11 +6327,20 @@ ALTER TABLE ONLY public.food_entry_meals
 
 
 --
+-- Name: food_entry_meals food_entry_meals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entry_meals
+    ADD CONSTRAINT food_entry_meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: food_favorites food_favorites_food_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_food_id_fkey FOREIGN KEY (food_id) REFERENCES public.foods(id) ON DELETE CASCADE;
+
 
 --
 -- Name: food_favorites food_favorites_meal_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -6342,19 +6349,13 @@ ALTER TABLE ONLY public.food_favorites
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_meal_id_fkey FOREIGN KEY (meal_id) REFERENCES public.meals(id) ON DELETE CASCADE;
 
+
 --
 -- Name: food_favorites food_favorites_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
-
---
--- Name: food_entry_meals food_entry_meals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.food_entry_meals
-    ADD CONSTRAINT food_entry_meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7427,6 +7428,7 @@ ALTER TABLE public.food_entry_meals ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.food_favorites ENABLE ROW LEVEL SECURITY;
+
 --
 -- Name: food_variants; Type: ROW SECURITY; Schema: public; Owner: -
 --
@@ -7663,6 +7665,7 @@ CREATE POLICY modify_policy ON public.food_entry_meals USING (public.has_diary_a
 --
 
 CREATE POLICY modify_policy ON public.food_favorites USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
 
 --
 -- Name: food_variants modify_policy; Type: POLICY; Schema: public; Owner: -
@@ -8334,6 +8337,7 @@ CREATE POLICY select_policy ON public.food_entry_meals FOR SELECT USING (public.
 --
 
 CREATE POLICY select_policy ON public.food_favorites FOR SELECT USING (public.has_diary_read_access(user_id));
+
 
 --
 -- Name: food_variants select_policy; Type: POLICY; Schema: public; Owner: -
@@ -9543,9 +9547,9 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO "sparky ua
 -- Name: TABLE food_favorites; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO sparky_uat;
 
 
 --
@@ -10326,5 +10330,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2fch36TUbeX3PUGdkdRgGe8u0dKG2Unn4XZdchelSlLo04dOsNOWRB0uSPwFIfm
+\unrestrict urj2OAVFvPTJdH8PZAYX8q12SbkE440UOncTimowmwwqIEbZV4TD3kGkjkfAIU8
 
