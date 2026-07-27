@@ -28,14 +28,18 @@ import { getWorkout } from '../services/api/exerciseApi';
 import { fireSuccessHaptic } from '../services/haptics';
 import { withAlpha } from '../utils/colors';
 import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
+import { setsDurationMinutes } from '@workspace/shared';
 import {
+  buildSessionDurationMinutes,
   buildWorkoutCompletionSummary,
   formatDuration,
   formatSetLoad,
   formatVolume,
   getRpeTone,
   getSessionCalories,
+  isCardioModality,
   normalizeWeightUnit,
+  resolveSnapshotModality,
   summarizeWorkoutSpan,
   SUPERSET_PALETTE_VARS,
   type RpeTone,
@@ -262,10 +266,29 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
   );
   const hasRecords = summary.prRows.length > 0;
 
-  // The final flush stamped per-exercise durations server-side and folded the
-  // response back into the snapshot; the span fallback covers a resumed
-  // session whose completions all predate this start.
+  // Recomputed with the same construction the final flush stamps — cardio
+  // entries are their set sums, strength entries their wall-clock split
+  // share — so the number can't disagree with the diary even when the flush
+  // response never folded back into this snapshot (or an entry carries a
+  // stale duration). The stamped/span fallbacks cover sessions the split
+  // can't price: no startedAt, or a resumed session whose completions all
+  // predate this start.
   const durationMinutes = useMemo(() => {
+    // A non-null split means this session priced itself (something completed
+    // after start); null means it didn't, and the server-stamped durations
+    // are the better truth.
+    const split = buildSessionDurationMinutes(session, completedSetIds, startedAt);
+    if (split != null) {
+      const derived = session.exercises.reduce(
+        (sum, e) =>
+          sum +
+          (isCardioModality(resolveSnapshotModality(e.exercise_snapshot))
+            ? setsDurationMinutes(e.sets)
+            : (split.get(e.id) ?? 0)),
+        0,
+      );
+      if (derived > 0) return derived;
+    }
     const stamped = session.exercises.reduce((sum, e) => sum + (e.duration_minutes ?? 0), 0);
     if (stamped > 0) return stamped;
     return summarizeWorkoutSpan(completedSetIds, startedAt)?.totalMinutes ?? 0;
