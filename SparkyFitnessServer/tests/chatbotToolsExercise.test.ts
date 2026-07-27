@@ -418,6 +418,7 @@ describe('log_exercise', () => {
             reps: 10,
             weight: 60,
             duration: null,
+            distance: null,
             rest_time: null,
             rpe: null,
             notes: null,
@@ -428,6 +429,7 @@ describe('log_exercise', () => {
             reps: 8,
             weight: 65,
             duration: null,
+            distance: null,
             rest_time: null,
             rpe: null,
             notes: null,
@@ -551,11 +553,38 @@ describe('log_exercise', () => {
             reps: 5,
             weight: 100,
             duration: null,
+            distance: null,
             rest_time: null,
             rpe: null,
             notes: null,
           },
         ],
+      }),
+      { skipDuplicateCheck: true }
+    );
+  });
+
+  it('persists per-set distance for cardio sets', async () => {
+    vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        entry_date: '2026-06-10',
+        duration_minutes: 30,
+        sets: [{ duration: 1800, distance: 5.2 }],
+      },
+      opts
+    );
+
+    expect(exerciseService.createExerciseEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        sets: [expect.objectContaining({ duration: 1800, distance: 5.2 })],
       }),
       { skipDuplicateCheck: true }
     );
@@ -881,6 +910,7 @@ describe('update_exercise_entry / delete_exercise_entry', () => {
             reps: 12,
             weight: null,
             duration: null,
+            distance: null,
             rest_time: null,
             rpe: null,
             notes: null,

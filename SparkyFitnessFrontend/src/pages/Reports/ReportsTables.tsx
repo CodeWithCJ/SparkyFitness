@@ -46,6 +46,34 @@ const formatRepRange = (sets: DailyExerciseEntry['sets']) => {
   return `${Math.min(...reps)} - ${Math.max(...reps)}`;
 };
 
+/** Duration-only entries carry no weights, so averaging them shows a dash. */
+const formatAvgWeight = (
+  sets: DailyExerciseEntry['sets'],
+  weightUnit: string
+) => {
+  const weighted = sets.filter((s) => s.weight != null);
+  if (weighted.length === 0) return '-';
+  return formatWeight(
+    weighted.reduce((acc, s) => acc + Number(s.weight), 0) / weighted.length,
+    weightUnit
+  );
+};
+
+/** Duration-only entries carry no weights, so tonnage shows a dash. */
+const formatTonnage = (
+  sets: DailyExerciseEntry['sets'],
+  weightUnit: string
+) => {
+  if (!sets.some((s) => s.weight != null)) return '-';
+  return formatWeight(
+    sets.reduce(
+      (acc, s) => acc + Number(s.weight ?? 0) * Number(s.reps ?? 0),
+      0
+    ),
+    weightUnit
+  );
+};
+
 interface ReportsTablesProps {
   tabularData: DailyFoodEntry[];
   exerciseEntries: DailyExerciseEntry[];
@@ -600,27 +628,10 @@ const ReportsTables = ({
                         <TableCell></TableCell>
                         <TableCell>{formatRepRange(entry.sets)}</TableCell>
                         <TableCell>
-                          {entry.sets.length > 0
-                            ? formatWeight(
-                                entry.sets.reduce(
-                                  (acc, s) => acc + Number(s.weight),
-                                  0
-                                ) / entry.sets.length,
-                                weightUnit
-                              )
-                            : formatWeight(0, weightUnit)}
+                          {formatAvgWeight(entry.sets, weightUnit)}
                         </TableCell>
                         <TableCell>
-                          {entry.sets.length > 0
-                            ? formatWeight(
-                                entry.sets.reduce(
-                                  (acc, s) =>
-                                    acc + Number(s.weight) * Number(s.reps),
-                                  0
-                                ),
-                                weightUnit
-                              )
-                            : formatWeight(0, weightUnit)}
+                          {formatTonnage(entry.sets, weightUnit)}
                         </TableCell>
                         <TableCell>
                           {entry.sets.reduce(

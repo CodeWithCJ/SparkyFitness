@@ -78,8 +78,12 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
   convertEnergy,
   getEnergyUnitString,
 }) => {
-  const { weightUnit } = usePreferences();
+  const { weightUnit, distanceUnit, convertDistance } = usePreferences();
   const snapshot = exerciseEntry.exercise_snapshot;
+
+  // Distances are stored in km; render in the user's display unit.
+  const formatDistance = (km: number) =>
+    `${convertDistance(km, 'km', distanceUnit).toFixed(2)} ${distanceUnit}`;
 
   const [imageError, setImageError] = useState(false);
   const sourceBadge = snapshot?.source
@@ -196,6 +200,12 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           ) : (
             <>
               <span>{durationDisplay}</span>
+              {exerciseEntry.distance != null && (
+                <>
+                  <span className="text-gray-300 dark:text-gray-600">·</span>
+                  <span>{formatDistance(exerciseEntry.distance)}</span>
+                </>
+              )}
               <span className="text-gray-300 dark:text-gray-600">·</span>
               <span className="text-orange-600 dark:text-orange-400 font-medium">
                 {caloriesDisplay}
@@ -225,6 +235,8 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
               if (set.weight && Number.isFinite(set.weight))
                 parts.push(formatWeight(set.weight, weightUnit));
               if (set.duration != null) parts.push(`${set.duration}s`);
+              if (set.distance != null)
+                parts.push(formatDistance(set.distance));
               if (Number.isFinite(set.rpe)) parts.push(`RPE ${set.rpe}`);
               if (parts.length === 0) return null;
               return (

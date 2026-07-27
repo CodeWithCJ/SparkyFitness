@@ -414,6 +414,29 @@ describe('presetFormReducer', () => {
       expect(next.exercises[0].sets[1].reps).toBe('');
     });
 
+    it('preserves an explicit modality, recording null when the preset omits it', () => {
+      const mixed = preset({
+        exercises: [
+          { ...preset().exercises[0], modality: 'duration' },
+          { ...preset().exercises[0], id: 802, exercise_id: 'ex-2' },
+        ],
+      });
+      const next = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        {
+          type: 'POPULATE_FROM_PRESET',
+          preset: mixed,
+          weightUnit: 'kg',
+          clientIds: [
+            { exerciseClientId: 'e1', setClientIds: ['s1', 's2'] },
+            { exerciseClientId: 'e2', setClientIds: ['s3', 's4'] },
+          ],
+        },
+      );
+      expect(next.exercises[0].exerciseModality).toBe('duration');
+      expect(next.exercises[1].exerciseModality).toBeNull();
+    });
+
     it('maps superset_group into the draft, defaulting to null', () => {
       const grouped = preset({
         exercises: [
@@ -613,6 +636,29 @@ describe('presetFormReducer', () => {
       );
       const expected = String(parseFloat(kgToLbs(60).toFixed(1)));
       expect(next.exercises[0].sets[0].weight).toBe(expected);
+    });
+
+    it('copies the snapshot modality into the draft, recording null when absent', () => {
+      const base = session().exercises[0];
+      const withModality = session({
+        exercises: [
+          {
+            ...base,
+            exercise_snapshot: { ...base.exercise_snapshot!, modality: 'reps_only' },
+          },
+        ],
+      });
+      const next = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        { type: 'POPULATE_FROM_SESSION', session: withModality, weightUnit: 'kg', clientIds },
+      );
+      expect(next.exercises[0].exerciseModality).toBe('reps_only');
+
+      const bare = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        { type: 'POPULATE_FROM_SESSION', session: session(), weightUnit: 'kg', clientIds },
+      );
+      expect(bare.exercises[0].exerciseModality).toBeNull();
     });
 
     it('falls back to Unknown/null/empty when the exercise snapshot is missing', () => {

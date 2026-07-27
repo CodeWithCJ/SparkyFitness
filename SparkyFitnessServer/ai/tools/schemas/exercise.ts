@@ -23,6 +23,11 @@ const exerciseSetSchema = z
       .min(0)
       .optional()
       .describe('Duration in seconds'),
+    distance: z.coerce
+      .number()
+      .min(0)
+      .optional()
+      .describe('Distance in km — cardio sets'),
     rest_time: z.coerce
       .number()
       .min(0)
@@ -411,6 +416,7 @@ export const manageExerciseInput = z.object({
           reps: z.coerce.number().int().min(0).optional(),
           weight: z.coerce.number().min(0).optional(),
           duration: z.coerce.number().int().min(0).optional(),
+          distance: z.coerce.number().min(0).optional(),
           rest_time: z.coerce.number().min(0).optional(),
           set_type: setTypeEnum.optional(),
           rpe: z.coerce.number().min(0).max(10).optional(),

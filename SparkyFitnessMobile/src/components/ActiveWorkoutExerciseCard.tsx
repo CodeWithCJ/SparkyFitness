@@ -278,9 +278,11 @@ function ActiveWorkoutExerciseCard({
   const cardioForm =
     cardioFormEnabled &&
     rendersCardioEffortForm(exercise.exercise_snapshot, exercise.sets.length);
-  // Vol/1RM/10RM are weight-derived and always empty on duration-like tables;
-  // clamp the display to RPE. Never written back to the shared preference.
-  const effectiveMetricColumn = durationLike ? 'rpe' : metricColumn;
+  // Vol/1RM/10RM are weight-derived and always empty on duration-like and
+  // reps-only tables (both keep weight null); clamp the display to RPE.
+  // Never written back to the shared preference.
+  const clampedToRpe = durationLike || modality === 'reps_only';
+  const effectiveMetricColumn = clampedToRpe ? 'rpe' : metricColumn;
   // Live and edit fetch the stats baseline with the active/edited session
   // excluded so its own sets don't pollute it. View mode fetches only when the
   // owner supplies the viewed session's id to exclude — without it (e.g. the
@@ -433,7 +435,7 @@ function ActiveWorkoutExerciseCard({
   const metricAnchorRef = useRef<View>(null);
   const openMetricMenu = () => {
     measureAnchoredMenuTrigger(metricAnchorRef.current, (anchor) =>
-      onPressMetricHeader(anchor, durationLike),
+      onPressMetricHeader(anchor, clampedToRpe),
     );
   };
 
