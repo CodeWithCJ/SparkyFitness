@@ -117,7 +117,7 @@ const ExerciseReportsDashboard = ({
 
   const [statsInterval, setStatsInterval] = useState<
     'day' | 'week' | 'month' | 'year'
-  >('month');
+  >('day');
 
   const { data: statsSummary } = useExerciseStatsSummary(
     statsInterval,
