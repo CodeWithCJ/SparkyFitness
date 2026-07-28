@@ -163,8 +163,12 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
       }
       options?.onSuccess?.(entry);
     },
-    onError: () => {
-      Toast.show({ type: 'error', text1: 'Failed to add food', text2: 'Please try again.' });
+    onError: (error) => {
+      const text2 =
+        error instanceof Error && error.message === SELECTED_VARIANT_RESOLUTION_ERROR
+          ? 'Choose a different serving.'
+          : 'Please try again.';
+      Toast.show({ type: 'error', text1: 'Failed to add food', text2 });
     },
   });
 

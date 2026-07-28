@@ -359,6 +359,7 @@ function mergeYazioCandidateServings(
 
 interface YazioSearchCandidateGroup {
   product: YazioProductSearchResult;
+  productId: string;
   candidates: YazioProductSearchResult[];
 }
 
@@ -382,7 +383,7 @@ function groupYazioSearchCandidates(
     }
 
     groupIndexByProductId.set(productId, groups.length);
-    groups.push({ product, candidates: [product] });
+    groups.push({ product, productId, candidates: [product] });
   }
 
   return groups;
@@ -792,37 +793,33 @@ async function searchYazioFoods(query: string, options: YazioSearchOptions) {
   const pageGroups = productGroups.slice(offset, offset + pageSize);
 
   const foods = await Promise.all(
-    pageGroups.map(async ({ product, candidates: siblingCandidates }) => {
-      const productId = getYazioProductId(product);
-      if (!productId) {
-        return mapYazioProduct(
-          mergeYazioCandidateServings(product, siblingCandidates)
-        );
+    pageGroups.map(
+      async ({ product, productId, candidates: siblingCandidates }) => {
+        try {
+          const detailed = await getRawYazioFoodDetails(productId, options);
+          return detailed
+            ? mapYazioProduct(
+                mergeYazioCandidateServings(
+                  mergeYazioSearchCandidateVerification(detailed, product),
+                  siblingCandidates
+                ),
+                { productId }
+              )
+            : mapYazioProduct(
+                mergeYazioCandidateServings(product, siblingCandidates)
+              );
+        } catch (error) {
+          log(
+            'debug',
+            `YAZIO search detail enrichment failed for candidate ${productId}:`,
+            error
+          );
+          return mapYazioProduct(
+            mergeYazioCandidateServings(product, siblingCandidates)
+          );
+        }
       }
-      try {
-        const detailed = await getRawYazioFoodDetails(productId, options);
-        return detailed
-          ? mapYazioProduct(
-              mergeYazioCandidateServings(
-                mergeYazioSearchCandidateVerification(detailed, product),
-                siblingCandidates
-              ),
-              { productId }
-            )
-          : mapYazioProduct(
-              mergeYazioCandidateServings(product, siblingCandidates)
-            );
-      } catch (error) {
-        log(
-          'debug',
-          `YAZIO search detail enrichment failed for candidate ${productId}:`,
-          error
-        );
-        return mapYazioProduct(
-          mergeYazioCandidateServings(product, siblingCandidates)
-        );
-      }
-    })
+    )
   );
 
   return {
