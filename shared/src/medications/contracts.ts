@@ -55,8 +55,8 @@ export interface MedicationSchedule extends SharedScheduleRule {
   start_date: string | null;
   end_date: string | null;
   active: boolean;
-  created_at?: string;
-  updated_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export type MedicationDetail = Medication & { schedules: MedicationSchedule[] };
