@@ -1,4 +1,4 @@
-import { dayOfWeek } from '../utils/timezone.ts';
+import { dayOfWeek, instantToDay } from '../utils/timezone.ts';
 
 export interface SharedScheduleRule {
   schedule_type_id: string;
@@ -13,6 +13,7 @@ export interface SharedScheduleRule {
   active?: boolean;
   dose_amount?: number | null;
   with_meal?: string | null;
+  created_at?: string | null;
 }
 
 /**
@@ -94,16 +95,26 @@ export function isScheduleDueOnDate(schedule: SharedScheduleRule, dateString: st
 }
 
 /**
+ * Medication shape required by `getDueDosesForDate`.
+ */
+export interface SharedMedication {
+  id: string;
+  is_active: boolean;
+  schedules?: (SharedScheduleRule & { id: string })[];
+}
+
+/**
  * Filters and returns all scheduled dose slots for a given date.
  */
-export function getDueDosesForDate(
-  medications: Array<{ id: string; is_active: boolean; schedules?: SharedScheduleRule[] } & Record<string, any>>,
-  dateString: string
+export function getDueDosesForDate<M extends SharedMedication>(
+  medications: M[],
+  dateString: string,
+  tz: string
 ): Array<{
-  medication: any;
+  medication: M;
   schedule: SharedScheduleRule & { id: string };
 }> {
-  const result: Array<{ medication: any; schedule: SharedScheduleRule & { id: string } }> = [];
+  const result: Array<{ medication: M; schedule: SharedScheduleRule & { id: string } }> = [];
   for (const med of medications) {
     if (!med.is_active) continue;
     if (!med.schedules || med.schedules.length === 0) continue;
@@ -112,14 +123,19 @@ export function getDueDosesForDate(
         // PRN is logged on demand, not scheduled on due list
         continue;
       }
+      const fallbackStart = sched.created_at
+        ? instantToDay(sched.created_at, tz)
+        : null;
+      if (!sched.start_date && fallbackStart && dateString < fallbackStart) {
+        continue;
+      }
       if (isScheduleDueOnDate(sched, dateString)) {
         result.push({
           medication: med,
-          schedule: sched as SharedScheduleRule & { id: string }
+          schedule: sched
         });
       }
     }
   }
   return result;
 }
-

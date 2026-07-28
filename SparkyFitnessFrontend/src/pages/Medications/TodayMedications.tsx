@@ -22,6 +22,7 @@ import {
   localDateTimeToUtc,
   utcToLocalDateTimeInput,
   INJECTION_SITES,
+  type SharedScheduleRule,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,7 +72,7 @@ import MedicationLogCalendar from './MedicationLogCalendar';
 
 export interface DueDose {
   medication: MedicationDetail;
-  schedule: MedicationSchedule & { id: string };
+  schedule: SharedScheduleRule & { id: string };
 }
 
 // GLP-1 injectable doses are logged as injection entries (single source of truth with
@@ -157,8 +158,8 @@ export default function TodayMedications({
   // Schedules evaluation
   const dueDoses = useMemo(() => {
     if (loadingMeds || meds.length === 0) return [];
-    return getDueDosesForDate(meds, selectedDate) as DueDose[];
-  }, [meds, selectedDate, loadingMeds]);
+    return getDueDosesForDate(meds, selectedDate, timezone);
+  }, [meds, selectedDate, timezone, loadingMeds]);
 
   const prnMeds = useMemo(() => {
     return meds.filter((m) => {
@@ -202,7 +203,7 @@ export default function TodayMedications({
     }[] = [];
     for (let i = 13; i >= 0; i--) {
       const d = addDays(selectedDate, -i);
-      const dayDue = getDueDosesForDate(meds, d);
+      const dayDue = getDueDosesForDate(meds, d, timezone);
       let dayTaken = 0;
       for (const dd of dayDue) {
         const hit = recentEntries.some(
@@ -293,7 +294,7 @@ export default function TodayMedications({
       streak,
       pct: due > 0 ? Math.round((taken / due) * 100) : 100,
     };
-  }, [meds, selectedDate, recentEntries]);
+  }, [meds, selectedDate, recentEntries, timezone]);
 
   // The next GLP-1 dose due today (if any), for the next-injection banner.
   const nextGlpDue = useMemo(() => {

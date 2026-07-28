@@ -10,6 +10,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
 import { getDueDosesForDate } from '@workspace/shared';
+import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 import { MEDICATION_TYPES, DAY_LABELS } from '../types/medications';
 import type { MedicationEntry, MedicationEntryStatus } from '../types/medications';
@@ -45,7 +46,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
 
   const unloggedSchedules = useMemo(() => {
     if (!med) return [];
-    const dueDoses = getDueDosesForDate([med], selectedDate);
+    const dueDoses = getDueDosesForDate([med], selectedDate, getDeviceTimezone());
     return dueDoses
       .filter((due) =>
         !todayEntries.some(

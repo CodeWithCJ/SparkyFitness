@@ -12,6 +12,7 @@ import Icon from './Icon';
 import { useMedications, useMedicationEntries, useCreateMedicationEntry, useDeleteMedicationEntry } from '../hooks/useMedications';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { getDueDosesForDate, type SharedScheduleRule } from '@workspace/shared';
+import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import type { Medication, MedicationDetail, MedicationEntry, MedicationEntryStatus } from '../types/medications';
 import { MEDICATION_TYPES } from '../types/medications';
@@ -161,7 +162,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
 
   const dueDoses = useMemo(() => {
     if (!medications) return [];
-    return getDueDosesForDate(medications, selectedDate) as DueDose[];
+    return getDueDosesForDate(medications, selectedDate, getDeviceTimezone());
   }, [medications, selectedDate]);
 
   const prnMeds = useMemo(() => {
