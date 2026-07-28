@@ -36,6 +36,10 @@ vi.mock('../middleware/onBehalfOfMiddleware.js', () => ({
     next: express.NextFunction
   ) => next(),
 }));
+vi.mock('../utils/timezoneLoader.js', () => ({
+  loadUserTimezone: vi.fn(async () => 'America/New_York'),
+  resolveTemplateStartDay: vi.fn(async () => '2026-07-28'),
+}));
 
 const app = express();
 app.use(express.json());
@@ -187,6 +191,78 @@ describe('Medication Routes V2', () => {
         .send({ site: 'left_thigh' });
       expect(res.statusCode).toBe(400);
     });
+
+    it('files a backdated entry under the day it was administered, not today', async () => {
+      vi.mocked(injectionRepository.createInjection).mockResolvedValue({
+        id: 'inj-1',
+      });
+      await request(app)
+        .post('/api/v2/medications/injections')
+        .set('Cookie', cookie)
+        .send({
+          medication_id: UID,
+          injected_at: '2026-06-24T15:45:00.000Z',
+        });
+      expect(injectionRepository.createInjection).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({ entry_date: '2026-06-24' })
+      );
+    });
+
+    it('resolves the day in the user timezone, not UTC', async () => {
+      vi.mocked(injectionRepository.createInjection).mockResolvedValue({
+        id: 'inj-1',
+      });
+      await request(app)
+        .post('/api/v2/medications/injections')
+        .set('Cookie', cookie)
+        .send({
+          medication_id: UID,
+          injected_at: '2026-06-25T02:00:00.000Z',
+        });
+      expect(injectionRepository.createInjection).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({ entry_date: '2026-06-24' })
+      );
+    });
+
+    it('honors an explicit entry_date over the administration time', async () => {
+      vi.mocked(injectionRepository.createInjection).mockResolvedValue({
+        id: 'inj-1',
+      });
+      await request(app)
+        .post('/api/v2/medications/injections')
+        .set('Cookie', cookie)
+        .send({
+          medication_id: UID,
+          injected_at: '2026-06-24T15:45:00.000Z',
+          entry_date: '2026-06-30',
+        });
+      expect(injectionRepository.createInjection).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({ entry_date: '2026-06-30' })
+      );
+    });
+
+    it('falls back to today when no administration time is supplied', async () => {
+      vi.mocked(injectionRepository.createInjection).mockResolvedValue({
+        id: 'inj-1',
+      });
+      await request(app)
+        .post('/api/v2/medications/injections')
+        .set('Cookie', cookie)
+        .send({ medication_id: UID });
+      const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+      expect(injectionRepository.createInjection).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({ entry_date: today })
+      );
+    });
   });
 
   describe('PUT /api/v2/medications/injections/:id', () => {
@@ -203,6 +279,52 @@ describe('Medication Routes V2', () => {
         'testUser',
         UID,
         expect.objectContaining({ site: 'right_thigh', dose_mg: 0.5 })
+      );
+    });
+
+    it('moves entry_date when the administration time is corrected', async () => {
+      vi.mocked(injectionRepository.updateInjection).mockResolvedValue({
+        id: UID,
+      });
+      await request(app)
+        .put(`/api/v2/medications/injections/${UID}`)
+        .set('Cookie', cookie)
+        .send({ injected_at: '2026-07-01T22:00:00.000Z' });
+      expect(injectionRepository.updateInjection).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ entry_date: '2026-07-01' })
+      );
+    });
+
+    it('leaves entry_date alone when the administration time is unchanged', async () => {
+      vi.mocked(injectionRepository.updateInjection).mockResolvedValue({
+        id: UID,
+      });
+      await request(app)
+        .put(`/api/v2/medications/injections/${UID}`)
+        .set('Cookie', cookie)
+        .send({ site: 'right_thigh' });
+      const arg = vi.mocked(injectionRepository.updateInjection).mock
+        .calls[0][2];
+      expect(arg).not.toHaveProperty('entry_date');
+    });
+
+    it('honors an explicit entry_date alongside a corrected time', async () => {
+      vi.mocked(injectionRepository.updateInjection).mockResolvedValue({
+        id: UID,
+      });
+      await request(app)
+        .put(`/api/v2/medications/injections/${UID}`)
+        .set('Cookie', cookie)
+        .send({
+          injected_at: '2026-07-01T22:00:00.000Z',
+          entry_date: '2026-07-05',
+        });
+      expect(injectionRepository.updateInjection).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ entry_date: '2026-07-05' })
       );
     });
 
