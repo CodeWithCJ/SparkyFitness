@@ -9,7 +9,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import Icon from './Icon';
-import { useMedications, useMedicationEntries, useCreateMedicationEntry, useDeleteMedicationEntry } from '../hooks/useMedications';
+import { useMedications, useMedicationEntries, useCreateMedicationEntry, useUpdateMedicationEntry, useDeleteMedicationEntry } from '../hooks/useMedications';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   getDueDosesForDate,
@@ -157,6 +157,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const { data: medications, isLoading: isLoadingMeds } = useMedications({ activeOnly: true });
   const { data: entries, isLoading: isLoadingEntries } = useMedicationEntries({ fromDate: selectedDate, toDate: selectedDate });
   const createEntryMutation = useCreateMedicationEntry();
+  const updateEntryMutation = useUpdateMedicationEntry();
   const deleteEntryMutation = useDeleteMedicationEntry();
 
   const [accentPrimary, iconSuccess, iconDecorative] = useCSSVariable(['--color-accent-primary', '--color-icon-success', '--color-icon-decorative']) as [string, string, string];
@@ -203,7 +204,30 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         return;
       }
 
-      const create = () => {
+      const showLoggedToast = () =>
+        Toast.show({
+          type: isTaken ? 'success' : 'info',
+          text1: `${due.medication.name} ${isTaken ? 'taken' : 'skipped'}`,
+        });
+
+      if (existing) {
+        // Re-attributes schedule-less (web-logged) entries to the slot being
+        // acted on; taken_at records when the current status was set.
+        updateEntryMutation.mutate(
+          {
+            id: existing.id,
+            body: {
+              schedule_id: due.schedule.id,
+              status,
+              taken_at: new Date().toISOString(),
+            },
+          },
+          {
+            onSuccess: showLoggedToast,
+            onError: (error) => showEntryError(`Failed to update ${due.medication.name}`, error),
+          },
+        );
+      } else {
         createEntryMutation.mutate(
           {
             medication_id: due.medication.id,
@@ -213,25 +237,13 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
             taken_at: isTaken ? new Date().toISOString() : undefined,
           },
           {
-            onSuccess: () =>
-              Toast.show({
-                type: isTaken ? 'success' : 'info',
-                text1: `${due.medication.name} ${isTaken ? 'taken' : 'skipped'}`,
-              }),
+            onSuccess: showLoggedToast,
             onError: (error) => showEntryError(`Failed to log ${due.medication.name}`, error),
           },
         );
-      };
-
-      if (existing) {
-        deleteEntryMutation.mutateAsync(existing.id).then(create, (error: Error) => {
-          showEntryError(`Failed to update ${due.medication.name}`, error);
-        });
-      } else {
-        create();
       }
     },
-    [entryForDue, createEntryMutation, deleteEntryMutation, selectedDate, showEntryError],
+    [entryForDue, createEntryMutation, updateEntryMutation, deleteEntryMutation, selectedDate, showEntryError],
   );
 
   const handleTake = useCallback((due: DueDose) => logDose(due, 'taken'), [logDose]);
