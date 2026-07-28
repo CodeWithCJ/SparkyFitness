@@ -22,6 +22,7 @@ import {
   localDateTimeToUtc,
   utcToLocalDateTimeInput,
   INJECTION_SITES,
+  type SharedScheduleRule,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,7 +72,7 @@ import MedicationLogCalendar from './MedicationLogCalendar';
 
 export interface DueDose {
   medication: MedicationDetail;
-  schedule: MedicationSchedule & { id: string };
+  schedule: SharedScheduleRule & { id: string };
 }
 
 // GLP-1 injectable doses are logged as injection entries (single source of truth with
@@ -157,7 +158,7 @@ export default function TodayMedications({
   // Schedules evaluation
   const dueDoses = useMemo(() => {
     if (loadingMeds || meds.length === 0) return [];
-    return getDueDosesForDate(meds, selectedDate, timezone) as DueDose[];
+    return getDueDosesForDate(meds, selectedDate, timezone);
   }, [meds, selectedDate, timezone, loadingMeds]);
 
   const prnMeds = useMemo(() => {

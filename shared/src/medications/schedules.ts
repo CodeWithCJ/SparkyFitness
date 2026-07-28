@@ -95,17 +95,26 @@ export function isScheduleDueOnDate(schedule: SharedScheduleRule, dateString: st
 }
 
 /**
+ * Medication shape required by `getDueDosesForDate`.
+ */
+export interface SharedMedication {
+  id: string;
+  is_active: boolean;
+  schedules?: SharedScheduleRule[];
+}
+
+/**
  * Filters and returns all scheduled dose slots for a given date.
  */
-export function getDueDosesForDate(
-  medications: Array<{ id: string; is_active: boolean; schedules?: SharedScheduleRule[] } & Record<string, any>>,
+export function getDueDosesForDate<M extends SharedMedication>(
+  medications: M[],
   dateString: string,
   tz: string
 ): Array<{
-  medication: any;
+  medication: M;
   schedule: SharedScheduleRule & { id: string };
 }> {
-  const result: Array<{ medication: any; schedule: SharedScheduleRule & { id: string } }> = [];
+  const result: Array<{ medication: M; schedule: SharedScheduleRule & { id: string } }> = [];
   for (const med of medications) {
     if (!med.is_active) continue;
     if (!med.schedules || med.schedules.length === 0) continue;

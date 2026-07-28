@@ -162,7 +162,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
 
   const dueDoses = useMemo(() => {
     if (!medications) return [];
-    return getDueDosesForDate(medications, selectedDate, getDeviceTimezone()) as DueDose[];
+    return getDueDosesForDate(medications, selectedDate, getDeviceTimezone());
   }, [medications, selectedDate]);
 
   const prnMeds = useMemo(() => {

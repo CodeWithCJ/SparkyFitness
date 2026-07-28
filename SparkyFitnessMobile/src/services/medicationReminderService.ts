@@ -103,7 +103,10 @@ export async function reconcileMedicationReminders(
     const dueDoses = getDueDosesForDate(medications, today, getDeviceTimezone());
 
     const unloggedKeys = new Set<string>();
-    const unloggedDoses: { due: ReturnType<typeof getDueDosesForDate>[number]; timeOfDay: string }[] = [];
+    const unloggedDoses: {
+      due: ReturnType<typeof getDueDosesForDate<MedicationDetail>>[number];
+      timeOfDay: string;
+    }[] = [];
 
     for (const due of dueDoses) {
       const timeOfDay = due.schedule.time_of_day;
