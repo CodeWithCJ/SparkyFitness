@@ -8,6 +8,7 @@ import {
   updateMedication,
   deleteMedication,
   createEntry,
+  updateEntry,
   deleteEntry,
 } from '../services/api/medicationsApi';
 import {
@@ -21,6 +22,7 @@ import type {
   CreateMedicationInput,
   UpdateMedicationInput,
   CreateMedicationEntryInput,
+  UpdateMedicationEntryInput,
 } from '@workspace/shared';
 
 interface QueryOptions {
@@ -97,6 +99,18 @@ export function useCreateMedicationEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateMedicationEntryInput) => createEntry(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: medicationEntriesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
+    },
+  });
+}
+
+export function useUpdateMedicationEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateMedicationEntryInput }) =>
+      updateEntry(id, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: medicationEntriesQueryKey() });
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
