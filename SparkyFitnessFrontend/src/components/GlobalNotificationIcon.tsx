@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useNeedsReviewCountQuery,
@@ -16,10 +16,13 @@ const GlobalNotificationIcon = (): null => {
     !!user && reviewCount > 0
   );
 
-  if (isDialogOpen) {
-    console.log(reviewItems);
-    setIsDialogOpen(false);
-  }
+  useEffect(() => {
+    if (isDialogOpen) {
+      console.log(reviewItems);
+      setIsDialogOpen(false);
+    }
+  }, [isDialogOpen, reviewItems]);
+
   return null;
 };
 
