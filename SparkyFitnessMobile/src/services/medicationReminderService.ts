@@ -10,6 +10,7 @@ import {
 } from './notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { MedicationDetail, MedicationEntry } from '../types/medications';
+import { isDoseLogged } from '../utils/medications';
 import { addLog } from './LogService';
 
 const REPEAT_MINUTES = [10, 20, 30];
@@ -125,14 +126,8 @@ export async function reconcileMedicationReminders(
         if (!timeOfDay) continue;
 
         // Entries only cover today; future doses can't have been logged yet.
-        if (isToday) {
-          const isLogged = entries.some(
-            (e) =>
-              e.medication_id === due.medication.id &&
-              e.schedule_id === due.schedule.id &&
-              (e.status === 'taken' || e.status === 'skipped'),
-          );
-          if (isLogged) continue;
+        if (isToday && isDoseLogged(entries, due.medication.id, due.schedule.id)) {
+          continue;
         }
 
         const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);

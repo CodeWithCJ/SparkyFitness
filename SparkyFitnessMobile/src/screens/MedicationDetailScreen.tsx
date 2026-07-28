@@ -14,6 +14,7 @@ import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 import { MEDICATION_TYPES, DAY_LABELS } from '../types/medications';
 import type { MedicationEntry, MedicationEntryStatus } from '../types/medications';
+import { isDoseLogged } from '../utils/medications';
 import { addLog } from '../services/LogService';
 
 type MedicationDetailScreenProps = RootStackScreenProps<'MedicationDetail'>;
@@ -48,11 +49,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
     if (!med) return [];
     const dueDoses = getDueDosesForDate([med], selectedDate, getDeviceTimezone());
     return dueDoses
-      .filter((due) =>
-        !todayEntries.some(
-          (e) => e.schedule_id === due.schedule.id && (e.status === 'taken' || e.status === 'skipped'),
-        ),
-      )
+      .filter((due) => !isDoseLogged(todayEntries, due.medication.id, due.schedule.id))
       .map((due) => due.schedule);
   }, [med, todayEntries, selectedDate]);
 

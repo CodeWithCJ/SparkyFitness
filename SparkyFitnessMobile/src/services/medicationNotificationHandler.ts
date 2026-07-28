@@ -3,6 +3,7 @@ import { addNotificationResponseListener, dismissDeliveredNotification, MEDICATI
 import { createEntry, listEntries } from './api/medicationsApi';
 import { addLog } from '../services/LogService';
 import type { MedicationEntryStatus } from '../types/medications';
+import { isDoseLogged } from '../utils/medications';
 
 let initialized = false;
 
@@ -47,14 +48,7 @@ async function handleNotificationAction(
 ): Promise<void> {
   try {
     const existing = await listEntries({ fromDate: entryDate, toDate: entryDate, medicationId });
-    const duplicate = existing.find(
-      (e) =>
-        e.medication_id === medicationId &&
-        ((scheduleId && e.schedule_id === scheduleId) || (!scheduleId && !e.schedule_id)) &&
-        (e.status === 'taken' || e.status === 'skipped'),
-    );
-
-    if (duplicate) {
+    if (isDoseLogged(existing, medicationId, scheduleId)) {
       await dismissDeliveredNotification(notificationId);
       return;
     }
