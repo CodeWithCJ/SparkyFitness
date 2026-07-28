@@ -100,7 +100,7 @@ export function isScheduleDueOnDate(schedule: SharedScheduleRule, dateString: st
 export interface SharedMedication {
   id: string;
   is_active: boolean;
-  schedules?: SharedScheduleRule[];
+  schedules?: (SharedScheduleRule & { id: string })[];
 }
 
 /**
@@ -132,7 +132,7 @@ export function getDueDosesForDate<M extends SharedMedication>(
       if (isScheduleDueOnDate(sched, dateString)) {
         result.push({
           medication: med,
-          schedule: sched as SharedScheduleRule & { id: string }
+          schedule: sched
         });
       }
     }
