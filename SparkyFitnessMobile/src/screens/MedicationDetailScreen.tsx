@@ -68,6 +68,10 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           onPress: () => {
             deleteMedicationMutation.mutate(med.id, {
               onSuccess: () => navigation.goBack(),
+              onError: (error) => {
+                addLog(`Failed to delete medication: ${error.message}`, 'ERROR');
+                Toast.show({ type: 'error', text1: 'Failed to delete medication' });
+              },
             });
           },
         },
@@ -85,7 +89,13 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           {
             text: 'Remove',
             style: 'destructive',
-            onPress: () => deleteEntryMutation.mutate(entry.id),
+            onPress: () =>
+              deleteEntryMutation.mutate(entry.id, {
+                onError: (error) => {
+                  addLog(`Failed to remove dose: ${error.message}`, 'ERROR');
+                  Toast.show({ type: 'error', text1: 'Failed to remove dose' });
+                },
+              }),
           },
         ],
       );
@@ -108,6 +118,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           onSuccess: () => Toast.show({ type: 'success', text1: `${med.name} taken` }),
           onError: (error) => {
             addLog(`Failed to log medication: ${error.message}`, 'ERROR');
+            Toast.show({ type: 'error', text1: `Failed to log ${med.name}` });
           },
         },
       );
@@ -128,6 +139,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         onSuccess: () => Toast.show({ type: 'success', text1: `${med.name} logged` }),
         onError: (error) => {
           addLog(`Failed to log PRN medication: ${error.message}`, 'ERROR');
+          Toast.show({ type: 'error', text1: `Failed to log ${med.name}` });
         },
       },
     );

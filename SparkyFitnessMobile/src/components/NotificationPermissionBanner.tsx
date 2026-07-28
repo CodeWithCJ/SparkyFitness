@@ -11,7 +11,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import OSDeniedWarningCard from './OSDeniedWarningCard';
 import {
   getNotificationPermissionStatus,
-  requestNotificationPermissionWithGuidance,
+  openSystemNotificationSettings,
+  requestNotificationPermission,
   type AppNotificationPermission,
 } from '../services/notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -66,20 +67,27 @@ const NotificationPermissionBanner = forwardRef<
     return () => sub.remove();
   }, [refreshStatus]);
 
-  const handleOpenSettings = useCallback(async () => {
-    await requestNotificationPermissionWithGuidance();
+  // Undetermined can still trigger the OS prompt directly (tapping the card is
+  // the user action); after a denial only system settings can change it.
+  const handlePress = useCallback(async () => {
+    if (osStatus === 'undetermined') {
+      await requestNotificationPermission();
+    } else {
+      await openSystemNotificationSettings();
+    }
     refreshStatus();
-  }, [refreshStatus]);
+  }, [osStatus, refreshStatus]);
 
   const visible =
-    notificationsEnabled && osStatus === 'denied';
+    notificationsEnabled && (osStatus === 'denied' || osStatus === 'undetermined');
 
   if (!visible) return null;
 
   return (
     <OSDeniedWarningCard
+      actionLabel={osStatus === 'undetermined' ? 'Enable Notifications' : 'Open Settings'}
       onPress={() => {
-        void handleOpenSettings();
+        void handlePress();
       }}
     />
   );

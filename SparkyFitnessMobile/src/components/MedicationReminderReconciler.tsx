@@ -11,29 +11,35 @@ const MedicationReminderReconciler: React.FC = () => {
   const medicationRemindersEnabled = useAppPreferencesStore((s) => s.medicationRemindersEnabled);
   const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
   const medicationReminderRepeats = useAppPreferencesStore((s) => s.medicationReminderRepeats);
+  const remindersActive = medicationRemindersEnabled && notificationsEnabled;
 
-  const { data: medications, isLoading: isLoadingMeds, refetch: refetchMeds } = useMedications({ activeOnly: true });
+  const { data: medications, isLoading: isLoadingMeds, refetch: refetchMeds } = useMedications({ activeOnly: true, enabled: remindersActive });
 
   const today = getTodayDate();
-  const { data: todayEntries, isLoading: isLoadingEntries, refetch: refetchEntries } = useMedicationEntries({ fromDate: today, toDate: today });
+  const { data: todayEntries, isLoading: isLoadingEntries, refetch: refetchEntries } = useMedicationEntries({ fromDate: today, toDate: today, enabled: remindersActive });
 
   useEffect(() => {
-    if (isLoadingMeds || isLoadingEntries) return;
+    if (remindersActive && (isLoadingMeds || isLoadingEntries)) return;
 
-    reconcileMedicationReminders(medications ?? [], todayEntries ?? [])
-      .catch((error) => {
-        addLog(`Medication reminder reconciliation failed: ${(error as Error).message}`, 'ERROR');
-      });
-  }, [medications, todayEntries, isLoadingMeds, isLoadingEntries, medicationRemindersEnabled, notificationsEnabled, medicationReminderRepeats, today]);
+    // With reminders off the queries stay disabled; the reconcile still runs
+    // (with empty data) so any pending reminders get cancelled.
+    reconcileMedicationReminders(
+      remindersActive ? medications ?? [] : [],
+      remindersActive ? todayEntries ?? [] : [],
+    ).catch((error) => {
+      addLog(`Medication reminder reconciliation failed: ${(error as Error).message}`, 'ERROR');
+    });
+  }, [medications, todayEntries, isLoadingMeds, isLoadingEntries, remindersActive, medicationReminderRepeats, today]);
 
   useEffect(() => {
+    if (!remindersActive) return;
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       void refetchMeds();
       void refetchEntries();
     });
     return () => subscription.remove();
-  }, [refetchMeds, refetchEntries]);
+  }, [refetchMeds, refetchEntries, remindersActive]);
 
   return null;
 };
