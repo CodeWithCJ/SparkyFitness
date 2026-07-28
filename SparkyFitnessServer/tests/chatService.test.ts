@@ -610,7 +610,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 21\/37 active tools for chatbot \(profile=core/
+          /Loaded 21\/38 active tools for chatbot \(profile=core/
         )
       );
       // The core profile is the mitigation, so no context-window warning.
@@ -643,7 +643,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 37\/37 active tools for chatbot \(profile=full/
+          /Loaded 38\/38 active tools for chatbot \(profile=full/
         )
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
@@ -676,15 +676,15 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 37\/37 active tools for chatbot \(profile=full/
+          /Loaded 38\/38 active tools for chatbot \(profile=full/
         )
       );
     });
 
     it('never trims a non-Ollama service even with a stale core profile stored', async () => {
       // The profile gate keys on service_type, so a service that was Ollama+core
-      // and later switched to OpenAI still loads the full 37-tool surface
-      // (35 domain tools + sparky_enable_tools + sparky_ask_user).
+      // and later switched to OpenAI still loads the full 38-tool surface
+      // (36 domain tools + sparky_enable_tools + sparky_ask_user).
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         {
           ...aiServiceSetting,
@@ -704,7 +704,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 37\/37 active tools for chatbot \(profile=full/
+          /Loaded 38\/38 active tools for chatbot \(profile=full/
         )
       );
       // The context-window warning is Ollama-only; cloud providers never see it.

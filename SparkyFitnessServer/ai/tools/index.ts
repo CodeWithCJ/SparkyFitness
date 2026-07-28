@@ -15,6 +15,7 @@ import { buildExerciseTools } from './exerciseTools.js';
 import { buildFoodTools } from './foodTools.js';
 import { buildGoalTools } from './goalTools.js';
 import { buildHabitTools } from './habitTools.js';
+import { buildMedicationTools } from './medicationTools.js';
 import { ENABLE_TOOLS_TOOL_NAME, buildMetaTools } from './metaTools.js';
 import { buildProfileTools } from './profileTools.js';
 import { buildReportTools } from './reportTools.js';
@@ -56,6 +57,7 @@ const CATEGORY_BUILDERS: Record<
   vision: [(u) => buildVisionTools(u)],
   profile: [(u) => buildProfileTools(u), (u, tz) => buildHabitTools(u, tz)],
   reports: [(u, tz) => buildReportTools(u, tz)],
+  medications: [(u, tz) => buildMedicationTools(u, tz)],
 };
 
 // Composition order: the core categories first (a strict prefix of the full
@@ -69,6 +71,7 @@ const CATEGORY_ORDER: ChatToolCategorySlug[] = [
   'vision',
   'profile',
   'reports',
+  'medications',
 ];
 
 // Resolves the category set to compose: an explicit (already-validated,

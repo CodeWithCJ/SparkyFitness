@@ -20,6 +20,7 @@ export const CHAT_TOOL_CATEGORY_SLUGS = [
   'coaching',
   'vision',
   'profile',
+  'medications',
 ] as const;
 
 export type ChatToolCategorySlug = (typeof CHAT_TOOL_CATEGORY_SLUGS)[number];
