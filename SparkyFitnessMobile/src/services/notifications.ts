@@ -183,8 +183,9 @@ export async function requestNotificationPermission(): Promise<AppNotificationPe
 /**
  * One-time Android prompt for the "Alarms & reminders" special access.
  * Without it, expo-notifications schedules inexact alarms that the OS batches
- * ~15s late, so the rest-complete ping lags the actual deadline. Denied by
- * default on Android 13+; only the user can grant it, via system settings.
+ * ~15s late, so rest-complete pings and medication reminders lag their
+ * deadline. Denied by default on Android 13+; only the user can grant it,
+ * via system settings.
  */
 export async function maybePromptForExactAlarmPermission(): Promise<void> {
   if (!ExactAlarmBridge.isAvailable) return;
@@ -195,8 +196,8 @@ export async function maybePromptForExactAlarmPermission(): Promise<void> {
     if ((await AsyncStorage.getItem(EXACT_ALARM_PROMPT_KEY)) === 'true') return;
     await AsyncStorage.setItem(EXACT_ALARM_PROMPT_KEY, 'true');
     Alert.alert(
-      'On-time rest alerts',
-      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers ring on time.',
+      'On-time alerts',
+      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers and medication reminders ring on time.',
       [
         { text: 'Not Now', style: 'cancel' },
         {

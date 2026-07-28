@@ -15,6 +15,7 @@ import {
   type ThemePreference,
 } from '../services/themeService';
 import {
+  maybePromptForExactAlarmPermission,
   requestNotificationPermission,
   setNotificationsEnabled,
 } from '../services/notifications';
@@ -82,6 +83,9 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
       // permission banner above explains and links to system settings.
       if (status === 'granted') {
         setMedicationRemindersEnabled(true);
+        // Scheduled reminders ring late on Android without the exact-alarm
+        // special access; nudge once when the user opts in.
+        await maybePromptForExactAlarmPermission();
       }
     },
     [setMedicationRemindersEnabled],
