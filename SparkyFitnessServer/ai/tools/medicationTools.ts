@@ -13,6 +13,87 @@ import {
   type ManageMedicationsInput,
 } from './schemas/medications.js';
 
+interface MedicationSummary {
+  id: string;
+  display_name: string | null;
+  name: string;
+}
+
+interface ScheduleSummary {
+  time_of_day: string | null;
+}
+
+interface MedicationRow {
+  id: string;
+  display_name: string | null;
+  name: string;
+  strength_value: number | null;
+  strength_unit: string | null;
+  is_active: boolean;
+  schedules: ScheduleSummary[];
+}
+
+interface MedicationDetailRow extends MedicationRow {
+  dose_amount: number | null;
+  dose_unit: string | null;
+  is_glp1: boolean;
+  reason_text: string | null;
+  notes: string | null;
+  schedules: {
+    time_of_day: string | null;
+    active: boolean | null;
+    dose_amount: number | null;
+    prn_reason: string | null;
+  }[];
+}
+
+interface MedicationEntryRow {
+  status: string;
+  med_name_snapshot: string | null;
+  entry_date: string;
+  dose_amount_snapshot: number | null;
+  dose_unit_snapshot: string | null;
+  notes: string | null;
+  entry_type: string | null;
+}
+
+interface InjectionRow {
+  entry_date: string;
+  dose_mg: number | null;
+  site: string | null;
+  notes: string | null;
+}
+
+interface InjectionWithPenRow extends InjectionRow {
+  pen: {
+    doses_used: number;
+    doses_total: number | null;
+  } | null;
+}
+
+interface PreProcessedArgs {
+  action?: string;
+  entry_date?: string;
+  date?: string;
+  dosage?: number;
+  dosage_unit?: string;
+  dose_amount_snapshot?: number;
+  dose_unit_snapshot?: string;
+  medication_id?: string;
+  medication_name?: string;
+  status?: string;
+  taken_at?: string;
+  notes?: string | null;
+  glp1_only?: boolean;
+  active_only?: boolean;
+  from_date?: string;
+  to_date?: string;
+  dose_mg?: number;
+  site?: string;
+  deduct_pen?: boolean;
+  entry_id?: string;
+}
+
 const VALID_ACTIONS = [
   'list_medications',
   'get_medication',
@@ -32,10 +113,13 @@ async function resolveMedicationId(
   const uuidRe =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRe.test(nameOrId)) return nameOrId;
-  const meds = await medicationRepository.listMedications(userId, {});
+  const meds: MedicationSummary[] = await medicationRepository.listMedications(
+    userId,
+    {}
+  );
   const q = nameOrId.trim().toLowerCase();
   const match = meds.find(
-    (m: any) => (m.display_name || m.name).toLowerCase() === q
+    (m) => (m.display_name || m.name).toLowerCase() === q
   );
   return match?.id ?? null;
 }
@@ -60,7 +144,7 @@ Actions:
           rawArgs,
           tz,
           VALID_ACTIONS,
-          (args) => {
+          (args: Record<string, unknown>) => {
             if (args.entry_id) {
               if (
                 args.status !== undefined ||
@@ -90,7 +174,7 @@ Actions:
             if (args.from_date || args.to_date) return 'list_entries';
             return 'list_medications';
           }
-        ) as Record<string, any>;
+        ) as PreProcessedArgs;
 
         if (normalized.date && !normalized.entry_date) {
           normalized.entry_date = normalized.date;
@@ -129,11 +213,12 @@ Actions:
         try {
           switch (args.action) {
             case 'list_medications': {
-              const meds = await medicationRepository.listMedications(userId, {
-                glp1Only: args.glp1_only,
-                activeOnly: args.active_only,
-              });
-              return formatList(meds, 'Medications', (m: any) => {
+              const meds: MedicationRow[] =
+                await medicationRepository.listMedications(userId, {
+                  glp1Only: args.glp1_only,
+                  activeOnly: args.active_only,
+                });
+              return formatList(meds, 'Medications', (m) => {
                 let text = `**${m.display_name || m.name}**`;
                 if (m.strength_value && m.strength_unit) {
                   text += ` — ${m.strength_value}${m.strength_unit}`;
@@ -143,7 +228,7 @@ Actions:
                 const schedules = m.schedules || [];
                 if (schedules.length > 0) {
                   const times = schedules
-                    .map((s: any) => s.time_of_day || 'as needed')
+                    .map((s) => s.time_of_day || 'as needed')
                     .join(', ');
                   text += `\n  Schedules: ${times}`;
                 }
@@ -151,10 +236,11 @@ Actions:
               });
             }
             case 'get_medication': {
-              const med = await medicationRepository.getMedicationById(
-                userId,
-                args.medication_id
-              );
+              const med: MedicationDetailRow | null =
+                await medicationRepository.getMedicationById(
+                  userId,
+                  args.medication_id
+                );
               if (!med)
                 return ERRORS.NOT_FOUND('Medication', args.medication_id);
               let text = `**${med.display_name || med.name}**`;
@@ -184,9 +270,8 @@ Actions:
             case 'log': {
               if (!args.entry_date) args.entry_date = todayInZone(tz);
               if (!args.taken_at) args.taken_at = new Date().toISOString();
-              const entry = await medicationEntryRepository.createEntry(
-                userId,
-                {
+              const entry: MedicationEntryRow =
+                await medicationEntryRepository.createEntry(userId, {
                   medication_id: args.medication_id!,
                   status: args.status,
                   taken_at: args.taken_at,
@@ -194,8 +279,7 @@ Actions:
                   dose_amount_snapshot: args.dose_amount_snapshot ?? undefined,
                   dose_unit_snapshot: args.dose_unit_snapshot ?? undefined,
                   notes: args.notes ?? null,
-                }
-              );
+                });
               let detail = `"${entry.status}"`;
               if (entry.dose_amount_snapshot) {
                 detail += ` (${entry.dose_amount_snapshot} ${entry.dose_unit_snapshot || ''})`;
@@ -205,7 +289,7 @@ Actions:
               );
             }
             case 'list_entries': {
-              const entries =
+              const entries: MedicationEntryRow[] =
                 await medicationEntryRepository.listEntriesWithInjections(
                   userId,
                   {
@@ -214,7 +298,7 @@ Actions:
                     medicationId: args.medication_id,
                   }
                 );
-              return formatList(entries, 'Medication Entries', (e: any) => {
+              return formatList(entries, 'Medication Entries', (e) => {
                 const icon =
                   e.status === 'taken'
                     ? '✅'
@@ -233,16 +317,17 @@ Actions:
               });
             }
             case 'update_entry': {
-              const entry = await medicationEntryRepository.updateEntry(
-                userId,
-                args.entry_id,
-                {
-                  status: args.status,
-                  taken_at: args.taken_at,
-                  entry_date: args.entry_date,
-                  notes: args.notes !== undefined ? args.notes : undefined,
-                }
-              );
+              const entry: MedicationEntryRow | null =
+                await medicationEntryRepository.updateEntry(
+                  userId,
+                  args.entry_id,
+                  {
+                    status: args.status,
+                    taken_at: args.taken_at,
+                    entry_date: args.entry_date,
+                    notes: args.notes !== undefined ? args.notes : undefined,
+                  }
+                );
               if (!entry) return ERRORS.NOT_FOUND('Entry', args.entry_id);
               return formatConfirmation(
                 `Entry updated (${entry.status}) for ${entry.med_name_snapshot} on ${dayString(entry.entry_date)}.`
@@ -258,17 +343,15 @@ Actions:
             }
             case 'log_injection': {
               if (!args.entry_date) args.entry_date = todayInZone(tz);
-              const injection = await injectionRepository.createInjection(
-                userId,
-                {
+              const injection: InjectionWithPenRow =
+                await injectionRepository.createInjection(userId, {
                   medication_id: args.medication_id!,
                   dose_mg: args.dose_mg,
                   site: args.site ?? null,
                   deduct_pen: args.deduct_pen,
                   entry_date: args.entry_date!,
                   notes: args.notes ?? null,
-                }
-              );
+                });
               let text = `Injection logged (${injection.dose_mg} mg) for ${dayString(injection.entry_date)}.`;
               if (injection.pen) {
                 text += ` Pen: ${injection.pen.doses_used}/${injection.pen.doses_total ?? '?'} doses used.`;
@@ -276,23 +359,24 @@ Actions:
               return formatConfirmation(text);
             }
             case 'list_injections': {
-              const injections = await injectionRepository.listInjections(
-                userId,
-                {
+              const injections: InjectionRow[] =
+                await injectionRepository.listInjections(userId, {
                   medicationId: args.medication_id,
                   fromDate: args.from_date,
                   toDate: args.to_date,
-                }
-              );
+                });
               return formatList(
                 injections,
                 'Injections',
-                (i: any) =>
+                (i) =>
                   `${dayString(i.entry_date)}: ${i.dose_mg} mg${i.site ? ` at ${i.site}` : ''}${i.notes ? ` — ${i.notes}` : ''}`
               );
             }
             default:
-              return ERRORS.INVALID_ACTION((args as any).action, VALID_ACTIONS);
+              return ERRORS.INVALID_ACTION(
+                (args as { action?: string }).action ?? 'unknown',
+                VALID_ACTIONS
+              );
           }
         } catch (error) {
           log('error', '[Medication Tool] Error:', error);
