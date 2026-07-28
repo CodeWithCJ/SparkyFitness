@@ -192,7 +192,7 @@ export const matchedCourseGroupSchema = z.object({
   courseName: z.string(),
   category: z.string(),
   totalDistanceMeters: z.number(),
-  totalDistanceFormatted: z.number(),
+  avgDistanceFormatted: z.number(),
   activityCount: z.number(),
   bestTimeSeconds: z.number(),
   bestPaceFormatted: z.string(),

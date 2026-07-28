@@ -9,8 +9,6 @@ import {
 } from '@/components/ui/select';
 
 interface ExerciseDashboardFiltersProps {
-  aggregationLevel?: string;
-  setAggregationLevel?: (value: string) => void;
   comparisonPeriod: string | null;
   setComparisonPeriod: (value: string | null) => void;
   selectedEquipment: string | null;

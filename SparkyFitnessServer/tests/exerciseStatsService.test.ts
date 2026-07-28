@@ -88,6 +88,22 @@ describe('exerciseStatsService', () => {
       expect(res.intervalsBreakdown.length).toBe(2);
       expect(mockClient.release).toHaveBeenCalled();
     });
+
+    it('should release the client and propagate the error when the query fails', async () => {
+      const dbError = new Error('DB connection lost');
+      mockClient.query.mockRejectedValueOnce(dbError);
+
+      await expect(
+        exerciseStatsService.getExerciseStatsSummary('user-123', {
+          interval: 'month',
+          startDate: '2026-07-01',
+          endDate: '2026-07-31',
+          unitSystem: 'metric',
+        })
+      ).rejects.toThrow('DB connection lost');
+
+      expect(mockClient.release).toHaveBeenCalled();
+    });
   });
 
   describe('queryExerciseActivities', () => {

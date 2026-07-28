@@ -91,6 +91,15 @@ const STRENGTH_LAYOUT = [
   'prVisualization',
 ];
 
+const STRENGTH_CATEGORIES = [
+  'Strength',
+  'Powerlifting',
+  'Olympic Weightlifting',
+  'Strongman',
+  'Plyometrics',
+  'Isometric',
+];
+
 const ExerciseReportsDashboard = ({
   exerciseDashboardData,
   startDate,
@@ -270,8 +279,6 @@ const ExerciseReportsDashboard = ({
         return (
           <ExerciseDashboardFilters
             key="filtersAggregation"
-            aggregationLevel={aggregationLevel}
-            setAggregationLevel={setAggregationLevel}
             comparisonPeriod={comparisonPeriod}
             setComparisonPeriod={setComparisonPeriod}
             selectedEquipment={selectedEquipment}
@@ -553,15 +560,6 @@ const ExerciseReportsDashboard = ({
     parseISO
   );
 
-  const STRENGTH_CATEGORIES = [
-    'Strength',
-    'Powerlifting',
-    'Olympic Weightlifting',
-    'Strongman',
-    'Plyometrics',
-    'Isometric',
-  ];
-
   const filteredGarminActivityEntries = (() => {
     if (viewMode === 'cardio') {
       return allGarminActivityEntries.filter(
@@ -577,11 +575,9 @@ const ExerciseReportsDashboard = ({
           entry.sets &&
           entry.sets.length > 0 &&
           entry.sets.some((s) => (s.weight || 0) > 0 || (s.reps || 0) > 0);
+        const category = (entry as unknown as { category?: string }).category;
         const isStrengthCategory =
-          (entry as unknown as { category?: string }).category &&
-          STRENGTH_CATEGORIES.includes(
-            (entry as unknown as { category?: string }).category!
-          );
+          category !== undefined && STRENGTH_CATEGORIES.includes(category);
         return hasStrengthSets || isStrengthCategory;
       });
     }

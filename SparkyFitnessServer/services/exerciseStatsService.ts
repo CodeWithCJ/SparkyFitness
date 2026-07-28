@@ -331,12 +331,14 @@ async function queryExerciseActivities(
       whereClauses.push(`LOWER(category) = $${params.length}`);
     }
 
-    let minKm = request.distanceMinMeters
-      ? request.distanceMinMeters / 1000
-      : undefined;
-    let maxKm = request.distanceMaxMeters
-      ? request.distanceMaxMeters / 1000
-      : undefined;
+    let minKm =
+      request.distanceMinMeters !== undefined
+        ? request.distanceMinMeters / 1000
+        : undefined;
+    let maxKm =
+      request.distanceMaxMeters !== undefined
+        ? request.distanceMaxMeters / 1000
+        : undefined;
 
     if (
       request.distanceStandard &&
@@ -691,7 +693,7 @@ async function getMatchedCourses(
         courseName: String(row.exercise_name || 'Course Loop'),
         category: row.category ? String(row.category) : 'running',
         totalDistanceMeters: Math.round(avgDistKm * 1000),
-        totalDistanceFormatted: convertDistance(avgDistKm, unitSystem),
+        avgDistanceFormatted: convertDistance(avgDistKm, unitSystem),
         activityCount: parseInt(String(row.activity_count), 10),
         bestTimeSeconds: Math.round(minDurMins * 60),
         bestPaceFormatted: formatPace(bestPaceSecs, unitSystem),

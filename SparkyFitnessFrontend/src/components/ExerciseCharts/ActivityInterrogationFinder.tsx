@@ -33,6 +33,7 @@ export const ActivityInterrogationFinder = ({
   const [distancePreset, setDistancePreset] = useState<string>('half_marathon');
   const [keyword, setKeyword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [queryError, setQueryError] = useState<string | null>(null);
   const [queryResult, setQueryResult] =
     useState<ExerciseActivityQueryResponse | null>(null);
 
@@ -46,8 +47,11 @@ export const ActivityInterrogationFinder = ({
           searchKeyword: kw !== undefined ? kw : keyword,
         });
         setQueryResult(res);
+        setQueryError(null);
       } catch (err) {
         console.error('Failed to query activities:', err);
+        setQueryError('Failed to load activities. Please try again.');
+        setQueryResult(null);
       } finally {
         setLoading(false);
       }
@@ -136,7 +140,15 @@ export const ActivityInterrogationFinder = ({
 
         {/* Results List */}
         <div className="space-y-2 mt-3">
-          {queryResult && queryResult.items.length > 0 ? (
+          {queryError ? (
+            <div className="text-center py-8 text-xs text-destructive border border-destructive/30 rounded-lg bg-destructive/5">
+              {queryError}
+            </div>
+          ) : loading ? (
+            <div className="text-center py-8 text-xs text-muted-foreground border rounded-lg bg-muted/20">
+              Searching activity database...
+            </div>
+          ) : queryResult && queryResult.items.length > 0 ? (
             queryResult.items.map((item: ExerciseActivityQueryItem) => (
               <div
                 key={item.id}
@@ -208,9 +220,7 @@ export const ActivityInterrogationFinder = ({
             ))
           ) : (
             <div className="text-center py-8 text-xs text-muted-foreground border rounded-lg bg-muted/20">
-              {loading
-                ? 'Searching activity database...'
-                : 'No activities matched the query filters.'}
+              No activities matched the query filters.
             </div>
           )}
         </div>

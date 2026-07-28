@@ -53,7 +53,7 @@ export const MatchedCoursesList = ({
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-3">
                 <span>
-                  Avg: {course.totalDistanceFormatted} {isMiles ? 'mi' : 'km'}
+                  Avg: {course.avgDistanceFormatted} {isMiles ? 'mi' : 'km'}
                 </span>
                 <span className="font-medium text-foreground">
                   Best Pace: {course.bestPaceFormatted}

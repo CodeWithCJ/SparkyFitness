@@ -4,10 +4,11 @@ import type {
   ExerciseActivityQueryResponse,
   ExercisePRMatrixResponse,
   MatchedCoursesResponse,
+  ExerciseStatsInterval,
 } from '@workspace/shared';
 
 export const loadExerciseStatsSummary = async (
-  interval: 'day' | 'week' | 'month' | 'year' = 'month',
+  interval: ExerciseStatsInterval = 'month',
   startDate?: string | null,
   endDate?: string | null,
   userId?: string,
