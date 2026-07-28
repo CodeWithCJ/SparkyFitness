@@ -13,7 +13,7 @@ import { getDueDosesForDate } from '@workspace/shared';
 import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 import { MEDICATION_TYPES, DAY_LABELS } from '../types/medications';
-import type { MedicationEntry, MedicationEntryStatus } from '../types/medications';
+import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
 import { isDoseLogged } from '../utils/medications';
 import { addLog } from '../services/LogService';
 
@@ -153,7 +153,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
     },
   });
 
-  const typeLabel = med ? (MEDICATION_TYPES.find((t) => t.id === med.type_id)?.label ?? med.type_id) : '';
+  const typeLabel = med ? (MEDICATION_TYPES.find((t) => t.id === med.type_id)?.label ?? med.type_id ?? '') : '';
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -175,7 +175,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           {med.dose_amount != null && (
             <InfoRow label="Dose" value={`${med.dose_amount} ${med.dose_unit ?? ''}`} />
           )}
-          {med.reason && <InfoRow label="Reason" value={med.reason} />}
+          {med.reason_text && <InfoRow label="Reason" value={med.reason_text} />}
           {med.prescriber && <InfoRow label="Prescriber" value={med.prescriber} />}
           {med.pharmacy && <InfoRow label="Pharmacy" value={med.pharmacy} />}
           {med.notes && <InfoRow label="Notes" value={med.notes} />}

@@ -6,7 +6,7 @@ import type {
   CreateMedicationInput,
   UpdateMedicationInput,
   CreateMedicationEntryInput,
-} from '../../types/medications';
+} from '@workspace/shared';
 
 const SERVICE_NAME = 'Medications API';
 

@@ -21,7 +21,7 @@ import type {
   CreateMedicationInput,
   UpdateMedicationInput,
   CreateMedicationEntryInput,
-} from '../types/medications';
+} from '@workspace/shared';
 
 interface QueryOptions {
   enabled?: boolean;

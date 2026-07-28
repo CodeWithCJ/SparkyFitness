@@ -1,5 +1,5 @@
 import { entryMatchesDose, isDoseLogged } from '../../src/utils/medications';
-import type { MedicationEntry, MedicationEntryStatus } from '../../src/types/medications';
+import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
 
 function buildEntry(overrides: Partial<MedicationEntry> = {}): MedicationEntry {
   return {
@@ -8,7 +8,15 @@ function buildEntry(overrides: Partial<MedicationEntry> = {}): MedicationEntry {
     medication_id: 'med-1',
     schedule_id: 'sched-1',
     status: 'taken',
+    taken_at: '2026-07-28T09:05:00Z',
+    scheduled_for: null,
     entry_date: '2026-07-28',
+    med_name_snapshot: null,
+    dose_amount_snapshot: null,
+    dose_unit_snapshot: null,
+    notes: null,
+    source: 'manual',
+    custom_fields: {},
     created_at: '2026-07-28T09:05:00Z',
     updated_at: '2026-07-28T09:05:00Z',
     ...overrides,
