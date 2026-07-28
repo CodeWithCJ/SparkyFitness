@@ -123,6 +123,7 @@ describe('exerciseStatsService', () => {
           pageSize: 10,
           sortBy: 'entry_date',
           sortOrder: 'desc',
+          unitSystem: 'metric',
         }
       );
 

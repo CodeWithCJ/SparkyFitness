@@ -323,7 +323,7 @@ async function queryExerciseActivities(
     const pageSize = request.pageSize || 20;
     const offset = (page - 1) * pageSize;
 
-    let whereClauses = ['user_id = $1', "exercise_name != 'Active Calories'"];
+    const whereClauses = ['user_id = $1', "exercise_name != 'Active Calories'"];
     const params: (string | number)[] = [targetUserId];
 
     if (request.category) {

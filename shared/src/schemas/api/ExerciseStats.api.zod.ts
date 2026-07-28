@@ -94,6 +94,7 @@ export const exerciseActivityQueryRequestSchema = z.object({
   minAvgHeartRate: z.number().optional(),
   maxAvgHeartRate: z.number().optional(),
   searchKeyword: z.string().optional(),
+  unitSystem: z.enum(["metric", "imperial"]).optional().default("metric"),
   sortBy: z
     .enum([
       "entry_date",
