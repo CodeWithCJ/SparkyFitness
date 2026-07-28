@@ -109,6 +109,11 @@ export interface SerumCurveResponse {
   currentLevelFraction: number | null;
   /** Day positions of logged injections (relative to the curve anchor), for chart markers. */
   doseDays: number[];
+  /**
+   * ISO timestamp of day 0 (the earliest injection in the window), so the chart can
+   * plot real dates instead of day offsets. Null when there is no curve to anchor.
+   */
+  anchorDate: string | null;
   disclaimer: string;
 }
 
