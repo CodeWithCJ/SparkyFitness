@@ -13,6 +13,7 @@ export interface SharedScheduleRule {
   active?: boolean;
   dose_amount?: number | null;
   with_meal?: string | null;
+  created_at?: string | null;
 }
 
 /**
@@ -94,15 +95,6 @@ export function isScheduleDueOnDate(schedule: SharedScheduleRule, dateString: st
 }
 
 /**
- * Returns the calendar day (YYYY-MM-DD) the medication was created, or null.
- */
-function getMedicationCreatedDay(medication: {
-  created_at?: string | null;
-}): string | null {
-  return medication.created_at ? medication.created_at.substring(0, 10) : null;
-}
-
-/**
  * Filters and returns all scheduled dose slots for a given date.
  */
 export function getDueDosesForDate(
@@ -116,12 +108,14 @@ export function getDueDosesForDate(
   for (const med of medications) {
     if (!med.is_active) continue;
     if (!med.schedules || med.schedules.length === 0) continue;
-    const fallbackStart = med.created_at ? med.created_at.substring(0, 10) : null;
     for (const sched of med.schedules) {
       if (sched.schedule_type_id === 'prn') {
         // PRN is logged on demand, not scheduled on due list
         continue;
       }
+      const fallbackStart = sched.created_at
+        ? sched.created_at.substring(0, 10)
+        : null;
       if (!sched.start_date && fallbackStart && dateString < fallbackStart) {
         continue;
       }

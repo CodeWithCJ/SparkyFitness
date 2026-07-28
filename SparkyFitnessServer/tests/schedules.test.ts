@@ -155,18 +155,19 @@ describe('getDueDosesForDate helper', () => {
     expect(dosesOnFriday.map((d) => d.medication.id)).toContain('med-2');
   });
 
-  it('skips past days when a medication was created after the queried date (issue #1915)', () => {
-    // A daily medication added on 2026-06-25 should not be "due" on 2026-06-24,
-    // otherwise the 14-day adherence window would falsely count missed doses
-    // on days when the medication didn't exist yet.
+  it('skips past days when a schedule was created after the queried date (issue #1915)', () => {
     const meds = [
       {
         id: 'med-new',
         is_active: true,
         name: 'New Med',
-        created_at: '2026-06-25T14:30:00.000Z',
         schedules: [
-          { id: 'sched-new', schedule_type_id: 'daily', active: true },
+          {
+            id: 'sched-new',
+            schedule_type_id: 'daily',
+            active: true,
+            created_at: '2026-06-25T14:30:00.000Z',
+          },
         ],
       },
     ];
@@ -177,13 +178,44 @@ describe('getDueDosesForDate helper', () => {
     expect(getDueDosesForDate(meds, '2026-01-01')).toHaveLength(0);
 
     // On/after creation -> daily dose is due
-    const onCreationDay = getDueDosesForDate(meds, '2026-06-25');
-    expect(onCreationDay).toHaveLength(1);
-    expect(onCreationDay[0]?.medication.id).toBe('med-new');
+    expect(getDueDosesForDate(meds, '2026-06-25')).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-26')).toHaveLength(1);
+  });
 
-    const afterCreation = getDueDosesForDate(meds, '2026-06-26');
-    expect(afterCreation).toHaveLength(1);
-    expect(afterCreation[0]?.medication.id).toBe('med-new');
+  it('isolates adherence per schedule (morning kept, night added later)', () => {
+    const meds = [
+      {
+        id: 'med-morning-night',
+        is_active: true,
+        name: 'Morning + Night Med',
+        schedules: [
+          {
+            id: 'sched-morning',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: '08:00',
+            created_at: '2026-06-20T09:00:00.000Z',
+          },
+          {
+            id: 'sched-night',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: '20:00',
+            created_at: '2026-06-25T21:00:00.000Z',
+          },
+        ],
+      },
+    ];
+
+    const beforeNight = getDueDosesForDate(meds, '2026-06-22');
+    expect(beforeNight).toHaveLength(1);
+    expect(beforeNight[0]?.schedule.id).toBe('sched-morning');
+
+    const onNight = getDueDosesForDate(meds, '2026-06-25');
+    expect(onNight).toHaveLength(2);
+    expect(onNight.map((d) => d.schedule.id)).toEqual(
+      expect.arrayContaining(['sched-morning', 'sched-night'])
+    );
   });
 
   it('honors explicit schedule start_date even when set before created_at', () => {
@@ -194,25 +226,20 @@ describe('getDueDosesForDate helper', () => {
         id: 'med-imported',
         is_active: true,
         name: 'Imported Med',
-        created_at: '2026-06-25T14:30:00.000Z',
         schedules: [
           {
             id: 'sched-imported',
             schedule_type_id: 'daily',
             start_date: '2026-06-20',
             active: true,
+            created_at: '2026-06-25T14:30:00.000Z',
           },
         ],
       },
     ];
 
-    // start_date wins -> historical doses are still due
-    const historical = getDueDosesForDate(meds, '2026-06-22');
-    expect(historical).toHaveLength(1);
-    expect(historical[0]?.medication.id).toBe('med-imported');
-
-    const onCreation = getDueDosesForDate(meds, '2026-06-25');
-    expect(onCreation).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-22')).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-25')).toHaveLength(1);
   });
 
   it('still filters out schedules before explicit start_date when start_date is after created_at', () => {
@@ -221,13 +248,13 @@ describe('getDueDosesForDate helper', () => {
         id: 'med-future',
         is_active: true,
         name: 'Future Start Med',
-        created_at: '2026-06-10T08:00:00.000Z',
         schedules: [
           {
             id: 'sched-future',
             schedule_type_id: 'daily',
             start_date: '2026-06-20',
             active: true,
+            created_at: '2026-06-10T08:00:00.000Z',
           },
         ],
       },
@@ -238,7 +265,7 @@ describe('getDueDosesForDate helper', () => {
     expect(getDueDosesForDate(meds, '2026-06-20')).toHaveLength(1);
   });
 
-  it('handles medications without created_at (legacy data) without regressing', () => {
+  it('handles schedules without created_at (legacy data) without regressing', () => {
     const meds = [
       {
         id: 'med-legacy',
@@ -254,18 +281,19 @@ describe('getDueDosesForDate helper', () => {
     expect(getDueDosesForDate(meds, '2026-06-25')).toHaveLength(1);
   });
 
-  it('handles a 14-day adherence window for a medication added today', () => {
-    // Reproduces the exact scenario from issue #1915: a daily medication added
-    // today should yield 1 due dose today and 0 due doses across the past 13
-    // days, not 14 missed doses.
+  it('handles a 14-day adherence window for a schedule added today', () => {
     const meds = [
       {
         id: 'med-today',
         is_active: true,
         name: 'Today Med',
-        created_at: '2026-07-25T12:00:00.000Z',
         schedules: [
-          { id: 'sched-today', schedule_type_id: 'daily', active: true },
+          {
+            id: 'sched-today',
+            schedule_type_id: 'daily',
+            active: true,
+            created_at: '2026-07-25T12:00:00.000Z',
+          },
         ],
       },
     ];
@@ -279,5 +307,39 @@ describe('getDueDosesForDate helper', () => {
     }
 
     expect(dueAcrossWindow).toBe(1);
+  });
+
+  it('keeps older schedules counting while skipping a newer sibling schedule', () => {
+    const meds = [
+      {
+        id: 'med-staggered',
+        is_active: true,
+        name: 'Staggered Med',
+        schedules: [
+          {
+            id: 'sched-original',
+            schedule_type_id: 'daily',
+            active: true,
+            created_at: '2026-06-20T09:00:00.000Z',
+          },
+          {
+            id: 'sched-added',
+            schedule_type_id: 'daily',
+            active: true,
+            created_at: '2026-06-25T12:00:00.000Z',
+          },
+        ],
+      },
+    ];
+
+    const beforeAdded = getDueDosesForDate(meds, '2026-06-24');
+    expect(beforeAdded).toHaveLength(1);
+    expect(beforeAdded[0]?.schedule.id).toBe('sched-original');
+
+    const onAdded = getDueDosesForDate(meds, '2026-06-25');
+    expect(onAdded).toHaveLength(2);
+    expect(onAdded.map((d) => d.schedule.id)).toEqual(
+      expect.arrayContaining(['sched-original', 'sched-added'])
+    );
   });
 });
