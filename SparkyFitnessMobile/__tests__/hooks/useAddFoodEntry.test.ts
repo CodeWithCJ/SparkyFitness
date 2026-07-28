@@ -1,4 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
+import Toast from 'react-native-toast-message';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { createFoodEntry } from '../../src/services/api/foodEntriesApi';
 import { createFoodVariant, fetchFoodVariants, saveFood } from '../../src/services/api/foodsApi';
@@ -698,6 +699,13 @@ describe('useAddFoodEntry', () => {
       });
 
       expect(mockCreateFoodEntry).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(Toast.show).toHaveBeenCalledWith({
+          type: 'error',
+          text1: 'Failed to add food',
+          text2: 'Choose a different serving.',
+        });
+      });
     },
   );
 
