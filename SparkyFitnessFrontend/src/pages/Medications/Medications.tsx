@@ -133,8 +133,12 @@ export default function Medications() {
   });
 
   const dueTodayCount = useMemo(() => {
-    return getDueDosesForDate(meds as MedicationDetail[], selectedDate).length;
-  }, [meds, selectedDate]);
+    return getDueDosesForDate(
+      meds as MedicationDetail[],
+      selectedDate,
+      timezone
+    ).length;
+  }, [meds, selectedDate, timezone]);
 
   // Mutations
   const removeMedMutation = useDeleteMedicationMutation();

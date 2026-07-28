@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   isScheduleDueOnDate,
   getDueDosesForDate,
+  addDays,
   type SharedScheduleRule,
 } from '@workspace/shared';
+
+const TZ = 'UTC';
 
 describe('isScheduleDueOnDate helper', () => {
   it('handles inactive schedules', () => {
@@ -143,13 +146,13 @@ describe('getDueDosesForDate helper', () => {
     ];
 
     // June 25, 2026 is Thursday
-    const dosesOnThursday = getDueDosesForDate(meds, '2026-06-25');
+    const dosesOnThursday = getDueDosesForDate(meds, '2026-06-25', TZ);
     expect(dosesOnThursday).toHaveLength(1);
     expect(dosesOnThursday[0]?.medication.id).toBe('med-1');
     expect(dosesOnThursday[0]?.schedule.id).toBe('sched-1');
 
     // June 26, 2026 is Friday
-    const dosesOnFriday = getDueDosesForDate(meds, '2026-06-26');
+    const dosesOnFriday = getDueDosesForDate(meds, '2026-06-26', TZ);
     expect(dosesOnFriday).toHaveLength(2);
     expect(dosesOnFriday.map((d) => d.medication.id)).toContain('med-1');
     expect(dosesOnFriday.map((d) => d.medication.id)).toContain('med-2');
@@ -173,13 +176,13 @@ describe('getDueDosesForDate helper', () => {
     ];
 
     // Before creation -> no due doses
-    expect(getDueDosesForDate(meds, '2026-06-24')).toHaveLength(0);
-    expect(getDueDosesForDate(meds, '2026-06-23')).toHaveLength(0);
-    expect(getDueDosesForDate(meds, '2026-01-01')).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-24', TZ)).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-23', TZ)).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-01-01', TZ)).toHaveLength(0);
 
     // On/after creation -> daily dose is due
-    expect(getDueDosesForDate(meds, '2026-06-25')).toHaveLength(1);
-    expect(getDueDosesForDate(meds, '2026-06-26')).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-25', TZ)).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-26', TZ)).toHaveLength(1);
   });
 
   it('isolates adherence per schedule (morning kept, night added later)', () => {
@@ -207,11 +210,11 @@ describe('getDueDosesForDate helper', () => {
       },
     ];
 
-    const beforeNight = getDueDosesForDate(meds, '2026-06-22');
+    const beforeNight = getDueDosesForDate(meds, '2026-06-22', TZ);
     expect(beforeNight).toHaveLength(1);
     expect(beforeNight[0]?.schedule.id).toBe('sched-morning');
 
-    const onNight = getDueDosesForDate(meds, '2026-06-25');
+    const onNight = getDueDosesForDate(meds, '2026-06-25', TZ);
     expect(onNight).toHaveLength(2);
     expect(onNight.map((d) => d.schedule.id)).toEqual(
       expect.arrayContaining(['sched-morning', 'sched-night'])
@@ -238,8 +241,8 @@ describe('getDueDosesForDate helper', () => {
       },
     ];
 
-    expect(getDueDosesForDate(meds, '2026-06-22')).toHaveLength(1);
-    expect(getDueDosesForDate(meds, '2026-06-25')).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-22', TZ)).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-25', TZ)).toHaveLength(1);
   });
 
   it('still filters out schedules before explicit start_date when start_date is after created_at', () => {
@@ -260,9 +263,9 @@ describe('getDueDosesForDate helper', () => {
       },
     ];
 
-    expect(getDueDosesForDate(meds, '2026-06-15')).toHaveLength(0);
-    expect(getDueDosesForDate(meds, '2026-06-19')).toHaveLength(0);
-    expect(getDueDosesForDate(meds, '2026-06-20')).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-15', TZ)).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-19', TZ)).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-20', TZ)).toHaveLength(1);
   });
 
   it('handles schedules without created_at (legacy data) without regressing', () => {
@@ -277,8 +280,8 @@ describe('getDueDosesForDate helper', () => {
       },
     ];
 
-    expect(getDueDosesForDate(meds, '2020-01-01')).toHaveLength(1);
-    expect(getDueDosesForDate(meds, '2026-06-25')).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2020-01-01', TZ)).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-25', TZ)).toHaveLength(1);
   });
 
   it('handles a 14-day adherence window for a schedule added today', () => {
@@ -298,12 +301,12 @@ describe('getDueDosesForDate helper', () => {
       },
     ];
 
+    // Use shared calendar-day arithmetic so the test does not derive business
+    // dates from a UTC timestamp
     let dueAcrossWindow = 0;
     for (let i = 13; i >= 0; i--) {
-      const anchor = new Date('2026-07-25T12:00:00.000Z');
-      anchor.setUTCDate(anchor.getUTCDate() - i);
-      const dStr = anchor.toISOString().substring(0, 10);
-      dueAcrossWindow += getDueDosesForDate(meds, dStr).length;
+      const dStr = addDays('2026-07-25', -i);
+      dueAcrossWindow += getDueDosesForDate(meds, dStr, TZ).length;
     }
 
     expect(dueAcrossWindow).toBe(1);
@@ -332,11 +335,11 @@ describe('getDueDosesForDate helper', () => {
       },
     ];
 
-    const beforeAdded = getDueDosesForDate(meds, '2026-06-24');
+    const beforeAdded = getDueDosesForDate(meds, '2026-06-24', TZ);
     expect(beforeAdded).toHaveLength(1);
     expect(beforeAdded[0]?.schedule.id).toBe('sched-original');
 
-    const onAdded = getDueDosesForDate(meds, '2026-06-25');
+    const onAdded = getDueDosesForDate(meds, '2026-06-25', TZ);
     expect(onAdded).toHaveLength(2);
     expect(onAdded.map((d) => d.schedule.id)).toEqual(
       expect.arrayContaining(['sched-original', 'sched-added'])

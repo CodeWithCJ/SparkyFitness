@@ -1,4 +1,4 @@
-import { dayOfWeek } from '../utils/timezone.ts';
+import { dayOfWeek, instantToDay } from '../utils/timezone.ts';
 
 export interface SharedScheduleRule {
   schedule_type_id: string;
@@ -99,7 +99,8 @@ export function isScheduleDueOnDate(schedule: SharedScheduleRule, dateString: st
  */
 export function getDueDosesForDate(
   medications: Array<{ id: string; is_active: boolean; schedules?: SharedScheduleRule[] } & Record<string, any>>,
-  dateString: string
+  dateString: string,
+  tz: string
 ): Array<{
   medication: any;
   schedule: SharedScheduleRule & { id: string };
@@ -114,7 +115,7 @@ export function getDueDosesForDate(
         continue;
       }
       const fallbackStart = sched.created_at
-        ? sched.created_at.substring(0, 10)
+        ? instantToDay(sched.created_at, tz)
         : null;
       if (!sched.start_date && fallbackStart && dateString < fallbackStart) {
         continue;

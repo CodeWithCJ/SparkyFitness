@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 
-import { getTodayDate } from '../utils/dateUtils';
+import { getDeviceTimezone, getTodayDate } from '../utils/dateUtils';
 import { getDueDosesForDate } from '@workspace/shared';
 import {
   ensureMedicationReminderChannel,
@@ -100,7 +100,7 @@ export async function reconcileMedicationReminders(
     await ensureMedicationReminderChannel();
 
     const today = getTodayDate();
-    const dueDoses = getDueDosesForDate(medications, today);
+    const dueDoses = getDueDosesForDate(medications, today, getDeviceTimezone());
 
     const unloggedKeys = new Set<string>();
     const unloggedDoses: { due: ReturnType<typeof getDueDosesForDate>[number]; timeOfDay: string }[] = [];
