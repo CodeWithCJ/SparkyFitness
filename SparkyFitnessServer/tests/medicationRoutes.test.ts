@@ -308,6 +308,7 @@ describe('Medication Routes V2', () => {
         curve: [{ day: 0, level: 1, fraction: 1 }],
         currentLevelFraction: 0.7,
         doseDays: [0],
+        anchorDate: '2026-01-01T09:00:00.000Z',
         disclaimer: 'Modeled estimate',
       };
       vi.mocked(glp1Service.getSerumCurve).mockResolvedValue(payload);

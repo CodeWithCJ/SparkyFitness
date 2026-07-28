@@ -41,6 +41,12 @@ async function getSerumCurve(
   currentLevelFraction: number | null;
   /** Day positions (relative to the curve anchor) of each logged injection, for chart markers. */
   doseDays: number[];
+  /**
+   * ISO timestamp of day 0 (the earliest injection in the window), so clients can
+   * render the curve against real dates instead of day offsets. Null when there is
+   * no curve to anchor.
+   */
+  anchorDate: string | null;
   disclaimer: string;
 }> {
   const med = await medicationRepository.getMedicationById(
@@ -86,6 +92,7 @@ async function getSerumCurve(
       curve: [],
       currentLevelFraction: null,
       doseDays: [],
+      anchorDate: null,
       disclaimer,
     };
   }
@@ -126,6 +133,7 @@ async function getSerumCurve(
     curve,
     currentLevelFraction,
     doseDays,
+    anchorDate: anchor.toISOString(),
     disclaimer,
   };
 }
