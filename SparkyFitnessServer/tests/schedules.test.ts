@@ -154,4 +154,130 @@ describe('getDueDosesForDate helper', () => {
     expect(dosesOnFriday.map((d) => d.medication.id)).toContain('med-1');
     expect(dosesOnFriday.map((d) => d.medication.id)).toContain('med-2');
   });
+
+  it('skips past days when a medication was created after the queried date (issue #1915)', () => {
+    // A daily medication added on 2026-06-25 should not be "due" on 2026-06-24,
+    // otherwise the 14-day adherence window would falsely count missed doses
+    // on days when the medication didn't exist yet.
+    const meds = [
+      {
+        id: 'med-new',
+        is_active: true,
+        name: 'New Med',
+        created_at: '2026-06-25T14:30:00.000Z',
+        schedules: [
+          { id: 'sched-new', schedule_type_id: 'daily', active: true },
+        ],
+      },
+    ];
+
+    // Before creation -> no due doses
+    expect(getDueDosesForDate(meds, '2026-06-24')).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-23')).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-01-01')).toHaveLength(0);
+
+    // On/after creation -> daily dose is due
+    const onCreationDay = getDueDosesForDate(meds, '2026-06-25');
+    expect(onCreationDay).toHaveLength(1);
+    expect(onCreationDay[0]?.medication.id).toBe('med-new');
+
+    const afterCreation = getDueDosesForDate(meds, '2026-06-26');
+    expect(afterCreation).toHaveLength(1);
+    expect(afterCreation[0]?.medication.id).toBe('med-new');
+  });
+
+  it('honors explicit schedule start_date even when set before created_at', () => {
+    // An imported schedule with start_date before the medication's created_at
+    // should still count historical doses (e.g. back-filled histories).
+    const meds = [
+      {
+        id: 'med-imported',
+        is_active: true,
+        name: 'Imported Med',
+        created_at: '2026-06-25T14:30:00.000Z',
+        schedules: [
+          {
+            id: 'sched-imported',
+            schedule_type_id: 'daily',
+            start_date: '2026-06-20',
+            active: true,
+          },
+        ],
+      },
+    ];
+
+    // start_date wins -> historical doses are still due
+    const historical = getDueDosesForDate(meds, '2026-06-22');
+    expect(historical).toHaveLength(1);
+    expect(historical[0]?.medication.id).toBe('med-imported');
+
+    const onCreation = getDueDosesForDate(meds, '2026-06-25');
+    expect(onCreation).toHaveLength(1);
+  });
+
+  it('still filters out schedules before explicit start_date when start_date is after created_at', () => {
+    const meds = [
+      {
+        id: 'med-future',
+        is_active: true,
+        name: 'Future Start Med',
+        created_at: '2026-06-10T08:00:00.000Z',
+        schedules: [
+          {
+            id: 'sched-future',
+            schedule_type_id: 'daily',
+            start_date: '2026-06-20',
+            active: true,
+          },
+        ],
+      },
+    ];
+
+    expect(getDueDosesForDate(meds, '2026-06-15')).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-19')).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-20')).toHaveLength(1);
+  });
+
+  it('handles medications without created_at (legacy data) without regressing', () => {
+    const meds = [
+      {
+        id: 'med-legacy',
+        is_active: true,
+        name: 'Legacy Med',
+        schedules: [
+          { id: 'sched-legacy', schedule_type_id: 'daily', active: true },
+        ],
+      },
+    ];
+
+    expect(getDueDosesForDate(meds, '2020-01-01')).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-25')).toHaveLength(1);
+  });
+
+  it('handles a 14-day adherence window for a medication added today', () => {
+    // Reproduces the exact scenario from issue #1915: a daily medication added
+    // today should yield 1 due dose today and 0 due doses across the past 13
+    // days, not 14 missed doses.
+    const meds = [
+      {
+        id: 'med-today',
+        is_active: true,
+        name: 'Today Med',
+        created_at: '2026-07-25T12:00:00.000Z',
+        schedules: [
+          { id: 'sched-today', schedule_type_id: 'daily', active: true },
+        ],
+      },
+    ];
+
+    let dueAcrossWindow = 0;
+    for (let i = 13; i >= 0; i--) {
+      const anchor = new Date('2026-07-25T12:00:00.000Z');
+      anchor.setUTCDate(anchor.getUTCDate() - i);
+      const dStr = anchor.toISOString().substring(0, 10);
+      dueAcrossWindow += getDueDosesForDate(meds, dStr).length;
+    }
+
+    expect(dueAcrossWindow).toBe(1);
+  });
 });
