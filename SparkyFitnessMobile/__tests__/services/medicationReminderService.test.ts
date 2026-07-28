@@ -34,6 +34,19 @@ const NOW = new Date(2026, 6, 28, 8, 0, 0);
 const TODAY = '2026-07-28';
 const BASE_KEY = `med_${TODAY}_med-1_sched-1_09:00`;
 
+// The 7-day scheduling window starting at NOW.
+const WINDOW_DATES = [
+  '2026-07-28',
+  '2026-07-29',
+  '2026-07-30',
+  '2026-07-31',
+  '2026-08-01',
+  '2026-08-02',
+  '2026-08-03',
+];
+
+const baseKeyFor = (date: string) => `med_${date}_med-1_sched-1_09:00`;
+
 function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationSchedule {
   return {
     id: 'sched-1',
@@ -87,6 +100,12 @@ function pendingRequest(
     content: { data },
     trigger: null,
   } as unknown as Notifications.NotificationRequest;
+}
+
+function scheduledKeys(): string[] {
+  return (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls.map(
+    (c) => c[0].content.data?.key as string,
+  );
 }
 
 describe('reconcileMedicationReminders', () => {
@@ -152,7 +171,6 @@ describe('reconcileMedicationReminders', () => {
     it('schedules a base reminder plus 10/20/30-minute repeats for an unlogged future dose', async () => {
       await reconcileMedicationReminders([buildMedication()], []);
 
-      expect(mockSchedule).toHaveBeenCalledTimes(4);
       expect(mockSchedule).toHaveBeenNthCalledWith(1, {
         content: {
           title: 'Medication reminder',
@@ -174,7 +192,7 @@ describe('reconcileMedicationReminders', () => {
         },
       });
 
-      const repeatCalls = mockSchedule.mock.calls.slice(1);
+      const repeatCalls = mockSchedule.mock.calls.slice(1, 4);
       expect(repeatCalls.map((c) => c[0].content.data?.key)).toEqual([
         `${BASE_KEY}_10`,
         `${BASE_KEY}_20`,
@@ -192,13 +210,34 @@ describe('reconcileMedicationReminders', () => {
       expect(repeatCalls.every((c) => c[0].content.data?.baseKey === BASE_KEY)).toBe(true);
     });
 
-    it('schedules only the base reminder when repeats are disabled', async () => {
+    it('schedules base reminders for the whole 7-day window, with repeats only today', async () => {
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(mockSchedule).toHaveBeenCalledTimes(10);
+      const keys = scheduledKeys();
+      for (const date of WINDOW_DATES) {
+        expect(keys).toContain(baseKeyFor(date));
+      }
+      expect(keys.filter((k) => k.endsWith('_10') || k.endsWith('_20') || k.endsWith('_30'))).toEqual([
+        `${BASE_KEY}_10`,
+        `${BASE_KEY}_20`,
+        `${BASE_KEY}_30`,
+      ]);
+
+      // Future reminders log the dose against their own day, not today.
+      const day3 = mockSchedule.mock.calls.find(
+        (c) => c[0].content.data?.key === baseKeyFor('2026-07-31'),
+      );
+      expect(day3?.[0].content.data?.entryDate).toBe('2026-07-31');
+      expect((day3?.[0].trigger as { date: Date }).date).toEqual(new Date(2026, 6, 31, 9, 0, 0, 0));
+    });
+
+    it('schedules only base reminders when repeats are disabled', async () => {
       useAppPreferencesStore.setState({ medicationReminderRepeats: false });
 
       await reconcileMedicationReminders([buildMedication()], []);
 
-      expect(mockSchedule).toHaveBeenCalledTimes(1);
-      expect(mockSchedule.mock.calls[0][0].content.data?.key).toBe(BASE_KEY);
+      expect(scheduledKeys()).toEqual(WINDOW_DATES.map(baseKeyFor));
     });
 
     it('omits the dose suffix from the body when the medication has no dose amount', async () => {
@@ -211,7 +250,7 @@ describe('reconcileMedicationReminders', () => {
     });
 
     it.each([['taken'], ['skipped']] as const)(
-      'schedules nothing and cancels the pending chain when the dose is %s',
+      'drops today and cancels the pending chain when the dose is %s',
       async (status) => {
         mockGetAllScheduled.mockResolvedValue([
           pendingRequest('n1', { medicationId: 'med-1', key: BASE_KEY }),
@@ -220,7 +259,7 @@ describe('reconcileMedicationReminders', () => {
 
         await reconcileMedicationReminders([buildMedication()], [buildEntry({ status })]);
 
-        expect(mockSchedule).not.toHaveBeenCalled();
+        expect(scheduledKeys()).toEqual(WINDOW_DATES.slice(1).map(baseKeyFor));
         expect(mockCancel).toHaveBeenCalledTimes(2);
         expect(mockCancel).toHaveBeenCalledWith('n1');
         expect(mockCancel).toHaveBeenCalledWith('n2');
@@ -233,7 +272,7 @@ describe('reconcileMedicationReminders', () => {
         [buildEntry({ status: 'snoozed' })],
       );
 
-      expect(mockSchedule).toHaveBeenCalledTimes(4);
+      expect(mockSchedule).toHaveBeenCalledTimes(10);
     });
 
     it('still schedules when the logged entry belongs to a different schedule', async () => {
@@ -242,7 +281,7 @@ describe('reconcileMedicationReminders', () => {
         [buildEntry({ schedule_id: 'sched-other' })],
       );
 
-      expect(mockSchedule).toHaveBeenCalledTimes(4);
+      expect(mockSchedule).toHaveBeenCalledTimes(10);
     });
 
     it('skips schedules with no time of day', async () => {
@@ -260,13 +299,14 @@ describe('reconcileMedicationReminders', () => {
       expect(mockSchedule).not.toHaveBeenCalled();
     });
 
-    it('schedules nothing when the dose time and all repeats are in the past', async () => {
+    it('skips today entirely when the dose time and all repeats are in the past', async () => {
       await reconcileMedicationReminders(
         [buildMedication({ schedules: [buildSchedule({ time_of_day: '07:00' })] })],
         [],
       );
 
-      expect(mockSchedule).not.toHaveBeenCalled();
+      expect(mockSchedule).toHaveBeenCalledTimes(6);
+      expect(scheduledKeys().every((k) => !k.includes(TODAY))).toBe(true);
     });
 
     it('schedules only the still-future repeats when the base time just passed', async () => {
@@ -276,9 +316,9 @@ describe('reconcileMedicationReminders', () => {
         [],
       );
 
-      expect(mockSchedule).toHaveBeenCalledTimes(3);
+      expect(mockSchedule).toHaveBeenCalledTimes(9);
       const baseKey = `med_${TODAY}_med-1_sched-1_07:55`;
-      expect(mockSchedule.mock.calls.map((c) => c[0].content.data?.key)).toEqual([
+      expect(scheduledKeys().slice(0, 3)).toEqual([
         `${baseKey}_10`,
         `${baseKey}_20`,
         `${baseKey}_30`,
@@ -294,7 +334,22 @@ describe('reconcileMedicationReminders', () => {
       await reconcileMedicationReminders([buildMedication()], []);
 
       expect(mockCancel).not.toHaveBeenCalled();
-      expect(mockSchedule).not.toHaveBeenCalled();
+      expect(scheduledKeys()).toEqual(WINDOW_DATES.slice(1).map(baseKeyFor));
+    });
+
+    it('adds the repeat pings behind an already-pending base reminder when repeats turn on mid-day', async () => {
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('n1', { medicationId: 'med-1', key: BASE_KEY }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(mockCancel).not.toHaveBeenCalled();
+      const keys = scheduledKeys();
+      expect(keys).not.toContain(BASE_KEY);
+      expect(keys).toEqual(
+        expect.arrayContaining([`${BASE_KEY}_10`, `${BASE_KEY}_20`, `${BASE_KEY}_30`]),
+      );
     });
 
     it('cancels stale reminders from a previous day and schedules fresh ones', async () => {
@@ -306,7 +361,7 @@ describe('reconcileMedicationReminders', () => {
       await reconcileMedicationReminders([buildMedication()], []);
 
       expect(mockCancel).toHaveBeenCalledWith('stale');
-      expect(mockSchedule).toHaveBeenCalledTimes(4);
+      expect(mockSchedule).toHaveBeenCalledTimes(10);
     });
 
     it('cancels medication notifications that carry no key', async () => {
@@ -318,7 +373,22 @@ describe('reconcileMedicationReminders', () => {
       await reconcileMedicationReminders([buildMedication()], []);
 
       expect(mockCancel).toHaveBeenCalledWith('legacy');
-      expect(mockSchedule).toHaveBeenCalledTimes(1);
+      expect(mockSchedule).toHaveBeenCalledTimes(7);
+    });
+
+    it('stops the lookahead at a schedule end date', async () => {
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+
+      await reconcileMedicationReminders(
+        [buildMedication({ schedules: [buildSchedule({ end_date: '2026-07-30' })] })],
+        [],
+      );
+
+      expect(scheduledKeys()).toEqual([
+        baseKeyFor('2026-07-28'),
+        baseKeyFor('2026-07-29'),
+        baseKeyFor('2026-07-30'),
+      ]);
     });
   });
 
