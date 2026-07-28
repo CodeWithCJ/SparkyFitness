@@ -755,16 +755,19 @@ const RETENTION_24H_MODEL_PREFIXES = [
   'gpt-5.5',
 ];
 
-// Only the canonical 'openai' service type needs request-level providerOptions.
-// The OpenAI-compatible types share the `openai` namespace via createOpenAI(), so
-// gate strictly to 'openai' to avoid injecting prompt_cache_* into backends that
-// may reject it. (Anthropic caches on the tools — see ai/tools/index.ts; Gemini
-// auto-caches with no flag.)
+// Only the canonical 'openai' service type receives prompt-cache options.
+// OpenAI-compatible services still need the SDK-only systemMessageMode override:
+// reasoning-model IDs otherwise convert Sparky's system prompt to `developer`,
+// which older compatible gateways may not recognize as system instructions.
+// (Anthropic caches on the tools — see ai/tools/index.ts; Gemini auto-caches.)
 export function buildChatProviderOptions(
   serviceType: string,
   userId: string,
   modelName: string
 ): Record<string, Record<string, JSONValue>> | undefined {
+  if (serviceType === 'openai_compatible') {
+    return { openai: { systemMessageMode: 'system' } };
+  }
   if (serviceType !== 'openai') return undefined;
   const openai: Record<string, JSONValue> = {
     promptCacheKey: `sparky-chat-${userId}`,
@@ -1212,7 +1215,8 @@ export function classifyByKeywords(text: string): ChatToolCategorySlug[] {
 
 async function classifyUserIntent(
   messages: ChatMessage[],
-  modelInstance: any
+  modelInstance: Parameters<typeof generateText>[0]['model'],
+  providerOptions?: Record<string, Record<string, JSONValue>>
 ): Promise<ChatToolCategorySlug[]> {
   const lastUserMessage = [...messages]
     .reverse()
@@ -1266,6 +1270,7 @@ Your response must contain ONLY the matched domain names as a comma-separated li
       model: modelInstance,
       system: classificationPrompt,
       messages: contextMessages,
+      providerOptions,
       temperature: 0,
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(10000), // 10s timeout to prevent hanging the chat turn
@@ -1365,7 +1370,15 @@ async function processChatMessage(
     );
     let activeCategories: readonly string[] | undefined = toolCategories;
     if (!process.env.VITEST && !categoriesAreManual) {
-      activeCategories = await classifyUserIntent(messages, modelInstance);
+      activeCategories = await classifyUserIntent(
+        messages,
+        modelInstance,
+        buildChatProviderOptions(
+          aiService.service_type,
+          authenticatedUserId,
+          modelName
+        )
+      );
     }
 
     const {
@@ -1887,7 +1900,15 @@ async function processChatMessageStream(
     );
     let activeCategories: readonly string[] | undefined = toolCategories;
     if (!process.env.VITEST && !categoriesAreManual) {
-      activeCategories = await classifyUserIntent(messages, modelInstance);
+      activeCategories = await classifyUserIntent(
+        messages,
+        modelInstance,
+        buildChatProviderOptions(
+          aiService.service_type,
+          authenticatedUserId,
+          modelName
+        )
+      );
     }
 
     const {
