@@ -156,22 +156,22 @@ Actions:
               }
               return 'delete_entry';
             }
-            if (args.medication_name || args.dosage !== undefined) return 'log';
-            if (args.status) return 'log';
             if (args.site || args.dose_mg || args.deduct_pen !== undefined) {
               return 'log_injection';
             }
+            if (args.medication_name || args.dosage !== undefined) return 'log';
+            if (args.status) return 'log';
             if (args.medication_id) {
               if (args.from_date || args.to_date) return 'list_entries';
               return 'get_medication';
             }
+            if (args.from_date || args.to_date) return 'list_injections';
             if (
               args.glp1_only !== undefined ||
               args.active_only !== undefined
             ) {
               return 'list_medications';
             }
-            if (args.from_date || args.to_date) return 'list_entries';
             return 'list_medications';
           }
         ) as PreProcessedArgs;
@@ -205,6 +205,7 @@ Actions:
             );
           }
           normalized.medication_id = resolvedId;
+          delete normalized.medication_name;
         }
 
         const parsed = manageMedicationsSchema.safeParse(normalized);
