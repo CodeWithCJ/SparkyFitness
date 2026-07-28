@@ -5,6 +5,7 @@ import { act, render } from '@testing-library/react-native';
 import MedicationReminderReconciler from '../../src/components/MedicationReminderReconciler';
 import { useMedications, useMedicationEntries } from '../../src/hooks/useMedications';
 import { reconcileMedicationReminders } from '../../src/services/medicationReminderService';
+import { maybePromptForExactAlarmPermission } from '../../src/services/notifications';
 import {
   __resetAppPreferencesStoreForTests,
   useAppPreferencesStore,
@@ -20,6 +21,10 @@ jest.mock('../../src/services/medicationReminderService', () => ({
   reconcileMedicationReminders: jest.fn(async () => undefined),
 }));
 
+jest.mock('../../src/services/notifications', () => ({
+  maybePromptForExactAlarmPermission: jest.fn(async () => undefined),
+}));
+
 const mockUseMedications = useMedications as jest.MockedFunction<typeof useMedications>;
 const mockUseMedicationEntries = useMedicationEntries as jest.MockedFunction<
   typeof useMedicationEntries
@@ -27,8 +32,14 @@ const mockUseMedicationEntries = useMedicationEntries as jest.MockedFunction<
 const mockReconcile = reconcileMedicationReminders as jest.MockedFunction<
   typeof reconcileMedicationReminders
 >;
+const mockMaybePrompt = maybePromptForExactAlarmPermission as jest.MockedFunction<
+  typeof maybePromptForExactAlarmPermission
+>;
 
 const medications = [{ id: 'med-1', name: 'Metformin' }] as never;
+const timedMedications = [
+  { id: 'med-1', name: 'Metformin', schedules: [{ id: 'sched-1', time_of_day: '09:00' }] },
+] as never;
 const entries = [{ id: 'entry-1', medication_id: 'med-1' }] as never;
 
 function mockQueries({
@@ -123,6 +134,37 @@ describe('MedicationReminderReconciler', () => {
       expect(appStateSpy).not.toHaveBeenCalled();
     },
   );
+
+  it('nudges for the exact-alarm permission once timed schedules load', () => {
+    mockQueries({ meds: timedMedications, medEntries: entries });
+
+    render(<MedicationReminderReconciler />);
+
+    expect(mockMaybePrompt).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['no medication has a timed schedule', medications],
+    ['there are no medications', [] as never],
+  ])('does not nudge for exact alarms when %s', (_label, meds) => {
+    mockQueries({ meds, medEntries: entries });
+
+    render(<MedicationReminderReconciler />);
+
+    expect(mockMaybePrompt).not.toHaveBeenCalled();
+  });
+
+  it('does not nudge for exact alarms while reminders are off or queries are loading', () => {
+    useAppPreferencesStore.setState({ medicationRemindersEnabled: false });
+    mockQueries({ meds: timedMedications, medEntries: entries });
+    render(<MedicationReminderReconciler />);
+    expect(mockMaybePrompt).not.toHaveBeenCalled();
+
+    useAppPreferencesStore.setState({ medicationRemindersEnabled: true });
+    mockQueries({ meds: undefined, loadingMeds: true });
+    render(<MedicationReminderReconciler />);
+    expect(mockMaybePrompt).not.toHaveBeenCalled();
+  });
 
   it('re-runs reconciliation when the repeats preference changes', () => {
     mockQueries({ meds: medications, medEntries: entries });

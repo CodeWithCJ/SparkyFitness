@@ -5,6 +5,7 @@ import { useMedications, useMedicationEntries } from '../hooks/useMedications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getTodayDate } from '../utils/dateUtils';
 import { reconcileMedicationReminders } from '../services/medicationReminderService';
+import { maybePromptForExactAlarmPermission } from '../services/notifications';
 import { addLog } from '../services/LogService';
 
 const MedicationReminderReconciler: React.FC = () => {
@@ -30,6 +31,18 @@ const MedicationReminderReconciler: React.FC = () => {
       addLog(`Medication reminder reconciliation failed: ${(error as Error).message}`, 'ERROR');
     });
   }, [medications, todayEntries, isLoadingMeds, isLoadingEntries, remindersActive, medicationReminderRepeats, today]);
+
+  // Reminders default on and schedules can be created on the web, so a user
+  // may never hit the AppSettings toggle or a workout start — the two other
+  // exact-alarm nudge sites. The helper is one-shot and Android-only.
+  useEffect(() => {
+    if (!remindersActive || isLoadingMeds) return;
+    const hasTimedSchedule = (medications ?? []).some(
+      (m) => m.schedules?.some((s) => s.time_of_day) ?? false,
+    );
+    if (!hasTimedSchedule) return;
+    void maybePromptForExactAlarmPermission();
+  }, [remindersActive, isLoadingMeds, medications]);
 
   useEffect(() => {
     if (!remindersActive) return;
