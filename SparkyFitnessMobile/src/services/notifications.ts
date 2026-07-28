@@ -30,6 +30,20 @@ let initialized = false;
 let hasShownDeniedToast = false;
 
 /**
+ * Idempotent Android channel setup. Exposed separately because reminder
+ * scheduling can run from a background task, where `initNotifications`
+ * (invoked from App startup) may not have run in the current JS context.
+ */
+export async function ensureMedicationReminderChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
+    name: 'Medication reminders',
+    importance: Notifications.AndroidImportance.HIGH,
+    enableVibrate: true,
+  });
+}
+
+/**
  * Updates the app-local notifications toggle (backed by appPreferencesStore,
  * independent of the OS notification permission). Turning notifications off also
  * cancels any alerts already scheduled (rest-timer + fasting-goal) so they don't
@@ -70,11 +84,7 @@ export async function initNotifications(): Promise<void> {
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
       });
-      await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
-        name: 'Medication reminders',
-        importance: Notifications.AndroidImportance.HIGH,
-        enableVibrate: true,
-      });
+      await ensureMedicationReminderChannel();
     }
 
     // "Complete Set" button on the rest-complete ping. The press is handled
@@ -147,76 +157,25 @@ export async function getNotificationPermissionStatus(): Promise<AppNotification
 
 export async function openSystemNotificationSettings(): Promise<void> {
   try {
-    if (Platform.OS === 'ios') {
-      try {
-        await Linking.openURL('app-settings:root=NOTIFICATIONS_ID');
-        return;
-      } catch (err) {
-        addLog(
-          `Direct notification-settings deep-link failed, falling back to app-settings:: ${(err as Error).message}`,
-          'WARNING',
-        );
-        await Linking.openURL('app-settings:');
-      }
-      return;
-    }
     await Linking.openSettings();
   } catch (err) {
     addLog(`openSystemNotificationSettings failed: ${(err as Error).message}`, 'ERROR');
   }
 }
 
-function showNotificationsDisabledAlert(): Promise<void> {
-  return new Promise<void>((resolve) => {
-    Alert.alert(
-      'Notification permission needed',
-      "SparkyFitness can't deliver alerts without notification permission. Tap Open Settings to grant it, or disable notifications to continue without alerts.",
-      [
-        { text: 'Not Now', style: 'cancel', onPress: () => resolve() },
-        {
-          text: 'Disable notifications',
-          style: 'destructive',
-          onPress: () => {
-            void setNotificationsEnabled(false).finally(() => resolve());
-          },
-        },
-        {
-          text: 'Open Settings',
-          onPress: () => {
-            void openSystemNotificationSettings().finally(() => resolve());
-          },
-        },
-      ],
-    );
-  });
-}
-
-export async function requestNotificationPermissionWithGuidance(): Promise<AppNotificationPermission> {
-  let currentStatus: AppNotificationPermission;
-  try {
-    const current = await Notifications.getPermissionsAsync();
-    if (current.status === 'granted') return 'granted';
-    currentStatus = current.status === 'denied' ? 'denied' : 'undetermined';
-  } catch (err) {
-    addLog(`requestNotificationPermissionWithGuidance probe failed: ${(err as Error).message}`, 'ERROR');
-    return 'undetermined';
-  }
-
-  if (currentStatus === 'denied') {
-    await showNotificationsDisabledAlert();
-    return 'denied';
-  }
-
+/**
+ * Request notification permission without any interstitial UI. The OS shows
+ * its prompt only while the status is undetermined; once denied or granted
+ * this resolves with the current status silently — after a denial only system
+ * settings can change it.
+ */
+export async function requestNotificationPermission(): Promise<AppNotificationPermission> {
   try {
     const requested = await Notifications.requestPermissionsAsync();
     if (requested.status === 'granted') return 'granted';
-    await showNotificationsDisabledAlert();
     return requested.status === 'denied' ? 'denied' : 'undetermined';
   } catch (err) {
-    addLog(
-      `Notifications.requestPermissionsAsync failed: ${(err as Error).message}`,
-      'ERROR',
-    );
+    addLog(`requestNotificationPermission failed: ${(err as Error).message}`, 'ERROR');
     return 'undetermined';
   }
 }

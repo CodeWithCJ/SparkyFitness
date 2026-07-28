@@ -1,9 +1,13 @@
-import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 import { getTodayDate } from '../utils/dateUtils';
 import { getDueDosesForDate } from '@workspace/shared';
-import { hasNotificationPermission, MEDICATION_REMINDER_CATEGORY, MEDICATION_REMINDER_CHANNEL_ID } from './notifications';
+import {
+  ensureMedicationReminderChannel,
+  hasNotificationPermission,
+  MEDICATION_REMINDER_CATEGORY,
+  MEDICATION_REMINDER_CHANNEL_ID,
+} from './notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { MedicationDetail, MedicationEntry } from '../types/medications';
 import { addLog } from './LogService';
@@ -93,13 +97,7 @@ export async function reconcileMedicationReminders(
       return;
     }
 
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
-        name: 'Medication reminders',
-        importance: Notifications.AndroidImportance.HIGH,
-        enableVibrate: true,
-      });
-    }
+    await ensureMedicationReminderChannel();
 
     const today = getTodayDate();
     const dueDoses = getDueDosesForDate(medications, today);

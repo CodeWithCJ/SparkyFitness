@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import NotificationPermissionBanner, {
   type NotificationPermissionBannerHandle,
@@ -14,7 +15,7 @@ import {
   type ThemePreference,
 } from '../services/themeService';
 import {
-  requestNotificationPermissionWithGuidance,
+  requestNotificationPermission,
   setNotificationsEnabled,
 } from '../services/notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -64,7 +65,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
       return;
     }
     await setNotificationsEnabled(true);
-    await requestNotificationPermissionWithGuidance();
+    await requestNotificationPermission();
     bannerRef.current?.refresh();
   }, []);
 
@@ -74,9 +75,14 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
         setMedicationRemindersEnabled(false);
         return;
       }
-      await requestNotificationPermissionWithGuidance();
+      const status = await requestNotificationPermission();
       bannerRef.current?.refresh();
-      setMedicationRemindersEnabled(true);
+      // Without OS permission the toggle would show "on" while reminders
+      // silently never fire; leave it off until permission is granted. The
+      // permission banner above explains and links to system settings.
+      if (status === 'granted') {
+        setMedicationRemindersEnabled(true);
+      }
     },
     [setMedicationRemindersEnabled],
   );
@@ -93,8 +99,6 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        <NotificationPermissionBanner ref={bannerRef} />
-
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base text-text-primary">Theme</Text>
@@ -124,54 +128,62 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
             </Text>
           </View>
         )}
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Notifications</Text>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={handleNotificationsToggle}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
+        <SettingsRowGroup>
+          <SettingsRow
+            title="Notifications"
+            subtitle={
+              <Text className="text-sm text-text-secondary">
+                Alerts for workout rest timers and fasting goals.
+              </Text>
+            }
+            rightAccessory={
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={handleNotificationsToggle}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+          {notificationsEnabled && (
+            <SettingsRow
+              title="Medication Reminders"
+              subtitle={
+                <Text className="text-sm text-text-secondary">
+                  Reminders for scheduled medications.
+                </Text>
+              }
+              rightAccessory={
+                <Switch
+                  value={medicationRemindersEnabled}
+                  onValueChange={handleMedicationRemindersToggle}
+                  trackColor={{ false: formDisabled, true: formEnabled }}
+                  thumbColor="#FFFFFF"
+                />
+              }
             />
-          </View>
-          <Text className="text-text-secondary text-sm mt-2">
-            Alerts for workout rest timers and fasting goals.
-          </Text>
-        </View>
+          )}
+          {notificationsEnabled && medicationRemindersEnabled && (
+            <SettingsRow
+              title="Repeat Reminders"
+              subtitle={
+                <Text className="text-sm text-text-secondary">
+                  Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.
+                </Text>
+              }
+              rightAccessory={
+                <Switch
+                  value={medicationReminderRepeats}
+                  onValueChange={setMedicationReminderRepeats}
+                  trackColor={{ false: formDisabled, true: formEnabled }}
+                  thumbColor="#FFFFFF"
+                />
+              }
+            />
+          )}
+        </SettingsRowGroup>
 
-        {notificationsEnabled && (
-          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-            <View className="flex-row justify-between items-center">
-              <Text className="text-base text-text-primary">Medication Reminders</Text>
-              <Switch
-                value={medicationRemindersEnabled}
-                onValueChange={handleMedicationRemindersToggle}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-            <Text className="text-text-secondary text-sm mt-2">
-              Reminders for scheduled medications.
-            </Text>
-          </View>
-        )}
-
-        {medicationRemindersEnabled && (
-          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-            <View className="flex-row justify-between items-center">
-              <Text className="text-base text-text-primary">Repeat Reminders</Text>
-              <Switch
-                value={medicationReminderRepeats}
-                onValueChange={setMedicationReminderRepeats}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-            <Text className="text-text-secondary text-sm mt-2">
-              Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.
-            </Text>
-          </View>
-        )}
+        <NotificationPermissionBanner ref={bannerRef} />
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">

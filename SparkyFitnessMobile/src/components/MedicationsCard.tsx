@@ -178,124 +178,75 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     [entries],
   );
 
-  const handleTake = useCallback(
-    (due: DueDose) => {
+  const showEntryError = useCallback((message: string, error: Error) => {
+    addLog(`${message}: ${error.message}`, 'ERROR');
+    Toast.show({ type: 'error', text1: message });
+  }, []);
+
+  const logDose = useCallback(
+    (due: DueDose, status: 'taken' | 'skipped') => {
+      const isTaken = status === 'taken';
       const existing = entryForDue(due);
-      if (existing && (existing.status === 'taken' || existing.status === 'prn_taken')) {
+
+      // Repeating the same action undoes the log instead of re-creating it.
+      const undone = isTaken
+        ? existing?.status === 'taken' || existing?.status === 'prn_taken'
+        : existing?.status === 'skipped';
+      if (existing && undone) {
         deleteEntryMutation.mutate(existing.id, {
-          onSuccess: () => Toast.show({ type: 'info', text1: `${due.medication.name} unmarked` }),
-          onError: (error) => addLog(`Failed to unmark medication: ${error.message}`, 'ERROR'),
+          onSuccess: () =>
+            Toast.show({ type: 'info', text1: `${due.medication.name} ${isTaken ? 'unmarked' : 'unskipped'}` }),
+          onError: (error) => showEntryError(`Failed to unmark ${due.medication.name}`, error),
         });
         return;
       }
-      if (existing) {
-        deleteEntryMutation.mutateAsync(existing.id).then(
-          () => {
-            createEntryMutation.mutate(
-              {
-                medication_id: due.medication.id,
-                schedule_id: due.schedule.id,
-                status: 'taken' as MedicationEntryStatus,
-                entry_date: selectedDate,
-                taken_at: new Date().toISOString(),
-              },
-              {
-                onSuccess: () => Toast.show({ type: 'success', text1: `${due.medication.name} taken` }),
-                onError: (error) => {
-                  addLog(`Failed to log medication: ${error.message}`, 'ERROR');
-                },
-              },
-            );
-          },
-          (error) => {
-            addLog(`Failed to delete existing medication entry: ${error.message}`, 'ERROR');
-          },
-        );
-      } else {
+
+      const create = () => {
         createEntryMutation.mutate(
           {
             medication_id: due.medication.id,
             schedule_id: due.schedule.id,
-            status: 'taken' as MedicationEntryStatus,
+            status,
             entry_date: selectedDate,
-            taken_at: new Date().toISOString(),
+            taken_at: isTaken ? new Date().toISOString() : undefined,
           },
           {
-            onSuccess: () => Toast.show({ type: 'success', text1: `${due.medication.name} taken` }),
-            onError: (error) => {
-              addLog(`Failed to log medication: ${error.message}`, 'ERROR');
-            },
+            onSuccess: () =>
+              Toast.show({
+                type: isTaken ? 'success' : 'info',
+                text1: `${due.medication.name} ${isTaken ? 'taken' : 'skipped'}`,
+              }),
+            onError: (error) => showEntryError(`Failed to log ${due.medication.name}`, error),
           },
         );
+      };
+
+      if (existing) {
+        deleteEntryMutation.mutateAsync(existing.id).then(create, (error: Error) => {
+          showEntryError(`Failed to update ${due.medication.name}`, error);
+        });
+      } else {
+        create();
       }
     },
-    [entryForDue, createEntryMutation, deleteEntryMutation, selectedDate],
+    [entryForDue, createEntryMutation, deleteEntryMutation, selectedDate, showEntryError],
   );
 
-  const handleSkip = useCallback(
-    (due: DueDose) => {
-      const existing = entryForDue(due);
-      if (existing && existing.status === 'skipped') {
-        deleteEntryMutation.mutate(existing.id, {
-          onSuccess: () => Toast.show({ type: 'info', text1: `${due.medication.name} unskipped` }),
-          onError: (error) => addLog(`Failed to unskip medication: ${error.message}`, 'ERROR'),
-        });
-        return;
-      }
-      if (existing) {
-        deleteEntryMutation.mutateAsync(existing.id).then(
-          () => {
-            createEntryMutation.mutate(
-              {
-                medication_id: due.medication.id,
-                schedule_id: due.schedule.id,
-                status: 'skipped' as MedicationEntryStatus,
-                entry_date: selectedDate,
-              },
-              {
-                onSuccess: () => Toast.show({ type: 'info', text1: `${due.medication.name} skipped` }),
-                onError: (error) => {
-                  addLog(`Failed to skip medication: ${error.message}`, 'ERROR');
-                },
-              },
-            );
-          },
-          (error) => {
-            addLog(`Failed to delete existing medication entry: ${error.message}`, 'ERROR');
-          },
-        );
-      } else {
-        createEntryMutation.mutate(
-          {
-            medication_id: due.medication.id,
-            schedule_id: due.schedule.id,
-            status: 'skipped' as MedicationEntryStatus,
-            entry_date: selectedDate,
-          },
-          {
-            onSuccess: () => Toast.show({ type: 'info', text1: `${due.medication.name} skipped` }),
-            onError: (error) => {
-              addLog(`Failed to skip medication: ${error.message}`, 'ERROR');
-            },
-          },
-        );
-      }
-    },
-    [entryForDue, createEntryMutation, deleteEntryMutation, selectedDate],
-  );
+  const handleTake = useCallback((due: DueDose) => logDose(due, 'taken'), [logDose]);
+  const handleSkip = useCallback((due: DueDose) => logDose(due, 'skipped'), [logDose]);
 
   const handleToggleTaken = useCallback(
     (due: DueDose) => {
       const existing = entryForDue(due);
       if (existing) {
         deleteEntryMutation.mutate(existing.id, {
-          onError: (error) => addLog(`Failed to toggle medication: ${error.message}`, 'ERROR'),
+          onError: (error) => showEntryError(`Failed to update ${due.medication.name}`, error),
         });
         return;
       }
       handleTake(due);
     },
-    [entryForDue, deleteEntryMutation, handleTake],
+    [entryForDue, deleteEntryMutation, handleTake, showEntryError],
   );
 
   const handleLogPrn = useCallback(
@@ -309,13 +260,11 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         },
         {
           onSuccess: () => Toast.show({ type: 'success', text1: `${med.name} logged` }),
-          onError: (error) => {
-            addLog(`Failed to log PRN medication: ${error.message}`, 'ERROR');
-          },
+          onError: (error) => showEntryError(`Failed to log ${med.name}`, error),
         },
       );
     },
-    [createEntryMutation, selectedDate],
+    [createEntryMutation, selectedDate, showEntryError],
   );
 
   if (isLoadingMeds || isLoadingEntries) {

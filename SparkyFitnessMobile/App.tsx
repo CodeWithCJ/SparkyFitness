@@ -1242,10 +1242,7 @@ function AppContent() {
           <Stack.Screen
             name="MedicationDetail"
             component={SafeMedicationDetail}
-            options={({ route }) => createStackScreenOptions(
-              route.params.medicationId ? 'Medication' : 'Medication',
-              { headerBackTitle: 'Medications' },
-            )}
+            options={createStackScreenOptions('Medication', { headerBackTitle: 'Medications' })}
           />
           <Stack.Screen
             name="MedicationForm"
