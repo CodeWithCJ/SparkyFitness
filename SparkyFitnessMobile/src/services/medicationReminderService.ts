@@ -9,7 +9,7 @@ import {
   MEDICATION_REMINDER_CHANNEL_ID,
 } from './notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import type { MedicationDetail, MedicationEntry } from '../types/medications';
+import type { MedicationDetail, MedicationEntry } from '@workspace/shared';
 import { isDoseLogged } from '../utils/medications';
 import { addLog } from './LogService';
 

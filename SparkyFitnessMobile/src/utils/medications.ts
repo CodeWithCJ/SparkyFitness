@@ -1,4 +1,4 @@
-import type { MedicationEntry } from '../types/medications';
+import type { MedicationEntry } from '@workspace/shared';
 
 /**
  * True when a logged entry belongs to the given dose slot.

@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { addNotificationResponseListener, dismissDeliveredNotification, MEDICATION_TAKEN_ACTION, MEDICATION_SKIP_ACTION } from './notifications';
 import { createEntry, listEntries } from './api/medicationsApi';
 import { addLog } from '../services/LogService';
-import type { MedicationEntryStatus } from '../types/medications';
+import type { MedicationEntryStatus } from '@workspace/shared';
 import { isDoseLogged } from '../utils/medications';
 
 let initialized = false;

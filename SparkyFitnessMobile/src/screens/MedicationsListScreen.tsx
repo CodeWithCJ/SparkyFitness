@@ -10,7 +10,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
-import type { Medication } from '../types/medications';
+import type { Medication } from '@workspace/shared';
 import { MEDICATION_TYPES } from '../types/medications';
 
 type MedicationsListScreenProps = RootStackScreenProps<'MedicationsList'>;
@@ -100,8 +100,8 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
             {doseLabel ? (
               <Text className="text-xs text-text-muted ml-2">· {doseLabel}</Text>
             ) : null}
-            {item.reason ? (
-              <Text className="text-xs text-text-muted ml-2" numberOfLines={1}>· {item.reason}</Text>
+            {item.reason_text ? (
+              <Text className="text-xs text-text-muted ml-2" numberOfLines={1}>· {item.reason_text}</Text>
             ) : null}
           </View>
         </View>

@@ -47,12 +47,12 @@ function baseFromMed(
   if (!existingMed) return EMPTY_FORM;
   return {
     name: existingMed.name,
-    typeId: existingMed.type_id,
+    typeId: existingMed.type_id ?? EMPTY_FORM.typeId,
     strengthValue: existingMed.strength_value != null ? String(existingMed.strength_value) : '',
     strengthUnit: existingMed.strength_unit ?? 'mg',
     doseAmount: existingMed.dose_amount != null ? String(existingMed.dose_amount) : '',
     doseUnit: existingMed.dose_unit ?? 'tablet',
-    reason: existingMed.reason ?? '',
+    reason: existingMed.reason_text ?? '',
     prescriber: existingMed.prescriber ?? '',
     pharmacy: existingMed.pharmacy ?? '',
     notes: existingMed.notes ?? '',
@@ -109,7 +109,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
       strength_unit: form.strengthUnit || null,
       dose_amount: doseNum,
       dose_unit: form.doseUnit || null,
-      reason: form.reason || undefined,
+      reason_text: form.reason || undefined,
       prescriber: form.prescriber || undefined,
       pharmacy: form.pharmacy || undefined,
       notes: form.notes || undefined,
