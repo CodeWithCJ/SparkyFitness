@@ -245,12 +245,21 @@ async function getExerciseStatsSummary(
         AND entry_date >= $2 
         AND entry_date <= $3
         AND exercise_name != 'Active Calories'
+        ${query.category ? 'AND LOWER(category) = LOWER($4)' : ''}
     `;
-    const prevResult = await client.query(prevSql, [
-      targetUserId,
-      prevStartDt.toISOString().slice(0, 10),
-      prevEndDt.toISOString().slice(0, 10),
-    ]);
+    const prevParams = query.category
+      ? [
+          targetUserId,
+          prevStartDt.toISOString().slice(0, 10),
+          prevEndDt.toISOString().slice(0, 10),
+          query.category,
+        ]
+      : [
+          targetUserId,
+          prevStartDt.toISOString().slice(0, 10),
+          prevEndDt.toISOString().slice(0, 10),
+        ];
+    const prevResult = await client.query(prevSql, prevParams);
     const prevRow: SqlRow = prevResult.rows[0] || {};
     const prevDistance = parseFloat(String(prevRow.total_distance_km || '0'));
     const prevDuration = parseFloat(
@@ -392,7 +401,11 @@ async function queryExerciseActivities(
           ? 'duration_minutes'
           : request.sortBy === 'calories_burned'
             ? 'calories_burned'
-            : 'entry_date';
+            : request.sortBy === 'avg_heart_rate'
+              ? 'avg_heart_rate'
+              : request.sortBy === 'avg_pace'
+                ? 'duration_minutes / NULLIF(distance, 0)'
+                : 'entry_date';
     const sortOrder = request.sortOrder === 'asc' ? 'ASC' : 'DESC';
 
     params.push(pageSize, offset);
@@ -669,6 +682,7 @@ async function getMatchedCourses(
       const recentActivities = recentRes.rows.map((act: SqlRow) => {
         const dKm = parseFloat(String(act.distance || '0'));
         const dMins = parseFloat(String(act.duration_minutes || '0'));
+        const roundedDMins = Math.round(dMins * 10) / 10;
         const paceSecs = dKm > 0 ? Math.round((dMins * 60) / dKm) : 0;
         return {
           activityId: String(act.id),
@@ -677,7 +691,7 @@ async function getMatchedCourses(
             act.entry_date instanceof Date
               ? act.entry_date.toISOString().slice(0, 10)
               : String(act.entry_date),
-          durationMinutes: dMins,
+          durationMinutes: roundedDMins,
           avgPaceFormatted: formatPace(paceSecs, unitSystem),
           avgHeartRate: act.avg_heart_rate
             ? Math.round(parseFloat(String(act.avg_heart_rate)))
@@ -685,8 +699,19 @@ async function getMatchedCourses(
         };
       });
 
-      const bestPaceSecs =
-        avgDistKm > 0 ? Math.round((minDurMins * 60) / avgDistKm) : 0;
+      // bestPace: find the best (fastest) pace across recent activities
+      // using each activity's own duration and distance so it's a real pace
+      let bestPaceSecs = 0;
+      for (const act of recentRes.rows) {
+        const dKm = parseFloat(String(act.distance || '0'));
+        const dMins = parseFloat(String(act.duration_minutes || '0'));
+        if (dKm > 0) {
+          const pace = Math.round((dMins * 60) / dKm);
+          if (bestPaceSecs === 0 || pace < bestPaceSecs) {
+            bestPaceSecs = pace;
+          }
+        }
+      }
 
       courses.push({
         courseId: `course-${courseKey.replace(/\s+/g, '-')}`,

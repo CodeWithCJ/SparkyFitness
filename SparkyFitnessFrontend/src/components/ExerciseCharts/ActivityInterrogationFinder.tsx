@@ -43,8 +43,8 @@ export const ActivityInterrogationFinder = ({
       setLoading(true);
       try {
         const res = await onQueryFetch({
-          distanceStandard: preset !== undefined ? preset : distancePreset,
-          searchKeyword: kw !== undefined ? kw : keyword,
+          distanceStandard: preset,
+          searchKeyword: kw,
         });
         setQueryResult(res);
         setQueryError(null);
@@ -56,7 +56,7 @@ export const ActivityInterrogationFinder = ({
         setLoading(false);
       }
     },
-    [onQueryFetch, distancePreset, keyword]
+    [onQueryFetch]
   );
 
   useEffect(() => {
@@ -94,13 +94,13 @@ export const ActivityInterrogationFinder = ({
               <SelectContent>
                 <SelectItem value="all">All Distances</SelectItem>
                 <SelectItem value="5k">
-                  {isMiles ? '5K (3.1 mi)' : '5 km (3.1 mi)'}
+                  {isMiles ? '5K (3.1 mi)' : '5 km'}
                 </SelectItem>
                 <SelectItem value="10k">
-                  {isMiles ? '10K (6.2 mi)' : '10 km (6.2 mi)'}
+                  {isMiles ? '10K (6.2 mi)' : '10 km'}
                 </SelectItem>
                 <SelectItem value="15k">
-                  {isMiles ? '15K (9.3 mi)' : '15 km (9.3 mi)'}
+                  {isMiles ? '15K (9.3 mi)' : '15 km'}
                 </SelectItem>
                 <SelectItem value="half_marathon">
                   {isMiles

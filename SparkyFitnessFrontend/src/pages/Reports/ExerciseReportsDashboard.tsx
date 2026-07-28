@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -146,6 +146,15 @@ const ExerciseReportsDashboard = ({
     useAvailableExercises(selectedMuscle, selectedEquipment);
 
   const loading = equipmentLoading || musclesLoading || exercisesLoading;
+
+  const handleQueryFetch = useCallback(
+    (params: {
+      category?: string;
+      distanceStandard?: string;
+      searchKeyword?: string;
+    }) => queryExerciseActivities({ ...params, unitSystem }),
+    [unitSystem]
+  );
 
   const selectedExercisesForChart = useMemo(() => {
     if (selectedExercise && selectedExercise !== 'All') {
@@ -697,11 +706,7 @@ const ExerciseReportsDashboard = ({
 
           <MatchedCoursesList matchedData={matchedCourses} />
 
-          <ActivityInterrogationFinder
-            onQueryFetch={(params) =>
-              queryExerciseActivities({ ...params, unitSystem })
-            }
-          />
+          <ActivityInterrogationFinder onQueryFetch={handleQueryFetch} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {!loading &&
@@ -731,11 +736,7 @@ const ExerciseReportsDashboard = ({
 
           <MatchedCoursesList matchedData={matchedCourses} />
 
-          <ActivityInterrogationFinder
-            onQueryFetch={(params) =>
-              queryExerciseActivities({ ...params, unitSystem })
-            }
-          />
+          <ActivityInterrogationFinder onQueryFetch={handleQueryFetch} />
         </div>
       )}
 

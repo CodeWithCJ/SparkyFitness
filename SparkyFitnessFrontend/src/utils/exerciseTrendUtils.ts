@@ -1,8 +1,20 @@
 import { ExerciseProgressResponse } from '@workspace/shared';
 
+/**
+ * Returns the Monday (week start) of the week containing the given date.
+ */
+const getWeekStart = (date: Date): Date => {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday
+  const diff = day === 0 ? -6 : 1 - day; // offset to Monday
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
 const getTrendDateFormat = (aggregationLevel?: string) => {
   if (aggregationLevel === 'weekly' || aggregationLevel === 'week') {
-    return "'Wk' MMM dd";
+    return 'MMM dd'; // applied to week-start date
   }
   if (aggregationLevel === 'monthly' || aggregationLevel === 'month') {
     return 'MMM yyyy';
@@ -11,6 +23,17 @@ const getTrendDateFormat = (aggregationLevel?: string) => {
     return 'yyyy';
   }
   return 'MMM dd, yyyy';
+};
+
+/**
+ * Given an entry date and aggregation level, returns the Date to use as the bucket key.
+ * For weekly aggregation this snaps to the Monday of that week.
+ */
+const getBucketDate = (date: Date, aggregationLevel: string): Date => {
+  if (aggregationLevel === 'weekly' || aggregationLevel === 'week') {
+    return getWeekStart(date);
+  }
+  return date;
 };
 
 export const calculateVolumeTrendData = (
@@ -26,7 +49,7 @@ export const calculateVolumeTrendData = (
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
-          parseISO(entry.entry_date),
+          getBucketDate(parseISO(entry.entry_date), aggregationLevel),
           formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
@@ -73,7 +96,7 @@ export const calculateMaxWeightTrendData = (
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
-          parseISO(entry.entry_date),
+          getBucketDate(parseISO(entry.entry_date), aggregationLevel),
           formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
@@ -124,7 +147,7 @@ export const calculateEstimated1RMTrendData = (
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
-          parseISO(entry.entry_date),
+          getBucketDate(parseISO(entry.entry_date), aggregationLevel),
           formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);

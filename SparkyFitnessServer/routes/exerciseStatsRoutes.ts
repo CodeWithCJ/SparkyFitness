@@ -107,6 +107,10 @@ router.get('/query', authenticate, async (req, res, next) => {
       pageSize,
       distanceMinMeters,
       distanceMaxMeters,
+      minPaceSecondsPerKm,
+      maxPaceSecondsPerKm,
+      minAvgHeartRate,
+      maxAvgHeartRate,
       ...otherQuery
     } = req.query;
     const targetUserId = (userId as string) || req.userId;
@@ -138,6 +142,18 @@ router.get('/query', authenticate, async (req, res, next) => {
         : undefined,
       distanceMaxMeters: distanceMaxMeters
         ? parseFloat(distanceMaxMeters as string)
+        : undefined,
+      minPaceSecondsPerKm: minPaceSecondsPerKm
+        ? parseFloat(minPaceSecondsPerKm as string)
+        : undefined,
+      maxPaceSecondsPerKm: maxPaceSecondsPerKm
+        ? parseFloat(maxPaceSecondsPerKm as string)
+        : undefined,
+      minAvgHeartRate: minAvgHeartRate
+        ? parseFloat(minAvgHeartRate as string)
+        : undefined,
+      maxAvgHeartRate: maxAvgHeartRate
+        ? parseFloat(maxAvgHeartRate as string)
         : undefined,
     });
 
