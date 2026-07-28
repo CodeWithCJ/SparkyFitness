@@ -284,6 +284,15 @@ describe('reconcileMedicationReminders', () => {
       expect(mockSchedule).toHaveBeenCalledTimes(10);
     });
 
+    it('treats a schedule-less entry for the medication as logging today, like the dashboard card', async () => {
+      await reconcileMedicationReminders(
+        [buildMedication()],
+        [buildEntry({ schedule_id: null })],
+      );
+
+      expect(scheduledKeys()).toEqual(WINDOW_DATES.slice(1).map(baseKeyFor));
+    });
+
     it('skips schedules with no time of day', async () => {
       await reconcileMedicationReminders(
         [buildMedication({ schedules: [buildSchedule({ time_of_day: null })] })],

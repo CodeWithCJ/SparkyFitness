@@ -16,6 +16,7 @@ import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import type { Medication, MedicationDetail, MedicationEntry, MedicationEntryStatus } from '../types/medications';
 import { MEDICATION_TYPES } from '../types/medications';
+import { entryMatchesDose } from '../utils/medications';
 import { addLog } from '../services/LogService';
 
 type MedicationsCardNavigation = CompositeNavigationProp<
@@ -33,12 +34,6 @@ interface DueDose {
 }
 
 const ACTION_WIDTH = 80;
-
-function entryMatchesDue(entry: MedicationEntry, due: DueDose): boolean {
-  if (entry.schedule_id && entry.schedule_id === due.schedule.id) return true;
-  if (entry.medication_id === due.medication.id && !entry.schedule_id && entry.status !== 'prn_taken') return true;
-  return false;
-}
 
 const SwipeableMedRow: React.FC<{
   due: DueDose;
@@ -175,7 +170,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   }, [medications]);
 
   const entryForDue = useCallback(
-    (due: DueDose) => entries?.find((e) => entryMatchesDue(e, due)),
+    (due: DueDose) => entries?.find((e) => entryMatchesDose(e, due.medication.id, due.schedule.id)),
     [entries],
   );
 
