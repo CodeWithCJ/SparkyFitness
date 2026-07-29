@@ -819,6 +819,12 @@ Actions:
               return 'log_external_food';
             }
             if (
+              args.food_name &&
+              (args.calories !== undefined || args.protein !== undefined)
+            ) {
+              return 'create_food';
+            }
+            if (
               (args.food_name || args.food_id) &&
               (args.meal_type || args.meal_type_id)
             ) {
@@ -830,14 +836,11 @@ Actions:
               }
               return 'log_food';
             }
-            if (
-              args.food_name &&
-              (args.calories !== undefined || args.protein !== undefined)
-            ) {
-              return 'create_food';
-            }
             if (args.food_name) {
               return 'lookup_food_nutrition';
+            }
+            if (args.meal_name && (args.meal_type || args.meal_type_id)) {
+              return 'log_meal';
             }
             if (args.meal_name) {
               return 'search_meal';
@@ -1030,17 +1033,22 @@ Actions:
               const mealTypes =
                 await mealTypeRepository.getAllMealTypes(userId);
               return formatJsonResult(
-                mealTypes.map(
-                  (mealType: {
-                    id: string;
-                    name: string;
-                    sort_order: number;
-                  }) => ({
-                    id: mealType.id,
-                    name: mealType.name,
-                    sort_order: mealType.sort_order,
-                  })
-                )
+                mealTypes
+                  .filter(
+                    (mealType: { is_visible: boolean }) =>
+                      mealType.is_visible !== false
+                  )
+                  .map(
+                    (mealType: {
+                      id: string;
+                      name: string;
+                      sort_order: number;
+                    }) => ({
+                      id: mealType.id,
+                      name: mealType.name,
+                      sort_order: mealType.sort_order,
+                    })
+                  )
               );
             }
 
@@ -1853,7 +1861,7 @@ Actions:
               const mealTypeUpdate = mealType
                 ? mealType.id
                   ? { meal_type_id: mealType.id }
-                  : { meal_type: mealType.name }
+                  : { meal_type: mealType.name, meal_type_id: null }
                 : {};
               try {
                 if (args.entry_type === 'food_entry') {

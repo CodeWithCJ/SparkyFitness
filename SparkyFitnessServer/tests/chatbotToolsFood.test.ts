@@ -719,7 +719,7 @@ describe('log_food', () => {
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
       'user-1',
       'user-1',
-      expect.not.objectContaining({ meal_type: 'snacks' })
+      expect.not.objectContaining({ meal_type: expect.anything() })
     );
   });
 
@@ -1978,6 +1978,36 @@ describe('update_entry', () => {
         quantity: undefined,
         unit: undefined,
         meal_type_id: MEAL_TYPE_ID,
+      }
+    );
+  });
+
+  it('switches from a custom meal type to a built-in meal type by clearing meal_type_id', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue(null);
+    vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry',
+        meal_type: 'breakfast',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: meal type to breakfast.');
+    expect(foodEntryService.updateFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      {
+        quantity: undefined,
+        unit: undefined,
+        meal_type: 'breakfast',
+        meal_type_id: null,
       }
     );
   });
