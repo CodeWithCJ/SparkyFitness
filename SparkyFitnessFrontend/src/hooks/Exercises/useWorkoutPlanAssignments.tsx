@@ -31,7 +31,7 @@ export function useWorkoutPlanAssignments(
     () => presetData?.pages.flatMap((page) => page.presets) ?? [],
     [presetData]
   );
- 
+
   const [assignments, setAssignments] = useState<WorkoutPlanAssignment[]>(
     () =>
       initialData?.assignments?.map((a) => ({
