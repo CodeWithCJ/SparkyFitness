@@ -9,6 +9,9 @@ import {
   useUpdateMedication,
 } from '../../src/hooks/useMedications';
 import type { MedicationDetail } from '@workspace/shared';
+import type { RootStackScreenProps } from '../../src/types/navigation';
+
+type ScreenProps = RootStackScreenProps<'MedicationForm'>;
 
 jest.mock('../../src/hooks/useMedications', () => ({
   useMedicationDetail: jest.fn(),
@@ -20,7 +23,7 @@ jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ name }: any) => <View testID={`icon-${name}`} />,
+    default: ({ name }: { name: string }) => <View testID={`icon-${name}`} />,
   };
 });
 
@@ -34,10 +37,18 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
   const { Pressable, Text, View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ options, onSelect, value }: any) => (
+    default: ({
+      options,
+      onSelect,
+      value,
+    }: {
+      options: { label: string; value: string }[];
+      onSelect: (value: string) => void;
+      value: string;
+    }) => (
       <View>
-        <Text>{options.find((option: any) => option.value === value)?.label ?? ''}</Text>
-        {options.map((option: any) => (
+        <Text>{options.find((option) => option.value === value)?.label ?? ''}</Text>
+        {options.map((option) => (
           <Pressable key={option.value} onPress={() => onSelect(option.value)}>
             <Text>{`opt-${option.value}`}</Text>
           </Pressable>
@@ -53,7 +64,7 @@ const mockNavigation = {
   replace: jest.fn(),
   dispatch: jest.fn(),
   navigate: jest.fn(),
-} as any;
+} as unknown as ScreenProps['navigation'];
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
@@ -102,14 +113,14 @@ const baseMed: MedicationDetail = {
 };
 
 const renderScreen = (medicationId?: string) => {
-  const route = {
+  const route: ScreenProps['route'] = {
     key: 'MedicationForm-key',
-    name: 'MedicationForm' as const,
-    params: medicationId ? { medicationId } : undefined,
+    name: 'MedicationForm',
+    params: medicationId ? { medicationId } : {},
   };
   return render(
     <SafeAreaProvider initialMetrics={{ insets, frame }}>
-      <MedicationFormScreen navigation={mockNavigation} route={route as any} />
+      <MedicationFormScreen navigation={mockNavigation} route={route} />
     </SafeAreaProvider>,
   );
 };
@@ -120,9 +131,15 @@ describe('MedicationFormScreen — optional text fields', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseMedicationDetail.mockReturnValue({ data: baseMed } as any);
-    mockUseCreateMedication.mockReturnValue({ mutate: createMutate, isPending: false } as any);
-    mockUseUpdateMedication.mockReturnValue({ mutate: updateMutate, isPending: false } as any);
+    mockUseMedicationDetail.mockReturnValue(
+      { data: baseMed } as unknown as ReturnType<typeof useMedicationDetail>,
+    );
+    mockUseCreateMedication.mockReturnValue(
+      { mutate: createMutate, isPending: false } as unknown as ReturnType<typeof useCreateMedication>,
+    );
+    mockUseUpdateMedication.mockReturnValue(
+      { mutate: updateMutate, isPending: false } as unknown as ReturnType<typeof useUpdateMedication>,
+    );
   });
 
   it('sends explicit null for cleared fields so the server clears them', () => {
@@ -184,7 +201,9 @@ describe('MedicationFormScreen — optional text fields', () => {
   });
 
   it('sends null for empty optional fields on create', () => {
-    mockUseMedicationDetail.mockReturnValue({ data: undefined } as any);
+    mockUseMedicationDetail.mockReturnValue(
+      { data: undefined } as unknown as ReturnType<typeof useMedicationDetail>,
+    );
     const screen = renderScreen();
 
     fireEvent.changeText(screen.getByPlaceholderText('Lisinopril'), 'Metformin');
