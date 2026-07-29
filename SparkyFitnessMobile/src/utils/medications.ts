@@ -1,4 +1,10 @@
-import type { MedicationEntry } from '@workspace/shared';
+import type { MedicationDetail, MedicationEntry, SharedScheduleRule } from '@workspace/shared';
+
+/** A scheduled dose slot on a given day, as produced by getDueDosesForDate. */
+export interface DueDose {
+  medication: MedicationDetail;
+  schedule: SharedScheduleRule & { id: string };
+}
 
 /**
  * True when a logged entry belongs to the given dose slot.

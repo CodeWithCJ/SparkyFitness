@@ -3,6 +3,7 @@ import {
   formatStrengthPerUnit,
   formatTimeOfDay,
   describeSchedule,
+  describeSchedules,
 } from '@workspace/shared';
 
 describe('formatDose', () => {
@@ -117,5 +118,55 @@ describe('describeSchedule', () => {
 
   it('title-cases unknown schedule types', () => {
     expect(describeSchedule({ schedule_type_id: 'twice_daily' })).toBe('Twice daily');
+  });
+});
+
+describe('describeSchedules', () => {
+  it('treats no schedules as as-needed', () => {
+    expect(describeSchedules([])).toBe('As needed');
+  });
+
+  it('summarizes a single schedule', () => {
+    expect(describeSchedules([{ schedule_type_id: 'daily', time_of_day: '08:00' }])).toBe('Daily at 8:00 AM');
+  });
+
+  it('merges same-frequency schedules with times sorted chronologically', () => {
+    expect(
+      describeSchedules([
+        { schedule_type_id: 'daily', time_of_day: '20:00' },
+        { schedule_type_id: 'daily', time_of_day: '08:00' },
+      ]),
+    ).toBe('Daily at 8:00 AM & 8:00 PM');
+  });
+
+  it('separates distinct frequencies', () => {
+    expect(
+      describeSchedules([
+        { schedule_type_id: 'daily', time_of_day: '08:00' },
+        { schedule_type_id: 'specific_days', days_of_week: [1, 3], time_of_day: '21:00' },
+      ]),
+    ).toBe('Daily at 8:00 AM; Mon, Wed at 9:00 PM');
+  });
+
+  it('lists PRN alongside scheduled frequencies', () => {
+    expect(
+      describeSchedules([
+        { schedule_type_id: 'daily', time_of_day: '08:00' },
+        { schedule_type_id: 'prn' },
+      ]),
+    ).toBe('Daily at 8:00 AM; As needed');
+  });
+
+  it('ignores inactive schedules', () => {
+    expect(
+      describeSchedules([
+        { schedule_type_id: 'daily', time_of_day: '08:00' },
+        { schedule_type_id: 'daily', time_of_day: '20:00', active: false },
+      ]),
+    ).toBe('Daily at 8:00 AM');
+  });
+
+  it('returns an empty summary when every schedule is inactive', () => {
+    expect(describeSchedules([{ schedule_type_id: 'daily', active: false }])).toBe('');
   });
 });

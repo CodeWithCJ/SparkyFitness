@@ -1,4 +1,6 @@
+import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Toast from 'react-native-toast-message';
 
 import {
   listMedications,
@@ -18,11 +20,15 @@ import {
   medicationEntriesQueryKey,
 } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
+import { entryMatchesDose, type DueDose } from '../utils/medications';
+import { addLog } from '../services/LogService';
 import type {
   CreateMedicationInput,
   UpdateMedicationInput,
   CreateMedicationEntryInput,
   UpdateMedicationEntryInput,
+  Medication,
+  MedicationEntry,
 } from '@workspace/shared';
 
 interface QueryOptions {
@@ -127,6 +133,142 @@ export function useDeleteMedicationEntry() {
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
     },
   });
+}
+
+/**
+ * Dose-logging actions shared by every surface that acts on dose slots.
+ *
+ * Semantics: repeating the same action undoes the log instead of
+ * re-creating it; acting on a slot that already has a schedule-less
+ * (web-logged) entry re-attributes that entry to the slot via update
+ * rather than creating a duplicate. All actions show their own success
+ * and error toasts.
+ *
+ * `entries` must cover `selectedDate` for the medications being acted on.
+ */
+export function useLogDose(selectedDate: string, entries: MedicationEntry[] | undefined) {
+  const createEntryMutation = useCreateMedicationEntry();
+  const updateEntryMutation = useUpdateMedicationEntry();
+  const deleteEntryMutation = useDeleteMedicationEntry();
+
+  const entryForDue = useCallback(
+    (due: DueDose) => entries?.find((e) => entryMatchesDose(e, due.medication.id, due.schedule.id)),
+    [entries],
+  );
+
+  const showEntryError = useCallback((message: string, error: Error) => {
+    addLog(`${message}: ${error.message}`, 'ERROR');
+    Toast.show({ type: 'error', text1: message });
+  }, []);
+
+  const logDose = useCallback(
+    (due: DueDose, status: 'taken' | 'skipped') => {
+      const isTaken = status === 'taken';
+      const existing = entryForDue(due);
+
+      // Repeating the same action undoes the log instead of re-creating it.
+      const undone = isTaken
+        ? existing?.status === 'taken' || existing?.status === 'prn_taken'
+        : existing?.status === 'skipped';
+      if (existing && undone) {
+        deleteEntryMutation.mutate(existing.id, {
+          onSuccess: () =>
+            Toast.show({ type: 'info', text1: `${due.medication.name} ${isTaken ? 'unmarked' : 'unskipped'}` }),
+          onError: (error) => showEntryError(`Failed to unmark ${due.medication.name}`, error),
+        });
+        return;
+      }
+
+      const showLoggedToast = () =>
+        Toast.show({
+          type: isTaken ? 'success' : 'info',
+          text1: `${due.medication.name} ${isTaken ? 'taken' : 'skipped'}`,
+        });
+
+      if (existing) {
+        // Re-attributes schedule-less (web-logged) entries to the slot being
+        // acted on; taken_at records when the current status was set.
+        updateEntryMutation.mutate(
+          {
+            id: existing.id,
+            body: {
+              schedule_id: due.schedule.id,
+              status,
+              taken_at: new Date().toISOString(),
+            },
+          },
+          {
+            onSuccess: showLoggedToast,
+            onError: (error) => showEntryError(`Failed to update ${due.medication.name}`, error),
+          },
+        );
+      } else {
+        createEntryMutation.mutate(
+          {
+            medication_id: due.medication.id,
+            schedule_id: due.schedule.id,
+            status,
+            entry_date: selectedDate,
+            taken_at: isTaken ? new Date().toISOString() : undefined,
+          },
+          {
+            onSuccess: showLoggedToast,
+            onError: (error) => showEntryError(`Failed to log ${due.medication.name}`, error),
+          },
+        );
+      }
+    },
+    [entryForDue, createEntryMutation, updateEntryMutation, deleteEntryMutation, selectedDate, showEntryError],
+  );
+
+  const toggleTaken = useCallback(
+    (due: DueDose) => {
+      const existing = entryForDue(due);
+      if (existing) {
+        deleteEntryMutation.mutate(existing.id, {
+          onError: (error) => showEntryError(`Failed to update ${due.medication.name}`, error),
+        });
+        return;
+      }
+      logDose(due, 'taken');
+    },
+    [entryForDue, deleteEntryMutation, logDose, showEntryError],
+  );
+
+  const logPrn = useCallback(
+    (med: Medication) => {
+      createEntryMutation.mutate(
+        {
+          medication_id: med.id,
+          status: 'prn_taken',
+          entry_date: selectedDate,
+          taken_at: new Date().toISOString(),
+        },
+        {
+          onSuccess: () => Toast.show({ type: 'success', text1: `${med.name} logged` }),
+          onError: (error) => showEntryError(`Failed to log ${med.name}`, error),
+        },
+      );
+    },
+    [createEntryMutation, selectedDate, showEntryError],
+  );
+
+  const undoLastPrn = useCallback(
+    (med: Medication) => {
+      const prnEntries = (entries ?? []).filter(
+        (e) => e.medication_id === med.id && e.status === 'prn_taken' && e.entry_date === selectedDate,
+      );
+      if (prnEntries.length === 0) return;
+      const latest = prnEntries.reduce((a, b) => (a.taken_at >= b.taken_at ? a : b));
+      deleteEntryMutation.mutate(latest.id, {
+        onSuccess: () => Toast.show({ type: 'info', text1: `${med.name} dose removed` }),
+        onError: (error) => showEntryError(`Failed to remove ${med.name} dose`, error),
+      });
+    },
+    [entries, selectedDate, deleteEntryMutation, showEntryError],
+  );
+
+  return { entryForDue, logDose, toggleTaken, logPrn, undoLastPrn };
 }
 
 

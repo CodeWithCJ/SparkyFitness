@@ -84,6 +84,50 @@ export function describeSchedule(
   return frequency;
 }
 
+/**
+ * One-line regimen summary across a medication's schedules, e.g.
+ * "Daily at 8:00 AM & 8:00 PM" or "Daily at 8:00 AM; As needed".
+ *
+ * Schedules with the same frequency are merged with their times joined;
+ * distinct frequencies are separated with "; ". Inactive schedules are
+ * ignored. No schedules at all means the medication is taken as needed.
+ */
+export function describeSchedules(
+  schedules: Array<
+    Pick<
+      SharedScheduleRule,
+      | 'schedule_type_id'
+      | 'time_of_day'
+      | 'days_of_week'
+      | 'interval_days'
+      | 'day_of_month'
+      | 'cycle_on_days'
+      | 'cycle_off_days'
+      | 'active'
+    >
+  >,
+): string {
+  if (schedules.length === 0) return 'As needed';
+  const activeSchedules = schedules.filter((s) => s.active !== false);
+  if (activeSchedules.length === 0) return '';
+  const timesByFrequency = new Map<string, string[]>();
+  for (const schedule of activeSchedules) {
+    const frequency = describeFrequency(schedule);
+    const times = timesByFrequency.get(frequency) ?? [];
+    if (schedule.schedule_type_id !== 'prn' && schedule.time_of_day != null && schedule.time_of_day !== '') {
+      times.push(schedule.time_of_day);
+    }
+    timesByFrequency.set(frequency, times);
+  }
+  return [...timesByFrequency.entries()]
+    .map(([frequency, times]) => {
+      if (times.length === 0) return frequency;
+      const formatted = [...times].sort().map(formatTimeOfDay);
+      return `${frequency} at ${formatted.join(' & ')}`;
+    })
+    .join('; ');
+}
+
 function describeFrequency(
   schedule: Pick<
     SharedScheduleRule,
