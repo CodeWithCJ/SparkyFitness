@@ -28,6 +28,15 @@ export function entryMatchesDose(
   return entry.medication_id === medicationId && !entry.schedule_id;
 }
 
+export type DoseSlotStatus = 'pending' | 'taken' | 'skipped';
+
+/** Maps a slot's matched entry (if any) to its display status. */
+export function doseSlotStatus(entry: MedicationEntry | undefined): DoseSlotStatus {
+  if (entry?.status === 'taken' || entry?.status === 'prn_taken') return 'taken';
+  if (entry?.status === 'skipped') return 'skipped';
+  return 'pending';
+}
+
 /** True when the dose slot already has a terminal (taken or skipped) entry. */
 export function isDoseLogged(
   entries: MedicationEntry[],

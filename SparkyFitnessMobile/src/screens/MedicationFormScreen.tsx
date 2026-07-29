@@ -138,6 +138,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
 
   const header = useScreenHeader({
     title: isEditing ? 'Edit Medication' : 'New Medication',
+    nativeTitle: isEditing ? 'Edit Medication' : 'New Medication',
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
     right: {
       kind: 'primary',
