@@ -508,11 +508,15 @@ const saveAsMealTemplateSchema = z
   .object({
     action: z.literal('save_as_meal_template'),
     entry_date: dateSchema,
+    meal_type_id: uuidSchema
+      .optional()
+      .describe('UUID of a built-in or custom meal type'),
     meal_type: z
       .string()
       .min(1)
       .max(50)
-      .describe("Meal type to save (e.g., 'lunch')"),
+      .optional()
+      .describe("Built-in meal type fallback (e.g., 'lunch')"),
     meal_name: z
       .string()
       .min(1)

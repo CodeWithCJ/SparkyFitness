@@ -161,6 +161,13 @@ beforeEach(() => {
   vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue(
     undefined as any
   );
+  vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+    { id: 'default-id', name: 'Breakfast', sort_order: 1 },
+    { id: 'lunch-id', name: 'Lunch', sort_order: 2 },
+    { id: 'dinner-id', name: 'Dinner', sort_order: 3 },
+    { id: 'snacks-id', name: 'Snacks', sort_order: 4 },
+    { id: MEAL_TYPE_ID, name: 'Second breakfast', sort_order: 5 },
+  ]);
   tools = buildFoodTools('user-1', 'UTC');
 });
 
@@ -307,6 +314,34 @@ describe('list_meal_types', () => {
     expect(result).toBe(
       `[{"id":"default-id","name":"Breakfast","sort_order":1},{"id":"${MEAL_TYPE_ID}","name":"Second breakfast","sort_order":2}]`
     );
+  });
+
+  it('filters out meal types with is_visible: false', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: 'default-id', name: 'Breakfast', sort_order: 1, is_visible: true },
+      {
+        id: MEAL_TYPE_ID,
+        name: 'Second breakfast',
+        sort_order: 2,
+        is_visible: true,
+      },
+      {
+        id: 'hidden-id',
+        name: 'Hidden meal',
+        sort_order: 5,
+        is_visible: false,
+      },
+    ]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'list_meal_types' },
+      opts
+    );
+
+    expect(result).toBe(
+      `[{"id":"default-id","name":"Breakfast","sort_order":1},{"id":"${MEAL_TYPE_ID}","name":"Second breakfast","sort_order":2}]`
+    );
+    expect(result).not.toContain('Hidden meal');
   });
 });
 
@@ -765,7 +800,7 @@ describe('log_food', () => {
         entry_date: '2026-06-10',
         quantity: 2,
         unit: 'serving',
-        meal_type: 'breakfast',
+        meal_type_id: 'default-id',
       }
     );
   });
@@ -1257,7 +1292,7 @@ describe('log_external_food', () => {
         entry_date: '2026-06-10',
         quantity: 200,
         unit: 'g',
-        meal_type: 'breakfast',
+        meal_type_id: 'default-id',
       }
     );
   });
@@ -1558,7 +1593,7 @@ describe('create_food', () => {
         entry_date: '2026-06-10',
         quantity: 100,
         unit: 'g',
-        meal_type: 'lunch',
+        meal_type_id: 'lunch-id',
       }
     );
   });
@@ -1655,7 +1690,7 @@ describe('log_meal', () => {
       {
         user_id: 'user-1',
         meal_template_id: MEAL_ID,
-        meal_type: 'breakfast',
+        meal_type_id: 'default-id',
         entry_date: '2026-06-10',
         name: 'Overnight Oats',
         quantity: 1,
@@ -1982,8 +2017,11 @@ describe('update_entry', () => {
     );
   });
 
-  it('switches from a custom meal type to a built-in meal type by clearing meal_type_id', async () => {
-    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue(null);
+  it('switches from a custom meal type to a built-in meal type by resolving to ID', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: 'default-id', name: 'Breakfast', sort_order: 1 },
+      { id: MEAL_TYPE_ID, name: 'Second breakfast', sort_order: 2 },
+    ]);
     vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
       id: ENTRY_ID,
     });
@@ -2006,8 +2044,7 @@ describe('update_entry', () => {
       {
         quantity: undefined,
         unit: undefined,
-        meal_type: 'breakfast',
-        meal_type_id: undefined,
+        meal_type_id: 'default-id',
       }
     );
   });
@@ -2273,9 +2310,100 @@ describe('copy_from_yesterday', () => {
       'breakfast'
     );
   });
+
+  it('copies entries using meal_type_id and resolves to name', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.copyFoodEntries).mockResolvedValue([{}]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'copy_from_yesterday',
+        source_date: '2026-06-09',
+        target_date: '2026-06-10',
+        meal_type_id: MEAL_TYPE_ID,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Copied 1 entries to 2026-06-10.');
+    expect(foodEntryService.copyFoodEntries).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      '2026-06-09',
+      'Second breakfast',
+      '2026-06-10',
+      'Second breakfast'
+    );
+  });
 });
 
 describe('save_as_meal_template', () => {
+  // Regression tests for action inference
+  it('infers log_meal (not save_as_meal_template) when action is omitted', async () => {
+    vi.mocked(mealService.searchMeals).mockResolvedValue([
+      { id: MEAL_ID, name: 'Overnight Oats' },
+    ]);
+    vi.mocked(foodEntryService.createFoodEntryMeal).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        meal_name: 'Overnight Oats',
+        entry_date: '2026-06-10',
+        meal_type: 'breakfast',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Meal "Overnight Oats" logged for breakfast on 2026-06-10.'
+    );
+    expect(foodEntryService.createFoodEntryMeal).toHaveBeenCalled();
+    expect(mealService.createMealFromDiaryEntries).not.toHaveBeenCalled();
+  });
+
+  it('requires explicit action for save_as_meal_template', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(mealService.createMealFromDiaryEntries).mockResolvedValue({
+      id: MEAL_ID,
+      name: 'My Second Breakfast',
+    });
+    vi.mocked(mealService.getMealById).mockResolvedValue({
+      id: MEAL_ID,
+      name: 'My Second Breakfast',
+      foods: [{}, {}],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'save_as_meal_template',
+        meal_name: 'My Second Breakfast',
+        entry_date: '2026-06-10',
+        meal_type_id: MEAL_TYPE_ID,
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Meal template "My Second Breakfast" saved with 2 food items.'
+    );
+    expect(mealService.createMealFromDiaryEntries).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-10',
+      'Second breakfast',
+      'My Second Breakfast',
+      null
+    );
+    expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
+  });
+
   it('saves the slot as a template and counts its foods', async () => {
     vi.mocked(mealService.createMealFromDiaryEntries).mockResolvedValue({
       id: MEAL_ID,
@@ -2303,6 +2431,43 @@ describe('save_as_meal_template', () => {
       '2026-06-10',
       'lunch',
       'My Lunch',
+      null
+    );
+  });
+
+  it('saves using meal_type_id and resolves to name', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(mealService.createMealFromDiaryEntries).mockResolvedValue({
+      id: MEAL_ID,
+      name: 'My Second Breakfast',
+    });
+    vi.mocked(mealService.getMealById).mockResolvedValue({
+      id: MEAL_ID,
+      name: 'My Second Breakfast',
+      foods: [{}, {}],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'save_as_meal_template',
+        entry_date: '2026-06-10',
+        meal_type_id: MEAL_TYPE_ID,
+        meal_name: 'My Second Breakfast',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Meal template "My Second Breakfast" saved with 2 food items.'
+    );
+    expect(mealService.createMealFromDiaryEntries).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-10',
+      'Second breakfast',
+      'My Second Breakfast',
       null
     );
   });

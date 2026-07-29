@@ -467,7 +467,7 @@ const DIARY_MEAL_DROP = [
 ] as const;
 
 interface ResolvedMealType {
-  id?: string;
+  id: string;
   name: string;
 }
 
@@ -483,7 +483,17 @@ async function resolveMealType(
     );
     return resolved ? { id: resolved.id, name: resolved.name } : null;
   }
-  return mealType ? { name: mealType } : null;
+  if (!mealType) {
+    return null;
+  }
+  // For built-in meal types (by name), resolve to actual ID
+  const mealTypes = await mealTypeRepository.getAllMealTypes(userId);
+  const normalizedName = mealType.trim().toLowerCase();
+  const resolved = mealTypes.find(
+    (type: { id: string; name: string }) =>
+      type.name.trim().toLowerCase() === normalizedName
+  );
+  return resolved ? { id: resolved.id, name: mealType.trim() } : null;
 }
 // Full food_entries dumps (`SELECT fe.*`, used by recent-entries and food-usage)
 // add audit/ownership columns on top of the diary projection's surrogate keys.
@@ -801,7 +811,7 @@ Actions:
 - update_entry(entry_id, entry_type, quantity?, unit?, meal_type_id?, meal_type?) — changes quantity/unit and/or moves the entry to another meal type.
 - update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to leaving existing diary entries unchanged.
 - copy_from_yesterday(target_date?, source_date?, meal_type_id?|meal_type?)
-- save_as_meal_template(entry_date, meal_type_id?|meal_type?, meal_name, description?)
+- save_as_meal_template(entry_date, meal_type_id?|meal_type?, meal_name, description?) — REQUIRES EXPLICIT action field. Saves diary entries for a given date and meal type as a reusable meal template.
 - log_water(amount_ml, entry_date)
 - get_nutritional_summary(start_date, end_date) — returns macro breakdown for a range of dates
 - get_water_history(start_date?, end_date?)`,
@@ -839,6 +849,9 @@ Actions:
             if (args.food_name) {
               return 'lookup_food_nutrition';
             }
+            if (args.target_date || args.source_date) {
+              return 'copy_from_yesterday';
+            }
             if (args.meal_name && (args.meal_type || args.meal_type_id)) {
               return 'log_meal';
             }
@@ -863,23 +876,8 @@ Actions:
             if (args.food_id) {
               return 'delete_food';
             }
-            if (
-              args.target_date ||
-              args.source_date ||
-              args.meal_type ||
-              args.meal_type_id
-            ) {
-              return 'copy_from_yesterday';
-            }
             if (args.start_date || args.end_date) {
               return 'get_nutritional_summary';
-            }
-            if (
-              args.entry_date &&
-              args.meal_name &&
-              (args.meal_type || args.meal_type_id)
-            ) {
-              return 'save_as_meal_template';
             }
             if (args.entry_date) {
               return 'list_diary';
@@ -989,6 +987,7 @@ Actions:
           'log_food',
           'log_external_food',
           'log_meal',
+          'save_as_meal_template',
         ];
         if (
           mealTypeRequiredActions.includes(args.action) &&
@@ -1871,9 +1870,7 @@ Actions:
                 );
               }
               const mealTypeUpdate = mealType
-                ? mealType.id
-                  ? { meal_type_id: mealType.id }
-                  : { meal_type: mealType.name, meal_type_id: undefined }
+                ? { meal_type_id: mealType.id }
                 : {};
               try {
                 if (args.entry_type === 'food_entry') {
@@ -2061,9 +2058,9 @@ Actions:
                     userId,
                     userId,
                     sourceDate,
-                    mealType.id || mealType.name,
+                    mealType.name,
                     targetDate,
-                    mealType.id || mealType.name
+                    mealType.name
                   )
                 : await foodEntryService.copyAllFoodEntries(
                     userId,
@@ -2098,7 +2095,7 @@ Actions:
               const meal = await mealService.createMealFromDiaryEntries(
                 userId,
                 args.entry_date,
-                mealType.id || mealType.name,
+                mealType.name,
                 args.meal_name,
                 args.description ?? null
               );
