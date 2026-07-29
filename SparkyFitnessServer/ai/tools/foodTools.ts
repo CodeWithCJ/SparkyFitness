@@ -800,8 +800,8 @@ Actions:
 - delete_food(food_id?|food_name?) — deletes food + variants + all diary entries referencing it
 - update_entry(entry_id, entry_type, quantity?, unit?, meal_type_id?, meal_type?) — changes quantity/unit and/or moves the entry to another meal type.
 - update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to leaving existing diary entries unchanged.
-- copy_from_yesterday(target_date?, source_date?, meal_type?)
-- save_as_meal_template(entry_date, meal_type, meal_name, description?)
+- copy_from_yesterday(target_date?, source_date?, meal_type_id?|meal_type?)
+- save_as_meal_template(entry_date, meal_type_id?|meal_type?, meal_name, description?)
 - log_water(amount_ml, entry_date)
 - get_nutritional_summary(start_date, end_date) — returns macro breakdown for a range of dates
 - get_water_history(start_date?, end_date?)`,
@@ -863,11 +863,23 @@ Actions:
             if (args.food_id) {
               return 'delete_food';
             }
-            if (args.target_date || args.source_date) {
+            if (
+              args.target_date ||
+              args.source_date ||
+              args.meal_type ||
+              args.meal_type_id
+            ) {
               return 'copy_from_yesterday';
             }
             if (args.start_date || args.end_date) {
               return 'get_nutritional_summary';
+            }
+            if (
+              args.entry_date &&
+              args.meal_name &&
+              (args.meal_type || args.meal_type_id)
+            ) {
+              return 'save_as_meal_template';
             }
             if (args.entry_date) {
               return 'list_diary';
@@ -2031,14 +2043,27 @@ Actions:
               const targetDate = args.target_date || todayInZone(tz);
               const sourceDate =
                 args.source_date || addDays(todayInZone(tz), -1);
-              const copied = args.meal_type
+              const mealType =
+                args.meal_type_id || args.meal_type
+                  ? await resolveMealType(
+                      userId,
+                      args.meal_type_id,
+                      args.meal_type
+                    )
+                  : undefined;
+              if (mealType === null) {
+                return ERRORS.VALIDATION(
+                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                );
+              }
+              const copied = mealType
                 ? await foodEntryService.copyFoodEntries(
                     userId,
                     userId,
                     sourceDate,
-                    args.meal_type,
+                    mealType.id || mealType.name,
                     targetDate,
-                    args.meal_type
+                    mealType.id || mealType.name
                   )
                 : await foodEntryService.copyAllFoodEntries(
                     userId,
@@ -2057,10 +2082,23 @@ Actions:
             }
 
             case 'save_as_meal_template': {
+              const mealType =
+                args.meal_type_id || args.meal_type
+                  ? await resolveMealType(
+                      userId,
+                      args.meal_type_id,
+                      args.meal_type
+                    )
+                  : undefined;
+              if (mealType === null) {
+                return ERRORS.VALIDATION(
+                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                );
+              }
               const meal = await mealService.createMealFromDiaryEntries(
                 userId,
                 args.entry_date,
-                args.meal_type,
+                mealType.id || mealType.name,
                 args.meal_name,
                 args.description ?? null
               );
