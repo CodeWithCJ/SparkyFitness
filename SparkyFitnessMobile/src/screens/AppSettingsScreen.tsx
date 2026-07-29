@@ -52,6 +52,8 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const setMedicationRemindersEnabled = useAppPreferencesStore((s) => s.setMedicationRemindersEnabled);
   const medicationReminderRepeats = useAppPreferencesStore((s) => s.medicationReminderRepeats);
   const setMedicationReminderRepeats = useAppPreferencesStore((s) => s.setMedicationReminderRepeats);
+  const medicationReminderHideNames = useAppPreferencesStore((s) => s.medicationReminderHideNames);
+  const setMedicationReminderHideNames = useAppPreferencesStore((s) => s.setMedicationReminderHideNames);
   const liquidGlassEnabled = useAppPreferencesStore((s) => s.liquidGlassTabBarEnabled);
   const setLiquidGlassTabBarEnabled = useAppPreferencesStore(
     (s) => s.setLiquidGlassTabBarEnabled,
@@ -169,6 +171,21 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
                 <Switch
                   value={medicationReminderRepeats}
                   onValueChange={setMedicationReminderRepeats}
+                  trackColor={{ false: formDisabled, true: formEnabled }}
+                  thumbColor="#FFFFFF"
+                />
+              }
+            />
+          )}
+          {notificationsEnabled && medicationRemindersEnabled && (
+            <SettingsRow
+              title="Hide Medication Names"
+              subtitle="Show a generic reminder instead of the medication name and dose."
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  value={medicationReminderHideNames}
+                  onValueChange={setMedicationReminderHideNames}
                   trackColor={{ false: formDisabled, true: formEnabled }}
                   thumbColor="#FFFFFF"
                 />

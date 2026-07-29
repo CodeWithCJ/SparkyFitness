@@ -215,6 +215,7 @@ describe('reconcileMedicationReminders', () => {
             entryDate: TODAY,
             key: BASE_KEY,
             baseKey: BASE_KEY,
+            hideNames: 'false',
           },
         },
         trigger: {
@@ -430,6 +431,61 @@ describe('reconcileMedicationReminders', () => {
         baseKeyFor('2026-07-29'),
         baseKeyFor('2026-07-30'),
       ]);
+    });
+  });
+
+  describe('hide names', () => {
+    beforeEach(() => {
+      useAppPreferencesStore.setState({ medicationReminderHideNames: true });
+    });
+
+    it('uses a generic body with no medication name or dose', async () => {
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      for (const call of mockSchedule.mock.calls) {
+        expect(call[0].content.body).toBe('Time to take your medication');
+        expect(call[0].content.data?.hideNames).toBe('true');
+      }
+    });
+
+    it('cancels pending named reminders and reschedules them censored when the preference turns on', async () => {
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('named', { medicationId: 'med-1', key: BASE_KEY, hideNames: 'false' }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(mockCancel).toHaveBeenCalledWith('named');
+      expect(scheduledKeys()).toEqual(WINDOW_DATES.map(baseKeyFor));
+    });
+
+    it('treats unstamped pending reminders as named and replaces them', async () => {
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('legacy-named', { medicationId: 'med-1', key: BASE_KEY }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(mockCancel).toHaveBeenCalledWith('legacy-named');
+      expect(scheduledKeys()).toContain(BASE_KEY);
+    });
+
+    it('cancels pending censored reminders and reschedules them named when the preference turns back off', async () => {
+      useAppPreferencesStore.setState({
+        medicationReminderHideNames: false,
+        medicationReminderRepeats: false,
+      });
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('censored', { medicationId: 'med-1', key: BASE_KEY, hideNames: 'true' }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(mockCancel).toHaveBeenCalledWith('censored');
+      const base = mockSchedule.mock.calls.find((c) => c[0].content.data?.key === BASE_KEY);
+      expect(base?.[0].content.body).toBe('Time to take Metformin (500 mg)');
     });
   });
 

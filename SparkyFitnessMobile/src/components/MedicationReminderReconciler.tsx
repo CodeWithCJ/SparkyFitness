@@ -12,6 +12,7 @@ const MedicationReminderReconciler: React.FC = () => {
   const medicationRemindersEnabled = useAppPreferencesStore((s) => s.medicationRemindersEnabled);
   const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
   const medicationReminderRepeats = useAppPreferencesStore((s) => s.medicationReminderRepeats);
+  const medicationReminderHideNames = useAppPreferencesStore((s) => s.medicationReminderHideNames);
   const remindersActive = medicationRemindersEnabled && notificationsEnabled;
 
   const { data: medications, isLoading: isLoadingMeds, refetch: refetchMeds } = useMedications({ activeOnly: true, enabled: remindersActive });
@@ -30,7 +31,7 @@ const MedicationReminderReconciler: React.FC = () => {
     ).catch((error) => {
       addLog(`Medication reminder reconciliation failed: ${(error as Error).message}`, 'ERROR');
     });
-  }, [medications, todayEntries, isLoadingMeds, isLoadingEntries, remindersActive, medicationReminderRepeats, today]);
+  }, [medications, todayEntries, isLoadingMeds, isLoadingEntries, remindersActive, medicationReminderRepeats, medicationReminderHideNames, today]);
 
   // Reminders default on and schedules can be created on the web, so a user
   // may never hit the AppSettings toggle or a workout start — the two other

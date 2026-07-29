@@ -108,6 +108,7 @@ export async function reconcileMedicationReminders(
 
     const today = getTodayDate();
     const tz = getDeviceTimezone();
+    const hideNames = prefs.medicationReminderHideNames;
 
     const desiredKeys = new Set<string>();
     const dosesToSchedule: {
@@ -149,7 +150,12 @@ export async function reconcileMedicationReminders(
       .filter((n) => {
         if (!n.content.data?.medicationId) return false;
         const key = n.content.data.key as string | undefined;
-        return !key || !desiredKeys.has(key);
+        if (!key || !desiredKeys.has(key)) return true;
+        // Pending content baked in the name (or lack of one) at schedule time;
+        // a hide-names preference flip must cancel so the loop below
+        // reschedules with matching content. Unstamped requests predate the
+        // preference and carry the name.
+        return (n.content.data.hideNames === 'true') !== hideNames;
       })
       .map((n) => n.identifier);
     if (toCancel.length > 0) await cancelReminders(toCancel);
@@ -164,13 +170,16 @@ export async function reconcileMedicationReminders(
       const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);
 
       const [hours, minutes] = timeOfDay.split(':').map(Number);
-      const body = `Time to take ${due.medication.name}${due.medication.dose_amount != null ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})` : ''}`;
+      const body = hideNames
+        ? 'Time to take your medication'
+        : `Time to take ${due.medication.name}${due.medication.dose_amount != null ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})` : ''}`;
       const data = {
         medicationId: due.medication.id,
         scheduleId: due.schedule.id,
         entryDate: date,
         key: baseKey,
         baseKey,
+        hideNames: String(hideNames),
       };
 
       const [year, month, day] = date.split('-').map(Number);
