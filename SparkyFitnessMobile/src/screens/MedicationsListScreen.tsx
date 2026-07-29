@@ -1,14 +1,12 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, SectionList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, SectionList, RefreshControl, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useMedications, useDeleteMedication } from '../hooks/useMedications';
+import { useMedications } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
-import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Medication } from '@workspace/shared';
 import { MEDICATION_TYPES } from '../types/medications';
@@ -23,7 +21,6 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: medications, isLoading, isError, refetch } = useMedications();
-  const deleteMedicationMutation = useDeleteMedication();
 
   const { active, inactive } = useMemo(() => {
     const meds = medications ?? [];
@@ -32,33 +29,6 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
       inactive: meds.filter((m) => !m.is_active),
     };
   }, [medications]);
-
-  const handleDelete = useCallback(
-    (med: Medication) => {
-      Alert.alert(
-        'Delete Medication',
-        `Are you sure you want to delete '${med.name}'? This will also remove all schedules and logged entries.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () =>
-              deleteMedicationMutation.mutate(med.id, {
-                onSuccess: () => {
-                  Toast.show({ type: 'success', text1: `'${med.name}' deleted` });
-                },
-                onError: (error) => {
-                  addLog(`Failed to delete medication: ${error.message}`, 'ERROR');
-                  Toast.show({ type: 'error', text1: 'Failed to delete medication' });
-                },
-              }),
-          },
-        ],
-      );
-    },
-    [deleteMedicationMutation],
-  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -88,7 +58,6 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
       <TouchableOpacity
         className="py-3 px-4 bg-surface flex-row items-center"
         onPress={() => navigation.navigate('MedicationDetail', { medicationId: item.id })}
-        onLongPress={() => handleDelete(item)}
         activeOpacity={0.7}
       >
         <View className="flex-1">
