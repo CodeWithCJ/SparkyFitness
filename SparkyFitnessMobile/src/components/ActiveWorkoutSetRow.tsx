@@ -35,6 +35,7 @@ import {
 } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
+import { formatLocalizedNumber } from '../localization';
 import type { ExerciseModality, ExerciseRecentSessionSet } from '@workspace/shared';
 
 export type SetRowState = 'done' | 'current' | 'upcoming';
@@ -53,7 +54,7 @@ function formatDisplayWeight(weightKg: number | null, unit: 'kg' | 'lbs'): strin
 
 function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
   if (valueKg <= 0) return '–';
-  return Math.round(weightFromKg(valueKg, unit)).toLocaleString();
+  return formatLocalizedNumber(Math.round(weightFromKg(valueKg, unit)));
 }
 
 function formatRpe(rpe: number | null): string {

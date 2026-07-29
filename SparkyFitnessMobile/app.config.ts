@@ -155,6 +155,15 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       './plugins/withExactAlarmModule',
       './plugins/withEnrichedMarkdownNoMath',
       [
+        'expo-localization',
+        {
+          supportedLocales: {
+            ios: ['en', 'pl'],
+            android: ['en', 'pl'],
+          },
+        },
+      ],
+      [
         'expo-widgets',
         {
           groupIdentifier: getIosAppGroup(),

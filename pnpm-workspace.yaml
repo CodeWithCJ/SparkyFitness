@@ -6,6 +6,14 @@ packages:
   - "SparkyFitnessServer"
   - "docs"
 
+minimumReleaseAge: 4320
+
+minimumReleaseAgeExclude: []
+nodeLinker: hoisted
+
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver
 
 packageExtensions:
   "@kingstinct/react-native-healthkit@13":
@@ -19,14 +27,6 @@ packageExtensions:
       "metro": "*"
       "metro-cache": "*"
 
-onlyBuiltDependencies:
-  - esbuild
-  - unrs-resolver
-
-minimumReleaseAge: 4320
-
-minimumReleaseAgeExclude: []
-
 patchedDependencies:
-  "react-native-health-connect@3.5.3": "patches/react-native-health-connect@3.5.3.patch"
   "@bacons/apple-targets@4.0.6": "patches/@bacons__apple-targets@4.0.6.patch"
+  "react-native-health-connect@3.5.3": "patches/react-native-health-connect@3.5.3.patch"

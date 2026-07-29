@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { LanguagePreference } from '../localization';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
 const STORE_VERSION = 1;
@@ -44,6 +45,7 @@ export const PREFERENCE_DEFAULTS = {
   diarySummaryVisible: false,
   diarySummaryExpanded: false,
   defaultRestSec: DEFAULT_REST_SEC as number,
+  languagePreference: 'system' as LanguagePreference,
 } as const;
 
 export type AppPreferencesData = {
@@ -62,6 +64,7 @@ export type AppPreferencesData = {
   diarySummaryVisible: boolean;
   diarySummaryExpanded: boolean;
   defaultRestSec: number;
+  languagePreference: LanguagePreference;
 };
 
 export interface AppPreferencesState extends AppPreferencesData {
@@ -80,6 +83,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setDiarySummaryVisible: (value: boolean) => void;
   setDiarySummaryExpanded: (value: boolean) => void;
   setDefaultRestSec: (value: number) => void;
+  setLanguagePreference: (value: LanguagePreference) => void;
 }
 
 /**
@@ -138,6 +142,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
       setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
+      setLanguagePreference: (value) => set({ languagePreference: value }),
     }),
     {
       name: STORE_KEY,
@@ -161,6 +166,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         diarySummaryVisible: state.diarySummaryVisible,
         diarySummaryExpanded: state.diarySummaryExpanded,
         defaultRestSec: state.defaultRestSec,
+        languagePreference: state.languagePreference,
       }),
       migrate: (persistedState, version) => {
         if (

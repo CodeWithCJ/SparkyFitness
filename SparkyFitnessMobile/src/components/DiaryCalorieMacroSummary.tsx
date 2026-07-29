@@ -12,6 +12,7 @@ import { useCSSVariable } from 'uniwind';
 
 import Icon from './Icon';
 import NutrientPill from './NutrientPill';
+import { formatLocalizedNumber } from '../localization';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { NUTRIENT_META } from '../constants/nutrients';
@@ -74,17 +75,17 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
     <View>
       <View className="flex-row justify-between items-baseline mb-3">
         <Text className="text-lg font-bold text-text-primary">
-          {Math.round(eaten).toLocaleString()}
+          {formatLocalizedNumber(Math.round(eaten))}
           {hasGoal && (
             <Text className="text-lg font-semibold text-text-muted">
-              {` / ${Math.round(goal).toLocaleString()}`}
+              {` / ${formatLocalizedNumber(Math.round(goal))}`}
             </Text>
           )}
           <Text className="text-sm font-normal text-text-muted"> kcal</Text>
         </Text>
         {hasGoal && (
           <Text className="text-sm font-bold text-text-primary">
-            {Math.abs(Math.round(remaining)).toLocaleString()}
+            {formatLocalizedNumber(Math.abs(Math.round(remaining)))}
             <Text className="text-sm font-normal text-text-muted">
               {' '}
               {remaining >= 0 ? 'remaining' : 'over'}

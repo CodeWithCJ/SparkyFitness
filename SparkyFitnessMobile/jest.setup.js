@@ -9,6 +9,17 @@ jest.mock('radon-ide', () => ({
   preview: jest.fn(),
 }));
 
+jest.mock('expo-localization', () => ({
+  getLocales: jest.fn(() => [
+    {
+      languageCode: 'en',
+      languageTag: 'en-US',
+      regionCode: 'US',
+      textDirection: 'ltr',
+    },
+  ]),
+}));
+
 // Mock expo-asset
 jest.mock('expo-asset', () => ({
   Asset: {

@@ -1,4 +1,5 @@
 import './global.css'
+import './src/localization/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, Alert, AppState } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
@@ -129,6 +130,9 @@ import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWork
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
+import { useTranslation } from 'react-i18next';
+import { useAppPreferencesStore } from './src/stores/appPreferencesStore';
+import { applyLanguagePreference } from './src/localization';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -250,6 +254,8 @@ const SafeMedicationForm = withErrorBoundary(MedicationFormScreen, 'MedicationFo
 
 function AppContent() {
   const { theme } = useUniwind();
+  const languagePreference = useAppPreferencesStore((state) => state.languagePreference);
+  const { i18n: localization } = useTranslation();
   const {
     showReauthModal, showSetupModal, showApiKeySwitchModal,
     expiredConfigId, switchToApiKeyConfig,
@@ -258,6 +264,20 @@ function AppContent() {
 
   const [initialRoute, setInitialRoute] = useState<'Tabs' | 'Onboarding' | null>(null);
   const [linkingEnabled, setLinkingEnabled] = useState(false);
+
+  useEffect(() => {
+    void applyLanguagePreference(languagePreference);
+  }, [languagePreference]);
+
+  useEffect(() => {
+    if (languagePreference !== 'system') return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void applyLanguagePreference('system');
+      }
+    });
+    return () => subscription.remove();
+  }, [languagePreference]);
 
   useEffect(() => {
     const determine = async () => {
@@ -827,6 +847,7 @@ function AppContent() {
 
   return (
     <NavigationContainer
+      key={localization.resolvedLanguage ?? 'en'}
       ref={rootNavigationRef}
       theme={navigationTheme}
       linking={linkingEnabled ? linking : undefined}

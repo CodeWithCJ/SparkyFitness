@@ -23,6 +23,10 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  applyLanguagePreference,
+  type LanguagePreference,
+} from '../localization';
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
 
@@ -31,6 +35,12 @@ const themeOptions: { label: string; value: ThemePreference }[] = [
   { label: 'Dark', value: 'Dark' },
   { label: 'AMOLED', value: 'Amoled' },
   { label: 'System', value: 'System' },
+];
+
+const languageOptions: { label: string; value: LanguagePreference }[] = [
+  { label: 'System', value: 'system' },
+  { label: 'English', value: 'en' },
+  { label: 'Polish', value: 'pl' },
 ];
 
 const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
@@ -46,6 +56,8 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const setHapticsEnabled = useAppPreferencesStore((s) => s.setHapticsEnabled);
   const soundsEnabled = useAppPreferencesStore((s) => s.soundsEnabled);
   const setSoundsEnabled = useAppPreferencesStore((s) => s.setSoundsEnabled);
+  const languagePreference = useAppPreferencesStore((s) => s.languagePreference);
+  const setLanguagePreference = useAppPreferencesStore((s) => s.setLanguagePreference);
   const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
   const medicationRemindersEnabled = useAppPreferencesStore((s) => s.medicationRemindersEnabled);
   const setMedicationRemindersEnabled = useAppPreferencesStore((s) => s.setMedicationRemindersEnabled);
@@ -58,6 +70,14 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const bannerRef = useRef<NotificationPermissionBannerHandle>(null);
+
+  const handleLanguageSelect = useCallback(
+    (value: LanguagePreference) => {
+      setLanguagePreference(value);
+      void applyLanguagePreference(value);
+    },
+    [setLanguagePreference],
+  );
 
   const handleNotificationsToggle = useCallback(async (value: boolean) => {
     if (!value) {
@@ -99,6 +119,22 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base text-text-primary">Language</Text>
+            <BottomSheetPicker
+              value={languagePreference}
+              options={languageOptions}
+              onSelect={handleLanguageSelect}
+              title="Language"
+              containerStyle={{ flex: 1, maxWidth: 200 }}
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-2">
+            Use your device language or choose a language for SparkyFitness.
+          </Text>
+        </View>
+
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base text-text-primary">Theme</Text>
