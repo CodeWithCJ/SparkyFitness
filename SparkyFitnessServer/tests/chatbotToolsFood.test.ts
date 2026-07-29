@@ -8,6 +8,7 @@ import preferenceService from '../services/preferenceService.js';
 import { searchProviderFoods } from '../services/externalFoodSearchService.js';
 import foodRepository from '../models/foodRepository.js';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
+import mealTypeRepository from '../models/mealType.js';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
@@ -69,6 +70,12 @@ vi.mock('../models/foodEntryMealRepository', () => ({
     getFoodEntryMealsByDateRange: vi.fn(),
   },
 }));
+vi.mock('../models/mealType', () => ({
+  default: {
+    getAllMealTypes: vi.fn(),
+    getMealTypeById: vi.fn(),
+  },
+}));
 vi.mock('../models/measurementRepository', () => ({
   default: {
     insertWaterIntakeLog: vi.fn(),
@@ -101,6 +108,7 @@ const VARIANT_ID = '22222222-2222-4222-8222-222222222222';
 const ENTRY_ID = '33333333-3333-4333-8333-333333333333';
 const MEAL_ID = '44444444-4444-4444-8444-444444444444';
 const FOOD_ID_2 = '55555555-5555-4555-8555-555555555555';
+const MEAL_TYPE_ID = '66666666-6666-4666-8666-666666666666';
 
 const FOOD_PROVIDER_TYPES = [
   'fatsecret',
@@ -280,6 +288,24 @@ describe('sparky_manage_food validation', () => {
       'user-1',
       'user-1',
       expect.objectContaining({ entry_time: undefined })
+    );
+  });
+});
+
+describe('list_meal_types', () => {
+  it('lists built-in and custom meal types using the REST repository contract', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: 'default-id', name: 'Breakfast', sort_order: 1 },
+      { id: MEAL_TYPE_ID, name: 'Second breakfast', sort_order: 2 },
+    ]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'list_meal_types' },
+      opts
+    );
+
+    expect(result).toBe(
+      `[{"id":"default-id","name":"Breakfast","sort_order":1},{"id":"${MEAL_TYPE_ID}","name":"Second breakfast","sort_order":2}]`
     );
   });
 });
@@ -658,6 +684,45 @@ describe('lookup_food_nutrition', () => {
 });
 
 describe('log_food', () => {
+  it('logs to a custom meal type by ID and gives the ID precedence over the legacy name', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue(eggsRow);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Eggs',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        food_id: FOOD_ID,
+        quantity: 1,
+        meal_type_id: MEAL_TYPE_ID,
+        meal_type: 'snacks',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Logged "Eggs" (1 g) for Second breakfast on 2026-06-10.'
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        meal_type_id: MEAL_TYPE_ID,
+      })
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.not.objectContaining({ meal_type: 'snacks' })
+    );
+  });
+
   it('resolves the food by exact name and logs with the default variant', async () => {
     vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
       {
@@ -1648,6 +1713,7 @@ describe('list_diary', () => {
         serving_size: 100,
         serving_unit: 'g',
         meal_type: 'breakfast',
+        meal_type_id: MEAL_TYPE_ID,
         calories: 380,
         protein: 13,
         carbs: 67,
@@ -1684,7 +1750,7 @@ describe('list_diary', () => {
     );
 
     expect(result).toBe(
-      `# Food Diary: 2026-06-10\n\n## Breakfast\n- **Oatmeal** — 50 g (190 kcal)\n  ID: ${ENTRY_ID} | Type: food_entry\n- **Protein Shake** (meal template) — 1x\n  ID: ${MEAL_ID} | Type: food_entry_meal\n\n## Snacks\n- **Banana** — 2 serving (178 kcal)\n  ID: ${FOOD_ID_2} | Type: food_entry\n\n---\n**Total Energy:** 368 kcal`
+      `# Food Diary: 2026-06-10\n\n## Breakfast\n- **Oatmeal** — 50 g (190 kcal)\n  ID: ${ENTRY_ID} | Type: food_entry | Meal type: breakfast (${MEAL_TYPE_ID})\n- **Protein Shake** (meal template) — 1x\n  ID: ${MEAL_ID} | Type: food_entry_meal\n\n## Snacks\n- **Banana** — 2 serving (178 kcal)\n  ID: ${FOOD_ID_2} | Type: food_entry\n\n---\n**Total Energy:** 368 kcal`
     );
   });
 
@@ -1884,6 +1950,38 @@ describe('delete_food', () => {
 });
 
 describe('update_entry', () => {
+  it('moves a food entry to a custom meal type without requiring a quantity change', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry',
+        meal_type_id: MEAL_TYPE_ID,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: meal type to Second breakfast.');
+    expect(foodEntryService.updateFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      {
+        quantity: undefined,
+        unit: undefined,
+        meal_type_id: MEAL_TYPE_ID,
+      }
+    );
+  });
+
   it('updates a food entry quantity and unit', async () => {
     vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
       id: ENTRY_ID,
@@ -2622,22 +2720,22 @@ describe('sparky_get_food_diary', () => {
       calories: 155,
       protein: 13,
     });
-    // Nulls, empty objects, and redundant internal surrogate keys dropped.
+    // Nulls, empty objects, and non-actionable internal surrogate keys dropped.
     for (const dropped of [
       'meal_id',
       'brand_name',
       'vitamin_a',
       'vitamin_c',
       'custom_nutrients',
-      'meal_type_id',
       'variant_id',
       'meal_plan_template_id',
       'food_entry_meal_id',
     ]) {
       expect(entry).not.toHaveProperty(dropped);
     }
-    // Human-readable label kept in place of meal_type_id.
+    // Both fields are kept so MCP clients can round-trip custom meal types.
     expect(entry.meal_type).toBe('Breakfast');
+    expect(entry.meal_type_id).toBe('99999999-9999-4999-8999-999999999999');
 
     const meal = parsed.meal_entries[0];
     expect(meal).toMatchObject({
@@ -2652,11 +2750,11 @@ describe('sparky_get_food_diary', () => {
       'created_by_user_id',
       'updated_by_user_id',
       'meal_template_id',
-      'meal_type_id',
       'legacy_serving_unit_math',
     ]) {
       expect(meal).not.toHaveProperty(dropped);
     }
+    expect(meal.meal_type_id).toBe('99999999-9999-4999-8999-999999999999');
   });
 });
 

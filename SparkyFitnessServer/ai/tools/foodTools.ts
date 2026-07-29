@@ -13,6 +13,7 @@ import {
 } from '../../services/externalFoodSearchService.js';
 import foodRepository from '../../models/foodRepository.js';
 import foodEntryMealRepository from '../../models/foodEntryMealRepository.js';
+import mealTypeRepository from '../../models/mealType.js';
 import measurementRepository from '../../models/measurementRepository.js';
 import reportRepository from '../../models/reportRepository.js';
 import externalProviderRepository from '../../models/externalProviderRepository.js';
@@ -45,6 +46,7 @@ import {
 const VALID_ACTIONS = [
   'search_food',
   'lookup_food_nutrition',
+  'list_meal_types',
   'log_food',
   'log_external_food',
   'create_food',
@@ -445,11 +447,10 @@ function projectFoodItem(row: any) {
 // `user_id` is the authenticated caller on every row; never useful in output.
 const CATALOG_FOOD_DROP = ['user_id'] as const;
 const VARIANT_DROP = ['user_id'] as const;
-// food_entries internal surrogate keys with a human-readable equivalent already
-// present (meal_type label, serving_size/serving_unit) or no model use. `id`
-// (for edit/delete) and `food_id` (for food lookups / re-logging) are kept.
+// food_entries internal surrogate keys with no model use. `id` (for
+// edit/delete), `food_id` (for food lookups / re-logging), and meal_type_id
+// (for custom-meal round trips) are kept.
 const DIARY_ENTRY_DROP = [
-  'meal_type_id',
   'variant_id',
   'meal_plan_template_id',
   'food_entry_meal_id',
@@ -462,9 +463,28 @@ const DIARY_MEAL_DROP = [
   'created_by_user_id',
   'updated_by_user_id',
   'meal_template_id',
-  'meal_type_id',
   'legacy_serving_unit_math',
 ] as const;
+
+interface ResolvedMealType {
+  id?: string;
+  name: string;
+}
+
+async function resolveMealType(
+  userId: string,
+  mealTypeId?: string,
+  mealType?: string
+): Promise<ResolvedMealType | null> {
+  if (mealTypeId) {
+    const resolved = await mealTypeRepository.getMealTypeById(
+      mealTypeId,
+      userId
+    );
+    return resolved ? { id: resolved.id, name: resolved.name } : null;
+  }
+  return mealType ? { name: mealType } : null;
+}
 // Full food_entries dumps (`SELECT fe.*`, used by recent-entries and food-usage)
 // add audit/ownership columns on top of the diary projection's surrogate keys.
 const FULL_ENTRY_DROP: readonly string[] = [
@@ -769,15 +789,16 @@ export function buildFoodTools(userId: string, tz: string) {
 Actions:
 - search_food(food_name, search_type:"exact"|"broad", limit?, offset?)
 - lookup_food_nutrition(food_name, provider_type?) — AI MUST call this cascade lookup first before creating or estimating a food. Bypasses regular cascade to search specific provider (e.g. openfoodfacts, usda, yazio) if provider_type given.
-- log_food(quantity, meal_type:"breakfast"|"lunch"|"dinner"|"snacks", food_name?|food_id?, unit?, entry_date?, variant_id?) — provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
-- log_external_food(food_name, meal_type, quantity?, unit?, entry_date?, external_id?, provider_type?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. quantity is in servings and defaults to 1.
-- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, meal_type?, entry_date?, saturated_fat?, fiber?, sugar?, sodium?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros.
+- list_meal_types() — lists the user's built-in and custom meal types with IDs, names, and sort order.
+- log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
+- log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. quantity is in servings and defaults to 1.
+- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, saturated_fat?, fiber?, sugar?, sodium?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros.
 - search_meal(meal_name)
-- log_meal(meal_type, entry_date, meal_id?, meal_name?, quantity?)
+- log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?)
 - delete_entry(entry_id, entry_type:"food_entry"|"food_entry_meal")
 - delete_food(food_id?|food_name?) — deletes food + variants + all diary entries referencing it
-- update_entry(entry_id, entry_type, quantity, unit)
+- update_entry(entry_id, entry_type, quantity?, unit?, meal_type_id?, meal_type?) — changes quantity/unit and/or moves the entry to another meal type.
 - update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to leaving existing diary entries unchanged.
 - copy_from_yesterday(target_date?, source_date?, meal_type?)
 - save_as_meal_template(entry_date, meal_type, meal_name, description?)
@@ -799,8 +820,7 @@ Actions:
             }
             if (
               (args.food_name || args.food_id) &&
-              args.quantity &&
-              args.meal_type
+              (args.meal_type || args.meal_type_id)
             ) {
               if (
                 args.food_name?.toLowerCase() === 'water' ||
@@ -822,11 +842,17 @@ Actions:
             if (args.meal_name) {
               return 'search_meal';
             }
-            if (args.meal_id || args.meal_type) {
-              return 'log_meal';
-            }
-            if (args.entry_id && args.quantity) {
+            if (
+              args.entry_id &&
+              (args.quantity !== undefined ||
+                args.unit ||
+                args.meal_type ||
+                args.meal_type_id)
+            ) {
               return 'update_entry';
+            }
+            if (args.meal_id || args.meal_type || args.meal_type_id) {
+              return 'log_meal';
             }
             if (args.entry_id && args.entry_type) {
               return 'delete_entry';
@@ -938,6 +964,35 @@ Actions:
           );
         }
         const args: ManageFoodInput = parsed.data;
+        const optionalMealFields = args as {
+          meal_type_id?: string;
+          meal_type?: string;
+          quantity?: number;
+          unit?: string;
+        };
+        const mealTypeRequiredActions = [
+          'log_food',
+          'log_external_food',
+          'log_meal',
+        ];
+        if (
+          mealTypeRequiredActions.includes(args.action) &&
+          !optionalMealFields.meal_type_id &&
+          !optionalMealFields.meal_type
+        ) {
+          return ERRORS.MISSING_PARAMS(['meal_type_id (or meal_type)']);
+        }
+        if (
+          args.action === 'update_entry' &&
+          optionalMealFields.quantity === undefined &&
+          optionalMealFields.unit === undefined &&
+          !optionalMealFields.meal_type_id &&
+          !optionalMealFields.meal_type
+        ) {
+          return ERRORS.VALIDATION(
+            'update_entry requires quantity, unit, meal_type_id, or meal_type'
+          );
+        }
         try {
           switch (args.action) {
             case 'search_food': {
@@ -968,6 +1023,24 @@ Actions:
                   has_more: result.has_more,
                   next_offset: result.next_offset,
                 }
+              );
+            }
+
+            case 'list_meal_types': {
+              const mealTypes =
+                await mealTypeRepository.getAllMealTypes(userId);
+              return formatJsonResult(
+                mealTypes.map(
+                  (mealType: {
+                    id: string;
+                    name: string;
+                    sort_order: number;
+                  }) => ({
+                    id: mealType.id,
+                    name: mealType.name,
+                    sort_order: mealType.sort_order,
+                  })
+                )
               );
             }
 
@@ -1087,6 +1160,16 @@ Actions:
             }
 
             case 'log_food': {
+              const mealType = await resolveMealType(
+                userId,
+                args.meal_type_id,
+                args.meal_type
+              );
+              if (!mealType) {
+                return ERRORS.VALIDATION(
+                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                );
+              }
               let foodId = args.food_id;
               const variantId = args.variant_id;
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1131,16 +1214,28 @@ Actions:
                   entry_date: entryDate,
                   quantity: resolvedLog.quantity,
                   unit: resolvedLog.unit,
-                  meal_type: args.meal_type,
+                  ...(mealType.id
+                    ? { meal_type_id: mealType.id }
+                    : { meal_type: mealType.name }),
                   entry_time: args.entry_time,
                 }
               );
               return formatConfirmation(
-                `Logged "${entry.food_name}" (${resolvedLog.quantity} ${resolvedLog.unit}) for ${args.meal_type} on ${entryDate}.`
+                `Logged "${entry.food_name}" (${resolvedLog.quantity} ${resolvedLog.unit}) for ${mealType.name} on ${entryDate}.`
               );
             }
 
             case 'log_external_food': {
+              const mealType = await resolveMealType(
+                userId,
+                args.meal_type_id,
+                args.meal_type
+              );
+              if (!mealType) {
+                return ERRORS.VALIDATION(
+                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                );
+              }
               const entryDate = args.entry_date || todayInZone(tz);
               const quantity = args.quantity ?? 1;
               const result = await lookupFoodNutrition(
@@ -1205,12 +1300,14 @@ Actions:
                     entry_date: entryDate,
                     quantity: logged.quantity,
                     unit: logged.unit,
-                    meal_type: args.meal_type,
+                    ...(mealType.id
+                      ? { meal_type_id: mealType.id }
+                      : { meal_type: mealType.name }),
                     entry_time: args.entry_time,
                   }
                 );
                 return formatConfirmation(
-                  `"${entry.food_name}" was already in the food database — logged ${logged.quantity} ${logged.unit} for ${args.meal_type} on ${entryDate}.`
+                  `"${entry.food_name}" was already in the food database — logged ${logged.quantity} ${logged.unit} for ${mealType.name} on ${entryDate}.`
                 );
               }
 
@@ -1354,11 +1451,13 @@ Actions:
                 entry_date: entryDate,
                 quantity: logged.quantity,
                 unit: logged.unit,
-                meal_type: args.meal_type,
+                ...(mealType.id
+                  ? { meal_type_id: mealType.id }
+                  : { meal_type: mealType.name }),
                 entry_time: args.entry_time,
               });
               return formatConfirmation(
-                `Saved "${food.name}" from ${result.source} (${dv?.calories || 0} kcal per ${dv?.serving_size || 100}${dv?.serving_unit || 'g'}) and logged ${logged.quantity} ${logged.unit} to ${args.meal_type} on ${entryDate}.`
+                `Saved "${food.name}" from ${result.source} (${dv?.calories || 0} kcal per ${dv?.serving_size || 100}${dv?.serving_unit || 'g'}) and logged ${logged.quantity} ${logged.unit} to ${mealType.name} on ${entryDate}.`
               );
             }
 
@@ -1368,6 +1467,19 @@ Actions:
                 targetUnit.toLowerCase()
               );
               const targetQuantity = args.quantity || (isCountUnit ? 1 : 100);
+              const mealType =
+                args.meal_type_id || args.meal_type
+                  ? await resolveMealType(
+                      userId,
+                      args.meal_type_id,
+                      args.meal_type
+                    )
+                  : undefined;
+              if (mealType === null) {
+                return ERRORS.VALIDATION(
+                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                );
+              }
               // The `|| null` on optional fields is MCP's storage quirk
               // (an explicit 0 is stored as null), ported as-is.
               const food = await foodCoreService.createFood(userId, {
@@ -1397,7 +1509,7 @@ Actions:
               });
               const v = food.default_variant;
               let msg = `Food "${food.name}" created with ${v?.calories || 0} kcal per ${v?.serving_size || 100}${v?.serving_unit || 'g'}.`;
-              if (args.meal_type) {
+              if (mealType) {
                 const entryDate = args.entry_date || todayInZone(tz);
                 await foodEntryService.createFoodEntry(userId, userId, {
                   user_id: userId,
@@ -1406,10 +1518,12 @@ Actions:
                   entry_date: entryDate,
                   quantity: targetQuantity,
                   unit: targetUnit,
-                  meal_type: args.meal_type,
+                  ...(mealType.id
+                    ? { meal_type_id: mealType.id }
+                    : { meal_type: mealType.name }),
                   entry_time: args.entry_time,
                 });
-                msg += ` Also logged to ${args.meal_type} for ${entryDate}.`;
+                msg += ` Also logged to ${mealType.name} for ${entryDate}.`;
               }
               return formatConfirmation(msg);
             }
@@ -1444,6 +1558,16 @@ Actions:
             }
 
             case 'log_meal': {
+              const mealType = await resolveMealType(
+                userId,
+                args.meal_type_id,
+                args.meal_type
+              );
+              if (!mealType) {
+                return ERRORS.VALIDATION(
+                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                );
+              }
               if (!args.meal_id && !args.meal_name) {
                 return ERRORS.VALIDATION(
                   'Either meal_id or meal_name must be provided'
@@ -1489,7 +1613,9 @@ Actions:
               await foodEntryService.createFoodEntryMeal(userId, userId, {
                 user_id: userId,
                 meal_template_id: mealId,
-                meal_type: args.meal_type,
+                ...(mealType.id
+                  ? { meal_type_id: mealType.id }
+                  : { meal_type: mealType.name }),
                 entry_date: args.entry_date,
                 name: mealName,
                 quantity: args.quantity || 1,
@@ -1497,7 +1623,7 @@ Actions:
                 _clientMealModelVersion: 2,
               });
               return formatConfirmation(
-                `Meal "${mealName}" logged for ${args.meal_type} on ${args.entry_date}.`
+                `Meal "${mealName}" logged for ${mealType.name} on ${args.entry_date}.`
               );
             }
 
@@ -1551,9 +1677,10 @@ Actions:
                   food_name: row.food_name,
                   quantity,
                   unit: row.unit || 'g',
-                  meal_type: row.meal_type
-                    ? String(row.meal_type).toLowerCase()
-                    : 'snacks',
+                  meal_type: row.meal_type ? String(row.meal_type) : 'snacks',
+                  meal_type_id: row.meal_type_id
+                    ? String(row.meal_type_id)
+                    : undefined,
                   entry_type: 'food_entry' as const,
                   nutritional_values: isSet(row.calories)
                     ? {
@@ -1571,9 +1698,10 @@ Actions:
                 id: row.id,
                 meal_name: row.name,
                 quantity: Number(row.quantity),
-                meal_type: row.meal_type
-                  ? String(row.meal_type).toLowerCase()
-                  : 'snacks',
+                meal_type: row.meal_type ? String(row.meal_type) : 'snacks',
+                meal_type_id: row.meal_type_id
+                  ? String(row.meal_type_id)
+                  : undefined,
                 entry_type: 'food_entry_meal' as const,
               }));
 
@@ -1601,10 +1729,18 @@ Actions:
                         text += ` (${entry.nutritional_values.calories} ${eUnit})`;
                         totalEnergy += entry.nutritional_values.calories;
                       }
-                      text += `\n  ID: ${entry.id} | Type: food_entry\n`;
+                      text += `\n  ID: ${entry.id} | Type: food_entry`;
+                      if (entry.meal_type_id) {
+                        text += ` | Meal type: ${entry.meal_type} (${entry.meal_type_id})`;
+                      }
+                      text += '\n';
                     } else {
                       text += `- **${entry.meal_name}** (meal template) — ${entry.quantity}x`;
-                      text += `\n  ID: ${entry.id} | Type: food_entry_meal\n`;
+                      text += `\n  ID: ${entry.id} | Type: food_entry_meal`;
+                      if (entry.meal_type_id) {
+                        text += ` | Meal type: ${entry.meal_type} (${entry.meal_type_id})`;
+                      }
+                      text += '\n';
                     }
                   }
                   text += '\n';
@@ -1701,13 +1837,35 @@ Actions:
             }
 
             case 'update_entry': {
+              const mealType =
+                args.meal_type_id || args.meal_type
+                  ? await resolveMealType(
+                      userId,
+                      args.meal_type_id,
+                      args.meal_type
+                    )
+                  : undefined;
+              if (mealType === null) {
+                return ERRORS.VALIDATION(
+                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                );
+              }
+              const mealTypeUpdate = mealType
+                ? mealType.id
+                  ? { meal_type_id: mealType.id }
+                  : { meal_type: mealType.name }
+                : {};
               try {
                 if (args.entry_type === 'food_entry') {
                   await foodEntryService.updateFoodEntry(
                     userId,
                     userId,
                     args.entry_id,
-                    { quantity: args.quantity, unit: args.unit }
+                    {
+                      quantity: args.quantity,
+                      unit: args.unit,
+                      ...mealTypeUpdate,
+                    }
                   );
                 } else {
                   // Round-trip the template link and component foods so the
@@ -1728,8 +1886,9 @@ Actions:
                     {
                       meal_template_id: existing.meal_template_id,
                       entry_date: dayString(existing.entry_date),
-                      quantity: args.quantity,
-                      unit: args.unit,
+                      quantity: args.quantity ?? existing.quantity,
+                      unit: args.unit ?? existing.unit,
+                      ...mealTypeUpdate,
                       foods: existing.foods,
                     }
                   );
@@ -1743,8 +1902,24 @@ Actions:
                 }
                 throw error;
               }
+              const updates = [
+                args.quantity !== undefined
+                  ? `quantity to ${args.quantity}`
+                  : '',
+                args.unit !== undefined ? `unit to ${args.unit}` : '',
+                mealType ? `meal type to ${mealType.name}` : '',
+              ].filter(Boolean);
+              if (
+                args.quantity !== undefined &&
+                args.unit !== undefined &&
+                !mealType
+              ) {
+                return formatConfirmation(
+                  `Entry updated to ${args.quantity} ${args.unit}.`
+                );
+              }
               return formatConfirmation(
-                `Entry updated to ${args.quantity} ${args.unit}.`
+                `Entry updated: ${updates.join(', ')}.`
               );
             }
 

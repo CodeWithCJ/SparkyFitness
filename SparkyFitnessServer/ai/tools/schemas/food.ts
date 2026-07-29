@@ -50,6 +50,12 @@ const lookupFoodNutritionSchema = z
   })
   .strict();
 
+const listMealTypesSchema = z
+  .object({
+    action: z.literal('list_meal_types'),
+  })
+  .strict();
+
 // food_name/unit/quantity/entry_date are optional so a model holding a food_id
 // from a lookup can log with just (food_id, meal_type): the handler resolves
 // the unit from the food's default variant, defaults quantity to 1, and
@@ -82,7 +88,14 @@ const logFoodSchema = z
       .describe(
         "Unit of measurement (e.g., 'g', 'piece', 'serving'); defaults to the food's serving unit"
       ),
-    meal_type: mealTypeEnum.describe('Meal type category'),
+    meal_type: mealTypeEnum
+      .optional()
+      .describe(
+        'Built-in meal type fallback; ignored when meal_type_id is provided'
+      ),
+    meal_type_id: uuidSchema
+      .optional()
+      .describe('Meal type UUID, including custom meal types'),
     entry_date: optionalDateSchema,
     entry_time: optionalEntryTimeSchema,
   })
@@ -133,7 +146,14 @@ const logExternalFoodSchema = z
       .max(50)
       .optional()
       .describe("Unit of measurement (defaults to 'serving')"),
-    meal_type: mealTypeEnum.describe('Meal type category'),
+    meal_type: mealTypeEnum
+      .optional()
+      .describe(
+        'Built-in meal type fallback; ignored when meal_type_id is provided'
+      ),
+    meal_type_id: uuidSchema
+      .optional()
+      .describe('Meal type UUID, including custom meal types'),
     entry_date: optionalDateSchema,
     entry_time: optionalEntryTimeSchema,
   })
@@ -256,7 +276,14 @@ const createFoodSchema = z
     unit: z.string().max(50).optional().describe('Default serving size unit'),
     meal_type: mealTypeEnum
       .optional()
-      .describe('Optional: Automatically log this food to a meal'),
+      .describe(
+        'Optional built-in meal type fallback for automatic logging; ignored when meal_type_id is provided'
+      ),
+    meal_type_id: uuidSchema
+      .optional()
+      .describe(
+        'Optional meal type UUID for automatic logging, including custom meal types'
+      ),
     entry_date: optionalDateSchema.describe(
       'Optional: Date for automatic log (YYYY-MM-DD)'
     ),
@@ -287,7 +314,14 @@ const logMealSchema = z
       .max(200)
       .optional()
       .describe('Name of the meal template (alternative to ID)'),
-    meal_type: mealTypeEnum.describe('Meal type category'),
+    meal_type: mealTypeEnum
+      .optional()
+      .describe(
+        'Built-in meal type fallback; ignored when meal_type_id is provided'
+      ),
+    meal_type_id: uuidSchema
+      .optional()
+      .describe('Meal type UUID, including custom meal types'),
     entry_date: dateSchema,
     quantity: z.coerce
       .number()
@@ -322,8 +356,21 @@ const updateEntrySchema = z
     action: z.literal('update_entry'),
     entry_id: uuidSchema.describe('UUID of the entry to update'),
     entry_type: entryTypeEnum.describe('Type of diary entry'),
-    quantity: z.coerce.number().min(0).describe('New amount'),
-    unit: z.string().min(1).max(50).describe('New unit of measurement'),
+    quantity: z.coerce.number().min(0).optional().describe('New amount'),
+    unit: z
+      .string()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe('New unit of measurement'),
+    meal_type: mealTypeEnum
+      .optional()
+      .describe(
+        'Built-in meal type fallback; ignored when meal_type_id is provided'
+      ),
+    meal_type_id: uuidSchema
+      .optional()
+      .describe('New meal type UUID, including custom meal types'),
   })
   .strict();
 
@@ -521,6 +568,7 @@ const getWaterHistorySchema = z
 export const manageFoodSchema = z.discriminatedUnion('action', [
   searchFoodSchema,
   lookupFoodNutritionSchema,
+  listMealTypesSchema,
   logFoodSchema,
   logExternalFoodSchema,
   createFoodSchema,
@@ -549,6 +597,7 @@ export const manageFoodInput = z.object({
     .enum([
       'search_food',
       'lookup_food_nutrition',
+      'list_meal_types',
       'log_food',
       'log_external_food',
       'create_food',
@@ -632,7 +681,14 @@ export const manageFoodInput = z.object({
   // meal / diary
   meal_type: mealTypeEnum
     .optional()
-    .describe('breakfast | lunch | dinner | snacks'),
+    .describe(
+      'Built-in fallback: breakfast | lunch | dinner | snacks. Ignored when meal_type_id is provided.'
+    ),
+  meal_type_id: uuidSchema
+    .optional()
+    .describe(
+      'Meal type UUID for logging or moving entries, including custom meal types'
+    ),
   entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
   entry_time: optionalEntryTimeSchema,
   meal_id: uuidSchema.optional().describe('Meal template UUID'),
