@@ -179,6 +179,19 @@ describe('MedicationReminderReconciler', () => {
     expect(mockReconcile).toHaveBeenCalledTimes(2);
   });
 
+  it('re-runs reconciliation when the hide-names preference changes', () => {
+    mockQueries({ meds: medications, medEntries: entries });
+
+    render(<MedicationReminderReconciler />);
+    expect(mockReconcile).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      useAppPreferencesStore.setState({ medicationReminderHideNames: true });
+    });
+
+    expect(mockReconcile).toHaveBeenCalledTimes(2);
+  });
+
   it('refetches both queries when the app returns to the foreground', () => {
     const { refetchMeds, refetchEntries } = mockQueries({
       meds: medications,
