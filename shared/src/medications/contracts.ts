@@ -6,6 +6,9 @@ import type { SharedScheduleRule } from './schedules.ts';
 
 export type MedicationEntryStatus = 'taken' | 'skipped' | 'snoozed' | 'prn_taken';
 
+/** Meal timing for a scheduled dose, relative to the nearest meal. */
+export type MedicationWithMeal = 'before' | 'with' | 'after';
+
 export interface Medication {
   id: string;
   user_id: string;
@@ -66,7 +69,7 @@ export interface MedicationSchedule extends SharedScheduleRule {
   cycle_off_days: number | null;
   prn_reason: string | null;
   prn_max_per_day: number | null;
-  with_meal: string | null;
+  with_meal: MedicationWithMeal | null;
   start_date: string | null;
   end_date: string | null;
   active: boolean;

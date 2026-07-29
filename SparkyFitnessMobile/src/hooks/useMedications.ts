@@ -253,22 +253,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
     [createEntryMutation, selectedDate, showEntryError],
   );
 
-  const undoLastPrn = useCallback(
-    (med: Medication) => {
-      const prnEntries = (entries ?? []).filter(
-        (e) => e.medication_id === med.id && e.status === 'prn_taken' && e.entry_date === selectedDate,
-      );
-      if (prnEntries.length === 0) return;
-      const latest = prnEntries.reduce((a, b) => (a.taken_at >= b.taken_at ? a : b));
-      deleteEntryMutation.mutate(latest.id, {
-        onSuccess: () => Toast.show({ type: 'info', text1: `${med.name} dose removed` }),
-        onError: (error) => showEntryError(`Failed to remove ${med.name} dose`, error),
-      });
-    },
-    [entries, selectedDate, deleteEntryMutation, showEntryError],
-  );
-
-  return { entryForDue, logDose, toggleTaken, logPrn, undoLastPrn };
+  return { entryForDue, logDose, toggleTaken, logPrn };
 }
 
 

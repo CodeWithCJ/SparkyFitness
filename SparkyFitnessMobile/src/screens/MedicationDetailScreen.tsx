@@ -21,6 +21,7 @@ import {
   formatDose,
   formatStrengthPerUnit,
   formatTimeOfDay,
+  formatWithMeal,
   describeSchedule,
 } from '@workspace/shared';
 import { getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
@@ -43,7 +44,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
   const { data: entries } = useMedicationEntries({ fromDate: selectedDate, toDate: selectedDate, medicationId });
   const deleteMedicationMutation = useDeleteMedication();
   const deleteEntryMutation = useDeleteMedicationEntry();
-  const { entryForDue, logDose, toggleTaken, logPrn, undoLastPrn } = useLogDose(selectedDate, entries);
+  const { entryForDue, logDose, toggleTaken, logPrn } = useLogDose(selectedDate, entries);
 
   const [iconDanger] = useCSSVariable(['--color-icon-danger']) as [string];
 
@@ -169,7 +170,6 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                 onSkip={() => logDose(due, 'skipped')}
                 title={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : describeSchedule(due.schedule)}
                 subtitle={formatDose(due.medication, due.schedule) ?? undefined}
-                actionsStyle="inline"
               />
             ))}
             {dueDoses.length === 0 && !isPrn && (
@@ -181,10 +181,8 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                   kind="prn"
                   count={todayPrnDoses.length}
                   onLog={() => logPrn(med)}
-                  onUndoLast={() => undoLastPrn(med)}
                   title="As needed"
                   subtitle={formatDose(med) ?? undefined}
-                  actionsStyle="inline"
                 />
                 {todayPrnDoses.map((dose) => (
                   <View key={dose.id} className="flex-row items-center justify-between py-2 ml-9">
@@ -224,7 +222,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                 const scheduleDose = formatDose(med, sched);
                 if (scheduleDose != null) parts.push(scheduleDose);
               }
-              if (sched.with_meal) parts.push(`With ${sched.with_meal}`);
+              if (sched.with_meal) parts.push(formatWithMeal(sched.with_meal));
               if (sched.active === false) parts.push('Inactive');
               const subtitle = parts.join(' · ');
               return (
@@ -251,7 +249,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         )}
 
         <TouchableOpacity
-          className="bg-surface rounded-xl p-4 shadow-sm mb-3"
+          className="rounded-xl p-4 mb-3"
           onPress={handleDelete}
         >
           <Text className="text-base font-medium text-center text-text-danger-subtle">

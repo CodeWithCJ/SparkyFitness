@@ -245,33 +245,6 @@ describe('useLogDose', () => {
     expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Lisinopril logged' });
   });
 
-  test('undoLastPrn deletes the most recent PRN dose for the day', async () => {
-    const { result } = renderLogDose([
-      buildEntry({ id: 'prn-early', schedule_id: null, status: 'prn_taken', taken_at: '2026-07-29T08:00:00Z' }),
-      buildEntry({ id: 'prn-late', schedule_id: null, status: 'prn_taken', taken_at: '2026-07-29T14:00:00Z' }),
-      buildEntry({ id: 'other-med', medication_id: 'med-2', schedule_id: null, status: 'prn_taken', taken_at: '2026-07-29T18:00:00Z' }),
-    ]);
-
-    act(() => {
-      result.current.undoLastPrn(buildMedication());
-    });
-
-    await waitFor(() => {
-      expect(mockDeleteEntry).toHaveBeenCalledWith('prn-late');
-    });
-    expect(Toast.show).toHaveBeenCalledWith({ type: 'info', text1: 'Lisinopril dose removed' });
-  });
-
-  test('undoLastPrn is a no-op when the day has no PRN doses', () => {
-    const { result } = renderLogDose([buildEntry({ status: 'taken' })]);
-
-    act(() => {
-      result.current.undoLastPrn(buildMedication());
-    });
-
-    expect(mockDeleteEntry).not.toHaveBeenCalled();
-  });
-
   test('a failed create surfaces an error toast', async () => {
     mockCreateEntry.mockRejectedValue(new Error('offline'));
     const { result } = renderLogDose([]);

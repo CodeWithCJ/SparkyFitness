@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, within } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import DoseRow from '../../../src/components/medications/DoseRow';
 
 describe('DoseRow', () => {
@@ -7,7 +7,7 @@ describe('DoseRow', () => {
     jest.clearAllMocks();
   });
 
-  describe('scheduled, inline actions', () => {
+  describe('scheduled', () => {
     it('shows Take and Skip for a pending dose and forwards presses', () => {
       const onTake = jest.fn();
       const onSkip = jest.fn();
@@ -20,7 +20,6 @@ describe('DoseRow', () => {
           onSkip={onSkip}
           title="8:00 AM"
           subtitle="1 tablet"
-          actionsStyle="inline"
         />,
       );
 
@@ -42,7 +41,6 @@ describe('DoseRow', () => {
           onTake={jest.fn()}
           onSkip={jest.fn()}
           title="8:00 AM"
-          actionsStyle="inline"
         />,
       );
 
@@ -59,7 +57,6 @@ describe('DoseRow', () => {
           onTake={jest.fn()}
           onSkip={jest.fn()}
           title="8:00 AM"
-          actionsStyle="inline"
         />,
       );
 
@@ -77,7 +74,6 @@ describe('DoseRow', () => {
           onTake={jest.fn()}
           onSkip={jest.fn()}
           title="8:00 AM"
-          actionsStyle="inline"
         />,
       );
 
@@ -85,43 +81,11 @@ describe('DoseRow', () => {
     });
   });
 
-  describe('scheduled, swipe actions', () => {
-    it('reveals Take and Skip as swipe actions', () => {
-      const onTake = jest.fn();
-      const onSkip = jest.fn();
-      const screen = render(
-        <DoseRow
-          kind="scheduled"
-          status="pending"
-          onToggle={jest.fn()}
-          onTake={onTake}
-          onSkip={onSkip}
-          title="Lisinopril"
-          actionsStyle="swipe"
-        />,
-      );
-
-      const actions = within(screen.getByTestId('swipeable-right-actions'));
-      fireEvent.press(actions.getByText('Take'));
-      expect(onTake).toHaveBeenCalled();
-      fireEvent.press(actions.getByText('Skip'));
-      expect(onSkip).toHaveBeenCalled();
-    });
-  });
-
   describe('prn', () => {
     it('logs from the circle and shows the day count', () => {
       const onLog = jest.fn();
       const screen = render(
-        <DoseRow
-          kind="prn"
-          count={2}
-          onLog={onLog}
-          onUndoLast={jest.fn()}
-          title="Ibuprofen"
-          subtitle="As needed"
-          actionsStyle="swipe"
-        />,
+        <DoseRow kind="prn" count={2} onLog={onLog} title="Ibuprofen" subtitle="As needed" />,
       );
 
       expect(screen.getByText('2')).toBeTruthy();
@@ -129,55 +93,9 @@ describe('DoseRow', () => {
       expect(onLog).toHaveBeenCalled();
     });
 
-    it('offers Log and Undo swipe actions once doses are logged', () => {
+    it('logs from the Log button', () => {
       const onLog = jest.fn();
-      const onUndoLast = jest.fn();
-      const screen = render(
-        <DoseRow
-          kind="prn"
-          count={1}
-          onLog={onLog}
-          onUndoLast={onUndoLast}
-          title="Ibuprofen"
-          actionsStyle="swipe"
-        />,
-      );
-
-      const actions = within(screen.getByTestId('swipeable-right-actions'));
-      fireEvent.press(actions.getByText('Log'));
-      expect(onLog).toHaveBeenCalled();
-      fireEvent.press(actions.getByText('Undo'));
-      expect(onUndoLast).toHaveBeenCalled();
-    });
-
-    it('hides the Undo swipe action when nothing is logged', () => {
-      const screen = render(
-        <DoseRow
-          kind="prn"
-          count={0}
-          onLog={jest.fn()}
-          onUndoLast={jest.fn()}
-          title="Ibuprofen"
-          actionsStyle="swipe"
-        />,
-      );
-
-      const actions = within(screen.getByTestId('swipeable-right-actions'));
-      expect(actions.queryByText('Undo')).toBeNull();
-    });
-
-    it('shows an inline Log button', () => {
-      const onLog = jest.fn();
-      const screen = render(
-        <DoseRow
-          kind="prn"
-          count={0}
-          onLog={onLog}
-          onUndoLast={jest.fn()}
-          title="Ibuprofen"
-          actionsStyle="inline"
-        />,
-      );
+      const screen = render(<DoseRow kind="prn" count={0} onLog={onLog} title="Ibuprofen" />);
 
       fireEvent.press(screen.getByText('Log'));
       expect(onLog).toHaveBeenCalled();
@@ -195,7 +113,6 @@ describe('DoseRow', () => {
         onSkip={jest.fn()}
         title="Lisinopril"
         onPress={onPress}
-        actionsStyle="swipe"
       />,
     );
 
