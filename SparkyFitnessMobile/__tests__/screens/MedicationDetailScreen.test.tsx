@@ -66,7 +66,6 @@ const mockEntryForDue = jest.fn();
 const mockLogDose = jest.fn();
 const mockToggleTaken = jest.fn();
 const mockLogPrn = jest.fn();
-const mockUndoLastPrn = jest.fn();
 
 function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationSchedule {
   return {
@@ -177,7 +176,6 @@ describe('MedicationDetailScreen', () => {
       logDose: mockLogDose,
       toggleTaken: mockToggleTaken,
       logPrn: mockLogPrn,
-      undoLastPrn: mockUndoLastPrn,
     });
     mockUseDeleteMedication.mockReturnValue({
       mutate: jest.fn(),
@@ -252,12 +250,12 @@ describe('MedicationDetailScreen', () => {
   it('describes schedules with dose override and meal timing', () => {
     const screen = setupScreen(
       buildMedication({
-        schedules: [buildSchedule({ dose_amount: 2, with_meal: 'breakfast' })],
+        schedules: [buildSchedule({ dose_amount: 2, with_meal: 'before' })],
       }),
     );
 
     expect(screen.getByText('Daily at 8:00 AM')).toBeTruthy();
-    expect(screen.getByText('2 tablet · With breakfast')).toBeTruthy();
+    expect(screen.getByText('2 tablet · Before meal')).toBeTruthy();
   });
 
   it('notes when nothing is scheduled for the selected day', () => {

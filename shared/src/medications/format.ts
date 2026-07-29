@@ -61,6 +61,14 @@ export function formatTimeOfDay(timeOfDay: string): string {
   return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+/** Formats a schedule's meal-timing value ('before' | 'with' | 'after') for display. */
+export function formatWithMeal(withMeal: string): string {
+  if (withMeal === 'before') return 'Before meal';
+  if (withMeal === 'with') return 'With meal';
+  if (withMeal === 'after') return 'After meal';
+  return withMeal;
+}
+
 /**
  * Human-readable frequency summary for a schedule, e.g. "Daily at 8:00 AM",
  * "Mon, Wed, Fri at 9:00 PM", "Every 3 days", or "As needed".

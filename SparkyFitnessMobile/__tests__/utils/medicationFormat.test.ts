@@ -2,6 +2,7 @@ import {
   formatDose,
   formatStrengthPerUnit,
   formatTimeOfDay,
+  formatWithMeal,
   describeSchedule,
   describeSchedules,
 } from '@workspace/shared';
@@ -74,6 +75,20 @@ describe('formatTimeOfDay', () => {
 
   it('returns malformed input unchanged', () => {
     expect(formatTimeOfDay('noon')).toBe('noon');
+  });
+});
+
+describe('formatWithMeal', () => {
+  it.each([
+    ['before', 'Before meal'],
+    ['with', 'With meal'],
+    ['after', 'After meal'],
+  ])('formats %s as %s', (value, expected) => {
+    expect(formatWithMeal(value)).toBe(expected);
+  });
+
+  it('passes unknown values through', () => {
+    expect(formatWithMeal('bedtime')).toBe('bedtime');
   });
 });
 
