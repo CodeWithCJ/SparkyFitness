@@ -15,5 +15,3 @@ export const MEDICATION_TYPES = [
   { id: 'suppository', label: 'Suppository' },
   { id: 'other', label: 'Other' },
 ] as const;
-
-export const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
