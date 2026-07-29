@@ -109,10 +109,10 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
       strength_unit: form.strengthUnit || null,
       dose_amount: doseNum,
       dose_unit: form.doseUnit || null,
-      reason_text: form.reason || undefined,
-      prescriber: form.prescriber || undefined,
-      pharmacy: form.pharmacy || undefined,
-      notes: form.notes || undefined,
+      reason_text: form.reason.trim() || null,
+      prescriber: form.prescriber.trim() || null,
+      pharmacy: form.pharmacy.trim() || null,
+      notes: form.notes.trim() || null,
     };
 
     if (isEditing && medicationId) {
