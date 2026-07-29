@@ -99,6 +99,18 @@ body:
       label: Screenshots or Screen Recordings
       description: Drag and drop or paste any screenshots or screen recordings that visually show the issue.
 
+  - type: dropdown
+    id: pr_willingness
+    attributes:
+      label: Are you willing to submit a PR?
+      description: Would you like to submit a Pull Request to fix this issue yourself?
+      options:
+        - Yes, I'd like to submit a PR!
+        - No, but I can help test
+        - No
+    validations:
+      required: true
+
   - type: textarea
     id: extra
     attributes:

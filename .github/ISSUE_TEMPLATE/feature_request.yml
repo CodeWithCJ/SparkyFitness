@@ -61,6 +61,18 @@ body:
       label: Alternatives you've considered
       description: Any workarounds or other approaches you've thought about?
 
+  - type: dropdown
+    id: pr_willingness
+    attributes:
+      label: Are you willing to submit a PR?
+      description: Would you like to submit a Pull Request to implement this feature yourself?
+      options:
+        - Yes, I'd like to submit a PR!
+        - No, but I can help test
+        - No
+    validations:
+      required: true
+
   - type: textarea
     id: extra
     attributes:
