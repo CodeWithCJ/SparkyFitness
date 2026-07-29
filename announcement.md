@@ -1,12 +1,9 @@
 ---
-id: notice-test-4
-active: false
-title: Welcome to SparkyFitness
+id: sparky-5k-stars
+active: true
+title: SparkyFitness Reaches 5K GitHub Stars! 🌟
 ---
 
-### 🚀 What's New in SparkyFitness
+### 🚀 SparkyFitness Reaches 5K GitHub Stars! 🌟
 
-- **🌸 CYCLE & PREGNANCY**: **Track your cycle & pregnancy** — Log cycle phases, symptoms, flow, and pregnancy progress with tailored insights and automated goal adjustments.
-- **🏋️ WORKOUT & EXERCISES**: **Revamped workout workflows** — Streamlined exercise logging, updated library management, and improved multi-set tracking for every routine.
-- **📊 ADAPTIVE TDEE**: **Personalized energy insights** — Intelligent TDEE expenditure calculations tailored directly to your body composition trends.
-- **📢 SYSTEM ANNOUNCEMENTS**: **Real-time broadcast updates** — Stay up to date with instant feature announcements across Web & Mobile.
+SparkyFitness has officially reached **5,000+ stars on GitHub**. We couldn't have hit this incredible milestone without your continued support, contributions, and feedback. Thank you all!!!
