@@ -211,35 +211,43 @@ describe('workoutSession', () => {
 
   describe('getSourceLabel', () => {
     it('returns Sparky for null source', () => {
-      expect(getSourceLabel(null)).toEqual({ label: 'Sparky', isSparky: true });
+      expect(getSourceLabel(null)).toEqual({ label: 'Sparky', canEditWorkout: true });
     });
 
     it('returns Sparky for "manual" source', () => {
-      expect(getSourceLabel('manual')).toEqual({ label: 'Sparky', isSparky: true });
+      expect(getSourceLabel('manual')).toEqual({ label: 'Sparky', canEditWorkout: true });
     });
 
     it('returns Sparky for "sparky" source', () => {
-      expect(getSourceLabel('sparky')).toEqual({ label: 'Sparky', isSparky: true });
+
+    it('returns Sparky for "Workout Plan" source', () => {
+      expect(getSourceLabel('Workout Plan')).toEqual({ label: 'Sparky', canEditWorkout: true });
+    });
+      expect(getSourceLabel('sparky')).toEqual({ label: 'Sparky', canEditWorkout: true });
+
+    it('returns Sparky for "workout plan" source', () => {
+      expect(getSourceLabel('Workout Plan')).toEqual({ label: 'Sparky', canEditWorkout: true });
+    });
     });
 
     it('returns Apple Health for HealthKit source', () => {
-      expect(getSourceLabel('HealthKit')).toEqual({ label: 'Apple Health', isSparky: false });
+      expect(getSourceLabel('HealthKit')).toEqual({ label: 'Apple Health', canEditWorkout: false });
     });
 
     it('returns Garmin for garmin source (lowercase)', () => {
-      expect(getSourceLabel('garmin')).toEqual({ label: 'Garmin', isSparky: false });
+      expect(getSourceLabel('garmin')).toEqual({ label: 'Garmin', canEditWorkout: false });
     });
 
     it('returns Garmin for Garmin source (capitalized)', () => {
-      expect(getSourceLabel('Garmin')).toEqual({ label: 'Garmin', isSparky: false });
+      expect(getSourceLabel('Garmin')).toEqual({ label: 'Garmin', canEditWorkout: false });
     });
 
     it('returns Health Connect for Health Connect source', () => {
-      expect(getSourceLabel('Health Connect')).toEqual({ label: 'Health Connect', isSparky: false });
+      expect(getSourceLabel('Health Connect')).toEqual({ label: 'Health Connect', canEditWorkout: false });
     });
 
     it('returns the source string as-is for unknown sources', () => {
-      expect(getSourceLabel('MyFitnessPal')).toEqual({ label: 'MyFitnessPal', isSparky: false });
+      expect(getSourceLabel('MyFitnessPal')).toEqual({ label: 'MyFitnessPal', canEditWorkout: false });
     });
   });
 

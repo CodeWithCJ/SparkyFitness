@@ -26,7 +26,7 @@ const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource, wei
 
   const subtitle = buildSessionSubtitle(session, duration, calories, weightUnit, distanceUnit);
 
-  const { label: sourceLabel, isSparky } = getSourceLabel(source);
+  const { label: sourceLabel, canEditWorkout } = getSourceLabel(source);
 
   const firstImage = getFirstImage(session);
   const imageSource = firstImage && getImageSource ? getImageSource(firstImage) : null;
@@ -48,11 +48,11 @@ const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource, wei
             </Text>
             <View
               className="rounded-full px-2 py-0.5"
-              style={{ backgroundColor: isSparky ? `${accentPrimary}20` : `${textMuted}20` }}
+              style={{ backgroundColor: canEditWorkout ? `${accentPrimary}20` : `${textMuted}20` }}
             >
               <Text
                 className="text-xs font-medium"
-                style={{ color: isSparky ? accentPrimary : textSecondary }}
+                style={{ color: canEditWorkout ? accentPrimary : textSecondary }}
               >
                 {sourceLabel}
               </Text>

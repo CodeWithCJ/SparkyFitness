@@ -122,7 +122,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   );
 
   const { name, duration, calories } = getWorkoutSummary(session);
-  const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
+  const { label: sourceLabel, canEditWorkout } = getSourceLabel(session.source);
   const iconName = getWorkoutIcon(session);
   const firstImage = getFirstImage(session);
   const imageSource = firstImage && getImageSource ? getImageSource(firstImage) : null;
@@ -160,11 +160,11 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
                 <View className="flex-row items-center gap-2">
                   <View
                     className="rounded-full px-1.5 py-0.5"
-                    style={{ backgroundColor: isSparky ? `${accentPrimary}20` : `${textMuted}20` }}
+                    style={{ backgroundColor: canEditWorkout ? `${accentPrimary}20` : `${textMuted}20` }}
                   >
                     <Text
                       className="text-xs font-medium"
-                      style={{ color: isSparky ? accentPrimary : textSecondary }}
+                      style={{ color: canEditWorkout ? accentPrimary : textSecondary }}
                     >
                       {sourceLabel}
                     </Text>

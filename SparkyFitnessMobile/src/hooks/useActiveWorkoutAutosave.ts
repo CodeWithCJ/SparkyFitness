@@ -54,8 +54,17 @@ export async function saveActiveWorkoutSession(
     syncExerciseSessionInCache(queryClient, result);
     return 'saved';
   } catch (error) {
+    const state = useActiveWorkoutStore.getState();
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorInfo = error instanceof Error && 'response' in error ? {
+      status: (error as any).response?.status,
+      data: (error as any).response?.data,
+    } : {};
     addLog('Active workout autosave failed', 'ERROR', [
-      error instanceof Error ? error.message : String(error),
+      `sessionId: ${state.sessionId}`,
+      `session source: ${state.session?.source ?? 'unknown'}`,
+      `status: ${errorInfo.status ?? 'unknown'}`,
+      `server response: ${errorInfo.data ? JSON.stringify(errorInfo.data) : errorMessage}`,
     ]);
     return 'failed';
   }

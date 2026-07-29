@@ -13,6 +13,7 @@ import {
   isExerciseModality,
   resolveExerciseModality,
   setsDurationMinutes,
+  canEditGroupedWorkout,
 } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 // Type-only, so the store's runtime import of this module stays acyclic.
@@ -112,12 +113,23 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   withings: 'Withings',
 };
 
-export function getSourceLabel(source: string | null): { label: string; isSparky: boolean } {
+export function getSourceLabel(source: string | null): { label: string; canEditWorkout: boolean } {
   const s = source?.toLowerCase() ?? null;
   if (s == null || s === 'manual' || s === 'sparky' || s === 'workout plan') {
-    return { label: 'Sparky', isSparky: true };
+    return { label: 'Sparky', canEditWorkout: true };
   }
-  return { label: SOURCE_DISPLAY_NAMES[s] ?? source!, isSparky: false };
+  return { label: SOURCE_DISPLAY_NAMES[s] ?? source!, canEditWorkout: false };
+}
+
+/**
+ * Check if a workout source supports editing.
+ * This is the same logic used by the backend for nested exercise editing.
+ *
+ * @param source - The workout session source string
+ * @returns true if the source supports editing, false otherwise
+ */
+export function canEditWorkout(source: string | null): boolean {
+  return canEditGroupedWorkout(source);
 }
 
 export function formatDuration(minutes: number): string {

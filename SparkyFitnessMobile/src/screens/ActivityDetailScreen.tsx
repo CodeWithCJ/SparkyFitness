@@ -62,7 +62,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const { getImageSource } = useExerciseImageSource();
 
-  const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
+  const { label: sourceLabel, canEditWorkout } = getSourceLabel(session.source);
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
   const { name, duration, calories } = getWorkoutSummary(session);
@@ -502,7 +502,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           accessibilityLabel: 'Save',
           identifier: 'activity-detail-save',
         }
-      : isSparky
+      : canEditWorkout
         ? {
             kind: 'text',
             label: 'Edit',

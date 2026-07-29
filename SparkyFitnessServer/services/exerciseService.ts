@@ -20,6 +20,7 @@ import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 import {
   deriveExerciseModality,
+  canEditGroupedWorkout,
   setsDistanceKm,
   setsDurationMinutes,
 } from '@workspace/shared';
@@ -1939,10 +1940,9 @@ async function updateGroupedWorkoutSession(
     );
     const targetEntryDate = updateData.entry_date || existingSession.entry_date;
     if (updateData.exercises !== undefined) {
-      if (!['manual', 'sparky'].includes(existingSession.source)) {
+      if (!canEditGroupedWorkout(existingSession.source)) {
         throw createServiceError(
-          409,
-          'Nested exercise editing is only supported for manual or sparky workouts.'
+          'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.'
         );
       }
 

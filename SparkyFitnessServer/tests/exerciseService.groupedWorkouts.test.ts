@@ -1457,4 +1457,295 @@ describe('_createExerciseEntryWithClient id threading', () => {
     expect(insert!.sql).not.toContain('modality, id');
     expect(insert!.params).toHaveLength(31);
   });
+}
+  describe('canEditGroupedWorkout source validation', () => {
+    it('allows nested editing for Workout Plan source', async () => {
+      const client = {
+        query: vi.fn(),
+        release: vi.fn(),
+      };
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getClient.mockResolvedValue(client);
+      client.query.mockResolvedValue({});
+
+      // Mock a workout plan session
+      const mockSession = {
+        type: 'preset',
+        id: 'preset-entry-1',
+        entry_date: '2026-03-12',
+        workout_preset_id: null,
+        name: 'Workout Plan Session',
+        description: null,
+        notes: null,
+        source: 'Workout Plan',
+        total_duration_minutes: 0,
+        workout_plan_assignment_id: 123,
+        exercises: [
+          {
+            id: 'exercise-1',
+            exercise_id: 'ex-1',
+            sort_order: 0,
+            sets: [{ id: 1, set_number: 1, reps: 10, weight: 50, completed_at: null }],
+          },
+        ],
+        activity_details: [],
+      };
+
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
+        { id: 'preset-entry-1' }
+      );
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      exercisePresetEntryRepository.getExercisePresetEntryById.mockResolvedValue(
+        mockSession
+      );
+
+      const result = await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'exercise-1',
+              exercise_id: 'ex-1',
+              sort_order: 0,
+              sets: [{ id: 1, set_number: 1, reps: 12, weight: 60, completed_at: '2026-03-12T10:00:00Z' }],
+            },
+          ],
+        }
+      );
+
+      // Should succeed with 200 equivalent (no error thrown)
+      expect(result).toBeDefined();
+      expect(result.exercises[0].sets[0].reps).toBe(12);
+      expect(result.exercises[0].sets[0].weight).toBe(60);
+      expect(result.source).toBe('Workout Plan');
+      expect(result.workout_plan_assignment_id).toBe(123);
+      expect(client.query).toHaveBeenCalledWith('COMMIT');
+    });
+
+    it('rejects nested editing for external synced sources like Health Connect', async () => {
+      const client = {
+        query: vi.fn(),
+        release: vi.fn(),
+      };
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getClient.mockResolvedValue(client);
+      client.query.mockResolvedValue({});
+
+      const mockSession = {
+        type: 'preset',
+        id: 'preset-entry-1',
+        entry_date: '2026-03-12',
+        workout_preset_id: null,
+        name: 'Health Connect Workout',
+        description: null,
+        notes: null,
+        source: 'Health Connect',
+        total_duration_minutes: 0,
+        exercises: [],
+        activity_details: [],
+      };
+
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
+        { id: 'preset-entry-1' }
+      );
+
+      await expect(
+        exerciseService.updateGroupedWorkoutSession(
+          'user-1',
+          'actor-1',
+          'preset-entry-1',
+          {
+            exercises: [
+              {
+                id: 'exercise-1',
+                exercise_id: 'ex-1',
+                sort_order: 0,
+                sets: [{ id: 1, set_number: 1, reps: 10, weight: 50 }],
+              },
+            ],
+          }
+        )
+      ).rejects.toThrow('Nested exercise editing is only supported for manual, sparky, or workout plan sessions.');
+
+      expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    });
+
+    it('rejects nested editing for Garmin source', async () => {
+      const client = {
+        query: vi.fn(),
+        release: vi.fn(),
+      };
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getClient.mockResolvedValue(client);
+      client.query.mockResolvedValue({});
+
+      const mockSession = {
+        type: 'preset',
+        id: 'preset-entry-1',
+        entry_date: '2026-03-12',
+        workout_preset_id: null,
+        name: 'Garmin Workout',
+        description: null,
+        notes: null,
+        source: 'garmin',
+        total_duration_minutes: 0,
+        exercises: [],
+        activity_details: [],
+      };
+
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
+        { id: 'preset-entry-1' }
+      );
+
+      await expect(
+        exerciseService.updateGroupedWorkoutSession(
+          'user-1',
+          'actor-1',
+          'preset-entry-1',
+          {
+            exercises: [
+              {
+                id: 'exercise-1',
+                exercise_id: 'ex-1',
+                sort_order: 0,
+                sets: [{ id: 1, set_number: 1, reps: 10, weight: 50 }],
+              },
+            ],
+          }
+        )
+      ).rejects.toThrow('Nested exercise editing is only supported for manual, sparky, or workout plan sessions.');
+
+      expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    });
+
+    it('allows nested editing for manual source', async () => {
+      const client = {
+        query: vi.fn(),
+        release: vi.fn(),
+      };
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getClient.mockResolvedValue(client);
+      client.query.mockResolvedValue({});
+
+      const mockSession = {
+        type: 'preset',
+        id: 'preset-entry-1',
+        entry_date: '2026-03-12',
+        workout_preset_id: null,
+        name: 'Manual Workout',
+        description: null,
+        notes: null,
+        source: 'manual',
+        total_duration_minutes: 0,
+        exercises: [
+          {
+            id: 'exercise-1',
+            exercise_id: 'ex-1',
+            sort_order: 0,
+            sets: [{ id: 1, set_number: 1, reps: 10, weight: 50 }],
+          },
+        ],
+        activity_details: [],
+      };
+
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
+        { id: 'preset-entry-1' }
+      );
+
+      const result = await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'exercise-1',
+              exercise_id: 'ex-1',
+              sort_order: 0,
+              sets: [{ id: 1, set_number: 1, reps: 12, weight: 60 }],
+            },
+          ],
+        }
+      );
+
+      expect(result).toBeDefined();
+      expect(result.exercises[0].sets[0].reps).toBe(12);
+      expect(result.source).toBe('manual');
+      expect(client.query).toHaveBeenCalledWith('COMMIT');
+    });
+
+    it('allows nested editing for sparky source', async () => {
+      const client = {
+        query: vi.fn(),
+        release: vi.fn(),
+      };
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getClient.mockResolvedValue(client);
+      client.query.mockResolvedValue({});
+
+      const mockSession = {
+        type: 'preset',
+        id: 'preset-entry-1',
+        entry_date: '2026-03-12',
+        workout_preset_id: null,
+        name: 'Sparky Workout',
+        description: null,
+        notes: null,
+        source: 'sparky',
+        total_duration_minutes: 0,
+        exercises: [
+          {
+            id: 'exercise-1',
+            exercise_id: 'ex-1',
+            sort_order: 0,
+            sets: [{ id: 1, set_number: 1, reps: 10, weight: 50 }],
+          },
+        ],
+        activity_details: [],
+      };
+
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
+        { id: 'preset-entry-1' }
+      );
+
+      const result = await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'exercise-1',
+              exercise_id: 'ex-1',
+              sort_order: 0,
+              sets: [{ id: 1, set_number: 1, reps: 12, weight: 60 }],
+            },
+          ],
+        }
+      );
+
+      expect(result).toBeDefined();
+      expect(result.exercises[0].sets[0].reps).toBe(12);
+      expect(result.source).toBe('sparky');
+      expect(client.query).toHaveBeenCalledWith('COMMIT');
+    });
+  });
+
 });

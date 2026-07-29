@@ -118,7 +118,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
+  const { label: sourceLabel, canEditWorkout } = getSourceLabel(session.source);
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
 
@@ -304,7 +304,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleStartWorkout = () => beginWorkout();
 
   // Long-pressing a set opens a menu-style bottom sheet (same ActionSheet the
-  // live/edit exercise ⋮ menus use). Gated on isSparky like the Start button:
+  // live/edit exercise ⋮ menus use). Gated on canEditWorkout like the Start button:
   // synced (non-manual) sessions can be neither edited nor run live — a live
   // workout autosaves via the nested-exercise update, which the server
   // rejects (409) for them.
@@ -312,11 +312,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [setMenuTargetId, setSetMenuTargetId] = useState<string | null>(null);
   const handleLongPressSet = useCallback(
     (setId: string) => {
-      if (!isSparky) return;
+      if (!canEditWorkout) return;
       setSetMenuTargetId(setId);
       setMenuSheetRef.current?.present();
     },
-    [isSparky],
+    [canEditWorkout],
   );
 
   const setMenuItems = useMemo<ActionSheetItem[]>(() => {
@@ -335,7 +335,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout]);
 
   // "Save as preset": review-and-save through the preset create form,
-  // prefilled from this session. Not gated on isSparky — templating a synced
+  // prefilled from this session. Not gated on canEditWorkout — templating a synced
   // workout (e.g. a Garmin strength import) only reads the session.
   const handleSaveAsPreset = useCallback(() => {
     navigation.navigate('WorkoutPresetForm', {
@@ -431,7 +431,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             distanceUnit={distanceUnit}
             getImageSource={getImageSource}
             excludePresetEntryId={session.id}
-            showRestChip={isSparky}
+            showRestChip={canEditWorkout}
             onPressThumb={handleViewExercise}
             onToggleExpanded={toggleSection}
             onPressMetricHeader={handlePressMetricHeader}
@@ -610,7 +610,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       ? canReorderEdit
         ? [reorderHeaderItem, saveHeaderItem]
         : saveHeaderItem
-      : isSparky
+      : canEditWorkout
         ? [
             saveAsPresetHeaderItem,
             {
@@ -684,7 +684,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {renderSummaryCard()}
 
         {/* Start Workout button */}
-        {!isEditing && isSparky && !isWorkoutActive && (
+        {!isEditing && canEditWorkout && !isWorkoutActive && (
           <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
             Start Workout
           </Button>
