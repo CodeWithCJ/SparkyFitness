@@ -2007,7 +2007,7 @@ describe('update_entry', () => {
         quantity: undefined,
         unit: undefined,
         meal_type: 'breakfast',
-        meal_type_id: null,
+        meal_type_id: undefined,
       }
     );
   });

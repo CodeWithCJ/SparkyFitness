@@ -493,6 +493,9 @@ const copyFromYesterdaySchema = z
     source_date: optionalDateSchema.describe(
       'Date to copy entries from (defaults to yesterday)'
     ),
+    meal_type_id: uuidSchema
+      .optional()
+      .describe('UUID of a built-in or custom meal type'),
     meal_type: z
       .string()
       .max(50)

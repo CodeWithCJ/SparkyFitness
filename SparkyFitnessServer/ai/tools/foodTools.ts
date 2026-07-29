@@ -1873,7 +1873,7 @@ Actions:
               const mealTypeUpdate = mealType
                 ? mealType.id
                   ? { meal_type_id: mealType.id }
-                  : { meal_type: mealType.name, meal_type_id: null }
+                  : { meal_type: mealType.name, meal_type_id: undefined }
                 : {};
               try {
                 if (args.entry_type === 'food_entry') {
