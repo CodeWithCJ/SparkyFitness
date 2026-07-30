@@ -339,6 +339,7 @@ export default function Medications() {
           recentEntries={visibleRecentEntries}
           loadingMeds={loadingMeds}
           loadingEntries={loadingEntries}
+          subtype={subtype}
           onSelectDate={(d) => setSearchParams({ date: d })}
         />
       )}

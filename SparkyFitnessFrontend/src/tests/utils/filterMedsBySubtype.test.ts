@@ -1,6 +1,7 @@
 import {
   filterEntriesBySubtype,
   filterMedsBySubtype,
+  isEntryVisibleForSubtype,
 } from '@/pages/Medications/medicationUtils';
 
 type Row = { id: string; is_supplement?: boolean };
@@ -102,5 +103,31 @@ describe('filterEntriesBySubtype', () => {
     const before = entryIds(entries);
     filterEntriesBySubtype(entries, visibleIds('meds'), 'meds');
     expect(entryIds(entries)).toEqual(before);
+  });
+});
+
+// The calendar needs the same rule in predicate form, so both share one function.
+describe('isEntryVisibleForSubtype', () => {
+  const ids = new Set(['vitamin-d']);
+
+  it('always says yes in the mixed view, even for an orphaned entry', () => {
+    expect(isEntryVisibleForSubtype('vitamin-d', ids, 'all')).toBe(true);
+    expect(isEntryVisibleForSubtype('deleted-med', ids, 'all')).toBe(true);
+    expect(isEntryVisibleForSubtype(null, ids, 'all')).toBe(true);
+  });
+
+  it('filters by the visible ids in the narrowed views', () => {
+    expect(isEntryVisibleForSubtype('vitamin-d', ids, 'supplements')).toBe(
+      true
+    );
+    expect(isEntryVisibleForSubtype('metformin', ids, 'supplements')).toBe(
+      false
+    );
+    expect(isEntryVisibleForSubtype('metformin', ids, 'meds')).toBe(false);
+  });
+
+  it('treats a missing medication id as hidden in the narrowed views', () => {
+    expect(isEntryVisibleForSubtype(null, ids, 'meds')).toBe(false);
+    expect(isEntryVisibleForSubtype(undefined, ids, 'supplements')).toBe(false);
   });
 });
