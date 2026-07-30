@@ -31,6 +31,7 @@ import i18n from '@/i18n';
 import {
   getActivityDetails,
   getExerciseProgressData,
+  fetchExerciseEntryById,
 } from '@/api/Exercises/exerciseEntryService';
 import { ExerciseOwnershipFilter } from '@/types/exercises';
 import { getComparisonDates } from '@/utils/reportUtil';
@@ -424,4 +425,12 @@ export const useExerciseProgressQueries = ({
   });
 
   return { mainQueries, comparisonQueries };
+};
+
+export const useExerciseEntryById = (entryId: string) => {
+  return useQuery({
+    queryKey: exerciseEntryKeys.detail(entryId),
+    queryFn: () => fetchExerciseEntryById(entryId),
+    enabled: Boolean(entryId),
+  });
 };

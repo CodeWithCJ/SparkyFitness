@@ -35,6 +35,13 @@ const queryTableInput = z.object({
     .describe('Max rows to return (1-100, default 20)'),
 });
 
+const executeSqlInput = z.object({
+  query: z
+    .string()
+    .min(1)
+    .describe('Read-only SELECT or WITH SQL statement to execute'),
+});
+
 const emptyInput = z.object({});
 
 // Defense-in-depth gate re-checked on every call (the route already gates
@@ -107,7 +114,9 @@ export function buildDevTools(userId: string) {
           log('error', '[Dev Tool] inspectSchema error:', error);
           return ERRORS.DB_ERROR(error);
         } finally {
-          client.release();
+          if (client && typeof client.release === 'function') {
+            client.release();
+          }
         }
       },
     }),
@@ -142,7 +151,9 @@ export function buildDevTools(userId: string) {
           log('error', '[Dev Tool] getUserInfo error:', error);
           return ERRORS.DB_ERROR(error);
         } finally {
-          client.release();
+          if (client && typeof client.release === 'function') {
+            client.release();
+          }
         }
       },
     }),
@@ -213,7 +224,60 @@ export function buildDevTools(userId: string) {
           log('error', '[Dev Tool] queryTable error:', error);
           return ERRORS.DB_ERROR(error);
         } finally {
-          client.release();
+          if (client && typeof client.release === 'function') {
+            client.release();
+          }
+        }
+      },
+    }),
+
+    sparky_execute_read_only_sql: tool({
+      description:
+        'Execute a custom read-only SQL query (SELECT or WITH statements) against Postgres for troubleshooting. Requires admin access and DEV_TOOLS_ENABLED=true.',
+      inputSchema: executeSqlInput,
+      execute: async (rawArgs) => {
+        const denied = await assertDevAccess(userId);
+        if (denied) return denied;
+
+        const parsed = executeSqlInput.safeParse(rawArgs);
+        if (!parsed.success) {
+          return formatZodError(parsed.error);
+        }
+        const { query } = parsed.data;
+        const trimmedQuery = query.trim();
+
+        if (!/^(SELECT|WITH)\b/i.test(trimmedQuery)) {
+          return ERRORS.FORBIDDEN(
+            'Query must be a read-only SELECT or WITH statement'
+          );
+        }
+
+        const forbiddenRegex =
+          /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXECUTE|CALL)\b|;/i;
+        if (forbiddenRegex.test(trimmedQuery)) {
+          return ERRORS.FORBIDDEN(
+            'Modifying SQL operations or multi-statements are strictly prohibited'
+          );
+        }
+
+        const client = await getSystemClient();
+        try {
+          const result = await client.query(trimmedQuery);
+          return formatSuccess(
+            {
+              query: trimmedQuery,
+              rows: result.rows,
+              row_count: result.rows.length,
+            },
+            'Execute Read-Only SQL'
+          );
+        } catch (error) {
+          log('error', '[Dev Tool] executeReadOnlySql error:', error);
+          return ERRORS.DB_ERROR(error);
+        } finally {
+          if (client && typeof client.release === 'function') {
+            client.release();
+          }
         }
       },
     }),

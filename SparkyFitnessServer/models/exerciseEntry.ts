@@ -1163,6 +1163,8 @@ async function getExerciseProgressData(
          ee.distance,
          ee.avg_heart_rate,
          ee.source AS provider_name,
+         ee.exercise_preset_entry_id,
+         epe.name AS exercise_preset_entry_name,
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
@@ -1173,6 +1175,7 @@ async function getExerciseProgressData(
            ), '[]'::json
          ) AS sets
        FROM exercise_entries ee
+       LEFT JOIN exercise_preset_entries epe ON epe.id = ee.exercise_preset_entry_id
        WHERE ee.user_id = $1
          AND ee.exercise_id = $2
          AND ee.entry_date BETWEEN $3 AND $4

@@ -7,26 +7,29 @@ This document contains the detailed technical specification for **Phase 3** of t
 ## 1. Phase 3 Scope & Deliverables
 
 1. **Workout Detail Views (`SparkyFitnessFrontend/src/`)**:
-   - **Lap Splits Table**: Render lap split table (lap index, duration, distance, pace, avg HR, max HR, power) fetched from `/api/exercise-entries/:id/laps`.
-   - **Interactive GPS Route Map**: Render interactive polyline route map using Leaflet/Mapbox/OpenStreetMap from `/api/exercise-entries/:id/route-points`.
-   - **Workout Telemetry Graphs**: HR, speed, elevation, and power graphs over time during workouts.
+   - **Lap Splits Table**: Render lap split table (lap index, duration, distance, pace, avg HR, max HR, power) fetched from `/api/exercise-entries/:id/laps` (`exercise_entry_laps`).
+   - **Interactive GPS Route Map**: Render interactive polyline route map using OpenStreetMap from `/api/exercise-entries/:id/route-points` (`exercise_entry_gps_points`).
+   - **Workout Telemetry Graphs**: HR, speed, elevation, and cadence graphs over time during workouts generated directly from `exercise_entry_gps_points`.
 
 2. **Daily Recovery & Readiness Dashboard**:
-   - **Body Battery & Stress Cards**: Display Garmin Body Battery charge/drain and stress levels fetched from `check_in_measurements`.
-   - **Cardio & Readiness**: Display Resting HR, VO2 Max, Recovery Time, and Training Readiness scores fetched from `/api/check-in-measurements`.
-   - **Intraday Heart Rate & HRV Charts**: Render 24-hour continuous heart rate line chart and overnight HRV trend chart.
+   - **Body Battery & Stress Cards**: Display Garmin Body Battery charge/drain and stress levels fetched from `/api/daily-health-metrics` (`daily_health_metrics`).
+   - **Cardio & Readiness**: Display Resting HR, VO2 Max, Recovery Time, and Training Readiness scores fetched from `/api/daily-health-metrics`.
+   - **Intraday Heart Rate & HRV Charts**: Render 24-hour continuous heart rate line chart (`heart_rate_entries`) and overnight HRV trend chart (`hrv_entries`).
 
-3. **Report Visualization Refactoring**:
-   - Refactor existing reporting components to fetch structured relational endpoints directly instead of parsing raw `exercise_entry_activity_details.detail_data` JSON paths.
+3. **Report Visualization Refactoring (Relational Migration)**:
+   - Reporting components (`ActivityReportVisualizer.tsx`, `readActivityStats`) fetch structured relational endpoints (`/api/exercise-entries/:id`, `/api/exercise-entries/:id/laps`, `/api/exercise-entries/:id/route-points`, `/api/daily-health-metrics`) directly.
+   - Legacy raw JSON (`exercise_entry_activity_details.detail_data`) is no longer mandatory; removing JSON rows does not impact UI rendering, stat cards, lap split tables, or GPS maps.
 
 ---
 
 ## 2. Component Specifications
 
-- **`WorkoutLapsTable.tsx`**: Renders lap splits for a workout session with unit conversions (km/miles, min/km pace).
-- **`WorkoutRouteMap.tsx`**: Render GPS trackpoints on an interactive map.
-- **`DailyRecoveryCard.tsx`**: Visual card for Body Battery, Stress, Recovery Time, and Readiness scores sourced from `check_in_measurements`.
-- **`IntradayHeartRateChart.tsx`**: Continuous 24-hour HR time-series chart.
+- **`ActivityReportVisualizer.tsx`**: Renders activity header, stats cards, lap splits, GPS track map, and telemetry charts. Primary source is `useExerciseEntryById`, `useWorkoutGpsPoints`, and `useWorkoutLaps`.
+- **`activityReportUtil.ts`**: Contains `readActivityStatsFromRelational` and `readActivityStats` to parse summary metrics from relational `ExerciseEntries` rows and fall back gracefully.
+- **`ActivityReportLapTable.tsx`**: Renders lap splits for a workout session with unit conversions (km/miles, min/km pace).
+- **`ActivityReportMap.tsx`**: Render GPS trackpoints on an interactive map.
+- **`BodyBatteryCard.tsx`**: Visual card for Body Battery charge, drain, highest, and lowest scores sourced from `daily_health_metrics`.
+- **`StressChart.tsx`**: Continuous stress tracking chart sourced from `daily_health_metrics`.
 
 ---
 

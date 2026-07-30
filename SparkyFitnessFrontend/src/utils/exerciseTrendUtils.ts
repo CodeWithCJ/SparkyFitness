@@ -207,29 +207,38 @@ export const extractGarminActivityEntries = (
   parseISO: (dateString: string) => Date
 ) => {
   const allGarminActivityEntries: ExerciseProgressResponse[] = [];
+  const seenPresetIds = new Set<string>();
+
+  const processEntry = (entry: ExerciseProgressResponse) => {
+    if (
+      (entry.provider_name === 'garmin' ||
+        entry.provider_name === 'garmin_fit') &&
+      entry.exercise_entry_id
+    ) {
+      const presetId = (entry as Record<string, unknown>)[
+        'exercise_preset_entry_id'
+      ] as string | undefined;
+
+      if (presetId) {
+        if (!seenPresetIds.has(presetId)) {
+          seenPresetIds.add(presetId);
+          allGarminActivityEntries.push(entry);
+        }
+      } else {
+        if (!seenPresetIds.has(entry.exercise_entry_id)) {
+          seenPresetIds.add(entry.exercise_entry_id);
+          allGarminActivityEntries.push(entry);
+        }
+      }
+    }
+  };
 
   if (selectedExercise === 'All') {
     Object.values(exerciseProgressData).forEach((dataArray) => {
-      dataArray.forEach((entry) => {
-        if (
-          (entry.provider_name === 'garmin' ||
-            entry.provider_name === 'garmin_fit') &&
-          entry.exercise_entry_id
-        ) {
-          allGarminActivityEntries.push(entry);
-        }
-      });
+      dataArray.forEach(processEntry);
     });
   } else if (selectedExercise && exerciseProgressData[selectedExercise]) {
-    exerciseProgressData[selectedExercise].forEach((entry) => {
-      if (
-        (entry.provider_name === 'garmin' ||
-          entry.provider_name === 'garmin_fit') &&
-        entry.exercise_entry_id
-      ) {
-        allGarminActivityEntries.push(entry);
-      }
-    });
+    exerciseProgressData[selectedExercise].forEach(processEntry);
   }
 
   return allGarminActivityEntries.sort(

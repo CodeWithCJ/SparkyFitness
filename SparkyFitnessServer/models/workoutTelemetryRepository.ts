@@ -53,7 +53,7 @@ export async function bulkInsertExerciseEntryLaps(
     }
     return results;
   } finally {
-    client.release();
+    if (client && typeof client.release === 'function') client.release();
   }
 }
 
@@ -71,7 +71,7 @@ export async function getLapsForExerciseEntry(
     )) as { rows: ExerciseEntryLaps[] };
     return res.rows;
   } finally {
-    client.release();
+    if (client && typeof client.release === 'function') client.release();
   }
 }
 
@@ -119,7 +119,7 @@ export async function bulkInsertExerciseEntryGpsPoints(
     }
     return results;
   } finally {
-    client.release();
+    if (client && typeof client.release === 'function') client.release();
   }
 }
 

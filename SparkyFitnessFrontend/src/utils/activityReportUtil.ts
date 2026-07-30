@@ -5,7 +5,11 @@ import {
   ActivityDetailMetric,
   ActivityDetailsResponse,
 } from '@/types/exercises';
-import { ExerciseEntryGpsPoints } from '@workspace/shared';
+import {
+  ExerciseEntries,
+  ExerciseEntryResponse,
+  ExerciseEntryGpsPoints,
+} from '@workspace/shared';
 import { ChartDataPoint } from '@/types/reports';
 
 interface MetricDescriptor {
@@ -395,10 +399,104 @@ export interface ActivityStats {
  *   ascent     – Garmin: activity.totalAscent | activity.elevationGain
  *                Strava:  activity.total_elevation_gain
  */
-export function readActivityStats(
-  activityData: ActivityDetailsResponse
+export function readActivityStatsFromRelational(
+  entry:
+    | Partial<ExerciseEntries>
+    | Partial<ExerciseEntryResponse>
+    | Record<string, unknown>
+    | undefined
+    | null
 ): ActivityStats {
-  const a = activityData?.activity?.activity ?? {};
+  if (!entry) {
+    return {
+      distance: null,
+      duration: null,
+      calories: null,
+      heartRate: null,
+      cadence: null,
+      pace: null,
+      ascent: null,
+      waterEstimated: null,
+      activityName: null,
+      activityTypeKey: null,
+    };
+  }
+
+  const pos = (v: unknown): number | null => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+
+  const e = entry as Record<string, unknown>;
+  const distance = pos(e['distance']);
+  const duration = pos(e['duration_minutes']);
+  const calories = pos(e['calories_burned']);
+  const heartRate = pos(e['avg_heart_rate']);
+  const cadence = pos(e['avg_cadence']);
+  const avgSpeedMs = pos(e['avg_speed_mps']);
+  const pace =
+    avgSpeedMs != null && avgSpeedMs > 0
+      ? 1000 / (avgSpeedMs * 60)
+      : distance && duration
+        ? duration / distance
+        : null;
+  const ascent = pos(e['elevation_gain_meters']);
+  const rawWater = e['water_estimated'] ?? e['water_estimated_ml'];
+  const waterEstimated = pos(rawWater);
+  const activityName = (e['exercise_name'] as string) ?? null;
+  const activityTypeKey = (e['category'] as string) ?? null;
+
+  return {
+    distance,
+    duration,
+    calories,
+    heartRate,
+    cadence,
+    pace,
+    ascent,
+    waterEstimated,
+    activityName,
+    activityTypeKey,
+  };
+}
+
+/**
+ * Read summary stats from an activity detail record or relational exercise entry in a provider-agnostic way.
+ */
+export function readActivityStats(
+  activityData:
+    | ActivityDetailsResponse
+    | Partial<ExerciseEntries>
+    | Partial<ExerciseEntryResponse>
+    | undefined
+    | null
+): ActivityStats {
+  if (!activityData) {
+    return {
+      distance: null,
+      duration: null,
+      calories: null,
+      heartRate: null,
+      cadence: null,
+      pace: null,
+      ascent: null,
+      waterEstimated: null,
+      activityName: null,
+      activityTypeKey: null,
+    };
+  }
+
+  if (
+    'duration_minutes' in activityData ||
+    'exercise_name' in activityData ||
+    'calories_burned' in activityData
+  ) {
+    return readActivityStatsFromRelational(
+      activityData as Partial<ExerciseEntries>
+    );
+  }
+
+  const a = (activityData as ActivityDetailsResponse)?.activity?.activity ?? {};
 
   const pos = (v: unknown): number | null => {
     const n = Number(v);
@@ -406,8 +504,6 @@ export function readActivityStats(
   };
 
   // distance – Garmin stores km (converted server-side); Strava stores metres.
-  // Detect provider by presence of Strava-specific fields so we don't rely on a
-  // fragile magnitude heuristic that breaks for long activities (e.g. > 200 km).
   const isStrava =
     a['sport_type'] != null ||
     a['moving_time'] != null ||
@@ -421,8 +517,6 @@ export function readActivityStats(
       : null;
 
   // duration – Garmin: minutes (converted server-side); Strava: seconds; Fitbit: ms.
-  // Use provider-specific fields to detect units rather than magnitude thresholds.
-  // Fitbit is identified by its unique camelCase field names absent from other providers.
   const isFitbit =
     a['activeDuration'] != null ||
     a['averageHeartRate'] != null ||
@@ -430,22 +524,17 @@ export function readActivityStats(
   const rawDur = a['duration'] as number | undefined;
   const rawMoving = a['moving_time'] as number | undefined;
   const rawElapsed = a['elapsed_time'] as number | undefined;
-  const rawFitbitDur = a['activeDuration'] as number | undefined; // Fitbit: ms
+  const rawFitbitDur = a['activeDuration'] as number | undefined;
   let duration: number | null = null;
   if (rawFitbitDur != null && rawFitbitDur > 0) {
-    // Fitbit activeDuration: milliseconds
     duration = rawFitbitDur / 60000;
   } else if (isFitbit && rawDur != null && rawDur > 0) {
-    // Fitbit duration: also milliseconds (fallback when activeDuration absent)
     duration = rawDur / 60000;
   } else if (rawMoving != null && rawMoving > 0) {
-    // Strava: moving_time in seconds
     duration = rawMoving / 60;
   } else if (rawElapsed != null && rawElapsed > 0) {
-    // Strava fallback: elapsed_time in seconds
     duration = rawElapsed / 60;
   } else if (rawDur != null && rawDur > 0) {
-    // Garmin: already in minutes after server conversion
     duration = rawDur;
   }
 
@@ -461,7 +550,6 @@ export function readActivityStats(
     pos(a['averageRunCadence']) ??
     pos(a['average_cadence']);
 
-  // pace – Garmin: min/km; derive from speed if missing
   const rawPace = pos(a['averagePace']);
   const avgSpeedMs = pos(a['averageSpeed']) ?? pos(a['average_speed']);
   const derivedPace =
@@ -475,7 +563,6 @@ export function readActivityStats(
 
   const waterEstimated = pos(a['waterEstimated']);
 
-  // activity name / type
   const activityName =
     (a['activityName'] as string | undefined) ??
     (a['name'] as string | undefined) ??

@@ -73,6 +73,7 @@ const DEV_TOOL_NAMES = [
   'sparky_get_user_info',
   'sparky_get_db_stats',
   'sparky_query_table',
+  'sparky_execute_read_only_sql',
 ];
 
 const TEST_USER = 'mcp-test-user';
@@ -307,7 +308,7 @@ describe('POST /mcp', () => {
 
     expect(res.status).toBe(200);
     const names = res.body.result.tools.map((t: { name: string }) => t.name);
-    expect(res.body.result.tools).toHaveLength(40);
+    expect(res.body.result.tools).toHaveLength(41);
     for (const devTool of DEV_TOOL_NAMES) {
       expect(names).toContain(devTool);
     }

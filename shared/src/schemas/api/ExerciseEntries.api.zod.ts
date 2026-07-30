@@ -248,6 +248,8 @@ export const exerciseProgressResponseSchema = z.object({
   distance: z.number().nullable(),
   avg_heart_rate: z.number().nullable(),
   provider_name: z.string().nullable(),
+  exercise_preset_entry_id: z.string().nullable().optional(),
+  exercise_preset_entry_name: z.string().nullable().optional(),
   sets: z.array(exerciseEntrySetRequestSchema),
 });
 
@@ -349,9 +351,13 @@ export const exerciseRecentSessionSetSchema = z
   .strict()
   .refine(
     (s) =>
-      s.weight != null || s.reps != null || s.duration != null || s.distance != null,
+      s.weight != null ||
+      s.reps != null ||
+      s.duration != null ||
+      s.distance != null,
     {
-      message: "Recent-session sets must have weight, reps, duration, or distance",
+      message:
+        "Recent-session sets must have weight, reps, duration, or distance",
     },
   );
 
@@ -418,9 +424,7 @@ export type ExerciseSetStats = z.infer<typeof exerciseSetStatsSchema>;
 export type ExerciseRecentSessionSet = z.infer<
   typeof exerciseRecentSessionSetSchema
 >;
-export type ExerciseRecentSession = z.infer<
-  typeof exerciseRecentSessionSchema
->;
+export type ExerciseRecentSession = z.infer<typeof exerciseRecentSessionSchema>;
 export type ExerciseStatsResponse = z.infer<typeof exerciseStatsResponseSchema>;
 export type ImportFitFileResult = z.infer<typeof importFitFileResultSchema>;
 export type ImportFitResponse = z.infer<typeof importFitResponseSchema>;

@@ -250,6 +250,14 @@ export const fetchExerciseDetails = async (
   return exerciseSnapshotResponseSchema.parse(parsedResponse);
 };
 
+export const fetchExerciseEntryById = async (
+  entryId: string
+): Promise<ExerciseEntryResponse> => {
+  return apiCall(`/exercise-entries/${entryId}`, {
+    method: 'GET',
+  });
+};
+
 export const getActivityDetails = async (
   exerciseEntryId: string,
   providerName: string

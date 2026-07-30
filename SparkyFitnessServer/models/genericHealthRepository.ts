@@ -60,7 +60,7 @@ export async function bulkUpsertHeartRate(
     }
     return results;
   } finally {
-    client.release();
+    if (client && typeof client.release === 'function') client.release();
   }
 }
 
@@ -455,7 +455,7 @@ export async function upsertDailyHealthMetrics(
     )) as { rows: DailyHealthMetrics[] };
     return res.rows[0];
   } finally {
-    client.release();
+    if (client && typeof client.release === 'function') client.release();
   }
 }
 
