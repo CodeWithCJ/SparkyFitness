@@ -1,0 +1,212 @@
+{
+  "common": {
+    "back": "Cofnij",
+    "cancel": "Anuluj",
+    "retry": "Spróbuj ponownie",
+    "save": "Zapisz",
+    "discardChanges": "Odrzuć zmiany",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "done": "Gotowe",
+    "confirm": "Potwierdź",
+    "close": "Zamknij",
+    "search": "Szukaj",
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "success": "Sukces",
+    "noResults": "Brak wyników",
+    "or": "lub"
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "app": "Ustawienia aplikacji",
+    "language": {
+      "title": "Język",
+      "system": "Systemowy",
+      "english": "Angielski",
+      "polish": "Polski"
+    },
+    "theme": {
+      "title": "Motyw",
+      "light": "Jasny",
+      "dark": "Ciemny",
+      "amoled": "AMOLED",
+      "system": "Systemowy"
+    }
+  },
+  "commonDates": {
+    "today": "Dziś",
+    "yesterday": "Wczoraj",
+    "remaining": "pozostało",
+    "over": "ponad"
+  },
+  "dashboard": {
+    "consumed": "Spożyte",
+    "remaining": "Pozostało",
+    "burned": "Spalone",
+    "hydration": "Nawodnienie",
+    "hydrationConfigureOnServer": "Skonfiguruj na serwerze",
+    "nutrients": "Składniki odżywcze",
+    "details": "Szczegóły",
+    "healthTrends": "Trendy zdrowotne",
+    "noServerTitle": "Brak skonfigurowanego serwera",
+    "noServerSubtitle": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić dzienne podsumowanie.",
+    "goToSettings": "Przejdź do Ustawień",
+    "loadingSummary": "Ładowanie podsumowania...",
+    "failedToLoad": "Nie udało się załadować podsumowania",
+    "checkConnection": "Sprawdź swoje połączenie i spróbuj ponownie.",
+    "food": "Jedzenie",
+    "tapToAddFood": "Dotknij, aby dodać jedzenie",
+    "askSparky": "Zapytaj Sparky'ego…"
+  },
+  "diary": {
+    "title": "Dziennik",
+    "summary": "Podsumowanie dziennika",
+    "noServerSubtitle": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić dziennik."
+  },
+  "diarySummary": {
+    "title": "Podsumowanie",
+    "protein": "Białko",
+    "carbs": "Węglowodany",
+    "netCarbs": "Węglowodany netto",
+    "fat": "Tłuszcz",
+    "fiber": "Błonnik"
+  },
+  "library": {
+    "title": "Biblioteka",
+    "foods": "Produkty",
+    "meals": "Posiłki",
+    "exercises": "Ćwiczenia",
+    "presets": "Szablony",
+    "noServerSubtitle": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić bibliotekę.",
+    "loading": "Ładowanie biblioteki...",
+    "create": "Utwórz",
+    "browse": "Przeglądaj",
+    "recentlyLogged": "Ostatnio zalogowane",
+    "loadingRecent": "Ładowanie ostatnich pozycji...",
+    "failedToLoadRecent": "Nie udało się załadować ostatnich pozycji.",
+    "noRecentItemsTitle": "Brak ostatnich pozycji",
+    "noRecentItemsSubtitle": "Produkty, posiłki i ćwiczenia, które zalogujesz, pojawią się tutaj dla szybkiego dostępu.",
+    "manualEntry": "Ręczne wprowadzanie",
+    "groupFoods": "Grupuj produkty",
+    "exerciseRoutine": "Plan treningowy",
+    "workoutPreset": "Szablon treningu",
+    "workoutPresets": "Szablony treningów",
+    "exercise": "Ćwiczenie"
+  },
+  "navigation": {
+    "dashboard": "Panel",
+    "diary": "Dziennik",
+    "library": "Biblioteka",
+    "settings": "Ustawienia"
+  },
+  "macroLabels": {
+    "protein": "Białko",
+    "carbs": "Węglowodany",
+    "netCarbs": "Węglowodany netto",
+    "fat": "Tłuszcz",
+    "fiber": "Błonnik"
+  },
+  "measurements": {
+    "title": "Pomiary",
+    "weight": "Waga",
+    "bodyFat": "Tkanka tłuszczowa %",
+    "height": "Wzrost",
+    "neck": "Szyja",
+    "waist": "Talia",
+    "hips": "Biodra",
+    "steps": "Kroki",
+    "date": "Data",
+    "willBeCleared": "Zostanie wyczyszczone",
+    "saved": "Zapisano",
+    "measurement_one": "pomiar",
+    "measurement_few": "pomiary",
+    "measurement_other": "pomiarów",
+    "clearCount": "Wyczyścić {{count}} {{noun}}?",
+    "willBeClearedList": "{{labels}} zostanie wyczyszczone.",
+    "weightLabel": "Waga ({{unit}})",
+    "weightStLabel": "Waga (st, lb)"
+  },
+  "addSheet": {
+    "food": "Jedzenie",
+    "workout": "Trening",
+    "activity": "Aktywność",
+    "exercise": "Ćwiczenia",
+    "preset": "Szablon",
+    "measurements": "Pomiary",
+    "scanFood": "Skanuj jedzenie",
+    "logWorkout": "Zapisz trening",
+    "askSparky": "Zapytaj Sparky'ego",
+    "syncHealthData": "Synchronizuj dane zdrowotne",
+    "exerciseSubtitleWorkout": "Żywe serie i powtórzenia",
+    "exerciseSubtitleActivity": "Czas i dystans",
+    "exerciseSubtitleLog": "Poprzednie serie i powtórzenia"
+  },
+  "workout": {
+    "couldNotSave": "Nie udało się zapisać treningu"
+  },
+  "sync": {
+    "someChangesPending": "Niektóre zmiany nie dotarły jeszcze do serwera."
+  },
+  "days": {
+    "short": ["niedz.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."],
+    "long": ["niedziela", "poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota"],
+    "min": ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"]
+  },
+  "months": {
+    "long": ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"],
+    "short": ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]
+  },
+  "foodSearch": {
+    "bestMatches": "Najlepsze dopasowania",
+    "searchFoods": "Szukaj produktów..."
+  },
+  "healthConnect": {
+    "title": "Health Connect"
+  },
+  "haptics": {
+    "title": "Informacje zwrotne dotykowe",
+    "subtitle": "Lekkie wibracje dla timerów i potwierdzeń."
+  },
+  "cameraShutter": {
+    "title": "Migawka aparatu",
+    "subtitle": "Odtwarzaj dźwięk podczas robienia zdjęć."
+  },
+  "notifications": {
+    "title": "Powiadomienia",
+    "subtitle": "Alerty dotyczące liczników czasu odpoczynku i celów na czczo."
+  },
+  "medicationReminders": {
+    "title": "Przypomnienia o lekach",
+    "subtitle": "Przypomnienia o zaplanowanych lekach."
+  },
+  "repeatReminders": {
+    "title": "Powtarzaj przypomnienia",
+    "subtitle": "Powtarzaj każde przypomnienie co 10 minut, maksymalnie 3 razy, aż dawka zostanie zarejestrowana."
+  },
+  "liquidGlass": {
+    "title": "Nawigacja Liquid Glass",
+    "subtitle": "Użyj szklanego paska kart i nagłówków ekranów z iOS 26."
+  },
+  "languageSettings": {
+    "subtitle": "Użyj języka urządzenia lub wybierz język dla SparkyFitness."
+  },
+  "screens": {
+    "foods": "Produkty",
+    "meals": "Posiłki",
+    "exercises": "Ćwiczenia",
+    "presets": "Szablony",
+    "addFood": "Dodaj jedzenie",
+    "scanFood": "Skanuj jedzenie",
+    "settings": "Ustawienia",
+    "library": "Biblioteka",
+    "serverSettings": "Ustawienia serwera",
+    "appSettings": "Ustawienia aplikacji",
+    "about": "O aplikacji",
+    "logs": "Dzienniki",
+    "healthSync": "Synchronizacja zdrowotna",
+    "measurements": "Pomiary",
+    "diary": "Dziennik",
+    "dashboard": "Panel"
+  }
+}

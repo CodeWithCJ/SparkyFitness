@@ -3,6 +3,16 @@
 const { TextEncoder, TextDecoder } = require('util');
 if (typeof globalThis.TextEncoder === 'undefined') globalThis.TextEncoder = TextEncoder;
 if (typeof globalThis.TextDecoder === 'undefined') globalThis.TextDecoder = TextDecoder;
+if (typeof globalThis.TextEncoderStream === 'undefined') {
+  // Minimal polyfill for expo winter runtime which expects TextEncoderStream
+  // on the global object during module initialisation.
+  class TextEncoderStreamPolyfill {
+    constructor() { this.encoding = 'utf-8'; this.readable = null; this.writable = null; }
+    get closed() { return Promise.resolve(); }
+    close() {}
+  }
+  globalThis.TextEncoderStream = TextEncoderStreamPolyfill;
+}
 
 // Mock radon-ide (ESM module that Jest can't transform)
 jest.mock('radon-ide', () => ({

@@ -33,6 +33,7 @@ import { parseDecimalInput } from '../utils/numericInput';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
@@ -63,15 +64,15 @@ const EMPTY_FORM: FormState = {
   bodyFatPercentage: '',
 };
 
-const FIELD_LABELS: Record<FieldKey, string> = {
-  weight: 'Weight',
-  bodyFatPercentage: 'Body fat %',
-  height: 'Height',
-  neck: 'Neck',
-  waist: 'Waist',
-  hips: 'Hips',
-  steps: 'Steps',
-};
+const getFieldLabels = (t: (key: string) => string): Record<FieldKey, string> => ({
+  weight: t('measurements.weight'),
+  bodyFatPercentage: t('measurements.bodyFat'),
+  height: t('measurements.height'),
+  neck: t('measurements.neck'),
+  waist: t('measurements.waist'),
+  hips: t('measurements.hips'),
+  steps: t('measurements.steps'),
+});
 
 const FIELD_FORM_KEYS: Record<FieldKey, (keyof FormState)[]> = {
   weight: ['weight', 'weightStones'],
@@ -108,6 +109,7 @@ const joinWithAnd = (items: string[]): string => {
 };
 
 const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
@@ -372,33 +374,33 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const doSave = () => {
       upsertMutation.mutate(payload, {
         onSuccess: () => {
-          Toast.show({ type: 'success', text1: 'Saved' });
+          Toast.show({ type: 'success', text1: t('measurements.saved') });
           navigation.goBack();
         },
       });
     };
 
     if (cleared.length > 0) {
-      const labels = cleared.map((k) => FIELD_LABELS[k]);
-      const noun = cleared.length === 1 ? 'measurement' : 'measurements';
+      const labels = cleared.map((k) => getFieldLabels(t)[k]);
+      const noun = t('measurements.measurement', { count: cleared.length });
       Alert.alert(
-        `Clear ${cleared.length} ${noun}?`,
-        `${joinWithAnd(labels)} will be cleared.`,
+        t('measurements.clearCount', { count: cleared.length, noun }),
+        t('measurements.willBeClearedList', { labels: joinWithAnd(labels) }),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Save', style: 'destructive', onPress: doSave },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.save'), style: 'destructive', onPress: doSave },
         ],
       );
       return;
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, navigation]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, navigation, t]);
 
   const isSaveDisabled = isLoading || isPreferencesLoading || upsertMutation.isPending;
 
   const weightLabel =
-    weightMode === 'st_lbs' ? 'Weight (st, lb)' : `Weight (${weightMode})`;
+    weightMode === 'st_lbs' ? t('measurements.weightStLabel') : t('measurements.weightLabel', { unit: weightMode });
   const bodySuffix = bodyUnit === 'cm' ? 'cm' : 'in';
   const heightSuffix = heightMode === 'cm' ? 'cm' : heightMode === 'inches' ? 'in' : 'ft, in';
 
@@ -419,14 +421,14 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           ? isWeightEmpty
           : form[key].trim() === '';
     return prefilledKeys.has(key) && empty ? (
-      <Text className="text-xs italic mt-1" style={{ color: textSecondary }}>
-        Will be cleared
+              <Text className="text-xs italic mt-1" style={{ color: textSecondary }}>
+        {t('measurements.willBeCleared')}
       </Text>
     ) : null;
   };
 
   const header = useScreenHeader({
-    title: 'Measurements',
+    title: t('measurements.title'),
     left: { kind: 'dismiss', onPress: handleClose, disabled: isSaveDisabled },
     right: {
       kind: 'primary',
@@ -459,7 +461,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           activeOpacity={0.7}
           className="flex-row items-center mb-4"
         >
-          <Text className="text-text-primary text-base">Date</Text>
+          <Text className="text-text-primary text-base">{t('measurements.date')}</Text>
           <Text className="text-accent-primary text-base font-medium mx-1.5">
             {formatDateLabel(selectedDate)}
           </Text>
@@ -508,7 +510,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Body fat %</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.bodyFat')}</Text>
               <FormInput
                 value={form.bodyFatPercentage}
                 onChangeText={(v) => updateField('bodyFatPercentage', v)}
@@ -520,7 +522,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Height ({heightSuffix})</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.height')} ({heightSuffix})</Text>
               {heightMode === 'ft_in' ? (
                 <View className="flex-row gap-3">
                   <View className="flex-1">
@@ -555,7 +557,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Neck ({bodySuffix})</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.neck')} ({bodySuffix})</Text>
               <FormInput
                 value={form.neck}
                 onChangeText={(v) => updateField('neck', v)}
@@ -567,7 +569,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Waist ({bodySuffix})</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.waist')} ({bodySuffix})</Text>
               <FormInput
                 value={form.waist}
                 onChangeText={(v) => updateField('waist', v)}
@@ -579,7 +581,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Hips ({bodySuffix})</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.hips')} ({bodySuffix})</Text>
               <FormInput
                 value={form.hips}
                 onChangeText={(v) => updateField('hips', v)}
@@ -591,7 +593,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Steps</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.steps')}</Text>
               <FormInput
                 value={form.steps}
                 onChangeText={(v) => updateField('steps', v)}

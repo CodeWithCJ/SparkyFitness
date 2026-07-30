@@ -1,11 +1,10 @@
-export { LocalizedText } from './LocalizedText';
 export {
   SUPPORTED_LANGUAGES,
   applyLanguagePreference,
   formatLocalizedNumber,
+  getAppLocale,
   getDeviceLanguage,
-  localizeTemplate,
-  localizeText,
+  initializeI18n,
   resolveLanguagePreference,
   type LanguagePreference,
   type SupportedLanguage,

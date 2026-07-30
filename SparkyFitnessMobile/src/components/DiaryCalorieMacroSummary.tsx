@@ -12,6 +12,7 @@ import { useCSSVariable } from 'uniwind';
 
 import Icon from './Icon';
 import NutrientPill from './NutrientPill';
+import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../localization';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
@@ -29,6 +30,7 @@ interface CalorieBarProps {
 }
 
 const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progressPercent }) => {
+  const { t } = useTranslation();
   const [barWidth, setBarWidth] = useState(0);
   const [trackColor, fillColor] = useCSSVariable([
     '--color-progress-track',
@@ -88,7 +90,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
             {formatLocalizedNumber(Math.abs(Math.round(remaining)))}
             <Text className="text-sm font-normal text-text-muted">
               {' '}
-              {remaining >= 0 ? 'remaining' : 'over'}
+              {remaining >= 0 ? t('commonDates.remaining') : t('commonDates.over')}
             </Text>
           </Text>
         )}
@@ -142,6 +144,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   const diarySummaryVisible = useAppPreferencesStore((s) => s.diarySummaryVisible);
   const diarySummaryExpanded = useAppPreferencesStore((s) => s.diarySummaryExpanded);
   const setDiarySummaryExpanded = useAppPreferencesStore((s) => s.setDiarySummaryExpanded);
+  const { t } = useTranslation();
   const textSecondary = useCSSVariable('--color-text-secondary') as string;
 
   const rotation = useSharedValue(diarySummaryExpanded ? 0 : -90);
@@ -165,22 +168,22 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
 
   const resolveCoreMacro = (key: (typeof CORE_MACROS)[number]) => {
     if (key === 'protein') {
-      return { label: 'Protein', consumed: summary.protein.consumed, goal: summary.protein.goal || undefined };
+      return { label: t('diarySummary.protein'), consumed: summary.protein.consumed, goal: summary.protein.goal || undefined };
     }
     if (key === 'carbs') {
       const consumed = showNetCarbs
         ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
         : summary.carbs.consumed;
       return {
-        label: showNetCarbs ? 'Net Carbs' : 'Carbs',
+        label: showNetCarbs ? t('diarySummary.netCarbs') : t('diarySummary.carbs'),
         consumed,
         goal: summary.carbs.goal || undefined,
       };
     }
     if (key === 'fat') {
-      return { label: 'Fat', consumed: summary.fat.consumed, goal: summary.fat.goal || undefined };
+      return { label: t('diarySummary.fat'), consumed: summary.fat.consumed, goal: summary.fat.goal || undefined };
     }
-    return { label: 'Fiber', consumed: summary.fiber.consumed, goal: summary.fiber.goal || undefined };
+    return { label: t('diarySummary.fiber'), consumed: summary.fiber.consumed, goal: summary.fiber.goal || undefined };
   };
 
   return (
@@ -193,7 +196,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
         accessibilityHint={diarySummaryExpanded ? 'Collapse this section' : 'Expand this section'}
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-md font-bold text-text-secondary">Summary</Text>
+          <Text className="text-md font-bold text-text-secondary">{t('diarySummary.title')}</Text>
           <Animated.View style={chevronStyle}>
             <Icon name="chevron-down" size={20} color={textSecondary} />
           </Animated.View>

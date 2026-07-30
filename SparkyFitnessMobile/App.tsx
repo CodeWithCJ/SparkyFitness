@@ -1,5 +1,4 @@
 import './global.css'
-import './src/localization/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, Alert, AppState } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
@@ -130,9 +129,8 @@ import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWork
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
-import { useTranslation } from 'react-i18next';
 import { useAppPreferencesStore } from './src/stores/appPreferencesStore';
-import { applyLanguagePreference } from './src/localization';
+import { applyLanguagePreference, initializeI18n } from './src/localization';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -255,7 +253,6 @@ const SafeMedicationForm = withErrorBoundary(MedicationFormScreen, 'MedicationFo
 function AppContent() {
   const { theme } = useUniwind();
   const languagePreference = useAppPreferencesStore((state) => state.languagePreference);
-  const { i18n: localization } = useTranslation();
   const {
     showReauthModal, showSetupModal, showApiKeySwitchModal,
     expiredConfigId, switchToApiKeyConfig,
@@ -264,10 +261,6 @@ function AppContent() {
 
   const [initialRoute, setInitialRoute] = useState<'Tabs' | 'Onboarding' | null>(null);
   const [linkingEnabled, setLinkingEnabled] = useState(false);
-
-  useEffect(() => {
-    void applyLanguagePreference(languagePreference);
-  }, [languagePreference]);
 
   useEffect(() => {
     if (languagePreference !== 'system') return;
@@ -638,6 +631,7 @@ function AppContent() {
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
+      await initializeI18n();
       // Remove the flag so the dashboard will auto-open on first SyncScreen visit
       await AsyncStorage.removeItem('@HealthConnect:hasAutoOpenedDashboard');
       await initNotifications();
@@ -847,7 +841,6 @@ function AppContent() {
 
   return (
     <NavigationContainer
-      key={localization.resolvedLanguage ?? 'en'}
       ref={rootNavigationRef}
       theme={navigationTheme}
       linking={linkingEnabled ? linking : undefined}

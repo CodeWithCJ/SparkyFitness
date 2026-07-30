@@ -15,6 +15,7 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
+import { useTranslation } from 'react-i18next';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
@@ -41,6 +42,7 @@ type DiaryScreenProps = CompositeScreenProps<
 >;
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
@@ -174,8 +176,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your diary."
+          title={t('dashboard.noServerTitle')}
+          subtitle={t('diary.noServerSubtitle')}
           action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
         />
       );
@@ -316,7 +318,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     <>
       {!isConnectionLoading && isConnected ? (
         <DateNavigator
-          title="Diary"
+          title={t('screens.diary')}
           selectedDate={selectedDate}
           onPreviousDay={goToPreviousDay}
           onNextDay={goToNextDay}

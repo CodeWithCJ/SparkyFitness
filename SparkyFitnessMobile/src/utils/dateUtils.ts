@@ -1,32 +1,21 @@
 import { localDateToDay } from '@workspace/shared';
+import { getAppLocale } from '../localization';
 
-/**
- * Converts a timestamp to a local date string (YYYY-MM-DD).
- * Delegates to the shared localDateToDay helper to ensure device-local calendar day consistency.
- */
 export const toLocalDateString = (timestamp: string | Date): string => {
   const localDate = typeof timestamp === 'string' || typeof timestamp === 'number' ? new Date(timestamp) : timestamp;
   return localDateToDay(localDate);
 };
 
-/** Returns the device's IANA timezone (e.g. 'America/New_York'). */
 export const getDeviceTimezone = (): string =>
   Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-/**
- * Derives a YYYY-MM-DD date string from a UTC timestamp using a fixed UTC offset.
- * Used for Health Connect records that carry per-record zone offsets, so the day
- * bucket reflects where the record was created rather than the current device timezone.
- */
 export const toDateStringWithOffset = (timestamp: string | Date, offsetMinutes: number): string => {
   const utcMs = new Date(timestamp).getTime();
   const localMs = utcMs + offsetMinutes * 60 * 1000;
   const d = new Date(localMs);
-  // Use UTC methods since we already applied the offset manually
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 };
 
-// Get today's date in YYYY-MM-DD format (local timezone)
 export const getTodayDate = (): string => {
   const now = new Date();
   const year = now.getFullYear();
@@ -35,7 +24,6 @@ export const getTodayDate = (): string => {
   return `${year}-${month}-${day}`;
 };
 
-// Add or subtract days from a YYYY-MM-DD date string
 export const addDays = (dateString: string, days: number): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day + days);
@@ -45,24 +33,20 @@ export const addDays = (dateString: string, days: number): string => {
   return `${y}-${m}-${d}`;
 };
 
-// Strip any time/timezone suffix from a date string, returning just YYYY-MM-DD
 export const normalizeDate = (dateString: string): string => dateString.split('T')[0];
 
-// Format a YYYY-MM-DD date for display ("Mon, Jan 6")
 export const formatDate = (dateString: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getAppLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
-// Format a YYYY-MM-DD date for short display ("Jun 30")
 export const formatShortDate = (dateString: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
 };
 
-// Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
 export const formatDateLabel = (dateString: string): string => {
   const today = getTodayDate();
   if (dateString === today) return 'Today';
@@ -70,7 +54,6 @@ export const formatDateLabel = (dateString: string): string => {
   return formatDate(dateString);
 };
 
-// Format a timestamp as a human-readable relative time ("Just now", "3 minutes ago", etc.)
 export const formatRelativeTime = (timestamp: Date | null): string => {
   if (!timestamp) return 'Never synced';
 

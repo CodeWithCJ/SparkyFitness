@@ -2,6 +2,7 @@ import React, { useCallback, useRef } from 'react';
 import { View, Text, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
@@ -30,20 +31,26 @@ import {
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
 
-const themeOptions: { label: string; value: ThemePreference }[] = [
-  { label: 'Light', value: 'Light' },
-  { label: 'Dark', value: 'Dark' },
-  { label: 'AMOLED', value: 'Amoled' },
-  { label: 'System', value: 'System' },
+interface LabelKeyOption<T> {
+  labelKey: string;
+  value: T;
+}
+
+const languageOptions: LabelKeyOption<LanguagePreference>[] = [
+  { labelKey: 'settings.language.system', value: 'system' },
+  { labelKey: 'settings.language.english', value: 'en' },
+  { labelKey: 'settings.language.polish', value: 'pl' },
 ];
 
-const languageOptions: { label: string; value: LanguagePreference }[] = [
-  { label: 'System', value: 'system' },
-  { label: 'English', value: 'en' },
-  { label: 'Polish', value: 'pl' },
+const themeOptions: LabelKeyOption<ThemePreference>[] = [
+  { labelKey: 'settings.theme.light', value: 'Light' },
+  { labelKey: 'settings.theme.dark', value: 'Dark' },
+  { labelKey: 'settings.theme.amoled', value: 'Amoled' },
+  { labelKey: 'settings.theme.system', value: 'System' },
 ];
 
 const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [formEnabled, formDisabled] = useCSSVariable([
@@ -79,6 +86,15 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
     [setLanguagePreference],
   );
 
+  const languagePickerOptions = languageOptions.map((opt) => ({
+    label: t(opt.labelKey),
+    value: opt.value,
+  }));
+  const themePickerOptions = themeOptions.map((opt) => ({
+    label: t(opt.labelKey),
+    value: opt.value,
+  }));
+
   const handleNotificationsToggle = useCallback(async (value: boolean) => {
     if (!value) {
       await setNotificationsEnabled(false);
@@ -97,9 +113,6 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
       }
       const status = await requestNotificationPermission();
       bannerRef.current?.refresh();
-      // Without OS permission the toggle would show "on" while reminders
-      // silently never fire; leave it off until permission is granted. The
-      // permission banner above explains and links to system settings.
       if (status === 'granted') {
         setMedicationRemindersEnabled(true);
       }
@@ -107,7 +120,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
     [setMedicationRemindersEnabled],
   );
 
-  const header = useScreenHeader({ title: 'App Settings', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('settings.app'), left: { kind: 'back' } });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -121,28 +134,28 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
       >
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Language</Text>
+            <Text className="text-base text-text-primary">{t('settings.language.title')}</Text>
             <BottomSheetPicker
               value={languagePreference}
-              options={languageOptions}
+              options={languagePickerOptions}
               onSelect={handleLanguageSelect}
-              title="Language"
+              title={t('settings.language.title')}
               containerStyle={{ flex: 1, maxWidth: 200 }}
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">
-            Use your device language or choose a language for SparkyFitness.
+            {t('languageSettings.subtitle')}
           </Text>
         </View>
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Theme</Text>
+            <Text className="text-base text-text-primary">{t('settings.theme.title')}</Text>
             <BottomSheetPicker
               value={appTheme}
-              options={themeOptions}
+              options={themePickerOptions}
               onSelect={setThemePreference}
-              title="Theme"
+              title={t('settings.theme.title')}
               containerStyle={{ flex: 1, maxWidth: 200 }}
             />
           </View>
@@ -151,7 +164,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
         {supportsLiquidGlassTabBar && (
           <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
             <View className="flex-row justify-between items-center">
-              <Text className="text-base text-text-primary">Liquid Glass navigation</Text>
+              <Text className="text-base text-text-primary">{t('liquidGlass.title')}</Text>
               <Switch
                 value={liquidGlassEnabled}
                 onValueChange={setLiquidGlassTabBarEnabled}
@@ -160,16 +173,16 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
               />
             </View>
             <Text className="text-text-secondary text-sm mt-2">
-              Use the iOS 26 glass tab bar and screen headers.
+              {t('liquidGlass.subtitle')}
             </Text>
           </View>
         )}
         <SettingsRowGroup>
           <SettingsRow
-            title="Notifications"
+            title={t('notifications.title')}
             subtitle={
               <Text className="text-sm text-text-secondary">
-                Alerts for workout rest timers and fasting goals.
+                {t('notifications.subtitle')}
               </Text>
             }
             rightAccessory={
@@ -183,10 +196,10 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
           />
           {notificationsEnabled && (
             <SettingsRow
-              title="Medication Reminders"
+              title={t('medicationReminders.title')}
               subtitle={
                 <Text className="text-sm text-text-secondary">
-                  Reminders for scheduled medications.
+                  {t('medicationReminders.subtitle')}
                 </Text>
               }
               rightAccessory={
@@ -201,10 +214,10 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
           )}
           {notificationsEnabled && medicationRemindersEnabled && (
             <SettingsRow
-              title="Repeat Reminders"
+              title={t('repeatReminders.title')}
               subtitle={
                 <Text className="text-sm text-text-secondary">
-                  Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.
+                  {t('repeatReminders.subtitle')}
                 </Text>
               }
               rightAccessory={
@@ -223,7 +236,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Haptic Feedback</Text>
+            <Text className="text-base text-text-primary">{t('haptics.title')}</Text>
             <Switch
               value={hapticsEnabled}
               onValueChange={setHapticsEnabled}
@@ -232,13 +245,13 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">
-            Light vibrations for timers and confirmations.
+            {t('haptics.subtitle')}
           </Text>
         </View>
 
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Camera shutter</Text>
+            <Text className="text-base text-text-primary">{t('cameraShutter.title')}</Text>
             <Switch
               value={soundsEnabled}
               onValueChange={setSoundsEnabled}
@@ -247,7 +260,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">
-            Play a sound when capturing photos.
+            {t('cameraShutter.subtitle')}
           </Text>
         </View>
 

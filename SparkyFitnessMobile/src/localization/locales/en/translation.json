@@ -1,0 +1,211 @@
+{
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "save": "Save",
+    "discardChanges": "Discard changes",
+    "delete": "Delete",
+    "edit": "Edit",
+    "done": "Done",
+    "confirm": "Confirm",
+    "close": "Close",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "noResults": "No results",
+    "or": "or"
+  },
+  "settings": {
+    "title": "Settings",
+    "app": "App Settings",
+    "language": {
+      "title": "Language",
+      "system": "System",
+      "english": "English",
+      "polish": "Polish"
+    },
+    "theme": {
+      "title": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "amoled": "AMOLED",
+      "system": "System"
+    }
+  },
+  "commonDates": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "remaining": "remaining",
+    "over": "over"
+  },
+  "dashboard": {
+    "consumed": "Consumed",
+    "remaining": "Remaining",
+    "burned": "Burned",
+    "hydration": "Hydration",
+    "hydrationConfigureOnServer": "Configure on server",
+    "nutrients": "Nutrients",
+    "details": "Details",
+    "healthTrends": "Health Trends",
+    "noServerTitle": "No server configured",
+    "noServerSubtitle": "Configure your server connection in Settings to view your daily summary.",
+    "goToSettings": "Go to Settings",
+    "loadingSummary": "Loading summary...",
+    "failedToLoad": "Failed to load summary",
+    "checkConnection": "Please check your connection and try again.",
+    "food": "Food",
+    "tapToAddFood": "Tap to add food",
+    "askSparky": "Ask Sparky…"
+  },
+  "diary": {
+    "title": "Diary",
+    "summary": "Diary Summary",
+    "noServerSubtitle": "Configure your server connection in Settings to view your diary."
+  },
+  "diarySummary": {
+    "title": "Summary",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "netCarbs": "Net Carbs",
+    "fat": "Fat",
+    "fiber": "Fiber"
+  },
+  "library": {
+    "title": "Library",
+    "foods": "Foods",
+    "meals": "Meals",
+    "exercises": "Exercises",
+    "presets": "Presets",
+    "noServerSubtitle": "Configure your server connection in Settings to view your library.",
+    "loading": "Loading library...",
+    "create": "Create",
+    "browse": "Browse",
+    "recentlyLogged": "Recently Logged",
+    "loadingRecent": "Loading recent items...",
+    "failedToLoadRecent": "Failed to load recent items.",
+    "noRecentItemsTitle": "No recent items yet",
+    "noRecentItemsSubtitle": "Foods, meals, and exercises you log will appear here for quick access.",
+    "manualEntry": "Manual entry",
+    "groupFoods": "Group foods",
+    "exerciseRoutine": "Exercise routine",
+    "workoutPreset": "Workout preset",
+    "workoutPresets": "Workout presets",
+    "exercise": "Exercise"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "diary": "Diary",
+    "library": "Library",
+    "settings": "Settings"
+  },
+  "macroLabels": {
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "netCarbs": "Net Carbs",
+    "fat": "Fat",
+    "fiber": "Fiber"
+  },
+  "measurements": {
+    "title": "Measurements",
+    "weight": "Weight",
+    "bodyFat": "Body fat %",
+    "height": "Height",
+    "neck": "Neck",
+    "waist": "Waist",
+    "hips": "Hips",
+    "steps": "Steps",
+    "date": "Date",
+    "willBeCleared": "Will be cleared",
+    "saved": "Saved",
+    "measurement_one": "measurement",
+    "measurement_other": "measurements",
+    "clearCount": "Clear {{count}} {{noun}}?",
+    "willBeClearedList": "{{labels}} will be cleared.",
+    "weightLabel": "Weight ({{unit}})",
+    "weightStLabel": "Weight (st, lb)"
+  },
+  "addSheet": {
+    "food": "Food",
+    "workout": "Workout",
+    "activity": "Activity",
+    "exercise": "Exercise",
+    "preset": "Preset",
+    "measurements": "Measurements",
+    "scanFood": "Scan Food",
+    "logWorkout": "Log Workout",
+    "askSparky": "Ask Sparky",
+    "syncHealthData": "Sync Health Data",
+    "exerciseSubtitleWorkout": "Live sets & reps",
+    "exerciseSubtitleActivity": "Duration & distance",
+    "exerciseSubtitleLog": "Past sets & reps"
+  },
+  "workout": {
+    "couldNotSave": "Could not save your workout"
+  },
+  "sync": {
+    "someChangesPending": "Some changes have not reached the server yet."
+  },
+  "days": {
+    "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "long": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    "min": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+  },
+  "months": {
+    "long": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "short": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  },
+  "foodSearch": {
+    "bestMatches": "Best matches",
+    "searchFoods": "Search foods..."
+  },
+  "healthConnect": {
+    "title": "Health Connect"
+  },
+  "haptics": {
+    "title": "Haptic Feedback",
+    "subtitle": "Light vibrations for timers and confirmations."
+  },
+  "cameraShutter": {
+    "title": "Camera shutter",
+    "subtitle": "Play a sound when capturing photos."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Alerts for workout rest timers and fasting goals."
+  },
+  "medicationReminders": {
+    "title": "Medication Reminders",
+    "subtitle": "Reminders for scheduled medications."
+  },
+  "repeatReminders": {
+    "title": "Repeat Reminders",
+    "subtitle": "Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged."
+  },
+  "liquidGlass": {
+    "title": "Liquid Glass navigation",
+    "subtitle": "Use the iOS 26 glass tab bar and screen headers."
+  },
+  "languageSettings": {
+    "subtitle": "Use your device language or choose a language for SparkyFitness."
+  },
+  "screens": {
+    "foods": "Foods",
+    "meals": "Meals",
+    "exercises": "Exercises",
+    "presets": "Presets",
+    "addFood": "Add Food",
+    "scanFood": "Scan Food",
+    "settings": "Settings",
+    "library": "Library",
+    "serverSettings": "Server Settings",
+    "appSettings": "App Settings",
+    "about": "About",
+    "logs": "Logs",
+    "healthSync": "Health Sync",
+    "measurements": "Measurements",
+    "diary": "Diary",
+    "dashboard": "Dashboard"
+  }
+}
