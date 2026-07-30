@@ -1494,7 +1494,7 @@ Actions:
                       args.meal_type
                     )
                   : undefined;
-              if (!mealType) {
+              if (mealType === null) {
                 return ERRORS.VALIDATION(
                   `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
                 );
@@ -1864,7 +1864,7 @@ Actions:
                       args.meal_type
                     )
                   : undefined;
-              if (!mealType) {
+              if (mealType === null) {
                 return ERRORS.VALIDATION(
                   `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
                 );
@@ -2048,7 +2048,7 @@ Actions:
                       args.meal_type
                     )
                   : undefined;
-              if (!mealType) {
+              if (mealType === null) {
                 return ERRORS.VALIDATION(
                   `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
                 );
