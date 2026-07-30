@@ -323,6 +323,16 @@ in
         sparkyfitness-garmin = { };
       };
 
+    # State directories under /var/lib are provisioned via StateDirectory.
+    # custom locations need explicit creation 
+    systemd.tmpfiles.rules =
+      lib.optional (
+        !lib.hasPrefix "/var/lib/" cfg.stateDir
+      ) "d ${cfg.stateDir} 0750 ${cfg.user} ${cfg.group} -"
+      ++ lib.optional (
+        cfg.garmin.enable && !lib.hasPrefix "/var/lib/" cfg.garmin.stateDir
+      ) "d ${cfg.garmin.stateDir} 0750 ${cfg.garmin.user} ${cfg.garmin.group} -";
+
     # --- Local PostgreSQL -----------------------------------------------------
     services.postgresql = lib.mkIf cfg.database.createLocally {
       enable = lib.mkDefault true;
