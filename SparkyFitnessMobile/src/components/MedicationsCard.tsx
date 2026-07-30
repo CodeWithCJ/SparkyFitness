@@ -54,7 +54,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     return (
       <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
         <View className="flex-row items-center justify-between">
-          <Text className="text-md font-bold text-text-secondary">Medications</Text>
+          <Text className="font-bold text-text-secondary">Medications</Text>
           <ActivityIndicator size="small" color={accentPrimary} />
         </View>
       </View>
@@ -65,19 +65,19 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-md font-bold text-text-secondary">Medications</Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('MedicationsList')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="View all medications"
-          className="flex-row items-center"
-        >
-          <Text className="text-md text-accent-primary font-medium">View all</Text>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('MedicationsList')}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel="View all medications"
+        className="flex-row items-center justify-between mb-2"
+      >
+        <Text className="font-bold text-text-secondary">Medications</Text>
+        <View className="flex-row items-center">
+          <Text className="text-accent-primary font-medium">View all</Text>
           <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
-        </TouchableOpacity>
-      </View>
+        </View>
+      </TouchableOpacity>
 
       {dueDoses.map((due) => {
         const med = due.medication;

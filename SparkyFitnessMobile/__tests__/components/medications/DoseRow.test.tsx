@@ -63,6 +63,8 @@ describe('DoseRow', () => {
       expect(screen.getByText('Taken')).toBeTruthy();
       expect(screen.queryByText('Take')).toBeNull();
       expect(screen.queryByText('Skip')).toBeNull();
+      expect(screen.getByText('8:00 AM').props.className).toContain('text-text-secondary');
+      expect(screen.getByText('8:00 AM').props.className).toContain('line-through');
     });
 
     it('shows a Skipped state', () => {
@@ -78,6 +80,7 @@ describe('DoseRow', () => {
       );
 
       expect(screen.getByText('Skipped')).toBeTruthy();
+      expect(screen.getByText('8:00 AM').props.className).not.toContain('line-through');
     });
   });
 
@@ -93,11 +96,11 @@ describe('DoseRow', () => {
       expect(onLog).toHaveBeenCalled();
     });
 
-    it('logs from the Log button', () => {
+    it('logs from the Take button', () => {
       const onLog = jest.fn();
       const screen = render(<DoseRow kind="prn" count={0} onLog={onLog} title="Ibuprofen" />);
 
-      fireEvent.press(screen.getByText('Log'));
+      fireEvent.press(screen.getByText('Take'));
       expect(onLog).toHaveBeenCalled();
     });
   });
