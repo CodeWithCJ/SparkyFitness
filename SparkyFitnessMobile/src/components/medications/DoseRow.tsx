@@ -64,13 +64,14 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
     '--color-accent-primary',
   ]) as [string, string, string, string];
 
-  const completed = props.kind === 'scheduled' ? props.status !== 'pending' : props.count > 0;
+  const completed = props.kind === 'scheduled' && props.status !== 'pending';
   const showTime = time != null && time !== '';
   const showSubtitle = subtitle != null && subtitle !== '';
   const taken = props.kind === 'scheduled' && props.status === 'taken';
+  const skipped = props.kind === 'scheduled' && props.status === 'skipped';
   const titleClass = taken
     ? 'text-text-secondary line-through'
-    : completed
+    : skipped
       ? 'text-text-muted'
       : 'text-text-primary';
   const circleBorderColor =
