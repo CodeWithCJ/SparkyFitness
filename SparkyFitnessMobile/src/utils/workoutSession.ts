@@ -1428,26 +1428,25 @@ export function extractPlannedSetValues(
 }
 
 /**
- * Hevy-style live starts create every set with empty weight/reps: the plan is
- * an assumption, not a result, so it renders as a gray placeholder and only
- * becomes a real value when the set is completed or typed over. `duration` is
- * stripped only at duration-modality indexes (`modalities` is positional) —
- * on a weight_reps exercise the field is invisible dead weight the editors
- * never touch, and nulling it would wipe the stored value.
+ * Hevy-style live starts create every set with empty weight/reps/duration:
+ * the plan is an assumption, not a result, so it renders as a gray
+ * placeholder and only becomes a real value when the set is completed or
+ * typed over. Duration is stripped for every modality — on a duration
+ * exercise it's the plan, and on a weight_reps exercise a stored value is
+ * junk the editors can't show that would otherwise count as history in the
+ * exercise-stats query (a duration-only set renders as a bare time in the
+ * PREVIOUS column).
  */
 export function stripPlannedSetValues(
   exercises: PresetSessionExerciseRequest[],
-  modalities: ExerciseModality[],
 ): PresetSessionExerciseRequest[] {
-  return exercises.map((exercise, index) => ({
+  return exercises.map((exercise) => ({
     ...exercise,
     sets: exercise.sets.map((set) => ({
       ...set,
       weight: null,
       reps: null,
-      ...(isDurationModality(modalities[index] ?? 'weight_reps')
-        ? { duration: null }
-        : {}),
+      duration: null,
     })),
   }));
 }
@@ -1569,8 +1568,8 @@ export function exerciseFromDraft(exercise: WorkoutDraftExercise): Exercise {
 
 /**
  * Single-exercise payload for an empty live start (first-exercise-first flow).
- * The param carries modality/category so every caller holds the same object it
- * derives `useStartLiveWorkout`'s per-exercise modalities from.
+ * The param carries modality/category so the default set's rest time can be
+ * zeroed for cardio.
  */
 export function buildSingleExerciseStartPayload(
   exercise: Pick<Exercise, 'id' | 'modality' | 'category'>,

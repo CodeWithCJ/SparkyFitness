@@ -26,7 +26,6 @@ import {
   buildPresetStartExercisesPayload,
   makeSparseExercise,
   presetExerciseToCardExercise,
-  resolveSnapshotModality,
 } from '../utils/workoutSession';
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -159,7 +158,6 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     void startLiveWorkout({
       name: preset.name,
       exercises: buildPresetStartExercisesPayload(preset),
-      modalities: preset.exercises.map((e) => resolveSnapshotModality(e)),
     });
   }, [startLiveWorkout, preset]);
 

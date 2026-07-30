@@ -54,7 +54,6 @@ const EXERCISES = buildSingleExerciseStartPayload({
   modality: null,
   category: null,
 });
-const MODALITIES = ['weight_reps' as const];
 
 function makeSession(): PresetSessionResponse {
   return {
@@ -137,7 +136,7 @@ describe('useStartLiveWorkout', () => {
     const { result, navigation, queryClient } = setup();
 
     await act(async () => {
-      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES, modalities: MODALITIES });
+      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES });
     });
 
     expect(mockCreateWorkout).toHaveBeenCalledWith({
@@ -155,12 +154,12 @@ describe('useStartLiveWorkout', () => {
     expect(navigation.replace).toHaveBeenCalledWith('ActiveWorkout');
   });
 
-  it('strips planned weight/reps from the create payload and seeds them as the store plan', async () => {
+  it('strips planned weight/reps/duration from the create payload and seeds them as the store plan', async () => {
     const { result } = setup();
     const plannedExercises = [
       {
         ...EXERCISES[0],
-        sets: [{ ...EXERCISES[0].sets[0], weight: 80, reps: 5 }],
+        sets: [{ ...EXERCISES[0].sets[0], weight: 80, reps: 5, duration: 90 }],
       },
     ];
 
@@ -168,7 +167,6 @@ describe('useStartLiveWorkout', () => {
       await result.current.startLiveWorkout({
         name: 'Push Day',
         exercises: plannedExercises,
-        modalities: MODALITIES,
       });
     });
 
@@ -177,14 +175,14 @@ describe('useStartLiveWorkout', () => {
       expect.objectContaining({
         exercises: [
           expect.objectContaining({
-            sets: [expect.objectContaining({ weight: null, reps: null })],
+            sets: [expect.objectContaining({ weight: null, reps: null, duration: null })],
           }),
         ],
       }),
     );
     // The plan lands keyed to the created session's set ids for placeholders.
     expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
-      '101': { weight: 80, reps: 5, duration: null },
+      '101': { weight: 80, reps: 5, duration: 90 },
     });
   });
 
@@ -192,7 +190,7 @@ describe('useStartLiveWorkout', () => {
     const { result } = setup();
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
     });
 
     expect(mockCreateWorkout).toHaveBeenCalledWith(
@@ -208,7 +206,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
     });
 
     expect(sessionIdAtReplace).toBe('session-1');
@@ -218,7 +216,7 @@ describe('useStartLiveWorkout', () => {
     const { result, navigation } = setup({ connected: false });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
     });
 
     expect(alertSpy).toHaveBeenCalledWith('No Server Connected', expect.any(String));
@@ -233,7 +231,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
     });
 
     expect(alertSpy).toHaveBeenCalledWith(
@@ -263,7 +261,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
     });
 
     expect(navigation.navigate).toHaveBeenCalledWith('ActiveWorkout');
@@ -289,7 +287,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES, modalities: MODALITIES });
+      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES });
     });
 
     await waitFor(() => expect(mockCreateWorkout).toHaveBeenCalled());
@@ -301,7 +299,7 @@ describe('useStartLiveWorkout', () => {
     const { result } = setup();
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: [], modalities: [] });
+      await result.current.startLiveWorkout({ exercises: [] });
     });
 
     expect(mockToastShow).toHaveBeenCalledWith(
@@ -315,7 +313,7 @@ describe('useStartLiveWorkout', () => {
     mockCreateWorkout.mockRejectedValue(new Error('500'));
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
     });
 
     expect(navigation.replace).not.toHaveBeenCalled();
@@ -335,8 +333,8 @@ describe('useStartLiveWorkout', () => {
     await act(async () => {
       // The in-flight lock engages synchronously before the create await, so
       // the second call must be ignored even though the first hasn't resolved.
-      const first = result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
-      const second = result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
+      const first = result.current.startLiveWorkout({ exercises: EXERCISES });
+      const second = result.current.startLiveWorkout({ exercises: EXERCISES });
       resolveCreate(makeSession());
       await Promise.all([first, second]);
     });
@@ -348,7 +346,7 @@ describe('useStartLiveWorkout', () => {
     const { result, navigation } = setup({ focused: false });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ exercises: EXERCISES, modalities: MODALITIES });
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
     });
 
     expect(useActiveWorkoutStore.getState().sessionId).toBe('session-1');
