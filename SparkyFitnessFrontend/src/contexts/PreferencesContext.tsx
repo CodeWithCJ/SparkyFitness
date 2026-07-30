@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
 import { format, parseISO, startOfDay } from 'date-fns';
+import { normalizeTimeFormat } from '@/utils/timeFormatters';
 import {
   FatBreakdownAlgorithm,
   MineralCalculationAlgorithm,
@@ -177,6 +178,7 @@ interface PreferencesContextType {
   getEnergyUnitString: (unit: EnergyUnit) => string;
   formatDate: (date: string | Date) => string;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
+  formatTime: (date: string | Date) => string;
   getDateRelationToToday: (date: string | Date) => string;
   parseDateInUserTimezone: (dateString: string) => Date;
   loadPreferences: () => Promise<void>;
@@ -529,6 +531,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       return formatDateInUserTimezone(date, dateFormat);
     },
     [formatDateInUserTimezone, dateFormat]
+  );
+
+  const formatTime = useCallback(
+    (date: string | Date) => {
+      return formatDateInUserTimezone(date, normalizeTimeFormat(timeFormat));
+    },
+    [formatDateInUserTimezone, timeFormat]
   );
 
   /**
@@ -1234,6 +1243,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       convertEnergy,
       getEnergyUnitString,
       formatDate,
+      formatTime,
       formatDateInUserTimezone,
       getDateRelationToToday,
       parseDateInUserTimezone,
@@ -1310,6 +1320,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       convertEnergy,
       getEnergyUnitString,
       formatDate,
+      formatTime,
       formatDateInUserTimezone,
       getDateRelationToToday,
       parseDateInUserTimezone,

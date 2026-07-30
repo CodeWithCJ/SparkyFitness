@@ -13,6 +13,7 @@ const mockPreferences = {
   weightUnit: 'kg',
   measurementUnit: 'cm',
   measurementDecimalPlaces: 0,
+  formatTime: () => '12:00',
 };
 
 jest.mock('@/contexts/PreferencesContext', () => ({

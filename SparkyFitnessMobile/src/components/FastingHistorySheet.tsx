@@ -23,6 +23,7 @@ import { FastingProtocolBadge } from './FastingSharedComponents';
 import { useFastingHistory, useDeleteFast } from '../hooks/useFasting';
 import { formatHoursMinutes, relativeDayLabel } from '../utils/fasting';
 import { toLocalDateString } from '../utils/dateUtils';
+import { formatTimeOfDay } from '../utils/entryTimeDisplay';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
 
@@ -33,8 +34,8 @@ const sheetContainer =
     ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
     : undefined;
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+function formatTime(iso: string, timeFormat?: string | null): string {
+  return formatTimeOfDay(iso, timeFormat) ?? '';
 }
 
 const PAGE_SIZE = 25;

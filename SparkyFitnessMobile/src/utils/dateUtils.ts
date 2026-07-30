@@ -1,4 +1,5 @@
 import { localDateToDay } from '@workspace/shared';
+import { formatTimeOfDay } from './entryTimeDisplay';
 
 /**
  * Converts a timestamp to a local date string (YYYY-MM-DD).
@@ -71,7 +72,10 @@ export const formatDateLabel = (dateString: string): string => {
 };
 
 // Format a timestamp as a human-readable relative time ("Just now", "3 minutes ago", etc.)
-export const formatRelativeTime = (timestamp: Date | null): string => {
+export const formatRelativeTime = (
+  timestamp: Date | null,
+  timeFormat?: string
+): string => {
   if (!timestamp) return 'Never synced';
 
   const now = new Date();
@@ -88,17 +92,11 @@ export const formatRelativeTime = (timestamp: Date | null): string => {
   } else if (diffHours < 24) {
     return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
   } else if (diffDays === 1) {
-    return `Yesterday at ${timestamp.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit',
-    })}`;
+    return `Yesterday at ${formatTimeOfDay(timestamp, timeFormat)}`;
   } else {
     return `${timestamp.toLocaleDateString([], {
       month: 'short',
       day: 'numeric',
-    })} at ${timestamp.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit',
-    })}`;
+    })} at ${formatTimeOfDay(timestamp, timeFormat)}`;
   }
 };

@@ -4,31 +4,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import {
-  useMedicationDetail,
-  useDeleteMedication,
-  useMedicationEntries,
-  useDeleteMedicationEntry,
-  useLogDose,
-} from '../hooks/useMedications';
+import { useMedicationDetail, useDeleteMedication, useMedicationEntries, useDeleteMedicationEntry, useCreateMedicationEntry } from '../hooks/useMedications';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
+import { usePreferences } from '../hooks/usePreferences';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
-import DoseRow from '../components/medications/DoseRow';
-import {
-  getDueDosesForDate,
-  formatDose,
-  formatStrengthPerUnit,
-  formatTimeOfDay,
-  formatWithMeal,
-  describeSchedule,
-} from '@workspace/shared';
-import { getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
+import { getDueDosesForDate } from '@workspace/shared';
+import { getDeviceTimezone } from '../utils/dateUtils';
+import { formatTimeOfDay } from '../utils/entryTimeDisplay';
 import type { RootStackScreenProps } from '../types/navigation';
-import { MEDICATION_TYPES } from '../types/medications';
-import type { MedicationEntry } from '@workspace/shared';
-import { doseSlotStatus } from '../utils/medications';
+import { MEDICATION_TYPES, DAY_LABELS } from '../types/medications';
+import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
+import { isDoseLogged } from '../utils/medications';
 import { addLog } from '../services/LogService';
 
 type MedicationDetailScreenProps = RootStackScreenProps<'MedicationDetail'>;
@@ -39,28 +27,35 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
+  const { preferences } = usePreferences();
+  const timeFormat = preferences?.time_format;
 
   const { data: med, isLoading } = useMedicationDetail(medicationId);
   const { data: entries } = useMedicationEntries({ fromDate: selectedDate, toDate: selectedDate, medicationId });
   const deleteMedicationMutation = useDeleteMedication();
   const deleteEntryMutation = useDeleteMedicationEntry();
-  const { entryForDue, logDose, toggleTaken, logPrn } = useLogDose(selectedDate, entries);
+  const createEntryMutation = useCreateMedicationEntry();
 
   const [iconDanger] = useCSSVariable(['--color-icon-danger']) as [string];
 
   const isPrn = !med?.schedules || med.schedules.length === 0 || med.schedules.some((s) => s.schedule_type_id === 'prn');
 
+  const todayEntries = useMemo(() => entries ?? [], [entries]);
+
   const todayPrnDoses = useMemo(
-    () => (entries ?? []).filter(
+    () => todayEntries.filter(
       (e) => e.medication_id === medicationId && e.status === 'prn_taken' && e.entry_date === selectedDate,
     ),
-    [entries, medicationId, selectedDate],
+    [todayEntries, medicationId, selectedDate],
   );
 
-  const dueDoses = useMemo(() => {
+  const unloggedSchedules = useMemo(() => {
     if (!med) return [];
-    return getDueDosesForDate([med], selectedDate, getDeviceTimezone());
-  }, [med, selectedDate]);
+    const dueDoses = getDueDosesForDate([med], selectedDate, getDeviceTimezone());
+    return dueDoses
+      .filter((due) => !isDoseLogged(todayEntries, due.medication.id, due.schedule.id))
+      .map((due) => due.schedule);
+  }, [med, todayEntries, selectedDate]);
 
   const handleDelete = useCallback(() => {
     if (!med) return;
@@ -90,7 +85,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
     (entry: MedicationEntry) => {
       Alert.alert(
         'Remove Dose',
-        `Remove this logged dose from ${entry.taken_at ? new Date(entry.taken_at).toLocaleTimeString() : 'today'}?`,
+        `Remove this logged dose from ${entry.taken_at ? (formatTimeOfDay(entry.taken_at, timeFormat) ?? '') : 'today'}?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -107,12 +102,53 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         ],
       );
     },
-    [deleteEntryMutation],
+    [deleteEntryMutation, timeFormat],
   );
+
+  const handleLogSchedule = useCallback(
+    (scheduleId: string) => {
+      if (!med) return;
+      createEntryMutation.mutate(
+        {
+          medication_id: med.id,
+          schedule_id: scheduleId,
+          status: 'taken' as MedicationEntryStatus,
+          entry_date: selectedDate,
+          taken_at: new Date().toISOString(),
+        },
+        {
+          onSuccess: () => Toast.show({ type: 'success', text1: `${med.name} taken` }),
+          onError: (error) => {
+            addLog(`Failed to log medication: ${error.message}`, 'ERROR');
+            Toast.show({ type: 'error', text1: `Failed to log ${med.name}` });
+          },
+        },
+      );
+    },
+    [med, createEntryMutation, selectedDate],
+  );
+
+  const handleLogPrn = useCallback(() => {
+    if (!med) return;
+    createEntryMutation.mutate(
+      {
+        medication_id: med.id,
+        status: 'prn_taken' as MedicationEntryStatus,
+        entry_date: selectedDate,
+        taken_at: new Date().toISOString(),
+      },
+      {
+        onSuccess: () => Toast.show({ type: 'success', text1: `${med.name} logged` }),
+        onError: (error) => {
+          addLog(`Failed to log PRN medication: ${error.message}`, 'ERROR');
+          Toast.show({ type: 'error', text1: `Failed to log ${med.name}` });
+        },
+      },
+    );
+  }, [med, createEntryMutation, selectedDate]);
 
   const header = useScreenHeader({
     title: med?.name ?? 'Medication',
-    nativeTitle: med?.name ?? 'Medication',
     left: { kind: 'back' },
     right: {
       kind: 'text',
@@ -122,9 +158,6 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
   });
 
   const typeLabel = med ? (MEDICATION_TYPES.find((t) => t.id === med.type_id)?.label ?? med.type_id ?? '') : '';
-  const doseLabel = med ? formatDose(med) : null;
-  const strengthLabel = med ? formatStrengthPerUnit(med) : null;
-  const contextLine = [typeLabel, med?.reason_text].filter(Boolean).join(' · ');
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -139,77 +172,60 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
         <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-          <Text className="text-2xl font-bold text-text-primary">{med.name}</Text>
-          {contextLine !== '' && (
-            <Text className="text-sm text-text-secondary mt-0.5">{contextLine}</Text>
+          <InfoRow label="Type" value={typeLabel} />
+          {med.strength_value != null && (
+            <InfoRow label="Strength" value={`${med.strength_value} ${med.strength_unit ?? ''}`} />
           )}
-          {doseLabel != null && (
-            <Text className="text-lg font-semibold text-text-primary mt-2">{doseLabel}</Text>
+          {med.dose_amount != null && (
+            <InfoRow label="Dose" value={`${med.dose_amount} ${med.dose_unit ?? ''}`} />
           )}
-          {strengthLabel != null && (
-            <Text className="text-sm text-text-secondary mt-0.5">{strengthLabel}</Text>
-          )}
-          {!med.is_active && (
-            <View className="self-start rounded-full px-2.5 py-0.5 mt-2 border border-chrome-border">
-              <Text className="text-xs text-text-muted">Inactive</Text>
-            </View>
-          )}
+          {med.reason_text && <InfoRow label="Reason" value={med.reason_text} />}
+          {med.prescriber && <InfoRow label="Prescriber" value={med.prescriber} />}
+          {med.pharmacy && <InfoRow label="Pharmacy" value={med.pharmacy} />}
+          {med.notes && <InfoRow label="Notes" value={med.notes} />}
+          <InfoRow label="Status" value={med.is_active ? 'Active' : 'Inactive'} />
         </View>
 
-        {med.is_active && (
+        {isPrn && (
           <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-            <Text className="text-sm font-semibold text-text-secondary mb-1">
-              {formatDateLabel(selectedDate)}
-            </Text>
-            {dueDoses.map((due) => (
-              <DoseRow
-                key={due.schedule.id}
-                kind="scheduled"
-                status={doseSlotStatus(entryForDue(due))}
-                onToggle={() => toggleTaken(due)}
-                onTake={() => logDose(due, 'taken')}
-                onSkip={() => logDose(due, 'skipped')}
-                title={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : describeSchedule(due.schedule)}
-                subtitle={formatDose(due.medication, due.schedule) ?? undefined}
-              />
-            ))}
-            {dueDoses.length === 0 && !isPrn && (
-              <Text className="text-sm text-text-muted py-2">No doses scheduled for this day.</Text>
-            )}
-            {isPrn && (
-              <>
-                <DoseRow
-                  kind="prn"
-                  count={todayPrnDoses.length}
-                  onLog={() => logPrn(med)}
-                  title="As needed"
-                  subtitle={formatDose(med) ?? undefined}
-                />
-                {todayPrnDoses.map((dose) => (
-                  <View key={dose.id} className="flex-row items-center justify-between py-2 ml-9">
-                    <View className="flex-1">
-                      <Text className="text-base text-text-primary">
-                        {dose.taken_at
-                          ? new Date(dose.taken_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-                          : 'Logged'}
-                      </Text>
-                      {dose.notes && (
-                        <Text className="text-xs text-text-muted mt-0.5">{dose.notes}</Text>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => handleRemoveDose(dose)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      activeOpacity={0.6}
-                      accessibilityRole="button"
-                      accessibilityLabel="Remove dose"
-                      className="ml-3"
-                    >
-                      <Icon name="trash" size={18} color={iconDanger} />
-                    </TouchableOpacity>
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-sm font-semibold text-text-secondary">
+                {`Today's Doses${todayPrnDoses.length > 0 ? ` (${todayPrnDoses.length})` : ''}`}
+              </Text>
+              <TouchableOpacity
+                onPress={handleLogPrn}
+                hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+                activeOpacity={0.6}
+                className="rounded-full px-3 py-1"
+              >
+                <Text className="text-sm font-semibold text-accent-primary">Log</Text>
+              </TouchableOpacity>
+            </View>
+            {todayPrnDoses.length === 0 ? (
+              <Text className="text-sm text-text-muted py-2">No doses logged today.</Text>
+            ) : (
+              todayPrnDoses.map((dose, index) => (
+                <View key={dose.id} className={`flex-row items-center justify-between py-2${index < todayPrnDoses.length - 1 ? ' border-b border-chrome-border' : ''}`}>
+                  <View className="flex-1">
+                    <Text className="text-base text-text-primary">
+                      {dose.taken_at
+                        ? (formatTimeOfDay(dose.taken_at, timeFormat) ?? '')
+                        : 'Logged'}
+                    </Text>
+                    {dose.notes && (
+                      <Text className="text-xs text-text-muted mt-0.5">{dose.notes}</Text>
+                    )}
                   </View>
-                ))}
-              </>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveDose(dose)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.6}
+                    className="ml-3"
+                  >
+                    <Icon name="trash" size={18} color={iconDanger} />
+                  </TouchableOpacity>
+                </View>
+              ))
             )}
           </View>
         )}
@@ -218,20 +234,48 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
             <Text className="text-sm font-semibold text-text-secondary mb-2">Schedules</Text>
             {med.schedules.map((sched, index) => {
-              const parts: string[] = [];
-              if (sched.dose_amount != null) {
-                const scheduleDose = formatDose(med, sched);
-                if (scheduleDose != null) parts.push(scheduleDose);
-              }
-              if (sched.with_meal) parts.push(formatWithMeal(sched.with_meal));
-              if (sched.active === false) parts.push('Inactive');
-              const subtitle = parts.join(' · ');
+              const isUnlogged = unloggedSchedules.some((s) => s.id === sched.id);
               return (
-                <View key={sched.id}>
-                  {index > 0 && <View className="h-px bg-chrome-border my-2" />}
-                  <Text className="text-base text-text-primary">{describeSchedule(sched)}</Text>
-                  {subtitle !== '' && (
-                    <Text className="text-xs text-text-muted mt-0.5">{subtitle}</Text>
+                <View key={sched.id} className="mb-2 last:mb-0">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1">
+                      <Text className="text-base text-text-primary capitalize">{sched.schedule_type_id.replace('_', ' ')}</Text>
+                      {sched.time_of_day && (
+                        <Text className="text-sm text-text-secondary mt-0.5">
+                          {(() => {
+                            const [h, m] = sched.time_of_day.split(':').map(Number);
+                            return formatTimeOfDay(new Date(2000, 0, 1, h, m), timeFormat) ?? '';
+                          })()}
+                        </Text>
+                      )}
+                      {sched.schedule_type_id === 'specific_days' && sched.days_of_week && (
+                        <Text className="text-xs text-text-muted mt-0.5">
+                          {sched.days_of_week.map((d) => DAY_LABELS[d]).join(', ')}
+                        </Text>
+                      )}
+                      {sched.schedule_type_id === 'every_n_days' && sched.interval_days && (
+                        <Text className="text-xs text-text-muted mt-0.5">Every {sched.interval_days} days</Text>
+                      )}
+                      {sched.dose_amount && (
+                        <Text className="text-xs text-text-muted mt-0.5">Dose: {sched.dose_amount}</Text>
+                      )}
+                      {sched.with_meal && (
+                        <Text className="text-xs text-text-muted mt-0.5">With: {sched.with_meal}</Text>
+                      )}
+                    </View>
+                    {isUnlogged && sched.time_of_day && (
+                      <TouchableOpacity
+                        onPress={() => handleLogSchedule(sched.id)}
+                        hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+                        activeOpacity={0.6}
+                        className="rounded-full px-3 py-1 ml-2"
+                      >
+                        <Text className="text-sm font-semibold text-accent-primary">Log</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {index < (med.schedules?.length ?? 0) - 1 && (
+                    <View className="h-px bg-chrome-border mt-2" />
                   )}
                 </View>
               );
@@ -239,18 +283,8 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           </View>
         )}
 
-        {(med.prescriber || med.pharmacy || med.rx_number || med.notes) && (
-          <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-            <Text className="text-sm font-semibold text-text-secondary mb-1">Details</Text>
-            {med.prescriber && <InfoRow label="Prescriber" value={med.prescriber} />}
-            {med.pharmacy && <InfoRow label="Pharmacy" value={med.pharmacy} />}
-            {med.rx_number && <InfoRow label="Rx number" value={med.rx_number} />}
-            {med.notes && <InfoRow label="Notes" value={med.notes} />}
-          </View>
-        )}
-
         <TouchableOpacity
-          className="rounded-xl p-4 mb-3"
+          className="bg-surface rounded-xl p-4 shadow-sm mb-3"
           onPress={handleDelete}
         >
           <Text className="text-base font-medium text-center text-text-danger-subtle">

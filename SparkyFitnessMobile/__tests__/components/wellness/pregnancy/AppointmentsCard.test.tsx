@@ -7,6 +7,10 @@ jest.mock('../../../../src/components/Icon', () => {
   return { __esModule: true, default: () => <View testID="icon" /> };
 });
 
+jest.mock('../../../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({ preferences: { time_format: 'HH:mm' } }),
+}));
+
 const mockUseHealthAppointments = jest.fn();
 const mockCreateAsync = jest.fn().mockResolvedValue({});
 const mockDeleteAsync = jest.fn().mockResolvedValue(undefined);

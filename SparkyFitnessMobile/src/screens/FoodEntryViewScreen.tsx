@@ -688,6 +688,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     ]) as [string, string, string, string, string];
 
   const { preferences } = usePreferences();
+  const timeFormat = preferences?.time_format;
   const showNetCarbs = preferences?.show_net_carbs === true;
 
   const viewCalories = Math.round(scaledValue(entry.calories, entry));
@@ -1159,7 +1160,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 className="flex-row items-center"
               >
                 <Text className="text-text-primary text-base font-medium">
-                  {formatTimeLabel(entryTime) ?? 'None'}
+                  {formatTimeLabel(entryTime, timeFormat) ?? 'None'}
                 </Text>
                 <Icon
                   name="chevron-down"
@@ -1181,7 +1182,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
             </>
           ) : (
             <Text className="text-text-primary text-base font-medium">
-              {formatTimeLabel(entry.entry_time) ?? 'None'}
+              {formatTimeLabel(entry.entry_time, timeFormat) ?? 'None'}
             </Text>
           )}
         </Animated.View>

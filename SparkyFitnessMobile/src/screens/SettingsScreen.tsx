@@ -37,6 +37,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { isConnected } = useServerConnection();
   const { activeConfig } = useServerConfigs();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
+  const timeFormat = userPreferences?.time_format;
   const discreetMode = useDiscreetMode();
   const [isSharing, setIsSharing] = useState<boolean>(false);
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
@@ -54,7 +55,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   );
 
   const syncSubtitle = lastSyncedTime
-    ? `Last synced ${formatRelativeTime(new Date(lastSyncedTime))}`
+    ? `Last synced ${formatRelativeTime(new Date(lastSyncedTime), timeFormat)}`
     : 'Never synced';
 
   const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration, macroGreen, catTeal, catBlue] = useCSSVariable([

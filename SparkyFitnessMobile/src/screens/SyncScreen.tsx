@@ -50,6 +50,7 @@ import type { TimeRange } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { usePreferences } from '../hooks/usePreferences';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetric } from '../HealthMetrics';
@@ -82,6 +83,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const { preferences } = usePreferences({ enabled: true });
+  const timeFormat = preferences?.time_format;
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [writebackStates, setWritebackStates] = useState<Record<string, boolean>>({});
   const dateRangeSheetRef = useRef<DateRangeSheetRef>(null);
@@ -509,7 +512,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
           <Text className="text-text-muted text-center mb-2">
             {lastSyncedTimeLoaded
               ? (lastSyncedTime
-                ? <><Text className="font-bold">Last synced:</Text> {formatRelativeTime(new Date(lastSyncedTime))}</>
+                ? <><Text className="font-bold">Last synced:</Text> {formatRelativeTime(new Date(lastSyncedTime), timeFormat)}</>
                 : formatRelativeTime(null))
               : ' '}
           </Text>

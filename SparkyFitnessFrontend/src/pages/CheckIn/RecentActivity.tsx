@@ -51,6 +51,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
     measurementDecimalPlaces,
+    formatTime,
   } = usePreferences();
   const { t } = useTranslation();
 
@@ -190,11 +191,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                             : measurementName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {format(
-                            new Date(measurement.entry_timestamp),
-                            'h:mm a'
-                          )}{' '}
-                          &middot;{' '}
+                          {formatTime(measurement.entry_timestamp)} &middot;{' '}
                           {format(
                             new Date(measurement.entry_timestamp),
                             'MMM d'

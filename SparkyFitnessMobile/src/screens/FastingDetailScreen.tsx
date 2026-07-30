@@ -16,6 +16,7 @@ import { useFastingTimer } from '../hooks/useFastingTimer';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { formatFastingStats } from '../utils/fasting';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
+import { formatTimeOfDay } from '../utils/entryTimeDisplay';
 import {
   METABOLIC_STAGES,
   getMetabolicStageIndex,
@@ -28,8 +29,8 @@ type Props = RootStackScreenProps<'FastingDetail'>;
 
 const RING_SIZE = 240;
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+function formatTime(iso: string, timeFormat?: string | null): string {
+  return formatTimeOfDay(iso, timeFormat) ?? '';
 }
 
 const DetailRow: React.FC<{ label: string; value: string; isLast?: boolean }> = ({

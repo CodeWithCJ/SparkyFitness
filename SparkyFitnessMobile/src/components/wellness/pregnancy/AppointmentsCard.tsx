@@ -3,7 +3,9 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import { useHealthAppointments, useHealthAppointmentMutations } from '../../../hooks/useHealthAppointments';
+import { usePreferences } from '../../../hooks/usePreferences';
 import { getTodayDate, formatDate, toLocalDateString } from '../../../utils/dateUtils';
+import { formatTimeOfDay } from '../../../utils/entryTimeDisplay';
 import CalendarSheet, { type CalendarSheetRef } from '../../CalendarSheet';
 import FormInput from '../../FormInput';
 import StepperInput from '../../StepperInput';
@@ -16,16 +18,18 @@ function combineDateAndTime(dateStr: string, hour: number, minute: number): stri
   return new Date(year, month - 1, day, hour, minute).toISOString();
 }
 
-function formatScheduledAt(iso: string): string {
+function formatScheduledAt(iso: string, timeFormat?: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const time = formatTimeOfDay(d, timeFormat);
   const localDateStr = toLocalDateString(d);
   return `${formatDate(localDateStr)} · ${time}`;
 }
 
 const AppointmentsCard: React.FC = () => {
   const { appointments, isLoading } = useHealthAppointments(true);
+  const { preferences } = usePreferences();
+  const timeFormat = preferences?.time_format;
   const { createAsync, isCreating, deleteAsync } = useHealthAppointmentMutations();
   const [accentColor, dangerColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
@@ -110,7 +114,7 @@ const AppointmentsCard: React.FC = () => {
                   {appt.title || appt.appointment_type || 'Appointment'}
                 </Text>
                 <Text className="text-text-secondary text-xs mt-0.5">
-                  {formatScheduledAt(appt.scheduled_at)}
+                  {formatScheduledAt(appt.scheduled_at, timeFormat)}
                 </Text>
                 {!!appt.location && (
                   <Text className="text-xs mt-0.5" style={{ color: textMuted }}>
