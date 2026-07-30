@@ -230,7 +230,7 @@ describe('sparky_manage_food validation', () => {
     );
 
     expect(result).toBe(
-      '✅ Logged "Eggs" (2 piece) for breakfast on 2026-06-11.'
+      '✅ Logged "Eggs" (2 piece) for Breakfast on 2026-06-11.'
     );
   });
 
@@ -788,7 +788,7 @@ describe('log_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Logged "eggs" (2 serving) for breakfast on 2026-06-10.'
+      '✅ Logged "eggs" (2 serving) for Breakfast on 2026-06-10.'
     );
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
       'user-1',
@@ -855,7 +855,7 @@ describe('log_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Logged "Eggs" (2 serving) for breakfast on 2026-06-10.'
+      '✅ Logged "Eggs" (2 serving) for Breakfast on 2026-06-10.'
     );
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
       'user-1',
@@ -901,7 +901,7 @@ describe('log_food', () => {
 
     const today = todayInZone('UTC');
     expect(result).toBe(
-      `✅ Logged "Eggs" (1 ${eggsRow.default_variant.serving_unit}) for breakfast on ${today}.`
+      `✅ Logged "Eggs" (1 ${eggsRow.default_variant.serving_unit}) for Breakfast on ${today}.`
     );
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
       'user-1',
@@ -933,7 +933,7 @@ describe('log_food', () => {
 
     const today = todayInZone('UTC');
     expect(result).toBe(
-      `✅ Logged "Eggs" (1 ${eggsRow.default_variant.serving_unit}) for breakfast on ${today}.`
+      `✅ Logged "Eggs" (1 ${eggsRow.default_variant.serving_unit}) for Breakfast on ${today}.`
     );
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
       'user-1',
@@ -987,7 +987,7 @@ describe('log_food', () => {
       opts
     );
 
-    expect(result).toBe('✅ Logged "Eggs" (100 g) for lunch on 2026-06-10.');
+    expect(result).toBe('✅ Logged "Eggs" (100 g) for Lunch on 2026-06-10.');
     expect(foodRepository.getFoodsWithPagination).not.toHaveBeenCalled();
     expect(foodRepository.getFoodById).toHaveBeenCalledWith(FOOD_ID, 'user-1');
   });
@@ -1034,7 +1034,7 @@ describe('log_food', () => {
       opts
     );
 
-    expect(result).toBe('✅ Logged "Eggs" (100 g) for lunch on 2026-06-10.');
+    expect(result).toBe('✅ Logged "Eggs" (100 g) for Lunch on 2026-06-10.');
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
       'user-1',
       'user-1',
@@ -1101,9 +1101,9 @@ describe('log_food', () => {
     );
 
     expect(pieceResult).toBe(
-      '✅ Logged "Eggs" (2 piece) for lunch on 2026-06-10.'
+      '✅ Logged "Eggs" (2 piece) for Lunch on 2026-06-10.'
     );
-    expect(cupResult).toBe('✅ Logged "Eggs" (1 cup) for lunch on 2026-06-10.');
+    expect(cupResult).toBe('✅ Logged "Eggs" (1 cup) for Lunch on 2026-06-10.');
     expect(foodEntryService.createFoodEntry).toHaveBeenNthCalledWith(
       1,
       'user-1',
@@ -1249,7 +1249,7 @@ describe('log_external_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Saved "Apple" from usda (52 kcal per 100g) and logged 200 g to breakfast on 2026-06-10.'
+      '✅ Saved "Apple" from usda (52 kcal per 100g) and logged 200 g to Breakfast on 2026-06-10.'
     );
     expect(foodCoreService.createFood).toHaveBeenCalledWith('user-1', {
       user_id: 'user-1',
@@ -1389,7 +1389,7 @@ describe('log_external_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Saved "Apple pie" from usda (296 kcal per 125g) and logged 125 g to snacks on 2026-06-10.'
+      '✅ Saved "Apple pie" from usda (296 kcal per 125g) and logged 125 g to Snacks on 2026-06-10.'
     );
     expect(foodCoreService.createFood).toHaveBeenCalledWith(
       'user-1',
@@ -1418,7 +1418,7 @@ describe('log_external_food', () => {
     );
 
     expect(result).toBe(
-      '✅ "Eggs" was already in the food database — logged 200 g for breakfast on 2026-06-10.'
+      '✅ "Eggs" was already in the food database — logged 200 g for Breakfast on 2026-06-10.'
     );
     expect(foodCoreService.createFood).not.toHaveBeenCalled();
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
@@ -1477,7 +1477,7 @@ describe('log_external_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Saved "Apple" from usda (52 kcal per 100g) and logged 100 g to breakfast on 2026-06-10.'
+      '✅ Saved "Apple" from usda (52 kcal per 100g) and logged 100 g to Breakfast on 2026-06-10.'
     );
   });
 });
@@ -1577,7 +1577,7 @@ describe('create_food', () => {
     );
 
     expect(result).toBe(
-      '✅ Food "Rice" created with 130 kcal per 100g. Also logged to lunch for 2026-06-10.'
+      '✅ Food "Rice" created with 130 kcal per 100g. Also logged to Lunch for 2026-06-10.'
     );
     expect(foodCoreService.createFood).toHaveBeenCalledWith(
       'user-1',
@@ -1682,7 +1682,7 @@ describe('log_meal', () => {
     );
 
     expect(result).toBe(
-      '✅ Meal "Overnight Oats" logged for breakfast on 2026-06-10.'
+      '✅ Meal "Overnight Oats" logged for Breakfast on 2026-06-10.'
     );
     expect(foodEntryService.createFoodEntryMeal).toHaveBeenCalledWith(
       'user-1',
@@ -2036,7 +2036,7 @@ describe('update_entry', () => {
       opts
     );
 
-    expect(result).toBe('✅ Entry updated: meal type to breakfast.');
+    expect(result).toBe('✅ Entry updated: meal type to Breakfast.');
     expect(foodEntryService.updateFoodEntry).toHaveBeenCalledWith(
       'user-1',
       'user-1',
@@ -2305,9 +2305,9 @@ describe('copy_from_yesterday', () => {
       'user-1',
       'user-1',
       '2026-06-09',
-      'breakfast',
+      'Breakfast',
       '2026-06-10',
-      'breakfast'
+      'Breakfast'
     );
   });
 
@@ -2360,7 +2360,7 @@ describe('save_as_meal_template', () => {
     );
 
     expect(result).toBe(
-      '✅ Meal "Overnight Oats" logged for breakfast on 2026-06-10.'
+      '✅ Meal "Overnight Oats" logged for Breakfast on 2026-06-10.'
     );
     expect(foodEntryService.createFoodEntryMeal).toHaveBeenCalled();
     expect(mealService.createMealFromDiaryEntries).not.toHaveBeenCalled();
@@ -2429,7 +2429,7 @@ describe('save_as_meal_template', () => {
     expect(mealService.createMealFromDiaryEntries).toHaveBeenCalledWith(
       'user-1',
       '2026-06-10',
-      'lunch',
+      'Lunch',
       'My Lunch',
       null
     );
@@ -2474,7 +2474,7 @@ describe('save_as_meal_template', () => {
 
   it('surfaces an empty slot as a DB error (message lacks "not found")', async () => {
     vi.mocked(mealService.createMealFromDiaryEntries).mockRejectedValue(
-      new Error('No food entries found for lunch on 2026-06-10.')
+      new Error('No food entries found for Lunch on 2026-06-10.')
     );
 
     const result = await tools.sparky_manage_food.execute!(

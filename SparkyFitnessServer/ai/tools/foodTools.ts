@@ -493,7 +493,7 @@ async function resolveMealType(
     (type: { id: string; name: string }) =>
       type.name.trim().toLowerCase() === normalizedName
   );
-  return resolved ? { id: resolved.id, name: mealType.trim() } : null;
+  return resolved ? { id: resolved.id, name: resolved.name } : null;
 }
 // Full food_entries dumps (`SELECT fe.*`, used by recent-entries and food-usage)
 // add audit/ownership columns on top of the diary projection's surrogate keys.
@@ -1494,7 +1494,7 @@ Actions:
                       args.meal_type
                     )
                   : undefined;
-              if (mealType === null) {
+              if (!mealType) {
                 return ERRORS.VALIDATION(
                   `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
                 );
@@ -1864,7 +1864,7 @@ Actions:
                       args.meal_type
                     )
                   : undefined;
-              if (mealType === null) {
+              if (!mealType) {
                 return ERRORS.VALIDATION(
                   `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
                 );
@@ -2048,7 +2048,7 @@ Actions:
                       args.meal_type
                     )
                   : undefined;
-              if (mealType === null) {
+              if (!mealType) {
                 return ERRORS.VALIDATION(
                   `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
                 );
@@ -2087,7 +2087,7 @@ Actions:
                       args.meal_type
                     )
                   : undefined;
-              if (mealType === null) {
+              if (!mealType) {
                 return ERRORS.VALIDATION(
                   `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
                 );
