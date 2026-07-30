@@ -235,6 +235,8 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
     [entryForDue, deleteEntryMutation, logDose, showEntryError],
   );
 
+  // Unlike scheduled slots, a PRN log has no toggle surface to undo a
+  // mis-tap, so the success toast itself is the undo affordance.
   const logPrn = useCallback(
     (med: Medication) => {
       createEntryMutation.mutate(
@@ -245,12 +247,26 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
           taken_at: new Date().toISOString(),
         },
         {
-          onSuccess: () => Toast.show({ type: 'success', text1: `${med.name} logged` }),
+          onSuccess: (created) =>
+            Toast.show({
+              type: 'success',
+              text1: `${med.name} logged`,
+              text2: 'Tap to undo',
+              props: {
+                onPress: () => {
+                  Toast.hide();
+                  deleteEntryMutation.mutate(created.id, {
+                    onSuccess: () => Toast.show({ type: 'info', text1: `${med.name} dose removed` }),
+                    onError: (error) => showEntryError(`Failed to remove ${med.name} dose`, error),
+                  });
+                },
+              },
+            }),
           onError: (error) => showEntryError(`Failed to log ${med.name}`, error),
         },
       );
     },
-    [createEntryMutation, selectedDate, showEntryError],
+    [createEntryMutation, deleteEntryMutation, selectedDate, showEntryError],
   );
 
   return { entryForDue, logDose, toggleTaken, logPrn };
