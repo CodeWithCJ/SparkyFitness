@@ -145,6 +145,19 @@ describe('DoseRow', () => {
       expect(onLog).toHaveBeenCalled();
     });
 
+    it('keeps the title and subtitle unmuted after doses have been taken', () => {
+      const screen = render(
+        <DoseRow kind="prn" count={1} onLog={jest.fn()} title="Ibuprofen" subtitle="As needed" />,
+      );
+
+      const title = screen.getByText('Ibuprofen');
+      expect(title.props.className).toContain('text-text-primary');
+      expect(title.props.className).not.toContain('text-text-muted');
+      const subtitle = screen.getByText('As needed');
+      expect(subtitle.props.className).toContain('text-text-secondary');
+      expect(subtitle.props.className).not.toContain('text-text-muted');
+    });
+
     it('centers the Take button in the pair-width actions column', () => {
       const screen = render(<DoseRow kind="prn" count={0} onLog={jest.fn()} title="Ibuprofen" />);
 
