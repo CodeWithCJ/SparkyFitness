@@ -60,6 +60,7 @@ interface RenderOverrides {
   state?: SetRowState;
   metricColumn?: ActiveWorkoutMetricColumn;
   weightUnit?: 'kg' | 'lbs';
+  distanceUnit?: 'km' | 'miles';
   displayNumber?: number;
   readOnly?: boolean;
   mode?: SetRowMode;
@@ -104,6 +105,7 @@ function renderRow(overrides?: RenderOverrides) {
       state={current?.state ?? 'current'}
       metricColumn={current?.metricColumn ?? 'rpe'}
       weightUnit={current?.weightUnit ?? 'kg'}
+      distanceUnit={current?.distanceUnit}
       mode={current?.mode ?? (current?.readOnly ? 'view' : undefined)}
       activeField={current?.activeField}
       isFocused={current?.isFocused}
@@ -626,6 +628,60 @@ describe('ActiveWorkoutSetRow', () => {
         });
         fireEvent.press(getByLabelText('Fill set 1 from previous'));
         expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { duration: 45 });
+      });
+    });
+
+    describe('duration_distance view-mode distance cell', () => {
+      it('renders the distance next to the seconds', () => {
+        const { getByText } = renderRow({
+          modality: 'duration_distance',
+          state: 'done',
+          readOnly: true,
+          set: { weight: null, reps: null, duration: 300, distance: 1.25 },
+        });
+        expect(getByText('300')).toBeTruthy();
+        expect(getByText('1.25')).toBeTruthy();
+      });
+
+      it('converts the distance into miles for a miles user', () => {
+        const { getByText } = renderRow({
+          modality: 'duration_distance',
+          state: 'done',
+          readOnly: true,
+          distanceUnit: 'miles',
+          set: { weight: null, reps: null, duration: 300, distance: 3.218688 },
+        });
+        expect(getByText('2')).toBeTruthy();
+      });
+
+      it('shows a dash when the set has no distance', () => {
+        const { getByText } = renderRow({
+          modality: 'duration_distance',
+          state: 'done',
+          readOnly: true,
+          set: { weight: null, reps: null, duration: 300, distance: null, rpe: 5 },
+        });
+        expect(getByText('–')).toBeTruthy();
+      });
+
+      it('renders no distance cell on plain duration rows', () => {
+        const { queryByText } = renderRow({
+          modality: 'duration',
+          state: 'done',
+          readOnly: true,
+          set: { weight: null, reps: null, duration: 300, distance: 1.25 },
+        });
+        expect(queryByText('1.25')).toBeNull();
+      });
+
+      it('keeps the single seconds input in live mode', () => {
+        const { getByLabelText, queryByText } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          set: { weight: null, reps: null, duration: 300, distance: 1.25 },
+        });
+        expect(getByLabelText('Duration')).toBeTruthy();
+        expect(queryByText('1.25')).toBeNull();
       });
     });
 

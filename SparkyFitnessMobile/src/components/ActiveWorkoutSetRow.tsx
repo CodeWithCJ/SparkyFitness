@@ -18,7 +18,7 @@ import {
 import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import { withAlpha } from '../utils/colors';
 import { parseDecimalInput } from '../utils/numericInput';
-import { weightFromKg, weightToKg } from '../utils/unitConversions';
+import { distanceFromKm, weightFromKg, weightToKg } from '../utils/unitConversions';
 import {
   effectiveSetDurationSec,
   epley1RmKg,
@@ -78,9 +78,12 @@ interface ActiveWorkoutSetRowProps {
   /**
    * The owning exercise's resolved modality (see `resolveSnapshotModality`):
    * it decides which value cells the row renders — weight+reps, reps only, or
-   * a single duration-in-seconds cell.
+   * a duration-in-seconds cell (plus a read-only distance cell on
+   * `duration_distance` view rows).
    */
   modality?: ExerciseModality;
+  /** Display unit for the `duration_distance` view-mode distance cell. */
+  distanceUnit?: 'km' | 'miles';
   /**
    * Stable React render key for this row (from the store's `setRenderKeys`
    * map). Defaults to the set id. The accessory-handle registration is keyed
@@ -181,6 +184,7 @@ interface ActiveWorkoutSetRowProps {
 function ActiveWorkoutSetRow({
   set,
   modality = 'weight_reps',
+  distanceUnit = 'km',
   renderKey,
   displayNumber,
   state: stateProp,
@@ -770,6 +774,16 @@ function ActiveWorkoutSetRow({
       {effectiveDurationSec != null ? String(effectiveDurationSec) : '–'}
     </Text>
   );
+  const distanceCellText = (
+    <Text
+      className="flex-1 text-center text-sm text-text-primary"
+      style={{ fontVariant: ['tabular-nums'] }}
+    >
+      {set.distance != null
+        ? String(parseFloat(distanceFromKm(set.distance, distanceUnit).toFixed(2)))
+        : '–'}
+    </Text>
+  );
 
   // Live and edit cells: always-mounted inputs. Focus lands natively on tap
   // and is reported up through onActivateSet/onActivateRpe so the screen can
@@ -885,7 +899,10 @@ function ActiveWorkoutSetRow({
         {previousCell}
         {durationLike ? (
           readOnly ? (
-            durationCellText
+            <>
+              {durationCellText}
+              {modality === 'duration_distance' && distanceCellText}
+            </>
           ) : (
             durationInputCell
           )
