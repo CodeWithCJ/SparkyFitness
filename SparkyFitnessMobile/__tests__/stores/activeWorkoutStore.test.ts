@@ -350,6 +350,55 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().startWorkoutAtSet(makeSession(), '102');
       expect(useActiveWorkoutStore.getState().createdByLiveStart).toBe(false);
     });
+
+    it('records the source preset link when passed', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+        createdByLiveStart: true,
+        sourcePresetId: 42,
+        sourceServerConfigId: 'config-1',
+      });
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sourcePresetId).toBe(42);
+      expect(state.sourceServerConfigId).toBe('config-1');
+    });
+
+    it('defaults the source preset link to null', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), { createdByLiveStart: true });
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sourcePresetId).toBeNull();
+      expect(state.sourceServerConfigId).toBeNull();
+    });
+
+    it('clearWorkout resets the source preset link', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+        sourcePresetId: 42,
+        sourceServerConfigId: 'config-1',
+      });
+      useActiveWorkoutStore.getState().clearWorkout();
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sourcePresetId).toBeNull();
+      expect(state.sourceServerConfigId).toBeNull();
+    });
+
+    it('startWorkoutAtSet clears any source preset link', () => {
+      useActiveWorkoutStore.setState({ sourcePresetId: 42, sourceServerConfigId: 'config-1' });
+      useActiveWorkoutStore.getState().startWorkoutAtSet(makeSession(), '102');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sourcePresetId).toBeNull();
+      expect(state.sourceServerConfigId).toBeNull();
+    });
+
+    it('persists the source preset link via partialize', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+        sourcePresetId: 42,
+        sourceServerConfigId: 'config-1',
+      });
+      const persisted = useActiveWorkoutStore.persist
+        .getOptions()
+        .partialize!(useActiveWorkoutStore.getState()) as Record<string, unknown>;
+      expect(persisted.sourcePresetId).toBe(42);
+      expect(persisted.sourceServerConfigId).toBe('config-1');
+    });
   });
 
   describe('startWorkoutAtSet', () => {

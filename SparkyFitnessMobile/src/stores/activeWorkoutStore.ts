@@ -183,10 +183,24 @@ export interface ActiveWorkoutState {
    * row renders. Persisted so a cold-start resume keeps resolving.
    */
   previousSessionSets: Record<string, ExerciseRecentSessionSet[]>;
+  /**
+   * Preset this live workout was started from, plus the server config it
+   * lives on — preset ids are numeric and collide across configured servers,
+   * and switching the active server doesn't clear this store. Both feed the
+   * update-preset prompt on the completion screen. Persisted so the link
+   * survives a cold-start resume.
+   */
+  sourcePresetId: number | null;
+  sourceServerConfigId: string | null;
 
   startWorkout: (
     session: PresetSessionResponse,
-    opts?: { createdByLiveStart?: boolean; plannedSetValues?: AssumedSetValues[][] },
+    opts?: {
+      createdByLiveStart?: boolean;
+      plannedSetValues?: AssumedSetValues[][];
+      sourcePresetId?: number;
+      sourceServerConfigId?: string;
+    },
   ) => void;
   startWorkoutAtSet: (session: PresetSessionResponse, setId: string) => void;
   /**
@@ -372,6 +386,8 @@ const initialData: Pick<
   | 'setRenderKeys'
   | 'plannedSetValues'
   | 'previousSessionSets'
+  | 'sourcePresetId'
+  | 'sourceServerConfigId'
 > = {
   sessionId: null,
   session: null,
@@ -388,6 +404,8 @@ const initialData: Pick<
   setRenderKeys: {},
   plannedSetValues: {},
   previousSessionSets: {},
+  sourcePresetId: null,
+  sourceServerConfigId: null,
 };
 
 /**
@@ -915,6 +933,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // Previous-session sets are captured lazily per exercise by the
           // live card, like the PR baseline.
           previousSessionSets: {},
+          sourcePresetId: opts?.sourcePresetId ?? null,
+          sourceServerConfigId: opts?.sourceServerConfigId ?? null,
         });
       },
 
@@ -959,6 +979,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // are real. Previous-session sets re-capture lazily.
           plannedSetValues: {},
           previousSessionSets: {},
+          // Nor was it started from a preset this session — no update-preset
+          // prompt on finish.
+          sourcePresetId: null,
+          sourceServerConfigId: null,
         });
       },
 
@@ -1816,6 +1840,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // may adopt before any card remounts to re-capture history.
         plannedSetValues: state.plannedSetValues,
         previousSessionSets: state.previousSessionSets,
+        // The preset link feeds the finish prompt; survives a cold start.
+        sourcePresetId: state.sourcePresetId,
+        sourceServerConfigId: state.sourceServerConfigId,
       }),
       migrate: (persistedState, version) => {
         // v4 changed `completedSetIds` values from `true` to epoch-ms tap

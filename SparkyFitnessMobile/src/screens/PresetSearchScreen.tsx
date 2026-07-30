@@ -95,6 +95,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     void startLiveWorkout({
       name: preset.name,
       exercises: buildPresetStartExercisesPayload(preset),
+      sourcePresetId: preset.id,
     });
   }, [startLiveWorkout]);
 

@@ -15,6 +15,7 @@ import {
   buildExercisesPayload,
   buildPresetExercisesPayload,
   buildPresetStartExercisesPayload,
+  buildPresetUpdateExercises,
   buildSessionExercisesPayload,
   buildSingleExerciseStartPayload,
   draftExerciseToCardExercise,
@@ -63,7 +64,10 @@ import type {
   ExerciseSessionResponse,
   ExerciseSnapshotResponse,
 } from '@workspace/shared';
-import { presetSessionExerciseRequestSchema } from '@workspace/shared';
+import {
+  presetSessionExerciseRequestSchema,
+  workoutPresetExerciseRequestSchema,
+} from '@workspace/shared';
 import { weightFromKg } from '../../src/utils/unitConversions';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
 import type {
@@ -3900,6 +3904,468 @@ describe('workoutSession', () => {
         primary_muscles: ['quadriceps'],
         equipment: ['barbell'],
       });
+    });
+  });
+
+  describe('buildPresetUpdateExercises', () => {
+    const EX_A = '11111111-1111-4111-8111-111111111111';
+    const EX_B = '22222222-2222-4222-8222-222222222222';
+
+    type SessionExercise = PresetSession['exercises'][number];
+    type SessionSet = SessionExercise['sets'][number];
+
+    const strengthSnapshot = {
+      id: EX_A,
+      name: 'Bench Press',
+      category: 'Strength',
+      calories_per_hour: 400,
+      source: 'system',
+      images: [],
+    } as any;
+
+    const makeSessionSet = (overrides?: Partial<SessionSet>): SessionSet =>
+      ({
+        id: 101,
+        set_number: 1,
+        set_type: 'normal',
+        reps: 5,
+        weight: 100,
+        duration: null,
+        rest_time: 90,
+        notes: null,
+        rpe: null,
+        completed_at: null,
+        is_pr: false,
+        ...overrides,
+      }) as SessionSet;
+
+    const makeSessionExercise = (overrides?: Partial<SessionExercise>): SessionExercise =>
+      ({
+        id: 'entry-1',
+        exercise_id: EX_A,
+        duration_minutes: 20,
+        calories_burned: 0,
+        entry_date: '2026-07-15',
+        notes: null,
+        distance: null,
+        avg_heart_rate: null,
+        source: null,
+        superset_group: null,
+        exercise_snapshot: strengthSnapshot,
+        activity_details: [],
+        sets: [makeSessionSet()],
+        ...overrides,
+      }) as SessionExercise;
+
+    const makeTargetPresetSet = (overrides?: Partial<WorkoutPresetSet>): WorkoutPresetSet => ({
+      id: 901,
+      set_number: 1,
+      set_type: 'normal',
+      reps: 5,
+      weight: 100,
+      duration: null,
+      rest_time: 90,
+      notes: null,
+      ...overrides,
+    });
+
+    const makeTargetPresetExercise = (
+      overrides?: Partial<WorkoutPresetExercise>,
+    ): WorkoutPresetExercise => ({
+      id: 801,
+      exercise_id: EX_A,
+      image_url: null,
+      exercise_name: 'Bench Press',
+      category: 'Strength',
+      superset_group: null,
+      sets: [makeTargetPresetSet()],
+      ...overrides,
+    });
+
+    const makeTargetPreset = (overrides?: Partial<WorkoutPreset>): WorkoutPreset => ({
+      id: 42,
+      user_id: 'user-1',
+      name: 'Push Day',
+      description: null,
+      is_public: false,
+      exercises: [makeTargetPresetExercise()],
+      ...overrides,
+    });
+
+    /** Opts marking every session set completed, with no live-start plan. */
+    const allCompleted = (session: PresetSession) => {
+      const completedSetIds: Record<string, number> = {};
+      session.exercises.forEach((e) =>
+        e.sets.forEach((s) => {
+          completedSetIds[String(s.id)] = 1;
+        }),
+      );
+      return { completedSetIds, plannedSetValues: {} };
+    };
+
+    it('returns null when the performed session matches the preset', () => {
+      const session = makePreset({ exercises: [makeSessionExercise()] });
+      expect(
+        buildPresetUpdateExercises(session, makeTargetPreset(), allCompleted(session)),
+      ).toBeNull();
+    });
+
+    it('returns the full payload when a completed set value changed', () => {
+      const session = makePreset({
+        exercises: [makeSessionExercise({ sets: [makeSessionSet({ weight: 105 })] })],
+      });
+      const payload = buildPresetUpdateExercises(
+        session,
+        makeTargetPreset(),
+        allCompleted(session),
+      );
+      expect(payload).toEqual([
+        {
+          exercise_id: EX_A,
+          image_url: null,
+          sort_order: 0,
+          superset_group: null,
+          sets: [
+            {
+              set_number: 1,
+              set_type: 'normal',
+              reps: 5,
+              weight: 105,
+              duration: null,
+              rest_time: 90,
+              notes: null,
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('emits exercises that parse under the preset request schema', () => {
+      const session = makePreset({
+        exercises: [makeSessionExercise({ sets: [makeSessionSet({ weight: 105 })] })],
+      });
+      const payload = buildPresetUpdateExercises(
+        session,
+        makeTargetPreset(),
+        allCompleted(session),
+      )!;
+      for (const exercise of payload) {
+        expect(() => workoutPresetExerciseRequestSchema.parse(exercise)).not.toThrow();
+      }
+    });
+
+    it('flags an added set and renumbers sequentially', () => {
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            sets: [makeSessionSet(), makeSessionSet({ id: 102, set_number: 2, weight: 90 })],
+          }),
+        ],
+      });
+      const payload = buildPresetUpdateExercises(
+        session,
+        makeTargetPreset(),
+        allCompleted(session),
+      );
+      expect(payload![0].sets.map((s) => s.set_number)).toEqual([1, 2]);
+      expect(payload![0].sets[1].weight).toBe(90);
+    });
+
+    it('flags a removed set', () => {
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise({
+            sets: [makeTargetPresetSet(), makeTargetPresetSet({ id: 902, set_number: 2 })],
+          }),
+        ],
+      });
+      const session = makePreset({ exercises: [makeSessionExercise()] });
+      const payload = buildPresetUpdateExercises(session, preset, allCompleted(session));
+      expect(payload![0].sets).toHaveLength(1);
+    });
+
+    it('flags an added exercise and takes its image from the snapshot', () => {
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise(),
+          makeSessionExercise({
+            id: 'entry-2',
+            exercise_id: EX_B,
+            exercise_snapshot: { ...strengthSnapshot, id: EX_B, name: 'Row', images: ['row.jpg'] },
+            sets: [makeSessionSet({ id: 201 })],
+          }),
+        ],
+      });
+      const payload = buildPresetUpdateExercises(
+        session,
+        makeTargetPreset(),
+        allCompleted(session),
+      );
+      expect(payload).toHaveLength(2);
+      expect(payload![1]).toEqual(
+        expect.objectContaining({ exercise_id: EX_B, sort_order: 1, image_url: 'row.jpg' }),
+      );
+    });
+
+    it('flags a removed exercise', () => {
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise(),
+          makeTargetPresetExercise({ id: 802, exercise_id: EX_B, exercise_name: 'Row' }),
+        ],
+      });
+      const session = makePreset({ exercises: [makeSessionExercise()] });
+      const payload = buildPresetUpdateExercises(session, preset, allCompleted(session));
+      expect(payload).toHaveLength(1);
+      expect(payload![0].exercise_id).toBe(EX_A);
+    });
+
+    it('flags an exercise reorder and emits the session order', () => {
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise(),
+          makeTargetPresetExercise({ id: 802, exercise_id: EX_B, exercise_name: 'Row' }),
+        ],
+      });
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            id: 'entry-2',
+            exercise_id: EX_B,
+            exercise_snapshot: { ...strengthSnapshot, id: EX_B, name: 'Row' },
+            sets: [makeSessionSet({ id: 201 })],
+          }),
+          makeSessionExercise(),
+        ],
+      });
+      const payload = buildPresetUpdateExercises(session, preset, allCompleted(session));
+      expect(payload!.map((e) => e.exercise_id)).toEqual([EX_B, EX_A]);
+    });
+
+    it('flags a superset regrouping', () => {
+      const session = makePreset({
+        exercises: [makeSessionExercise({ superset_group: 1 })],
+      });
+      const payload = buildPresetUpdateExercises(
+        session,
+        makeTargetPreset(),
+        allCompleted(session),
+      );
+      expect(payload![0].superset_group).toBe(1);
+    });
+
+    it('keeps the preset image for matched exercises so image churn is not a deviation', () => {
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            exercise_snapshot: { ...strengthSnapshot, images: ['fresh.jpg'] },
+          }),
+        ],
+      });
+      const preset = makeTargetPreset({
+        exercises: [makeTargetPresetExercise({ image_url: 'preset.jpg' })],
+      });
+      expect(buildPresetUpdateExercises(session, preset, allCompleted(session))).toBeNull();
+    });
+
+    it('backfills weight/reps for a skipped set from its planned values', () => {
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            sets: [
+              makeSessionSet({ weight: 105 }),
+              makeSessionSet({ id: 102, set_number: 2, weight: null, reps: null }),
+            ],
+          }),
+        ],
+      });
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise({
+            sets: [makeTargetPresetSet(), makeTargetPresetSet({ id: 902, set_number: 2 })],
+          }),
+        ],
+      });
+      const payload = buildPresetUpdateExercises(session, preset, {
+        completedSetIds: { '101': 1 },
+        plannedSetValues: { '102': { weight: 100, reps: 5, duration: null } },
+      });
+      expect(payload![0].sets[1]).toEqual(expect.objectContaining({ weight: 100, reps: 5 }));
+    });
+
+    it('returns null when the only open question is a skipped set still matching its plan', () => {
+      const session = makePreset({
+        exercises: [makeSessionExercise({ sets: [makeSessionSet({ weight: null, reps: null })] })],
+      });
+      expect(
+        buildPresetUpdateExercises(session, makeTargetPreset(), {
+          completedSetIds: {},
+          plannedSetValues: { '101': { weight: 100, reps: 5, duration: null } },
+        }),
+      ).toBeNull();
+    });
+
+    it('keys backfill by set id so a mid-workout deletion cannot shift it', () => {
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            sets: [
+              makeSessionSet({ weight: 105 }),
+              // Set 102 was deleted mid-workout; 103 stays skipped.
+              makeSessionSet({ id: 103, set_number: 2, weight: null, reps: null }),
+            ],
+          }),
+        ],
+      });
+      const payload = buildPresetUpdateExercises(session, makeTargetPreset(), {
+        completedSetIds: { '101': 1 },
+        plannedSetValues: {
+          '102': { weight: 80, reps: 12, duration: null },
+          '103': { weight: 100, reps: 5, duration: null },
+        },
+      });
+      expect(payload![0].sets[1]).toEqual(expect.objectContaining({ weight: 100, reps: 5 }));
+    });
+
+    it('treats an explicitly cleared note on a completed set as a deviation, not a resurrection', () => {
+      const session = makePreset({ exercises: [makeSessionExercise()] });
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise({ sets: [makeTargetPresetSet({ notes: 'slow tempo' })] }),
+        ],
+      });
+      const payload = buildPresetUpdateExercises(session, preset, allCompleted(session));
+      expect(payload).not.toBeNull();
+      expect(payload![0].sets[0].notes).toBeNull();
+    });
+
+    it('nulls duration on non-duration modalities so leaked values are not deviations', () => {
+      // Junk duration on BOTH sides of a weights exercise (the known leak
+      // class) must cancel out rather than prompt or reach the payload.
+      const session = makePreset({
+        exercises: [makeSessionExercise({ sets: [makeSessionSet({ duration: 90 })] })],
+      });
+      const preset = makeTargetPreset({
+        exercises: [makeTargetPresetExercise({ sets: [makeTargetPresetSet({ duration: 45 })] })],
+      });
+      expect(buildPresetUpdateExercises(session, preset, allCompleted(session))).toBeNull();
+    });
+
+    it('keeps duration on duration-modality exercises and detects a changed hold', () => {
+      const plankSnapshot = { ...strengthSnapshot, name: 'Plank', modality: 'duration' };
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            exercise_snapshot: plankSnapshot,
+            sets: [makeSessionSet({ reps: null, weight: null, duration: 75 })],
+          }),
+        ],
+      });
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise({
+            sets: [makeTargetPresetSet({ reps: null, weight: null, duration: 60 })],
+          }),
+        ],
+      });
+      const payload = buildPresetUpdateExercises(session, preset, allCompleted(session));
+      expect(payload![0].sets[0].duration).toBe(75);
+    });
+
+    it('coerces cardio rest to 0 on both sides so preset-null vs live-0 is not a deviation', () => {
+      const runSnapshot = {
+        ...strengthSnapshot,
+        name: 'Run',
+        category: 'Cardio',
+        modality: 'duration_distance',
+      };
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            exercise_snapshot: runSnapshot,
+            sets: [makeSessionSet({ reps: null, weight: null, duration: 1500, rest_time: 0 })],
+          }),
+        ],
+      });
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise({
+            sets: [
+              makeTargetPresetSet({ reps: null, weight: null, duration: 1500, rest_time: null }),
+            ],
+          }),
+        ],
+      });
+      expect(buildPresetUpdateExercises(session, preset, allCompleted(session))).toBeNull();
+    });
+
+    it('canonicalizes an untouched fabricated set back to a zero-set preset exercise', () => {
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            sets: [makeSessionSet({ weight: null, reps: null, rest_time: DEFAULT_REST_SEC })],
+          }),
+        ],
+      });
+      const preset = makeTargetPreset({ exercises: [makeTargetPresetExercise({ sets: [] })] });
+      expect(
+        buildPresetUpdateExercises(session, preset, {
+          completedSetIds: {},
+          plannedSetValues: {},
+        }),
+      ).toBeNull();
+    });
+
+    it('writes the fabricated set into a zero-set preset exercise once it was actually used', () => {
+      const session = makePreset({
+        exercises: [makeSessionExercise({ sets: [makeSessionSet({ weight: 80, reps: 10 })] })],
+      });
+      const preset = makeTargetPreset({ exercises: [makeTargetPresetExercise({ sets: [] })] });
+      const payload = buildPresetUpdateExercises(session, preset, allCompleted(session));
+      expect(payload![0].sets).toEqual([expect.objectContaining({ weight: 80, reps: 10 })]);
+    });
+
+    it('treats a null set_type as normal on both sides', () => {
+      const session = makePreset({
+        exercises: [makeSessionExercise({ sets: [makeSessionSet({ set_type: null })] })],
+      });
+      const preset = makeTargetPreset({
+        exercises: [makeTargetPresetExercise({ sets: [makeTargetPresetSet({ set_type: 'normal' })] })],
+      });
+      expect(buildPresetUpdateExercises(session, preset, allCompleted(session))).toBeNull();
+    });
+
+    it('passes kg through with float-noise normalization instead of a unit round-trip', () => {
+      const session = makePreset({
+        exercises: [makeSessionExercise({ sets: [makeSessionSet({ weight: 102.50000000001 })] })],
+      });
+      const preset = makeTargetPreset({
+        exercises: [makeTargetPresetExercise({ sets: [makeTargetPresetSet({ weight: 102.5 })] })],
+      });
+      expect(buildPresetUpdateExercises(session, preset, allCompleted(session))).toBeNull();
+    });
+
+    it('pairs duplicate exercises in order so both keep their own image and sets', () => {
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise(),
+          makeSessionExercise({
+            id: 'entry-2',
+            sets: [makeSessionSet({ id: 102, weight: 60 })],
+          }),
+        ],
+      });
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise({ image_url: 'a1.jpg' }),
+          makeTargetPresetExercise({
+            id: 802,
+            image_url: 'a2.jpg',
+            sets: [makeTargetPresetSet({ weight: 60 })],
+          }),
+        ],
+      });
+      expect(buildPresetUpdateExercises(session, preset, allCompleted(session))).toBeNull();
     });
   });
 });
