@@ -7,7 +7,7 @@ import { ActivityStatsGrid } from '@/components/ExerciseCharts/ActivityStatsGrid
 import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActivityDetailsQuery } from '@/hooks/Exercises/useExercises';
-import { useWorkoutGpsPoints } from '@/hooks/useGenericHealth';
+import { useWorkoutGpsPoints, useWorkoutLaps } from '@/hooks/useGenericHealth';
 import {
   processChartData,
   processGpsPointsToChartData,
@@ -22,7 +22,7 @@ import {
   convertMlToSelectedUnit,
   getEnergyUnitString,
 } from '@/utils/nutritionCalculations';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityReportLapTable from './ActivityReportLapTable';
 import ActivityReportMap from './ActivityReportMap';
@@ -64,6 +64,28 @@ const ActivityReportVisualizer = ({
   } = usePreferences();
 
   const { data: gpsPoints } = useWorkoutGpsPoints(exerciseEntryId);
+  const { data: dbLaps } = useWorkoutLaps(exerciseEntryId);
+
+  const effectiveLaps = useMemo(() => {
+    if (dbLaps && dbLaps.length > 0) {
+      return dbLaps.map((l) => ({
+        lapIndex: l.lap_index,
+        startTimeLocal: l.start_time ? String(l.start_time) : '',
+        endTimeLocal: l.end_time ? String(l.end_time) : '',
+        duration: l.duration_seconds,
+        distance: l.distance_meters != null ? l.distance_meters / 1000 : 0,
+        calories: l.calories ?? 0,
+        averageHR: l.avg_heart_rate ?? 0,
+        maxHR: l.max_heart_rate ?? 0,
+        averageSpeed: l.avg_speed_mps ?? 0,
+        maxSpeed: l.max_speed_mps ?? 0,
+        averageRunCadence: l.avg_cadence ?? 0,
+        elevationGain: l.elevation_gain_meters ?? 0,
+        elevationLoss: l.elevation_loss_meters ?? 0,
+      }));
+    }
+    return activityData?.activity?.splits?.lapDTOs || [];
+  }, [dbLaps, activityData]);
 
   const allChartData =
     gpsPoints && gpsPoints.length > 0
@@ -98,7 +120,7 @@ const ActivityReportVisualizer = ({
     );
   }
 
-  if (!activityData) {
+  if (!activityData && (!gpsPoints || gpsPoints.length === 0)) {
     return <div>{t('reports.activityReport.noActivityDataAvailable')}</div>;
   }
 
@@ -132,7 +154,7 @@ const ActivityReportVisualizer = ({
   );
   info(loggingLevel, 'Filtered Heart Rate Data:', heartRateData);
 
-  const rawHrZones = activityData.activity?.hr_in_timezones as
+  const rawHrZones = activityData?.activity?.hr_in_timezones as
     | HeartRateZone[]
     | undefined;
   const hrInTimezonesData = rawHrZones?.map((zone) => ({
@@ -141,7 +163,9 @@ const ActivityReportVisualizer = ({
   }));
 
   // Provider-agnostic stats
-  const stats = readActivityStats(activityData);
+  const stats = readActivityStats(
+    activityData || ({} as unknown as Parameters<typeof readActivityStats>[0])
+  );
 
   // Distance: prefer chart data (most accurate after conversion), fall back to stats
   let totalActivityDistanceForDisplay: number | null = null;
@@ -252,11 +276,11 @@ const ActivityReportVisualizer = ({
       <div className="flex items-center mb-4">
         <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
           <span className="text-xl">
-            {activityData.activity ? getActivityIcon(activityTypeKey) : '🏋️'}
+            {activityData?.activity ? getActivityIcon(activityTypeKey) : '🏋️'}
           </span>
         </div>
         <h2 className="text-2xl font-bold">
-          {stats.activityName || activityData.workout?.workoutName}
+          {stats.activityName || activityData?.workout?.workoutName}
         </h2>
         <span className="ml-2 text-gray-500 cursor-pointer">✏️</span>
       </div>
@@ -304,20 +328,24 @@ const ActivityReportVisualizer = ({
               )}
             </div>
 
-            {activityData.activity?.details?.geoPolylineDTO?.polyline &&
-              activityData.activity.details.geoPolylineDTO.polyline.length >
-                0 && (
+            {(() => {
+              const mapPolyline =
+                gpsPoints && gpsPoints.length > 0
+                  ? gpsPoints
+                      .filter((p) => p.latitude !== 0 && p.longitude !== 0)
+                      .map((p) => ({ lat: p.latitude, lon: p.longitude }))
+                  : activityData?.activity?.details?.geoPolylineDTO?.polyline ||
+                    [];
+              if (mapPolyline.length === 0) return null;
+              return (
                 <div className="mb-8">
                   <h3 className="text-xl font-semibold mb-2">
                     {t('reports.activityReport.activityMap')}
                   </h3>
-                  <ActivityReportMap
-                    polylineData={
-                      activityData.activity.details.geoPolylineDTO.polyline
-                    }
-                  />
+                  <ActivityReportMap polylineData={mapPolyline} />
                 </div>
-              )}
+              );
+            })()}
 
             <div className="mb-8">
               <h3 className="text-xl font-semibold mb-2">
@@ -407,21 +435,20 @@ const ActivityReportVisualizer = ({
               )}
             </div>
 
-            {activityData.activity?.splits?.lapDTOs &&
-              activityData.activity.splits.lapDTOs.length > 0 && (
-                <ZoomableChart title={t('reports.activityReport.lapsTable')}>
-                  {(isMaximized, zoomLevel) => (
-                    <ActivityReportLapTable
-                      lapDTOs={activityData.activity!.splits?.lapDTOs ?? []}
-                      isMaximized={isMaximized}
-                      zoomLevel={zoomLevel}
-                    />
-                  )}
-                </ZoomableChart>
-              )}
+            {effectiveLaps && effectiveLaps.length > 0 && (
+              <ZoomableChart title={t('reports.activityReport.lapsTable')}>
+                {(isMaximized, zoomLevel) => (
+                  <ActivityReportLapTable
+                    lapDTOs={effectiveLaps}
+                    isMaximized={isMaximized}
+                    zoomLevel={zoomLevel}
+                  />
+                )}
+              </ZoomableChart>
+            )}
           </>
         )}
-      {activityData.workout && (
+      {activityData?.workout && (
         <WorkoutReportVisualizer workoutData={activityData.workout} />
       )}
     </div>

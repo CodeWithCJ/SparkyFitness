@@ -10,6 +10,31 @@ const inspectSchemaInput = z.object({
   table: z.string().min(1).describe('Name of the database table to inspect'),
 });
 
+const queryTableInput = z.object({
+  table: z.string().min(1).describe('Name of the database table to query'),
+  select: z
+    .string()
+    .optional()
+    .default('*')
+    .describe('Columns to select (default "*")'),
+  where: z
+    .string()
+    .optional()
+    .describe('Optional WHERE clause (e.g. "entry_date = \'2026-07-28\'")'),
+  orderBy: z
+    .string()
+    .optional()
+    .describe('Optional ORDER BY clause (e.g. "created_at DESC")'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .optional()
+    .default(20)
+    .describe('Max rows to return (1-100, default 20)'),
+});
+
 const emptyInput = z.object({});
 
 // Defense-in-depth gate re-checked on every call (the route already gates
@@ -135,6 +160,60 @@ export function buildDevTools(userId: string) {
         } catch (error) {
           log('error', '[Dev Tool] getDbStats error:', error);
           return ERRORS.DB_ERROR(error);
+        }
+      },
+    }),
+
+    sparky_query_table: tool({
+      description:
+        'Execute a read-only query on a database table for troubleshooting. Requires admin access and DEV_TOOLS_ENABLED=true.',
+      inputSchema: queryTableInput,
+      execute: async (rawArgs) => {
+        const denied = await assertDevAccess(userId);
+        if (denied) return denied;
+
+        const parsed = queryTableInput.safeParse(rawArgs);
+        if (!parsed.success) {
+          return formatZodError(parsed.error);
+        }
+        const { table, select, where, orderBy, limit } = parsed.data;
+
+        if (!/^[a-zA-Z0-9_.]+$/i.test(table)) {
+          return ERRORS.VALIDATION('Invalid table name');
+        }
+
+        const forbiddenRegex =
+          /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXECUTE|CALL)\b|;/i;
+        if (
+          forbiddenRegex.test(select) ||
+          (where && forbiddenRegex.test(where)) ||
+          (orderBy && forbiddenRegex.test(orderBy))
+        ) {
+          return ERRORS.FORBIDDEN(
+            'Modifying SQL operations or multi-statements are strictly prohibited'
+          );
+        }
+
+        const sqlParts = [
+          `SELECT ${select} FROM "${table.replace(/"/g, '""')}"`,
+        ];
+        if (where) sqlParts.push(`WHERE ${where}`);
+        if (orderBy) sqlParts.push(`ORDER BY ${orderBy}`);
+        sqlParts.push(`LIMIT ${limit}`);
+
+        const querySql = sqlParts.join(' ');
+        const client = await getSystemClient();
+        try {
+          const result = await client.query(querySql);
+          return formatSuccess(
+            { table, rows: result.rows, row_count: result.rows.length },
+            `Query Table: ${table}`
+          );
+        } catch (error) {
+          log('error', '[Dev Tool] queryTable error:', error);
+          return ERRORS.DB_ERROR(error);
+        } finally {
+          client.release();
         }
       },
     }),

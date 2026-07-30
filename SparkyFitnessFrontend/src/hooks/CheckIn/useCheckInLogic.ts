@@ -356,7 +356,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     });
 
     recentStandard.forEach((s: CheckInMeasurementsResponse) => {
-      if (s.weight !== null)
+      if (s.weight != null)
         allMeasurements.push({
           id: `${s.id}-weight`,
           originalId: s.id,
@@ -368,7 +368,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           entry_hour: null,
           entry_timestamp: s.updated_at,
         });
-      if (s.neck !== null)
+      if (s.neck != null)
         allMeasurements.push({
           id: `${s.id}-neck`,
           originalId: s.id,
@@ -380,7 +380,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           entry_hour: null,
           entry_timestamp: s.updated_at,
         });
-      if (s.waist !== null)
+      if (s.waist != null)
         allMeasurements.push({
           id: `${s.id}-waist`,
           originalId: s.id,
@@ -392,7 +392,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           entry_hour: null,
           entry_timestamp: s.updated_at,
         });
-      if (s.hips !== null)
+      if (s.hips != null)
         allMeasurements.push({
           id: `${s.id}-hips`,
           originalId: s.id,
@@ -404,7 +404,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           entry_hour: null,
           entry_timestamp: s.updated_at,
         });
-      if (s.steps !== null)
+      if (s.steps != null)
         allMeasurements.push({
           id: `${s.id}-steps`,
           originalId: s.id,
@@ -416,7 +416,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           entry_hour: null,
           entry_timestamp: s.updated_at,
         });
-      if (s.height !== null)
+      if (s.height != null)
         allMeasurements.push({
           id: `${s.id}-height`,
           originalId: s.id,
@@ -428,7 +428,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           entry_hour: null,
           entry_timestamp: s.updated_at,
         });
-      if (s.body_fat_percentage !== null)
+      if (s.body_fat_percentage != null)
         allMeasurements.push({
           id: `${s.id}-bf`,
           originalId: s.id,
