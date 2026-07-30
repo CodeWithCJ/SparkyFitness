@@ -73,7 +73,7 @@ function buildSet(overrides: Partial<WorkoutPresetSet> = {}): WorkoutPresetSet {
 
 function buildPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
   return {
-    id: 'preset-1',
+    id: 7,
     user_id: 'user-1',
     name: 'Push Day',
     description: 'Chest, shoulders, triceps',
@@ -139,6 +139,7 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(startLiveWorkout).toHaveBeenCalledWith({
       name: 'Push Day',
       exercises: buildPresetStartExercisesPayload(preset),
+      sourcePresetId: 7,
     });
     expect(navigation.navigate).not.toHaveBeenCalled();
   });

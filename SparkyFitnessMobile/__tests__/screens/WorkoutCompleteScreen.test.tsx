@@ -1,14 +1,35 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useIsFocused } from '@react-navigation/native';
 import WorkoutCompleteScreen from '../../src/screens/WorkoutCompleteScreen';
 import { getWorkout } from '../../src/services/api/exerciseApi';
+import { getWorkoutPresetById } from '../../src/services/api/workoutPresetsApi';
+import { getActiveServerConfig } from '../../src/services/storage';
+import { useUpdateWorkoutPreset } from '../../src/hooks/useWorkoutPresetMutations';
 import { fireSuccessHaptic } from '../../src/services/haptics';
 import type { PresetSessionResponse } from '@workspace/shared';
+import type { RootStackParamList } from '../../src/types/navigation';
+import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
+
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: jest.fn(() => true),
+}));
 
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: jest.fn(() => ({ preferences: { default_weight_unit: 'kg' } })),
+}));
+
+jest.mock('../../src/hooks/useProfile', () => ({
+  useProfile: jest.fn(() => ({ profile: { id: 'user-1' } })),
+}));
+
+jest.mock('../../src/hooks/useWorkoutPresetMutations', () => ({
+  useUpdateWorkoutPreset: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useExerciseImageSource', () => ({
@@ -25,10 +46,30 @@ jest.mock('../../src/services/api/exerciseApi', () => ({
   getWorkout: jest.fn(),
 }));
 
+jest.mock('../../src/services/api/workoutPresetsApi', () => ({
+  getWorkoutPresetById: jest.fn(),
+}));
+
+jest.mock('../../src/services/storage', () => ({
+  ...jest.requireActual('../../src/services/storage'),
+  getActiveServerConfig: jest.fn(),
+}));
+
 jest.mock('../../src/services/haptics', () => ({
   fireSuccessHaptic: jest.fn(),
   fireSelectionHaptic: jest.fn(),
 }));
+
+const mockUseIsFocused = useIsFocused as jest.MockedFunction<typeof useIsFocused>;
+const mockGetPresetById = getWorkoutPresetById as jest.MockedFunction<
+  typeof getWorkoutPresetById
+>;
+const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
+  typeof getActiveServerConfig
+>;
+const mockUseUpdateWorkoutPreset = useUpdateWorkoutPreset as jest.MockedFunction<
+  typeof useUpdateWorkoutPreset
+>;
 
 function makeSet(id: number, overrides?: Record<string, unknown>) {
   return {
@@ -112,12 +153,15 @@ function makeSession(): PresetSessionResponse {
 
 const completedSetIds = { '101': 1_000, '102': 2_000, '201': 3_000 };
 
-const baseParams = {
+const baseParams: RootStackParamList['WorkoutComplete'] = {
   session: makeSession(),
   completedSetIds,
   prSetIds: { '201': true as const },
   startedAt: 0,
   finishedAt: new Date('2026-07-15T17:42:00').getTime(),
+  sourcePresetId: null,
+  sourceServerConfigId: null,
+  plannedSetValues: {},
 };
 
 const navigation = {
@@ -152,10 +196,19 @@ function renderScreen(paramOverrides?: Partial<typeof baseParams>) {
 }
 
 describe('WorkoutCompleteScreen', () => {
+  const updatePresetAsync = jest.fn();
+
   beforeEach(() => {
     jest.clearAllMocks();
     // Never-resolving by default; calories-specific tests override.
     (getWorkout as jest.Mock).mockImplementation(() => new Promise(() => {}));
+    mockUseIsFocused.mockReturnValue(true);
+    mockUseUpdateWorkoutPreset.mockReturnValue({ updatePresetAsync, isPending: false });
+    mockGetActiveServerConfig.mockResolvedValue({
+      id: 'config-1',
+      url: 'https://example.com',
+      apiKey: 'key',
+    });
   });
 
   it('renders the hero with the partial set count and workout name', () => {
@@ -317,6 +370,269 @@ describe('WorkoutCompleteScreen', () => {
       expect(navigation.navigate).toHaveBeenCalledWith('WorkoutDetail', {
         session: refreshed,
       });
+    });
+  });
+
+  describe('update-preset prompt', () => {
+    let alertSpy: jest.SpyInstance;
+
+    function makePresetSet(
+      id: number,
+      setNumber: number,
+      overrides: Partial<WorkoutPresetSet> = {},
+    ): WorkoutPresetSet {
+      return {
+        id,
+        set_number: setNumber,
+        set_type: 'normal',
+        reps: 5,
+        weight: 100,
+        duration: null,
+        rest_time: 90,
+        notes: null,
+        ...overrides,
+      };
+    }
+
+    /** Mirrors makeSession() exactly, so the canonicalized sides are equal. */
+    function makeMatchingPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
+      return {
+        id: 42,
+        user_id: 'user-1',
+        name: 'Push Day',
+        description: null,
+        is_public: false,
+        exercises: [
+          {
+            id: 801,
+            exercise_id: 'x-ex-a',
+            image_url: null,
+            exercise_name: 'Bench Press',
+            category: 'Strength',
+            superset_group: null,
+            sets: [
+              makePresetSet(901, 1),
+              makePresetSet(902, 2, { set_type: 'warmup', weight: 60 }),
+              makePresetSet(903, 3),
+            ],
+          },
+          {
+            id: 802,
+            exercise_id: 'x-ex-b',
+            image_url: null,
+            exercise_name: 'Squat',
+            category: 'Strength',
+            superset_group: null,
+            sets: [makePresetSet(904, 1, { reps: 3, weight: 120 })],
+          },
+        ],
+        ...overrides,
+      };
+    }
+
+    /** The matching preset with one weight off — the session deviates from it. */
+    function makeDeviatingPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
+      const preset = makeMatchingPreset(overrides);
+      preset.exercises[0].sets[0].weight = 95;
+      return preset;
+    }
+
+    const promptParams = {
+      sourcePresetId: 42,
+      sourceServerConfigId: 'config-1',
+    };
+
+    /** Flush the config check → preset fetch → state set promise chain. */
+    async function flushFetch() {
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    }
+
+    function firePromptTimer() {
+      act(() => {
+        jest.advanceTimersByTime(1_000);
+      });
+    }
+
+    function alertButton(label: string): { onPress?: () => void } {
+      const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+      const button = (call?.[2] ?? []).find((b: { text?: string }) => b.text === label);
+      expect(button).toBeDefined();
+      return button;
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      alertSpy.mockRestore();
+      jest.useRealTimers();
+    });
+
+    it('prompts once on deviation and Update PUTs the built payload, then toasts', async () => {
+      mockGetPresetById.mockResolvedValue(makeDeviatingPreset());
+      updatePresetAsync.mockResolvedValue(makeMatchingPreset());
+      renderScreen(promptParams);
+      await flushFetch();
+      firePromptTimer();
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Update preset?',
+        expect.stringContaining('"Push Day"'),
+        expect.arrayContaining([
+          expect.objectContaining({ text: 'Keep Preset' }),
+          expect.objectContaining({ text: 'Update' }),
+        ]),
+      );
+      // One shot: nothing re-fires after the first alert.
+      firePromptTimer();
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        alertButton('Update').onPress?.();
+      });
+
+      expect(updatePresetAsync).toHaveBeenCalledWith({
+        id: 42,
+        // Exactly { exercises } — identity and sharing must not ride along.
+        payload: {
+          exercises: [
+            expect.objectContaining({
+              exercise_id: 'x-ex-a',
+              sort_order: 0,
+              sets: [
+                expect.objectContaining({ set_number: 1, weight: 100, reps: 5 }),
+                expect.objectContaining({ set_number: 2, set_type: 'warmup', weight: 60 }),
+                expect.objectContaining({ set_number: 3, weight: 100 }),
+              ],
+            }),
+            expect.objectContaining({ exercise_id: 'x-ex-b', sort_order: 1 }),
+          ],
+        },
+      });
+      expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Preset updated' });
+    });
+
+    it('shows no success toast and swallows the rejection when the update fails', async () => {
+      mockGetPresetById.mockResolvedValue(makeDeviatingPreset());
+      updatePresetAsync.mockRejectedValue(new Error('500'));
+      renderScreen(promptParams);
+      await flushFetch();
+      firePromptTimer();
+
+      await act(async () => {
+        alertButton('Update').onPress?.();
+      });
+
+      expect(updatePresetAsync).toHaveBeenCalled();
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'success' }),
+      );
+    });
+
+    it('does not prompt when the performed workout matches the preset', async () => {
+      mockGetPresetById.mockResolvedValue(makeMatchingPreset());
+      renderScreen(promptParams);
+      await flushFetch();
+      firePromptTimer();
+
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not prompt for a preset the user does not own', async () => {
+      mockGetPresetById.mockResolvedValue(makeDeviatingPreset({ user_id: 'someone-else' }));
+      renderScreen(promptParams);
+      await flushFetch();
+      firePromptTimer();
+
+      expect(alertSpy).not.toHaveBeenCalled();
+      expect(updatePresetAsync).not.toHaveBeenCalled();
+    });
+
+    it('does not fetch or prompt for a workout without a source preset', async () => {
+      renderScreen();
+      await flushFetch();
+      firePromptTimer();
+
+      expect(mockGetPresetById).not.toHaveBeenCalled();
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not prompt when the preset fetch fails (e.g. deleted mid-workout)', async () => {
+      mockGetPresetById.mockRejectedValue(new Error('404'));
+      renderScreen(promptParams);
+      await flushFetch();
+      firePromptTimer();
+
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not fetch when the active server changed since the workout started', async () => {
+      mockGetActiveServerConfig.mockResolvedValue({
+        id: 'other-config',
+        url: 'https://other.example.com',
+        apiKey: 'key',
+      });
+      mockGetPresetById.mockResolvedValue(makeDeviatingPreset());
+      renderScreen(promptParams);
+      await flushFetch();
+      firePromptTimer();
+
+      expect(mockGetPresetById).not.toHaveBeenCalled();
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('holds the prompt while covered by a pushed screen and fires it on refocus', async () => {
+      mockUseIsFocused.mockReturnValue(false);
+      mockGetPresetById.mockResolvedValue(makeDeviatingPreset());
+      const screen = renderScreen(promptParams);
+      await flushFetch();
+      firePromptTimer();
+
+      expect(alertSpy).not.toHaveBeenCalled();
+
+      mockUseIsFocused.mockReturnValue(true);
+      screen.rerender(
+        <SafeAreaProvider
+          initialMetrics={{
+            insets: { top: 0, bottom: 0, left: 0, right: 0 },
+            frame: { x: 0, y: 0, width: 390, height: 844 },
+          }}
+        >
+          <QueryClientProvider client={new QueryClient()}>
+            <WorkoutCompleteScreen
+              navigation={navigation}
+              route={
+                {
+                  key: 'WorkoutComplete-1',
+                  name: 'WorkoutComplete',
+                  params: { ...baseParams, ...promptParams },
+                } as any
+              }
+            />
+          </QueryClientProvider>
+        </SafeAreaProvider>,
+      );
+      firePromptTimer();
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears the pending prompt timer on unmount', async () => {
+      mockGetPresetById.mockResolvedValue(makeDeviatingPreset());
+      const screen = renderScreen(promptParams);
+      await flushFetch();
+
+      screen.unmount();
+      firePromptTimer();
+
+      expect(alertSpy).not.toHaveBeenCalled();
     });
   });
 });

@@ -158,6 +158,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     void startLiveWorkout({
       name: preset.name,
       exercises: buildPresetStartExercisesPayload(preset),
+      sourcePresetId: preset.id,
     });
   }, [startLiveWorkout, preset]);
 
