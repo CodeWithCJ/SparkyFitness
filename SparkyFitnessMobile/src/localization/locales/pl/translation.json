@@ -157,6 +157,13 @@
     "long": ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"],
     "short": ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"]
   },
+  "mealTypes": {
+    "breakfast": "Śniadanie",
+    "lunch": "Obiad",
+    "dinner": "Kolacja",
+    "snacks": "Przekąski",
+    "other": "Inne"
+  },
   "foodSearch": {
     "bestMatches": "Najlepsze dopasowania",
     "searchFoods": "Szukaj produktów..."

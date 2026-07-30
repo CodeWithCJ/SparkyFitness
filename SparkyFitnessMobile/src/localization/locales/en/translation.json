@@ -156,6 +156,13 @@
     "long": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
     "short": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
   },
+  "mealTypes": {
+    "breakfast": "Breakfast",
+    "lunch": "Lunch",
+    "dinner": "Dinner",
+    "snacks": "Snacks",
+    "other": "Other"
+  },
   "foodSearch": {
     "bestMatches": "Best matches",
     "searchFoods": "Search foods..."

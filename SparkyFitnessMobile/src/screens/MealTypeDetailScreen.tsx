@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
@@ -10,7 +11,7 @@ import CopyMealSheet, { type CopyMealSheetRef } from '../components/CopyMealShee
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useDailySummary, useServerConnection } from '../hooks';
+import { useDailySummary, useServerConnection, useMealTypes } from '../hooks';
 import { useCopyFoodEntries } from '../hooks/useCopyFoodEntries';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -21,13 +22,14 @@ import {
   calculateMealNutrition,
   filterFoodEntriesByMealType,
   getMealPercentage,
+  getMealTypeSystemKey,
 } from '../utils/mealNutrition';
-import { getMealTypeLabel } from '../constants/meals';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type MealTypeDetailScreenProps = RootStackScreenProps<'MealTypeDetail'>;
 
 const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const { date, mealType, mealLabel } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -36,6 +38,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   const copySheetRef = useRef<CopyMealSheetRef>(null);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
+  const { mealTypes } = useMealTypes();
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date,
@@ -46,10 +49,14 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const label = mealLabel ?? getMealTypeLabel(mealType);
+  const translationKey = mealTypes.length > 0
+    ? getMealTypeSystemKey(mealType)
+    : '';
+  const label = mealLabel
+    ?? (translationKey ? t(translationKey) : mealType);
   const entries = useMemo(
-    () => filterFoodEntriesByMealType(summary?.foodEntries ?? [], mealType),
-    [summary?.foodEntries, mealType],
+    () => filterFoodEntriesByMealType(summary?.foodEntries ?? [], mealType, mealTypes),
+    [summary?.foodEntries, mealType, mealTypes],
   );
   const nutrition = useMemo(() => calculateMealNutrition(entries), [entries]);
   const targetCalories = useMemo(() => {

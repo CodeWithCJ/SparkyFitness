@@ -129,8 +129,9 @@
       "./jest.setup.js"
     ],
     "testPathIgnorePatterns": [
-      "__tests__/hooks/queryTestUtils\\.ts$",
-      "__tests__/screens/helpers/"
+        "__tests__/hooks/queryTestUtils\\.ts$",
+        "__tests__/screens/helpers/",
+        "\\.tooling/"
     ],
     "moduleNameMapper": {
       "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",
@@ -165,7 +166,8 @@
       "!**/eslint.config.js",
       "!**/expo-env.d.ts",
       "!**/.expo/**",
-      "!**/devdocs/**"
+        "!**/devdocs/**",
+        "!**/.tooling/**"
     ]
   }
 }

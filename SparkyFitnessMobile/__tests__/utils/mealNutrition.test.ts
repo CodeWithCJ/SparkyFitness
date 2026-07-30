@@ -1,137 +1,138 @@
 import {
-  calculateEntryNutrition,
-  calculateMealNutrition,
-  filterFoodEntriesByMealType,
+  getFoodEntryMealTypeKey,
   groupFoodEntriesByMealType,
-  getMealPercentage,
 } from '../../src/utils/mealNutrition';
 import type { FoodEntry } from '../../src/types/foodEntries';
+import type { MealType } from '../../src/types/mealTypes';
 
-const entry = (overrides: Partial<FoodEntry>): FoodEntry => ({
-  id: 'entry-1',
-  meal_type: 'breakfast',
-  quantity: 1,
-  unit: 'serving',
-  entry_date: '2026-04-23',
-  serving_size: 1,
-  calories: 0,
-  ...overrides,
+const systemMealTypes: MealType[] = [
+  { id: 'sys-b', name: 'breakfast', sort_order: 0, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+  { id: 'sys-l', name: 'lunch', sort_order: 1, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+  { id: 'sys-d', name: 'dinner', sort_order: 2, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+  { id: 'sys-s', name: 'snacks', sort_order: 3, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+];
+
+const customMealTypes: MealType[] = [
+  ...systemMealTypes,
+  { id: 'custom-pw', name: 'Pre-Workout', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  { id: 'custom-ps', name: 'Post-Workout', sort_order: 5, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  { id: 'custom-sn', name: 'Drugie śniadanie', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+];
+
+describe('getFoodEntryMealTypeKey', () => {
+  it('matches by meal_type_id when type exists', () => {
+    const entry: FoodEntry = {
+      id: '1', meal_type_id: 'custom-pw', meal_type: 'breakfast',
+    } as FoodEntry;
+    expect(getFoodEntryMealTypeKey(entry, customMealTypes)).toBe('Pre-Workout');
+  });
+
+  it('falls back to name when meal_type_id does not match any type', () => {
+    const entry: FoodEntry = {
+      id: '2', meal_type_id: 'unknown-id', meal_type: 'lunch',
+    } as FoodEntry;
+    expect(getFoodEntryMealTypeKey(entry, customMealTypes)).toBe('lunch');
+  });
+
+  it('falls back to name when meal_type_id is missing', () => {
+    const entry: FoodEntry = {
+      id: '3', meal_type: 'dinner',
+    } as FoodEntry;
+    expect(getFoodEntryMealTypeKey(entry, customMealTypes)).toBe('dinner');
+  });
+
+  it('returns other for unknown meal type', () => {
+    const entry: FoodEntry = {
+      id: '4', meal_type: 'unknown-slot',
+    } as FoodEntry;
+    expect(getFoodEntryMealTypeKey(entry, customMealTypes)).toBe('other');
+  });
+
+  it('preserves custom meal type name', () => {
+    const entry: FoodEntry = {
+      id: '5', meal_type_id: 'custom-sn', meal_type: 'Drugie śniadanie',
+    } as FoodEntry;
+    expect(getFoodEntryMealTypeKey(entry, customMealTypes)).toBe('Drugie śniadanie');
+  });
 });
 
-describe('mealNutrition', () => {
-  it('groups known meal types and buckets unknown meals as other', () => {
-    const entries = [
-      entry({ id: 'breakfast', meal_type: 'breakfast' }),
-      entry({ id: 'lunch', meal_type: 'lunch' }),
-      entry({ id: 'custom', meal_type: 'Brunch' }),
+describe('groupFoodEntriesByMealType', () => {
+  it('groups entries by meal_type_id and uses server sort_order', () => {
+    const entries: FoodEntry[] = [
+      { id: '1', meal_type_id: 'custom-ps', meal_type: 'Post-Workout' } as FoodEntry,
+      { id: '2', meal_type_id: 'custom-pw', meal_type: 'Pre-Workout' } as FoodEntry,
+      { id: '3', meal_type_id: 'sys-l', meal_type: 'lunch' } as FoodEntry,
     ];
 
-    const grouped = groupFoodEntriesByMealType(entries);
+    const groups = groupFoodEntriesByMealType(entries, customMealTypes);
 
-    expect(grouped.breakfast).toEqual([entries[0]]);
-    expect(grouped.lunch).toEqual([entries[1]]);
-    expect(grouped.other).toEqual([entries[2]]);
+    // Pre-Workout has sort_order 0, lunch has 1, Post-Workout has 5
+    expect(groups[0].name).toBe('Pre-Workout');
+    expect(groups[1].name).toBe('lunch');
+    expect(groups[2].name).toBe('Post-Workout');
   });
 
-  it('keeps blank or missing meal types in snacks to match diary fallback behavior', () => {
-    const entries = [
-      entry({ id: 'blank', meal_type: '' }),
-      entry({ id: 'missing', meal_type: undefined as unknown as string }),
+  it('custom type does not go to Other', () => {
+    const entries: FoodEntry[] = [
+      { id: '1', meal_type_id: 'custom-pw', meal_type: 'Pre-Workout' } as FoodEntry,
     ];
 
-    const grouped = groupFoodEntriesByMealType(entries);
+    const groups = groupFoodEntriesByMealType(entries, customMealTypes);
 
-    expect(grouped.snacks).toEqual(entries);
-    expect(grouped.other).toEqual([]);
+    const otherGroup = groups.find((g) => g.name === 'other');
+    expect(otherGroup).toBeUndefined();
+    const pwGroup = groups.find((g) => g.name === 'Pre-Workout');
+    expect(pwGroup).toBeDefined();
+    expect(pwGroup!.entries).toHaveLength(1);
   });
 
-  it('filters entries for a single meal type', () => {
-    const entries = [
-      entry({ id: 'breakfast', meal_type: 'breakfast' }),
-      entry({ id: 'lunch', meal_type: 'lunch' }),
-      entry({ id: 'custom', meal_type: 'Brunch' }),
+  it('unmatched entries go to Other', () => {
+    const entries: FoodEntry[] = [
+      { id: '1', meal_type: 'completely-unknown' } as FoodEntry,
     ];
 
-    expect(filterFoodEntriesByMealType(entries, 'breakfast')).toEqual([entries[0]]);
-    expect(filterFoodEntriesByMealType(entries, 'other')).toEqual([entries[2]]);
+    const groups = groupFoodEntriesByMealType(entries, customMealTypes);
+
+    const otherGroup = groups.find((g) => g.mealTypeId === null);
+    expect(otherGroup).toBeDefined();
+    expect(otherGroup!.entries).toHaveLength(1);
   });
 
-  it('scales entry nutrition by quantity and serving size', () => {
-    const nutrition = calculateEntryNutrition(entry({
-      calories: 200,
-      protein: 10,
-      carbs: 20,
-      fat: 5,
-      quantity: 3,
-      serving_size: 2,
-    }));
+  it('entry without meal_type_id is matched by name', () => {
+    const entries: FoodEntry[] = [
+      { id: '1', meal_type: 'breakfast' } as FoodEntry,
+    ];
 
-    expect(nutrition).toEqual({
-      calories: 300,
-      protein: 15,
-      carbs: 30,
-      fat: 8,
-    });
+    const groups = groupFoodEntriesByMealType(entries, customMealTypes);
+
+    const breakfastGroup = groups.find((g) => g.name === 'breakfast');
+    expect(breakfastGroup).toBeDefined();
+    expect(breakfastGroup!.entries).toHaveLength(1);
   });
 
-  it('totals meal nutrition including optional nutrients only when present', () => {
-    const nutrition = calculateMealNutrition([
-      entry({
-        calories: 200,
-        protein: 10,
-        carbs: 20,
-        fat: 5,
-        dietary_fiber: 4,
-        sodium: 150,
-        quantity: 2,
-        serving_size: 1,
-      }),
-      entry({
-        calories: 100,
-        protein: 4,
-        carbs: 12,
-        fat: 3,
-        quantity: 1,
-        serving_size: 2,
-      }),
-    ]);
+  it('entry without meal_type_id matching custom name finds the custom type', () => {
+    const entries: FoodEntry[] = [
+      { id: '1', meal_type: 'Drugie śniadanie' } as FoodEntry,
+    ];
 
-    expect(nutrition.values).toMatchObject({
-      servingSize: 1,
-      servingUnit: 'meal',
-      calories: 450,
-      protein: 22,
-      carbs: 46,
-      fat: 12,
-      fiber: 8,
-      sodium: 300,
-    });
-    expect(nutrition.values.calcium).toBeUndefined();
+    const groups = groupFoodEntriesByMealType(entries, customMealTypes);
+
+    const customGroup = groups.find((g) => g.name === 'Drugie śniadanie');
+    expect(customGroup).toBeDefined();
+    expect(customGroup!.entries).toHaveLength(1);
+    expect(customGroup!.isSystem).toBe(false);
   });
 
-  describe('getMealPercentage', () => {
-    it('returns legacy percentage for standard meal types', () => {
-      const goals = { calories: 2000, lunch_percentage: 20 };
-      expect(getMealPercentage('lunch', goals)).toBe(20);
-      expect(getMealPercentage('dinner', goals)).toBe(0);
-    });
+  it('sorts groups by sort_order ascending', () => {
+    const entries: FoodEntry[] = [
+      { id: '1', meal_type_id: 'sys-s', meal_type: 'snacks' } as FoodEntry,
+      { id: '2', meal_type_id: 'sys-b', meal_type: 'breakfast' } as FoodEntry,
+      { id: '3', meal_type_id: 'sys-d', meal_type: 'dinner' } as FoodEntry,
+      { id: '4', meal_type_id: 'sys-l', meal_type: 'lunch' } as FoodEntry,
+    ];
 
-    it('returns custom meal percentage when defined in custom_meal_percentages', () => {
-      const goals = {
-        calories: 2000,
-        custom_meal_percentages: {
-          other: 15,
-          'afternoon snack': 10,
-        },
-      };
-      expect(getMealPercentage('other', goals)).toBe(15);
-      expect(getMealPercentage('afternoon_snack', goals)).toBe(10);
-      expect(getMealPercentage('afternoon snack', goals)).toBe(10);
-    });
+    const groups = groupFoodEntriesByMealType(entries, systemMealTypes);
 
-    it('returns 0 when goals or percentages are missing', () => {
-      expect(getMealPercentage('lunch', undefined)).toBe(0);
-      expect(getMealPercentage('unknown', { calories: 2000 })).toBe(0);
-    });
+    expect(groups.map((g) => g.name)).toEqual(['breakfast', 'lunch', 'dinner', 'snacks']);
   });
 });

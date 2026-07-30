@@ -18,7 +18,7 @@ import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import { useTranslation } from 'react-i18next';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
+import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences, useMealTypes } from '../hooks';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
@@ -142,6 +142,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
+  const { mealTypes } = useMealTypes();
   const { customNutrients } = useCustomNutrients({ enabled: isConnected });
   const { preferences: nutrientPrefs } = useNutrientDisplayPreferences({ enabled: isConnected });
   const diaryNutrientRow = nutrientPrefs.find(
@@ -258,6 +259,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <>
             <FoodSummary
               foodEntries={summary.foodEntries}
+              mealTypes={mealTypes}
               goals={summary.goals}
               calorieGoal={summary.calorieGoal}
               onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })}

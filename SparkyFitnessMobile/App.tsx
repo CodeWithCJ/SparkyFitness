@@ -57,6 +57,7 @@ import FastingDetailScreen from './src/screens/FastingDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
+import MealTypeSettingsScreen from './src/screens/MealTypeSettingsScreen';
 import FoodSettingsScreen from './src/screens/FoodSettingsScreen';
 import DashboardSettingsScreen from './src/screens/DashboardSettingsScreen';
 import DiarySettingsScreen from './src/screens/DiarySettingsScreen';
@@ -229,6 +230,7 @@ const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
 const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
 const SafeChat = withErrorBoundary(ChatScreen, 'Chat', { canGoBack: true });
 const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
+const SafeMealTypeSettings = withErrorBoundary(MealTypeSettingsScreen, 'MealTypeSettings', { canGoBack: true });
 const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
 const SafeDashboardSettings = withErrorBoundary(DashboardSettingsScreen, 'DashboardSettings', { canGoBack: true });
 const SafeDiarySettings = withErrorBoundary(DiarySettingsScreen, 'DiarySettings', { canGoBack: true });
@@ -1165,6 +1167,11 @@ function AppContent() {
             name="CalorieSettings"
             component={SafeCalorieSettings}
             options={createStackScreenOptions('Calorie Settings', { headerBackTitle: 'Settings' })}
+          />
+          <Stack.Screen
+            name="MealTypeSettings"
+            component={SafeMealTypeSettings}
+            options={createStackScreenOptions('Meal Types', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="FoodSettings"

@@ -196,6 +196,7 @@ export type RootStackParamList = {
   Sync: undefined;
   MeasurementsAdd: { date?: string } | undefined;
   CalorieSettings: undefined;
+  MealTypeSettings: undefined;
   FoodSettings: undefined;
   DashboardSettings: undefined;
   DiarySettings: undefined;

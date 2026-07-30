@@ -2,11 +2,20 @@ import { MEAL_TYPES } from '../constants/meals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDisplayValues } from './foodDetails';
 import type { DailyGoals } from '../types/goals';
+import type { MealType } from '../types/mealTypes';
 import { calculateCustomNutrientTotals } from '../services/api/foodEntriesApi';
 
-export type MealTypeKey = (typeof MEAL_TYPES)[number] | 'other';
+export type MealTypeKey = string;
 
-export type MealEntryGroups = Record<MealTypeKey, FoodEntry[]>;
+export type MealEntryGroups = Record<string, FoodEntry[]>;
+
+export interface MealGroup {
+  mealTypeId: string | null;
+  name: string;
+  sortOrder: number;
+  entries: FoodEntry[];
+  isSystem: boolean;
+}
 
 export interface EntryNutrition {
   calories: number;
@@ -15,36 +24,100 @@ export interface EntryNutrition {
   fat: number;
 }
 
-function emptyMealGroups(): MealEntryGroups {
-  return {
-    breakfast: [],
-    lunch: [],
-    dinner: [],
-    snacks: [],
-    other: [],
-  };
+export function getMealTypeSystemKey(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower === 'breakfast') return 'mealTypes.breakfast';
+  if (lower === 'lunch') return 'mealTypes.lunch';
+  if (lower === 'dinner') return 'mealTypes.dinner';
+  if (lower === 'snacks' || lower === 'snack') return 'mealTypes.snacks';
+  if (lower === 'other') return 'mealTypes.other';
+  return '';
 }
 
-export function getFoodEntryMealTypeKey(entry: FoodEntry): MealTypeKey {
-  const mealType = entry.meal_type?.toLowerCase() || 'snacks';
-  return MEAL_TYPES.includes(mealType as (typeof MEAL_TYPES)[number])
-    ? (mealType as MealTypeKey)
-    : 'other';
+export function getFoodEntryMealTypeKey(entry: FoodEntry, mealTypes: MealType[]): string {
+  if (entry.meal_type_id) {
+    const mt = mealTypes.find((m) => m.id === entry.meal_type_id);
+    if (mt) return mt.name;
+  }
+  const name = (entry.meal_type || '').toLowerCase();
+  if (name) {
+    const mt = mealTypes.find((m) => m.name.toLowerCase() === name);
+    if (mt) return mt.name;
+  }
+  if (MEAL_TYPES.includes(name as (typeof MEAL_TYPES)[number])) {
+    return name;
+  }
+  return 'other';
 }
 
-export function groupFoodEntriesByMealType(entries: FoodEntry[]): MealEntryGroups {
-  const grouped = emptyMealGroups();
-
-  for (const entry of entries) {
-    grouped[getFoodEntryMealTypeKey(entry)].push(entry);
+export function groupFoodEntriesByMealType(
+  entries: FoodEntry[],
+  mealTypes: MealType[],
+): MealGroup[] {
+  const typeMap = new Map<string, MealType>();
+  for (const mt of mealTypes) {
+    typeMap.set(mt.id, mt);
   }
 
-  return grouped;
+  const groupMap = new Map<string, { entries: FoodEntry[]; mt: MealType | null }>();
+  const unmatched: FoodEntry[] = [];
+
+  for (const entry of entries) {
+    let matched: MealType | null = null;
+    if (entry.meal_type_id) {
+      matched = typeMap.get(entry.meal_type_id) ?? null;
+    }
+    if (!matched) {
+      const name = (entry.meal_type || '').toLowerCase();
+      matched = mealTypes.find((m) => m.name.toLowerCase() === name) ?? null;
+    }
+    if (matched) {
+      const key = matched.id;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { entries: [], mt: matched });
+      }
+      groupMap.get(key)!.entries.push(entry);
+    } else {
+      unmatched.push(entry);
+    }
+  }
+
+  const result: MealGroup[] = [];
+  for (const mt of mealTypes) {
+    const group = groupMap.get(mt.id);
+    if (group) {
+      result.push({
+        mealTypeId: mt.id,
+        name: mt.name,
+        sortOrder: mt.sort_order ?? 999,
+        entries: group.entries,
+        isSystem: mt.user_id === null,
+      });
+    }
+  }
+
+  if (unmatched.length > 0) {
+    result.push({
+      mealTypeId: null,
+      name: 'other',
+      sortOrder: 9999,
+      entries: unmatched,
+      isSystem: false,
+    });
+  }
+
+  return result.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export function filterFoodEntriesByMealType(entries: FoodEntry[], mealType: MealTypeKey): FoodEntry[] {
-  const key = mealType.toLowerCase();
-  return entries.filter((entry) => getFoodEntryMealTypeKey(entry) === key);
+export function filterFoodEntriesByMealType(
+  entries: FoodEntry[],
+  mealTypeName: string,
+  mealTypes: MealType[],
+): FoodEntry[] {
+  return entries.filter((entry) => {
+    const key = getFoodEntryMealTypeKey(entry, mealTypes);
+    return key.toLowerCase() === mealTypeName.toLowerCase();
+  });
 }
 
 export function calculateEntryValue(value: number | undefined, entry: FoodEntry): number {
@@ -75,10 +148,8 @@ function optionalSum(entries: FoodEntry[], field: keyof FoodEntry): number | und
   return hasValue ? Math.round(sumField(entries, field)) : undefined;
 }
 
-/** Result type for calculateMealNutrition — standard display values plus custom nutrient aggregates. */
 export interface MealNutrition {
   values: FoodDisplayValues;
-  /** Aggregated custom nutrient totals across all entries (name → total consumed). */
   customNutrients: Record<string, number>;
 }
 
