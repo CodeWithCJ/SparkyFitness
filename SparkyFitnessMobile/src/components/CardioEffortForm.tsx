@@ -11,7 +11,6 @@ import type { SetRowState } from './ActiveWorkoutSetRow';
 import { distanceFromKm, distanceToKm } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
 import {
-  formatDurationSeconds,
   type AssumedSetValues,
   type WorkoutCardSet,
 } from '../utils/workoutSession';
@@ -246,22 +245,33 @@ export default function CardioEffortForm({
   }, [mode, renderKey, setId, onRegisterAccessoryHandle]);
 
   if (mode === 'view') {
-    const parts: string[] = [];
-    if (set?.duration != null) parts.push(formatDurationSeconds(set.duration));
-    if (set?.distance != null) {
-      parts.push(
-        `${parseFloat(distanceFromKm(set.distance, distanceUnit).toFixed(2))} ${distanceLabel}`,
-      );
-    }
     return (
-      <View className="mt-2 px-1 pb-2">
-        <Text
-          className="text-base text-text-primary"
-          style={{ fontVariant: ['tabular-nums'] }}
-          accessibilityLabel={`${exerciseName} effort`}
-        >
-          {parts.length > 0 ? parts.join(' · ') : 'No duration recorded'}
-        </Text>
+      <View
+        className="mt-2 px-1 pb-2 flex-row gap-3"
+        accessibilityLabel={`${exerciseName} effort`}
+      >
+        <View className="flex-1 items-center">
+          <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
+            Duration (min)
+          </Text>
+          <Text
+            className="text-center text-sm text-text-primary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {minutesDisplayText(set?.duration) || '–'}
+          </Text>
+        </View>
+        <View className="flex-1 items-center">
+          <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
+            Distance ({distanceLabel})
+          </Text>
+          <Text
+            className="text-center text-sm text-text-primary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {distanceDisplayText(set?.distance, distanceUnit) || '–'}
+          </Text>
+        </View>
       </View>
     );
   }
