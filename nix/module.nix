@@ -13,6 +13,13 @@
 let
   cfg = config.services.sparkyfitness;
 
+  # bracket the IPv6 addresses
+  garminHost =
+    if lib.hasInfix ":" cfg.garmin.bindAddress then
+      "[${cfg.garmin.bindAddress}]"
+    else
+      cfg.garmin.bindAddress;
+
   # Non-secret runtime environment derived from the module options. Secrets
   # (passwords, encryption key, auth secret) come from cfg.environmentFile.
   baseEnv = {
@@ -30,7 +37,7 @@ let
     SPARKY_FITNESS_LOG_LEVEL = cfg.logLevel;
   }
   // lib.optionalAttrs cfg.garmin.enable {
-    GARMIN_MICROSERVICE_URL = "http://${cfg.garmin.bindAddress}:${toString cfg.garmin.port}";
+    GARMIN_MICROSERVICE_URL = "http://${garminHost}:${toString cfg.garmin.port}";
   }
   // cfg.extraEnvironment;
 
