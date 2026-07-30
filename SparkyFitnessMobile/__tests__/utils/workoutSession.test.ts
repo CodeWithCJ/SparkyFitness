@@ -3239,7 +3239,7 @@ describe('workoutSession', () => {
             { weight: 80, reps: 5, duration: null },
           ],
         ]);
-        const stripped = stripPlannedSetValues(exercises, ['weight_reps']);
+        const stripped = stripPlannedSetValues(exercises);
         expect(stripped[0].sets.map((s) => [s.weight, s.reps])).toEqual([
           [null, null],
           [null, null],
@@ -3250,13 +3250,17 @@ describe('workoutSession', () => {
         expect(exercises[0].sets[0].weight).toBe(80);
       });
 
-      it('strips duration only at duration-modality indexes', () => {
+      it('strips duration for every modality, including stray values on strength sets', () => {
         const timed = [
           {
             exercise_id: '11111111-1111-4111-8111-111111111111',
             sort_order: 0,
             duration_minutes: 0,
             notes: null,
+            // A stray duration on a weight_reps preset set must not reach the
+            // created session: it would count as a historical set in the
+            // exercise-stats query and render as a bare time in the PREVIOUS
+            // column.
             sets: [{ set_number: 1, weight: 60, reps: 5, duration: 90 }],
           },
           {
@@ -3267,11 +3271,9 @@ describe('workoutSession', () => {
             sets: [{ set_number: 1, weight: null, reps: null, duration: 45 }],
           },
         ];
-        const stripped = stripPlannedSetValues(timed, ['weight_reps', 'duration']);
-        // A weight_reps exercise keeps its (invisible) stored duration.
-        expect(stripped[0].sets[0].duration).toBe(90);
+        const stripped = stripPlannedSetValues(timed);
+        expect(stripped[0].sets[0].duration).toBeNull();
         expect(stripped[0].sets[0].weight).toBeNull();
-        // A duration exercise starts empty like weight/reps do.
         expect(stripped[1].sets[0].duration).toBeNull();
       });
     });
