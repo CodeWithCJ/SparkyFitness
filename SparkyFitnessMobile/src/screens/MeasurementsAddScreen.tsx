@@ -35,6 +35,16 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import { useTranslation } from 'react-i18next';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
+import {
+  useCustomCategories,
+  useCustomMeasurementsByDate,
+} from '../hooks/useCustomMeasurements';
+import {
+  saveCustomMeasurement as saveCustomMeasurementApi,
+  deleteCustomMeasurement as deleteCustomMeasurementApi,
+} from '../services/api/measurementsApi';
+import { customMeasurementsByDateQueryKey } from '../hooks/queryKeys';
+import { queryClient } from '../hooks/queryClient';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -129,6 +139,10 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const dirtyFieldsRef = useRef<Set<FieldKey>>(new Set());
   const lastDateRef = useRef<string | null>(null);
 
+  const [customForm, setCustomForm] = useState<Record<string, string>>({});
+  const [prefilledCustom, setPrefilledCustom] = useState<Set<string>>(new Set());
+  const dirtyCustomRef = useRef<Set<string>>(new Set());
+
   const { measurements, isLoading } = useMeasurements({ date: selectedDate });
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   // Weight supports a third "stones + lbs" mode that renders as two inputs.
@@ -142,6 +156,8 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     preferences?.default_measurement_unit ?? 'cm';
 
   const upsertMutation = useUpsertCheckIn();
+  const { data: customCategories } = useCustomCategories();
+  const { data: customMeasurements } = useCustomMeasurementsByDate(selectedDate);
 
   // Sync the form to the latest measurements snapshot. Re-runs on every
   // measurements change (including background refetches) so cached-then-fresh
@@ -220,6 +236,35 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     });
     setPrefilledKeys(prefilled);
   }, [selectedDate, isLoading, isPreferencesLoading, measurements, weightMode, bodyUnit, heightMode]);
+
+  useEffect(() => {
+    const dirtyCustom = new Set(dirtyCustomRef.current);
+    const next: Record<string, string> = {};
+    const prefilled = new Set<string>();
+    const entryByCat = new Map<string, string>();
+    if (customMeasurements) {
+      for (const entry of customMeasurements) {
+        entryByCat.set(entry.category_id, entry.value);
+      }
+    }
+    for (const cat of customCategories ?? []) {
+      const existing = entryByCat.get(cat.id);
+      if (existing != null) {
+        next[cat.id] = existing;
+        prefilled.add(cat.id);
+      }
+    }
+    setCustomForm((current) => {
+      if (dirtyCustom.size === 0) return { ...next, ...current };
+      const merged = { ...current };
+      for (const cat of customCategories ?? []) {
+        if (dirtyCustom.has(cat.id)) continue;
+        if (next[cat.id] !== undefined) merged[cat.id] = next[cat.id];
+      }
+      return merged;
+    });
+    setPrefilledCustom(prefilled);
+  }, [selectedDate, customCategories, customMeasurements]);
 
   const updateField = useCallback((key: keyof FormState, value: string) => {
     dirtyFieldsRef.current.add(FORM_FIELD_KEYS[key]);
@@ -366,18 +411,65 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       'bodyFatPercentage',
     ];
     const hasAnyField = fieldKeys.some((k) => payload[k] !== undefined);
-    if (!hasAnyField) {
+
+    const buildCustomOps = (): Promise<unknown>[] => {
+      const ops: Promise<unknown>[] = [];
+      if (!customCategories) return ops;
+      const entryByCat = new Map<string, { id: string; value: string }>();
+      for (const entry of customMeasurements ?? []) {
+        entryByCat.set(entry.category_id, entry);
+      }
+      for (const cat of customCategories) {
+        const value = customForm[cat.id]?.trim() ?? '';
+        if (value) {
+          let parsedValue: string | number | boolean = value;
+          if (cat.data_type === 'numeric') {
+            parsedValue = Number(value);
+            if (isNaN(parsedValue)) continue;
+          }
+          ops.push(
+            saveCustomMeasurementApi({
+              category_id: cat.id,
+              value: parsedValue,
+              entry_date: selectedDate,
+            }),
+          );
+        } else if (prefilledCustom.has(cat.id)) {
+          const existing = entryByCat.get(cat.id);
+          if (existing) {
+            ops.push(deleteCustomMeasurementApi(existing.id));
+          }
+        }
+      }
+      return ops;
+    };
+
+    const customOps = buildCustomOps();
+
+    if (!hasAnyField && customOps.length === 0) {
       Toast.show({ type: 'info', text1: 'Nothing to save', text2: 'Enter or clear at least one value.' });
       return;
     }
 
-    const doSave = () => {
-      upsertMutation.mutate(payload, {
-        onSuccess: () => {
-          Toast.show({ type: 'success', text1: t('measurements.saved') });
-          navigation.goBack();
-        },
-      });
+    const doSave = async () => {
+      try {
+        if (customOps.length > 0) {
+          await Promise.all(customOps);
+          queryClient.invalidateQueries({ queryKey: customMeasurementsByDateQueryKey(selectedDate) });
+        }
+        if (hasAnyField) {
+          await new Promise<void>((resolve, reject) => {
+            upsertMutation.mutate(payload, {
+              onSuccess: () => resolve(),
+              onError: reject,
+            });
+          });
+        }
+        Toast.show({ type: 'success', text1: t('measurements.saved') });
+        navigation.goBack();
+      } catch {
+        Toast.show({ type: 'error', text1: 'Could not save all measurements' });
+      }
     };
 
     if (cleared.length > 0) {
@@ -395,7 +487,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, navigation, t]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, navigation, t, customCategories, customMeasurements, customForm, prefilledCustom]);
 
   const isSaveDisabled = isLoading || isPreferencesLoading || upsertMutation.isPending;
 
@@ -603,6 +695,50 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
               />
               {renderClearHint('steps')}
             </View>
+
+            {customCategories && customCategories.length > 0 && (
+              <View className="mt-4 mb-2">
+                <Text className="text-text-primary text-base font-semibold mb-3">
+                  Custom Measurements
+                </Text>
+                {customCategories.map((cat) => {
+                  const label = cat.display_name ?? cat.name;
+                  const suffix = cat.measurement_type ? ` (${cat.measurement_type})` : '';
+                  const isBoolean = cat.data_type === 'boolean';
+                  const isNumeric = cat.data_type === 'numeric' || cat.data_type == null;
+                  const value = customForm[cat.id] ?? '';
+                  const empty = value.trim() === '';
+                  return (
+                    <View key={cat.id} className="mb-4">
+                      <Text className="text-text-secondary text-sm mb-1">
+                        {label}{suffix}
+                      </Text>
+                      {isBoolean ? (
+                        <Text className="text-text-secondary text-sm">
+                          {value === 'true' ? 'Yes' : 'No'}
+                        </Text>
+                      ) : (
+                        <FormInput
+                          value={value}
+                          onChangeText={(v) => {
+                            dirtyCustomRef.current.add(cat.id);
+                            setCustomForm((prev) => ({ ...prev, [cat.id]: v }));
+                          }}
+                          keyboardType={isNumeric ? 'decimal-pad' : 'default'}
+                          placeholder="0"
+                          returnKeyType="done"
+                        />
+                      )}
+                      {prefilledCustom.has(cat.id) && empty ? (
+                        <Text className="text-xs italic mt-1" style={{ color: textSecondary }}>
+                          {t('measurements.willBeCleared')}
+                        </Text>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </>
         )}
 

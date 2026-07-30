@@ -20,6 +20,7 @@ import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences, useMealTypes } from '../hooks';
 import { useMeasurements } from '../hooks/useMeasurements';
+import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import {
@@ -142,6 +143,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
+  const { data: customMeasurements } = useCustomMeasurementsByDate(selectedDate);
   const { mealTypes } = useMealTypes();
   const { customNutrients } = useCustomNutrients({ enabled: isConnected });
   const { preferences: nutrientPrefs } = useNutrientDisplayPreferences({ enabled: isConnected });
@@ -150,6 +152,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   );
   const customNutrientKeys = (diaryNutrientRow?.visible_nutrients ?? []).slice(0, 4);
   const hasAnyMeasurement = useMemo(() => {
+    if (customMeasurements && customMeasurements.length > 0) return true;
     if (!measurements) return false;
     return (
       measurements.weight != null ||
@@ -160,7 +163,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       measurements.hips != null ||
       measurements.steps != null
     );
-  }, [measurements]);
+  }, [measurements, customMeasurements]);
 
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
@@ -292,6 +295,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               weightMode={weightMode}
               bodyUnit={bodyUnit}
               heightMode={heightMode}
+              customMeasurements={customMeasurements}
               onPress={() => navigation.navigate('MeasurementsAdd', { date: selectedDate })}
             />
           </>
