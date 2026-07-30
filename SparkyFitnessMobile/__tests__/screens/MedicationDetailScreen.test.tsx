@@ -185,9 +185,10 @@ describe('MedicationDetailScreen', () => {
     } as unknown as ReturnType<typeof useDeleteMedicationEntry>);
   });
 
-  it('shows the dose as the hero with strength as a secondary line', () => {
+  it('leads the hero with the name, then dose and strength', () => {
     const screen = setupScreen(buildMedication());
 
+    expect(screen.getAllByText('Lisinopril').length).toBeGreaterThan(0);
     expect(screen.getByText('Pill · Blood pressure')).toBeTruthy();
     expect(screen.getAllByText('1 tablet').length).toBeGreaterThan(0);
     expect(screen.getByText('500 mg per tablet')).toBeTruthy();

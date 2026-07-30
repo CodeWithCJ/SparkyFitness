@@ -138,22 +138,23 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        {(contextLine !== '' || doseLabel != null || !med.is_active) && (
-          <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-            {contextLine !== '' && <Text className="text-sm text-text-secondary">{contextLine}</Text>}
-            {doseLabel != null && (
-              <Text className="text-2xl font-bold text-text-primary mt-1">{doseLabel}</Text>
-            )}
-            {strengthLabel != null && (
-              <Text className="text-sm text-text-secondary mt-0.5">{strengthLabel}</Text>
-            )}
-            {!med.is_active && (
-              <View className="self-start rounded-full px-2.5 py-0.5 mt-2 border border-chrome-border">
-                <Text className="text-xs text-text-muted">Inactive</Text>
-              </View>
-            )}
-          </View>
-        )}
+        <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+          <Text className="text-2xl font-bold text-text-primary">{med.name}</Text>
+          {contextLine !== '' && (
+            <Text className="text-sm text-text-secondary mt-0.5">{contextLine}</Text>
+          )}
+          {doseLabel != null && (
+            <Text className="text-lg font-semibold text-text-primary mt-2">{doseLabel}</Text>
+          )}
+          {strengthLabel != null && (
+            <Text className="text-sm text-text-secondary mt-0.5">{strengthLabel}</Text>
+          )}
+          {!med.is_active && (
+            <View className="self-start rounded-full px-2.5 py-0.5 mt-2 border border-chrome-border">
+              <Text className="text-xs text-text-muted">Inactive</Text>
+            </View>
+          )}
+        </View>
 
         {med.is_active && (
           <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
