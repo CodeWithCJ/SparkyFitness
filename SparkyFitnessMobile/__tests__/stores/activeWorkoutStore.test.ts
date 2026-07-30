@@ -1095,6 +1095,60 @@ describe('activeWorkoutStore', () => {
       });
     });
 
+    describe('cardio-modality adoption', () => {
+      /** The base empty session with ex-1 flipped to a cardio exercise. */
+      function makeCardioSession(): PresetSessionResponse {
+        const session = makeEmptySession();
+        return {
+          ...session,
+          exercises: session.exercises.map((e, i) =>
+            i === 0
+              ? {
+                  ...e,
+                  exercise_snapshot: {
+                    ...e.exercise_snapshot,
+                    modality: 'duration_distance',
+                  } as never,
+                  sets: e.sets.map((s) => ({ ...s, duration: null, distance: null })),
+                }
+              : e,
+          ),
+        };
+      }
+
+      it('adopts planned duration AND distance into an untouched cardio set on completion', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeCardioSession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [
+              { weight: null, reps: null, duration: 1500, distance: 5 },
+              { weight: null, reps: null, duration: 1500, distance: 5 },
+            ],
+          ],
+        });
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.duration).toBe(1500);
+        expect(set0.distance).toBe(5);
+      });
+
+      it('fills only the empty cardio cell — a typed duration is kept, distance still adopts', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeCardioSession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [[{ weight: null, reps: null, duration: 1500, distance: 5 }]],
+        });
+        useActiveWorkoutStore.getState().updateSetField('101', { duration: 1800 });
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.duration).toBe(1800);
+        expect(set0.distance).toBe(5);
+      });
+    });
+
     describe('duration-modality adoption', () => {
       /** The base empty session with ex-1 flipped to a duration exercise. */
       function makeDurationSession(): PresetSessionResponse {

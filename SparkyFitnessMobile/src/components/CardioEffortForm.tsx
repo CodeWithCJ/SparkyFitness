@@ -10,7 +10,11 @@ import {
 import type { SetRowState } from './ActiveWorkoutSetRow';
 import { distanceFromKm, distanceToKm } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
-import { formatDurationSeconds, type WorkoutCardSet } from '../utils/workoutSession';
+import {
+  formatDurationSeconds,
+  type AssumedSetValues,
+  type WorkoutCardSet,
+} from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 
 function minutesDisplayText(durationSec: number | null | undefined): string {
@@ -41,6 +45,13 @@ interface CardioEffortFormProps {
    * pulsing cursor ring / muted upcoming ring).
    */
   state?: SetRowState;
+  /**
+   * Live only: assumed duration/distance for still-empty fields (previous
+   * session or the preset plan — the same sources the store's completion
+   * adoption uses). An empty input renders the assumed value as its
+   * placeholder, exactly like the set-table cells.
+   */
+  assumed?: AssumedSetValues | null;
   /**
    * Commit a duration (seconds) or distance (km) patch for the set. Live
    * commits to the store; the form lists convert back to draft text.
@@ -83,6 +94,7 @@ export default function CardioEffortForm({
   mode,
   distanceUnit,
   state = 'upcoming',
+  assumed,
   onCommitField,
   onComplete,
   onUncomplete,
@@ -102,6 +114,17 @@ export default function CardioEffortForm({
   const [distanceDraft, setDistanceDraft] = useState(() =>
     distanceDisplayText(set?.distance, distanceUnit),
   );
+
+  // Assumed values render as placeholders only while the field is empty, so
+  // the gray value an input shows is exactly what logging the set adopts.
+  const assumedMinutesText =
+    mode === 'live' && set?.duration == null && assumed?.duration != null
+      ? minutesDisplayText(assumed.duration)
+      : null;
+  const assumedDistanceText =
+    mode === 'live' && set?.distance == null && assumed?.distance != null
+      ? distanceDisplayText(assumed.distance, distanceUnit)
+      : null;
   const [focusedField, setFocusedField] = useState<'duration' | 'distance' | null>(null);
 
   // Re-seed the drafts when the underlying set's values change externally
@@ -264,6 +287,7 @@ export default function CardioEffortForm({
           keyboardType="decimal-pad"
           accessibilityLabel={`Duration in minutes for ${exerciseName}`}
           className="w-16"
+          placeholder={assumedMinutesText ?? '–'}
           flat
         />
       </View>
@@ -286,6 +310,7 @@ export default function CardioEffortForm({
           keyboardType="decimal-pad"
           accessibilityLabel={`Distance in ${distanceLabel} for ${exerciseName}`}
           className="w-16"
+          placeholder={assumedDistanceText ?? '–'}
           flat
         />
       </View>

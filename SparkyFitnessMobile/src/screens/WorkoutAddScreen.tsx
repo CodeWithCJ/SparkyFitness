@@ -197,7 +197,12 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (!preset || isEditMode || hasPopulatedPresetRef.current || isPreferencesLoading) return;
     hasPopulatedPresetRef.current = true;
-    const populatedIds = populateFromPreset(preset, weightUnit as 'kg' | 'lbs', initialDate);
+    const populatedIds = populateFromPreset(
+      preset,
+      weightUnit as 'kg' | 'lbs',
+      distanceUnit,
+      initialDate,
+    );
     // One-time initialization from the async-loaded preset; setting state
     // synchronously here is intentional and mirrors the populateFromPreset side effect.
     setEligibleIds(prev => {
@@ -205,7 +210,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
       populatedIds.forEach(id => next.add(id));
       return next;
     });
-  }, [preset, isEditMode, isPreferencesLoading, populateFromPreset, weightUnit, initialDate]);
+  }, [preset, isEditMode, isPreferencesLoading, populateFromPreset, weightUnit, distanceUnit, initialDate]);
 
   const isInitializingEditForm = isEditMode && !hasPopulatedEdit;
 

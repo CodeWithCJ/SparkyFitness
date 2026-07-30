@@ -591,6 +591,7 @@ export function presetExerciseToCardExercise(
       rest_time: set.rest_time ?? null,
       notes: set.notes ?? null,
       duration: set.duration ?? null,
+      distance: set.distance ?? null,
     })),
   };
 }
@@ -687,9 +688,17 @@ export interface AssumedSetValues {
    * modality upgrade rehydrate without the key; read through `?? null`.
    */
   duration?: number | null;
+  /**
+   * Km, meaningful on cardio sets only. Optional for the same persisted-entry
+   * reason as `duration`; read through `?? null`.
+   */
+  distance?: number | null;
 }
 
-type AssumableSet = Pick<WorkoutCardSet, 'id' | 'set_type' | 'weight' | 'reps' | 'duration'>;
+type AssumableSet = Pick<
+  WorkoutCardSet,
+  'id' | 'set_type' | 'weight' | 'reps' | 'duration' | 'distance'
+>;
 
 /**
  * Resolve the assumed (placeholder) weight/reps for every set of one exercise
@@ -719,8 +728,8 @@ export function resolveAssumedSetValues(
   plannedBySetId?: Record<string, AssumedSetValues>,
 ): AssumedSetValues[] {
   const lastEffective = {
-    warmup: { weight: null, reps: null, duration: null } as AssumedSetValues,
-    working: { weight: null, reps: null, duration: null } as AssumedSetValues,
+    warmup: { weight: null, reps: null, duration: null, distance: null } as AssumedSetValues,
+    working: { weight: null, reps: null, duration: null, distance: null } as AssumedSetValues,
   };
   return sets.map((set, index) => {
     const tier = set.set_type === 'warmup' ? 'warmup' : 'working';
@@ -731,10 +740,13 @@ export function resolveAssumedSetValues(
       reps: previous?.reps ?? planned?.reps ?? lastEffective[tier].reps,
       duration:
         previous?.duration ?? planned?.duration ?? lastEffective[tier].duration ?? null,
+      distance:
+        previous?.distance ?? planned?.distance ?? lastEffective[tier].distance ?? null,
     };
     lastEffective[tier].weight = set.weight ?? assumed.weight;
     lastEffective[tier].reps = set.reps ?? assumed.reps;
     lastEffective[tier].duration = set.duration ?? assumed.duration;
+    lastEffective[tier].distance = set.distance ?? assumed.distance;
     return assumed;
   });
 }
@@ -1401,9 +1413,10 @@ export function buildPresetStartExercisesPayload(
               reps: set.reps ?? null,
               weight: set.weight ?? null,
               duration: set.duration ?? null,
-              distance: null,
-              // Presets have no distance column and cardio takes no
-              // between-set rest.
+              // Distance is only meaningful on cardio sets; elsewhere a stored
+              // value is junk that must not seed the session.
+              distance: isCardioModality(modality) ? (set.distance ?? null) : null,
+              // Cardio takes no between-set rest.
               rest_time: isCardioModality(modality) ? 0 : (set.rest_time ?? null),
               notes: set.notes ?? null,
               rpe: null,
@@ -1427,19 +1440,20 @@ export function extractPlannedSetValues(
       weight: set.weight ?? null,
       reps: set.reps ?? null,
       duration: set.duration ?? null,
+      distance: set.distance ?? null,
     })),
   );
 }
 
 /**
- * Hevy-style live starts create every set with empty weight/reps/duration:
- * the plan is an assumption, not a result, so it renders as a gray
- * placeholder and only becomes a real value when the set is completed or
- * typed over. Duration is stripped for every modality — on a duration
- * exercise it's the plan, and on a weight_reps exercise a stored value is
- * junk the editors can't show that would otherwise count as history in the
- * exercise-stats query (a duration-only set renders as a bare time in the
- * PREVIOUS column).
+ * Hevy-style live starts create every set with empty
+ * weight/reps/duration/distance: the plan is an assumption, not a result, so
+ * it renders as a gray placeholder and only becomes a real value when the set
+ * is completed or typed over. Duration is stripped for every modality — on a
+ * duration exercise it's the plan, and on a weight_reps exercise a stored
+ * value is junk the editors can't show that would otherwise count as history
+ * in the exercise-stats query (a duration-only set renders as a bare time in
+ * the PREVIOUS column). Distance follows for the same reason on cardio sets.
  */
 export function stripPlannedSetValues(
   exercises: PresetSessionExerciseRequest[],
@@ -1451,6 +1465,7 @@ export function stripPlannedSetValues(
       weight: null,
       reps: null,
       duration: null,
+      distance: null,
     })),
   }));
 }
@@ -1664,29 +1679,44 @@ export function buildActivitySetsPayload(
 export function buildPresetExercisesPayload(
   exercises: WorkoutDraftExercise[],
   weightUnit: 'kg' | 'lbs',
+  distanceUnit: 'km' | 'miles',
 ): WorkoutPresetExercisePayload[] {
   // Preset exercises with zero sets are valid on the server and render as
   // "No sets" in the detail view. Do NOT filter them out — saving an unrelated
   // edit would silently delete the user's zero-set rows from the preset.
-  return exercises.map((exercise, index) => ({
-    exercise_id: exercise.exerciseId,
-    image_url: exercise.images[0] ?? null,
-    sort_order: index,
-    superset_group: exercise.supersetGroup ?? null,
-    sets: exercise.sets.map((set, setIndex) => {
-      const weight = parseDecimalInput(set.weight);
-      const reps = parseInt(set.reps, 10);
-      return {
-        set_number: setIndex + 1,
-        set_type: set.setType ?? 'normal',
-        reps: isNaN(reps) ? null : reps,
-        weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
-        duration: set.duration ?? null,
-        rest_time: set.restTime ?? null,
-        notes: set.notes ?? null,
-      };
-    }),
-  }));
+  return exercises.map((exercise, index) => {
+    const modality = resolveSnapshotModality({
+      modality: exercise.exerciseModality,
+      category: exercise.exerciseCategory,
+    });
+    return {
+      exercise_id: exercise.exerciseId,
+      image_url: exercise.images[0] ?? null,
+      sort_order: index,
+      superset_group: exercise.supersetGroup ?? null,
+      sets: exercise.sets.map((set, setIndex) => {
+        const weight = parseDecimalInput(set.weight);
+        const reps = parseInt(set.reps, 10);
+        const distance = parseDecimalInput(set.distance ?? '');
+        return {
+          set_number: setIndex + 1,
+          set_type: set.setType ?? 'normal',
+          reps: isNaN(reps) ? null : reps,
+          weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
+          // Modality-gated like the live builders: a session's junk duration
+          // on a weights exercise must not become preset structure, and
+          // distance is only meaningful on cardio sets.
+          duration: isDurationModality(modality) ? (set.duration ?? null) : null,
+          distance:
+            isCardioModality(modality) && !isNaN(distance)
+              ? distanceToKm(distance, distanceUnit)
+              : null,
+          rest_time: set.restTime ?? null,
+          notes: set.notes ?? null,
+        };
+      }),
+    };
+  });
 }
 
 // --- Update-preset canonicalization (completion-screen prompt) ---
@@ -1702,6 +1732,7 @@ interface CanonicalPresetSet {
   reps: number | null;
   weight: number | null;
   duration: number | null;
+  distance: number | null;
   rest_time: number | null;
   notes: string | null;
 }
@@ -1714,9 +1745,12 @@ interface CanonicalPresetExercise {
   sets: CanonicalPresetSet[];
 }
 
-/** Kg values pick up float noise across save round-trips; sub-gram precision is plenty. */
-function canonicalWeight(weight: number | null): number | null {
-  return weight == null ? null : Number(weight.toFixed(3));
+/**
+ * Kg and km values pick up float noise across save round-trips; sub-gram /
+ * sub-meter precision is plenty.
+ */
+function canonicalDecimal(value: number | null): number | null {
+  return value == null ? null : Number(value.toFixed(3));
 }
 
 function canonicalizeSessionSet(
@@ -1727,15 +1761,19 @@ function canonicalizeSessionSet(
   plannedValues: AssumedSetValues | undefined,
 ): CanonicalPresetSet {
   // Completed sets are authoritative for every field, nulls included; a
-  // skipped set keeps the weight/reps/duration it was programmed with.
+  // skipped set keeps the weight/reps/duration/distance it was programmed
+  // with.
   const planned = completed ? undefined : plannedValues;
   return {
     set_number: setNumber,
     set_type: set.set_type ?? 'normal',
     reps: set.reps ?? planned?.reps ?? null,
-    weight: canonicalWeight(set.weight ?? planned?.weight ?? null),
+    weight: canonicalDecimal(set.weight ?? planned?.weight ?? null),
     duration: isDurationModality(modality)
       ? (set.duration ?? planned?.duration ?? null)
+      : null,
+    distance: isCardioModality(modality)
+      ? canonicalDecimal(set.distance ?? planned?.distance ?? null)
       : null,
     // Never backfilled: the live editors commit explicit clears for notes and
     // rest, and resurrecting a deleted note would mask the edit.
@@ -1753,11 +1791,12 @@ function canonicalizePresetSet(
     set_number: setNumber,
     set_type: set.set_type ?? 'normal',
     reps: set.reps ?? null,
-    weight: canonicalWeight(set.weight ?? null),
-    // Same gates as the session side: a leaked duration on a non-duration
-    // exercise and the preset-null-vs-live-0 cardio rest split must not read
+    weight: canonicalDecimal(set.weight ?? null),
+    // Same gates as the session side: a leaked duration/distance on the wrong
+    // modality and the preset-null-vs-live-0 cardio rest split must not read
     // as deviations.
     duration: isDurationModality(modality) ? (set.duration ?? null) : null,
+    distance: isCardioModality(modality) ? canonicalDecimal(set.distance ?? null) : null,
     rest_time: isCardioModality(modality) ? 0 : (set.rest_time ?? null),
     notes: set.notes ?? null,
   };
@@ -1769,6 +1808,7 @@ function canonicalSetsEqual(a: CanonicalPresetSet, b: CanonicalPresetSet): boole
     a.reps === b.reps &&
     a.weight === b.weight &&
     a.duration === b.duration &&
+    a.distance === b.distance &&
     a.rest_time === b.rest_time &&
     a.notes === b.notes
   );
@@ -1843,6 +1883,7 @@ export function buildPresetUpdateExercises(
       only.weight == null &&
       only.reps == null &&
       only.duration == null &&
+      only.distance == null &&
       only.notes == null;
     return {
       exercise_id: exercise.exercise_id,
