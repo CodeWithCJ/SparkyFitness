@@ -12,6 +12,7 @@ export interface UserPreferences {
   default_distance_unit?: 'km' | 'miles';
   default_measurement_unit?: 'cm' | 'inches' | 'ft_in';
   date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | string;
+  time_format?: 'HH:mm' | 'h:mm A' | 'h:mm a' | string;
   energy_unit?: 'kcal' | 'kJ';
   water_display_unit?: 'ml' | 'oz' | 'liter';
 

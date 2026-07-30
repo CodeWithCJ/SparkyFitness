@@ -6,6 +6,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
     const result = await client.query(
       `UPDATE user_preferences SET
         date_format = COALESCE($1, date_format),
+        time_format = COALESCE($44, time_format),
         default_weight_unit = COALESCE($2, default_weight_unit),
         default_measurement_unit = COALESCE($3, default_measurement_unit),
         default_distance_unit = COALESCE($4, default_distance_unit),
@@ -44,6 +45,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         active_vision_ai_service_id = CASE WHEN $42 THEN $41 ELSE active_vision_ai_service_id END,
         measurement_decimal_places = COALESCE($40, measurement_decimal_places),
         added_sugar_algorithm = COALESCE($43, added_sugar_algorithm),
+        time_format = COALESCE($44, time_format),
         updated_at = now()
       WHERE user_id = $28
       RETURNING *`,
@@ -91,6 +93,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.active_vision_ai_service_id,
         'active_vision_ai_service_id' in preferenceData,
         preferenceData.added_sugar_algorithm,
+        preferenceData.time_format,
       ]
     );
     return result.rows[0];
@@ -157,7 +160,7 @@ async function upsertUserPreferences(preferenceData: any) {
   try {
     const result = await client.query(
       `INSERT INTO user_preferences (
-       user_id, date_format, default_weight_unit, default_measurement_unit, default_distance_unit,
+       user_id, date_format, time_format, default_weight_unit, default_measurement_unit, default_distance_unit,
        auto_clear_history, logging_level, timezone,
        default_food_data_provider_id, item_display_limit, water_display_unit,
        bmr_algorithm, body_fat_algorithm, include_bmr_in_net_calories,
@@ -179,7 +182,7 @@ async function upsertUserPreferences(preferenceData: any) {
        added_sugar_algorithm,
        created_at, updated_at
      ) VALUES (
-       $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
+       $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
        COALESCE($6, 'never'), COALESCE($7, 'INFO'), $8,
        $9, COALESCE($10, 10), COALESCE($11, 'ml'),
        COALESCE($12, 'Mifflin-St Jeor'), COALESCE($13, 'U.S. Navy'), COALESCE($14, false),
@@ -244,6 +247,7 @@ async function upsertUserPreferences(preferenceData: any) {
        active_vision_ai_service_id = CASE WHEN $42 THEN EXCLUDED.active_vision_ai_service_id ELSE user_preferences.active_vision_ai_service_id END,
        measurement_decimal_places = COALESCE(EXCLUDED.measurement_decimal_places, user_preferences.measurement_decimal_places),
        added_sugar_algorithm = COALESCE(EXCLUDED.added_sugar_algorithm, user_preferences.added_sugar_algorithm),
+       time_format = COALESCE(EXCLUDED.time_format, user_preferences.time_format),
        updated_at = now()
      RETURNING *`,
       [
@@ -290,6 +294,7 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.active_vision_ai_service_id,
         'active_vision_ai_service_id' in preferenceData,
         preferenceData.added_sugar_algorithm,
+        preferenceData.time_format,
       ]
     );
     return result.rows[0];

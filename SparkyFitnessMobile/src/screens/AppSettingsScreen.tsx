@@ -23,9 +23,18 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
+import { usePreferences } from '../hooks/usePreferences';
+import { updatePreferences } from '../services/api/preferencesApi';
+import { useServerConnection } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
+
+const timeFormatOptions: { label: string; value: string }[] = [
+  { label: '24-hour (14:30)', value: 'HH:mm' },
+  { label: '12-hour AM/PM (2:30 PM)', value: 'h:mm A' },
+  { label: '12-hour am/pm (2:30 pm)', value: 'h:mm a' },
+];
 
 const themeOptions: { label: string; value: ThemePreference }[] = [
   { label: 'Light', value: 'Light' },
@@ -61,6 +70,17 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const bannerRef = useRef<NotificationPermissionBannerHandle>(null);
+  const { isConnected } = useServerConnection();
+  const { preferences } = usePreferences({ enabled: isConnected });
+  const timeFormat = preferences?.time_format || 'HH:mm';
+
+  const handleTimeFormatChange = useCallback(async (value: string) => {
+    try {
+      await updatePreferences({ time_format: value });
+    } catch (err) {
+      console.error('Failed to update time format:', err);
+    }
+  }, []);
 
   const handleNotificationsToggle = useCallback(async (value: boolean) => {
     if (!value) {
@@ -113,6 +133,19 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
               options={themeOptions}
               onSelect={setThemePreference}
               title="Theme"
+              containerStyle={{ flex: 1, maxWidth: 200 }}
+            />
+          }
+        />
+
+        <SettingsRow
+          title="Time Format"
+          rightAccessory={
+            <BottomSheetPicker
+              value={timeFormat}
+              options={timeFormatOptions}
+              onSelect={handleTimeFormatChange}
+              title="Time Format"
               containerStyle={{ flex: 1, maxWidth: 200 }}
             />
           }
