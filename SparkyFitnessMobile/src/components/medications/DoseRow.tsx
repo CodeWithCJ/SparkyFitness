@@ -22,10 +22,31 @@ interface PrnDoseRowProps {
 
 export type DoseRowProps = (ScheduledDoseRowProps | PrnDoseRowProps) & {
   title: string;
+  /** Scheduled time, rendered emphasized ahead of the subtitle. */
+  time?: string;
   subtitle?: string;
   /** Row tap, e.g. navigate to the medication; renders a chevron when set. */
   onPress?: () => void;
 };
+
+/**
+ * Centers its content over an invisible copy of the pending-state
+ * Take/Skip pair (same labels, padding, and font), so every actions
+ * column keeps that width and rows don't shift between states.
+ */
+const SizedActionColumn: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <View className="items-center justify-center">
+    <View className="flex-row items-center opacity-0" aria-hidden>
+      <View className="rounded-full px-3 py-1">
+        <Text className="text-sm font-semibold">Take</Text>
+      </View>
+      <View className="rounded-full px-3 py-1 ml-1">
+        <Text className="text-sm font-semibold">Skip</Text>
+      </View>
+    </View>
+    <View className="absolute inset-0 items-center justify-center">{children}</View>
+  </View>
+);
 
 /**
  * One dose slot for the selected day: a scheduled dose with
@@ -34,7 +55,7 @@ export type DoseRowProps = (ScheduledDoseRowProps | PrnDoseRowProps) & {
  * reserved for destructive actions elsewhere in the app.
  */
 const DoseRow: React.FC<DoseRowProps> = (props) => {
-  const { title, subtitle, onPress } = props;
+  const { title, time, subtitle, onPress } = props;
 
   const [iconSuccess, iconDecorative, iconDanger, accentPrimary] = useCSSVariable([
     '--color-icon-success',
@@ -44,6 +65,8 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
   ]) as [string, string, string, string];
 
   const completed = props.kind === 'scheduled' ? props.status !== 'pending' : props.count > 0;
+  const showTime = time != null && time !== '';
+  const showSubtitle = subtitle != null && subtitle !== '';
   const taken = props.kind === 'scheduled' && props.status === 'taken';
   const titleClass = taken
     ? 'text-text-secondary line-through'
@@ -71,15 +94,17 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
   const renderActions = () => {
     if (props.kind === 'prn') {
       return (
-        <TouchableOpacity
-          onPress={props.onLog}
-          hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
-          activeOpacity={0.6}
-          accessibilityRole="button"
-          className="rounded-full px-3 py-1"
-        >
-          <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Take</Text>
-        </TouchableOpacity>
+        <SizedActionColumn>
+          <TouchableOpacity
+            onPress={props.onLog}
+            hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+            activeOpacity={0.6}
+            accessibilityRole="button"
+            className="rounded-full px-3 py-1"
+          >
+            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Take</Text>
+          </TouchableOpacity>
+        </SizedActionColumn>
       );
     }
     if (props.status === 'pending') {
@@ -109,11 +134,11 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
       );
     }
     return (
-      <View className="flex-row items-center px-3 py-1">
-      <Text className="text-sm text-text-secondary">
-        {props.status === 'taken' ? 'Taken' : 'Skipped'}
-      </Text>
-      </View>
+      <SizedActionColumn>
+        <Text className="text-sm text-text-secondary">
+          {props.status === 'taken' ? 'Taken' : 'Skipped'}
+        </Text>
+      </SizedActionColumn>
     );
   };
 
@@ -142,12 +167,18 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
         )}
       </Pressable>
       <View className="flex-1">
-        <Text className={`text-base ${titleClass}`} numberOfLines={1}>
+        <Text className={`text-base font-semibold ${titleClass}`} numberOfLines={1}>
           {title}
         </Text>
-        {subtitle != null && subtitle !== '' && (
+        {(showTime || showSubtitle) && (
           <Text className={`text-xs ${completed ? 'text-text-muted' : 'text-text-secondary'} mt-0.5`} numberOfLines={1}>
-            {subtitle}
+            {showTime && (
+              <Text className={`${completed ? 'text-text-muted' : 'text-text-primary'}`}>
+                {time}
+              </Text>
+            )}
+            {showTime && showSubtitle ? ' · ' : null}
+            {showSubtitle ? subtitle : null}
           </Text>
         )}
       </View>

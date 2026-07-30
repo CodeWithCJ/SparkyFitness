@@ -63,8 +63,49 @@ describe('DoseRow', () => {
       expect(screen.getByText('Taken')).toBeTruthy();
       expect(screen.queryByText('Take')).toBeNull();
       expect(screen.queryByText('Skip')).toBeNull();
+      // Hidden sizer keeps the actions column at the Take/Skip pair width.
+      expect(screen.getByText('Take', { includeHiddenElements: true })).toBeTruthy();
+      expect(screen.getByText('Skip', { includeHiddenElements: true })).toBeTruthy();
       expect(screen.getByText('8:00 AM').props.className).toContain('text-text-secondary');
       expect(screen.getByText('8:00 AM').props.className).toContain('line-through');
+    });
+
+    it('emphasizes the time ahead of the subtitle', () => {
+      const screen = render(
+        <DoseRow
+          kind="scheduled"
+          status="pending"
+          onToggle={jest.fn()}
+          onTake={jest.fn()}
+          onSkip={jest.fn()}
+          title="Metformin"
+          time="8:00 AM"
+          subtitle="Tablet · 500 mg"
+        />,
+      );
+
+      const time = screen.getByText('8:00 AM');
+      expect(time.props.className).toContain('text-text-primary');
+      expect(screen.getByText('8:00 AM · Tablet · 500 mg', { exact: false })).toBeTruthy();
+    });
+
+    it('mutes the time once the dose is logged', () => {
+      const screen = render(
+        <DoseRow
+          kind="scheduled"
+          status="taken"
+          onToggle={jest.fn()}
+          onTake={jest.fn()}
+          onSkip={jest.fn()}
+          title="Metformin"
+          time="8:00 AM"
+          subtitle="Tablet · 500 mg"
+        />,
+      );
+
+      const time = screen.getByText('8:00 AM');
+      expect(time.props.className).toContain('text-text-muted');
+      expect(time.props.className).not.toContain('text-text-primary');
     });
 
     it('shows a Skipped state', () => {
@@ -102,6 +143,14 @@ describe('DoseRow', () => {
 
       fireEvent.press(screen.getByText('Take'));
       expect(onLog).toHaveBeenCalled();
+    });
+
+    it('centers the Take button in the pair-width actions column', () => {
+      const screen = render(<DoseRow kind="prn" count={0} onLog={jest.fn()} title="Ibuprofen" />);
+
+      // Hidden sizer keeps the column at the Take/Skip pair width.
+      expect(screen.queryByText('Skip')).toBeNull();
+      expect(screen.getByText('Skip', { includeHiddenElements: true })).toBeTruthy();
     });
   });
 

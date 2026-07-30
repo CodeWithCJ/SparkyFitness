@@ -84,7 +84,6 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         const subtitle = [
           typeLabelFor(med.type_id),
           formatDose(med, due.schedule),
-          due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : null,
         ].filter(Boolean).join(' · ');
         return (
           <DoseRow
@@ -95,6 +94,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
             onTake={() => logDose(due, 'taken')}
             onSkip={() => logDose(due, 'skipped')}
             title={med.name}
+            time={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : undefined}
             subtitle={subtitle}
             onPress={() => navigation.navigate('MedicationDetail', { medicationId: med.id })}
           />

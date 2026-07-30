@@ -121,11 +121,12 @@ describe('MedicationsCard', () => {
     });
   });
 
-  it('renders a due dose with type, dose, and time, and visible Take/Skip', () => {
+  it('renders a due dose with time leading the subtitle, and visible Take/Skip', () => {
     const screen = setupCard([buildMedication()]);
 
     expect(screen.getByText('Lisinopril')).toBeTruthy();
-    expect(screen.getByText('Pill · 1 tablet · 8:00 AM')).toBeTruthy();
+    expect(screen.getByText('8:00 AM')).toBeTruthy();
+    expect(screen.getByText('8:00 AM · Pill · 1 tablet', { exact: false })).toBeTruthy();
     fireEvent.press(screen.getByText('Take'));
     expect(mockLogDose).toHaveBeenCalledWith(
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
@@ -136,6 +137,24 @@ describe('MedicationsCard', () => {
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
       'skipped',
     );
+  });
+
+  it('lists due doses in time order regardless of medication order', () => {
+    const screen = setupCard([
+      buildMedication({
+        id: 'med-evening',
+        name: 'Evening Med',
+        schedules: [buildSchedule({ id: 'sched-evening', medication_id: 'med-evening', time_of_day: '21:00' })],
+      }),
+      buildMedication({
+        id: 'med-morning',
+        name: 'Morning Med',
+        schedules: [buildSchedule({ id: 'sched-morning', medication_id: 'med-morning', time_of_day: '08:00' })],
+      }),
+    ]);
+
+    const names = screen.getAllByText(/(Morning|Evening) Med/).map((n) => n.props.children);
+    expect(names).toEqual(['Morning Med', 'Evening Med']);
   });
 
   it('toggles a dose from the circle', () => {
@@ -152,7 +171,7 @@ describe('MedicationsCard', () => {
       buildMedication({ schedules: [buildSchedule({ dose_amount: 2 })] }),
     ]);
 
-    expect(screen.getByText('Pill · 2 tablet · 8:00 AM')).toBeTruthy();
+    expect(screen.getByText('8:00 AM · Pill · 2 tablet', { exact: false })).toBeTruthy();
   });
 
   it('logs PRN medications from the circle and the Take button', () => {
