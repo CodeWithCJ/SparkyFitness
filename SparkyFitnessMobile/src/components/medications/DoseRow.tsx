@@ -25,7 +25,7 @@ export type DoseRowProps = (ScheduledDoseRowProps | PrnDoseRowProps) & {
   /** Scheduled time, rendered emphasized ahead of the subtitle. */
   time?: string;
   subtitle?: string;
-  /** Row tap, e.g. navigate to the medication; renders a chevron when set. */
+  /** Row tap, e.g. navigate to the medication */
   onPress?: () => void;
 };
 
