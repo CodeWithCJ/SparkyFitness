@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,12 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
 import type { WorkoutPresetSet } from '@/types/workout';
 import ExerciseActivityDetailsEditor from '@/components/ExerciseActivityDetailsEditor';
+import ExerciseHistoryDisplay from '@/components/ExerciseHistoryDisplay';
+import { Plus, ChevronDown, XCircle, X, Clock } from 'lucide-react';
+import {
+  useUpdateExerciseEntryMutation,
+  exerciseDetailsOptions,
+} from '@/hooks/Exercises/useExerciseEntries';
 import {
   DndContext,
   closestCenter,
@@ -35,13 +42,9 @@ import {
   sortableKeyboardCoordinates,
   arrayMove,
 } from '@dnd-kit/sortable';
-import { X, Plus, XCircle, ChevronDown, Clock } from 'lucide-react';
-import ExerciseHistoryDisplay from '@/components/ExerciseHistoryDisplay';
-import {
-  exerciseDetailsOptions,
-  useUpdateExerciseEntryMutation,
-} from '@/hooks/Exercises/useExerciseEntries';
-import { useQueryClient } from '@tanstack/react-query';
+import { WorkoutLapsTable } from '@/components/Exercises/WorkoutLapsTable';
+import { WorkoutGpsMap } from '@/components/Exercises/WorkoutGpsMap';
+import { useWorkoutLaps, useWorkoutGpsPoints } from '@/hooks/useGenericHealth';
 import { ActivityDetailKeyValuePair, ExerciseEntry } from '@/types/exercises';
 import { SortableSetItem } from '../Exercises/SortableWorkoutSet';
 import { SetColumnHeaders } from '../Exercises/SetHeader';
@@ -80,6 +83,11 @@ const EditExerciseEntryDialog = ({
     entry.exercise_snapshot?.category
   );
   const isCardio = modality === 'duration_distance';
+
+  const { data: lapsData, isLoading: lapsLoading } = useWorkoutLaps(entry.id);
+  const { data: gpsData, isLoading: gpsLoading } = useWorkoutGpsPoints(
+    entry.id
+  );
 
   const [sets, setSets] = useState<SortableSet[]>(() => {
     const entrySets = ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
@@ -581,6 +589,10 @@ const EditExerciseEntryDialog = ({
                   />
                 </div>
               )}
+
+              {/* GPS Route Map & Lap Splits */}
+              <WorkoutGpsMap gpsPoints={gpsData} isLoading={gpsLoading} />
+              <WorkoutLapsTable laps={lapsData} isLoading={lapsLoading} />
 
               {/* Custom activity details */}
               <div className="space-y-1.5">

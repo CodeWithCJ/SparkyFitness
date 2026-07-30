@@ -114,6 +114,7 @@ import { deleteExpiredTickets } from './services/passkeyTicketService.js';
 import withingsServiceCentral from './services/withingsService.js';
 import { upsertEnvOidcProvider } from './utils/oidcEnvConfig.js';
 import userRepository from './models/userRepository.js';
+import genericHealthRoutes from './routes/genericHealthRoutes.js';
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -514,6 +515,7 @@ app.use('/api/exercise-entries', exerciseEntryRoutes);
 app.use('/api/exercise-preset-entries', exercisePresetEntryRoutes);
 app.use('/api/freeexercisedb', freeExerciseDBRoutes);
 app.use('/api/health-data', healthDataRoutes);
+app.use('/api/generic-health', genericHealthRoutes);
 app.use('/api/sleep', sleepRoutes);
 app.use('/api/sleep-science', sleepScienceRoutes);
 app.use('/api/auth', (req, res, next) => authRoutes(req, res, next));

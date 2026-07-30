@@ -48,6 +48,7 @@ jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({
     fetchQuery: async () => ({ calories_per_hour: 600 }),
   }),
+  useQuery: () => ({ data: undefined, isLoading: false }),
 }));
 
 jest.mock('@/components/ExerciseHistoryDisplay', () => ({

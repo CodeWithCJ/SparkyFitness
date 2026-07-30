@@ -34,6 +34,8 @@ import {
   useMostRecentHeightQuery,
   useMostRecentBodyFatQuery,
 } from '@/hooks/Diary/useDailyProgress';
+import { DailyHealthMetricsCard } from '@/components/Health/DailyHealthMetricsCard';
+import { useDailyHealthMetrics } from '@/hooks/useGenericHealth';
 import { DailyProgressSkeleton } from './DailyProgressSkeleton';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { formatWeight } from '@/utils/numberFormatting';
@@ -88,6 +90,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     useDailyExerciseStats(selectedDate);
   const { data: stepsData, isLoading: loadingSteps } =
     useDailySteps(selectedDate);
+  const { data: healthMetricsData, isLoading: loadingHealthMetrics } =
+    useDailyHealthMetrics(selectedDate);
   const {
     data: summaryData,
     isLoading: loadingSummary,
@@ -749,6 +753,13 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               activityMultiplier={activityMultiplier}
               bmrSource={bmrSource}
             />
+
+            <div className="mt-4">
+              <DailyHealthMetricsCard
+                metrics={healthMetricsData?.[0]}
+                isLoading={loadingHealthMetrics}
+              />
+            </div>
           </div>
         </div>
       </CardContent>

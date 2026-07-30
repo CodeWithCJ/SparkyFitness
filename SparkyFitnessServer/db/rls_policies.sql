@@ -102,7 +102,15 @@ BEGIN
     'health_appointments',
     'user_custom_moods',
     'user_mood_display_preferences',
-    'passkey_registration_tickets'
+    'passkey_registration_tickets',
+    'exercise_entry_laps',
+    'exercise_entry_gps_points',
+    'heart_rate_entries',
+    'hrv_entries',
+    'respiration_entries',
+    'spo2_entries',
+    'vitals_entries',
+    'daily_health_metrics'
   ]::text[])
   LOOP
     EXECUTE 'ALTER TABLE public.' || quote_ident(table_name) || ' ENABLE ROW LEVEL SECURITY;';
@@ -669,6 +677,16 @@ USING (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_e
 CREATE POLICY modify_policy ON public.exercise_entry_sets FOR ALL TO PUBLIC
 USING (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_sets.exercise_entry_id AND has_diary_access(ee.user_id)))
 WITH CHECK (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_sets.exercise_entry_id AND has_diary_access(ee.user_id)));
+
+SELECT create_diary_policy('exercise_entry_laps');
+SELECT create_diary_policy('exercise_entry_gps_points');
+
+SELECT create_checkin_policy('heart_rate_entries');
+SELECT create_checkin_policy('hrv_entries');
+SELECT create_checkin_policy('respiration_entries');
+SELECT create_checkin_policy('spo2_entries');
+SELECT create_checkin_policy('vitals_entries');
+SELECT create_checkin_policy('daily_health_metrics');
 
 -- Provider configs: admin-global (is_public) OR own OR family delegation
 -- Drop any old policy names first (idempotent)

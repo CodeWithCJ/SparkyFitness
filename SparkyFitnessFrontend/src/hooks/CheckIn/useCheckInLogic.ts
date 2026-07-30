@@ -57,6 +57,10 @@ export function buildCheckInMeasurementsPayload(
     steps: string;
     height: string;
     bodyFatPercentage: string;
+    muscleMassKg?: string;
+    boneMassKg?: string;
+    bodyWaterPercentage?: string;
+    bmi?: string;
   },
   existing: CheckInMeasurementsResponse | null | undefined
 ): UpdateCheckInMeasurementsRequest {
@@ -70,11 +74,15 @@ export function buildCheckInMeasurementsPayload(
       | 'hips'
       | 'steps'
       | 'height'
-      | 'body_fat_percentage',
-    raw: string,
+      | 'body_fat_percentage'
+      | 'muscle_mass_kg'
+      | 'bone_mass_kg'
+      | 'body_water_percentage'
+      | 'bmi',
+    raw: string | undefined,
     parse: (value: string) => number
   ) => {
-    if (raw.trim() !== '') {
+    if (raw && raw.trim() !== '') {
       const parsed = parse(raw);
       if (!Number.isNaN(parsed)) {
         payload[key] = parsed;
@@ -93,6 +101,10 @@ export function buildCheckInMeasurementsPayload(
   apply('steps', form.steps, (value) => parseInt(value, 10));
   apply('height', form.height, parseFloat);
   apply('body_fat_percentage', form.bodyFatPercentage, parseFloat);
+  apply('muscle_mass_kg', form.muscleMassKg, parseFloat);
+  apply('bone_mass_kg', form.boneMassKg, parseFloat);
+  apply('body_water_percentage', form.bodyWaterPercentage, parseFloat);
+  apply('bmi', form.bmi, parseFloat);
 
   return payload;
 }

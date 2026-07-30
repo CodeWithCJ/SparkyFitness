@@ -75,3 +75,21 @@ if (!global.PointerEvent) {
 if (typeof Element.prototype.scrollIntoView !== 'function') {
   Element.prototype.scrollIntoView = jest.fn();
 }
+
+import React from 'react';
+
+// Mock react-leaflet and leaflet for Jest test environment
+jest.mock('react-leaflet', () => ({
+  MapContainer: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'map-container' }, children),
+  TileLayer: () => React.createElement('div', { 'data-testid': 'tile-layer' }),
+  Polyline: () => React.createElement('div', { 'data-testid': 'polyline' }),
+  Marker: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'marker' }, children),
+  Popup: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'popup' }, children),
+}));
+
+jest.mock('leaflet', () => ({
+  divIcon: jest.fn(() => ({})),
+}));

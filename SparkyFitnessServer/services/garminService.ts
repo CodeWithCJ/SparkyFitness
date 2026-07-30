@@ -20,6 +20,8 @@ import foodRepository from '../models/food.js';
 import foodEntryRepository from '../models/foodEntry.js';
 import mealTypeRepository from '../models/mealType.js';
 import type { GarminSyncResult } from './garminSyncResult.js';
+import * as genericHealthRepo from '../models/genericHealthRepository.js';
+import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
 
 const GARMIN_CARDIO_CATEGORY_INDICATORS = [
   'running',
@@ -376,13 +378,266 @@ async function processGarminHealthAndWellnessData(
         }
       }
     }
-    // Add processing for other health metrics here as needed in the future
-    // For example:
-    // if (healthData.heart_rates && Array.isArray(healthData.heart_rates)) {
-    //   for (const hrEntry of healthData.heart_rates) {
-    //     // Process heart rate data
-    //   }
-    // }
+
+    // 1. Consolidate & Process Daily Health Metrics
+    const datesToProcess = new Set<string>();
+    if (healthData.daily_summary)
+      healthData.daily_summary.forEach(
+        (d: { date?: string }) => d.date && datesToProcess.add(d.date)
+      );
+    if (healthData.body_battery)
+      healthData.body_battery.forEach(
+        (d: { date?: string }) => d.date && datesToProcess.add(d.date)
+      );
+    if (healthData.steps)
+      healthData.steps.forEach(
+        (d: { date?: string }) => d.date && datesToProcess.add(d.date)
+      );
+    if (healthData.total_distance)
+      healthData.total_distance.forEach(
+        (d: { date?: string }) => d.date && datesToProcess.add(d.date)
+      );
+
+    for (const dateStr of datesToProcess) {
+      try {
+        const bbItem = (healthData.body_battery || []).find(
+          (b: { date: string }) => b.date === dateStr
+        );
+        const stepsItem = (healthData.steps || []).find(
+          (s: { date: string }) => s.date === dateStr
+        );
+        const distItem = (healthData.total_distance || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const stressItem = (healthData.stress || []).find(
+          (s: { date: string }) => s.date === dateStr
+        );
+        const summaryItem =
+          (healthData.daily_summary || []).find(
+            (s: { date: string }) => s.date === dateStr
+          ) || {};
+
+        const totalSteps =
+          stepsItem?.value ??
+          stepsItem?.steps ??
+          summaryItem?.total_steps ??
+          null;
+        const distKm = distItem?.value ?? summaryItem?.total_distance ?? null;
+
+        await genericHealthRepo.upsertDailyHealthMetrics(userId, actingUserId, {
+          user_id: userId,
+          entry_date: dateStr,
+          source_provider: 'garmin',
+          total_steps: totalSteps != null ? Number(totalSteps) : null,
+          total_distance_meters:
+            distKm != null ? Math.round(Number(distKm) * 1000) : null,
+          active_calories: summaryItem.active_calories ?? null,
+          bmr_calories: summaryItem.bmr_calories ?? null,
+          resting_heart_rate: summaryItem.resting_heart_rate ?? null,
+          body_battery_highest:
+            bbItem?.body_battery_highest ??
+            summaryItem.body_battery_highest ??
+            null,
+          body_battery_lowest:
+            bbItem?.body_battery_lowest ??
+            summaryItem.body_battery_lowest ??
+            null,
+          body_battery_charged:
+            bbItem?.body_battery_charged ??
+            summaryItem.body_battery_charged ??
+            null,
+          body_battery_drained:
+            bbItem?.body_battery_drained ??
+            summaryItem.body_battery_drained ??
+            null,
+          avg_stress_level:
+            stressItem?.derived_mood_value ??
+            summaryItem.avg_stress_level ??
+            null,
+          max_stress_level: summaryItem.max_stress_level ?? null,
+          vo2_max: summaryItem.vo2_max ?? null,
+          training_readiness_score:
+            summaryItem.training_readiness_score ?? null,
+          recovery_time_hours: summaryItem.recovery_time_hours ?? null,
+        });
+        processedResults.push({
+          type: 'daily_health_metrics',
+          status: 'success',
+          date: dateStr,
+        });
+      } catch (err) {
+        log(
+          'error',
+          `Error storing daily health metrics for user ${userId} on ${dateStr}:`,
+          err
+        );
+      }
+    }
+
+    // 2. Process Intraday Heart Rate Entries (handles both {heart_rate: [...]} and {heart_rates: [{HeartRate: [...]}]})
+    const rawHrPayload = healthData.heart_rates || healthData.heart_rate || [];
+    const hrEntriesToInsert: Array<{
+      user_id: string;
+      entry_date: string;
+      timestamp: Date;
+      heart_rate_bpm: number;
+      context: string;
+      source_provider: string;
+      device_name: string;
+    }> = [];
+
+    if (Array.isArray(rawHrPayload)) {
+      for (const item of rawHrPayload) {
+        if (item.HeartRate && Array.isArray(item.HeartRate)) {
+          for (const sample of item.HeartRate) {
+            if (sample.time && sample.data) {
+              hrEntriesToInsert.push({
+                user_id: userId,
+                entry_date: item.date || sample.time.substring(0, 10),
+                timestamp: new Date(sample.time),
+                heart_rate_bpm: Number(sample.data),
+                context: 'unspecified',
+                source_provider: 'garmin',
+                device_name: 'Garmin Device',
+              });
+            }
+          }
+        } else if (item.date && item.timestamp && item.value) {
+          hrEntriesToInsert.push({
+            user_id: userId,
+            entry_date: item.date,
+            timestamp: new Date(item.timestamp),
+            heart_rate_bpm: Number(item.value),
+            context: item.context || 'unspecified',
+            source_provider: 'garmin',
+            device_name: item.device_name || 'Garmin Device',
+          });
+        }
+      }
+
+      if (hrEntriesToInsert.length > 0) {
+        await genericHealthRepo.bulkUpsertHeartRate(
+          userId,
+          actingUserId,
+          hrEntriesToInsert
+        );
+        processedResults.push({
+          type: 'heart_rate_entries',
+          status: 'success',
+          count: hrEntriesToInsert.length,
+        });
+      }
+    }
+
+    // 3. Process HRV Entries
+    if (healthData.hrv && Array.isArray(healthData.hrv)) {
+      const hrvEntriesToInsert: Array<{
+        user_id: string;
+        entry_date: string;
+        timestamp: Date;
+        hrv_rmssd_ms: number | null;
+        hrv_sdnn_ms: number | null;
+        status: string;
+        source_provider: string;
+        device_name: string;
+      }> = [];
+      for (const item of healthData.hrv) {
+        if (item.hrvSummary && item.date) {
+          hrvEntriesToInsert.push({
+            user_id: userId,
+            entry_date: item.date,
+            timestamp: new Date(`${item.date}T05:00:00Z`),
+            hrv_rmssd_ms: item.hrvSummary.lastNightAvg ?? null,
+            hrv_sdnn_ms: item.hrvSummary.weeklyAvg ?? null,
+            status: item.hrvSummary.status || 'balanced',
+            source_provider: 'garmin',
+            device_name: 'Garmin Device',
+          });
+        } else if (item.date && item.timestamp) {
+          hrvEntriesToInsert.push({
+            user_id: userId,
+            entry_date: item.date,
+            timestamp: new Date(item.timestamp),
+            hrv_rmssd_ms: item.rmssd ?? null,
+            hrv_sdnn_ms: item.sdnn ?? null,
+            status: item.status || 'balanced',
+            source_provider: 'garmin',
+            device_name: item.device_name || 'Garmin Device',
+          });
+        }
+      }
+
+      if (hrvEntriesToInsert.length > 0) {
+        await genericHealthRepo.bulkUpsertHrv(
+          userId,
+          actingUserId,
+          hrvEntriesToInsert
+        );
+        processedResults.push({
+          type: 'hrv_entries',
+          status: 'success',
+          count: hrvEntriesToInsert.length,
+        });
+      }
+    }
+
+    // 4. Process Respiration Entries
+    if (healthData.respiration && Array.isArray(healthData.respiration)) {
+      const respEntriesToInsert: Array<{
+        user_id: string;
+        entry_date: string;
+        timestamp: Date;
+        breaths_per_minute: number;
+        context: string;
+        source_provider: string;
+        device_name: string;
+      }> = [];
+      for (const item of healthData.respiration) {
+        if (
+          item.respirationValuesArray &&
+          Array.isArray(item.respirationValuesArray)
+        ) {
+          for (const sample of item.respirationValuesArray) {
+            if (sample[0] && sample[1]) {
+              respEntriesToInsert.push({
+                user_id: userId,
+                entry_date:
+                  item.date ||
+                  new Date(sample[0]).toISOString().substring(0, 10),
+                timestamp: new Date(sample[0]),
+                breaths_per_minute: Number(sample[1]),
+                context: 'unspecified',
+                source_provider: 'garmin',
+                device_name: 'Garmin Device',
+              });
+            }
+          }
+        } else if (item.date && item.timestamp && item.breaths_per_minute) {
+          respEntriesToInsert.push({
+            user_id: userId,
+            entry_date: item.date,
+            timestamp: new Date(item.timestamp),
+            breaths_per_minute: item.breaths_per_minute,
+            context: item.context || 'unspecified',
+            source_provider: 'garmin',
+            device_name: item.device_name || 'Garmin Device',
+          });
+        }
+      }
+
+      if (respEntriesToInsert.length > 0) {
+        await genericHealthRepo.bulkUpsertRespiration(
+          userId,
+          actingUserId,
+          respEntriesToInsert
+        );
+        processedResults.push({
+          type: 'respiration_entries',
+          status: 'success',
+          count: respEntriesToInsert.length,
+        });
+      }
+    }
   } catch (error) {
     log(
       'error',
@@ -841,17 +1096,90 @@ async function processGarminSimpleActivity(
     exercise_entry_id: newEntry.id,
     provider_name: 'garmin',
     detail_type: 'full_activity_data',
-    detail_data: {
-      activity: activityData.activity,
-      details: activityData.details || {
-        activityDetailMetrics: [],
-        metricDescriptors: [],
-      },
-      splits: activityData.splits || { lapDTOs: [] },
-      hr_in_timezones: activityData.hr_in_timezones || [],
-    },
+    detail_data: activityData,
     created_by_user_id: userId,
   });
+
+  // Save Laps if present in activityData
+  if (activityData.laps && Array.isArray(activityData.laps)) {
+    const lapEntries = activityData.laps.map(
+      (
+        lap: {
+          lap_index?: number;
+          startTimeLocal?: string;
+          endTimeLocal?: string;
+          duration_seconds?: number;
+          distance_meters?: number;
+          calories?: number;
+          avg_heart_rate?: number;
+          max_heart_rate?: number;
+          avg_speed_mps?: number;
+          max_speed_mps?: number;
+          avg_cadence?: number;
+          avg_power_watts?: number;
+        },
+        index: number
+      ) => ({
+        user_id: userId,
+        exercise_entry_id: newEntry.id,
+        entry_date: entryDate,
+        lap_index: lap.lap_index ?? index + 1,
+        start_time: lap.startTimeLocal
+          ? new Date(lap.startTimeLocal)
+          : new Date(),
+        end_time: lap.endTimeLocal ? new Date(lap.endTimeLocal) : new Date(),
+        duration_seconds: lap.duration_seconds ?? 0,
+        distance_meters: lap.distance_meters ?? null,
+        calories: lap.calories ?? null,
+        avg_heart_rate: lap.avg_heart_rate ?? null,
+        max_heart_rate: lap.max_heart_rate ?? null,
+        avg_speed_mps: lap.avg_speed_mps ?? null,
+        max_speed_mps: lap.max_speed_mps ?? null,
+        avg_cadence: lap.avg_cadence ?? null,
+        avg_power_watts: lap.avg_power_watts ?? null,
+      })
+    );
+    await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
+      userId,
+      userId,
+      lapEntries
+    );
+  }
+
+  // Save GPS Points if present in activityData
+  if (activityData.gps_points && Array.isArray(activityData.gps_points)) {
+    const gpsPoints = activityData.gps_points.map(
+      (pt: {
+        timestamp?: string;
+        latitude?: number;
+        longitude?: number;
+        altitude_meters?: number;
+        speed_mps?: number;
+        heart_rate_bpm?: number;
+        respiration_rate_brpm?: number;
+        cadence?: number;
+        power_watts?: number;
+      }) => ({
+        user_id: userId,
+        exercise_entry_id: newEntry.id,
+        entry_date: entryDate,
+        timestamp: pt.timestamp ? new Date(pt.timestamp) : new Date(),
+        latitude: pt.latitude ?? 0,
+        longitude: pt.longitude ?? 0,
+        altitude_meters: pt.altitude_meters ?? null,
+        speed_mps: pt.speed_mps ?? null,
+        heart_rate_bpm: pt.heart_rate_bpm ?? null,
+        respiration_rate_brpm: pt.respiration_rate_brpm ?? null,
+        cadence: pt.cadence ?? null,
+        power_watts: pt.power_watts ?? null,
+      })
+    );
+    await workoutTelemetryRepo.bulkInsertExerciseEntryGpsPoints(
+      userId,
+      userId,
+      gpsPoints
+    );
+  }
 }
 async function processGarminSleepData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

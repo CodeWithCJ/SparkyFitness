@@ -5,6 +5,7 @@ import {
   ActivityDetailMetric,
   ActivityDetailsResponse,
 } from '@/types/exercises';
+import { ExerciseEntryGpsPoints } from '@workspace/shared';
 import { ChartDataPoint } from '@/types/reports';
 
 interface MetricDescriptor {
@@ -318,6 +319,40 @@ export const processChartData = (
     ...dataPoint,
     distance: convertDistance(dataPoint.distance / 1000, 'km', distanceUnit),
   }));
+};
+
+export const processGpsPointsToChartData = (
+  points: ExerciseEntryGpsPoints[] | undefined,
+  convertDistance: (
+    value: number,
+    from: DistanceUnit,
+    to: DistanceUnit
+  ) => number,
+  distanceUnit: DistanceUnit
+): ChartDataPoint[] => {
+  if (!points || points.length === 0) return [];
+  const firstPt = points[0];
+  if (!firstPt) return [];
+  const startTs = new Date(firstPt.timestamp).getTime();
+  const initialDist = firstPt.distance_meters ?? 0;
+
+  return points.map((pt) => {
+    const currentTs = new Date(pt.timestamp).getTime();
+    const speed = pt.speed_mps ?? 0;
+    const paceMinutesPerKm = speed > 0 ? 1000 / (speed * 60) : 0;
+    const relDistance = (pt.distance_meters ?? 0) - initialDist;
+
+    return {
+      timestamp: currentTs,
+      activityDuration: (currentTs - startTs) / 60000,
+      distance: convertDistance(relDistance / 1000, 'km', distanceUnit),
+      speed: speed ? parseFloat(speed.toFixed(2)) : 0,
+      pace: paceMinutesPerKm > 0 ? parseFloat(paceMinutesPerKm.toFixed(2)) : 0,
+      heartRate: pt.heart_rate_bpm ?? null,
+      runCadence: pt.cadence ?? 0,
+      elevation: pt.altitude_meters ?? null,
+    };
+  });
 };
 
 export interface ActivityStats {

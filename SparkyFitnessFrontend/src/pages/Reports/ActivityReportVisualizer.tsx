@@ -7,8 +7,10 @@ import { ActivityStatsGrid } from '@/components/ExerciseCharts/ActivityStatsGrid
 import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActivityDetailsQuery } from '@/hooks/Exercises/useExercises';
+import { useWorkoutGpsPoints } from '@/hooks/useGenericHealth';
 import {
   processChartData,
+  processGpsPointsToChartData,
   getActivityIcon,
   getEventTypeLabel,
   readActivityStats,
@@ -61,15 +63,20 @@ const ActivityReportVisualizer = ({
     water_display_unit,
   } = usePreferences();
 
-  const allChartData = activityData
-    ? processChartData(
-        activityData.activity?.details?.activityDetailMetrics || [],
-        activityData,
-        loggingLevel,
-        convertDistance,
-        distanceUnit
-      )
-    : [];
+  const { data: gpsPoints } = useWorkoutGpsPoints(exerciseEntryId);
+
+  const allChartData =
+    gpsPoints && gpsPoints.length > 0
+      ? processGpsPointsToChartData(gpsPoints, convertDistance, distanceUnit)
+      : activityData
+        ? processChartData(
+            activityData.activity?.details?.activityDetailMetrics || [],
+            activityData,
+            loggingLevel,
+            convertDistance,
+            distanceUnit
+          )
+        : [];
 
   const hasDistanceData =
     allChartData.length > 0 &&

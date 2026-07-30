@@ -1,0 +1,128 @@
+import React from 'react';
+import { ExerciseEntryLaps } from '@workspace/shared';
+import { Timer, Heart, Wind, Zap, Gauge } from 'lucide-react';
+
+interface WorkoutLapsTableProps {
+  laps?: ExerciseEntryLaps[];
+  isLoading?: boolean;
+}
+
+const formatDuration = (seconds?: number | null): string => {
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const formatPace = (
+  distanceMeters?: number | null,
+  durationSeconds?: number | null
+): string => {
+  if (!distanceMeters || !durationSeconds || distanceMeters === 0)
+    return '--:--';
+  const paceSecondsPerKm = (durationSeconds / distanceMeters) * 1000;
+  const mins = Math.floor(paceSecondsPerKm / 60);
+  const secs = Math.floor(paceSecondsPerKm % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+export const WorkoutLapsTable: React.FC<WorkoutLapsTableProps> = ({
+  laps,
+  isLoading,
+}) => {
+  if (isLoading) {
+    return (
+      <div className="w-full bg-slate-900/40 border border-slate-800 rounded-xl p-4 animate-pulse">
+        <div className="h-6 bg-slate-800 rounded w-1/4 mb-4"></div>
+        <div className="h-32 bg-slate-800/60 rounded"></div>
+      </div>
+    );
+  }
+
+  if (!laps || laps.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="w-full bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg backdrop-blur-md">
+      <div className="flex items-center gap-2 mb-3">
+        <Timer className="h-5 w-5 text-indigo-400" />
+        <h3 className="text-base font-bold text-slate-100">
+          Workout Split Intervals & Laps
+        </h3>
+        <span className="ml-auto text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 font-semibold">
+          {laps.length} Laps
+        </span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-slate-800 text-slate-400 font-medium">
+              <th className="py-2.5 px-3">Lap</th>
+              <th className="py-2.5 px-3">Distance</th>
+              <th className="py-2.5 px-3">Time</th>
+              <th className="py-2.5 px-3">Pace (/km)</th>
+              <th className="py-2.5 px-3 text-rose-400 font-semibold">
+                <Heart className="inline h-3.5 w-3.5 mr-1" />
+                Avg / Max HR
+              </th>
+              <th className="py-2.5 px-3 text-teal-400 font-semibold">
+                <Wind className="inline h-3.5 w-3.5 mr-1" />
+                Resp (brpm)
+              </th>
+              <th className="py-2.5 px-3 text-cyan-400 font-semibold">
+                <Gauge className="inline h-3.5 w-3.5 mr-1" />
+                Cadence
+              </th>
+              <th className="py-2.5 px-3 text-amber-400 font-semibold">
+                <Zap className="inline h-3.5 w-3.5 mr-1" />
+                Power
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/60">
+            {laps.map((lap) => (
+              <tr
+                key={lap.id}
+                className="hover:bg-slate-800/40 transition-colors font-mono"
+              >
+                <td className="py-2.5 px-3 font-bold text-slate-200">
+                  #{lap.lap_index}
+                </td>
+                <td className="py-2.5 px-3 text-slate-300 font-medium font-sans">
+                  {lap.distance_meters != null
+                    ? `${(lap.distance_meters / 1000).toFixed(2)} km`
+                    : '--'}
+                </td>
+                <td className="py-2.5 px-3 text-slate-300">
+                  {formatDuration(lap.duration_seconds)}
+                </td>
+                <td className="py-2.5 px-3 text-indigo-300 font-semibold">
+                  {formatPace(lap.distance_meters, lap.duration_seconds)}
+                </td>
+                <td className="py-2.5 px-3 text-rose-300">
+                  {lap.avg_heart_rate ? `${lap.avg_heart_rate} bpm` : '--'}
+                  {lap.max_heart_rate ? ` (${lap.max_heart_rate})` : ''}
+                </td>
+                <td className="py-2.5 px-3 text-teal-300">
+                  {lap.avg_respiration_brpm != null
+                    ? `${lap.avg_respiration_brpm.toFixed(1)}`
+                    : '--'}
+                </td>
+                <td className="py-2.5 px-3 text-cyan-300">
+                  {lap.avg_cadence ? `${lap.avg_cadence} rpm` : '--'}
+                </td>
+                <td className="py-2.5 px-3 text-amber-300">
+                  {lap.avg_power_watts
+                    ? `${Math.round(lap.avg_power_watts)} W`
+                    : '--'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
