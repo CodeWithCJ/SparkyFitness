@@ -29,7 +29,19 @@ let
     SPARKY_FITNESS_CUSTOM_TEMP_DIRECTORY = "${cfg.stateDir}/temp_uploads";
     SPARKY_FITNESS_LOG_LEVEL = cfg.logLevel;
   }
+  // lib.optionalAttrs cfg.garmin.enable {
+    GARMIN_MICROSERVICE_URL = "http://${cfg.garmin.bindAddress}:${toString cfg.garmin.port}";
+  }
   // cfg.extraEnvironment;
+
+  # Non-secret runtime environment for the Garmin microservice. Garmin
+  # credentials are supplied per-user through the web UI, not through the
+  # environment, so this service normally needs no secrets file.
+  garminEnv = {
+    GARMIN_SERVICE_PORT = toString cfg.garmin.port;
+    GARMIN_SERVICE_IS_CN = lib.boolToString cfg.garmin.isCN;
+  }
+  // cfg.garmin.extraEnvironment;
 in
 {
   options.services.sparkyfitness = {
@@ -177,6 +189,86 @@ in
       };
     };
 
+    garmin = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Run the Garmin Connect microservice (`SparkyFitnessGarmin`) as a local
+          systemd service and point the backend at it via
+          GARMIN_MICROSERVICE_URL.
+        '';
+      };
+
+      package = lib.mkOption {
+        type = lib.types.package;
+        description = "The SparkyFitness Garmin microservice package.";
+      };
+
+      user = lib.mkOption {
+        type = lib.types.str;
+        default = "sparkyfitness-garmin";
+        description = ''
+          User account under which the Garmin microservice runs. Kept separate
+          from the backend user by default: the service handles Garmin
+          credentials and needs none of the backend's state.
+        '';
+      };
+
+      group = lib.mkOption {
+        type = lib.types.str;
+        default = "sparkyfitness-garmin";
+        description = "Group under which the Garmin microservice runs.";
+      };
+
+      stateDir = lib.mkOption {
+        type = lib.types.path;
+        default = "/var/lib/sparkyfitness-garmin";
+        description = ''
+          Working directory for the microservice. It creates a `mock_data`
+          subdirectory here on startup.
+        '';
+      };
+
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 8000;
+        description = "Port the Garmin microservice listens on.";
+      };
+
+      bindAddress = lib.mkOption {
+        type = lib.types.str;
+        default = "127.0.0.1";
+        description = ''
+          Address the Garmin microservice binds to.'';
+      };
+
+      isCN = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Use the Garmin China (CN) region endpoints.";
+      };
+
+      environmentFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = ''
+          Optional EnvironmentFile for the Garmin microservice. Not normally
+          needed: Garmin credentials are entered per user in the web UI and
+          stored by the backend.
+        '';
+      };
+
+      extraEnvironment = lib.mkOption {
+        type = lib.types.attrsOf lib.types.str;
+        default = { };
+        example = {
+          SPARKY_FITNESS_GARMIN_DATA_SOURCE = "local";
+        };
+        description = "Additional environment variables passed to the Garmin microservice.";
+      };
+    };
+
     nginx = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -200,17 +292,29 @@ in
       }
     ];
 
-    users.users = lib.mkIf (cfg.user == "sparkyfitness") {
-      sparkyfitness = {
-        isSystemUser = true;
-        group = cfg.group;
-        home = cfg.stateDir;
+    users.users =
+      lib.optionalAttrs (cfg.user == "sparkyfitness") {
+        sparkyfitness = {
+          isSystemUser = true;
+          group = cfg.group;
+          home = cfg.stateDir;
+        };
+      }
+      // lib.optionalAttrs (cfg.garmin.enable && cfg.garmin.user == "sparkyfitness-garmin") {
+        sparkyfitness-garmin = {
+          isSystemUser = true;
+          group = cfg.garmin.group;
+          home = cfg.garmin.stateDir;
+        };
       };
-    };
 
-    users.groups = lib.mkIf (cfg.group == "sparkyfitness") {
-      sparkyfitness = { };
-    };
+    users.groups =
+      lib.optionalAttrs (cfg.group == "sparkyfitness") {
+        sparkyfitness = { };
+      }
+      // lib.optionalAttrs (cfg.garmin.enable && cfg.garmin.group == "sparkyfitness-garmin") {
+        sparkyfitness-garmin = { };
+      };
 
     # --- Local PostgreSQL -----------------------------------------------------
     services.postgresql = lib.mkIf cfg.database.createLocally {
@@ -289,7 +393,10 @@ in
       ++ lib.optionals cfg.database.createLocally [
         "postgresql.service"
         "sparkyfitness-db-init.service"
-      ];
+      ]
+      # Ordering only: the backend calls the microservice lazily per sync, so it
+      # must not fail to start when Garmin is down.
+      ++ lib.optionals cfg.garmin.enable [ "sparkyfitness-garmin.service" ];
       requires = lib.optionals cfg.database.createLocally [
         "sparkyfitness-db-init.service"
       ];
@@ -318,6 +425,54 @@ in
 
       preStart = ''
         mkdir -p ${cfg.stateDir}/uploads ${cfg.stateDir}/backup ${cfg.stateDir}/temp_uploads
+      '';
+    };
+
+    # --- Garmin Connect microservice -----------------------------------------
+    systemd.services.sparkyfitness-garmin = lib.mkIf cfg.garmin.enable {
+      description = "SparkyFitness Garmin Connect microservice";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+
+      environment = garminEnv;
+
+      serviceConfig = {
+        # The package entrypoint is `python -m uvicorn main:app`; host and port
+        # are passed here because main.py would otherwise bind 0.0.0.0.
+        ExecStart = "${lib.getExe cfg.garmin.package} --host ${cfg.garmin.bindAddress} --port ${toString cfg.garmin.port}";
+        User = cfg.garmin.user;
+        Group = cfg.garmin.group;
+        EnvironmentFile = lib.mkIf (cfg.garmin.environmentFile != null) cfg.garmin.environmentFile;
+        StateDirectory = lib.mkIf (lib.hasPrefix "/var/lib/" cfg.garmin.stateDir) (
+          lib.removePrefix "/var/lib/" cfg.garmin.stateDir
+        );
+        WorkingDirectory = cfg.garmin.stateDir;
+        Restart = "on-failure";
+        RestartSec = 5;
+
+        NoNewPrivileges = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        PrivateTmp = true;
+        PrivateDevices = true;
+        ProtectKernelTunables = true;
+        ProtectKernelModules = true;
+        ProtectControlGroups = true;
+        RestrictAddressFamilies = [
+          "AF_INET"
+          "AF_INET6"
+          "AF_UNIX"
+        ];
+        RestrictNamespaces = true;
+        LockPersonality = true;
+        MemoryDenyWriteExecute = false;
+        SystemCallArchitectures = "native";
+        ReadWritePaths = [ cfg.garmin.stateDir ];
+      };
+
+      preStart = ''
+        mkdir -p ${cfg.garmin.stateDir}/mock_data
       '';
     };
 
