@@ -7,9 +7,9 @@ import { useMedications } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
+import MedicationRow from '../components/medications/MedicationRow';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Medication } from '@workspace/shared';
-import { MEDICATION_TYPES } from '../types/medications';
 
 type MedicationsListScreenProps = RootStackScreenProps<'MedicationsList'>;
 
@@ -19,6 +19,7 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, iconDecorative] = useCSSVariable(['--color-accent-primary', '--color-icon-decorative']) as [string, string];
   const [refreshing, setRefreshing] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
 
   const { data: medications, isLoading, isError, refetch } = useMedications();
 
@@ -50,38 +51,21 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
     },
   });
 
-  const renderMedItem = ({ item }: { item: Medication }) => {
-    const typeLabel = MEDICATION_TYPES.find((t) => t.id === item.type_id)?.label ?? item.type_id;
-    const doseLabel = item.dose_amount != null ? `${item.dose_amount} ${item.dose_unit ?? ''}`.trim() : '';
+  const renderMedItem = ({ item }: { item: Medication }) => (
+    <MedicationRow
+      medication={item}
+      onPress={() => navigation.navigate('MedicationDetail', { medicationId: item.id })}
+    />
+  );
 
-    return (
-      <TouchableOpacity
-        className="py-3 px-4 bg-surface flex-row items-center"
-        onPress={() => navigation.navigate('MedicationDetail', { medicationId: item.id })}
-        activeOpacity={0.7}
-      >
-        <View className="flex-1">
-          <Text className={`text-base ${item.is_active ? 'text-text-primary' : 'text-text-muted'}`} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <View className="flex-row items-center mt-1">
-            <Text className="text-xs text-text-secondary">{typeLabel}</Text>
-            {doseLabel ? (
-              <Text className="text-xs text-text-muted ml-2">· {doseLabel}</Text>
-            ) : null}
-            {item.reason_text ? (
-              <Text className="text-xs text-text-muted ml-2" numberOfLines={1}>· {item.reason_text}</Text>
-            ) : null}
-          </View>
-        </View>
-        <Icon name="chevron-forward" size={16} color={iconDecorative} />
-      </TouchableOpacity>
-    );
-  };
-
-  const sections: { title: string; data: Medication[] }[] = [];
-  if (active.length > 0) sections.push({ title: 'Active', data: active });
-  if (inactive.length > 0) sections.push({ title: 'Inactive', data: inactive });
+  // The inactive section always renders its disclosure header; its rows
+  // only appear once expanded.
+  const sections: { key: 'active' | 'inactive'; data: Medication[] }[] = [
+    { key: 'active', data: active },
+  ];
+  if (inactive.length > 0) {
+    sections.push({ key: 'inactive', data: showInactive ? inactive : [] });
+  }
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -97,7 +81,7 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
             <Text className="text-accent-primary text-base font-medium">Retry</Text>
           </TouchableOpacity>
         </View>
-      ) : sections.length === 0 ? (
+      ) : active.length === 0 && inactive.length === 0 ? (
         <View className="flex-1 items-center justify-center p-8">
           <Icon name="wellness" size={48} color={iconDecorative} />
           <Text className="text-text-muted text-lg mt-4 text-center">No medications yet</Text>
@@ -116,12 +100,30 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
           sections={sections}
           keyExtractor={(item) => item.id}
           renderItem={renderMedItem}
-          renderSectionHeader={({ section }) => (
-            <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide px-4 pt-4 pb-1">
-              {section.title}
-            </Text>
-          )}
+          renderSectionHeader={({ section }) =>
+            section.key === 'inactive' ? (
+              <TouchableOpacity
+                className="flex-row items-center px-4 pt-4 pb-1"
+                onPress={() => setShowInactive((value) => !value)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showInactive }}
+                accessibilityLabel={`Inactive medications (${inactive.length})`}
+              >
+                <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  Inactive ({inactive.length})
+                </Text>
+                <Icon
+                  name={showInactive ? 'chevron-down' : 'chevron-forward'}
+                  size={12}
+                  color={iconDecorative}
+                  style={{ marginLeft: 4 }}
+                />
+              </TouchableOpacity>
+            ) : null
+          }
           contentContainerStyle={{
+            paddingTop: 8,
             paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
           }}
           contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
