@@ -227,7 +227,7 @@ describe('useLogDose', () => {
     });
   });
 
-  test('logPrn creates a prn_taken entry', async () => {
+  test('logPrn creates a prn_taken entry with an undo toast', async () => {
     const { result } = renderLogDose([]);
 
     act(() => {
@@ -242,7 +242,60 @@ describe('useLogDose', () => {
         taken_at: expect.any(String),
       });
     });
-    expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Lisinopril logged' });
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'success',
+      text1: 'Lisinopril logged',
+      text2: 'Tap to undo',
+      props: { onPress: expect.any(Function) },
+    });
+  });
+
+  const undoFromLastToast = () => {
+    const showMock = Toast.show as unknown as jest.Mock;
+    const [params] = showMock.mock.calls[showMock.mock.calls.length - 1];
+    act(() => {
+      params.props.onPress();
+    });
+  };
+
+  test('tapping the PRN toast deletes the created entry', async () => {
+    mockCreateEntry.mockResolvedValue(buildEntry({ id: 'prn-entry', schedule_id: null, status: 'prn_taken' }));
+    const { result } = renderLogDose([]);
+
+    act(() => {
+      result.current.logPrn(buildMedication());
+    });
+    await waitFor(() => {
+      expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ text2: 'Tap to undo' }));
+    });
+
+    undoFromLastToast();
+
+    expect(Toast.hide).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockDeleteEntry).toHaveBeenCalledWith('prn-entry');
+    });
+    await waitFor(() => {
+      expect(Toast.show).toHaveBeenCalledWith({ type: 'info', text1: 'Lisinopril dose removed' });
+    });
+  });
+
+  test('a failed PRN undo surfaces an error toast', async () => {
+    mockDeleteEntry.mockRejectedValue(new Error('offline'));
+    const { result } = renderLogDose([]);
+
+    act(() => {
+      result.current.logPrn(buildMedication());
+    });
+    await waitFor(() => {
+      expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ text2: 'Tap to undo' }));
+    });
+
+    undoFromLastToast();
+
+    await waitFor(() => {
+      expect(Toast.show).toHaveBeenCalledWith({ type: 'error', text1: 'Failed to remove Lisinopril dose' });
+    });
   });
 
   test('a failed create surfaces an error toast', async () => {
