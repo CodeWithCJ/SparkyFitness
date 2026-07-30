@@ -55,7 +55,7 @@ import { formatRelativeTime } from '../utils/dateUtils';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetric } from '../HealthMetrics';
 import type { HealthMetricStates, HealthDataDisplayState } from '../types/healthRecords';
-import { useSyncHealthData } from '../hooks';
+import { useServerConnection, useSyncHealthData } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
 import { fetchHealthDisplayData } from '../services/healthDataDisplay';
 import { shareHealthDiagnosticReport } from '../services/healthDiagnosticService';
@@ -83,7 +83,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const { preferences } = usePreferences({ enabled: true });
+  const { isConnected } = useServerConnection();
+  const { preferences } = usePreferences({ enabled: isConnected });
   const timeFormat = preferences?.time_format;
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [writebackStates, setWritebackStates] = useState<Record<string, boolean>>({});

@@ -1,5 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import { View, ScrollView, Switch } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -87,6 +88,11 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
       queryClient.invalidateQueries({ queryKey: preferencesQueryKey });
     } catch (err) {
       console.error('Failed to update time format:', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to update time format',
+        text2: 'Please try again.',
+      });
     }
   }, [queryClient]);
 

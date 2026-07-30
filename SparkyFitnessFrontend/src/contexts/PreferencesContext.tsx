@@ -1120,6 +1120,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           | 'km'
           | 'miles';
         const savedDateFormat = localStorage.getItem('dateFormat');
+        const savedTimeFormat = localStorage.getItem('timeFormat');
         const savedLanguage = localStorage.getItem('language');
         const savedCalorieGoalAdjustmentMode = localStorage.getItem(
           'calorieGoalAdjustmentMode'
@@ -1134,6 +1135,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         if (savedWeightUnit) setWeightUnitState(savedWeightUnit);
         if (savedMeasurementUnit) setMeasurementUnitState(savedMeasurementUnit);
         if (savedDateFormat) setDateFormatState(savedDateFormat);
+        if (savedTimeFormat) setTimeFormatState(savedTimeFormat);
         if (savedDistanceUnit) setDistanceUnitState(savedDistanceUnit);
         if (savedLanguage) setLanguageState(savedLanguage);
         if (savedCalorieGoalAdjustmentMode)

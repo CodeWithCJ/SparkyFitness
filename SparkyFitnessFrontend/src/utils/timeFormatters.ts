@@ -66,8 +66,10 @@ export function formatTimeOfDayString(
   const parts = timeOfDay.split(':');
   const h = parseInt(parts[0] ?? '0', 10);
   const m = parseInt(parts[1] ?? '0', 10);
-  const date = new Date();
-  date.setHours(h, m, 0, 0);
+  // Use a fixed non-DST calendar date so parsing a schedule time does not
+  // shift across DST boundaries and remains consistent regardless of the
+  // current date.
+  const date = new Date(2000, 0, 1, h, m, 0, 0);
   return formatTimeWithPreference(date, timeFormat);
 }
 

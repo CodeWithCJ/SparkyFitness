@@ -549,7 +549,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                 width: `${width}%`,
                 backgroundColor: SLEEP_STAGE_COLORS[event.stage_type],
               }}
-              title={`${event.stage_type}: ${format(parseISO(event.start_time), 'p')} - ${format(parseISO(event.end_time), 'p')}`}
+              title={`${event.stage_type}: ${formatTimeWithPreference(parseISO(event.start_time), timeFormat)} - ${formatTimeWithPreference(parseISO(event.end_time), timeFormat)}`}
             />
           );
         })}

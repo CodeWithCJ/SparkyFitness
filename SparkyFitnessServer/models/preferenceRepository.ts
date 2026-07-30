@@ -246,7 +246,7 @@ async function upsertUserPreferences(preferenceData: any) {
        active_vision_ai_service_id = CASE WHEN $42 THEN EXCLUDED.active_vision_ai_service_id ELSE user_preferences.active_vision_ai_service_id END,
        measurement_decimal_places = COALESCE(EXCLUDED.measurement_decimal_places, user_preferences.measurement_decimal_places),
        added_sugar_algorithm = COALESCE(EXCLUDED.added_sugar_algorithm, user_preferences.added_sugar_algorithm),
-       time_format = COALESCE(EXCLUDED.time_format, user_preferences.time_format),
+       time_format = COALESCE($44, user_preferences.time_format),
        updated_at = now()
      RETURNING *`,
       [
