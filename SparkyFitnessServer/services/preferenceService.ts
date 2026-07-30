@@ -51,6 +51,7 @@ function getDefaultPreferences() {
     calorie_goal_adjustment_mode: 'dynamic',
     show_net_carbs: false,
     timezone: null,
+    time_format: 'HH:mm',
   };
 }
 async function updateUserPreferences(
@@ -114,7 +115,10 @@ async function getUserPreferences(authenticatedUserId: any, targetUserId: any) {
     if (!preferences) {
       return getDefaultPreferences();
     }
-    return preferences;
+    return {
+      ...preferences,
+      time_format: preferences.time_format ?? 'HH:mm',
+    };
   } catch (error) {
     log(
       'error',

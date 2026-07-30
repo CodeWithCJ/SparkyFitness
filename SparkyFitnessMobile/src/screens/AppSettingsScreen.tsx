@@ -26,6 +26,9 @@ import { canUseLiquidGlass } from '../utils/liquidGlass';
 import { usePreferences } from '../hooks/usePreferences';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { useServerConnection } from '../hooks';
+import { useQueryClient } from '@tanstack/react-query';
+import { preferencesQueryKey } from '../hooks/queryKeys';
+import type { UserPreferences } from '../types/preferences';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
@@ -73,14 +76,19 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
   const timeFormat = preferences?.time_format || 'HH:mm';
+  const queryClient = useQueryClient();
 
   const handleTimeFormatChange = useCallback(async (value: string) => {
     try {
-      await updatePreferences({ time_format: value });
+      const updated = await updatePreferences({ time_format: value });
+      queryClient.setQueryData<UserPreferences>(preferencesQueryKey, (old) =>
+        old ? { ...old, ...updated } : updated,
+      );
+      queryClient.invalidateQueries({ queryKey: preferencesQueryKey });
     } catch (err) {
       console.error('Failed to update time format:', err);
     }
-  }, []);
+  }, [queryClient]);
 
   const handleNotificationsToggle = useCallback(async (value: boolean) => {
     if (!value) {

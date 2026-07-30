@@ -6,19 +6,22 @@ import { toHourMinute } from '@workspace/shared';
  *   - 'h:mm A' → 12-hour uppercase (2:30 PM)
  *   - 'h:mm a' → 12-hour lowercase (2:30 pm)
  *
+ * When no format is supplied the app default of 24-hour ('HH:mm') is used.
  * For any other format, falls back to the device locale default.
  */
 function formatTime(date: Date, timeFormat?: string | null | undefined): string {
-  if (timeFormat === 'HH:mm') {
+  const fmt = timeFormat ?? 'HH:mm';
+
+  if (fmt === 'HH:mm') {
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   }
 
-  if (timeFormat === 'h:mm A' || timeFormat === 'h:mm a') {
+  if (fmt === 'h:mm A' || fmt === 'h:mm a') {
     const hours24 = date.getHours();
     const isPM = hours24 >= 12;
     const hours12 = hours24 % 12 || 12;
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    const marker = timeFormat === 'h:mm a'
+    const marker = fmt === 'h:mm a'
       ? isPM ? 'pm' : 'am'
       : isPM ? 'PM' : 'AM';
     return `${hours12}:${minutes} ${marker}`;
@@ -35,8 +38,8 @@ function formatTime(date: Date, timeFormat?: string | null | undefined): string 
  * should call this function.
  *
  * @param timestamp - ISO string, Date, or null/undefined.
- * @param timeFormat - Optional time format preference ('HH:mm' for 24h, anything else for 12h).
- *                     If omitted, uses the device locale default.
+ * @param timeFormat - Optional time format preference ('HH:mm' for 24h, 'h:mm A' or 'h:mm a' for 12h).
+ *                     If omitted, defaults to 24-hour (HH:mm).
  * @returns The formatted time string, or null when the input is null/undefined.
  */
 export function formatTimeOfDay(
@@ -55,7 +58,7 @@ export function formatTimeOfDay(
  *
  * @param time - The time string to format.
  * @param timeFormat - Optional time format preference ('HH:mm' for 24h, 'h:mm A' or 'h:mm a' for 12h).
- *                     If omitted, uses the device locale default.
+ *                     If omitted, defaults to 24-hour (HH:mm).
  * @returns The formatted time string, or null when there is no time set.
  */
 export function formatTimeLabel(

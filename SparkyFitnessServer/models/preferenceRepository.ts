@@ -45,7 +45,6 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         active_vision_ai_service_id = CASE WHEN $42 THEN $41 ELSE active_vision_ai_service_id END,
         measurement_decimal_places = COALESCE($40, measurement_decimal_places),
         added_sugar_algorithm = COALESCE($43, added_sugar_algorithm),
-        time_format = COALESCE($44, time_format),
         updated_at = now()
       WHERE user_id = $28
       RETURNING *`,
