@@ -617,14 +617,17 @@ function adoptAssumedSetValues(
 
   // Only the fields the modality renders adopt: a duration set must not be
   // stamped with legacy isometric reps from history, and a weighted set must
-  // not inherit a duration.
+  // not inherit a duration. Cardio renders duration + distance, so both adopt.
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const durationLike = isDurationModality(modality);
-  const relevantFilled = durationLike
-    ? target.duration != null
-    : modality === 'reps_only'
-      ? target.reps != null
-      : target.weight != null && target.reps != null;
+  const cardio = isCardioModality(modality);
+  const relevantFilled = cardio
+    ? target.duration != null && target.distance != null
+    : durationLike
+      ? target.duration != null
+      : modality === 'reps_only'
+        ? target.reps != null
+        : target.weight != null && target.reps != null;
   if (relevantFilled) return session;
 
   const assumed = resolveAssumedSetValues(
@@ -632,14 +635,19 @@ function adoptAssumedSetValues(
     state.previousSessionSets[exercise.exercise_id],
     state.plannedSetValues,
   )[setIndex];
-  const patch: ActiveSetPatch = durationLike
-    ? { duration: target.duration ?? assumed.duration ?? null }
-    : modality === 'reps_only'
-      ? { reps: target.reps ?? assumed.reps }
-      : {
-          weight: target.weight ?? assumed.weight,
-          reps: target.reps ?? assumed.reps,
-        };
+  const patch: ActiveSetPatch = cardio
+    ? {
+        duration: target.duration ?? assumed.duration ?? null,
+        distance: target.distance ?? assumed.distance ?? null,
+      }
+    : durationLike
+      ? { duration: target.duration ?? assumed.duration ?? null }
+      : modality === 'reps_only'
+        ? { reps: target.reps ?? assumed.reps }
+        : {
+            weight: target.weight ?? assumed.weight,
+            reps: target.reps ?? assumed.reps,
+          };
   if (Object.values(patch).every((v) => v == null)) return session;
 
   return {
@@ -906,7 +914,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             const planned = plannedSets[setIndex];
             if (
               planned != null &&
-              (planned.weight != null || planned.reps != null || planned.duration != null)
+              (planned.weight != null ||
+                planned.reps != null ||
+                planned.duration != null ||
+                planned.distance != null)
             ) {
               plannedSetValues[String(s.id)] = planned;
             }

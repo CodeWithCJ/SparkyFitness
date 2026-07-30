@@ -759,6 +759,7 @@ function ActiveWorkoutExerciseCard({
             exerciseName={name}
             mode={mode}
             distanceUnit={distanceUnit}
+            assumed={assumedSetValues?.[0] ?? null}
             state={((): SetRowState => {
               // Same state derivation as the table rows, so the form's log
               // affordance matches: done check, pulsing cursor ring, or muted

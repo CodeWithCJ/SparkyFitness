@@ -1475,7 +1475,7 @@ describe('workoutSession', () => {
       expect(payload[0].sets[0].set_type).toBe('normal');
     });
 
-    it('round-trips set_type, duration, and notes from the draft', () => {
+    it('round-trips set_type and notes, sanitizing duration off non-duration modalities', () => {
       const payload = buildPresetExercisesPayload(
         [
           makeDraftExercise({
@@ -1485,6 +1485,8 @@ describe('workoutSession', () => {
                 weight: '50',
                 reps: '10',
                 setType: 'warmup',
+                // Junk carried in from a logged session (the old "Save as
+                // Preset" duration leak) — a weights exercise must not keep it.
                 duration: 45,
                 notes: 'easy set',
               },
@@ -1492,10 +1494,44 @@ describe('workoutSession', () => {
           }),
         ],
         'kg',
+        'km',
       );
       expect(payload[0].sets[0].set_type).toBe('warmup');
-      expect(payload[0].sets[0].duration).toBe(45);
+      expect(payload[0].sets[0].duration).toBeNull();
       expect(payload[0].sets[0].notes).toBe('easy set');
+    });
+
+    it('keeps duration on duration-modality exercises', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            exerciseCategory: 'Isometric',
+            sets: [{ clientId: 's1', weight: '', reps: '', duration: 45 }],
+          }),
+        ],
+        'kg',
+        'km',
+      );
+      expect(payload[0].sets[0].duration).toBe(45);
+    });
+
+    it('converts cardio distance to km and nulls it on non-cardio exercises', () => {
+      const payload = buildPresetExercisesPayload(
+        [
+          makeDraftExercise({
+            exerciseCategory: 'Cardio',
+            sets: [{ clientId: 's1', weight: '', reps: '', duration: 1500, distance: '3.11' }],
+          }),
+          makeDraftExercise({
+            exerciseId: 'ex-2',
+            sets: [{ clientId: 's2', weight: '50', reps: '10', distance: '3.11' }],
+          }),
+        ],
+        'kg',
+        'miles',
+      );
+      expect(payload[0].sets[0].distance).toBeCloseTo(5.005, 2);
+      expect(payload[1].sets[0].distance).toBeNull();
     });
 
     it('emits superset_group from the draft, defaulting to null', () => {
@@ -1730,6 +1766,7 @@ describe('workoutSession', () => {
           rest_time: 120,
           notes: null,
           duration: 60,
+          distance: null,
         });
       });
 
@@ -2695,6 +2732,37 @@ describe('workoutSession', () => {
         expect(buildPresetStartExercisesPayload(makeWorkoutPreset({ exercises: [] }))).toEqual([]);
       });
 
+      it('passes cardio distance through and nulls junk distance on non-cardio exercises', () => {
+        const preset = makeWorkoutPreset({
+          exercises: [
+            makePresetExercise({
+              exercise_name: 'Run',
+              category: 'Cardio',
+              sets: [
+                makePresetSet({
+                  reps: null,
+                  weight: null,
+                  duration: 1500,
+                  distance: 5,
+                  rest_time: null,
+                }),
+              ],
+            }),
+            makePresetExercise({
+              id: 802,
+              exercise_id: EX_B,
+              sets: [makePresetSet({ distance: 3 })],
+            }),
+          ],
+        });
+
+        const payload = buildPresetStartExercisesPayload(preset);
+
+        expect(payload[0].sets[0].distance).toBe(5);
+        expect(payload[0].sets[0].rest_time).toBe(0);
+        expect(payload[1].sets[0].distance).toBeNull();
+      });
+
       it('emits exercises that parse under the request schema', () => {
         const preset = makeWorkoutPreset({
           exercises: [
@@ -3107,9 +3175,9 @@ describe('workoutSession', () => {
           [prev(100, 8), prev(100, 6), prev(95, 6)],
         );
         expect(result).toEqual([
-          { weight: 100, reps: 8, duration: null },
-          { weight: 100, reps: 6, duration: null },
-          { weight: 95, reps: 6, duration: null },
+          { weight: 100, reps: 8, duration: null, distance: null },
+          { weight: 100, reps: 6, duration: null, distance: null },
+          { weight: 95, reps: 6, duration: null, distance: null },
         ]);
       });
 
@@ -3120,8 +3188,8 @@ describe('workoutSession', () => {
           [makeSet(1, { weight: 105 }), makeSet(2), makeSet(3)],
           [prev(110, 8), prev(100, 6), prev(95, 6)],
         );
-        expect(result[1]).toEqual({ weight: 100, reps: 6, duration: null });
-        expect(result[2]).toEqual({ weight: 95, reps: 6, duration: null });
+        expect(result[1]).toEqual({ weight: 100, reps: 6, duration: null, distance: null });
+        expect(result[2]).toEqual({ weight: 95, reps: 6, duration: null, distance: null });
       });
 
       it('mirrors the rows above onto sets with no history of their own', () => {
@@ -3131,21 +3199,21 @@ describe('workoutSession', () => {
           [makeSet(1, { weight: 100, reps: 8 }), makeSet(2), makeSet(3)],
           undefined,
         );
-        expect(typed[1]).toEqual({ weight: 100, reps: 8, duration: null });
-        expect(typed[2]).toEqual({ weight: 100, reps: 8, duration: null });
+        expect(typed[1]).toEqual({ weight: 100, reps: 8, duration: null, distance: null });
+        expect(typed[2]).toEqual({ weight: 100, reps: 8, duration: null, distance: null });
 
         // A set added beyond last time's count mirrors the row above's
         // resolved placeholder.
         const added = resolveAssumedSetValues([makeSet(1), makeSet(2)], [prev(100, 8)]);
-        expect(added[1]).toEqual({ weight: 100, reps: 8, duration: null });
+        expect(added[1]).toEqual({ weight: 100, reps: 8, duration: null, distance: null });
       });
 
       it('falls back to the planned value when there is no history or session entry', () => {
         const result = resolveAssumedSetValues([makeSet(1), makeSet(2)], undefined, {
           '2': { weight: 80, reps: 5 },
         });
-        expect(result[0]).toEqual({ weight: null, reps: null, duration: null });
-        expect(result[1]).toEqual({ weight: 80, reps: 5, duration: null });
+        expect(result[0]).toEqual({ weight: null, reps: null, duration: null, distance: null });
+        expect(result[1]).toEqual({ weight: 80, reps: 5, duration: null, distance: null });
       });
 
       it('prefers history over the plan, and both over typed entries above', () => {
@@ -3155,14 +3223,14 @@ describe('workoutSession', () => {
           [prev(100, 8), prev(100, 8)],
           planned,
         );
-        expect(withHistory[1]).toEqual({ weight: 100, reps: 8, duration: null });
+        expect(withHistory[1]).toEqual({ weight: 100, reps: 8, duration: null, distance: null });
 
         const withEntry = resolveAssumedSetValues(
           [makeSet(1, { weight: 110, reps: 3 }), makeSet(2)],
           [prev(100, 8), prev(100, 8)],
           planned,
         );
-        expect(withEntry[1]).toEqual({ weight: 100, reps: 8, duration: null });
+        expect(withEntry[1]).toEqual({ weight: 100, reps: 8, duration: null, distance: null });
       });
 
       it('keeps warmup and working mirrors separate', () => {
@@ -3172,21 +3240,21 @@ describe('workoutSession', () => {
           [makeSet(1, { set_type: 'warmup', weight: 60, reps: 10 }), makeSet(2), makeSet(3)],
           undefined,
         );
-        expect(result[1]).toEqual({ weight: null, reps: null, duration: null });
-        expect(result[2]).toEqual({ weight: null, reps: null, duration: null });
+        expect(result[1]).toEqual({ weight: null, reps: null, duration: null, distance: null });
+        expect(result[2]).toEqual({ weight: null, reps: null, duration: null, distance: null });
 
         // And a working entry doesn't retarget a later warmup row.
         const warmupAfter = resolveAssumedSetValues(
           [makeSet(1, { weight: 100, reps: 5 }), makeSet(2, { set_type: 'warmup' })],
           undefined,
         );
-        expect(warmupAfter[1]).toEqual({ weight: null, reps: null, duration: null });
+        expect(warmupAfter[1]).toEqual({ weight: null, reps: null, duration: null, distance: null });
       });
 
       it('resolves nothing for a brand-new exercise with no sources', () => {
         expect(resolveAssumedSetValues([makeSet(1), makeSet(2)], undefined)).toEqual([
-          { weight: null, reps: null, duration: null },
-          { weight: null, reps: null, duration: null },
+          { weight: null, reps: null, duration: null, distance: null },
+          { weight: null, reps: null, duration: null, distance: null },
         ]);
       });
 
@@ -3215,7 +3283,35 @@ describe('workoutSession', () => {
           undefined,
           { '1': { weight: 80, reps: 5 } },
         );
-        expect(legacyPlanned[0]).toEqual({ weight: 80, reps: 5, duration: null });
+        expect(legacyPlanned[0]).toEqual({ weight: 80, reps: 5, duration: null, distance: null });
+      });
+
+      it('cascades cardio distance alongside duration', () => {
+        const withPrev = resolveAssumedSetValues(
+          [
+            { id: 1, set_type: 'normal', weight: null, reps: null, duration: null, distance: null },
+            { id: 2, set_type: 'normal', weight: null, reps: null, duration: null, distance: null },
+          ],
+          [
+            {
+              setNumber: 1,
+              setType: 'normal',
+              weight: null,
+              reps: null,
+              duration: 1500,
+              distance: 5,
+            },
+          ],
+        );
+        expect(withPrev[0].distance).toBe(5);
+        expect(withPrev[1].distance).toBe(5);
+
+        const withPlanned = resolveAssumedSetValues(
+          [{ id: 1, set_type: 'normal', weight: null, reps: null, duration: null, distance: null }],
+          undefined,
+          { '1': { weight: null, reps: null, duration: 1500, distance: 5 } },
+        );
+        expect(withPlanned[0].distance).toBe(5);
       });
     });
 
@@ -3239,8 +3335,8 @@ describe('workoutSession', () => {
       it('captures the plan positionally and strips it from the create payload', () => {
         expect(extractPlannedSetValues(exercises)).toEqual([
           [
-            { weight: 80, reps: 5, duration: null },
-            { weight: 80, reps: 5, duration: null },
+            { weight: 80, reps: 5, duration: null, distance: null },
+            { weight: 80, reps: 5, duration: null, distance: null },
           ],
         ]);
         const stripped = stripPlannedSetValues(exercises);
@@ -3279,6 +3375,28 @@ describe('workoutSession', () => {
         expect(stripped[0].sets[0].duration).toBeNull();
         expect(stripped[0].sets[0].weight).toBeNull();
         expect(stripped[1].sets[0].duration).toBeNull();
+      });
+
+      it('captures and strips cardio distance alongside duration', () => {
+        const cardio = buildPresetStartExercisesPayload({
+          id: 2,
+          name: 'Cardio Day',
+          exercises: [
+            {
+              id: 20,
+              exercise_id: '33333333-3333-4333-8333-333333333333',
+              exercise_name: 'Run',
+              category: 'Cardio',
+              sets: [{ id: 1, set_number: 1, duration: 1500, distance: 5 }],
+            },
+          ],
+        } as any);
+        expect(extractPlannedSetValues(cardio)).toEqual([
+          [{ weight: null, reps: null, duration: 1500, distance: 5 }],
+        ]);
+        const stripped = stripPlannedSetValues(cardio);
+        expect(stripped[0].sets[0].duration).toBeNull();
+        expect(stripped[0].sets[0].distance).toBeNull();
       });
     });
 
@@ -4032,6 +4150,7 @@ describe('workoutSession', () => {
               reps: 5,
               weight: 105,
               duration: null,
+              distance: null,
               rest_time: 90,
               notes: null,
             },
@@ -4295,6 +4414,106 @@ describe('workoutSession', () => {
             ],
           }),
         ],
+      });
+      expect(buildPresetUpdateExercises(session, preset, allCompleted(session))).toBeNull();
+    });
+
+    it('detects a cardio distance change and carries it into the payload', () => {
+      const runSnapshot = {
+        ...strengthSnapshot,
+        name: 'Run',
+        category: 'Cardio',
+        modality: 'duration_distance',
+      };
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            exercise_snapshot: runSnapshot,
+            sets: [
+              makeSessionSet({
+                reps: null,
+                weight: null,
+                duration: 1500,
+                distance: 6,
+                rest_time: 0,
+              }),
+            ],
+          }),
+        ],
+      });
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise({
+            sets: [
+              makeTargetPresetSet({
+                reps: null,
+                weight: null,
+                duration: 1500,
+                distance: 5,
+                rest_time: null,
+              }),
+            ],
+          }),
+        ],
+      });
+      const payload = buildPresetUpdateExercises(session, preset, allCompleted(session));
+      expect(payload![0].sets[0].distance).toBe(6);
+    });
+
+    it('returns null when a skipped cardio set still matches its planned duration and distance', () => {
+      const runSnapshot = {
+        ...strengthSnapshot,
+        name: 'Run',
+        category: 'Cardio',
+        modality: 'duration_distance',
+      };
+      const session = makePreset({
+        exercises: [
+          makeSessionExercise({
+            exercise_snapshot: runSnapshot,
+            sets: [
+              makeSessionSet({
+                reps: null,
+                weight: null,
+                duration: null,
+                distance: null,
+                rest_time: 0,
+              }),
+            ],
+          }),
+        ],
+      });
+      const preset = makeTargetPreset({
+        exercises: [
+          makeTargetPresetExercise({
+            sets: [
+              makeTargetPresetSet({
+                reps: null,
+                weight: null,
+                duration: 1500,
+                distance: 5,
+                rest_time: null,
+              }),
+            ],
+          }),
+        ],
+      });
+      expect(
+        buildPresetUpdateExercises(session, preset, {
+          completedSetIds: {},
+          plannedSetValues: {
+            '101': { weight: null, reps: null, duration: 1500, distance: 5 },
+          },
+        }),
+      ).toBeNull();
+    });
+
+    it('nulls distance on non-cardio modalities so junk values are not deviations', () => {
+      const session = makePreset({
+        exercises: [makeSessionExercise({ sets: [makeSessionSet({ distance: 3 })] })],
+      });
+      const preset = makeTargetPreset({
+        exercises: [makeTargetPresetExercise({ sets: [makeTargetPresetSet({ distance: 7 })] })],
       });
       expect(buildPresetUpdateExercises(session, preset, allCompleted(session))).toBeNull();
     });

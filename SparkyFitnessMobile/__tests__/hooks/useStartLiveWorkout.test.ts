@@ -184,14 +184,21 @@ describe('useStartLiveWorkout', () => {
       expect.objectContaining({
         exercises: [
           expect.objectContaining({
-            sets: [expect.objectContaining({ weight: null, reps: null, duration: null })],
+            sets: [
+              expect.objectContaining({
+                weight: null,
+                reps: null,
+                duration: null,
+                distance: null,
+              }),
+            ],
           }),
         ],
       }),
     );
     // The plan lands keyed to the created session's set ids for placeholders.
     expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
-      '101': { weight: 80, reps: 5, duration: 90 },
+      '101': { weight: 80, reps: 5, duration: 90, distance: null },
     });
   });
 

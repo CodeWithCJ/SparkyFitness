@@ -33,6 +33,62 @@ describe('CardioEffortForm', () => {
     expect(getByLabelText('Distance in km for Run').props.value).toBe('5.2');
   });
 
+  it('renders assumed duration/distance as placeholders while the fields are empty', () => {
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        assumed={{ weight: null, reps: null, duration: 1500, distance: 5 }}
+      />,
+    );
+    expect(getByLabelText('Duration in minutes for Run').props.placeholder).toBe('25');
+    expect(getByLabelText('Distance in km for Run').props.placeholder).toBe('5');
+    expect(getByLabelText('Duration in minutes for Run').props.value).toBe('');
+  });
+
+  it('shows no assumed placeholder over a filled field or outside live mode', () => {
+    const filled = render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        assumed={{ weight: null, reps: null, duration: 1500, distance: 5 }}
+      />,
+    );
+    expect(
+      filled.getByLabelText('Duration in minutes for Run').props.placeholder,
+    ).toBe('–');
+
+    const editMode = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="edit"
+        distanceUnit="km"
+        assumed={{ weight: null, reps: null, duration: 1500, distance: 5 }}
+      />,
+    );
+    expect(
+      editMode.getByLabelText('Duration in minutes for Run').props.placeholder,
+    ).toBe('–');
+  });
+
+  it('converts the assumed distance placeholder into the display unit', () => {
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="miles"
+        assumed={{ weight: null, reps: null, duration: null, distance: 1.609344 }}
+      />,
+    );
+    expect(getByLabelText('Distance in mi for Run').props.placeholder).toBe('1');
+  });
+
   it('converts the seeded distance into miles for a miles user', () => {
     const { getByLabelText } = render(
       <CardioEffortForm

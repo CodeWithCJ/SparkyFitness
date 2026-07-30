@@ -47,6 +47,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   // we never quietly hand an unsupported unit to weightFromKg.
   const weightUnit: 'kg' | 'lbs' =
     preferences?.default_weight_unit === 'kg' ? 'kg' : 'lbs';
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const exerciseCount = preset.exercises?.length ?? 0;
 
   const { getImageSource } = useExerciseImageSource();
@@ -299,7 +300,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
                   activeSetId={null}
                   metricColumn={effectiveMetricColumn}
                   weightUnit={weightUnit}
-                  cardioFormEnabled={false}
+                  distanceUnit={distanceUnit}
                   getImageSource={getImageSource}
                   showRestChip={cardExercise.sets.length > 0}
                   onPressThumb={handleViewExercise}

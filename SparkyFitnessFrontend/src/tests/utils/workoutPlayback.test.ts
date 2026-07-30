@@ -155,6 +155,50 @@ describe('workoutPlayback utils', () => {
     expect(payload.exercises?.[1]?.sets?.[0]?.is_pr).toBe(false);
   });
 
+  it('carries programmed cardio duration and distance from preset to draft to payload', () => {
+    const cardioPreset = {
+      ...createPresetFixture(),
+      exercises: [
+        {
+          exercise_id: 'exercise-3',
+          exercise_name: 'Treadmill Run',
+          sets: [
+            {
+              set_number: 1,
+              reps: null,
+              weight: null,
+              duration: 1500,
+              distance: 5.2,
+              rest_time: 0,
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkoutPreset;
+
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      cardioPreset,
+      '2026-04-27'
+    );
+    expect(draft.exercises[0]?.sets[0]?.duration).toBe(1500);
+    expect(draft.exercises[0]?.sets[0]?.distance).toBe(5.2);
+
+    // An added set duplicates the last set's programmed effort too.
+    const withAddedSet = addWorkoutSetToExercise(draft, 0);
+    expect(withAddedSet.exercises[0]?.sets[1]?.distance).toBe(5.2);
+
+    const completedDraft = toggleWorkoutSetCompletion(draft, {
+      exerciseIndex: 0,
+      setIndex: 0,
+    });
+    const payload = buildPresetSessionCreateRequestFromDraft(
+      completedDraft,
+      'UTC'
+    );
+    expect(payload.exercises?.[0]?.sets?.[0]?.duration).toBe(1500);
+    expect(payload.exercises?.[0]?.sets?.[0]?.distance).toBe(5.2);
+  });
+
   it('stamps completed_at on toggle-on and clears it on toggle-off', () => {
     const initialDraft = createWorkoutPlaybackDraftFromPreset(
       createPresetFixture(),

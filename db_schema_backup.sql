@@ -3672,7 +3672,8 @@ CREATE TABLE public.workout_preset_exercise_sets (
     rest_time integer,
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    distance numeric
 );
 
 
