@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, TouchableOpacity } from 'react-native';
+import { View, Text, Pressable, TouchableOpacity, Platform } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../Icon';
 
@@ -16,7 +16,7 @@ interface PrnDoseRowProps {
   kind: 'prn';
   /** Doses logged on the selected day; shown inside the circle. */
   count: number;
-  /** Circle tap and the Log button both log one more dose. */
+  /** Circle tap and the Take button both log one more dose. */
   onLog: () => void;
 }
 
@@ -36,20 +36,26 @@ export type DoseRowProps = (ScheduledDoseRowProps | PrnDoseRowProps) & {
 const DoseRow: React.FC<DoseRowProps> = (props) => {
   const { title, subtitle, onPress } = props;
 
-  const [iconSuccess, iconDecorative, iconWarning, accentPrimary] = useCSSVariable([
+  const [iconSuccess, iconDecorative, iconDanger, accentPrimary] = useCSSVariable([
     '--color-icon-success',
     '--color-icon-decorative',
-    '--color-icon-warning',
+    '--color-icon-danger',
     '--color-accent-primary',
   ]) as [string, string, string, string];
 
   const completed = props.kind === 'scheduled' ? props.status !== 'pending' : props.count > 0;
+  const taken = props.kind === 'scheduled' && props.status === 'taken';
+  const titleClass = taken
+    ? 'text-text-secondary line-through'
+    : completed
+      ? 'text-text-muted'
+      : 'text-text-primary';
   const circleBorderColor =
     props.kind === 'scheduled'
       ? props.status === 'taken'
         ? iconSuccess
         : props.status === 'skipped'
-          ? iconWarning
+          ? iconDanger
           : iconDecorative
       : props.count > 0
         ? iconSuccess
@@ -71,9 +77,8 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
           activeOpacity={0.6}
           accessibilityRole="button"
           className="rounded-full px-3 py-1"
-          style={{ backgroundColor: accentPrimary + '18' }}
         >
-          <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Log</Text>
+          <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Take</Text>
         </TouchableOpacity>
       );
     }
@@ -87,7 +92,6 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             accessibilityRole="button"
             accessibilityLabel={`Take ${title}`}
             className="rounded-full px-3 py-1"
-            style={{ backgroundColor: accentPrimary + '18' }}
           >
             <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Take</Text>
           </TouchableOpacity>
@@ -99,7 +103,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             accessibilityLabel={`Skip ${title}`}
             className="rounded-full px-3 py-1 ml-1"
           >
-            <Text className="text-sm font-semibold text-text-secondary">Skip</Text>
+            <Text className="text-sm font-semibold text-accent-primary">Skip</Text>
           </TouchableOpacity>
         </View>
       );
@@ -115,7 +119,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
 
   return (
     <Pressable
-      className="py-2.5 px-1 flex-row items-center bg-surface"
+      className="py-2 px-1 flex-row items-center bg-surface"
       onPress={onPress}
       disabled={onPress == null}
     >
@@ -128,20 +132,17 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
         style={{ backgroundColor: 'transparent', borderWidth: 1.5, borderColor: circleBorderColor }}
       >
         {props.kind === 'scheduled' && props.status === 'taken' && (
-          <Icon name="checkmark" size={14} color={iconSuccess} />
+          <Icon name="checkmark" size={Platform.OS === 'ios' ? 12 : 16} color={iconSuccess} />
         )}
         {props.kind === 'scheduled' && props.status === 'skipped' && (
-          <Icon name="close" size={14} color={iconWarning} />
+          <Icon name="close" size={Platform.OS === 'ios' ? 12 : 16} color={iconDanger} />
         )}
         {props.kind === 'prn' && props.count > 0 && (
           <Text className="text-xs font-bold" style={{ color: iconSuccess }}>{props.count}</Text>
         )}
       </Pressable>
       <View className="flex-1">
-        <Text
-          className={`text-base ${completed ? 'text-text-muted' : 'text-text-primary'}`}
-          numberOfLines={1}
-        >
+        <Text className={`text-base ${titleClass}`} numberOfLines={1}>
           {title}
         </Text>
         {subtitle != null && subtitle !== '' && (

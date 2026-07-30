@@ -243,7 +243,7 @@ describe('MedicationDetailScreen', () => {
 
     expect(screen.getByText('As needed')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
-    fireEvent.press(screen.getByText('Log'));
+    fireEvent.press(screen.getByText('Take'));
     expect(mockLogPrn).toHaveBeenCalledWith(expect.objectContaining({ id: 'med-1' }));
   });
 
@@ -282,7 +282,7 @@ describe('MedicationDetailScreen', () => {
 
     expect(screen.getByText('Inactive')).toBeTruthy();
     expect(screen.queryByText('As needed')).toBeNull();
-    expect(screen.queryByText('Log')).toBeNull();
+    expect(screen.queryByText('Take')).toBeNull();
   });
 
   it('confirms before deleting the medication', () => {

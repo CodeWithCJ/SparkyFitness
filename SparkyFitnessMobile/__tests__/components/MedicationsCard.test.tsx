@@ -155,11 +155,11 @@ describe('MedicationsCard', () => {
     expect(screen.getByText('Pill · 2 tablet · 8:00 AM')).toBeTruthy();
   });
 
-  it('logs PRN medications from the circle and the Log button', () => {
+  it('logs PRN medications from the circle and the Take button', () => {
     const med = buildMedication({ id: 'med-prn', name: 'Ibuprofen', schedules: [] });
     const screen = setupCard([med]);
 
-    fireEvent.press(screen.getByText('Log'));
+    fireEvent.press(screen.getByText('Take'));
     expect(mockLogPrn).toHaveBeenCalledWith(expect.objectContaining({ id: 'med-prn' }));
   });
 
@@ -174,6 +174,13 @@ describe('MedicationsCard', () => {
     const screen = setupCard([buildMedication()]);
 
     fireEvent.press(screen.getByText('View all'));
+    expect(mockNavigate).toHaveBeenCalledWith('MedicationsList');
+  });
+
+  it('navigates to the medications list from the card title', () => {
+    const screen = setupCard([buildMedication()]);
+
+    fireEvent.press(screen.getByText('Medications'));
     expect(mockNavigate).toHaveBeenCalledWith('MedicationsList');
   });
 
