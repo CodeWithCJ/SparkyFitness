@@ -13,12 +13,26 @@
 let
   cfg = config.services.sparkyfitness;
 
-  # bracket the IPv6 addresses
+  # Backend-facing host for the Garmin service URL
   garminHost =
-    if lib.hasInfix ":" cfg.garmin.bindAddress then
-      "[${cfg.garmin.bindAddress}]"
-    else
-      cfg.garmin.bindAddress;
+    let
+      addr =
+        if cfg.garmin.bindAddress == "0.0.0.0" then
+          "127.0.0.1"
+        else if cfg.garmin.bindAddress == "::" then
+          "::1"
+        else
+          cfg.garmin.bindAddress;
+    in
+    if lib.hasInfix ":" addr then "[${addr}]" else addr;
+
+  isSharedSystemDir =
+    dir:
+    builtins.elem (lib.removeSuffix "/" dir) [
+      ""
+      "/var"
+      "/var/lib"
+    ];
 
   # Non-secret runtime environment derived from the module options. Secrets
   # (passwords, encryption key, auth secret) come from cfg.environmentFile.
@@ -296,6 +310,14 @@ in
       {
         assertion = cfg.environmentFile != null;
         message = "services.sparkyfitness.environmentFile must be set with the required secrets.";
+      }
+      {
+        assertion = !isSharedSystemDir cfg.stateDir;
+        message = "services.sparkyfitness.stateDir must be a dedicated directory such as /var/lib/sparkyfitness, not ${cfg.stateDir}.";
+      }
+      {
+        assertion = !cfg.garmin.enable || !isSharedSystemDir cfg.garmin.stateDir;
+        message = "services.sparkyfitness.garmin.stateDir must be a dedicated directory such as /var/lib/sparkyfitness-garmin, not ${cfg.garmin.stateDir}.";
       }
     ];
 
