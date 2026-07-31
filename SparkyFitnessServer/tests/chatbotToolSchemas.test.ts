@@ -439,6 +439,33 @@ describe('strict discriminated-union validation schemas', () => {
     ).toBe(true);
   });
 
+  it('manageFoodSchema keeps meal_type as a built-in enum fallback (custom types go through meal_type_id)', () => {
+    // The legacy fallback accepts only the built-in slots...
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'log_food',
+        food_name: 'Eggs',
+        meal_type: 'breakfast',
+      }).success
+    ).toBe(true);
+    // ...and rejects anything else: custom meal types must NOT be passed by name.
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'log_food',
+        food_name: 'Eggs',
+        meal_type: 'invalid-slot',
+      }).success
+    ).toBe(false);
+    // Custom meal types are selected by ID, not by name.
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'log_food',
+        food_name: 'Eggs',
+        meal_type_id: '66666666-6666-4666-8666-666666666666',
+      }).success
+    ).toBe(true);
+  });
+
   it('manageFoodSchema rejects fields that do not belong to the action', () => {
     const result = manageFoodSchema.safeParse({
       action: 'list_diary',

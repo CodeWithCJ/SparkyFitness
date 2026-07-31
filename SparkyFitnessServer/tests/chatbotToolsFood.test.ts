@@ -719,23 +719,23 @@ describe('lookup_food_nutrition', () => {
 });
 
 describe('log_food', () => {
-  // Regression: an invalid legacy meal_type name must surface the name itself
-  // in the not-found error (not "undefined"), proving the tool reports the
-  // resolved fallback value to the model.
-  it('reports the invalid legacy meal_type name in the not-found error', async () => {
+  it('reports the legacy meal_type name when resolution fails', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([]);
+
     const result = await tools.sparky_manage_food.execute!(
       {
         action: 'log_food',
         food_name: 'Eggs',
         quantity: 1,
         unit: 'serving',
-        meal_type: 'invalid-slot',
+        meal_type: 'breakfast',
       },
       opts
     );
 
-    expect(result).toContain('Meal type "invalid-slot" was not found');
+    expect(result).toContain('Meal type "breakfast" was not found');
     expect(result).not.toContain('Meal type "undefined"');
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
   });
 
   it('logs to a custom meal type by ID and gives the ID precedence over the legacy name', async () => {
