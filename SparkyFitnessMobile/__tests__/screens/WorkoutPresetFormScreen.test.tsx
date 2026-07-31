@@ -66,6 +66,7 @@ describe('WorkoutPresetFormScreen — buildPresetEditPayload', () => {
         initialDescription: basePreset.description ?? '',
         exercisesModified: false,
         weightUnit: 'kg',
+        distanceUnit: 'km',
       }),
     ).toEqual({});
   });

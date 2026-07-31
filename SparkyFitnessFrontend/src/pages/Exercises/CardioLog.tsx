@@ -46,6 +46,7 @@ export const CardioLog = ({
           className="h-8 text-sm"
           decimals={2}
           step={0.01}
+          min={0}
           value={durationMinutes === '' ? null : durationMinutes}
           onValueChange={(v) => onDurationChange(v ?? '')}
         />
@@ -62,6 +63,7 @@ export const CardioLog = ({
               className="h-8 text-sm"
               decimals={1}
               step={0.1}
+              min={0}
               value={distance === '' ? null : distance}
               onValueChange={(v) => onDistanceChange(v ?? '')}
             />
