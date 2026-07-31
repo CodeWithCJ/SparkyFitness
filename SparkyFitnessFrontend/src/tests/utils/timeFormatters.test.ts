@@ -150,6 +150,36 @@ describe('formatTimeOfDayString', () => {
     expect(formatTimeOfDayString('08:30:00', 'h:mm A')).toBe('8:30 AM');
     expect(formatTimeOfDayString('08:30:00', 'h:mm a')).toBe('8:30 am');
   });
+
+  it('returns empty string for a non-numeric time string', () => {
+    expect(formatTimeOfDayString('ab:cd', 'HH:mm')).toBe('');
+  });
+
+  it('returns empty string for an empty string', () => {
+    expect(formatTimeOfDayString('', 'HH:mm')).toBe('');
+  });
+
+  it('returns empty string for a completely malformed string', () => {
+    expect(formatTimeOfDayString('not-a-time', 'h:mm A')).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Invalid dates
+// ---------------------------------------------------------------------------
+describe('formatTimeWithPreference — invalid dates', () => {
+  it('returns empty string for an invalid Date object', () => {
+    expect(formatTimeWithPreference(new Date('invalid'), 'HH:mm')).toBe('');
+  });
+
+  it('returns empty string for a NaN timestamp', () => {
+    expect(formatTimeWithPreference(new Date(NaN), 'h:mm A')).toBe('');
+  });
+
+  it('returns empty string for an undefined date coerced to Date', () => {
+    // @ts-expect-error — testing runtime resilience
+    expect(formatTimeWithPreference(new Date(undefined), 'h:mm a')).toBe('');
+  });
 });
 
 // ---------------------------------------------------------------------------

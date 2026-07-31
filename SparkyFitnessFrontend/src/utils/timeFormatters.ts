@@ -46,6 +46,7 @@ export function formatTimeWithPreference(
   date: Date,
   timeFormat: string
 ): string {
+  if (isNaN(date.getTime())) return '';
   // Use date-fns so the user's time-format preference is respected. The stored
   // labels ('h:mm A' / 'h:mm a') are mapped to date-fns compatible tokens.
   return format(date, normalizeTimeFormat(timeFormat));
@@ -70,6 +71,7 @@ export function formatTimeOfDayString(
   // shift across DST boundaries and remains consistent regardless of the
   // current date.
   const date = new Date(2000, 0, 1, h, m, 0, 0);
+  if (isNaN(date.getTime())) return '';
   return formatTimeWithPreference(date, timeFormat);
 }
 
