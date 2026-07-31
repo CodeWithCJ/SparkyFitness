@@ -13,10 +13,13 @@ async function validateTimezone(preferenceData: any) {
     );
   }
 }
-async function validateTimeFormat(preferenceData: any) {
+type TimeFormatPayload = { time_format?: string };
+async function validateTimeFormat(preferenceData: TimeFormatPayload) {
   if (
     preferenceData.time_format !== undefined &&
-    !SUPPORTED_TIME_FORMATS.includes(preferenceData.time_format)
+    !(SUPPORTED_TIME_FORMATS as readonly string[]).includes(
+      preferenceData.time_format
+    )
   ) {
     throw Object.assign(
       new Error(
