@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import AppSettingsScreen from '../../src/screens/AppSettingsScreen';
 import {
@@ -50,6 +51,14 @@ jest.mock('../../src/utils/liquidGlass', () => ({
   canUseLiquidGlass: () => false,
 }));
 
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: jest.fn(() => ({ preferences: { time_format: 'HH:mm' } })),
+}));
+
+jest.mock('../../src/hooks/useServerConnection', () => ({
+  useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
+}));
+
 const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as never;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -66,7 +75,14 @@ const mockMaybePrompt = maybePromptForExactAlarmPermission as jest.MockedFunctio
 const route = { params: {} } as never;
 
 function renderScreen() {
-  return render(<AppSettingsScreen navigation={mockNavigation} route={route} />);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AppSettingsScreen navigation={mockNavigation} route={route} />
+    </QueryClientProvider>,
+  );
 }
 
 // Switch order with the banner and liquid glass row absent:

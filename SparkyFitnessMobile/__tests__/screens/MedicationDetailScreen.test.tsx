@@ -25,6 +25,10 @@ jest.mock('../../src/hooks/useMedications', () => ({
   useLogDose: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: jest.fn(() => ({ preferences: { time_format: 'HH:mm' } })),
+}));
+
 jest.mock('../../src/stores/diaryDateStore', () => ({
   useDiaryDateStore: (selector: (s: { selectedDate: string }) => unknown) =>
     selector({ selectedDate: '2026-07-29' }),
@@ -206,7 +210,7 @@ describe('MedicationDetailScreen', () => {
   it('offers Take and Skip on a pending scheduled dose', () => {
     const screen = setupScreen(buildMedication());
 
-    expect(screen.getByText('8:00 AM')).toBeTruthy();
+    expect(screen.getByText('08:00')).toBeTruthy();
     fireEvent.press(screen.getByText('Take'));
     expect(mockLogDose).toHaveBeenCalledWith(
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),

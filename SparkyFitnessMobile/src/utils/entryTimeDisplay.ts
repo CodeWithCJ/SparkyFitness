@@ -47,7 +47,26 @@ export function formatTimeOfDay(
   timeFormat?: string | null | undefined,
 ): string | null {
   if (!timestamp) return null;
-  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+
+  let date: Date;
+  if (timestamp instanceof Date) {
+    date = timestamp;
+  } else {
+    // Try a full timestamp/ISO string first so timezone offsets are respected.
+    const parsed = new Date(timestamp);
+    if (!isNaN(parsed.getTime())) {
+      date = parsed;
+    } else {
+      // Fall back to plain time-of-day strings ("HH:mm" / "HH:mm:ss").
+      const hourMinute = toHourMinute(timestamp);
+      if (!hourMinute) return null;
+      const [hours, minutes] = hourMinute.split(':').map(Number);
+      // Use a fixed non-DST calendar date to avoid DST wrap-around when parsing
+      // plain time-of-day strings.
+      date = new Date(2000, 0, 1, hours, minutes, 0, 0);
+    }
+  }
+
   if (isNaN(date.getTime())) return null;
   return formatTime(date, timeFormat);
 }
@@ -65,10 +84,5 @@ export function formatTimeLabel(
   time: string | null | undefined,
   timeFormat?: string | null | undefined,
 ): string | null {
-  const hourMinute = toHourMinute(time);
-  if (!hourMinute) return null;
-  const [hours, minutes] = hourMinute.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-  return formatTime(date, timeFormat);
+  return formatTimeOfDay(time, timeFormat);
 }

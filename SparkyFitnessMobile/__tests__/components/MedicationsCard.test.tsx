@@ -10,6 +10,10 @@ jest.mock('../../src/hooks/useMedications', () => ({
   useLogDose: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: jest.fn(() => ({ preferences: { time_format: 'HH:mm' } })),
+}));
+
 jest.mock('../../src/stores/diaryDateStore', () => ({
   useDiaryDateStore: (selector: (s: { selectedDate: string }) => unknown) =>
     selector({ selectedDate: '2026-07-29' }),
@@ -125,8 +129,8 @@ describe('MedicationsCard', () => {
     const screen = setupCard([buildMedication()]);
 
     expect(screen.getByText('Lisinopril')).toBeTruthy();
-    expect(screen.getByText('8:00 AM')).toBeTruthy();
-    expect(screen.getByText('8:00 AM · Pill · 1 tablet', { exact: false })).toBeTruthy();
+    expect(screen.getByText('08:00')).toBeTruthy();
+    expect(screen.getByText('08:00 · Pill · 1 tablet', { exact: false })).toBeTruthy();
     fireEvent.press(screen.getByText('Take'));
     expect(mockLogDose).toHaveBeenCalledWith(
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
@@ -171,7 +175,7 @@ describe('MedicationsCard', () => {
       buildMedication({ schedules: [buildSchedule({ dose_amount: 2 })] }),
     ]);
 
-    expect(screen.getByText('8:00 AM · Pill · 2 tablet', { exact: false })).toBeTruthy();
+    expect(screen.getByText('08:00 · Pill · 2 tablet', { exact: false })).toBeTruthy();
   });
 
   it('logs PRN medications from the circle and the Take button', () => {
