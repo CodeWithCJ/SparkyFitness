@@ -6,7 +6,8 @@ import type {
   CreateMedicationInput,
   UpdateMedicationInput,
   CreateMedicationEntryInput,
-} from '../../types/medications';
+  UpdateMedicationEntryInput,
+} from '@workspace/shared';
 
 const SERVICE_NAME = 'Medications API';
 
@@ -81,6 +82,15 @@ export const createEntry = (body: CreateMedicationEntryInput): Promise<Medicatio
     serviceName: SERVICE_NAME,
     operation: 'create entry',
     method: 'POST',
+    body,
+  });
+
+export const updateEntry = (id: string, body: UpdateMedicationEntryInput): Promise<MedicationEntry> =>
+  apiFetch<MedicationEntry>({
+    endpoint: `/api/v2/medications/entries/${id}`,
+    serviceName: SERVICE_NAME,
+    operation: 'update entry',
+    method: 'PUT',
     body,
   });
 

@@ -4,7 +4,7 @@ import Toast from 'react-native-toast-message';
 import { useQueryClient } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { ExerciseModality, PresetSessionExerciseRequest } from '@workspace/shared';
+import type { PresetSessionExerciseRequest } from '@workspace/shared';
 import { useCreateWorkout } from './useExerciseMutations';
 import { flushActiveWorkoutBeforeClear } from './useActiveWorkoutAutosave';
 import { serverConnectionQueryKey } from './queryKeys';
@@ -14,6 +14,7 @@ import {
   ensureNotificationPermission,
   maybePromptForExactAlarmPermission,
 } from '../services/notifications';
+import { getActiveServerConfig } from '../services/storage';
 import { getTodayDate } from '../utils/dateUtils';
 import { extractPlannedSetValues, stripPlannedSetValues } from '../utils/workoutSession';
 import type { RootStackParamList } from '../types/navigation';
@@ -27,8 +28,12 @@ interface StartLiveWorkoutArgs {
   /** Session name; defaults to the form path's dated name ("Workout - Jul 6"). */
   name?: string;
   exercises: PresetSessionExerciseRequest[];
-  /** Resolved modality per exercise, positional with `exercises`. */
-  modalities: ExerciseModality[];
+  /**
+   * Preset the exercises came from. Recorded in the store (with the active
+   * server config id, since preset ids collide across servers) so the finish
+   * flow can offer to update the preset. Omit for empty starts.
+   */
+  sourcePresetId?: number;
 }
 
 /**
@@ -94,7 +99,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
   // guard has cleared. Split out so the "Workout in progress" prompt can
   // clear the in-progress session and then call straight through.
   const runStart = useCallback(
-    async ({ name, exercises, modalities }: StartLiveWorkoutArgs) => {
+    async ({ name, exercises, sourcePresetId }: StartLiveWorkoutArgs) => {
       if (exercises.length === 0) {
         Toast.show({
           type: 'error',
@@ -109,6 +114,11 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
 
       const entryDate = getTodayDate();
       try {
+        // Resolved before the create so a storage failure can't strand an
+        // already-created session. Preset ids collide across servers, so the
+        // link is only meaningful scoped to the active config.
+        const sourceServerConfigId =
+          sourcePresetId != null ? (await getActiveServerConfig())?.id : undefined;
         // Hevy-style start: sets are created with empty weight/reps — the
         // plan renders as gray placeholders and is only recorded when a set
         // is completed or typed over.
@@ -117,7 +127,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
           name: name ?? defaultWorkoutName(entryDate),
           entry_date: entryDate,
           source: 'sparky',
-          exercises: stripPlannedSetValues(exercises, modalities),
+          exercises: stripPlannedSetValues(exercises),
         });
         invalidateCache(entryDate);
         // Chained so the exact-alarm prompt never stacks on top of the OS
@@ -125,9 +135,12 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         void ensureNotificationPermission().then(() =>
           maybePromptForExactAlarmPermission(),
         );
-        useActiveWorkoutStore
-          .getState()
-          .startWorkout(session, { createdByLiveStart: true, plannedSetValues });
+        useActiveWorkoutStore.getState().startWorkout(session, {
+          createdByLiveStart: true,
+          plannedSetValues,
+          sourcePresetId,
+          sourceServerConfigId,
+        });
         if (navigation.isFocused()) {
           navigation.replace('ActiveWorkout');
           // The lock stays engaged: the replace unmounts the calling screen.

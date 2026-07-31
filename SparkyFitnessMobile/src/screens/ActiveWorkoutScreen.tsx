@@ -891,6 +891,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               prSetIds: state.prSetIds,
               startedAt: state.startedAt,
               finishedAt: Date.now(),
+              sourcePresetId: state.sourcePresetId,
+              sourceServerConfigId: state.sourceServerConfigId,
+              plannedSetValues: state.plannedSetValues,
             }
           : null;
       useActiveWorkoutStore.getState().clearWorkout();

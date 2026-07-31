@@ -10,7 +10,10 @@ import {
 import type { SetRowState } from './ActiveWorkoutSetRow';
 import { distanceFromKm, distanceToKm } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
-import { formatDurationSeconds, type WorkoutCardSet } from '../utils/workoutSession';
+import {
+  type AssumedSetValues,
+  type WorkoutCardSet,
+} from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 
 function minutesDisplayText(durationSec: number | null | undefined): string {
@@ -41,6 +44,13 @@ interface CardioEffortFormProps {
    * pulsing cursor ring / muted upcoming ring).
    */
   state?: SetRowState;
+  /**
+   * Live only: assumed duration/distance for still-empty fields (previous
+   * session or the preset plan — the same sources the store's completion
+   * adoption uses). An empty input renders the assumed value as its
+   * placeholder, exactly like the set-table cells.
+   */
+  assumed?: AssumedSetValues | null;
   /**
    * Commit a duration (seconds) or distance (km) patch for the set. Live
    * commits to the store; the form lists convert back to draft text.
@@ -83,6 +93,7 @@ export default function CardioEffortForm({
   mode,
   distanceUnit,
   state = 'upcoming',
+  assumed,
   onCommitField,
   onComplete,
   onUncomplete,
@@ -102,6 +113,17 @@ export default function CardioEffortForm({
   const [distanceDraft, setDistanceDraft] = useState(() =>
     distanceDisplayText(set?.distance, distanceUnit),
   );
+
+  // Assumed values render as placeholders only while the field is empty, so
+  // the gray value an input shows is exactly what logging the set adopts.
+  const assumedMinutesText =
+    mode === 'live' && set?.duration == null && assumed?.duration != null
+      ? minutesDisplayText(assumed.duration)
+      : null;
+  const assumedDistanceText =
+    mode === 'live' && set?.distance == null && assumed?.distance != null
+      ? distanceDisplayText(assumed.distance, distanceUnit)
+      : null;
   const [focusedField, setFocusedField] = useState<'duration' | 'distance' | null>(null);
 
   // Re-seed the drafts when the underlying set's values change externally
@@ -223,22 +245,33 @@ export default function CardioEffortForm({
   }, [mode, renderKey, setId, onRegisterAccessoryHandle]);
 
   if (mode === 'view') {
-    const parts: string[] = [];
-    if (set?.duration != null) parts.push(formatDurationSeconds(set.duration));
-    if (set?.distance != null) {
-      parts.push(
-        `${parseFloat(distanceFromKm(set.distance, distanceUnit).toFixed(2))} ${distanceLabel}`,
-      );
-    }
     return (
-      <View className="mt-2 px-1 pb-2">
-        <Text
-          className="text-base text-text-primary"
-          style={{ fontVariant: ['tabular-nums'] }}
-          accessibilityLabel={`${exerciseName} effort`}
-        >
-          {parts.length > 0 ? parts.join(' · ') : 'No duration recorded'}
-        </Text>
+      <View
+        className="mt-2 px-1 pb-2 flex-row gap-3"
+        accessibilityLabel={`${exerciseName} effort`}
+      >
+        <View className="flex-1 items-center">
+          <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
+            Duration (min)
+          </Text>
+          <Text
+            className="text-center text-sm text-text-primary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {minutesDisplayText(set?.duration) || '–'}
+          </Text>
+        </View>
+        <View className="flex-1 items-center">
+          <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
+            Distance ({distanceLabel})
+          </Text>
+          <Text
+            className="text-center text-sm text-text-primary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {distanceDisplayText(set?.distance, distanceUnit) || '–'}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -264,6 +297,7 @@ export default function CardioEffortForm({
           keyboardType="decimal-pad"
           accessibilityLabel={`Duration in minutes for ${exerciseName}`}
           className="w-16"
+          placeholder={assumedMinutesText ?? '–'}
           flat
         />
       </View>
@@ -286,6 +320,7 @@ export default function CardioEffortForm({
           keyboardType="decimal-pad"
           accessibilityLabel={`Distance in ${distanceLabel} for ${exerciseName}`}
           className="w-16"
+          placeholder={assumedDistanceText ?? '–'}
           flat
         />
       </View>

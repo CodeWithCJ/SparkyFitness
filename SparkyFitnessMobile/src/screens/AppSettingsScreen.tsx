@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { View, Text, ScrollView, Switch } from 'react-native';
+import { View, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -15,6 +15,7 @@ import {
   type ThemePreference,
 } from '../services/themeService';
 import {
+  maybePromptForExactAlarmPermission,
   requestNotificationPermission,
   setNotificationsEnabled,
 } from '../services/notifications';
@@ -51,6 +52,8 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const setMedicationRemindersEnabled = useAppPreferencesStore((s) => s.setMedicationRemindersEnabled);
   const medicationReminderRepeats = useAppPreferencesStore((s) => s.medicationReminderRepeats);
   const setMedicationReminderRepeats = useAppPreferencesStore((s) => s.setMedicationReminderRepeats);
+  const medicationReminderHideNames = useAppPreferencesStore((s) => s.medicationReminderHideNames);
+  const setMedicationReminderHideNames = useAppPreferencesStore((s) => s.setMedicationReminderHideNames);
   const liquidGlassEnabled = useAppPreferencesStore((s) => s.liquidGlassTabBarEnabled);
   const setLiquidGlassTabBarEnabled = useAppPreferencesStore(
     (s) => s.setLiquidGlassTabBarEnabled,
@@ -82,6 +85,9 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
       // permission banner above explains and links to system settings.
       if (status === 'granted') {
         setMedicationRemindersEnabled(true);
+        // Scheduled reminders ring late on Android without the exact-alarm
+        // special access; nudge once when the user opts in.
+        await maybePromptForExactAlarmPermission();
       }
     },
     [setMedicationRemindersEnabled],
@@ -99,9 +105,9 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Theme</Text>
+        <SettingsRow
+          title="Theme"
+          rightAccessory={
             <BottomSheetPicker
               value={appTheme}
               options={themeOptions}
@@ -109,33 +115,29 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
               title="Theme"
               containerStyle={{ flex: 1, maxWidth: 200 }}
             />
-          </View>
-        </View>
+          }
+        />
 
         {supportsLiquidGlassTabBar && (
-          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-            <View className="flex-row justify-between items-center">
-              <Text className="text-base text-text-primary">Liquid Glass navigation</Text>
+          <SettingsRow
+            title="Liquid Glass navigation"
+            subtitle="Use the iOS 26 glass tab bar and screen headers."
+            subtitleNumberOfLines={0}
+            rightAccessory={
               <Switch
                 value={liquidGlassEnabled}
                 onValueChange={setLiquidGlassTabBarEnabled}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
               />
-            </View>
-            <Text className="text-text-secondary text-sm mt-2">
-              Use the iOS 26 glass tab bar and screen headers.
-            </Text>
-          </View>
+            }
+          />
         )}
         <SettingsRowGroup>
           <SettingsRow
             title="Notifications"
-            subtitle={
-              <Text className="text-sm text-text-secondary">
-                Alerts for workout rest timers and fasting goals.
-              </Text>
-            }
+            subtitle="Alerts for workout rest timers and fasting goals."
+            subtitleNumberOfLines={0}
             rightAccessory={
               <Switch
                 value={notificationsEnabled}
@@ -148,11 +150,8 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
           {notificationsEnabled && (
             <SettingsRow
               title="Medication Reminders"
-              subtitle={
-                <Text className="text-sm text-text-secondary">
-                  Reminders for scheduled medications.
-                </Text>
-              }
+              subtitle="Reminders for scheduled medications."
+              subtitleNumberOfLines={0}
               rightAccessory={
                 <Switch
                   value={medicationRemindersEnabled}
@@ -166,11 +165,8 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
           {notificationsEnabled && medicationRemindersEnabled && (
             <SettingsRow
               title="Repeat Reminders"
-              subtitle={
-                <Text className="text-sm text-text-secondary">
-                  Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.
-                </Text>
-              }
+              subtitle="Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged."
+              subtitleNumberOfLines={0}
               rightAccessory={
                 <Switch
                   value={medicationReminderRepeats}
@@ -181,41 +177,52 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
               }
             />
           )}
+          {notificationsEnabled && medicationRemindersEnabled && (
+            <SettingsRow
+              title="Hide Medication Names"
+              subtitle="Show a generic reminder instead of the medication name and dose."
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  value={medicationReminderHideNames}
+                  onValueChange={setMedicationReminderHideNames}
+                  trackColor={{ false: formDisabled, true: formEnabled }}
+                  thumbColor="#FFFFFF"
+                />
+              }
+            />
+          )}
         </SettingsRowGroup>
 
         <NotificationPermissionBanner ref={bannerRef} />
 
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Haptic Feedback</Text>
+        <SettingsRow
+          title="Haptic Feedback"
+          subtitle="Light vibrations for timers and confirmations."
+          subtitleNumberOfLines={0}
+          rightAccessory={
             <Switch
               value={hapticsEnabled}
               onValueChange={setHapticsEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
             />
-          </View>
-          <Text className="text-text-secondary text-sm mt-2">
-            Light vibrations for timers and confirmations.
-          </Text>
-        </View>
+          }
+        />
 
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Camera shutter</Text>
+        <SettingsRow
+          title="Camera shutter"
+          subtitle="Play a sound when capturing photos."
+          subtitleNumberOfLines={0}
+          rightAccessory={
             <Switch
               value={soundsEnabled}
               onValueChange={setSoundsEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
             />
-          </View>
-          <Text className="text-text-secondary text-sm mt-2">
-            Play a sound when capturing photos.
-          </Text>
-        </View>
-
-
+          }
+        />
       </ScrollView>
     </View>
   );

@@ -18,6 +18,8 @@ export const workoutPresetExerciseSetsSchema = z.object({
   weight: z.number().nullable(),
   // Per-set duration is integer SECONDS.
   duration: z.number().int().nullable(),
+  // Km, meaningful on duration_distance sets.
+  distance: z.number().nullable(),
   rest_time: z.number().nullable(),
   notes: z.string().nullable(),
   created_at: z.date().nullable(),
@@ -33,6 +35,8 @@ export const workoutPresetExerciseSetsInitializerSchema = z.object({
   weight: z.number().optional().nullable(),
   // Per-set duration is integer SECONDS.
   duration: z.number().int().optional().nullable(),
+  // Km, meaningful on duration_distance sets.
+  distance: z.number().optional().nullable(),
   rest_time: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
   created_at: z.date().optional().nullable(),
@@ -48,6 +52,8 @@ export const workoutPresetExerciseSetsMutatorSchema = z.object({
   weight: z.number().optional().nullable(),
   // Per-set duration is integer SECONDS.
   duration: z.number().int().optional().nullable(),
+  // Km, meaningful on duration_distance sets.
+  distance: z.number().optional().nullable(),
   rest_time: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
   created_at: z.date().optional().nullable(),

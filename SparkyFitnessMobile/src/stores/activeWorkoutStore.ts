@@ -183,10 +183,24 @@ export interface ActiveWorkoutState {
    * row renders. Persisted so a cold-start resume keeps resolving.
    */
   previousSessionSets: Record<string, ExerciseRecentSessionSet[]>;
+  /**
+   * Preset this live workout was started from, plus the server config it
+   * lives on — preset ids are numeric and collide across configured servers,
+   * and switching the active server doesn't clear this store. Both feed the
+   * update-preset prompt on the completion screen. Persisted so the link
+   * survives a cold-start resume.
+   */
+  sourcePresetId: number | null;
+  sourceServerConfigId: string | null;
 
   startWorkout: (
     session: PresetSessionResponse,
-    opts?: { createdByLiveStart?: boolean; plannedSetValues?: AssumedSetValues[][] },
+    opts?: {
+      createdByLiveStart?: boolean;
+      plannedSetValues?: AssumedSetValues[][];
+      sourcePresetId?: number;
+      sourceServerConfigId?: string;
+    },
   ) => void;
   startWorkoutAtSet: (session: PresetSessionResponse, setId: string) => void;
   /**
@@ -372,6 +386,8 @@ const initialData: Pick<
   | 'setRenderKeys'
   | 'plannedSetValues'
   | 'previousSessionSets'
+  | 'sourcePresetId'
+  | 'sourceServerConfigId'
 > = {
   sessionId: null,
   session: null,
@@ -388,6 +404,8 @@ const initialData: Pick<
   setRenderKeys: {},
   plannedSetValues: {},
   previousSessionSets: {},
+  sourcePresetId: null,
+  sourceServerConfigId: null,
 };
 
 /**
@@ -599,14 +617,17 @@ function adoptAssumedSetValues(
 
   // Only the fields the modality renders adopt: a duration set must not be
   // stamped with legacy isometric reps from history, and a weighted set must
-  // not inherit a duration.
+  // not inherit a duration. Cardio renders duration + distance, so both adopt.
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const durationLike = isDurationModality(modality);
-  const relevantFilled = durationLike
-    ? target.duration != null
-    : modality === 'reps_only'
-      ? target.reps != null
-      : target.weight != null && target.reps != null;
+  const cardio = isCardioModality(modality);
+  const relevantFilled = cardio
+    ? target.duration != null && target.distance != null
+    : durationLike
+      ? target.duration != null
+      : modality === 'reps_only'
+        ? target.reps != null
+        : target.weight != null && target.reps != null;
   if (relevantFilled) return session;
 
   const assumed = resolveAssumedSetValues(
@@ -614,14 +635,19 @@ function adoptAssumedSetValues(
     state.previousSessionSets[exercise.exercise_id],
     state.plannedSetValues,
   )[setIndex];
-  const patch: ActiveSetPatch = durationLike
-    ? { duration: target.duration ?? assumed.duration ?? null }
-    : modality === 'reps_only'
-      ? { reps: target.reps ?? assumed.reps }
-      : {
-          weight: target.weight ?? assumed.weight,
-          reps: target.reps ?? assumed.reps,
-        };
+  const patch: ActiveSetPatch = cardio
+    ? {
+        duration: target.duration ?? assumed.duration ?? null,
+        distance: target.distance ?? assumed.distance ?? null,
+      }
+    : durationLike
+      ? { duration: target.duration ?? assumed.duration ?? null }
+      : modality === 'reps_only'
+        ? { reps: target.reps ?? assumed.reps }
+        : {
+            weight: target.weight ?? assumed.weight,
+            reps: target.reps ?? assumed.reps,
+          };
   if (Object.values(patch).every((v) => v == null)) return session;
 
   return {
@@ -888,7 +914,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             const planned = plannedSets[setIndex];
             if (
               planned != null &&
-              (planned.weight != null || planned.reps != null || planned.duration != null)
+              (planned.weight != null ||
+                planned.reps != null ||
+                planned.duration != null ||
+                planned.distance != null)
             ) {
               plannedSetValues[String(s.id)] = planned;
             }
@@ -915,6 +944,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // Previous-session sets are captured lazily per exercise by the
           // live card, like the PR baseline.
           previousSessionSets: {},
+          sourcePresetId: opts?.sourcePresetId ?? null,
+          sourceServerConfigId: opts?.sourceServerConfigId ?? null,
         });
       },
 
@@ -959,6 +990,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // are real. Previous-session sets re-capture lazily.
           plannedSetValues: {},
           previousSessionSets: {},
+          // Nor was it started from a preset this session — no update-preset
+          // prompt on finish.
+          sourcePresetId: null,
+          sourceServerConfigId: null,
         });
       },
 
@@ -1816,6 +1851,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // may adopt before any card remounts to re-capture history.
         plannedSetValues: state.plannedSetValues,
         previousSessionSets: state.previousSessionSets,
+        // The preset link feeds the finish prompt; survives a cold start.
+        sourcePresetId: state.sourcePresetId,
+        sourceServerConfigId: state.sourceServerConfigId,
       }),
       migrate: (persistedState, version) => {
         // v4 changed `completedSetIds` values from `true` to epoch-ms tap

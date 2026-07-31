@@ -498,6 +498,26 @@ describe('presetFormReducer', () => {
       expect(next.exercises[0].images).toEqual([]);
       expect(next.exercises[0].exerciseCategory).toBeNull();
     });
+
+    it('maps preset set distance (km) into display-unit draft text', () => {
+      const cardioPreset = preset();
+      cardioPreset.exercises[0].sets = [
+        { ...cardioPreset.exercises[0].sets[0], distance: 1.609344 },
+        cardioPreset.exercises[0].sets[1],
+      ];
+      const next = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        {
+          type: 'POPULATE_FROM_PRESET',
+          preset: cardioPreset,
+          weightUnit: 'kg',
+          distanceUnit: 'miles',
+          clientIds,
+        },
+      );
+      expect(next.exercises[0].sets[0].distance).toBe('1');
+      expect(next.exercises[0].sets[1].distance).toBe('');
+    });
   });
 
   describe('POPULATE_FROM_SESSION', () => {
@@ -677,6 +697,29 @@ describe('presetFormReducer', () => {
       expect(next.exercises[0].exerciseCategory).toBeNull();
       expect(next.exercises[0].images).toEqual([]);
       expect(next.exercises[0].supersetGroup).toBeNull();
+    });
+
+    it('maps logged cardio distance (km) into display-unit draft text', () => {
+      const base = session().exercises[0];
+      const cardio = session({
+        exercises: [
+          {
+            ...base,
+            sets: [{ ...base.sets[0], distance: 1.609344 }],
+          },
+        ],
+      });
+      const next = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        {
+          type: 'POPULATE_FROM_SESSION',
+          session: cardio,
+          weightUnit: 'kg',
+          distanceUnit: 'miles',
+          clientIds,
+        },
+      );
+      expect(next.exercises[0].sets[0].distance).toBe('1');
     });
   });
 
