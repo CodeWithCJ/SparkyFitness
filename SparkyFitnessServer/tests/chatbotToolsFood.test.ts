@@ -32,6 +32,8 @@ vi.mock('../services/foodEntryService', () => ({
     deleteFoodEntryMeal: vi.fn(),
     updateFoodEntry: vi.fn(),
     updateFoodEntryMeal: vi.fn(),
+    moveFoodEntryMealToMealType: vi.fn(),
+    getFoodEntryMealMeta: vi.fn(),
     getFoodEntryMealWithComponents: vi.fn(),
     copyFoodEntries: vi.fn(),
     copyAllFoodEntries: vi.fn(),
@@ -2193,6 +2195,12 @@ describe('update_entry', () => {
     const componentFoods = [
       { food_id: FOOD_ID, variant_id: VARIANT_ID, quantity: 100, unit: 'g' },
     ];
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'g',
+      meal_type_id: null,
+    });
     vi.mocked(
       foodEntryService.getFoodEntryMealWithComponents
     ).mockResolvedValue({
@@ -2231,10 +2239,279 @@ describe('update_entry', () => {
     );
   });
 
-  it('maps a missing meal entry to NOT_FOUND', async () => {
+  // Changing ONLY the meal type of a meal container must be a metadata-only
+  // move: it must not round-trip/rebuild the component food_entries (which
+  // would rewrite historical nutrition snapshots or drop components whose
+  // food/variant no longer exists).
+  it('moves a meal entry to a custom meal type without rebuilding its components', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: null,
+    });
+    vi.mocked(foodEntryService.moveFoodEntryMealToMealType).mockResolvedValue({
+      id: ENTRY_ID,
+      meal_type_id: MEAL_TYPE_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_type_id: MEAL_TYPE_ID,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: meal type to Second breakfast.');
+    expect(foodEntryService.moveFoodEntryMealToMealType).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      MEAL_TYPE_ID
+    );
+    expect(
+      foodEntryService.getFoodEntryMealWithComponents
+    ).not.toHaveBeenCalled();
+    expect(foodEntryService.updateFoodEntryMeal).not.toHaveBeenCalled();
+  });
+
+  // A redundant quantity copied from list_diary must not trigger a rebuild:
+  // when the value equals the container's current quantity the move stays
+  // metadata-only.
+  it('moves a meal entry when a redundant quantity equals the existing value', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: null,
+    });
+    vi.mocked(foodEntryService.moveFoodEntryMealToMealType).mockResolvedValue({
+      id: ENTRY_ID,
+      meal_type_id: MEAL_TYPE_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_type_id: MEAL_TYPE_ID,
+        quantity: 1,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: meal type to Second breakfast.');
+    expect(foodEntryService.moveFoodEntryMealToMealType).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      MEAL_TYPE_ID
+    );
+    expect(foodEntryService.updateFoodEntryMeal).not.toHaveBeenCalled();
+    expect(
+      foodEntryService.getFoodEntryMealWithComponents
+    ).not.toHaveBeenCalled();
+  });
+
+  // Same for a redundant unit that equals the existing unit.
+  it('moves a meal entry when a redundant unit equals the existing value', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: null,
+    });
+    vi.mocked(foodEntryService.moveFoodEntryMealToMealType).mockResolvedValue({
+      id: ENTRY_ID,
+      meal_type_id: MEAL_TYPE_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_type_id: MEAL_TYPE_ID,
+        unit: 'serving',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: meal type to Second breakfast.');
+    expect(foodEntryService.moveFoodEntryMealToMealType).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      MEAL_TYPE_ID
+    );
+    expect(foodEntryService.updateFoodEntryMeal).not.toHaveBeenCalled();
+  });
+
+  // A plain no-op (redundant quantity, no meal type change) must not rebuild
+  // components and must not fabricate a change message.
+  it('no-ops when a redundant quantity equals the existing value and no meal type is given', async () => {
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: 'default-id',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        quantity: 1,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry already has the requested values.');
+    expect(foodEntryService.moveFoodEntryMealToMealType).not.toHaveBeenCalled();
+    expect(foodEntryService.updateFoodEntryMeal).not.toHaveBeenCalled();
+    expect(
+      foodEntryService.getFoodEntryMealWithComponents
+    ).not.toHaveBeenCalled();
+  });
+
+  // Same meal type + redundant quantity/unit: nothing to do, no fake message.
+  it('no-ops when the meal type and quantity are unchanged', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: MEAL_TYPE_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_type_id: MEAL_TYPE_ID,
+        quantity: 1,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry already has the requested values.');
+    expect(foodEntryService.moveFoodEntryMealToMealType).not.toHaveBeenCalled();
+    expect(foodEntryService.updateFoodEntryMeal).not.toHaveBeenCalled();
+  });
+
+  // A REAL quantity change still uses the full rebuild path (components are
+  // re-scaled to the new portion).
+  it('rebuilds components when the quantity actually changes', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: null,
+    });
     vi.mocked(
       foodEntryService.getFoodEntryMealWithComponents
-    ).mockResolvedValue(null);
+    ).mockResolvedValue({
+      id: ENTRY_ID,
+      meal_template_id: MEAL_ID,
+      entry_date: new Date(2026, 5, 10),
+      foods: [
+        { food_id: FOOD_ID, variant_id: VARIANT_ID, quantity: 100, unit: 'g' },
+      ],
+    });
+    vi.mocked(foodEntryService.updateFoodEntryMeal).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_type_id: MEAL_TYPE_ID,
+        quantity: 2,
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Entry updated: quantity to 2, meal type to Second breakfast.'
+    );
+    expect(foodEntryService.updateFoodEntryMeal).toHaveBeenCalled();
+    expect(foodEntryService.moveFoodEntryMealToMealType).not.toHaveBeenCalled();
+  });
+
+  // A real quantity change with an UNCHANGED meal type must still use the full
+  // rebuild path, but the confirmation must mention only the quantity — the
+  // category did not change.
+  it('rebuilds on a real quantity change but does not report an unchanged meal type', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: MEAL_TYPE_ID,
+    });
+    vi.mocked(
+      foodEntryService.getFoodEntryMealWithComponents
+    ).mockResolvedValue({
+      id: ENTRY_ID,
+      meal_template_id: MEAL_ID,
+      entry_date: new Date(2026, 5, 10),
+      foods: [
+        { food_id: FOOD_ID, variant_id: VARIANT_ID, quantity: 100, unit: 'g' },
+      ],
+    });
+    vi.mocked(foodEntryService.updateFoodEntryMeal).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_type_id: MEAL_TYPE_ID,
+        quantity: 2,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: quantity to 2.');
+    expect(result).not.toContain('meal type');
+    expect(foodEntryService.updateFoodEntryMeal).toHaveBeenCalled();
+    expect(foodEntryService.moveFoodEntryMealToMealType).not.toHaveBeenCalled();
+  });
+
+  it('maps a missing meal entry to NOT_FOUND', async () => {
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue(null);
 
     const result = await tools.sparky_manage_food.execute!(
       {
@@ -2687,16 +2964,19 @@ describe('save_as_meal_template', () => {
   });
 
   it('infers update_entry (not log_meal) for entry_id + meal_name + meal_type_id', async () => {
-    vi.mocked(foodEntryService.updateFoodEntryMeal).mockResolvedValue({
-      id: ENTRY_ID,
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
     });
-    vi.mocked(
-      foodEntryService.getFoodEntryMealWithComponents
-    ).mockResolvedValue({
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
       id: ENTRY_ID,
-      meal_template_id: MEAL_ID,
-      entry_date: new Date(2026, 5, 10),
-      foods: [],
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: null,
+    });
+    vi.mocked(foodEntryService.moveFoodEntryMealToMealType).mockResolvedValue({
+      id: ENTRY_ID,
+      meal_type_id: MEAL_TYPE_ID,
     });
 
     const result = await tools.sparky_manage_food.execute!(
@@ -2710,7 +2990,7 @@ describe('save_as_meal_template', () => {
     );
 
     expect(result).toContain('✅ Entry updated');
-    expect(foodEntryService.updateFoodEntryMeal).toHaveBeenCalled();
+    expect(foodEntryService.moveFoodEntryMealToMealType).toHaveBeenCalled();
     expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
   });
 
