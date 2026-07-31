@@ -20,11 +20,14 @@ export function useCustomCategories() {
   });
 }
 
-export function useCustomMeasurementsByDate(date: string) {
+export function useCustomMeasurementsByDate(
+  date: string,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: customMeasurementsByDateQueryKey(date),
     queryFn: () => fetchCustomMeasurementsByDate(date),
-    enabled: !!date,
+    enabled: !!date && (options?.enabled ?? true),
     staleTime: 1000 * 60 * 1,
   });
 }

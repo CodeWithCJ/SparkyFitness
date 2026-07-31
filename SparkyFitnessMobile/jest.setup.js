@@ -1,18 +1,75 @@
-// jsdom doesn't expose TextEncoder/TextDecoder globally, but Expo SDK 55's "winter"
+﻿// jsdom doesn't expose TextEncoder/TextDecoder globally, but Expo SDK 55's "winter"
 // runtime lazily installs URL/URLSearchParams via whatwg-url-minimum, which requires them.
 const { TextEncoder, TextDecoder } = require('util');
-if (typeof globalThis.TextEncoder === 'undefined') globalThis.TextEncoder = TextEncoder;
-if (typeof globalThis.TextDecoder === 'undefined') globalThis.TextDecoder = TextDecoder;
-if (typeof globalThis.TextEncoderStream === 'undefined') {
-  // Minimal polyfill for expo winter runtime which expects TextEncoderStream
-  // on the global object during module initialisation.
+
+// Use Object.defineProperty unconditionally to replace any existing property
+// (including Winter's lazy getters) without triggering the getter.
+const defineGlobal = (name, value) => {
+  Object.defineProperty(globalThis, name, {
+    value,
+    configurable: true,
+    writable: true,
+  });
+};
+
+defineGlobal('TextEncoder', TextEncoder);
+defineGlobal('TextDecoder', TextDecoder);
+defineGlobal('TextDecoderStream',
+  class TextDecoderStreamPolyfill {
+    constructor() { this.encoding = 'utf-8'; this.readable = null; this.writable = null; }
+    get closed() { return Promise.resolve(); }
+    close() {}
+  },
+);
+defineGlobal('TextEncoderStream',
   class TextEncoderStreamPolyfill {
     constructor() { this.encoding = 'utf-8'; this.readable = null; this.writable = null; }
     get closed() { return Promise.resolve(); }
     close() {}
-  }
-  globalThis.TextEncoderStream = TextEncoderStreamPolyfill;
+  },
+);
+defineGlobal('structuredClone', (v) => JSON.parse(JSON.stringify(v)));
+defineGlobal('__ExpoImportMetaRegistry', { url: 'file:///jest-test.js' });
+
+defineGlobal('DOMException', class DOMException extends Error {
+  constructor(message, name) { super(message); this.name = name; }
+});
+// URL and URLSearchParams — Winter installs them as lazy getters from expo/src/winter/url.ts
+const { URL: NodeURL, URLSearchParams: NodeURLSearchParams } = require('url');
+defineGlobal('URL', NodeURL);
+defineGlobal('URLSearchParams', NodeURLSearchParams);
+// fetch — Winter installs it as a lazy getter from expo/src/winter/fetch.ts
+// Provide a minimal stub so tests don't trigger the real Winter implementation.
+if (typeof globalThis.fetch !== 'function') {
+  defineGlobal('fetch', async (url, opts) => {
+    throw new Error('fetch not available in test environment');
+  });
 }
+
+// Global react-i18next mock: components use useTranslation(), but tests don't
+// initialize the i18n instance. Resolve dotted keys against the English resource
+// so components render their default (en) copy. Other exports (initReactI18next
+// etc.) stay real for the localization suite.
+jest.mock('react-i18next', () => {
+  const actual = jest.requireActual('react-i18next');
+  const en = require('./src/localization/locales/en/translation.json');
+
+  const lookup = (obj, path) =>
+    path.split('.').reduce((acc, part) => (acc == null ? acc : acc[part]), obj);
+
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key) => {
+        if (typeof key !== 'string') return key;
+        const value = lookup(en, key);
+        return value ?? key;
+      },
+      i18n: null,
+      ready: true,
+    }),
+  };
+});
 
 // Mock radon-ide (ESM module that Jest can't transform)
 jest.mock('radon-ide', () => ({
@@ -297,7 +354,7 @@ jest.mock('react-native-reanimated', () => {
     useSharedValue: (init) => React.useRef({ value: init }).current,
     useAnimatedStyle: (fn) => fn(),
     useDerivedValue: (fn) => ({ value: fn() }),
-    // Linear map between the first and last stops, clamped — enough for the
+    // Linear map between the first and last stops, clamped â€” enough for the
     // synchronous worklet the useAnimatedStyle mock runs.
     interpolate: (value, input, output) => {
       const inMin = input[0];
@@ -317,7 +374,7 @@ jest.mock('react-native-reanimated', () => {
     cancelAnimation: jest.fn(),
     useReducedMotion: () => false,
     useAnimatedReaction: jest.fn(),
-    // Drag-reorder worklet plumbing — runOnJS returns the fn so callers can
+    // Drag-reorder worklet plumbing â€” runOnJS returns the fn so callers can
     // invoke it synchronously; the scroll/frame helpers are inert stubs.
     runOnJS: (fn) => fn,
     useAnimatedRef: () => React.useRef(null),
@@ -383,7 +440,7 @@ jest.mock('react-native-keyboard-controller', () => {
 });
 
 // Mock expo-glass-effect. Availability is false so iOS tests exercise the
-// classic native-header path (useNativeIOSHeadersActive() → true) instead of
+// classic native-header path (useNativeIOSHeadersActive() â†’ true) instead of
 // the Liquid Glass fallback; tests that need glass-on mock
 // src/utils/liquidGlass locally.
 jest.mock('expo-glass-effect', () => {
@@ -580,3 +637,4 @@ jest.mock('@gorhom/bottom-sheet', () => {
     BottomSheetBackdrop: () => null,
   };
 });
+

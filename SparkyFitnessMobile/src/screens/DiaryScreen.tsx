@@ -135,18 +135,40 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const { getImageSource } = useExerciseImageSource();
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
-  const { summary, isLoading, isError, refetch } = useDailySummary({
+  const {
+    summary,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching: isSummaryRefetching,
+  } = useDailySummary({
     date: selectedDate,
     enabled: isConnected,
   });
-  const { measurements, refetch: refetchMeasurements } = useMeasurements({
+  const {
+    measurements,
+    refetch: refetchMeasurements,
+    isRefetching: isMeasurementsRefetching,
+  } = useMeasurements({
     date: selectedDate,
     enabled: isConnected,
   });
-  const { data: customMeasurements } = useCustomMeasurementsByDate(selectedDate);
+  const {
+    data: customMeasurements,
+    refetch: refetchCustomMeasurements,
+    isRefetching: isCustomMeasurementsRefetching,
+  } = useCustomMeasurementsByDate(selectedDate, { enabled: isConnected });
   const { mealTypes } = useMealTypes();
-  const { customNutrients } = useCustomNutrients({ enabled: isConnected });
-  const { preferences: nutrientPrefs } = useNutrientDisplayPreferences({ enabled: isConnected });
+  const {
+    customNutrients,
+    refetch: refetchCustomNutrients,
+    isRefetching: isCustomNutrientsRefetching,
+  } = useCustomNutrients({ enabled: isConnected });
+  const {
+    preferences: nutrientPrefs,
+    refetch: refetchNutrientPrefs,
+    isRefetching: isNutrientPrefsRefetching,
+  } = useNutrientDisplayPreferences({ enabled: isConnected });
   const diaryNutrientRow = nutrientPrefs.find(
     (p) => p.view_group === 'diary' && p.platform === 'mobile',
   );
@@ -168,10 +190,35 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const onRefresh = useCallback(async () => {
+    if (!isConnected) return;
     setRefreshing(true);
-    await Promise.all([refetch(), refetchMeasurements()]);
-    setRefreshing(false);
-  }, [refetch, refetchMeasurements]);
+    try {
+      await Promise.all([
+        refetch(),
+        refetchMeasurements(),
+        refetchCustomMeasurements(),
+        refetchCustomNutrients(),
+        refetchNutrientPrefs(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [
+    isConnected,
+    refetch,
+    refetchMeasurements,
+    refetchCustomMeasurements,
+    refetchCustomNutrients,
+    refetchNutrientPrefs,
+  ]);
+
+  const isRefreshing =
+    refreshing ||
+    isSummaryRefetching ||
+    isMeasurementsRefetching ||
+    isCustomMeasurementsRefetching ||
+    isCustomNutrientsRefetching ||
+    isNutrientPrefsRefetching;
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -236,7 +283,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
         automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (

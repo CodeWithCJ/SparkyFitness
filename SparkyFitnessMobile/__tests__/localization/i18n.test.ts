@@ -54,7 +54,7 @@ describe('resolveLanguagePreference', () => {
 
 describe('getDeviceLanguage', () => {
   beforeEach(() => {
-    jest.clearMocks();
+    jest.clearAllMocks();
   });
 
   it('returns pl for Polish locale', () => {
@@ -73,18 +73,20 @@ describe('getDeviceLanguage', () => {
 });
 
 describe('getAppLocale', () => {
-  it('returns en-US for English', () => {
-    jest.isolateModules(() => {
-      const { default: i18n, getAppLocale } = require('../../src/localization/i18n');
-      i18n.changeLanguage('en');
+  it('returns en-US for English', async () => {
+    jest.isolateModules(async () => {
+      const { default: i18n, initializeI18n, getAppLocale } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await i18n.changeLanguage('en');
       expect(getAppLocale()).toBe('en-US');
     });
   });
 
-  it('returns pl-PL for Polish', () => {
-    jest.isolateModules(() => {
-      const { default: i18n, getAppLocale } = require('../../src/localization/i18n');
-      i18n.changeLanguage('pl');
+  it('returns pl-PL for Polish', async () => {
+    jest.isolateModules(async () => {
+      const { default: i18n, initializeI18n, getAppLocale } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await i18n.changeLanguage('pl');
       expect(getAppLocale()).toBe('pl-PL');
     });
   });
@@ -139,48 +141,53 @@ describe('initializeI18n hydration', () => {
     });
   });
 
-  it('falls back to English for missing Polish translation', () => {
-    jest.isolateModules(() => {
-      const { default: i18n } = require('../../src/localization/i18n');
-      i18n.changeLanguage('pl');
-      // Key that exists only in English resource should fall back
-      expect(i18n.t('common.nonexistent')).toBe(''); // i18next returns empty string for missing keys
+  it('falls back to English for missing Polish translation', async () => {
+    jest.isolateModules(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await i18n.changeLanguage('pl');
+      // i18next with fallbackLng 'en' returns the key itself for fully missing keys
+      expect(i18n.t('some.nonexistent.key')).toBe('some.nonexistent.key');
     });
   });
 });
 
 describe('protection: dynamic content is not translated', () => {
-  it('does not translate food product names', () => {
-    jest.isolateModules(() => {
-      const { default: i18n } = require('../../src/localization/i18n');
-      i18n.changeLanguage('pl');
+  it('does not translate food product names', async () => {
+    jest.isolateModules(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await i18n.changeLanguage('pl');
       // Food names are not valid semantic keys, so they return as-is
       expect(i18n.t('Chicken Breast')).toBe('Chicken Breast');
       expect(i18n.t('Milk 2%')).toBe('Milk 2%');
     });
   });
 
-  it('does not translate server exercise names', () => {
-    jest.isolateModules(() => {
-      const { default: i18n } = require('../../src/localization/i18n');
-      i18n.changeLanguage('pl');
+  it('does not translate server exercise names', async () => {
+    jest.isolateModules(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await i18n.changeLanguage('pl');
       expect(i18n.t('Bulgarian Split Squat')).toBe('Bulgarian Split Squat');
     });
   });
 
-  it('does not translate custom meal type names', () => {
-    jest.isolateModules(() => {
-      const { default: i18n } = require('../../src/localization/i18n');
-      i18n.changeLanguage('pl');
+  it('does not translate custom meal type names', async () => {
+    jest.isolateModules(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await i18n.changeLanguage('pl');
       // Custom meal types like "Drugie śniadanie" should not be translated
       expect(i18n.t('Drugie śniadanie')).toBe('Drugie śniadanie');
     });
   });
 
-  it('does not translate custom measurement category names', () => {
-    jest.isolateModules(() => {
-      const { default: i18n } = require('../../src/localization/i18n');
-      i18n.changeLanguage('pl');
+  it('does not translate custom measurement category names', async () => {
+    jest.isolateModules(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await i18n.changeLanguage('pl');
       // Custom measurement categories are not semantic keys
       expect(i18n.t('Blood Glucose')).toBe('Blood Glucose');
     });

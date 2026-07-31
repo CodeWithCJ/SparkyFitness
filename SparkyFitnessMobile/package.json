@@ -130,15 +130,15 @@
     ],
     "testPathIgnorePatterns": [
         "__tests__/hooks/queryTestUtils\\.ts$",
-        "__tests__/screens/helpers/",
-        "\\.tooling/"
+        "__tests__/screens/helpers/"
     ],
     "moduleNameMapper": {
       "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",
       "^@babel/runtime/(.*)$": "<rootDir>/node_modules/@babel/runtime/$1",
-      "^remend$": "<rootDir>/node_modules/remend/dist/index.js",
+      "^remend$": "<rootDir>/../node_modules/remend/dist/index.js",
       "^react$": "<rootDir>/node_modules/react",
-      "^react/(.*)$": "<rootDir>/node_modules/react/$1"
+      "^react/(.*)$": "<rootDir>/node_modules/react/$1",
+      "^expo/src/winter$": "<rootDir>/__mocks__/expo-winter.js"
     },
     "transform": {
       "^.+\\.mjs$": [
@@ -156,18 +156,17 @@
       "node_modules/(?!(?:.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo[^/]*|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@shopify/react-native-skia|react-native-ui-datepicker|@workspace/shared|remend|zod|better-auth|@better-auth/.*|@better-fetch/.*|nanostores|jose|@noble/.*|better-call|defu)/)"
     ],
     "collectCoverage": true,
-    "collectCoverageFrom": [
-      "**/*.{ts,tsx,js,jsx}",
-      "!**/coverage/**",
-      "!**/node_modules/**",
-      "!**/babel.config.js",
-      "!**/metro.config.js",
-      "!**/.prettierrc.js",
-      "!**/eslint.config.js",
-      "!**/expo-env.d.ts",
-      "!**/.expo/**",
-        "!**/devdocs/**",
-        "!**/.tooling/**"
-    ]
+      "collectCoverageFrom": [
+        "**/*.{ts,tsx,js,jsx}",
+        "!**/coverage/**",
+        "!**/node_modules/**",
+        "!**/babel.config.js",
+        "!**/metro.config.js",
+        "!**/.prettierrc.js",
+        "!**/eslint.config.js",
+        "!**/expo-env.d.ts",
+        "!**/.expo/**",
+          "!**/devdocs/**"
+      ]
   }
 }

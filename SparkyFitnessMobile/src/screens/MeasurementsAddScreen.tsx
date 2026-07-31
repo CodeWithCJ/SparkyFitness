@@ -38,13 +38,10 @@ import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   useCustomCategories,
   useCustomMeasurementsByDate,
+  useSaveCustomMeasurement,
+  useDeleteCustomMeasurement,
 } from '../hooks/useCustomMeasurements';
-import {
-  saveCustomMeasurement as saveCustomMeasurementApi,
-  deleteCustomMeasurement as deleteCustomMeasurementApi,
-} from '../services/api/measurementsApi';
-import { customMeasurementsByDateQueryKey } from '../hooks/queryKeys';
-import { queryClient } from '../hooks/queryClient';
+import type { CustomMeasurementEntry } from '../types/customMeasurements';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -118,6 +115,11 @@ const joinWithAnd = (items: string[]): string => {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 };
 
+// Describes a custom-measurement mutation without calling the API directly.
+type CustomOp =
+  | { kind: 'save'; categoryId: string; value: string | number | boolean }
+  | { kind: 'delete'; entryId: string };
+
 const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -142,6 +144,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const [customForm, setCustomForm] = useState<Record<string, string>>({});
   const [prefilledCustom, setPrefilledCustom] = useState<Set<string>>(new Set());
   const dirtyCustomRef = useRef<Set<string>>(new Set());
+  const lastCustomDateRef = useRef<string | null>(null);
 
   const { measurements, isLoading } = useMeasurements({ date: selectedDate });
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
@@ -156,6 +159,8 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     preferences?.default_measurement_unit ?? 'cm';
 
   const upsertMutation = useUpsertCheckIn();
+  const saveCustomMutation = useSaveCustomMeasurement();
+  const deleteCustomMutation = useDeleteCustomMeasurement();
   const { data: customCategories } = useCustomCategories();
   const { data: customMeasurements } = useCustomMeasurementsByDate(selectedDate);
 
@@ -238,24 +243,31 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [selectedDate, isLoading, isPreferencesLoading, measurements, weightMode, bodyUnit, heightMode]);
 
   useEffect(() => {
+    // A date change must not carry the previous day's custom input forward, so
+    // drop dirty tracking and rebuild the form from the new date's data.
+    if (lastCustomDateRef.current !== selectedDate) {
+      lastCustomDateRef.current = selectedDate;
+      dirtyCustomRef.current = new Set();
+    }
+
     const dirtyCustom = new Set(dirtyCustomRef.current);
     const next: Record<string, string> = {};
     const prefilled = new Set<string>();
-    const entryByCat = new Map<string, string>();
+    const entryByCat = new Map<string, CustomMeasurementEntry>();
     if (customMeasurements) {
       for (const entry of customMeasurements) {
-        entryByCat.set(entry.category_id, entry.value);
+        entryByCat.set(entry.category_id, entry);
       }
     }
     for (const cat of customCategories ?? []) {
       const existing = entryByCat.get(cat.id);
       if (existing != null) {
-        next[cat.id] = existing;
+        next[cat.id] = existing.value;
         prefilled.add(cat.id);
       }
     }
     setCustomForm((current) => {
-      if (dirtyCustom.size === 0) return { ...next, ...current };
+      if (dirtyCustom.size === 0) return { ...next };
       const merged = { ...current };
       for (const cat of customCategories ?? []) {
         if (dirtyCustom.has(cat.id)) continue;
@@ -412,10 +424,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ];
     const hasAnyField = fieldKeys.some((k) => payload[k] !== undefined);
 
-    const buildCustomOps = (): Promise<unknown>[] => {
-      const ops: Promise<unknown>[] = [];
+    // Build operation descriptors only; execution happens through the mutation
+    // layer in doSave below.
+    const buildCustomOps = (): CustomOp[] => {
+      const ops: CustomOp[] = [];
       if (!customCategories) return ops;
-      const entryByCat = new Map<string, { id: string; value: string }>();
+      const entryByCat = new Map<string, CustomMeasurementEntry>();
       for (const entry of customMeasurements ?? []) {
         entryByCat.set(entry.category_id, entry);
       }
@@ -425,19 +439,20 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           let parsedValue: string | number | boolean = value;
           if (cat.data_type === 'numeric') {
             parsedValue = Number(value);
-            if (isNaN(parsedValue)) continue;
+            if (Number.isNaN(parsedValue)) {
+              Toast.show({
+                type: 'error',
+                text1: `Invalid ${cat.display_name ?? cat.name}`,
+                text2: 'Enter a number.',
+              });
+              return [];
+            }
           }
-          ops.push(
-            saveCustomMeasurementApi({
-              category_id: cat.id,
-              value: parsedValue,
-              entry_date: selectedDate,
-            }),
-          );
+          ops.push({ kind: 'save', categoryId: cat.id, value: parsedValue });
         } else if (prefilledCustom.has(cat.id)) {
           const existing = entryByCat.get(cat.id);
           if (existing) {
-            ops.push(deleteCustomMeasurementApi(existing.id));
+            ops.push({ kind: 'delete', entryId: existing.id });
           }
         }
       }
@@ -453,17 +468,19 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
     const doSave = async () => {
       try {
-        if (customOps.length > 0) {
-          await Promise.all(customOps);
-          queryClient.invalidateQueries({ queryKey: customMeasurementsByDateQueryKey(selectedDate) });
+        for (const op of customOps) {
+          if (op.kind === 'save') {
+            await saveCustomMutation.mutateAsync({
+              category_id: op.categoryId,
+              value: op.value,
+              entry_date: selectedDate,
+            });
+          } else {
+            await deleteCustomMutation.mutateAsync({ id: op.entryId, entryDate: selectedDate });
+          }
         }
         if (hasAnyField) {
-          await new Promise<void>((resolve, reject) => {
-            upsertMutation.mutate(payload, {
-              onSuccess: () => resolve(),
-              onError: reject,
-            });
-          });
+          await upsertMutation.mutateAsync(payload);
         }
         Toast.show({ type: 'success', text1: t('measurements.saved') });
         navigation.goBack();
@@ -487,9 +504,15 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, navigation, t, customCategories, customMeasurements, customForm, prefilledCustom]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, t, customCategories, customMeasurements, customForm, prefilledCustom]);
 
-  const isSaveDisabled = isLoading || isPreferencesLoading || upsertMutation.isPending;
+  const isSaveDisabled =
+    isLoading ||
+    isPreferencesLoading ||
+    upsertMutation.isPending ||
+    saveCustomMutation.isPending ||
+    deleteCustomMutation.isPending;
+  const isSaving = upsertMutation.isPending || saveCustomMutation.isPending || deleteCustomMutation.isPending;
 
   const weightLabel =
     weightMode === 'st_lbs' ? t('measurements.weightStLabel') : t('measurements.weightLabel', { unit: weightMode });
@@ -526,7 +549,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       kind: 'primary',
       label: SAVE_LABEL,
       busyLabel: SAVING_LABEL,
-      busy: upsertMutation.isPending,
+      busy: isSaving,
       disabled: isSaveDisabled,
       placement: 'native-only',
       onPress: handleSave,
@@ -761,7 +784,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           disabled={isSaveDisabled}
           className="py-3"
         >
-          {upsertMutation.isPending ? (
+          {isSaving ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
