@@ -261,12 +261,68 @@ async function deleteFoodEntryMeal(foodEntryMealId: any, userId: any) {
     client.release();
   }
 }
+// Metadata-only move of a meal container (and its component food_entries) to
+// another meal type, in one transaction. Unlike updateFoodEntryMeal, this
+// does NOT delete and rebuild the components, so historical nutrition
+// snapshots and quantities are preserved untouched.
+async function moveFoodEntryMealToMealType(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foodEntryMealId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mealTypeId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  updatedByUserId: any
+) {
+  log(
+    'info',
+    `moveFoodEntryMealToMealType in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, mealTypeId: ${mealTypeId}, userId: ${userId}`
+  );
+  const client = await getClient(userId, updatedByUserId);
+  try {
+    await client.query('BEGIN');
+    const parent = await client.query(
+      `UPDATE food_entry_meals
+       SET meal_type_id = $1,
+           updated_by_user_id = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 AND user_id = $4
+       RETURNING id`,
+      [mealTypeId, updatedByUserId, foodEntryMealId, userId]
+    );
+    if (parent.rows.length === 0) {
+      throw new Error('Food entry meal not found or not authorized to update.');
+    }
+    await client.query(
+      `UPDATE food_entries
+       SET meal_type_id = $1,
+           updated_by_user_id = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE food_entry_meal_id = $3 AND user_id = $4`,
+      [mealTypeId, updatedByUserId, foodEntryMealId, userId]
+    );
+    await client.query('COMMIT');
+    return parent.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    log(
+      'error',
+      `Error moving food entry meal ${foodEntryMealId} to meal type ${mealTypeId} in repository:`,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 export { createFoodEntryMeal };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealById };
 export { getFoodEntryMealsByDate };
 export { getFoodEntryMealsByDateRange };
 export { deleteFoodEntryMeal };
+export { moveFoodEntryMealToMealType };
 export default {
   createFoodEntryMeal,
   updateFoodEntryMeal,
@@ -274,4 +330,5 @@ export default {
   getFoodEntryMealsByDate,
   getFoodEntryMealsByDateRange,
   deleteFoodEntryMeal,
+  moveFoodEntryMealToMealType,
 };

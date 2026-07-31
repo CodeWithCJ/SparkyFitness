@@ -1906,6 +1906,38 @@ async function createFoodEntryMeal(
     throw error;
   }
 }
+// Metadata-only move of a meal container (and its components) to another meal
+// type. This intentionally avoids the delete-and-rebuild path used by
+// updateFoodEntryMeal: moving a meal between categories must not re-read
+// current food variants or rewrite the historical nutrition snapshots, and
+// must not drop components when a food/variant is no longer available.
+async function moveFoodEntryMealToMealType(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  actingUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  foodEntryMealId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mealTypeId: any
+) {
+  try {
+    const updated = await foodEntryMealRepository.moveFoodEntryMealToMealType(
+      foodEntryMealId,
+      mealTypeId,
+      authenticatedUserId,
+      actingUserId
+    );
+    return updated;
+  } catch (error) {
+    log(
+      'error',
+      `Error moving food entry meal ${foodEntryMealId} to meal type ${mealTypeId} for user ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
 async function updateFoodEntryMeal(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -3312,6 +3344,7 @@ export { copyAllFoodEntries };
 export { copyAllFoodEntriesFromYesterday };
 export { getDailyNutritionSummary };
 export { createFoodEntryMeal };
+export { moveFoodEntryMealToMealType };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealWithComponents };
 export { getFoodEntryMealsByDate };
@@ -3332,6 +3365,7 @@ export default {
   copyAllFoodEntriesFromYesterday,
   getDailyNutritionSummary,
   createFoodEntryMeal,
+  moveFoodEntryMealToMealType,
   updateFoodEntryMeal,
   getFoodEntryMealWithComponents,
   getFoodEntryMealsByDate,

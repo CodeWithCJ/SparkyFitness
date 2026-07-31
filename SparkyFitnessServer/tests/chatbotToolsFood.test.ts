@@ -32,6 +32,7 @@ vi.mock('../services/foodEntryService', () => ({
     deleteFoodEntryMeal: vi.fn(),
     updateFoodEntry: vi.fn(),
     updateFoodEntryMeal: vi.fn(),
+    moveFoodEntryMealToMealType: vi.fn(),
     getFoodEntryMealWithComponents: vi.fn(),
     copyFoodEntries: vi.fn(),
     copyAllFoodEntries: vi.fn(),
@@ -2231,6 +2232,42 @@ describe('update_entry', () => {
     );
   });
 
+  // Changing ONLY the meal type of a meal container must be a metadata-only
+  // move: it must not round-trip/rebuild the component food_entries (which
+  // would rewrite historical nutrition snapshots or drop components whose
+  // food/variant no longer exists).
+  it('moves a meal entry to a custom meal type without rebuilding its components', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.moveFoodEntryMealToMealType).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_type_id: MEAL_TYPE_ID,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: meal type to Second breakfast.');
+    expect(foodEntryService.moveFoodEntryMealToMealType).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      MEAL_TYPE_ID
+    );
+    expect(
+      foodEntryService.getFoodEntryMealWithComponents
+    ).not.toHaveBeenCalled();
+    expect(foodEntryService.updateFoodEntryMeal).not.toHaveBeenCalled();
+  });
+
   it('maps a missing meal entry to NOT_FOUND', async () => {
     vi.mocked(
       foodEntryService.getFoodEntryMealWithComponents
@@ -2687,16 +2724,12 @@ describe('save_as_meal_template', () => {
   });
 
   it('infers update_entry (not log_meal) for entry_id + meal_name + meal_type_id', async () => {
-    vi.mocked(foodEntryService.updateFoodEntryMeal).mockResolvedValue({
-      id: ENTRY_ID,
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
     });
-    vi.mocked(
-      foodEntryService.getFoodEntryMealWithComponents
-    ).mockResolvedValue({
+    vi.mocked(foodEntryService.moveFoodEntryMealToMealType).mockResolvedValue({
       id: ENTRY_ID,
-      meal_template_id: MEAL_ID,
-      entry_date: new Date(2026, 5, 10),
-      foods: [],
     });
 
     const result = await tools.sparky_manage_food.execute!(
@@ -2710,7 +2743,7 @@ describe('save_as_meal_template', () => {
     );
 
     expect(result).toContain('✅ Entry updated');
-    expect(foodEntryService.updateFoodEntryMeal).toHaveBeenCalled();
+    expect(foodEntryService.moveFoodEntryMealToMealType).toHaveBeenCalled();
     expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
   });
 

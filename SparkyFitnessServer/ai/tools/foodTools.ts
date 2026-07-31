@@ -1924,30 +1924,49 @@ Actions:
                     }
                   );
                 } else {
-                  // Round-trip the template link and component foods so the
-                  // server's edit path rescales components instead of
-                  // detaching them.
-                  const existing =
-                    await foodEntryService.getFoodEntryMealWithComponents(
+                  // Changing ONLY the meal type of a meal container is a
+                  // metadata-only operation: route it through
+                  // moveFoodEntryMealToMealType so the component food_entries
+                  // and their historical nutrition snapshots are preserved.
+                  // The full round-trip below (delete + rebuild) is only for
+                  // actual quantity/unit changes.
+                  if (
+                    mealType &&
+                    args.quantity === undefined &&
+                    args.unit === undefined
+                  ) {
+                    await foodEntryService.moveFoodEntryMealToMealType(
                       userId,
-                      args.entry_id
+                      userId,
+                      args.entry_id,
+                      mealType.id
                     );
-                  if (!existing) {
-                    return ERRORS.NOT_FOUND('Entry', args.entry_id);
-                  }
-                  await foodEntryService.updateFoodEntryMeal(
-                    userId,
-                    userId,
-                    args.entry_id,
-                    {
-                      meal_template_id: existing.meal_template_id,
-                      entry_date: dayString(existing.entry_date),
-                      quantity: args.quantity ?? existing.quantity,
-                      unit: args.unit ?? existing.unit,
-                      ...mealTypeUpdate,
-                      foods: existing.foods,
+                  } else {
+                    // Round-trip the template link and component foods so the
+                    // server's edit path rescales components instead of
+                    // detaching them.
+                    const existing =
+                      await foodEntryService.getFoodEntryMealWithComponents(
+                        userId,
+                        args.entry_id
+                      );
+                    if (!existing) {
+                      return ERRORS.NOT_FOUND('Entry', args.entry_id);
                     }
-                  );
+                    await foodEntryService.updateFoodEntryMeal(
+                      userId,
+                      userId,
+                      args.entry_id,
+                      {
+                        meal_template_id: existing.meal_template_id,
+                        entry_date: dayString(existing.entry_date),
+                        quantity: args.quantity ?? existing.quantity,
+                        unit: args.unit ?? existing.unit,
+                        ...mealTypeUpdate,
+                        foods: existing.foods,
+                      }
+                    );
+                  }
                 }
               } catch (error) {
                 if (

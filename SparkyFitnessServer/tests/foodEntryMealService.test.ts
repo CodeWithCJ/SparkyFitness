@@ -14,6 +14,7 @@ vi.mock('../models/foodEntryMealRepository.js', () => ({
   default: {
     createFoodEntryMeal: vi.fn(),
     updateFoodEntryMeal: vi.fn(),
+    moveFoodEntryMealToMealType: vi.fn(),
   },
 }));
 
@@ -29,6 +30,7 @@ vi.mock('../config/logging.js', () => ({
 
 import {
   createFoodEntryMeal,
+  moveFoodEntryMealToMealType,
   updateFoodEntryMeal,
 } from '../services/foodEntryService.js';
 import foodRepository from '../models/foodRepository.js';
@@ -328,6 +330,45 @@ describe('foodEntryMealService', () => {
         ],
         'user-1'
       );
+    });
+  });
+
+  describe('moveFoodEntryMealToMealType', () => {
+    it('moves parent and components to the new meal type without rebuilding components or re-reading foods', async () => {
+      (
+        foodEntryMealRepository.moveFoodEntryMealToMealType as any
+      ).mockResolvedValue({
+        id: 'meal-entry-1',
+        meal_type_id: 'custom-breakfast-id',
+      });
+
+      const result = await moveFoodEntryMealToMealType(
+        'user-1',
+        'user-1',
+        'meal-entry-1',
+        'custom-breakfast-id'
+      );
+
+      expect(result).toEqual({
+        id: 'meal-entry-1',
+        meal_type_id: 'custom-breakfast-id',
+      });
+      // The repository move is a single metadata-only transaction: no
+      // component delete, no food/variant re-read, no bulk create.
+      expect(
+        foodEntryMealRepository.moveFoodEntryMealToMealType
+      ).toHaveBeenCalledWith(
+        'meal-entry-1',
+        'custom-breakfast-id',
+        'user-1',
+        'user-1'
+      );
+      expect(
+        foodRepository.deleteFoodEntryComponentsByFoodEntryMealId
+      ).not.toHaveBeenCalled();
+      expect(foodRepository.getFoodById).not.toHaveBeenCalled();
+      expect(foodRepository.getFoodVariantById).not.toHaveBeenCalled();
+      expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
     });
   });
 });
