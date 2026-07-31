@@ -335,8 +335,8 @@ describe('foodEntryMealService', () => {
 
   describe('moveFoodEntryMealToMealType', () => {
     it('moves parent and components to the new meal type without rebuilding components or re-reading foods', async () => {
-      (
-        foodEntryMealRepository.moveFoodEntryMealToMealType as any
+      vi.mocked(
+        foodEntryMealRepository.moveFoodEntryMealToMealType
       ).mockResolvedValue({
         id: 'meal-entry-1',
         meal_type_id: 'custom-breakfast-id',

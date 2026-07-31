@@ -1913,6 +1913,11 @@ Actions:
                 : {};
               let quantityChanged = args.quantity !== undefined;
               let unitChanged = args.unit !== undefined;
+              // For a food_entry the type is written whenever a selector is
+              // present; for a food_entry_meal it is refined below against the
+              // container's current meal_type_id so unchanged categories are
+              // not reported as changed.
+              let mealTypeChanged = mealType !== undefined;
               try {
                 if (args.entry_type === 'food_entry') {
                   await foodEntryService.updateFoodEntry(
@@ -1944,7 +1949,7 @@ Actions:
                     Number(args.quantity) !== Number(existingMeta.quantity);
                   unitChanged =
                     args.unit !== undefined && args.unit !== existingMeta.unit;
-                  const mealTypeChanged =
+                  mealTypeChanged =
                     mealType !== undefined &&
                     mealType.id !== existingMeta.meal_type_id;
 
@@ -1952,6 +1957,11 @@ Actions:
                     // No effective quantity/unit change: either a metadata-only
                     // category move, or a genuine no-op.
                     if (mealTypeChanged) {
+                      if (!mealType) {
+                        return ERRORS.VALIDATION(
+                          'Meal type could not be resolved.'
+                        );
+                      }
                       await foodEntryService.moveFoodEntryMealToMealType(
                         userId,
                         userId,
@@ -2004,9 +2014,9 @@ Actions:
               const updates = [
                 quantityChanged ? `quantity to ${args.quantity}` : '',
                 unitChanged ? `unit to ${args.unit}` : '',
-                mealType ? `meal type to ${mealType.name}` : '',
+                mealTypeChanged ? `meal type to ${mealType?.name}` : '',
               ].filter(Boolean);
-              if (quantityChanged && unitChanged && !mealType) {
+              if (quantityChanged && unitChanged && !mealTypeChanged) {
                 return formatConfirmation(
                   `Entry updated to ${args.quantity} ${args.unit}.`
                 );

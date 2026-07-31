@@ -2465,6 +2465,51 @@ describe('update_entry', () => {
     expect(foodEntryService.moveFoodEntryMealToMealType).not.toHaveBeenCalled();
   });
 
+  // A real quantity change with an UNCHANGED meal type must still use the full
+  // rebuild path, but the confirmation must mention only the quantity — the
+  // category did not change.
+  it('rebuilds on a real quantity change but does not report an unchanged meal type', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: MEAL_TYPE_ID,
+    });
+    vi.mocked(
+      foodEntryService.getFoodEntryMealWithComponents
+    ).mockResolvedValue({
+      id: ENTRY_ID,
+      meal_template_id: MEAL_ID,
+      entry_date: new Date(2026, 5, 10),
+      foods: [
+        { food_id: FOOD_ID, variant_id: VARIANT_ID, quantity: 100, unit: 'g' },
+      ],
+    });
+    vi.mocked(foodEntryService.updateFoodEntryMeal).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_type_id: MEAL_TYPE_ID,
+        quantity: 2,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: quantity to 2.');
+    expect(result).not.toContain('meal type');
+    expect(foodEntryService.updateFoodEntryMeal).toHaveBeenCalled();
+    expect(foodEntryService.moveFoodEntryMealToMealType).not.toHaveBeenCalled();
+  });
+
   it('maps a missing meal entry to NOT_FOUND', async () => {
     vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue(null);
 
