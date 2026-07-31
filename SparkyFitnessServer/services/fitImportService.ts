@@ -10,8 +10,15 @@ import type {
 } from '../integrations/garminfit/fitActivityTransform.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
+import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
 import { getOrCreateGarminExercise } from './garminService.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import {
+  extractGarminLaps,
+  extractGarminGpsPoints,
+  extractGarminHrZones,
+  extractGarminTelemetryFields,
+} from './garmin/garminTelemetryExtractors.js';
 
 // Distinct from the Connect sync's 'garmin' so its range-delete-and-recreate
 // re-sync never wipes FIT imports.
@@ -135,6 +142,59 @@ async function importSingleFitFile(
       },
       transformed.detailData
     );
+
+    // FitDetailData is deliberately shaped like Garmin Connect's activity payload (see
+    // fitActivityTransform.ts), so the same relational extraction used for Garmin sync
+    // applies unchanged here — laps, GPS trackpoints, HR zones, and the exercise_entries
+    // telemetry columns all come from the FIT file's own records, not a re-derived guess.
+    const detailData = transformed.detailData as unknown as Record<
+      string,
+      unknown
+    >;
+    await exerciseEntryRepository.updateExerciseEntryTelemetryOnly(
+      entry.id,
+      targetUserId,
+      extractGarminTelemetryFields(detailData)
+    );
+    const laps = extractGarminLaps(detailData);
+    if (laps.length > 0) {
+      await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
+        targetUserId,
+        actingUserId,
+        laps.map(({ startMs: _s, endMs: _e, ...lap }) => ({
+          user_id: targetUserId,
+          exercise_entry_id: entry.id,
+          entry_date: entryDate,
+          ...lap,
+        }))
+      );
+    }
+    const gpsPoints = extractGarminGpsPoints(detailData);
+    if (gpsPoints.length > 0) {
+      await workoutTelemetryRepo.bulkInsertExerciseEntryGpsPoints(
+        targetUserId,
+        actingUserId,
+        gpsPoints.map(({ timestampMs: _t, ...pt }) => ({
+          user_id: targetUserId,
+          exercise_entry_id: entry.id,
+          entry_date: entryDate,
+          ...pt,
+        }))
+      );
+    }
+    const hrZones = extractGarminHrZones(detailData);
+    if (hrZones.length > 0) {
+      await workoutTelemetryRepo.bulkInsertExerciseEntryHrZones(
+        targetUserId,
+        actingUserId,
+        hrZones.map((zone) => ({
+          user_id: targetUserId,
+          exercise_entry_id: entry.id,
+          entry_date: entryDate,
+          ...zone,
+        }))
+      );
+    }
 
     const result: ImportFitFileResult = {
       fileName,

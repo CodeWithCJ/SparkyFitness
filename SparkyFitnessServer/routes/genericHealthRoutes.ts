@@ -315,6 +315,29 @@ const getWorkoutGpsHandler: RequestHandler = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/health-data/workout-hr-zones/:exerciseEntryId
+ */
+const getWorkoutHrZonesHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const exerciseEntryId = req.params.exerciseEntryId as string;
+    const actorUserId = req.originalUserId || req.userId;
+
+    if (!exerciseEntryId) {
+      res.status(400).json({ error: 'Missing exerciseEntryId' });
+      return;
+    }
+
+    const zones = await workoutTelemetryRepo.getHrZonesForExerciseEntry(
+      exerciseEntryId,
+      actorUserId
+    );
+    res.status(200).json({ data: zones });
+  } catch (error) {
+    next(error);
+  }
+};
+
 router.get('/metrics', getMetricsHandler);
 router.get('/heart-rate', getHeartRateHandler);
 router.get('/hrv', getHrvHandler);
@@ -323,5 +346,6 @@ router.get('/spo2', getSpo2Handler);
 router.get('/vitals', getVitalsHandler);
 router.get('/workout-laps/:exerciseEntryId', getWorkoutLapsHandler);
 router.get('/workout-gps/:exerciseEntryId', getWorkoutGpsHandler);
+router.get('/workout-hr-zones/:exerciseEntryId', getWorkoutHrZonesHandler);
 
 export default router;

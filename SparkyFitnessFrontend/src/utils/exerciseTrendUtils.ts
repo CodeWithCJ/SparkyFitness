@@ -209,10 +209,16 @@ export const extractGarminActivityEntries = (
   const allGarminActivityEntries: ExerciseProgressResponse[] = [];
   const seenPresetIds = new Set<string>();
 
+  // Every provider listed here now writes relational telemetry (laps at minimum) on
+  // sync/import — see garminActivityProcessor.ts, fitImportService.ts, and
+  // stravaDataProcessor.ts — so the activity detail view has real data to show for all
+  // of them, not just Garmin.
+  const TELEMETRY_PROVIDERS = new Set(['garmin', 'garmin_fit', 'Strava']);
+
   const processEntry = (entry: ExerciseProgressResponse) => {
     if (
-      (entry.provider_name === 'garmin' ||
-        entry.provider_name === 'garmin_fit') &&
+      entry.provider_name &&
+      TELEMETRY_PROVIDERS.has(entry.provider_name) &&
       entry.exercise_entry_id
     ) {
       const presetId = (entry as Record<string, unknown>)[

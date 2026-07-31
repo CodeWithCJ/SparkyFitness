@@ -32,6 +32,7 @@ import {
   getActivityDetails,
   getExerciseProgressData,
   fetchExerciseEntryById,
+  getGroupedWorkoutSession,
 } from '@/api/Exercises/exerciseEntryService';
 import { ExerciseOwnershipFilter } from '@/types/exercises';
 import { getComparisonDates } from '@/utils/reportUtil';
@@ -333,22 +334,23 @@ export const exerciseProgressOptions = (
   },
 });
 
+export const activityDetailsOptions = (
+  exerciseEntryId: string,
+  providerName: string
+) => ({
+  queryKey: exerciseEntryKeys.activityDetails(exerciseEntryId, providerName),
+  queryFn: () => getActivityDetails(exerciseEntryId, providerName),
+  enabled: Boolean(exerciseEntryId && providerName),
+  meta: {
+    errorMessage: `Failed to fetch ${providerName} activity details.`,
+  },
+});
+
 export const useActivityDetailsQuery = (
   exerciseEntryId: string,
   providerName: string
 ) => {
-  return useQuery({
-    queryKey: exerciseEntryKeys.activityDetails(
-      exerciseEntryId as string,
-      providerName as string
-    ),
-    queryFn: () =>
-      getActivityDetails(exerciseEntryId as string, providerName as string),
-    enabled: Boolean(exerciseEntryId && providerName),
-    meta: {
-      errorMessage: `Failed to fetch ${providerName} activity details.`,
-    },
-  });
+  return useQuery(activityDetailsOptions(exerciseEntryId, providerName));
 };
 
 export const useBodyMapSvgQuery = () => {
@@ -432,5 +434,19 @@ export const useExerciseEntryById = (entryId: string) => {
     queryKey: exerciseEntryKeys.detail(entryId),
     queryFn: () => fetchExerciseEntryById(entryId),
     enabled: Boolean(entryId),
+  });
+};
+
+/**
+ * Fetches the full grouped workout session (all child exercises, their sets, and their
+ * relational muscle snapshots) for a preset-backed session, e.g. a multi-exercise Garmin
+ * strength workout. Relational replacement for parsing exercise_sets out of the raw
+ * provider JSON blob.
+ */
+export const useGroupedWorkoutSession = (presetEntryId: string | undefined) => {
+  return useQuery({
+    queryKey: exerciseEntryKeys.groupedSession(presetEntryId || ''),
+    queryFn: () => getGroupedWorkoutSession(presetEntryId as string),
+    enabled: Boolean(presetEntryId),
   });
 };

@@ -105,6 +105,7 @@ BEGIN
     'passkey_registration_tickets',
     'exercise_entry_laps',
     'exercise_entry_gps_points',
+    'exercise_entry_hr_zones',
     'heart_rate_entries',
     'hrv_entries',
     'respiration_entries',
@@ -680,6 +681,7 @@ WITH CHECK (EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exerc
 
 SELECT create_diary_policy('exercise_entry_laps');
 SELECT create_diary_policy('exercise_entry_gps_points');
+SELECT create_diary_policy('exercise_entry_hr_zones');
 
 SELECT create_checkin_policy('heart_rate_entries');
 SELECT create_checkin_policy('hrv_entries');

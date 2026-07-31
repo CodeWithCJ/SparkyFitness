@@ -43,59 +43,87 @@ export const extractElevationGain = (
  * Handles provider-specific type keys (Garmin, Strava, Fitbit, Polar, Withings).
  * Falls back to 🏃 for unknown types.
  */
-export const getActivityIcon = (typeKey: string | undefined | null): string => {
-  if (!typeKey) return '🏃';
-  const key = typeKey.toLowerCase();
+export const getActivityIcon = (
+  typeKey: string | undefined | null,
+  activityName?: string | undefined | null
+): string => {
+  const textToSearch = `${typeKey || ''} ${activityName || ''}`
+    .toLowerCase()
+    .trim();
+  if (!textToSearch) return '🏃';
 
   if (
-    key.includes('cycling') ||
-    key.includes('biking') ||
-    key === 'ride' ||
-    key === 'virtualride' ||
-    key === 'ebikeride' ||
-    key === 'handcycle'
+    textToSearch.includes('swim') ||
+    textToSearch.includes('swimming') ||
+    textToSearch.includes('water')
+  )
+    return '🏊';
+  if (
+    textToSearch.includes('cycling') ||
+    textToSearch.includes('biking') ||
+    textToSearch.includes('bike') ||
+    textToSearch.includes('ride') ||
+    textToSearch.includes('virtualride') ||
+    textToSearch.includes('ebikeride') ||
+    textToSearch.includes('handcycle')
   )
     return '🚴';
   if (
-    key.includes('running') ||
-    key === 'run' ||
-    key === 'virtualrun' ||
-    key === 'trail_run' ||
-    key === 'trailrun'
+    textToSearch.includes('running') ||
+    textToSearch.includes('run') ||
+    textToSearch.includes('virtualrun') ||
+    textToSearch.includes('trail_run') ||
+    textToSearch.includes('trailrun') ||
+    textToSearch.includes('treadmill') ||
+    textToSearch.includes('jogging')
   )
     return '🏃';
-  if (key.includes('swimming') || key === 'swim') return '🏊';
-  if (key.includes('soccer') || key === 'football') return '⚽';
-  if (key.includes('basketball')) return '🏀';
-  if (key.includes('tennis')) return '🎾';
-  if (key.includes('golf')) return '⛳';
+  if (textToSearch.includes('soccer') || textToSearch.includes('football'))
+    return '⚽';
+  if (textToSearch.includes('basketball')) return '🏀';
+  if (textToSearch.includes('tennis')) return '🎾';
+  if (textToSearch.includes('golf')) return '⛳';
   if (
-    key.includes('hiking') ||
-    key.includes('walking') ||
-    key === 'walk' ||
-    key === 'hike'
+    textToSearch.includes('hiking') ||
+    textToSearch.includes('walking') ||
+    textToSearch.includes('walk') ||
+    textToSearch.includes('hike')
   )
     return '🚶';
   if (
-    key.includes('strength') ||
-    key.includes('weight') ||
-    key === 'weighttraining'
+    textToSearch.includes('strength') ||
+    textToSearch.includes('weight') ||
+    textToSearch.includes('weighttraining') ||
+    textToSearch.includes('barbell') ||
+    textToSearch.includes('dumbbell')
   )
     return '🏋️';
-  if (key.includes('yoga')) return '🧘';
-  if (key.includes('rowing') || key === 'rowing') return '🚣';
-  if (key.includes('skiing') || key === 'alpineski' || key === 'nordicski')
+  if (textToSearch.includes('yoga')) return '🧘';
+  if (textToSearch.includes('rowing') || textToSearch.includes('row'))
+    return '🚣';
+  if (
+    textToSearch.includes('skiing') ||
+    textToSearch.includes('alpineski') ||
+    textToSearch.includes('nordicski')
+  )
     return '⛷️';
-  if (key.includes('snowboard')) return '🏂';
-  if (key.includes('volleyball')) return '🏐';
-  if (key.includes('hockey')) return '🏒';
-  if (key.includes('rugby') || key.includes('americanfootball')) return '🏈';
-  if (key.includes('boxing') || key.includes('martialarts')) return '🥊';
-  if (key.includes('cardio') || key.includes('aerobic')) return '💪';
-  if (key.includes('elliptical')) return '🔄';
-  if (key.includes('stair') || key.includes('step')) return '🪜';
-  if (key.includes('surf')) return '🏄';
-  if (key.includes('climb')) return '🧗';
+  if (textToSearch.includes('snowboard')) return '🏂';
+  if (textToSearch.includes('volleyball')) return '🏐';
+  if (textToSearch.includes('hockey')) return '🏒';
+  if (
+    textToSearch.includes('rugby') ||
+    textToSearch.includes('americanfootball')
+  )
+    return '🏈';
+  if (textToSearch.includes('boxing') || textToSearch.includes('martialarts'))
+    return '🥊';
+  if (textToSearch.includes('cardio') || textToSearch.includes('aerobic'))
+    return '💪';
+  if (textToSearch.includes('elliptical')) return '🔄';
+  if (textToSearch.includes('stair') || textToSearch.includes('step'))
+    return '🪜';
+  if (textToSearch.includes('surf')) return '🏄';
+  if (textToSearch.includes('climb')) return '🧗';
 
   return '🏃';
 };
@@ -377,6 +405,23 @@ export interface ActivityStats {
   waterEstimated: number | null;
   activityName: string | null;
   activityTypeKey: string | null;
+  /** seconds */
+  movingTimeSeconds: number | null;
+  /** seconds */
+  elapsedTimeSeconds: number | null;
+  /** seconds; strength-session "work time" (active set time, excludes rest/warm-up) */
+  workTimeSeconds: number | null;
+  restingCalories: number | null;
+  activeCalories: number | null;
+  /** m/s */
+  avgMovingSpeedMps: number | null;
+  /** metres */
+  minElevation: number | null;
+  /** metres */
+  maxElevation: number | null;
+  weatherTempCelsius: number | null;
+  weatherCondition: string | null;
+  gearName: string | null;
 }
 
 /**
@@ -419,12 +464,29 @@ export function readActivityStatsFromRelational(
       waterEstimated: null,
       activityName: null,
       activityTypeKey: null,
+      movingTimeSeconds: null,
+      elapsedTimeSeconds: null,
+      workTimeSeconds: null,
+      restingCalories: null,
+      activeCalories: null,
+      avgMovingSpeedMps: null,
+      minElevation: null,
+      maxElevation: null,
+      weatherTempCelsius: null,
+      weatherCondition: null,
+      gearName: null,
     };
   }
 
   const pos = (v: unknown): number | null => {
     const n = Number(v);
     return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  // Some columns (e.g. min_elevation_meters) can legitimately be 0 or negative
+  // (below sea level); `pos` would incorrectly drop those.
+  const num = (v: unknown): number | null => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
   };
 
   const e = entry as Record<string, unknown>;
@@ -444,7 +506,7 @@ export function readActivityStatsFromRelational(
   const rawWater = e['water_estimated'] ?? e['water_estimated_ml'];
   const waterEstimated = pos(rawWater);
   const activityName = (e['exercise_name'] as string) ?? null;
-  const activityTypeKey = (e['category'] as string) ?? null;
+  const activityTypeKey = (e['category'] as string) ?? activityName ?? null;
 
   return {
     distance,
@@ -457,6 +519,17 @@ export function readActivityStatsFromRelational(
     waterEstimated,
     activityName,
     activityTypeKey,
+    movingTimeSeconds: pos(e['moving_time_seconds']),
+    elapsedTimeSeconds: pos(e['elapsed_time_seconds']),
+    workTimeSeconds: pos(e['work_time_seconds']),
+    restingCalories: pos(e['resting_calories']),
+    activeCalories: pos(e['active_calories']),
+    avgMovingSpeedMps: pos(e['avg_moving_speed_mps']),
+    minElevation: num(e['min_elevation_meters']),
+    maxElevation: num(e['max_elevation_meters']),
+    weatherTempCelsius: num(e['weather_temp_celsius']),
+    weatherCondition: (e['weather_condition'] as string) ?? null,
+    gearName: (e['gear_name'] as string) ?? null,
   };
 }
 
@@ -483,6 +556,17 @@ export function readActivityStats(
       waterEstimated: null,
       activityName: null,
       activityTypeKey: null,
+      movingTimeSeconds: null,
+      elapsedTimeSeconds: null,
+      workTimeSeconds: null,
+      restingCalories: null,
+      activeCalories: null,
+      avgMovingSpeedMps: null,
+      minElevation: null,
+      maxElevation: null,
+      weatherTempCelsius: null,
+      weatherCondition: null,
+      gearName: null,
     };
   }
 
@@ -572,6 +656,7 @@ export function readActivityStats(
     (a['activityType'] as { typeKey?: string } | undefined)?.typeKey ??
     (a['sport_type'] as string | undefined) ??
     (a['type'] as string | undefined) ??
+    activityName ??
     null;
 
   return {
@@ -585,6 +670,19 @@ export function readActivityStats(
     waterEstimated,
     activityName,
     activityTypeKey,
+    // Only populated from the relational path (readActivityStatsFromRelational above) —
+    // no equivalent field exists in the raw provider blob parsed below.
+    movingTimeSeconds: null,
+    elapsedTimeSeconds: null,
+    workTimeSeconds: null,
+    restingCalories: null,
+    activeCalories: null,
+    avgMovingSpeedMps: null,
+    minElevation: null,
+    maxElevation: null,
+    weatherTempCelsius: null,
+    weatherCondition: null,
+    gearName: null,
   };
 }
 

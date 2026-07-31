@@ -18,6 +18,8 @@ export const genericHealthKeys = {
     ['generic-health-workout-laps', exerciseEntryId] as const,
   workoutGps: (exerciseEntryId: string) =>
     ['generic-health-workout-gps', exerciseEntryId] as const,
+  workoutHrZones: (exerciseEntryId: string) =>
+    ['generic-health-workout-hr-zones', exerciseEntryId] as const,
 };
 
 export const useDailyHealthMetrics = (
@@ -112,4 +114,12 @@ export const useWorkoutGpsPoints = (exerciseEntryId: string) =>
     queryFn: () => genericHealthService.fetchWorkoutGpsPoints(exerciseEntryId),
     enabled: Boolean(exerciseEntryId),
     meta: { errorMessage: 'Failed to load workout GPS points.' },
+  });
+
+export const useWorkoutHrZones = (exerciseEntryId: string) =>
+  useQuery({
+    queryKey: genericHealthKeys.workoutHrZones(exerciseEntryId),
+    queryFn: () => genericHealthService.fetchWorkoutHrZones(exerciseEntryId),
+    enabled: Boolean(exerciseEntryId),
+    meta: { errorMessage: 'Failed to load heart rate zones.' },
   });

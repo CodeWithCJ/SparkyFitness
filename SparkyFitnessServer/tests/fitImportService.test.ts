@@ -15,6 +15,7 @@ vi.mock('../db/poolManager', () => ({
 vi.mock('../models/exerciseEntry', () => ({
   default: {
     _createExerciseEntryWithClient: vi.fn(),
+    updateExerciseEntryTelemetryOnly: vi.fn(),
   },
 }));
 vi.mock('../models/activityDetailsRepository', () => ({
@@ -73,6 +74,10 @@ const mockClient = { query: vi.fn(), release: vi.fn() };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default shape for any ad-hoc client.query() call (e.g. the telemetry writers'
+  // getClient() usage in workoutTelemetryRepository, which isn't mocked at module
+  // level like exerciseEntryRepository/activityDetailsRepository above).
+  mockClient.query.mockResolvedValue({ rows: [] });
   vi.mocked(getClient).mockResolvedValue(mockClient);
   vi.mocked(
     exerciseEntryRepository._createExerciseEntryWithClient
@@ -192,7 +197,10 @@ describe('importFitFiles', () => {
     });
     // The failed transaction never poisons the next file.
     expect(response.results[1].status).toBe('created');
-    expect(mockClient.release).toHaveBeenCalledTimes(2);
+    // persistFitEntry always releases its client (1 per file = 2), plus one release
+    // per telemetry writer invoked for the successful file's laps/GPS/HR-zones — not
+    // asserting an exact count here since that varies with the fixture's content.
+    expect(mockClient.release.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it('falls back to the profile timezone when the file has no local time', async () => {

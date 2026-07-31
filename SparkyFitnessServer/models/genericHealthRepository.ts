@@ -295,9 +295,18 @@ export async function bulkUpsertVitals(
 
     for (const entry of entries) {
       const res = (await client.query(
-        `INSERT INTO vitals_entries 
+        `INSERT INTO vitals_entries
           (user_id, entry_date, timestamp, systolic_mmhg, diastolic_mmhg, blood_glucose_mgdl, body_temperature_celsius, meal_context, source_provider, device_name, external_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         ON CONFLICT (user_id, source_provider, timestamp)
+         DO UPDATE SET
+           systolic_mmhg = COALESCE(EXCLUDED.systolic_mmhg, vitals_entries.systolic_mmhg),
+           diastolic_mmhg = COALESCE(EXCLUDED.diastolic_mmhg, vitals_entries.diastolic_mmhg),
+           blood_glucose_mgdl = COALESCE(EXCLUDED.blood_glucose_mgdl, vitals_entries.blood_glucose_mgdl),
+           body_temperature_celsius = COALESCE(EXCLUDED.body_temperature_celsius, vitals_entries.body_temperature_celsius),
+           meal_context = COALESCE(EXCLUDED.meal_context, vitals_entries.meal_context),
+           device_name = COALESCE(EXCLUDED.device_name, vitals_entries.device_name),
+           external_id = COALESCE(EXCLUDED.external_id, vitals_entries.external_id)
          RETURNING *`,
         [
           userId,

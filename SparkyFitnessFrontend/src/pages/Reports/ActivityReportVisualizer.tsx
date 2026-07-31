@@ -10,7 +10,11 @@ import {
   useActivityDetailsQuery,
   useExerciseEntryById,
 } from '@/hooks/Exercises/useExercises';
-import { useWorkoutGpsPoints, useWorkoutLaps } from '@/hooks/useGenericHealth';
+import {
+  useWorkoutGpsPoints,
+  useWorkoutLaps,
+  useWorkoutHrZones,
+} from '@/hooks/useGenericHealth';
 import {
   processChartData,
   processGpsPointsToChartData,
@@ -63,8 +67,11 @@ const ActivityReportVisualizer = ({
   const { data: gpsPoints, isLoading: gpsLoading } =
     useWorkoutGpsPoints(exerciseEntryId);
   const { data: dbLaps } = useWorkoutLaps(exerciseEntryId);
+  const { data: dbHrZones } = useWorkoutHrZones(exerciseEntryId);
 
-  const loading = entryLoading && activityLoading && gpsLoading;
+  // `||` (not `&&`): render the loading state until every source has settled, so we
+  // never flash a chart built from partial data while a slower query is still in flight.
+  const loading = entryLoading || activityLoading || gpsLoading;
 
   const effectiveLaps = useMemo(() => {
     if (dbLaps && dbLaps.length > 0) {
@@ -188,17 +195,29 @@ const ActivityReportVisualizer = ({
     (data: ChartDataPoint) => data.elevation !== null
   );
 
-  const rawHrZones = activityData?.activity?.hr_in_timezones as
-    | Array<{
-        zoneNumber: number;
-        zoneLowBoundary: number;
-        secsInZone: number;
-      }>
+  // Prefer the relational hr_zones table; only fall back to the raw provider blob for
+  // activities synced before this table existed / before the backfill has run.
+  let hrInTimezonesData:
+    | Array<{ name: string; [key: string]: string | number }>
     | undefined;
-  const hrInTimezonesData = rawHrZones?.map((zone) => ({
-    name: `Zone ${zone.zoneNumber} (${zone.zoneLowBoundary} bpm)`,
-    [t('reports.activityReport.timeInZoneS')]: zone.secsInZone,
-  }));
+  if (dbHrZones && dbHrZones.length > 0) {
+    hrInTimezonesData = dbHrZones.map((zone) => ({
+      name: `Zone ${zone.zone_index} (${zone.zone_lower_bpm ?? 0} bpm)`,
+      [t('reports.activityReport.timeInZoneS')]: zone.seconds_in_zone,
+    }));
+  } else {
+    const rawHrZones = activityData?.activity?.hr_in_timezones as
+      | Array<{
+          zoneNumber: number;
+          zoneLowBoundary: number;
+          secsInZone: number;
+        }>
+      | undefined;
+    hrInTimezonesData = rawHrZones?.map((zone) => ({
+      name: `Zone ${zone.zoneNumber} (${zone.zoneLowBoundary} bpm)`,
+      [t('reports.activityReport.timeInZoneS')]: zone.secsInZone,
+    }));
+  }
 
   // Distance: prefer chart data (most accurate after conversion), fall back to stats
   let totalActivityDistanceForDisplay: number | null = null;
@@ -275,6 +294,47 @@ const ActivityReportVisualizer = ({
       ? `${convertMlToSelectedUnit(stats.waterEstimated, water_display_unit).toFixed(water_display_unit === 'ml' ? 0 : 1)} ${water_display_unit}`
       : null;
 
+  // Garmin-parity stats (Phase C3) — all sourced from the relational exercise_entries
+  // columns added in 20260731000000_complete_workout_telemetry.sql, never the JSON blob.
+  const movingTimeFormatted =
+    stats.movingTimeSeconds != null
+      ? formatDuration(stats.movingTimeSeconds, true)
+      : null;
+
+  const elapsedTimeFormatted =
+    stats.elapsedTimeSeconds != null
+      ? formatDuration(stats.elapsedTimeSeconds, true)
+      : null;
+
+  const caloriesBreakdownFormatted =
+    stats.activeCalories != null || stats.restingCalories != null
+      ? `${Math.round(stats.activeCalories ?? 0)} / ${Math.round(stats.restingCalories ?? 0)} ${getEnergyUnitString(energyUnit)}`
+      : null;
+
+  const avgMovingSpeedFormatted =
+    stats.avgMovingSpeedMps != null && stats.avgMovingSpeedMps > 0
+      ? formatPace(1000 / (stats.avgMovingSpeedMps * 60), distanceUnit)
+      : null;
+
+  const elevationRangeFormatted =
+    stats.minElevation != null && stats.maxElevation != null
+      ? `${stats.minElevation.toFixed(0)} / ${stats.maxElevation.toFixed(0)} m`
+      : null;
+
+  const weatherFormatted =
+    stats.weatherTempCelsius != null || stats.weatherCondition
+      ? [
+          stats.weatherTempCelsius != null
+            ? `${stats.weatherTempCelsius.toFixed(0)}°C`
+            : null,
+          stats.weatherCondition,
+        ]
+          .filter(Boolean)
+          .join(', ')
+      : null;
+
+  const gearFormatted = stats.gearName || null;
+
   const getXAxisDataKey = () => {
     switch (effectiveXAxisMode) {
       case 'activityDuration':
@@ -302,32 +362,46 @@ const ActivityReportVisualizer = ({
     }
   };
 
-  const activityTypeKey = stats.activityTypeKey;
+  const rawTypeKey = stats.activityTypeKey;
+  const isGeneric =
+    !rawTypeKey || rawTypeKey === 'custom' || rawTypeKey === 'other';
+  const activityTypeKey = isGeneric
+    ? stats.activityName ||
+      ((exerciseEntry as Record<string, unknown>)?.[
+        'exercise_name'
+      ] as string) ||
+      ((exerciseEntry as Record<string, unknown>)?.[
+        'exercise_preset_entry_name'
+      ] as string) ||
+      activityData?.workout?.workoutName ||
+      activityData?.activity?.activity?.activityName ||
+      rawTypeKey
+    : rawTypeKey;
+
+  const displayTitle =
+    ((exerciseEntry as Record<string, unknown>)?.[
+      'exercise_preset_entry_name'
+    ] as string) ||
+    activityData?.workout?.workoutName ||
+    activityData?.activity?.activity?.activityName ||
+    stats.activityName ||
+    ((exerciseEntry as Record<string, unknown>)?.['exercise_name'] as string) ||
+    t('common.workout', 'Workout');
 
   return (
     <div className="activity-report-visualizer p-4">
       <div className="flex items-center mb-4 flex-wrap gap-2">
-        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-          <span className="text-xl">{getActivityIcon(activityTypeKey)}</span>
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mr-2 shadow-sm border border-border/60">
+          <span className="text-2xl">
+            {getActivityIcon(activityTypeKey, displayTitle)}
+          </span>
         </div>
-        <h2 className="text-2xl font-bold">
-          {((exerciseEntry as Record<string, unknown>)?.[
-            'exercise_preset_entry_name'
-          ] as string) ||
-            activityData?.workout?.workoutName ||
-            activityData?.activity?.activity?.activityName ||
-            stats.activityName ||
-            ((exerciseEntry as Record<string, unknown>)?.[
-              'exercise_name'
-            ] as string) ||
-            t('common.workout', 'Workout')}
-        </h2>
+        <h2 className="text-2xl font-bold">{displayTitle}</h2>
         {exerciseCount > 0 && (
           <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
             {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
           </span>
         )}
-        <span className="ml-1 text-gray-500 cursor-pointer">✏️</span>
       </div>
 
       {activityData?.activity?.activity && (
@@ -402,6 +476,13 @@ const ActivityReportVisualizer = ({
           heartRate={heartRateFormatted}
           cadence={cadenceFormatted}
           waterLoss={waterLossFormatted}
+          movingTime={movingTimeFormatted}
+          elapsedTime={elapsedTimeFormatted}
+          caloriesBreakdown={caloriesBreakdownFormatted}
+          avgMovingSpeed={avgMovingSpeedFormatted}
+          elevationRange={elevationRangeFormatted}
+          weather={weatherFormatted}
+          gear={gearFormatted}
         />
       </div>
 
@@ -517,10 +598,7 @@ const ActivityReportVisualizer = ({
         <WorkoutReportVisualizer workoutData={activityData.workout} />
       )}
 
-      <WorkoutSessionBreakdown
-        activityData={activityData}
-        exerciseEntry={exerciseEntry}
-      />
+      <WorkoutSessionBreakdown exerciseEntry={exerciseEntry} />
     </div>
   );
 };

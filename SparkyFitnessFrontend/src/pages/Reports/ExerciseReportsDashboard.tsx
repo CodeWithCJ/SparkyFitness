@@ -67,8 +67,7 @@ const ExerciseReportsDashboard = ({
   endDate,
 }: ExerciseReportsDashboardProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, weightUnit, convertWeight } =
-    usePreferences();
+  const { formatDateInUserTimezone, weightUnit } = usePreferences();
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(
     null
   );
@@ -91,7 +90,10 @@ const ExerciseReportsDashboard = ({
       return [selectedExercise];
     }
     if (selectedExercise === 'All') {
-      return availableExercises.map((ex) => ex.id);
+      // availableExercises can list the same exercise_id under more than one
+      // exercise_name (e.g. a synced provider logging naming variants over
+      // time), so dedupe here to avoid duplicate query keys downstream.
+      return Array.from(new Set(availableExercises.map((ex) => ex.id)));
     }
     return [];
   }, [selectedExercise, availableExercises]);
@@ -453,7 +455,6 @@ const ExerciseReportsDashboard = ({
               data={prVisualizationData}
               exerciseName={exerciseName}
               weightUnit={weightUnit}
-              convertWeight={convertWeight}
               formatDate={formatDateInUserTimezone}
             />
           ) : null;

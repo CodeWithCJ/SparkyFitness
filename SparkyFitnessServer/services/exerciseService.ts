@@ -559,6 +559,12 @@ async function updateExerciseEntry(
           id
         );
       const incomingActivityDetails = updateData.activity_details || [];
+      const RAW_PROVIDER_TYPES = [
+        'full_activity_data',
+        'full_workout_data',
+        'fit_file_data',
+      ];
+
       // Identify details to delete
       for (const existingDetail of existingActivityDetails) {
         const found = incomingActivityDetails.find(
@@ -566,24 +572,55 @@ async function updateExerciseEntry(
           (incomingDetail: any) => incomingDetail.id === existingDetail.id
         );
         if (!found) {
+          // Do not delete raw provider dump rows during standard entry edit
+          if (RAW_PROVIDER_TYPES.includes(existingDetail.detail_type)) {
+            continue;
+          }
           await activityDetailsRepository.deleteActivityDetail(
             authenticatedUserId,
             existingDetail.id
           );
         }
       }
+
       // Identify details to create or update
       for (const incomingDetail of incomingActivityDetails) {
         if (incomingDetail.id) {
-          // Update existing detail
-          await activityDetailsRepository.updateActivityDetail(
-            authenticatedUserId,
-            incomingDetail.id,
-            {
-              ...incomingDetail,
-              updated_by_user_id: actingUserId,
+          const isMaskedOrNull =
+            incomingDetail.detail_data === null ||
+            incomingDetail.detail_data === undefined ||
+            incomingDetail.detail_data === 'null' ||
+            RAW_PROVIDER_TYPES.includes(incomingDetail.detail_type);
+
+          if (isMaskedOrNull) {
+            const existing = existingActivityDetails.find(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (e: any) => e.id === incomingDetail.id
+            );
+            if (
+              existing &&
+              existing.detail_data !== null &&
+              existing.detail_data !== undefined &&
+              existing.detail_data !== 'null'
+            ) {
+              incomingDetail.detail_data = existing.detail_data;
             }
-          );
+          }
+
+          // Preserve existing raw detail_data if incoming value is still null/masked
+          if (
+            incomingDetail.detail_data !== null &&
+            incomingDetail.detail_data !== 'null'
+          ) {
+            await activityDetailsRepository.updateActivityDetail(
+              authenticatedUserId,
+              incomingDetail.id,
+              {
+                ...incomingDetail,
+                updated_by_user_id: actingUserId,
+              }
+            );
+          }
         } else {
           // Create new detail
           await activityDetailsRepository.createActivityDetail(
@@ -652,8 +689,10 @@ async function getExerciseById(authenticatedUserId: any, id: any) {
       authenticatedUserId
     );
     if (!exerciseOwnerId) {
-      // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
-      const publicExercise = await exerciseDb.getExerciseById(id);
+      const publicExercise = await exerciseDb.getExerciseById(
+        id,
+        authenticatedUserId
+      );
       if (publicExercise && !publicExercise.is_custom) {
         return publicExercise;
       }
@@ -853,19 +892,14 @@ async function getExerciseEntriesByDate(
     if (!entries || entries.length === 0) {
       return [];
     }
-    // For each entry, fetch and attach its activity details
-    const entriesWithDetails = await Promise.all(
-      entries.map(async (entry) => {
-        const activityDetails =
-          await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
-            authenticatedUserId,
-            entry.id,
-            entry.exercise_preset_entry_id
-          );
-        return { ...entry, activity_details: activityDetails };
-      })
-    );
-    return entriesWithDetails;
+    // exerciseEntryDb.getExerciseEntriesByDate already attaches `activity_details` per
+    // entry/preset via a single batched query, with raw provider sync dumps
+    // (full_activity_data/full_workout_data) stripped of their payload. Previously this
+    // function re-fetched activity details per entry (N+1 queries) and, worse, used
+    // getActivityDetailsByEntryOrPresetId — which does NOT strip the raw dump — so it
+    // silently re-inflated every diary response with the full Garmin JSON blob this
+    // fix removes. Do not re-fetch here.
+    return entries;
   } catch (error) {
     log(
       'error',

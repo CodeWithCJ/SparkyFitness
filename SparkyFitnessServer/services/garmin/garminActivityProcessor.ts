@@ -6,6 +6,95 @@ import activityDetailsRepository from '../../models/activityDetailsRepository.js
 import * as workoutTelemetryRepo from '../../models/workoutTelemetryRepository.js';
 import { todayInZone } from '@workspace/shared';
 import { getOrCreateGarminExercise } from './garminExerciseMapper.js';
+import {
+  extractGarminLaps,
+  extractGarminGpsPoints,
+  extractGarminHrZones,
+  extractGarminTelemetryFields,
+  findGroupForTimestamp,
+  ExtractedLap,
+  ExtractedGpsPoint,
+} from './garminTelemetryExtractors.js';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRecord = Record<string, any>;
+
+/**
+ * Distributes extracted laps/GPS points across the exercise entries created for a
+ * strength session, by matching each item's timestamp to the entry whose active-set
+ * time window contains it (falling back to the first entry). Then bulk-inserts each
+ * telemetry type in a single call rather than once per entry.
+ */
+async function attachSessionTelemetry(
+  userId: string,
+  entryDate: string,
+  groups: Array<{ id: string; startMs: number | null; endMs: number | null }>,
+  laps: ExtractedLap[],
+  gpsPoints: ExtractedGpsPoint[]
+) {
+  if (groups.length === 0) return;
+
+  if (laps.length > 0) {
+    const lapRows = laps.map((lap) => {
+      const group = findGroupForTimestamp(groups, lap.startMs);
+      const { startMs: _startMs, endMs: _endMs, ...lapFields } = lap;
+      return {
+        user_id: userId,
+        exercise_entry_id: (group ?? groups[0]).id,
+        entry_date: entryDate,
+        ...lapFields,
+      };
+    });
+    await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
+      userId,
+      userId,
+      lapRows
+    );
+  }
+
+  if (gpsPoints.length > 0) {
+    const gpsRows = gpsPoints.map((pt) => {
+      const group = findGroupForTimestamp(groups, pt.timestampMs);
+      const { timestampMs: _timestampMs, ...ptFields } = pt;
+      return {
+        user_id: userId,
+        exercise_entry_id: (group ?? groups[0]).id,
+        entry_date: entryDate,
+        ...ptFields,
+      };
+    });
+    await workoutTelemetryRepo.bulkInsertExerciseEntryGpsPoints(
+      userId,
+      userId,
+      gpsRows
+    );
+  }
+}
+
+/**
+ * Writes HR time-in-zone splits. Garmin only reports this per whole activity, not per
+ * exercise, so it's attached to the first exercise entry of the session (or the single
+ * entry for a simple activity) rather than duplicated or arbitrarily split.
+ */
+async function attachHrZones(
+  userId: string,
+  entryDate: string,
+  exerciseEntryId: string,
+  payload: AnyRecord
+) {
+  const zones = extractGarminHrZones(payload);
+  if (zones.length === 0) return;
+  await workoutTelemetryRepo.bulkInsertExerciseEntryHrZones(
+    userId,
+    userId,
+    zones.map((zone) => ({
+      user_id: userId,
+      exercise_entry_id: exerciseEntryId,
+      entry_date: entryDate,
+      ...zone,
+    }))
+  );
+}
 
 export async function processActivitiesAndWorkouts(
   userId: string,
@@ -81,6 +170,10 @@ export async function processGarminWorkoutSession(
   const entryDate = activity.startTimeLocal
     ? activity.startTimeLocal.substring(0, 10)
     : todayInZone(timezone);
+  const entryTime =
+    activity.startTimeLocal && activity.startTimeLocal.length >= 16
+      ? activity.startTimeLocal.substring(11, 16)
+      : null;
 
   const details = sessionData.details || {};
   const activityDetailMetrics = details.activityDetailMetrics || [];
@@ -199,8 +292,13 @@ export async function processGarminWorkoutSession(
         const durationSeconds = garminSet.duration
           ? Math.round(garminSet.duration)
           : 0;
+        // Garmin's raw exerciseSets[].weight is pounds * 1000, not grams, despite the
+        // field's appearance — divide by 2.204622 (lb->kg) after the /1000 to get the
+        // true kg value Garmin Connect itself displays. See the matching correction
+        // this used to require in WorkoutSessionBreakdown.tsx's raw-JSON parsing path
+        // (removed when that view moved to reading this column directly).
         const weightKg = garminSet.weight
-          ? parseFloat((garminSet.weight * 0.001).toFixed(2))
+          ? parseFloat(((garminSet.weight * 0.001) / 2.204622).toFixed(2))
           : 0;
 
         if (garminSet.setType !== 'REST') {
@@ -290,6 +388,14 @@ export async function processGarminWorkoutSession(
     }
 
     let exerciseSortOrder = 0;
+    // Collected across the whole loop so laps/GPS/HR-zones can be attached once, after
+    // every exercise entry in the session exists, instead of only ever landing on the
+    // first exercise (exerciseSortOrder === 0) the way the previous implementation did.
+    const createdGroups: Array<{
+      id: string;
+      startMs: number | null;
+      endMs: number | null;
+    }> = [];
     for (const group of groupedExercises) {
       const rawExerciseName = group.name;
       const {
@@ -338,8 +444,10 @@ export async function processGarminWorkoutSession(
       const exerciseEntryData = {
         exercise_id: exercise.id,
         duration_minutes: totalDuration / 60,
+        work_time_seconds: activeDuration || null,
         calories_burned: Math.round(perExerciseCaloriesBurned),
         entry_date: entryDate,
+        entry_time: entryTime,
         notes: `Garmin Exercise: ${exerciseName}`,
         sets: sets,
         exercise_preset_entry_id: newExercisePresetEntry.id,
@@ -369,209 +477,11 @@ export async function processGarminWorkoutSession(
         continue;
       }
 
-      // Ingest laps for this entry if present in sessionData
-      if (exerciseSortOrder === 0) {
-        const rawLaps = sessionData.laps || sessionData.splits?.lapDTOs || [];
-        if (Array.isArray(rawLaps) && rawLaps.length > 0) {
-          const lapEntries = rawLaps.map((lap: any, index: number) => ({
-            user_id: userId,
-            exercise_entry_id: newEntry.id,
-            entry_date: entryDate,
-            lap_index: lap.lap_index ?? lap.lapIndex ?? index + 1,
-            start_time: lap.startTimeLocal
-              ? new Date(lap.startTimeLocal)
-              : lap.startTimeGMT
-                ? new Date(lap.startTimeGMT)
-                : new Date(),
-            end_time: lap.endTimeLocal
-              ? new Date(lap.endTimeLocal)
-              : lap.endTimeGMT
-                ? new Date(lap.endTimeGMT)
-                : new Date(),
-            duration_seconds: Math.round(
-              Number(
-                lap.duration_seconds ?? lap.duration ?? lap.elapsedDuration ?? 0
-              )
-            ),
-            distance_meters:
-              lap.distance_meters !== undefined && lap.distance_meters !== null
-                ? Number(lap.distance_meters)
-                : lap.distance !== undefined && lap.distance !== null
-                  ? Number(lap.distance) * (lap.distance < 100 ? 1000 : 1)
-                  : null,
-            calories:
-              lap.calories !== undefined && lap.calories !== null
-                ? Number(lap.calories)
-                : null,
-            avg_heart_rate:
-              lap.avg_heart_rate !== undefined && lap.avg_heart_rate !== null
-                ? Math.round(Number(lap.avg_heart_rate))
-                : lap.averageHR !== undefined && lap.averageHR !== null
-                  ? Math.round(Number(lap.averageHR))
-                  : null,
-            max_heart_rate:
-              lap.max_heart_rate !== undefined && lap.max_heart_rate !== null
-                ? Math.round(Number(lap.max_heart_rate))
-                : lap.maxHR !== undefined && lap.maxHR !== null
-                  ? Math.round(Number(lap.maxHR))
-                  : null,
-            avg_speed_mps:
-              lap.avg_speed_mps !== undefined && lap.avg_speed_mps !== null
-                ? Number(lap.avg_speed_mps)
-                : lap.averageSpeed !== undefined && lap.averageSpeed !== null
-                  ? Number(lap.averageSpeed)
-                  : null,
-            max_speed_mps:
-              lap.max_speed_mps !== undefined && lap.max_speed_mps !== null
-                ? Number(lap.max_speed_mps)
-                : lap.maxSpeed !== undefined && lap.maxSpeed !== null
-                  ? Number(lap.maxSpeed)
-                  : null,
-            avg_cadence:
-              lap.avg_cadence !== undefined && lap.avg_cadence !== null
-                ? Math.round(Number(lap.avg_cadence))
-                : lap.averageRunCadence !== undefined &&
-                    lap.averageRunCadence !== null
-                  ? Math.round(Number(lap.averageRunCadence))
-                  : null,
-            avg_power_watts:
-              lap.avg_power_watts !== undefined && lap.avg_power_watts !== null
-                ? Number(lap.avg_power_watts)
-                : null,
-            elevation_gain_meters:
-              lap.elevation_gain_meters !== undefined &&
-              lap.elevation_gain_meters !== null
-                ? Number(lap.elevation_gain_meters)
-                : lap.elevationGain !== undefined && lap.elevationGain !== null
-                  ? Number(lap.elevationGain)
-                  : null,
-            elevation_loss_meters:
-              lap.elevation_loss_meters !== undefined &&
-              lap.elevation_loss_meters !== null
-                ? Number(lap.elevation_loss_meters)
-                : lap.elevationLoss !== undefined && lap.elevationLoss !== null
-                  ? Number(lap.elevationLoss)
-                  : null,
-          }));
-          await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
-            userId,
-            userId,
-            lapEntries
-          );
-        }
-
-        // Ingest GPS trackpoints for this entry if present
-        let extractedGpsPoints: any[] = [];
-        if (Array.isArray(sessionData.gps_points)) {
-          extractedGpsPoints = sessionData.gps_points.map((pt: any) => ({
-            user_id: userId,
-            exercise_entry_id: newEntry.id,
-            entry_date: entryDate,
-            timestamp: pt.timestamp ? new Date(pt.timestamp) : new Date(),
-            latitude: pt.latitude ?? 0,
-            longitude: pt.longitude ?? 0,
-            altitude_meters: pt.altitude_meters ?? null,
-            speed_mps: pt.speed_mps ?? null,
-            heart_rate_bpm: pt.heart_rate_bpm ?? null,
-            respiration_rate_brpm: pt.respiration_rate_brpm ?? null,
-            cadence: pt.cadence ?? null,
-            power_watts: pt.power_watts ?? null,
-          }));
-        } else if (
-          sessionData.details?.activityDetailMetrics &&
-          Array.isArray(sessionData.details.activityDetailMetrics)
-        ) {
-          const descriptors: any[] =
-            sessionData.details.metricDescriptors || [];
-          const getMetricIdx = (key: string, altKey?: string) => {
-            const desc = descriptors.find(
-              (d: any) => d.key === key || (altKey && d.key === altKey)
-            );
-            return desc && desc.metricsIndex !== undefined
-              ? desc.metricsIndex
-              : -1;
-          };
-
-          const latIdx = getMetricIdx('directLatitude', 'latitude');
-          const lonIdx = getMetricIdx('directLongitude', 'longitude');
-          const altIdx = getMetricIdx('directElevation', 'elevation');
-          const hrIdx = getMetricIdx('directHeartRate', 'heartRate');
-          const speedIdx = getMetricIdx('directSpeed', 'speed');
-          const cadIdx = getMetricIdx('directRunCadence', 'cadence');
-          const tsIdx = getMetricIdx('directTimestamp', 'timestamp');
-
-          extractedGpsPoints = sessionData.details.activityDetailMetrics
-            .map((metricRow: any) => {
-              const metrics = metricRow.metrics || [];
-              const lat =
-                latIdx >= 0 &&
-                metrics[latIdx] !== null &&
-                metrics[latIdx] !== undefined
-                  ? metrics[latIdx]
-                  : 0;
-              const lon =
-                lonIdx >= 0 &&
-                metrics[lonIdx] !== null &&
-                metrics[lonIdx] !== undefined
-                  ? metrics[lonIdx]
-                  : 0;
-              return {
-                user_id: userId,
-                exercise_entry_id: newEntry.id,
-                entry_date: entryDate,
-                timestamp:
-                  tsIdx >= 0 && metrics[tsIdx]
-                    ? new Date(metrics[tsIdx])
-                    : new Date(),
-                latitude: lat,
-                longitude: lon,
-                altitude_meters: altIdx >= 0 ? metrics[altIdx] : null,
-                speed_mps: speedIdx >= 0 ? metrics[speedIdx] : null,
-                heart_rate_bpm:
-                  hrIdx >= 0 &&
-                  metrics[hrIdx] !== null &&
-                  metrics[hrIdx] !== undefined
-                    ? Math.round(Number(metrics[hrIdx]))
-                    : null,
-                cadence:
-                  cadIdx >= 0 &&
-                  metrics[cadIdx] !== null &&
-                  metrics[cadIdx] !== undefined
-                    ? Math.round(Number(metrics[cadIdx]))
-                    : null,
-              };
-            })
-            .filter(Boolean);
-        } else if (
-          sessionData.details?.geoPolylineDTO?.polyline &&
-          Array.isArray(sessionData.details.geoPolylineDTO.polyline)
-        ) {
-          extractedGpsPoints = sessionData.details.geoPolylineDTO.polyline.map(
-            (pt: any) => ({
-              user_id: userId,
-              exercise_entry_id: newEntry.id,
-              entry_date: entryDate,
-              timestamp: pt.time ? new Date(pt.time) : new Date(),
-              latitude: pt.lat ?? pt.latitude ?? 0,
-              longitude: pt.lon ?? pt.longitude ?? 0,
-              altitude_meters: pt.altitude ?? pt.altitude_meters ?? null,
-              speed_mps: pt.speed ?? null,
-              heart_rate_bpm: pt.heartRate ?? pt.bpm ?? null,
-              respiration_rate_brpm: pt.respiration ?? null,
-              cadence: pt.cadence ?? null,
-              power_watts: pt.power ?? null,
-            })
-          );
-        }
-
-        if (extractedGpsPoints.length > 0) {
-          await workoutTelemetryRepo.bulkInsertExerciseEntryGpsPoints(
-            userId,
-            userId,
-            extractedGpsPoints
-          );
-        }
-      }
+      createdGroups.push({
+        id: newEntry.id,
+        startMs: startTime ?? null,
+        endMs: endTime ?? null,
+      });
 
       await workoutPresetRepository.addExerciseToWorkoutPreset(
         userId,
@@ -582,6 +492,19 @@ export async function processGarminWorkoutSession(
         exerciseSortOrder
       );
       exerciseSortOrder++;
+    }
+
+    const sessionLaps = extractGarminLaps(sessionData);
+    const sessionGpsPoints = extractGarminGpsPoints(sessionData);
+    await attachSessionTelemetry(
+      userId,
+      entryDate,
+      createdGroups,
+      sessionLaps,
+      sessionGpsPoints
+    );
+    if (createdGroups.length > 0) {
+      await attachHrZones(userId, entryDate, createdGroups[0].id, sessionData);
     }
   }
 }
@@ -675,28 +598,11 @@ export async function processGarminSimpleActivity(
   const entryDate = activity.startTimeLocal
     ? activity.startTimeLocal.substring(0, 10)
     : todayInZone(timezone);
-  const maxHR =
-    activity.maxHR || activity.maxHeartRateInBeatsPerMinute
-      ? Math.round(activity.maxHR || activity.maxHeartRateInBeatsPerMinute)
+  const entryTime =
+    activity.startTimeLocal && activity.startTimeLocal.length >= 16
+      ? activity.startTimeLocal.substring(11, 16)
       : null;
-  const avgSpeedMps = activity.averageSpeed ?? null;
-  const maxSpeedMps = activity.maxSpeed ?? null;
-  const avgCadence = activity.averageRunningCadenceInStepsPerMinute
-    ? Math.round(activity.averageRunningCadenceInStepsPerMinute)
-    : activity.averageCadence
-      ? Math.round(activity.averageCadence)
-      : null;
-  const maxCadence = activity.maxRunningCadenceInStepsPerMinute
-    ? Math.round(activity.maxRunningCadenceInStepsPerMinute)
-    : activity.maxCadence
-      ? Math.round(activity.maxCadence)
-      : null;
-  const elevationGain =
-    activity.elevationGain ?? activity.elevationCorrectedGain ?? null;
-  const elevationLoss =
-    activity.elevationLoss ?? activity.elevationCorrectedLoss ?? null;
-  const floorsClimbed = activity.floorsClimbed ?? null;
-  const vo2Max = activity.vo2MaxEstimate ?? activity.vO2MaxValue ?? null;
+  const telemetryFields = extractGarminTelemetryFields(activityData);
 
   const rawExerciseSets =
     activityData.exercise_sets?.exerciseSets ||
@@ -717,7 +623,12 @@ export async function processGarminSimpleActivity(
         set_number: idx + 1,
         set_type: setTypeMapping[s.setType] || 'Working Set',
         reps: Math.round(s.repetitionCount || 0),
-        weight: s.weight ? parseFloat((s.weight * 0.001).toFixed(2)) : 0,
+        // See the matching comment on the workout-session path above: Garmin's raw
+        // weight field is pounds * 1000, not grams, so /1000 alone leaves it 2.204622x
+        // too high once treated as kg.
+        weight: s.weight
+          ? parseFloat(((s.weight * 0.001) / 2.204622).toFixed(2))
+          : 0,
         duration: s.duration ? Math.round(s.duration) : 0,
         rest_time: 0,
         notes: s.notes || '',
@@ -732,6 +643,7 @@ export async function processGarminSimpleActivity(
       activity.active_calories || activity.calories || 0
     ),
     entry_date: entryDate,
+    entry_time: entryTime,
     notes: `Garmin Activity: ${activity.activityName} (${activity.activityType?.typeKey})`,
     distance: activity.distance,
     avg_heart_rate:
@@ -740,15 +652,6 @@ export async function processGarminSimpleActivity(
             activity.averageHR || activity.averageHeartRateInBeatsPerMinute
           )
         : null,
-    max_heart_rate: maxHR,
-    avg_speed_mps: avgSpeedMps,
-    max_speed_mps: maxSpeedMps,
-    avg_cadence: avgCadence,
-    max_cadence: maxCadence,
-    elevation_gain_meters: elevationGain,
-    elevation_loss_meters: elevationLoss,
-    floors_climbed: floorsClimbed,
-    vo2_max_estimate: vo2Max,
     source_id: activity.activityId?.toString() ?? null,
     steps: Math.round(
       activity.steps || activity.totalSteps || activity.stepCount || 0
@@ -756,6 +659,7 @@ export async function processGarminSimpleActivity(
     water_estimated: activity.waterEstimated
       ? Math.round(activity.waterEstimated)
       : null,
+    ...telemetryFields,
     sets: extractedSets,
   };
   const newEntry = await exerciseEntryRepository.createExerciseEntry(
@@ -772,210 +676,33 @@ export async function processGarminSimpleActivity(
     created_by_user_id: userId,
   });
 
-  // Save Laps if present
-  const rawLaps = activityData.laps || activityData.splits?.lapDTOs || [];
-  if (Array.isArray(rawLaps) && rawLaps.length > 0) {
-    const lapEntries = rawLaps.map((lap: any, index: number) => ({
-      user_id: userId,
-      exercise_entry_id: newEntry.id,
-      entry_date: entryDate,
-      lap_index: lap.lap_index ?? lap.lapIndex ?? index + 1,
-      start_time: lap.startTimeLocal
-        ? new Date(lap.startTimeLocal)
-        : lap.startTimeGMT
-          ? new Date(lap.startTimeGMT)
-          : new Date(),
-      end_time: lap.endTimeLocal
-        ? new Date(lap.endTimeLocal)
-        : lap.endTimeGMT
-          ? new Date(lap.endTimeGMT)
-          : new Date(),
-      duration_seconds: Math.round(
-        Number(lap.duration_seconds ?? lap.duration ?? lap.elapsedDuration ?? 0)
-      ),
-      distance_meters:
-        lap.distance_meters !== undefined && lap.distance_meters !== null
-          ? Number(lap.distance_meters)
-          : lap.distance !== undefined && lap.distance !== null
-            ? Number(lap.distance) * (lap.distance < 100 ? 1000 : 1)
-            : null,
-      calories:
-        lap.calories !== undefined && lap.calories !== null
-          ? Number(lap.calories)
-          : null,
-      avg_heart_rate:
-        lap.avg_heart_rate !== undefined && lap.avg_heart_rate !== null
-          ? Math.round(Number(lap.avg_heart_rate))
-          : lap.averageHR !== undefined && lap.averageHR !== null
-            ? Math.round(Number(lap.averageHR))
-            : lap.averageHeartRateInBeatsPerMinute !== undefined &&
-                lap.averageHeartRateInBeatsPerMinute !== null
-              ? Math.round(Number(lap.averageHeartRateInBeatsPerMinute))
-              : null,
-      max_heart_rate:
-        lap.max_heart_rate !== undefined && lap.max_heart_rate !== null
-          ? Math.round(Number(lap.max_heart_rate))
-          : lap.maxHR !== undefined && lap.maxHR !== null
-            ? Math.round(Number(lap.maxHR))
-            : lap.maxHeartRateInBeatsPerMinute !== undefined &&
-                lap.maxHeartRateInBeatsPerMinute !== null
-              ? Math.round(Number(lap.maxHeartRateInBeatsPerMinute))
-              : null,
-      avg_speed_mps:
-        lap.avg_speed_mps !== undefined && lap.avg_speed_mps !== null
-          ? Number(lap.avg_speed_mps)
-          : lap.averageSpeed !== undefined && lap.averageSpeed !== null
-            ? Number(lap.averageSpeed)
-            : null,
-      max_speed_mps:
-        lap.max_speed_mps !== undefined && lap.max_speed_mps !== null
-          ? Number(lap.max_speed_mps)
-          : lap.maxSpeed !== undefined && lap.maxSpeed !== null
-            ? Number(lap.maxSpeed)
-            : null,
-      avg_cadence:
-        lap.avg_cadence !== undefined && lap.avg_cadence !== null
-          ? Math.round(Number(lap.avg_cadence))
-          : lap.averageRunCadence !== undefined &&
-              lap.averageRunCadence !== null
-            ? Math.round(Number(lap.averageRunCadence))
-            : lap.averageCadence !== undefined && lap.averageCadence !== null
-              ? Math.round(Number(lap.averageCadence))
-              : null,
-      avg_power_watts:
-        lap.avg_power_watts !== undefined && lap.avg_power_watts !== null
-          ? Number(lap.avg_power_watts)
-          : lap.averagePower !== undefined && lap.averagePower !== null
-            ? Number(lap.averagePower)
-            : null,
-      elevation_gain_meters:
-        lap.elevation_gain_meters !== undefined &&
-        lap.elevation_gain_meters !== null
-          ? Number(lap.elevation_gain_meters)
-          : lap.elevationGain !== undefined && lap.elevationGain !== null
-            ? Number(lap.elevationGain)
-            : null,
-      elevation_loss_meters:
-        lap.elevation_loss_meters !== undefined &&
-        lap.elevation_loss_meters !== null
-          ? Number(lap.elevation_loss_meters)
-          : lap.elevationLoss !== undefined && lap.elevationLoss !== null
-            ? Number(lap.elevationLoss)
-            : null,
-    }));
+  const laps = extractGarminLaps(activityData);
+  if (laps.length > 0) {
     await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
       userId,
       userId,
-      lapEntries
-    );
-  }
-
-  // Save GPS Points if present
-  let extractedGpsPoints: any[] = [];
-  if (Array.isArray(activityData.gps_points)) {
-    extractedGpsPoints = activityData.gps_points.map((pt: any) => ({
-      user_id: userId,
-      exercise_entry_id: newEntry.id,
-      entry_date: entryDate,
-      timestamp: pt.timestamp ? new Date(pt.timestamp) : new Date(),
-      latitude: pt.latitude ?? 0,
-      longitude: pt.longitude ?? 0,
-      altitude_meters: pt.altitude_meters ?? null,
-      speed_mps: pt.speed_mps ?? null,
-      heart_rate_bpm: pt.heart_rate_bpm ?? null,
-      respiration_rate_brpm: pt.respiration_rate_brpm ?? null,
-      cadence: pt.cadence ?? null,
-      power_watts: pt.power_watts ?? null,
-    }));
-  } else if (
-    activityData.details?.activityDetailMetrics &&
-    Array.isArray(activityData.details.activityDetailMetrics)
-  ) {
-    const descriptors: any[] = activityData.details.metricDescriptors || [];
-    const getMetricIdx = (key: string, altKey?: string) => {
-      const desc = descriptors.find(
-        (d: any) => d.key === key || (altKey && d.key === altKey)
-      );
-      return desc && desc.metricsIndex !== undefined ? desc.metricsIndex : -1;
-    };
-
-    const latIdx = getMetricIdx('directLatitude', 'latitude');
-    const lonIdx = getMetricIdx('directLongitude', 'longitude');
-    const altIdx = getMetricIdx('directElevation', 'elevation');
-    const hrIdx = getMetricIdx('directHeartRate', 'heartRate');
-    const speedIdx = getMetricIdx('directSpeed', 'speed');
-    const cadIdx = getMetricIdx('directRunCadence', 'cadence');
-    const tsIdx = getMetricIdx('directTimestamp', 'timestamp');
-
-    extractedGpsPoints = activityData.details.activityDetailMetrics
-      .map((metricRow: any) => {
-        const metrics = metricRow.metrics || [];
-        const lat =
-          latIdx >= 0 &&
-          metrics[latIdx] !== null &&
-          metrics[latIdx] !== undefined
-            ? metrics[latIdx]
-            : 0;
-        const lon =
-          lonIdx >= 0 &&
-          metrics[lonIdx] !== null &&
-          metrics[lonIdx] !== undefined
-            ? metrics[lonIdx]
-            : 0;
-        return {
-          user_id: userId,
-          exercise_entry_id: newEntry.id,
-          entry_date: entryDate,
-          timestamp:
-            tsIdx >= 0 && metrics[tsIdx]
-              ? new Date(metrics[tsIdx])
-              : new Date(),
-          latitude: lat,
-          longitude: lon,
-          altitude_meters: altIdx >= 0 ? metrics[altIdx] : null,
-          speed_mps: speedIdx >= 0 ? metrics[speedIdx] : null,
-          heart_rate_bpm:
-            hrIdx >= 0 &&
-            metrics[hrIdx] !== null &&
-            metrics[hrIdx] !== undefined
-              ? Math.round(Number(metrics[hrIdx]))
-              : null,
-          cadence:
-            cadIdx >= 0 &&
-            metrics[cadIdx] !== null &&
-            metrics[cadIdx] !== undefined
-              ? Math.round(Number(metrics[cadIdx]))
-              : null,
-        };
-      })
-      .filter(Boolean);
-  } else if (
-    activityData.details?.geoPolylineDTO?.polyline &&
-    Array.isArray(activityData.details.geoPolylineDTO.polyline)
-  ) {
-    extractedGpsPoints = activityData.details.geoPolylineDTO.polyline.map(
-      (pt: any) => ({
+      laps.map(({ startMs: _startMs, endMs: _endMs, ...lap }) => ({
         user_id: userId,
         exercise_entry_id: newEntry.id,
         entry_date: entryDate,
-        timestamp: pt.time ? new Date(pt.time) : new Date(),
-        latitude: pt.lat ?? pt.latitude ?? 0,
-        longitude: pt.lon ?? pt.longitude ?? 0,
-        altitude_meters: pt.altitude ?? pt.altitude_meters ?? null,
-        speed_mps: pt.speed ?? null,
-        heart_rate_bpm: pt.heartRate ?? pt.bpm ?? null,
-        respiration_rate_brpm: pt.respiration ?? null,
-        cadence: pt.cadence ?? null,
-        power_watts: pt.power ?? null,
-      })
+        ...lap,
+      }))
     );
   }
 
-  if (extractedGpsPoints.length > 0) {
+  const gpsPoints = extractGarminGpsPoints(activityData);
+  if (gpsPoints.length > 0) {
     await workoutTelemetryRepo.bulkInsertExerciseEntryGpsPoints(
       userId,
       userId,
-      extractedGpsPoints
+      gpsPoints.map(({ timestampMs: _timestampMs, ...pt }) => ({
+        user_id: userId,
+        exercise_entry_id: newEntry.id,
+        entry_date: entryDate,
+        ...pt,
+      }))
     );
   }
+
+  await attachHrZones(userId, entryDate, newEntry.id, activityData);
 }

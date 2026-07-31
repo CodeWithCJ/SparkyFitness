@@ -333,13 +333,35 @@ function transformFitActivity(
     activity.averageHR = session.avgHeartRate;
   if (session.maxHeartRate !== undefined) activity.maxHR = session.maxHeartRate;
   if (averageSpeed !== undefined) activity.averageSpeed = averageSpeed;
-  if (session.avgCadence !== undefined)
-    activity.averageRunCadenceInStepsPerMinute =
-      session.avgCadence * cadenceMultiplier;
-  if (session.totalAscent !== undefined)
+  const maxSpeed = session.enhancedMaxSpeed ?? session.maxSpeed;
+  if (maxSpeed !== undefined) activity.maxSpeed = maxSpeed;
+  if (session.avgCadence !== undefined) {
+    const avgCadence = session.avgCadence * cadenceMultiplier;
+    activity.averageRunCadenceInStepsPerMinute = avgCadence;
+    activity.averageCadence = avgCadence;
+  }
+  if (session.maxCadence !== undefined) {
+    const maxCadenceValue = session.maxCadence * cadenceMultiplier;
+    activity.maxRunningCadenceInStepsPerMinute = maxCadenceValue;
+    activity.maxCadence = maxCadenceValue;
+  }
+  if (session.totalAscent !== undefined) {
     activity.totalAscent = session.totalAscent;
-  if (session.totalDescent !== undefined)
+    // extractGarminTelemetryFields (shared with Garmin Connect sync) reads this key.
+    activity.elevationGain = session.totalAscent;
+  }
+  if (session.totalDescent !== undefined) {
     activity.totalDescent = session.totalDescent;
+    activity.elevationLoss = session.totalDescent;
+  }
+  if (session.totalTimerTime !== undefined) {
+    // Garmin's service.py reports these in minutes (see garminTelemetryExtractors.ts);
+    // match that unit so the shared extractor's *60 conversion is correct.
+    activity.movingDuration = session.totalTimerTime / 60;
+  }
+  if (session.totalElapsedTime !== undefined) {
+    activity.elapsedDuration = session.totalElapsedTime / 60;
+  }
   if (steps !== null) activity.steps = steps;
   if (startTimeLocal !== undefined) activity.startTimeLocal = startTimeLocal;
 

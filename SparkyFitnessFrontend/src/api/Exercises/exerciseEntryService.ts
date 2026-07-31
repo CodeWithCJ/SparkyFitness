@@ -15,6 +15,8 @@ import {
   ExerciseProgressResponse,
   exerciseSnapshotResponseSchema,
   ExerciseSnapshotResponse,
+  PresetSessionResponse,
+  presetSessionResponseSchema,
 } from '@workspace/shared';
 import z from 'zod';
 import { parseJsonArray } from './exerciseService';
@@ -118,6 +120,22 @@ export const createPresetSession = async (
     body: JSON.stringify(payload),
     headers: { 'Content-Type': 'application/json' },
   });
+};
+
+/**
+ * Fetches a grouped workout session (a strength/multi-exercise Garmin session, or any
+ * other preset-backed workout) with every child exercise entry, its sets, and its
+ * relational muscle snapshot (`exercise_snapshot.primary_muscles`/`secondary_muscles`).
+ * This is the relational replacement for parsing the raw provider JSON blob to build a
+ * session's exercise/muscle breakdown.
+ */
+export const getGroupedWorkoutSession = async (
+  presetEntryId: string
+): Promise<PresetSessionResponse> => {
+  const data = await apiCall(`/exercise-preset-entries/${presetEntryId}`, {
+    method: 'GET',
+  });
+  return presetSessionResponseSchema.parse(data);
 };
 
 export const deleteExerciseEntry = async (entryId: string): Promise<void> => {

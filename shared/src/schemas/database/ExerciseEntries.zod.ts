@@ -63,6 +63,21 @@ export const exerciseEntriesSchema = z.object({
   aerobic_training_effect: z.number().nullable(),
   anaerobic_training_effect: z.number().nullable(),
   vo2_max_estimate: z.number().nullable(),
+  // Garmin-parity fields added 2026-07-31
+  moving_time_seconds: z.number().nullable(),
+  elapsed_time_seconds: z.number().nullable(),
+  work_time_seconds: z.number().nullable(),
+  resting_calories: z.number().nullable(),
+  active_calories: z.number().nullable(),
+  avg_moving_speed_mps: z.number().nullable(),
+  min_elevation_meters: z.number().nullable(),
+  max_elevation_meters: z.number().nullable(),
+  weather_temp_celsius: z.number().nullable(),
+  weather_condition: z.string().nullable(),
+  weather_wind_speed_mps: z.number().nullable(),
+  weather_humidity_percentage: z.number().nullable(),
+  gear_name: z.string().nullable(),
+  gear_external_id: z.string().nullable(),
 });
 
 export const exerciseEntriesInitializerSchema = z.object({
@@ -125,6 +140,20 @@ export const exerciseEntriesInitializerSchema = z.object({
   aerobic_training_effect: z.number().optional().nullable(),
   anaerobic_training_effect: z.number().optional().nullable(),
   vo2_max_estimate: z.number().optional().nullable(),
+  moving_time_seconds: z.number().optional().nullable(),
+  elapsed_time_seconds: z.number().optional().nullable(),
+  work_time_seconds: z.number().optional().nullable(),
+  resting_calories: z.number().optional().nullable(),
+  active_calories: z.number().optional().nullable(),
+  avg_moving_speed_mps: z.number().optional().nullable(),
+  min_elevation_meters: z.number().optional().nullable(),
+  max_elevation_meters: z.number().optional().nullable(),
+  weather_temp_celsius: z.number().optional().nullable(),
+  weather_condition: z.string().optional().nullable(),
+  weather_wind_speed_mps: z.number().optional().nullable(),
+  weather_humidity_percentage: z.number().optional().nullable(),
+  gear_name: z.string().optional().nullable(),
+  gear_external_id: z.string().optional().nullable(),
 });
 
 export const exerciseEntriesMutatorSchema = exerciseEntriesInitializerSchema.partial();

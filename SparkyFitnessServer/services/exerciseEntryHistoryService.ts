@@ -62,6 +62,20 @@ interface ActivityDetailRow {
   detail_data: unknown;
 }
 
+// Raw provider sync dumps (Garmin's full_activity_data/full_workout_data) are large
+// (can include thousands of GPS points) and are meant to be fetched on demand for a
+// single entry, never inlined into a list/history response — see
+// activityDetailsRepository.getActivityDetailsSummaryForEntriesAndPresets, which this
+// mirrors for the hand-written queries in this file.
+const RAW_PROVIDER_DUMP_DETAIL_TYPES = [
+  'full_activity_data',
+  'full_workout_data',
+];
+
+const ACTIVITY_DETAIL_COLUMNS_MASKED = `id, exercise_entry_id, exercise_preset_entry_id, provider_name, detail_type,
+       created_by_user_id, created_at,
+       CASE WHEN detail_type = ANY($2::text[]) THEN NULL ELSE detail_data END AS detail_data`;
+
 const SETS_SUBQUERY = `COALESCE(
   (SELECT json_agg(set_data ORDER BY set_data.set_number)
    FROM (
@@ -271,13 +285,15 @@ async function getExerciseEntryHistorySessions(
         })
     );
 
-    // Preset-level activity details
+    // Preset-level activity details (raw provider dumps stripped of payload — see
+    // RAW_PROVIDER_DUMP_DETAIL_TYPES)
     batchQueries.push(
       client
         .query(
-          `SELECT * FROM exercise_entry_activity_details
+          `SELECT ${ACTIVITY_DETAIL_COLUMNS_MASKED}
+           FROM exercise_entry_activity_details
            WHERE exercise_preset_entry_id = ANY($1::uuid[])`,
-          [presetIds]
+          [presetIds, RAW_PROVIDER_DUMP_DETAIL_TYPES]
         )
         .then((r: { rows: ActivityDetailRow[] }) => {
           for (const row of r.rows) {
@@ -316,12 +332,14 @@ async function getExerciseEntryHistorySessions(
 
   await Promise.all(batchQueries);
 
-  // Entry-level activity details (for both preset children and individuals)
+  // Entry-level activity details (for both preset children and individuals; raw
+  // provider dumps stripped of payload — see RAW_PROVIDER_DUMP_DETAIL_TYPES)
   if (allExerciseEntryIds.length > 0) {
     const adResult = await client.query(
-      `SELECT * FROM exercise_entry_activity_details
+      `SELECT ${ACTIVITY_DETAIL_COLUMNS_MASKED}
+       FROM exercise_entry_activity_details
        WHERE exercise_entry_id = ANY($1::uuid[])`,
-      [allExerciseEntryIds]
+      [allExerciseEntryIds, RAW_PROVIDER_DUMP_DETAIL_TYPES]
     );
     const entryActivityMap = new Map<string, ActivityDetailRow[]>();
     for (const row of adResult.rows as ActivityDetailRow[]) {
@@ -533,13 +551,15 @@ async function _getExerciseEntriesByDateWithClient(
 
   const activityQueries: Promise<void>[] = [];
 
+  // Raw provider dumps stripped of payload — see RAW_PROVIDER_DUMP_DETAIL_TYPES.
   if (allEntryIds.length > 0) {
     activityQueries.push(
       client
         .query(
-          `SELECT * FROM exercise_entry_activity_details
+          `SELECT ${ACTIVITY_DETAIL_COLUMNS_MASKED}
+           FROM exercise_entry_activity_details
            WHERE exercise_entry_id = ANY($1::uuid[])`,
-          [allEntryIds]
+          [allEntryIds, RAW_PROVIDER_DUMP_DETAIL_TYPES]
         )
         .then((r: { rows: ActivityDetailRow[] }) => {
           for (const row of r.rows) {
@@ -557,9 +577,10 @@ async function _getExerciseEntriesByDateWithClient(
     activityQueries.push(
       client
         .query(
-          `SELECT * FROM exercise_entry_activity_details
+          `SELECT ${ACTIVITY_DETAIL_COLUMNS_MASKED}
+           FROM exercise_entry_activity_details
            WHERE exercise_preset_entry_id = ANY($1::uuid[])`,
-          [presetIds]
+          [presetIds, RAW_PROVIDER_DUMP_DETAIL_TYPES]
         )
         .then((r: { rows: ActivityDetailRow[] }) => {
           for (const row of r.rows) {

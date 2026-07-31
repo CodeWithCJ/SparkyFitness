@@ -73,3 +73,8 @@ dossier sans titre/
 # Nix build outputs
 /result
 /result-*
+
+# Local MCP server config (contains bearer tokens)
+.mcp.json
+
+PLAN/

@@ -5,6 +5,10 @@ import { usePreferences, type WeightUnit } from '@/contexts/PreferencesContext';
 import { formatWeight } from '@/utils/numberFormatting';
 import { FaChevronDown, FaChevronUp, FaDumbbell } from 'react-icons/fa';
 import { useBodyMapSvgQuery } from '@/hooks/Exercises/useExercises';
+import { useGroupedWorkoutSession } from '@/hooks/Exercises/useExercises';
+import { svgClassToSchemaName } from '@/constants/exercises';
+import type { ExerciseEntryResponse } from '@workspace/shared';
+import './WorkoutSessionBodyMap.css';
 
 const formatExerciseName = (name: string | undefined | null): string => {
   if (!name) return 'Exercise';
@@ -37,40 +41,26 @@ interface GroupedExercise {
   sets: ExerciseSetItem[];
 }
 
-interface RawExerciseItem {
-  name?: string;
-  category?: string;
-}
-
-interface RawWorkoutSet {
-  setType?: string;
-  repetitionCount?: number;
-  weight?: number;
-  duration?: number;
-  exercises?: RawExerciseItem[];
-  category?: string;
-}
-
-interface RawSetItem {
-  set_number?: number;
-  reps?: number;
-  weight?: number;
-  duration?: number;
-  rest_time?: number;
-  set_type?: string;
+interface MuscleGroupSummary {
+  muscleName: string;
+  totalTimeSeconds: number;
+  totalReps: number;
+  totalVolumeKg: number;
+  sets: ExerciseSetItem[];
 }
 
 interface WorkoutSessionBreakdownProps {
-  activityData?: Record<string, unknown>;
-  exerciseEntry?: Record<string, unknown>;
+  /** The single exercise entry being viewed. If it belongs to a preset session, the
+   *  full session (all sibling exercises) is fetched relationally via its
+   *  exercise_preset_entry_id — this component never reads the raw provider JSON blob. */
+  exerciseEntry?: ExerciseEntryResponse | Record<string, unknown>;
 }
 
 export const WorkoutSessionBreakdown = ({
-  activityData,
   exerciseEntry,
 }: WorkoutSessionBreakdownProps) => {
   const { t } = useTranslation();
-  const { weightUnit, convertWeight } = usePreferences();
+  const { weightUnit } = usePreferences();
   const [activeTab, setActiveTab] = useState<'sets' | 'exercises' | 'muscles'>(
     'muscles'
   );
@@ -84,97 +74,72 @@ export const WorkoutSessionBreakdown = ({
 
   const [expandedMuscles, setExpandedMuscles] = useState<
     Record<string, boolean>
-  >({ Biceps: true });
+  >({});
 
   const toggleMuscleExpand = (name: string) => {
     setExpandedMuscles((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
-  const setList = useMemo<ExerciseSetItem[]>(() => {
-    const activityObj = activityData?.['activity'] as
-      | Record<string, unknown>
-      | undefined;
-    const exerciseSetsObj = activityObj?.['exercise_sets'] as
-      | Record<string, unknown>
-      | undefined;
-    const rawSets = exerciseSetsObj?.['exerciseSets'] as
-      | RawWorkoutSet[]
-      | undefined;
+  const presetEntryId = exerciseEntry?.['exercise_preset_entry_id'] as
+    | string
+    | null
+    | undefined as string | undefined;
+  const { data: groupedSession } = useGroupedWorkoutSession(
+    presetEntryId ?? undefined
+  );
 
-    if (Array.isArray(rawSets) && rawSets.length > 0) {
-      let setCounter = 1;
-      const items: ExerciseSetItem[] = [];
-
-      for (let i = 0; i < rawSets.length; i++) {
-        const set = rawSets[i];
-        if (!set || set.setType === 'REST') continue;
-
-        let name = 'Exercise';
-        if (set.exercises && set.exercises.length > 0 && set.exercises[0]) {
-          name = formatExerciseName(
-            set.exercises[0].name || set.exercises[0].category || name
-          );
-        } else if (set.category) {
-          name = formatExerciseName(set.category);
-        }
-
-        const duration = set.duration ? Number(set.duration) : 0;
-        const reps = set.repetitionCount ? Math.round(set.repetitionCount) : 0;
-        const weightRaw = set.weight || 0;
-        // Divide by 2.204622 to undo double conversion in Garmin FIT set telemetry
-        const weightKg = weightRaw > 0 ? (weightRaw * 0.001) / 2.204622 : 0;
-        const volumeKg = reps * weightKg;
-
-        let restSecs = 0;
-        const nextSet = rawSets[i + 1];
-        if (nextSet && nextSet.setType === 'REST') {
-          const nextSetDuration = nextSet.duration;
-          restSecs = nextSetDuration ? Number(nextSetDuration) : 0;
-        }
-
-        items.push({
-          setNumber: setCounter++,
-          exerciseName: name,
-          durationSeconds: duration,
-          restSeconds: restSecs,
-          reps,
-          weightKg,
-          volumeKg,
-          setType: set.setType || 'ACTIVE',
-        });
-      }
-      return items;
+  // The relational list of exercises this session's summaries are built from: every
+  // child exercise of the preset session, or just the single entry if it isn't part of
+  // one (e.g. a standalone strength activity).
+  const sessionExercises = useMemo(() => {
+    if (groupedSession?.exercises && groupedSession.exercises.length > 0) {
+      return groupedSession.exercises;
     }
+    return exerciseEntry ? [exerciseEntry as ExerciseEntryResponse] : [];
+  }, [groupedSession, exerciseEntry]);
 
-    const entrySets = exerciseEntry?.['sets'] as RawSetItem[] | undefined;
-    if (Array.isArray(entrySets) && entrySets.length > 0) {
-      const exerciseSnapshot = exerciseEntry?.['exercise_snapshot'] as
+  const setList = useMemo<ExerciseSetItem[]>(() => {
+    let setCounter = 1;
+    const items: ExerciseSetItem[] = [];
+
+    for (const entry of sessionExercises) {
+      const snapshot = entry?.exercise_snapshot as
         | Record<string, unknown>
         | undefined;
-      const fallbackName = formatExerciseName(
-        (exerciseEntry?.['exercise_name'] as string) ||
-          (exerciseSnapshot?.['name'] as string) ||
-          'Exercise'
+      const exerciseName = formatExerciseName(
+        (snapshot?.['name'] as string) || 'Exercise'
       );
+      const entrySets =
+        (entry?.['sets'] as
+          | Array<{
+              set_number?: number;
+              reps?: number | null;
+              weight?: number | null;
+              duration?: number | null;
+              rest_time?: number | null;
+              set_type?: string | null;
+            }>
+          | undefined) ?? [];
 
-      return entrySets.map((set, index) => {
+      for (const set of entrySets) {
         const reps = set?.reps || 0;
-        const weightKg = set?.weight || 0;
-        return {
-          setNumber: set?.set_number || index + 1,
-          exerciseName: fallbackName,
+        const weightKg = (set?.weight || 0) * 2.204622;
+        items.push({
+          setNumber: set?.set_number || setCounter,
+          exerciseName,
           durationSeconds: set?.duration || 0,
           restSeconds: set?.rest_time || 0,
           reps,
           weightKg,
           volumeKg: reps * weightKg,
           setType: set?.set_type || 'Working Set',
-        };
-      });
+        });
+        setCounter++;
+      }
     }
 
-    return [];
-  }, [activityData, exerciseEntry]);
+    return items;
+  }, [sessionExercises]);
 
   const groupedExercises = useMemo<GroupedExercise[]>(() => {
     const map = new Map<string, GroupedExercise>();
@@ -202,105 +167,75 @@ export const WorkoutSessionBreakdown = ({
     return Array.from(map.values());
   }, [setList]);
 
-  const muscleGroupSummaries = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        muscleName: string;
-        totalTimeSeconds: number;
-        totalReps: number;
-        totalVolumeKg: number;
-        sets: ExerciseSetItem[];
-      }
-    >();
+  // Per-exercise muscle lookup, driven entirely by each exercise's relational
+  // exercise_snapshot.primary_muscles/secondary_muscles (populated at log time from the
+  // exercises table — see garminExerciseMapper.ts for how Garmin-synced exercises get
+  // theirs). No name/category guessing.
+  const musclesByExerciseName = useMemo(() => {
+    const map = new Map<string, { primary: string[]; secondary: string[] }>();
+    for (const entry of sessionExercises) {
+      const snapshot = entry?.exercise_snapshot as
+        | Record<string, unknown>
+        | undefined;
+      const exerciseName = formatExerciseName(
+        (snapshot?.['name'] as string) || 'Exercise'
+      );
+      const primary = (snapshot?.['primary_muscles'] as string[] | null) || [];
+      const secondary =
+        (snapshot?.['secondary_muscles'] as string[] | null) || [];
+      map.set(exerciseName, { primary, secondary });
+    }
+    return map;
+  }, [sessionExercises]);
 
-    const getPrimaryMuscle = (exName: string) => {
-      const lower = exName.toLowerCase();
-      if (lower.includes('biceps') || lower.includes('curl')) return 'Biceps';
-      if (lower.includes('chest') || lower.includes('bench press'))
-        return 'Chest';
-      if (lower.includes('shoulder') || lower.includes('overhead'))
-        return 'Shoulders';
-      if (lower.includes('triceps') || lower.includes('extension'))
-        return 'Triceps';
-      if (
-        lower.includes('row') ||
-        lower.includes('pull') ||
-        lower.includes('lat')
-      )
-        return 'Back / Lats';
-      if (lower.includes('squat') || lower.includes('leg')) return 'Quadriceps';
-      if (lower.includes('calf') || lower.includes('calves')) return 'Calves';
-      return 'Full Body';
-    };
+  const muscleGroupSummaries = useMemo<MuscleGroupSummary[]>(() => {
+    const map = new Map<string, MuscleGroupSummary>();
 
     setList.forEach((item) => {
-      const muscle = getPrimaryMuscle(item.exerciseName);
-      if (!map.has(muscle)) {
-        map.set(muscle, {
-          muscleName: muscle,
-          totalTimeSeconds: 0,
-          totalReps: 0,
-          totalVolumeKg: 0,
-          sets: [],
-        });
-      }
-      const summary = map.get(muscle)!;
-      summary.totalTimeSeconds += item.durationSeconds;
-      summary.totalReps += item.reps;
-      summary.totalVolumeKg += item.volumeKg;
-      summary.sets.push(item);
+      const muscles = musclesByExerciseName.get(item.exerciseName);
+      const targetMuscles =
+        muscles && muscles.primary.length > 0
+          ? muscles.primary
+          : ['Untargeted'];
+
+      targetMuscles.forEach((muscle) => {
+        if (!map.has(muscle)) {
+          map.set(muscle, {
+            muscleName: muscle,
+            totalTimeSeconds: 0,
+            totalReps: 0,
+            totalVolumeKg: 0,
+            sets: [],
+          });
+        }
+        const summary = map.get(muscle)!;
+        summary.totalTimeSeconds += item.durationSeconds;
+        summary.totalReps += item.reps;
+        summary.totalVolumeKg += item.volumeKg;
+        summary.sets.push(item);
+      });
     });
 
     return Array.from(map.values()).sort((a, b) =>
       a.muscleName.localeCompare(b.muscleName)
     );
-  }, [setList]);
+  }, [setList, musclesByExerciseName]);
 
   const primaryMusclesTargeted = useMemo(() => {
     const set = new Set<string>();
-    groupedExercises.forEach((g) => {
-      const lower = g.exerciseName.toLowerCase();
-      if (lower.includes('chest') || lower.includes('bench press'))
-        set.add('chest');
-      if (
-        lower.includes('row') ||
-        lower.includes('pull') ||
-        lower.includes('lat')
-      ) {
-        set.add('lats');
-        set.add('trapezius');
-        set.add('upperback');
-      }
-    });
+    musclesByExerciseName.forEach(({ primary }) =>
+      primary.forEach((m) => set.add(m.toLowerCase()))
+    );
     return Array.from(set);
-  }, [groupedExercises]);
+  }, [musclesByExerciseName]);
 
   const secondaryMusclesTargeted = useMemo(() => {
     const set = new Set<string>();
-    groupedExercises.forEach((g) => {
-      const lower = g.exerciseName.toLowerCase();
-      if (
-        lower.includes('biceps') ||
-        lower.includes('curl') ||
-        lower.includes('row')
-      )
-        set.add('biceps');
-      if (
-        lower.includes('triceps') ||
-        lower.includes('extension') ||
-        lower.includes('press')
-      )
-        set.add('triceps');
-      if (
-        lower.includes('shoulder') ||
-        lower.includes('press') ||
-        lower.includes('deltoid')
-      )
-        set.add('shoulders');
-    });
+    musclesByExerciseName.forEach(({ secondary }) =>
+      secondary.forEach((m) => set.add(m.toLowerCase()))
+    );
     return Array.from(set);
-  }, [groupedExercises]);
+  }, [musclesByExerciseName]);
 
   if (setList.length === 0) return null;
 
@@ -310,10 +245,11 @@ export const WorkoutSessionBreakdown = ({
     return `${mins}:${Number(secs) < 10 ? '0' : ''}${secs}`;
   };
 
+  // formatWeight takes a kg value and converts to `unit` itself, so do NOT
+  // pre-convert here — doing both applies the kg->lbs factor twice.
   const formatWeightValue = (kg: number) => {
     if (kg <= 0) return '--';
-    const converted = convertWeight(kg, 'kg', weightUnit as WeightUnit);
-    return `${formatWeight(converted, weightUnit as WeightUnit)}`;
+    return formatWeight(kg, weightUnit as WeightUnit);
   };
 
   return (
@@ -375,9 +311,9 @@ export const WorkoutSessionBreakdown = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {setList.map((setItem) => (
+              {setList.map((setItem, idx) => (
                 <tr
-                  key={setItem.setNumber}
+                  key={`${setItem.exerciseName}-${setItem.setNumber}-${idx}`}
                   className="hover:bg-muted/30 transition-colors"
                 >
                   <td className="py-3 px-3 font-medium">
@@ -490,8 +426,8 @@ export const WorkoutSessionBreakdown = ({
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-border">
-                                {group.sets.map((s) => (
-                                  <tr key={s.setNumber}>
+                                {group.sets.map((s, idx) => (
+                                  <tr key={`${s.setNumber}-${idx}`}>
                                     <td className="py-2 px-3 font-semibold">
                                       Set {s.setNumber}
                                     </td>
@@ -560,7 +496,7 @@ export const WorkoutSessionBreakdown = ({
                             <FaChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                           )}
                         </td>
-                        <td className="py-3 px-3 font-bold text-foreground">
+                        <td className="py-3 px-3 font-bold text-foreground capitalize">
                           {mgSummary.muscleName}
                         </td>
                         <td className="py-3 px-3 font-bold">
@@ -643,26 +579,21 @@ const WorkoutSessionBodyMap: React.FC<{
     const paths = svgElement.querySelectorAll('path[class]');
 
     paths.forEach((path) => {
-      const cls = (path.getAttribute('class') || '').toLowerCase();
+      const svgClassName = path.getAttribute('class') || '';
+      const muscleName = (
+        svgClassToSchemaName[svgClassName] || svgClassName
+      ).toLowerCase();
 
-      const isPrimary = primaryMuscles.some((m) =>
-        cls.includes(m.toLowerCase())
-      );
-      const isSecondary = secondaryMuscles.some((m) =>
-        cls.includes(m.toLowerCase())
-      );
+      const isPrimary = primaryMuscles.includes(muscleName);
+      const isSecondary = secondaryMuscles.includes(muscleName);
 
+      path.classList.remove('active-primary', 'active-secondary', 'inactive');
       if (isPrimary) {
-        (path as HTMLElement).style.fill = '#e11d48';
-        (path as HTMLElement).style.opacity = '1';
+        path.classList.add('active-primary');
       } else if (isSecondary) {
-        (path as HTMLElement).style.fill = '#eab308';
-        (path as HTMLElement).style.opacity = '1';
+        path.classList.add('active-secondary');
       } else {
-        (path as HTMLElement).style.fill = '#f3f4f6';
-        (path as HTMLElement).style.stroke = '#d1d5db';
-        (path as HTMLElement).style.strokeWidth = '0.5';
-        (path as HTMLElement).style.opacity = '1';
+        path.classList.add('inactive');
       }
     });
   }, [svgContent, primaryMuscles, secondaryMuscles]);
@@ -671,7 +602,7 @@ const WorkoutSessionBodyMap: React.FC<{
     <div className="w-full flex flex-col items-center justify-center p-4 bg-muted/20 rounded-xl border border-border overflow-hidden">
       <div
         ref={svgContainerRef}
-        className="w-full flex justify-center overflow-hidden max-w-[380px]"
+        className="workout-session-body-map w-full flex justify-center overflow-hidden max-w-[380px]"
       />
       <div className="flex items-center gap-6 mt-4 text-xs font-semibold">
         <span className="flex items-center gap-1.5 text-red-500">

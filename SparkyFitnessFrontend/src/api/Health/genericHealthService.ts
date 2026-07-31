@@ -8,6 +8,7 @@ import {
   VitalsEntries,
   ExerciseEntryLaps,
   ExerciseEntryGpsPoints,
+  ExerciseEntryHrZones,
 } from '@workspace/shared';
 
 export const fetchDailyHealthMetrics = async (
@@ -139,6 +140,16 @@ export const fetchWorkoutGpsPoints = async (
 ): Promise<ExerciseEntryGpsPoints[]> => {
   const response = await apiCall<{ data: ExerciseEntryGpsPoints[] }>(
     `/generic-health/workout-gps/${exerciseEntryId}`,
+    { method: 'GET' }
+  );
+  return response?.data || [];
+};
+
+export const fetchWorkoutHrZones = async (
+  exerciseEntryId: string
+): Promise<ExerciseEntryHrZones[]> => {
+  const response = await apiCall<{ data: ExerciseEntryHrZones[] }>(
+    `/generic-health/workout-hr-zones/${exerciseEntryId}`,
     { method: 'GET' }
   );
   return response?.data || [];

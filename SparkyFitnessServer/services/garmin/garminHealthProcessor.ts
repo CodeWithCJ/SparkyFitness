@@ -121,6 +121,30 @@ export async function processGarminHealthAndWellnessData(
       healthData.total_distance.forEach(
         (d: { date?: string }) => d.date && datesToProcess.add(d.date)
       );
+    // Additional per-day metrics that may arrive without a matching daily_summary/
+    // body_battery/steps/total_distance entry for the same date (e.g. a rest day still
+    // has a training-readiness or recovery-time reading).
+    const additionalDailyArrays = [
+      'lactate_threshold',
+      'race_predictions',
+      'fitness_age',
+      'hill_score',
+      'endurance_score',
+      'max_metrics',
+      'training_readiness',
+      'recovery_time',
+      'intensity_minutes',
+      'floors',
+      'training_load',
+      'acute_load',
+    ];
+    for (const key of additionalDailyArrays) {
+      if (Array.isArray(healthData[key])) {
+        healthData[key].forEach(
+          (d: { date?: string }) => d.date && datesToProcess.add(d.date)
+        );
+      }
+    }
 
     for (const dateStr of datesToProcess) {
       try {
@@ -140,6 +164,42 @@ export async function processGarminHealthAndWellnessData(
           (healthData.daily_summary || []).find(
             (s: { date: string }) => s.date === dateStr
           ) || {};
+        const lactateItem = (healthData.lactate_threshold || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const raceItem = (healthData.race_predictions || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const fitnessAgeItem = (healthData.fitness_age || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const hillScoreItem = (healthData.hill_score || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const enduranceItem = (healthData.endurance_score || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const maxMetricsItem = (healthData.max_metrics || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const trainingReadinessItem = (
+          healthData.training_readiness || []
+        ).find((d: { date: string }) => d.date === dateStr);
+        const recoveryTimeItem = (healthData.recovery_time || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const intensityItem = (healthData.intensity_minutes || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const floorsItem = (healthData.floors || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const trainingLoadItem = (healthData.training_load || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
+        const acuteLoadItem = (healthData.acute_load || []).find(
+          (d: { date: string }) => d.date === dateStr
+        );
 
         const totalSteps =
           stepsItem?.value ??
@@ -147,6 +207,17 @@ export async function processGarminHealthAndWellnessData(
           summaryItem?.total_steps ??
           null;
         const distKm = distItem?.value ?? summaryItem?.total_distance ?? null;
+
+        const acuteLoad =
+          trainingLoadItem?.daily_acute_training_load ??
+          acuteLoadItem?.value ??
+          null;
+        const chronicLoad =
+          trainingLoadItem?.daily_chronic_training_load ?? null;
+        const acwrRatio =
+          acuteLoad !== null && chronicLoad !== null && Number(chronicLoad) > 0
+            ? Number(acuteLoad) / Number(chronicLoad)
+            : null;
 
         await genericHealthRepo.upsertDailyHealthMetrics(userId, actingUserId, {
           user_id: userId,
@@ -160,9 +231,12 @@ export async function processGarminHealthAndWellnessData(
             distKm !== null && distKm !== undefined
               ? Math.round(Number(distKm) * 1000)
               : null,
+          floors_ascended: floorsItem?.floors_ascended ?? null,
+          floors_descended: floorsItem?.floors_descended ?? null,
           active_calories: summaryItem.active_calories ?? null,
           bmr_calories: summaryItem.bmr_calories ?? null,
           resting_heart_rate: summaryItem.resting_heart_rate ?? null,
+          exercise_minutes: intensityItem?.total_intensity_minutes ?? null,
           body_battery_highest:
             bbItem?.body_battery_highest ??
             summaryItem.body_battery_highest ??
@@ -184,10 +258,27 @@ export async function processGarminHealthAndWellnessData(
             summaryItem.avg_stress_level ??
             null,
           max_stress_level: summaryItem.max_stress_level ?? null,
-          vo2_max: summaryItem.vo2_max ?? null,
+          vo2_max: maxMetricsItem?.vo2_max ?? summaryItem.vo2_max ?? null,
+          fitness_age: fitnessAgeItem?.fitness_age ?? null,
+          lactate_threshold_bpm: lactateItem?.lactate_threshold_hr ?? null,
+          hill_score: hillScoreItem?.hill_score ?? null,
+          endurance_score: enduranceItem?.endurance_score ?? null,
+          race_prediction_5k_seconds: raceItem?.race_prediction_5k ?? null,
+          race_prediction_10k_seconds: raceItem?.race_prediction_10k ?? null,
+          race_prediction_half_marathon_seconds:
+            raceItem?.race_prediction_half_marathon ?? null,
+          race_prediction_marathon_seconds:
+            raceItem?.race_prediction_marathon ?? null,
           training_readiness_score:
-            summaryItem.training_readiness_score ?? null,
-          recovery_time_hours: summaryItem.recovery_time_hours ?? null,
+            trainingReadinessItem?.training_readiness_score ??
+            summaryItem.training_readiness_score ??
+            null,
+          recovery_time_hours:
+            recoveryTimeItem?.value ?? summaryItem.recovery_time_hours ?? null,
+          weekly_training_load: trainingLoadItem?.weekly_training_load ?? null,
+          acute_training_load: acuteLoad,
+          chronic_training_load: chronicLoad,
+          acwr_ratio: acwrRatio,
         });
         processedResults.push({
           type: 'daily_health_metrics',
@@ -364,6 +455,91 @@ export async function processGarminHealthAndWellnessData(
           type: 'respiration_entries',
           status: 'success',
           count: respEntriesToInsert.length,
+        });
+      }
+    }
+
+    // 5. Process SpO2 Entries
+    if (healthData.spo2 && Array.isArray(healthData.spo2)) {
+      const spo2EntriesToInsert: Array<{
+        user_id: string;
+        entry_date: string;
+        timestamp: Date;
+        spo2_percentage: number;
+        source_provider: string;
+        device_name: string;
+      }> = [];
+      for (const item of healthData.spo2) {
+        if (
+          item.date &&
+          item.average_spo2 !== undefined &&
+          item.average_spo2 !== null
+        ) {
+          spo2EntriesToInsert.push({
+            user_id: userId,
+            entry_date: item.date,
+            // Garmin's daily SpO2 average has no intraday timestamp; anchor at midday
+            // so it sorts sensibly alongside intraday readings from other providers.
+            timestamp: new Date(`${item.date}T12:00:00Z`),
+            spo2_percentage: Number(item.average_spo2),
+            source_provider: 'garmin',
+            device_name: 'Garmin Device',
+          });
+        }
+      }
+
+      if (spo2EntriesToInsert.length > 0) {
+        await genericHealthRepo.bulkUpsertSpo2(
+          userId,
+          actingUserId,
+          spo2EntriesToInsert
+        );
+        processedResults.push({
+          type: 'spo2_entries',
+          status: 'success',
+          count: spo2EntriesToInsert.length,
+        });
+      }
+    }
+
+    // 6. Process Vitals (Blood Pressure) Entries
+    if (healthData.blood_pressure && Array.isArray(healthData.blood_pressure)) {
+      const vitalsEntriesToInsert: Array<{
+        user_id: string;
+        entry_date: string;
+        timestamp: Date;
+        systolic_mmhg: number | null;
+        diastolic_mmhg: number | null;
+        source_provider: string;
+        device_name: string;
+      }> = [];
+      // routes.py formats each reading as "systolic/diastolic" or "systolic/diastolic, pulse bpm".
+      const bpPattern = /^(\d+)\/(\d+)/;
+      for (const item of healthData.blood_pressure) {
+        if (!item.date || typeof item.value !== 'string') continue;
+        const match = bpPattern.exec(item.value);
+        if (!match) continue;
+        vitalsEntriesToInsert.push({
+          user_id: userId,
+          entry_date: item.date,
+          timestamp: new Date(`${item.date}T12:00:00Z`),
+          systolic_mmhg: Number(match[1]),
+          diastolic_mmhg: Number(match[2]),
+          source_provider: 'garmin',
+          device_name: 'Garmin Device',
+        });
+      }
+
+      if (vitalsEntriesToInsert.length > 0) {
+        await genericHealthRepo.bulkUpsertVitals(
+          userId,
+          actingUserId,
+          vitalsEntriesToInsert
+        );
+        processedResults.push({
+          type: 'vitals_entries',
+          status: 'success',
+          count: vitalsEntriesToInsert.length,
         });
       }
     }

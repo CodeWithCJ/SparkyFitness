@@ -83,6 +83,20 @@ describe('Generic Health & Workout Zod Schemas', () => {
       aerobic_training_effect: 3.5,
       anaerobic_training_effect: 1.2,
       vo2_max_estimate: 54.2,
+      moving_time_seconds: 2650,
+      elapsed_time_seconds: 2700,
+      work_time_seconds: null,
+      resting_calories: 25,
+      active_calories: 425,
+      avg_moving_speed_mps: 3.2,
+      min_elevation_meters: 10.0,
+      max_elevation_meters: 130.0,
+      weather_temp_celsius: 18.5,
+      weather_condition: 'Partly Cloudy',
+      weather_wind_speed_mps: 3.1,
+      weather_humidity_percentage: 62.0,
+      gear_name: 'Trail Runners',
+      gear_external_id: 'GEAR-998',
     };
 
     const parsed = exerciseEntriesSchema.parse(validEntry);
