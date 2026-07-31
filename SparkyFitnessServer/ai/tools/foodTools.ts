@@ -825,6 +825,25 @@ Actions:
           tz,
           VALID_ACTIONS,
           (args) => {
+            // entry_id is an unambiguous identifier of an operation on an
+            // existing diary row. It must win over any incidental food_name /
+            // meal_name / external_id / date fields: list_diary naturally
+            // returns entry_id + entry_type together with food_name or
+            // meal_name, and letting a log/lookup action claim those fields
+            // would make the salvage logic drop entry_id and run a different
+            // data-writing operation.
+            if (
+              args.entry_id &&
+              (args.quantity !== undefined ||
+                args.unit ||
+                args.meal_type ||
+                args.meal_type_id)
+            ) {
+              return 'update_entry';
+            }
+            if (args.entry_id && args.entry_type) {
+              return 'delete_entry';
+            }
             if (args.amount_ml) {
               return 'log_water';
             }
@@ -880,18 +899,6 @@ Actions:
             // field: a model may add target_date/source_date to an
             // update/delete call, and the salvage logic would otherwise strip
             // the id fields and run a full-day copy instead.
-            if (
-              args.entry_id &&
-              (args.quantity !== undefined ||
-                args.unit ||
-                args.meal_type ||
-                args.meal_type_id)
-            ) {
-              return 'update_entry';
-            }
-            if (args.entry_id && args.entry_type) {
-              return 'delete_entry';
-            }
             if (args.food_id) {
               return 'delete_food';
             }

@@ -70,7 +70,7 @@ vi.mock('../models/foodEntryMealRepository', () => ({
     getFoodEntryMealsByDateRange: vi.fn(),
   },
 }));
-vi.mock('../models/mealType', () => ({
+vi.mock('../models/mealType.js', () => ({
   default: {
     getAllMealTypes: vi.fn(),
     getMealTypeById: vi.fn(),
@@ -2658,6 +2658,80 @@ describe('save_as_meal_template', () => {
     expect(foodCoreService.deleteFood).toHaveBeenCalled();
     expect(foodEntryService.copyFoodEntries).not.toHaveBeenCalled();
     expect(foodEntryService.copyAllFoodEntries).not.toHaveBeenCalled();
+  });
+
+  // Regression: list_diary rows carry entry_id + entry_type together with
+  // food_name/meal_name, so entry-targeted operations must win over log/
+  // lookup inference — otherwise the salvage logic would drop entry_id and run
+  // a different data-writing operation.
+  it('infers update_entry (not log_food) for entry_id + food_name + quantity + meal_type_id', async () => {
+    vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry',
+        food_name: 'Eggs',
+        quantity: 2,
+        meal_type_id: MEAL_TYPE_ID,
+      },
+      opts
+    );
+
+    expect(result).toContain('✅ Entry updated');
+    expect(foodEntryService.updateFoodEntry).toHaveBeenCalled();
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+  });
+
+  it('infers update_entry (not log_meal) for entry_id + meal_name + meal_type_id', async () => {
+    vi.mocked(foodEntryService.updateFoodEntryMeal).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+    vi.mocked(
+      foodEntryService.getFoodEntryMealWithComponents
+    ).mockResolvedValue({
+      id: ENTRY_ID,
+      meal_template_id: MEAL_ID,
+      entry_date: new Date(2026, 5, 10),
+      foods: [],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_name: 'Overnight Oats',
+        meal_type_id: MEAL_TYPE_ID,
+      },
+      opts
+    );
+
+    expect(result).toContain('✅ Entry updated');
+    expect(foodEntryService.updateFoodEntryMeal).toHaveBeenCalled();
+    expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
+  });
+
+  it('infers delete_entry (not lookup) for entry_id + entry_type + food_name', async () => {
+    vi.mocked(foodEntryService.deleteFoodEntry).mockResolvedValue(true);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry',
+        food_name: 'Eggs',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry deleted.');
+    expect(foodEntryService.deleteFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      ENTRY_ID
+    );
+    expect(foodRepository.getFoodsWithPagination).not.toHaveBeenCalled();
   });
 
   it('requires explicit action for save_as_meal_template', async () => {

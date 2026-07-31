@@ -50,11 +50,12 @@ interface MealTypeRow {
 // Resolves a meal type selector (a UUID or a legacy name) to its canonical
 // id. Exact id matches always win so a caller holding a meal_type_id gets
 // exactly that type back, even when a custom type shares its name with a
-// system default. The name fallback matches any type the user can see
-// (system defaults and custom types): this helper is shared with the REST
-// API, web and mobile clients, which still send custom type NAMES as
-// selectors. The MCP food tools restrict the legacy-name path to system
-// defaults on their side and pass the canonical id into the service.
+// system default. The name fallback is deterministic: when several types
+// share the same name (a custom type may collide with a system default
+// because uniqueness is per (name, user_id)), the system default wins
+// regardless of sort_order; otherwise the first name match is used. This
+// helper is shared with the REST API, web and mobile clients, which still
+// send custom type NAMES as selectors.
 async function resolveMealTypeId(
   userId: string,
   mealTypeSelector: string | null | undefined
@@ -68,9 +69,12 @@ async function resolveMealTypeId(
   const byId = types.find((type) => type.id.toLowerCase() === normalized);
   if (byId) return byId.id;
 
-  const byName = types.find(
+  const nameMatches = types.filter(
     (type) => type.name.trim().toLowerCase() === normalized
   );
+
+  const byName =
+    nameMatches.find((type) => type.user_id === null) ?? nameMatches[0];
 
   return byName?.id ?? null;
 }
@@ -920,18 +924,15 @@ async function copyFoodEntries(
       'info',
       `copyFoodEntries: Copying from ${sourceDate} (${sourceMealType}) to ${targetDate} (${targetMealType}) for user ${authenticatedUserId}`
     );
-    // 1. Fetch source entries
-    const sourceEntries = await foodRepository.getFoodEntriesByDateAndMealType(
+    // 1. Resolve both source and target to canonical ids: a name selector is
+    // ambiguous when a custom type shares its name with a system default, so
+    // the repository query and duplicate check must use the exact id.
+    const sourceMealTypeId = await resolveMealTypeId(
       authenticatedUserId,
-      sourceDate,
       sourceMealType
     );
-    if (sourceEntries.length === 0) {
-      log(
-        'debug',
-        `No food entries found for ${sourceMealType} on ${sourceDate} for user ${authenticatedUserId}. No entries to copy.`
-      );
-      return [];
+    if (!sourceMealTypeId) {
+      throw new Error(`Invalid source meal type: ${sourceMealType}`);
     }
     const targetMealTypeId = await resolveMealTypeId(
       authenticatedUserId,
@@ -939,6 +940,19 @@ async function copyFoodEntries(
     );
     if (!targetMealTypeId) {
       throw new Error(`Invalid target meal type: ${targetMealType}`);
+    }
+    // 2. Fetch source entries by canonical id
+    const sourceEntries = await foodRepository.getFoodEntriesByDateAndMealType(
+      authenticatedUserId,
+      sourceDate,
+      sourceMealTypeId
+    );
+    if (sourceEntries.length === 0) {
+      log(
+        'debug',
+        `No food entries found for ${sourceMealType} on ${sourceDate} for user ${authenticatedUserId}. No entries to copy.`
+      );
+      return [];
     }
     // Map to keep track of duplicated food_entry_meals
     // Key: old_food_entry_meal_id, Value: new_food_entry_meal_id
@@ -990,7 +1004,7 @@ async function copyFoodEntries(
       const existingEntry = await foodRepository.getFoodEntryByDetails(
         authenticatedUserId,
         entry.food_id,
-        targetMealType,
+        targetMealTypeId,
         targetDate,
         entry.variant_id,
         newFoodEntryMealId // Use the new meal container ID for the duplicate check
@@ -1098,10 +1112,17 @@ async function copyFoodEntriesFromUser(
         'Forbidden: You do not have permissions to copy from this family member.'
       );
     }
+    const sourceMealTypeId = await resolveMealTypeId(
+      sourceUserId,
+      sourceMealType
+    );
+    if (!sourceMealTypeId) {
+      throw new Error(`Invalid source meal type: ${sourceMealType}`);
+    }
     const sourceEntries = await foodRepository.getFoodEntriesByDateAndMealType(
       sourceUserId,
       sourceDate,
-      sourceMealType
+      sourceMealTypeId
     );
     if (sourceEntries.length === 0) {
       log(
@@ -1153,7 +1174,7 @@ async function copyFoodEntriesFromUser(
       const existingEntry = await foodRepository.getFoodEntryByDetails(
         authenticatedUserId,
         entry.food_id,
-        targetMealType,
+        targetMealTypeId,
         targetDate,
         entry.variant_id,
         newFoodEntryMealId
@@ -1246,10 +1267,17 @@ async function copyFoodEntriesToUser(
         'Forbidden: You do not have permissions to copy to this family member.'
       );
     }
+    const sourceMealTypeId = await resolveMealTypeId(
+      authenticatedUserId,
+      sourceMealType
+    );
+    if (!sourceMealTypeId) {
+      throw new Error(`Invalid source meal type: ${sourceMealType}`);
+    }
     const sourceEntries = await foodRepository.getFoodEntriesByDateAndMealType(
       authenticatedUserId,
       sourceDate,
-      sourceMealType
+      sourceMealTypeId
     );
     if (sourceEntries.length === 0) {
       log(
@@ -1301,7 +1329,7 @@ async function copyFoodEntriesToUser(
       const existingEntry = await foodRepository.getFoodEntryByDetails(
         targetUserId,
         entry.food_id,
-        targetMealType,
+        targetMealTypeId,
         targetDate,
         entry.variant_id,
         newFoodEntryMealId
@@ -1432,25 +1460,32 @@ async function copyAllFoodEntries(
       );
       return [];
     }
-    // 2. Identify unique meal types (slots) that have data
-    const usedMealTypes = [
+    // 2. Identify unique meal type selectors (slots) that have data. Group by
+    // the canonical id when present so two types that share a name (a custom
+    // type colliding with a system default) stay separate; the name is only a
+    // fallback for legacy rows without an id.
+    const usedMealTypeSelectors = [
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...new Set(allSourceEntries.map((e: any) => e.meal_type)),
+      ...new Set(
+        allSourceEntries.map((e: any) => e.meal_type_id ?? e.meal_type)
+      ),
     ];
     log(
       'debug',
-      `copyAllFoodEntries: Found ${usedMealTypes.length} slots with data: ${usedMealTypes.join(', ')}`
+      `copyAllFoodEntries: Found ${usedMealTypeSelectors.length} slots with data: ${usedMealTypeSelectors.join(', ')}`
     );
     const allCopiedEntries = [];
-    // 3. Loop through each slot and perform a Deep Copy
-    for (const mealType of usedMealTypes) {
+    // 3. Loop through each slot and perform a Deep Copy. The selector may be
+    // a canonical id (normal rows) or a legacy name; copyFoodEntries resolves
+    // both to the exact id.
+    for (const mealTypeSelector of usedMealTypeSelectors) {
       const copiedEntries = await copyFoodEntries(
         authenticatedUserId,
         actingUserId,
         sourceDate,
-        mealType,
+        mealTypeSelector,
         targetDate,
-        mealType
+        mealTypeSelector
       );
       allCopiedEntries.push(...copiedEntries);
     }
