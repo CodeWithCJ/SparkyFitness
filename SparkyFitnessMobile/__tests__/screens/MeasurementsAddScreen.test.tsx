@@ -588,4 +588,119 @@ describe('MeasurementsAddScreen custom measurements', () => {
     expect(localDate).toBe('2024-06-15');
     expect(local.getHours()).toBe(payload.entry_hour);
   });
+
+  test.each(['Unlimited', 'All'])(
+    'a new %s row on a historical date is timestamped on that date',
+    async (frequency) => {
+      const catId = frequency === 'Unlimited' ? 'cat-u' : 'cat-a';
+      mockUseCustomCategories.mockReturnValue({
+        data: [
+          {
+            id: catId,
+            name: 'Caffeine',
+            display_name: 'Caffeine',
+            measurement_type: 'mg',
+            frequency,
+            data_type: 'numeric',
+          },
+        ],
+        isLoading: false,
+        isError: false,
+        refetch: mockRefetchCustomCategories,
+      });
+      mockUseCustomMeasurementsByDate.mockReturnValue({
+        data: [],
+        isLoading: false,
+        isError: false,
+        refetch: mockRefetchCustomEntries,
+      });
+
+      const screen = renderScreen();
+      fireEvent.press(screen.getByTestId(`add-custom-${catId}`));
+      fireEvent.changeText(screen.getByTestId('custom-input-new-1'), '80');
+      fireEvent.press(screen.getByText('Save'));
+
+      await waitFor(() => {
+        expect(saveCustomMutation.mutateAsync).toHaveBeenCalledTimes(1);
+      });
+
+      const payload = saveCustomMutation.mutateAsync.mock.calls[0][0];
+      expect(payload).toMatchObject({
+        category_id: catId,
+        value: 80,
+        entry_date: '2024-06-15',
+        entry_hour: null,
+      });
+      // The timestamp must land on the selected local day even though the row
+      // was added on a historical date (UTC conversion may shift the instant).
+      const local = new Date(payload.entry_timestamp);
+      const localDate = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`;
+      expect(localDate).toBe('2024-06-15');
+      expect(upsertMutation.mutateAsync).not.toHaveBeenCalled();
+    },
+  );
+
+  test('an empty new Hourly row colliding with the server does not block a weight save', async () => {
+    const defaultHour = new Date().getHours();
+    mockUseCustomCategories.mockReturnValue({
+      data: [
+        {
+          id: 'cat-h',
+          name: 'Caffeine',
+          display_name: 'Caffeine',
+          measurement_type: 'mg',
+          frequency: 'Hourly',
+          data_type: 'numeric',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomCategories,
+    });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [
+        {
+          id: 'entry-h',
+          category_id: 'cat-h',
+          value: '90',
+          entry_date: '2024-06-15',
+          entry_hour: defaultHour,
+          source: 'manual',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomEntries,
+    });
+
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('90')).toBeTruthy();
+    });
+
+    // The new row defaults to the current hour, which is already occupied by the
+    // server's `manual` entry — but the row is empty, so it must not block the
+    // built-in weight field from saving.
+    fireEvent.press(screen.getByTestId('add-custom-cat-h'));
+    fireEvent.changeText(screen.getAllByPlaceholderText('0')[0], '80');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(upsertMutation.mutateAsync).toHaveBeenCalled();
+    });
+
+    expect(upsertMutation.mutateAsync).toHaveBeenCalledWith({
+      entryDate: '2024-06-15',
+      weight: 80,
+    });
+    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(updateCustomMutation.mutateAsync).not.toHaveBeenCalled();
+
+    const { default: Toast } = require('react-native-toast-message');
+    expect(Toast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', text1: expect.stringContaining('already exists') }),
+    );
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
 });

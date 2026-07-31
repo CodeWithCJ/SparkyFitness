@@ -332,24 +332,34 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             key,
             entryId: null,
             hour: null,
-            timestamp: new Date().toISOString(),
+            // Daily entries normalize to the selected calendar day; build the
+            // timestamp client-side from selectedDate so it can never drift
+            // across UTC boundaries like a raw `new Date()` instant could.
+            timestamp: entryTimestampFor(selectedDate, 0),
             source: 'manual',
             value,
           };
       return { ...prev, [categoryId]: { rows: [nextRow], deleted: catForm?.deleted ?? [] } };
     });
-  }, []);
+  }, [selectedDate]);
 
   const addCustomRow = useCallback(
     (categoryId: string, frequency: string) => {
       const key = makeNewRowKey();
       const now = new Date();
       const hour = frequency === 'Hourly' ? now.getHours() : null;
+      // Every new row is timestamped from the selected calendar day plus the
+      // current local time, so a historical date keeps its own day (UTC
+      // conversion can shift the instant but never `entry_date`).
+      const timestamp =
+        hour != null
+          ? entryTimestampFor(selectedDate, hour)
+          : entryTimestampFor(selectedDate, now.getHours(), { minutes: now.getMinutes() });
       const row: CustomRow = {
         key,
         entryId: null,
         hour,
-        timestamp: hour != null ? entryTimestampFor(selectedDate, hour) : now.toISOString(),
+        timestamp,
         source: 'manual',
         value: '',
       };
@@ -546,6 +556,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       categories: customCategories ?? [],
       form: customForm,
       serverEntries: customMeasurements ?? [],
+      dirtyKeys: new Set(dirtyCustomKeysRef.current),
     });
     if (hourConflict) {
       const cat = customCategories?.find((c) => c.id === hourConflict.categoryId);

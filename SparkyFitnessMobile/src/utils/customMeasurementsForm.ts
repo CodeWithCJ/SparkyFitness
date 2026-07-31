@@ -113,33 +113,41 @@ export interface HourlyHourConflict {
  * Detects a duplicate Hourly slot: a locally added row whose (hour, source)
  * collides with a server entry or with another local row in the same category.
  * Server rows at the same hour with a different source are legitimate and do
- * not conflict. Returns the first conflict or null when none exists.
+ * not conflict, so the occupied slots are tracked as a set of `hour:source`
+ * combinations rather than a single source per hour.
+ *
+ * Only rows that will actually be saved are considered: existing rows keep
+ * their server slot, empty rows produce no POST, and rows absent from
+ * `dirtyKeys` (when provided) are unchanged. A server entry that was deleted
+ * locally (tombstone) is ignored because it will no longer exist after the
+ * save, so its slot can be reused. Returns the first conflict or null.
  */
 export function findHourlyHourConflict(params: {
   categories: CustomCategoryMeta[];
   form: CustomFormState;
   serverEntries: CustomMeasurementEntry[];
+  dirtyKeys?: ReadonlySet<string>;
 }): HourlyHourConflict | null {
-  const { categories, form, serverEntries } = params;
+  const { categories, form, serverEntries, dirtyKeys } = params;
   for (const cat of categories) {
     if (cat.frequency !== 'Hourly') continue;
     const catForm = form[cat.id];
     if (!catForm) continue;
-    const serverSourcesByHour = new Map<number, string>();
+    const tombstonedIds = new Set(catForm.deleted.map((d) => d.entryId));
+    const serverCombos = new Set<string>();
     for (const entry of serverEntries) {
       if (entry.category_id !== cat.id || entry.entry_hour == null) continue;
-      serverSourcesByHour.set(entry.entry_hour, entry.source ?? 'manual');
+      if (tombstonedIds.has(entry.id)) continue;
+      serverCombos.add(`${entry.entry_hour}:${entry.source ?? 'manual'}`);
     }
     const seen = new Set<string>();
     for (const row of catForm.rows) {
       if (row.hour == null) continue;
       if (row.entryId != null) continue; // existing rows keep their server slot
-      const source = row.source ?? 'manual';
-      if (serverSourcesByHour.get(row.hour) === source) {
-        return { categoryId: cat.id, hour: row.hour };
-      }
-      const key = `${row.hour}:${source}`;
-      if (seen.has(key)) {
+      if (row.value.trim() === '') continue; // empty rows produce no POST
+      if (dirtyKeys != null && !dirtyKeys.has(row.key)) continue; // unchanged rows produce no POST
+      const key = `${row.hour}:${row.source ?? 'manual'}`;
+      if (serverCombos.has(key) || seen.has(key)) {
         return { categoryId: cat.id, hour: row.hour };
       }
       seen.add(key);

@@ -372,6 +372,21 @@ describe('entryTimestampFor', () => {
     expect(date.getHours()).toBe(9);
     expect(date.getMinutes()).toBe(30);
   });
+
+  it('keeps the selected calendar day for local midnight via local getters', () => {
+    // The serialized instant may land on the previous UTC day in a positive
+    // offset timezone, so the assertion must go through the local getters
+    // instead of expecting the ISO string to start with the selected date.
+    const selectedDate = '2026-07-30';
+    const iso = entryTimestampFor(selectedDate, 0);
+
+    const date = new Date(iso);
+    const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+      date.getDate(),
+    ).padStart(2, '0')}`;
+    expect(localDate).toBe(selectedDate);
+    expect(date.getHours()).toBe(0);
+  });
 });
 
 describe('findHourlyHourConflict', () => {
@@ -438,6 +453,153 @@ describe('findHourlyHourConflict', () => {
         categories: [hourlyCat],
         form,
         serverEntries: [entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'apple_health' })],
+      })
+    ).toBeNull();
+  });
+
+  it('only blocks the matching source when several sources occupy the same hour, in either order', () => {
+    const entries = [
+      entry('h8a', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' }),
+      entry('h8b', 'cat-hourly', '78', { entry_hour: 8, source: 'apple_health' }),
+    ];
+
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' })],
+        deleted: [],
+      },
+    };
+
+    // Order of the server entries must not change the outcome: a new `manual`
+    // entry conflicts with the existing `manual` slot regardless of order.
+    for (const serverEntries of [entries, [...entries].reverse()]) {
+      expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries })).toEqual({
+        categoryId: 'cat-hourly',
+        hour: 8,
+      });
+    }
+  });
+
+  it('does not conflict with any source at the same hour when the new source differs', () => {
+    const serverEntries = [
+      entry('h8a', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' }),
+      entry('h8b', 'cat-hourly', '78', { entry_hour: 8, source: 'apple_health' }),
+    ];
+
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'apple_watch', value: '80' })],
+        deleted: [],
+      },
+    };
+
+    expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries })).toBeNull();
+  });
+
+  it('ignores an empty new row even when it collides with a server slot', () => {
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '  ' })],
+        deleted: [],
+      },
+    };
+
+    expect(
+      findHourlyHourConflict({
+        categories: [hourlyCat],
+        form,
+        serverEntries: [entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' })],
+      })
+    ).toBeNull();
+  });
+
+  it('ignores two empty new rows sharing the same hour', () => {
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [
+          row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '' }),
+          row({ key: 'new-2', entryId: null, hour: 8, source: 'manual', value: '' }),
+        ],
+        deleted: [],
+      },
+    };
+
+    expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries: [] })).toBeNull();
+  });
+
+  it('evaluates only the filled row when one of two rows is empty', () => {
+    // The empty row at hour 8 also collides with a server `manual` slot, but is
+    // skipped; the filled row at hour 9 is the only one evaluated and conflicts.
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [
+          row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '' }),
+          row({ key: 'new-2', entryId: null, hour: 9, source: 'manual', value: '80' }),
+        ],
+        deleted: [],
+      },
+    };
+
+    expect(
+      findHourlyHourConflict({
+        categories: [hourlyCat],
+        form,
+        serverEntries: [
+          entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' }),
+          entry('h9', 'cat-hourly', '85', { entry_hour: 9, source: 'manual' }),
+        ],
+      })
+    ).toEqual({ categoryId: 'cat-hourly', hour: 9 });
+  });
+
+  it('still blocks two filled rows sharing the same hour and source', () => {
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [
+          row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' }),
+          row({ key: 'new-2', entryId: null, hour: 8, source: 'manual', value: '120' }),
+        ],
+        deleted: [],
+      },
+    };
+
+    expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries: [] })).toEqual({
+      categoryId: 'cat-hourly',
+      hour: 8,
+    });
+  });
+
+  it('ignores new rows that are not dirty when dirtyKeys is provided', () => {
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' })],
+        deleted: [],
+      },
+    };
+
+    expect(
+      findHourlyHourConflict({
+        categories: [hourlyCat],
+        form,
+        serverEntries: [entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' })],
+        dirtyKeys: new Set(),
+      })
+    ).toBeNull();
+  });
+
+  it('ignores a tombstoned server entry so its slot can be reused', () => {
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' })],
+        deleted: [{ entryId: 'h8' }],
+      },
+    };
+
+    expect(
+      findHourlyHourConflict({
+        categories: [hourlyCat],
+        form,
+        serverEntries: [entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' })],
       })
     ).toBeNull();
   });
@@ -623,6 +785,47 @@ describe('buildCustomOps - tombstone deletes', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([{ kind: 'delete', entryId: 'h5', categoryId: 'cat-hourly' }]);
+    }
+  });
+
+  it('emits exactly one DELETE and one POST when a tombstoned slot is reused', () => {
+    // The existing 08:00 entry was deleted locally (tombstone) and a new 08:00
+    // row was added: the conflict check must not flag the reused slot, and the
+    // ops must contain exactly one DELETE and one POST.
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [
+          row({
+            key: 'new-1',
+            entryId: null,
+            hour: 8,
+            timestamp: '2026-07-30T08:00:00.000Z',
+            value: '80',
+          }),
+        ],
+        deleted: [{ entryId: 'h8' }],
+      },
+    };
+
+    const result = buildCustomOps({
+      categories: [numericCat('Hourly')],
+      form,
+      dirtyKeys: new Set(['new-1']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        { kind: 'delete', entryId: 'h8', categoryId: 'cat-hourly' },
+        {
+          kind: 'save',
+          categoryId: 'cat-hourly',
+          entryId: null,
+          value: 80,
+          hour: 8,
+          timestamp: '2026-07-30T08:00:00.000Z',
+        },
+      ]);
     }
   });
 });
