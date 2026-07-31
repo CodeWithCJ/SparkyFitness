@@ -4,6 +4,7 @@ import {
   useCustomMeasurementsByDate,
   useSaveCustomMeasurement,
   useDeleteCustomMeasurement,
+  useUpdateCustomMeasurement,
 } from '../../src/hooks/useCustomMeasurements';
 import { customMeasurementsByDateQueryKey } from '../../src/hooks/queryKeys';
 import {
@@ -11,6 +12,7 @@ import {
   fetchCustomMeasurementsByDate,
   saveCustomMeasurement,
   deleteCustomMeasurement,
+  updateCustomMeasurement,
 } from '../../src/services/api/measurementsApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
@@ -19,6 +21,7 @@ jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchCustomMeasurementsByDate: jest.fn(),
   saveCustomMeasurement: jest.fn(),
   deleteCustomMeasurement: jest.fn(),
+  updateCustomMeasurement: jest.fn(),
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -41,6 +44,9 @@ const mockSaveCustomMeasurement = saveCustomMeasurement as jest.MockedFunction<
 >;
 const mockDeleteCustomMeasurement = deleteCustomMeasurement as jest.MockedFunction<
   typeof deleteCustomMeasurement
+>;
+const mockUpdateCustomMeasurement = updateCustomMeasurement as jest.MockedFunction<
+  typeof updateCustomMeasurement
 >;
 
 describe('useCustomMeasurements', () => {
@@ -180,6 +186,33 @@ describe('useCustomMeasurements', () => {
       });
 
       expect(mockDeleteCustomMeasurement).toHaveBeenCalledWith('entry-1');
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({ queryKey: customMeasurementsByDateQueryKey('2024-06-15') }),
+      );
+    });
+  });
+
+  describe('useUpdateCustomMeasurement', () => {
+    test('updates an existing custom measurement by id and invalidates query', async () => {
+      const updatedEntry = { id: 'entry-1', category_id: 'cat-1', value: '125', entry_date: '2024-06-15' };
+      mockUpdateCustomMeasurement.mockResolvedValue(updatedEntry);
+
+      queryClient.setQueryData(customMeasurementsByDateQueryKey('2024-06-15'), []);
+      const spy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useUpdateCustomMeasurement(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          id: 'entry-1',
+          value: 125,
+          entryDate: '2024-06-15',
+        });
+      });
+
+      expect(mockUpdateCustomMeasurement).toHaveBeenCalledWith('entry-1', { value: 125 });
       expect(spy).toHaveBeenCalledWith(
         expect.objectContaining({ queryKey: customMeasurementsByDateQueryKey('2024-06-15') }),
       );

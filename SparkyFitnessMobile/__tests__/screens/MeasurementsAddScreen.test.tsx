@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MeasurementsAddScreen from '../../src/screens/MeasurementsAddScreen';
 import Button from '../../src/components/ui/Button';
 import { useCustomCategories, useCustomMeasurementsByDate } from '../../src/hooks/useCustomMeasurements';
+import { useScreenHeader } from '../../src/hooks/useScreenHeader';
 
 jest.spyOn(Alert, 'alert');
 
@@ -40,6 +41,11 @@ const mockNavigation = {
   dispatch: jest.fn(),
 } as any;
 
+const mockRefetchMeasurements = jest.fn();
+const mockRefetchCustomCategories = jest.fn();
+const mockRefetchCustomEntries = jest.fn();
+const mockUseScreenHeader = useScreenHeader as jest.MockedFunction<typeof useScreenHeader>;
+
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
@@ -53,6 +59,7 @@ jest.mock('../../src/hooks/useCustomMeasurements', () => ({
   useCustomMeasurementsByDate: jest.fn(),
   useSaveCustomMeasurement: jest.fn(),
   useDeleteCustomMeasurement: jest.fn(),
+  useUpdateCustomMeasurement: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useMeasurements', () => ({
@@ -61,7 +68,7 @@ jest.mock('../../src/hooks/useMeasurements', () => ({
     isLoading: false,
     isError: false,
     error: null,
-    refetch: jest.fn(),
+    refetch: mockRefetchMeasurements,
   })),
 }));
 
@@ -154,6 +161,11 @@ const deleteCustomMutation = {
   isPending: false,
 };
 
+const updateCustomMutation = {
+  mutateAsync: jest.fn().mockResolvedValue({}),
+  isPending: false,
+};
+
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -167,7 +179,12 @@ const renderScreen = () =>
     </SafeAreaProvider>,
   );
 
-const categoriesResult = { data: categories, isLoading: false, isError: false } as any;
+const categoriesResult = {
+  data: categories,
+  isLoading: false,
+  isError: false,
+  refetch: mockRefetchCustomCategories,
+} as any;
 const byDateResults: Record<string, any> = {};
 
 describe('MeasurementsAddScreen custom measurements', () => {
@@ -176,14 +193,20 @@ describe('MeasurementsAddScreen custom measurements', () => {
     mockUseCustomCategories.mockReturnValue(categoriesResult);
     mockUseCustomMeasurementsByDate.mockImplementation((date: string) => {
       if (!byDateResults[date]) {
-        byDateResults[date] = { data: entriesByDate[date] ?? [], isLoading: false, isError: false };
+        byDateResults[date] = {
+          data: entriesByDate[date] ?? [],
+          isLoading: false,
+          isError: false,
+          refetch: mockRefetchCustomEntries,
+        };
       }
       return byDateResults[date];
     });
 
-    const { useSaveCustomMeasurement, useDeleteCustomMeasurement } = require('../../src/hooks/useCustomMeasurements');
+    const { useSaveCustomMeasurement, useDeleteCustomMeasurement, useUpdateCustomMeasurement } = require('../../src/hooks/useCustomMeasurements');
     useSaveCustomMeasurement.mockReturnValue(saveCustomMutation);
     useDeleteCustomMeasurement.mockReturnValue(deleteCustomMutation);
+    useUpdateCustomMeasurement.mockReturnValue(updateCustomMutation);
 
     const { useUpsertCheckIn } = require('../../src/hooks/useUpsertCheckIn');
     useUpsertCheckIn.mockReturnValue(upsertMutation);
@@ -207,7 +230,7 @@ describe('MeasurementsAddScreen custom measurements', () => {
     expect(screen.queryByDisplayValue('999')).toBeNull();
   });
 
-  test('saves an edited custom measurement through the mutation hook', async () => {
+  test('saves an edited custom measurement through the update-by-id mutation', async () => {
     const screen = renderScreen();
 
     await waitFor(() => {
@@ -218,12 +241,13 @@ describe('MeasurementsAddScreen custom measurements', () => {
     fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
-      expect(saveCustomMutation.mutateAsync).toHaveBeenCalledWith({
-        category_id: 'cat-1',
+      expect(updateCustomMutation.mutateAsync).toHaveBeenCalledWith({
+        id: 'entry-1',
         value: 125,
-        entry_date: '2024-06-15',
+        entryDate: '2024-06-15',
       });
     });
+    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
     expect(upsertMutation.mutateAsync).not.toHaveBeenCalled();
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
@@ -340,6 +364,89 @@ describe('MeasurementsAddScreen custom measurements', () => {
 
     const screen = renderScreen();
     expect(screen.getByText(/couldn't load custom measurements/i)).toBeTruthy();
-    expect(screen.UNSAFE_getByType(Button).props.disabled).toBe(true);
+    const saveButtons = screen.UNSAFE_getAllByType(Button).filter((b) => b.props.variant === 'primary');
+    expect(saveButtons[0].props.disabled).toBe(true);
+  });
+
+  test('offers retry and keeps dismissal enabled when custom data fails to load', async () => {
+    mockUseCustomCategories.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: mockRefetchCustomCategories,
+    });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: mockRefetchCustomEntries,
+    });
+
+    const screen = renderScreen();
+    expect(screen.getByText(/couldn't load custom measurements/i)).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Try again'));
+
+    expect(mockRefetchCustomCategories).toHaveBeenCalled();
+    expect(mockRefetchCustomEntries).toHaveBeenCalled();
+    expect(mockRefetchMeasurements).toHaveBeenCalled();
+
+    // A fetch error never traps the user: dismissal stays enabled while the
+    // save action is disabled.
+    const headerConfig = mockUseScreenHeader.mock.calls.at(-1)?.[0];
+    expect(headerConfig.left.disabled).toBe(false);
+    expect(headerConfig.right.disabled).toBe(true);
+  });
+
+  test('saving only built-in fields leaves custom entries untouched', async () => {
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getAllByPlaceholderText('0')[0], '80');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(upsertMutation.mutateAsync).toHaveBeenCalled();
+    });
+    expect(upsertMutation.mutateAsync).toHaveBeenCalledWith({
+      entryDate: '2024-06-15',
+      weight: 80,
+    });
+    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(updateCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(deleteCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  test('a failed custom mutation refetches, keeps the screen open, and reports a partial save', async () => {
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+    });
+
+    updateCustomMutation.mutateAsync.mockRejectedValueOnce(new Error('network down'));
+    fireEvent.changeText(screen.getByDisplayValue('120'), '125');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(mockRefetchCustomEntries).toHaveBeenCalled();
+    });
+
+    expect(mockRefetchMeasurements).toHaveBeenCalled();
+    expect(mockRefetchCustomCategories).toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+
+    const { default: Toast } = require('react-native-toast-message');
+    expect(Toast.show).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        text1: 'Some changes may not have been saved.',
+      }),
+    );
   });
 });

@@ -125,6 +125,12 @@
     "clearCount": "Wyczyścić {{count}} {{noun}}?",
     "willBeClearedList": "{{labels}} zostanie wyczyszczone.",
     "customLoadError": "Nie udało się wczytać niestandardowych pomiarów.",
+    "customRetry": "Spróbuj ponownie",
+    "yes": "Tak",
+    "no": "Nie",
+    "clear": "Wyczyść",
+    "addEntry": "Dodaj wpis",
+    "someChangesSaved": "Niektóre zmiany mogły nie zostać zapisane.",
     "weightLabel": "Waga ({{unit}})",
     "weightStLabel": "Waga (st, lb)"
   },

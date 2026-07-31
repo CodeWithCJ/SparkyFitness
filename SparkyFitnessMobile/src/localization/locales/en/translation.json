@@ -124,6 +124,12 @@
     "clearCount": "Clear {{count}} {{noun}}?",
     "willBeClearedList": "{{labels}} will be cleared.",
     "customLoadError": "Couldn't load custom measurements.",
+    "customRetry": "Try again",
+    "yes": "Yes",
+    "no": "No",
+    "clear": "Clear",
+    "addEntry": "Add entry",
+    "someChangesSaved": "Some changes may not have been saved.",
     "weightLabel": "Weight ({{unit}})",
     "weightStLabel": "Weight (st, lb)"
   },

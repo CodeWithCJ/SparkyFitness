@@ -1261,6 +1261,50 @@ async function deleteCustomMeasurement(id: any, userId: any) {
     client.release();
   }
 }
+
+export interface UpdateCustomMeasurementInput {
+  value?: string | number | boolean;
+  notes?: string;
+  source?: string;
+}
+
+/**
+ * Updates a single custom-measurement row by id. Unlike the POST upsert, this
+ * targets a specific entry, which is required for frequencies the server
+ * always INSERTs on POST (`All`/`Unlimited`). `undefined` fields keep their
+ * current column value via COALESCE.
+ */
+async function updateCustomMeasurement(
+  id: string,
+  userId: string,
+  actingUserId: string,
+  input: UpdateCustomMeasurementInput
+) {
+  const client = await getClient(actingUserId); // RLS context from the acting user
+  try {
+    const result = await client.query(
+      `UPDATE custom_measurements
+       SET value = COALESCE($1, value),
+           notes = COALESCE($2, notes),
+           source = COALESCE($3, source),
+           updated_by_user_id = $4,
+           updated_at = now()
+       WHERE id = $5 AND user_id = $6
+       RETURNING *`,
+      [
+        input.value ?? null,
+        input.notes ?? null,
+        input.source ?? 'manual',
+        actingUserId,
+        id,
+        userId,
+      ]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
 /**
  * Compute step calories for a user on a given date.
  * Background steps = total check-in steps minus steps already logged in exercise sessions.
@@ -1411,6 +1455,7 @@ export { getCustomMeasurementsByDateRange };
 export { getCustomCategoryOwnerId };
 export { upsertCustomMeasurement };
 export { deleteCustomMeasurement };
+export { updateCustomMeasurement };
 export { getCustomMeasurementOwnerId };
 export { getLatestMeasurement };
 export { getLatestCheckInMeasurementsOnOrBeforeDate };
@@ -1601,6 +1646,7 @@ export default {
   upsertCustomMeasurement,
   bulkUpsertCustomMeasurements,
   deleteCustomMeasurement,
+  updateCustomMeasurement,
   getCustomMeasurementOwnerId,
   getLatestMeasurement,
   getLatestCheckInMeasurementsOnOrBeforeDate,

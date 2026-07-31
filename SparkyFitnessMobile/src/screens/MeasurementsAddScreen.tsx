@@ -14,6 +14,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import CustomBooleanControl from '../components/CustomBooleanControl';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useUpsertCheckIn } from '../hooks/useUpsertCheckIn';
@@ -30,6 +31,14 @@ import {
   stonesLbsToKg,
 } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
+import {
+  syncCustomForm,
+  buildCustomOps,
+  isMultiEntryFrequency,
+  type CustomFormState,
+  type CustomRow,
+  type CustomOp,
+} from '../utils/customMeasurementsForm';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
@@ -40,8 +49,8 @@ import {
   useCustomMeasurementsByDate,
   useSaveCustomMeasurement,
   useDeleteCustomMeasurement,
+  useUpdateCustomMeasurement,
 } from '../hooks/useCustomMeasurements';
-import type { CustomMeasurementEntry } from '../types/customMeasurements';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -115,16 +124,10 @@ const joinWithAnd = (items: string[]): string => {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 };
 
-// Describes a custom-measurement mutation without calling the API directly.
-type CustomOp =
-  | { kind: 'save'; categoryId: string; value: string | number | boolean }
-  | { kind: 'delete'; entryId: string; categoryId: string };
-
-// Distinguishes "no custom changes" from "custom form failed validation" so
-// handleSave can abort before any mutation runs when the form is invalid.
-type BuildCustomOpsResult =
-  | { ok: true; operations: CustomOp[] }
-  | { ok: false };
+const formatHourLabel = (hour: number | null): string => {
+  if (hour == null) return '';
+  return `${String(hour).padStart(2, '0')}:00`;
+};
 
 const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
@@ -147,12 +150,16 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const dirtyFieldsRef = useRef<Set<FieldKey>>(new Set());
   const lastDateRef = useRef<string | null>(null);
 
-  const [customForm, setCustomForm] = useState<Record<string, string>>({});
-  const [prefilledCustom, setPrefilledCustom] = useState<Set<string>>(new Set());
-  const dirtyCustomRef = useRef<Set<string>>(new Set());
+  const [customForm, setCustomForm] = useState<CustomFormState>({});
+  const customFormRef = useRef<CustomFormState>({});
+  customFormRef.current = customForm;
+  // Per-row dirty tracking: a refetch preserves dirty rows (local values) and
+  // drops untouched rows that no longer exist on the server.
+  const dirtyCustomKeysRef = useRef<Set<string>>(new Set());
   const lastCustomDateRef = useRef<string | null>(null);
+  const newRowCounterRef = useRef(0);
 
-  const { measurements, isLoading } = useMeasurements({ date: selectedDate });
+  const { measurements, isLoading, refetch: refetchMeasurements } = useMeasurements({ date: selectedDate });
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   // Weight supports a third "stones + lbs" mode that renders as two inputs.
   const weightMode: 'kg' | 'lbs' | 'st_lbs' = preferences?.default_weight_unit ?? 'kg';
@@ -164,18 +171,21 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const heightMode: 'cm' | 'inches' | 'ft_in' =
     preferences?.default_measurement_unit ?? 'cm';
 
-  const upsertMutation = useUpsertCheckIn();
+  const upsertMutation = useUpsertCheckIn({ showErrorToast: false });
   const saveCustomMutation = useSaveCustomMeasurement();
   const deleteCustomMutation = useDeleteCustomMeasurement();
+  const updateCustomMutation = useUpdateCustomMeasurement();
   const {
     data: customCategories,
     isLoading: isCustomCategoriesLoading,
     isError: isCustomCategoriesError,
+    refetch: refetchCustomCategories,
   } = useCustomCategories();
   const {
     data: customMeasurements,
     isLoading: isCustomMeasurementsLoading,
     isError: isCustomMeasurementsError,
+    refetch: refetchCustomEntries,
   } = useCustomMeasurementsByDate(selectedDate);
 
   // Sync the form to the latest measurements snapshot. Re-runs on every
@@ -256,40 +266,21 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     setPrefilledKeys(prefilled);
   }, [selectedDate, isLoading, isPreferencesLoading, measurements, weightMode, bodyUnit, heightMode]);
 
+  // Reconcile the custom form with the latest server entries. A date change
+  // resets the dirty set so the previous day's input is never carried over.
   useEffect(() => {
-    // A date change must not carry the previous day's custom input forward, so
-    // drop dirty tracking and rebuild the form from the new date's data.
     if (lastCustomDateRef.current !== selectedDate) {
       lastCustomDateRef.current = selectedDate;
-      dirtyCustomRef.current = new Set();
+      dirtyCustomKeysRef.current = new Set();
     }
-
-    const dirtyCustom = new Set(dirtyCustomRef.current);
-    const next: Record<string, string> = {};
-    const prefilled = new Set<string>();
-    const entryByCat = new Map<string, CustomMeasurementEntry>();
-    if (customMeasurements) {
-      for (const entry of customMeasurements) {
-        entryByCat.set(entry.category_id, entry);
-      }
-    }
-    for (const cat of customCategories ?? []) {
-      const existing = entryByCat.get(cat.id);
-      if (existing != null) {
-        next[cat.id] = existing.value;
-        prefilled.add(cat.id);
-      }
-    }
-    setCustomForm((current) => {
-      if (dirtyCustom.size === 0) return { ...next };
-      const merged = { ...current };
-      for (const cat of customCategories ?? []) {
-        if (dirtyCustom.has(cat.id)) continue;
-        if (next[cat.id] !== undefined) merged[cat.id] = next[cat.id];
-      }
-      return merged;
+    const dirtyKeys = new Set(dirtyCustomKeysRef.current);
+    const synced = syncCustomForm({
+      categories: customCategories ?? [],
+      serverEntries: customMeasurements ?? [],
+      current: customFormRef.current,
+      dirtyKeys,
     });
-    setPrefilledCustom(prefilled);
+    setCustomForm(synced.form);
   }, [selectedDate, customCategories, customMeasurements]);
 
   const updateField = useCallback((key: keyof FormState, value: string) => {
@@ -305,6 +296,83 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleClose = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
+
+  const makeNewRowKey = useCallback((): string => {
+    newRowCounterRef.current += 1;
+    return `new-${newRowCounterRef.current}`;
+  }, []);
+
+  const updateCustomRowValue = useCallback((categoryId: string, rowKey: string, value: string) => {
+    dirtyCustomKeysRef.current.add(rowKey);
+    setCustomForm((prev) => {
+      const catForm = prev[categoryId];
+      if (!catForm) return prev;
+      return {
+        ...prev,
+        [categoryId]: {
+          ...catForm,
+          rows: catForm.rows.map((r) => (r.key === rowKey ? { ...r, value } : r)),
+        },
+      };
+    });
+  }, []);
+
+  const setSingleCustomValue = useCallback((categoryId: string, value: string) => {
+    const existing = customFormRef.current[categoryId]?.rows[0] ?? null;
+    const key = existing?.key ?? `single-${categoryId}`;
+    dirtyCustomKeysRef.current.add(key);
+    setCustomForm((prev) => {
+      const catForm = prev[categoryId];
+      const row = catForm?.rows[0] ?? null;
+      const nextRow: CustomRow = row
+        ? { ...row, value }
+        : { key, entryId: null, hour: null, timestamp: new Date().toISOString(), value };
+      return { ...prev, [categoryId]: { rows: [nextRow], deleted: catForm?.deleted ?? [] } };
+    });
+  }, []);
+
+  const addCustomRow = useCallback(
+    (categoryId: string, frequency: string) => {
+      const key = makeNewRowKey();
+      const now = new Date();
+      const row: CustomRow = {
+        key,
+        entryId: null,
+        hour: frequency === 'Hourly' ? now.getHours() : null,
+        timestamp: now.toISOString(),
+        value: '',
+      };
+      dirtyCustomKeysRef.current.add(key);
+      setCustomForm((prev) => {
+        const catForm = prev[categoryId] ?? { rows: [], deleted: [] };
+        return { ...prev, [categoryId]: { ...catForm, rows: [...catForm.rows, row] } };
+      });
+    },
+    [makeNewRowKey],
+  );
+
+  const deleteCustomRow = useCallback((categoryId: string, row: CustomRow) => {
+    setCustomForm((prev) => {
+      const catForm = prev[categoryId];
+      if (!catForm) return prev;
+      if (row.entryId != null) {
+        return {
+          ...prev,
+          [categoryId]: {
+            rows: catForm.rows.filter((r) => r.key !== row.key),
+            deleted: [...catForm.deleted, { entryId: row.entryId }],
+          },
+        };
+      }
+      return { ...prev, [categoryId]: { ...catForm, rows: catForm.rows.filter((r) => r.key !== row.key) } };
+    });
+  }, []);
+
+  const handleRetryCustomData = useCallback(() => {
+    refetchCustomCategories();
+    refetchCustomEntries();
+    refetchMeasurements();
+  }, [refetchCustomCategories, refetchCustomEntries, refetchMeasurements]);
 
   const handleSave = useCallback(() => {
     type FieldResult =
@@ -438,43 +506,17 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ];
     const hasAnyField = fieldKeys.some((k) => payload[k] !== undefined);
 
-    // Build operation descriptors only; execution happens through the mutation
-    // layer in doSave below. `ok: false` means the custom form failed
-    // validation, so handleSave must stop before touching the API.
-    const buildCustomOps = (): BuildCustomOpsResult => {
-      const ops: CustomOp[] = [];
-      if (!customCategories) return { ok: true, operations: ops };
-      const entryByCat = new Map<string, CustomMeasurementEntry>();
-      for (const entry of customMeasurements ?? []) {
-        entryByCat.set(entry.category_id, entry);
-      }
-      for (const cat of customCategories) {
-        const value = customForm[cat.id]?.trim() ?? '';
-        if (value) {
-          let parsedValue: string | number | boolean = value;
-          if (cat.data_type === 'numeric') {
-            parsedValue = Number(value);
-            if (Number.isNaN(parsedValue)) {
-              Toast.show({
-                type: 'error',
-                text1: `Invalid ${cat.display_name ?? cat.name}`,
-                text2: 'Enter a number.',
-              });
-              return { ok: false };
-            }
-          }
-          ops.push({ kind: 'save', categoryId: cat.id, value: parsedValue });
-        } else if (prefilledCustom.has(cat.id)) {
-          const existing = entryByCat.get(cat.id);
-          if (existing) {
-            ops.push({ kind: 'delete', entryId: existing.id, categoryId: cat.id });
-          }
-        }
-      }
-      return { ok: true, operations: ops };
-    };
-
-    const customResult = buildCustomOps();
+    // Build operation descriptors for CHANGED custom rows only. `ok: false`
+    // means a changed row failed validation, so handleSave stops before any
+    // mutation runs; untouched rows are never parsed and cannot block saves.
+    const customResult = buildCustomOps({
+      categories: customCategories ?? [],
+      form: customForm,
+      dirtyKeys: new Set(dirtyCustomKeysRef.current),
+      onInvalid: (label) => {
+        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: 'Enter a number.' });
+      },
+    });
     if (!customResult.ok) return;
     const customOps = customResult.operations;
 
@@ -486,14 +528,22 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const doSave = async () => {
       try {
         for (const op of customOps) {
-          if (op.kind === 'save') {
+          if (op.kind === 'delete') {
+            await deleteCustomMutation.mutateAsync({ id: op.entryId, entryDate: selectedDate });
+          } else if (op.entryId != null) {
+            await updateCustomMutation.mutateAsync({
+              id: op.entryId,
+              value: op.value,
+              entryDate: selectedDate,
+            });
+          } else {
             await saveCustomMutation.mutateAsync({
               category_id: op.categoryId,
               value: op.value,
               entry_date: selectedDate,
+              entry_hour: op.hour,
+              entry_timestamp: op.timestamp ?? undefined,
             });
-          } else {
-            await deleteCustomMutation.mutateAsync({ id: op.entryId, entryDate: selectedDate });
           }
         }
         if (hasAnyField) {
@@ -502,12 +552,22 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         Toast.show({ type: 'success', text1: t('measurements.saved') });
         navigation.goBack();
       } catch {
-        Toast.show({ type: 'error', text1: 'Could not save all measurements' });
+        // A mutation failed after earlier ones may have succeeded. Do NOT show
+        // success, do NOT close the screen; refetch so the form reflects the
+        // server and surface one partial-failure message.
+        dirtyCustomKeysRef.current = new Set();
+        setCustomForm({});
+        await Promise.allSettled([
+          refetchMeasurements(),
+          refetchCustomCategories(),
+          refetchCustomEntries(),
+        ]);
+        Toast.show({ type: 'error', text1: t('measurements.someChangesSaved') });
       }
     };
 
-    // Custom deletes (clearing a prefilled custom field) must also go through
-    // the confirmation Alert, and the message lists the affected category names.
+    // Custom deletes (clearing a prefilled entry or pressing the row delete
+    // button) require confirmation and the message lists affected categories.
     const customDeleteOps = customOps.filter(
       (op): op is Extract<CustomOp, { kind: 'delete' }> => op.kind === 'delete',
     );
@@ -533,19 +593,25 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, t, customCategories, customMeasurements, customForm, prefilledCustom]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, updateCustomMutation, navigation, t, customCategories, customForm, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
 
   const isCustomDataLoading = isCustomCategoriesLoading || isCustomMeasurementsLoading;
   const isCustomDataError = isCustomCategoriesError || isCustomMeasurementsError;
+  const isMutationPending =
+    upsertMutation.isPending ||
+    saveCustomMutation.isPending ||
+    deleteCustomMutation.isPending ||
+    updateCustomMutation.isPending;
   const isSaveDisabled =
     isLoading ||
     isPreferencesLoading ||
     isCustomDataLoading ||
     isCustomDataError ||
-    upsertMutation.isPending ||
-    saveCustomMutation.isPending ||
-    deleteCustomMutation.isPending;
-  const isSaving = upsertMutation.isPending || saveCustomMutation.isPending || deleteCustomMutation.isPending;
+    isMutationPending;
+  // Closing stays available during a fetch error so the user is never trapped;
+  // only an in-flight mutation blocks dismissal.
+  const isDismissDisabled = isMutationPending;
+  const isSaving = isMutationPending;
 
   const weightLabel =
     weightMode === 'st_lbs' ? t('measurements.weightStLabel') : t('measurements.weightLabel', { unit: weightMode });
@@ -577,7 +643,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const header = useScreenHeader({
     title: t('measurements.title'),
-    left: { kind: 'dismiss', onPress: handleClose, disabled: isSaveDisabled },
+    left: { kind: 'dismiss', onPress: handleClose, disabled: isDismissDisabled },
     right: {
       kind: 'primary',
       label: SAVE_LABEL,
@@ -589,6 +655,107 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       identifier: 'measurements-save',
     },
   });
+
+  const booleanLabels = {
+    yes: t('measurements.yes'),
+    no: t('measurements.no'),
+    clear: t('measurements.clear'),
+  };
+
+  const renderCustomCategory = (cat: NonNullable<typeof customCategories>[number]) => {
+    const label = cat.display_name ?? cat.name;
+    const suffix = cat.measurement_type ? ` (${cat.measurement_type})` : '';
+    const isMulti = isMultiEntryFrequency(cat.frequency);
+    const isBoolean = cat.data_type === 'boolean';
+    const isNumeric = cat.data_type === 'numeric' || cat.data_type == null;
+    const catForm = customForm[cat.id] ?? { rows: [], deleted: [] };
+
+    if (isMulti) {
+      return (
+        <View key={cat.id} className="mb-4">
+          <Text className="text-text-secondary text-sm mb-1">
+            {label}{suffix}
+          </Text>
+          {catForm.rows.map((row) => (
+            <View key={row.key} className="mb-2">
+              <View className="flex-row items-center gap-2">
+                {cat.frequency === 'Hourly' && (
+                  <Text className="text-text-secondary text-sm w-12">
+                    {formatHourLabel(row.hour)}
+                  </Text>
+                )}
+                <View className="flex-1">
+                  {isBoolean ? (
+                    <CustomBooleanControl
+                      value={row.value}
+                      onChange={(v) => updateCustomRowValue(cat.id, row.key, v)}
+                      labels={booleanLabels}
+                    />
+                  ) : (
+                    <FormInput
+                      value={row.value}
+                      onChangeText={(v) => updateCustomRowValue(cat.id, row.key, v)}
+                      keyboardType={isNumeric ? 'decimal-pad' : 'default'}
+                      placeholder="0"
+                      returnKeyType="done"
+                    />
+                  )}
+                </View>
+                <TouchableOpacity
+                  onPress={() => deleteCustomRow(cat.id, row)}
+                  hitSlop={8}
+                  testID={`delete-custom-${row.key}`}
+                >
+                  <Icon name="trash" size={18} color={textSecondary} />
+                </TouchableOpacity>
+              </View>
+              {row.entryId != null && row.value.trim() === '' ? (
+                <Text className="text-xs italic mt-1" style={{ color: textSecondary }}>
+                  {t('measurements.willBeCleared')}
+                </Text>
+              ) : null}
+            </View>
+          ))}
+          <TouchableOpacity
+            onPress={() => addCustomRow(cat.id, cat.frequency)}
+            className="mt-1"
+            testID={`add-custom-${cat.id}`}
+          >
+            <Text className="text-accent-primary text-sm">{t('measurements.addEntry')}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const row = catForm.rows[0] ?? null;
+    return (
+      <View key={cat.id} className="mb-4">
+        <Text className="text-text-secondary text-sm mb-1">
+          {label}{suffix}
+        </Text>
+        {isBoolean ? (
+          <CustomBooleanControl
+            value={row?.value ?? ''}
+            onChange={(v) => setSingleCustomValue(cat.id, v)}
+            labels={booleanLabels}
+          />
+        ) : (
+          <FormInput
+            value={row?.value ?? ''}
+            onChangeText={(v) => setSingleCustomValue(cat.id, v)}
+            keyboardType={isNumeric ? 'decimal-pad' : 'default'}
+            placeholder="0"
+            returnKeyType="done"
+          />
+        )}
+        {row?.entryId != null && row.value.trim() === '' ? (
+          <Text className="text-xs italic mt-1" style={{ color: textSecondary }}>
+            {t('measurements.willBeCleared')}
+          </Text>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <View
@@ -754,9 +921,14 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {isCustomDataError ? (
               <View className="mt-4 mb-2 py-6 items-center">
-                <Text className="text-text-secondary text-sm text-center">
+                <Text className="text-text-secondary text-sm text-center mb-3">
                   {t('measurements.customLoadError')}
                 </Text>
+                <Button variant="secondary" onPress={handleRetryCustomData} className="px-6">
+                  <Text className="text-text-primary text-sm font-semibold">
+                    {t('measurements.customRetry')}
+                  </Text>
+                </Button>
               </View>
             ) : isCustomDataLoading ? (
               <View className="mt-4 mb-2 py-6 items-center">
@@ -765,47 +937,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             ) : (
               customCategories &&
               customCategories.length > 0 && (
-              <View className="mt-4 mb-2">
-                <Text className="text-text-primary text-base font-semibold mb-3">
-                  Custom Measurements
-                </Text>
-                {customCategories.map((cat) => {
-                  const label = cat.display_name ?? cat.name;
-                  const suffix = cat.measurement_type ? ` (${cat.measurement_type})` : '';
-                  const isBoolean = cat.data_type === 'boolean';
-                  const isNumeric = cat.data_type === 'numeric' || cat.data_type == null;
-                  const value = customForm[cat.id] ?? '';
-                  const empty = value.trim() === '';
-                  return (
-                    <View key={cat.id} className="mb-4">
-                      <Text className="text-text-secondary text-sm mb-1">
-                        {label}{suffix}
-                      </Text>
-                      {isBoolean ? (
-                        <Text className="text-text-secondary text-sm">
-                          {value === 'true' ? 'Yes' : 'No'}
-                        </Text>
-                      ) : (
-                        <FormInput
-                          value={value}
-                          onChangeText={(v) => {
-                            dirtyCustomRef.current.add(cat.id);
-                            setCustomForm((prev) => ({ ...prev, [cat.id]: v }));
-                          }}
-                          keyboardType={isNumeric ? 'decimal-pad' : 'default'}
-                          placeholder="0"
-                          returnKeyType="done"
-                        />
-                      )}
-                      {prefilledCustom.has(cat.id) && empty ? (
-                        <Text className="text-xs italic mt-1" style={{ color: textSecondary }}>
-                          {t('measurements.willBeCleared')}
-                        </Text>
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </View>
+                <View className="mt-4 mb-2">
+                  <Text className="text-text-primary text-base font-semibold mb-3">
+                    Custom Measurements
+                  </Text>
+                  {customCategories.map(renderCustomCategory)}
+                </View>
               )
             )}
           </>

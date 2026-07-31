@@ -1,16 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Toast from 'react-native-toast-message';
 
 import {
   fetchCustomCategories,
   fetchCustomMeasurementsByDate,
   saveCustomMeasurement,
   deleteCustomMeasurement,
+  updateCustomMeasurement,
 } from '../services/api/measurementsApi';
 import { customCategoriesQueryKey, customMeasurementsByDateQueryKey } from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { addLog } from '../services/LogService';
-import type { SaveCustomMeasurementPayload } from '../types/customMeasurements';
+import type { SaveCustomMeasurementPayload, UpdateCustomMeasurementPayload } from '../types/customMeasurements';
 
 export function useCustomCategories() {
   return useQuery({
@@ -43,7 +43,6 @@ export function useSaveCustomMeasurement() {
     },
     onError: (err: Error) => {
       addLog(`Failed to save custom measurement: ${err.message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save measurement' });
     },
   });
 }
@@ -59,7 +58,31 @@ export function useDeleteCustomMeasurement() {
     },
     onError: (err: Error) => {
       addLog(`Failed to delete custom measurement: ${err.message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to delete measurement' });
+    },
+  });
+}
+
+export interface UpdateCustomMeasurementVars extends UpdateCustomMeasurementPayload {
+  id: string;
+  entryDate: string;
+}
+
+export function useUpdateCustomMeasurement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (vars: UpdateCustomMeasurementVars) =>
+      updateCustomMeasurement(vars.id, {
+        value: vars.value,
+        notes: vars.notes,
+        source: vars.source,
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: customMeasurementsByDateQueryKey(vars.entryDate) });
+      refreshHealthSyncCache(queryClient);
+    },
+    onError: (err: Error) => {
+      addLog(`Failed to update custom measurement: ${err.message}`, 'ERROR');
     },
   });
 }

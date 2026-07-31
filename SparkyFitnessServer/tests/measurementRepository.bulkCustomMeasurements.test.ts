@@ -189,3 +189,69 @@ describe('measurementRepository.bulkUpsertCustomMeasurements', () => {
     expect(mockClient.release).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('measurementRepository.updateCustomMeasurement', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('updates value/notes/source by id and user, stamped by the acting user', async () => {
+    const updatedRow = { id: 'cm-existing', value: '125', source: 'manual' };
+    mockClient.query.mockResolvedValue({ rows: [updatedRow] });
+
+    const result = await measurementRepository.updateCustomMeasurement(
+      'cm-existing',
+      'user-1',
+      'acting-1',
+      { value: 125, notes: undefined, source: 'manual' }
+    );
+
+    expect(getClient).toHaveBeenCalledWith('acting-1');
+    const [text, values] = mockClient.query.mock.calls[0];
+    expect(text).toContain('UPDATE custom_measurements');
+    expect(text).toContain('WHERE id = $5 AND user_id = $6');
+    expect(values).toEqual([125, null, 'manual', 'acting-1', 'cm-existing', 'user-1']);
+    expect(result).toEqual(updatedRow);
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the current value via COALESCE when value is omitted', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ id: 'cm-existing', value: '42' }] });
+
+    await measurementRepository.updateCustomMeasurement(
+      'cm-existing',
+      'user-1',
+      'acting-1',
+      { notes: 'edited' }
+    );
+
+    const [text, values] = mockClient.query.mock.calls[0];
+    expect(text).toContain('value = COALESCE($1, value)');
+    expect(values![0]).toBeNull();
+    expect(values![2]).toBe('manual');
+  });
+
+  it('returns an empty row set when the entry does not belong to the user', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    const result = await measurementRepository.updateCustomMeasurement(
+      'cm-other',
+      'user-1',
+      'acting-1',
+      { value: 125 }
+    );
+
+    expect(result).toBeUndefined();
+  });
+});
