@@ -11,6 +11,7 @@ import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodRepository.js';
+import mealTypeRepository from '../models/mealType.js';
 import foodEntryService from '../services/foodEntryService.js';
 import { log } from '../config/logging.js';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -44,6 +45,12 @@ vi.mock('../models/foodRepository', () => ({
     getFoodById: vi.fn(),
     getFoodVariantById: vi.fn(),
     getFoodVariantsByFoodId: vi.fn(),
+  },
+}));
+vi.mock('../models/mealType', () => ({
+  default: {
+    getAllMealTypes: vi.fn(),
+    getMealTypeById: vi.fn(),
   },
 }));
 vi.mock('../services/preferenceService', () => ({
@@ -422,6 +429,28 @@ describe('chatService', () => {
       vi.mocked(measurementRepository.getCustomCategories).mockResolvedValue(
         []
       );
+      vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+        {
+          id: 'breakfast-id',
+          name: 'Breakfast',
+          sort_order: 1,
+        },
+        {
+          id: 'lunch-id',
+          name: 'Lunch',
+          sort_order: 2,
+        },
+        {
+          id: 'dinner-id',
+          name: 'Dinner',
+          sort_order: 3,
+        },
+        {
+          id: 'snacks-id',
+          name: 'Snacks',
+          sort_order: 4,
+        },
+      ]);
     });
 
     it('executes a log_food tool call in-process, derives food_added from call input, and saves history', async () => {
@@ -476,7 +505,7 @@ describe('chatService', () => {
           entry_date: '2026-06-10',
           quantity: 2,
           unit: 'serving',
-          meal_type: 'breakfast',
+          meal_type_id: 'breakfast-id',
         }
       );
       expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(

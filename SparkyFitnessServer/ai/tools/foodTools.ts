@@ -1186,7 +1186,7 @@ Actions:
               );
               if (!mealType) {
                 return ERRORS.VALIDATION(
-                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                  `Meal type "${args.meal_type_id ?? args.meal_type}" was not found or is not available to this user.`
                 );
               }
               let foodId = args.food_id;
@@ -1233,9 +1233,7 @@ Actions:
                   entry_date: entryDate,
                   quantity: resolvedLog.quantity,
                   unit: resolvedLog.unit,
-                  ...(mealType.id
-                    ? { meal_type_id: mealType.id }
-                    : { meal_type: mealType.name }),
+                  meal_type_id: mealType.id,
                   entry_time: args.entry_time,
                 }
               );
@@ -1252,7 +1250,7 @@ Actions:
               );
               if (!mealType) {
                 return ERRORS.VALIDATION(
-                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                  `Meal type "${args.meal_type_id ?? args.meal_type}" was not found or is not available to this user.`
                 );
               }
               const entryDate = args.entry_date || todayInZone(tz);
@@ -1319,9 +1317,7 @@ Actions:
                     entry_date: entryDate,
                     quantity: logged.quantity,
                     unit: logged.unit,
-                    ...(mealType.id
-                      ? { meal_type_id: mealType.id }
-                      : { meal_type: mealType.name }),
+                    meal_type_id: mealType.id,
                     entry_time: args.entry_time,
                   }
                 );
@@ -1470,9 +1466,7 @@ Actions:
                 entry_date: entryDate,
                 quantity: logged.quantity,
                 unit: logged.unit,
-                ...(mealType.id
-                  ? { meal_type_id: mealType.id }
-                  : { meal_type: mealType.name }),
+                meal_type_id: mealType.id,
                 entry_time: args.entry_time,
               });
               return formatConfirmation(
@@ -1496,7 +1490,7 @@ Actions:
                   : undefined;
               if (mealType === null) {
                 return ERRORS.VALIDATION(
-                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                  `Meal type "${args.meal_type_id ?? args.meal_type}" was not found or is not available to this user.`
                 );
               }
               // The `|| null` on optional fields is MCP's storage quirk
@@ -1537,9 +1531,7 @@ Actions:
                   entry_date: entryDate,
                   quantity: targetQuantity,
                   unit: targetUnit,
-                  ...(mealType.id
-                    ? { meal_type_id: mealType.id }
-                    : { meal_type: mealType.name }),
+                  meal_type_id: mealType.id,
                   entry_time: args.entry_time,
                 });
                 msg += ` Also logged to ${mealType.name} for ${entryDate}.`;
@@ -1584,7 +1576,7 @@ Actions:
               );
               if (!mealType) {
                 return ERRORS.VALIDATION(
-                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                  `Meal type "${args.meal_type_id ?? args.meal_type}" was not found or is not available to this user.`
                 );
               }
               if (!args.meal_id && !args.meal_name) {
@@ -1632,9 +1624,7 @@ Actions:
               await foodEntryService.createFoodEntryMeal(userId, userId, {
                 user_id: userId,
                 meal_template_id: mealId,
-                ...(mealType.id
-                  ? { meal_type_id: mealType.id }
-                  : { meal_type: mealType.name }),
+                meal_type_id: mealType.id,
                 entry_date: args.entry_date,
                 name: mealName,
                 quantity: args.quantity || 1,
@@ -1866,7 +1856,7 @@ Actions:
                   : undefined;
               if (mealType === null) {
                 return ERRORS.VALIDATION(
-                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                  `Meal type "${args.meal_type_id ?? args.meal_type}" was not found or is not available to this user.`
                 );
               }
               const mealTypeUpdate = mealType
@@ -2050,7 +2040,7 @@ Actions:
                   : undefined;
               if (mealType === null) {
                 return ERRORS.VALIDATION(
-                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                  `Meal type "${args.meal_type_id ?? args.meal_type}" was not found or is not available to this user.`
                 );
               }
               const copied = mealType
@@ -2089,7 +2079,7 @@ Actions:
                   : undefined;
               if (!mealType) {
                 return ERRORS.VALIDATION(
-                  `Meal type "${args.meal_type_id}" was not found or is not available to this user.`
+                  `Meal type "${args.meal_type_id ?? args.meal_type}" was not found or is not available to this user.`
                 );
               }
               const meal = await mealService.createMealFromDiaryEntries(

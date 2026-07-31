@@ -4,7 +4,6 @@ import {
   optionalDateSchema,
   optionalEntryTimeSchema,
   uuidSchema,
-  mealTypeEnum,
   searchTypeEnum,
   entryTypeEnum,
   giIndexEnum,
@@ -88,10 +87,13 @@ const logFoodSchema = z
       .describe(
         "Unit of measurement (e.g., 'g', 'piece', 'serving'); defaults to the food's serving unit"
       ),
-    meal_type: mealTypeEnum
+    meal_type: z
+      .string()
+      .min(1)
+      .max(50)
       .optional()
       .describe(
-        'Built-in meal type fallback; ignored when meal_type_id is provided'
+        'Legacy meal type name fallback (e.g., "breakfast" or a custom meal type name); ignored when meal_type_id is provided'
       ),
     meal_type_id: uuidSchema
       .optional()
@@ -146,10 +148,13 @@ const logExternalFoodSchema = z
       .max(50)
       .optional()
       .describe("Unit of measurement (defaults to 'serving')"),
-    meal_type: mealTypeEnum
+    meal_type: z
+      .string()
+      .min(1)
+      .max(50)
       .optional()
       .describe(
-        'Built-in meal type fallback; ignored when meal_type_id is provided'
+        'Legacy meal type name fallback (e.g., "breakfast" or a custom meal type name); ignored when meal_type_id is provided'
       ),
     meal_type_id: uuidSchema
       .optional()
@@ -274,10 +279,13 @@ const createFoodSchema = z
       .optional()
       .describe('Default serving size value'),
     unit: z.string().max(50).optional().describe('Default serving size unit'),
-    meal_type: mealTypeEnum
+    meal_type: z
+      .string()
+      .min(1)
+      .max(50)
       .optional()
       .describe(
-        'Optional built-in meal type fallback for automatic logging; ignored when meal_type_id is provided'
+        'Legacy meal type name fallback for automatic logging (e.g., "breakfast" or a custom meal type name); ignored when meal_type_id is provided'
       ),
     meal_type_id: uuidSchema
       .optional()
@@ -314,10 +322,13 @@ const logMealSchema = z
       .max(200)
       .optional()
       .describe('Name of the meal template (alternative to ID)'),
-    meal_type: mealTypeEnum
+    meal_type: z
+      .string()
+      .min(1)
+      .max(50)
       .optional()
       .describe(
-        'Built-in meal type fallback; ignored when meal_type_id is provided'
+        'Legacy meal type name fallback (e.g., "breakfast" or a custom meal type name); ignored when meal_type_id is provided'
       ),
     meal_type_id: uuidSchema
       .optional()
@@ -363,10 +374,13 @@ const updateEntrySchema = z
       .max(50)
       .optional()
       .describe('New unit of measurement'),
-    meal_type: mealTypeEnum
+    meal_type: z
+      .string()
+      .min(1)
+      .max(50)
       .optional()
       .describe(
-        'Built-in meal type fallback; ignored when meal_type_id is provided'
+        'Legacy meal type name fallback (e.g., "breakfast" or a custom meal type name); ignored when meal_type_id is provided'
       ),
     meal_type_id: uuidSchema
       .optional()
@@ -686,10 +700,13 @@ export const manageFoodInput = z.object({
     .optional()
     .describe("Unit of measurement ('g', 'serving', 'piece', etc.)"),
   // meal / diary
-  meal_type: mealTypeEnum
+  meal_type: z
+    .string()
+    .min(1)
+    .max(50)
     .optional()
     .describe(
-      'Built-in fallback: breakfast | lunch | dinner | snacks. Ignored when meal_type_id is provided.'
+      'Legacy meal type name fallback (e.g., "breakfast" or a custom meal type name); ignored when meal_type_id is provided'
     ),
   meal_type_id: uuidSchema
     .optional()
