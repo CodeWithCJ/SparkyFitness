@@ -1531,7 +1531,7 @@ describe('log_external_food', () => {
     );
 
     expect(result).toBe(
-      'Error [VALIDATION]: No external match found for "dragonfruit smoothie". Please estimate the nutrition yourself and call create_food (include meal_type and entry_date to save and log in one step), for example: {"action":"create_food","food_name":"dragonfruit smoothie","calories":300,"protein":15,"carbs":40,"fat":5,"meal_type":"snacks","entry_date":"2026-06-10"}'
+      'Error [VALIDATION]: No external match found for "dragonfruit smoothie". Please estimate the nutrition yourself and call create_food (include meal_type_id (or meal_type) and entry_date to save and log in one step), for example: {"action":"create_food","food_name":"dragonfruit smoothie","calories":300,"protein":15,"carbs":40,"fat":5,"meal_type":"snacks","entry_date":"2026-06-10"}'
     );
     expect(foodCoreService.createFood).not.toHaveBeenCalled();
     expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
@@ -2588,6 +2588,74 @@ describe('save_as_meal_template', () => {
       'Missing required parameters: meal_type_id (or meal_type)'
     );
     expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
+    expect(foodEntryService.copyFoodEntries).not.toHaveBeenCalled();
+    expect(foodEntryService.copyAllFoodEntries).not.toHaveBeenCalled();
+  });
+
+  // Regression: an incidental date field on an update/delete call must not be
+  // reinterpreted as a full-day copy. Entry/food-targeted operations win over
+  // target_date/source_date in action inference.
+  it('infers update_entry (not a copy) for entry_id + quantity + target_date', async () => {
+    vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry',
+        quantity: 2,
+        target_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: quantity to 2.');
+    expect(foodEntryService.updateFoodEntry).toHaveBeenCalled();
+    expect(foodEntryService.copyFoodEntries).not.toHaveBeenCalled();
+    expect(foodEntryService.copyAllFoodEntries).not.toHaveBeenCalled();
+  });
+
+  it('infers delete_entry (not a copy) for entry_id + entry_type + source_date', async () => {
+    vi.mocked(foodEntryService.deleteFoodEntry).mockResolvedValue(true);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry',
+        source_date: '2026-06-09',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry deleted.');
+    expect(foodEntryService.deleteFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      ENTRY_ID
+    );
+    expect(foodEntryService.copyFoodEntries).not.toHaveBeenCalled();
+    expect(foodEntryService.copyAllFoodEntries).not.toHaveBeenCalled();
+  });
+
+  it('infers delete_food (not a copy) for food_id + target_date', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue(eggsRow);
+    vi.mocked(foodCoreService.deleteFood).mockResolvedValue({
+      message: 'Food and all its references deleted permanently.',
+      status: 'force_deleted',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        food_id: FOOD_ID,
+        target_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Food "Eggs" deleted (including variants and diary entries).'
+    );
+    expect(foodCoreService.deleteFood).toHaveBeenCalled();
     expect(foodEntryService.copyFoodEntries).not.toHaveBeenCalled();
     expect(foodEntryService.copyAllFoodEntries).not.toHaveBeenCalled();
   });

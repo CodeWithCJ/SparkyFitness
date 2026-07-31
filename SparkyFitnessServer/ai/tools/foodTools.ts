@@ -873,12 +873,13 @@ Actions:
             ) {
               return 'log_meal';
             }
-            if (args.target_date || args.source_date) {
-              return 'copy_from_yesterday';
-            }
             if (args.meal_name) {
               return 'search_meal';
             }
+            // Entry/food-targeted operations win over an incidental date
+            // field: a model may add target_date/source_date to an
+            // update/delete call, and the salvage logic would otherwise strip
+            // the id fields and run a full-day copy instead.
             if (
               args.entry_id &&
               (args.quantity !== undefined ||
@@ -888,14 +889,17 @@ Actions:
             ) {
               return 'update_entry';
             }
-            if (args.meal_id || args.meal_type || args.meal_type_id) {
-              return 'log_meal';
-            }
             if (args.entry_id && args.entry_type) {
               return 'delete_entry';
             }
             if (args.food_id) {
               return 'delete_food';
+            }
+            if (args.target_date || args.source_date) {
+              return 'copy_from_yesterday';
+            }
+            if (args.meal_type || args.meal_type_id) {
+              return 'log_meal';
             }
             if (args.start_date || args.end_date) {
               return 'get_nutritional_summary';
@@ -1300,7 +1304,7 @@ Actions:
                   entry_date: entryDate,
                 });
                 return ERRORS.VALIDATION(
-                  `No external match found for "${args.food_name}". Please estimate the nutrition yourself and call create_food (include meal_type and entry_date to save and log in one step), for example: ${exampleCall}`
+                  `No external match found for "${args.food_name}". Please estimate the nutrition yourself and call create_food (include meal_type_id (or meal_type) and entry_date to save and log in one step), for example: ${exampleCall}`
                 );
               }
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
