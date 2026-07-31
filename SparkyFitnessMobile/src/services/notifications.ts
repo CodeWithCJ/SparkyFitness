@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import { fireSuccessHaptic } from './haptics';
+import { isRestTimerSoundEnabled, playRestCompleteSound } from './sounds';
 import { ExactAlarmBridge } from './ExactAlarmBridge';
 import { useAppPreferencesStore, __resetAppPreferencesStoreForTests } from '../stores/appPreferencesStore';
 
@@ -63,11 +64,17 @@ export async function initNotifications(): Promise<void> {
   try {
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {
-        const isMedReminder = notification.request.content.categoryIdentifier === MEDICATION_REMINDER_CATEGORY;
+        const category = notification.request.content.categoryIdentifier;
+        const isMedReminder = category === MEDICATION_REMINDER_CATEGORY;
+        // While the in-app chime owns the foreground rest cue, the rest ping's
+        // notification sound is muted so the two never double up; turning the
+        // chime off restores it.
+        const restPingMuted =
+          category === REST_COMPLETE_CATEGORY && isRestTimerSoundEnabled();
         return {
           shouldShowBanner: isMedReminder,
           shouldShowList: isMedReminder,
-          shouldPlaySound: true,
+          shouldPlaySound: !restPingMuted,
           shouldSetBadge: false,
         };
       },
@@ -359,8 +366,10 @@ export async function cancelAllScheduledNotifications(): Promise<void> {
   }
 }
 
-export function fireRestCompleteHaptic(): void {
+/** Haptic + optional foreground chime for the resting → ready flip. */
+export function fireRestCompleteCue(): void {
   fireSuccessHaptic();
+  playRestCompleteSound();
 }
 
 /** Test-only helper — resets module-level state and the preferences store. */

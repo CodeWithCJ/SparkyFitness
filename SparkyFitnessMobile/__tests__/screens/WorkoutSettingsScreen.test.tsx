@@ -82,4 +82,13 @@ describe('WorkoutSettingsScreen', () => {
     expect(useAppPreferencesStore.getState().defaultRestSec).toBe(150);
     expect(getByText('2:30')).toBeTruthy();
   });
+
+  it('toggles the rest timer sound preference from the switch', () => {
+    const { getByRole } = renderScreen();
+    const toggle = getByRole('switch');
+    expect(toggle.props.value).toBe(true);
+
+    fireEvent(toggle, 'valueChange', false);
+    expect(useAppPreferencesStore.getState().restTimerSoundEnabled).toBe(false);
+  });
 });

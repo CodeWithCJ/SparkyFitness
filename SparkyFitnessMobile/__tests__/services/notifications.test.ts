@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { Alert, Platform } from 'react-native';
+import { createAudioPlayer } from 'expo-audio';
+import { Alert, AppState, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import {
   __resetNotificationStateForTests,
@@ -9,7 +10,7 @@ import {
   cancelScheduledNotification,
   dismissDeliveredNotification,
   ensureNotificationPermission,
-  fireRestCompleteHaptic,
+  fireRestCompleteCue,
   initNotifications,
   maybePromptForExactAlarmPermission,
   scheduleFastGoalNotification,
@@ -17,6 +18,7 @@ import {
   setNotificationsEnabled,
 } from '../../src/services/notifications';
 import { ExactAlarmBridge } from '../../src/services/ExactAlarmBridge';
+import { __resetSoundsForTests } from '../../src/services/sounds';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 
 jest.mock('../../src/services/ExactAlarmBridge', () => ({
@@ -120,6 +122,36 @@ describe('notifications service', () => {
     it('does not create an Android channel on iOS', async () => {
       await initNotifications();
       expect(mockSetChannel).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('foreground presentation', () => {
+    const getHandler = async () => {
+      await initNotifications();
+      return mockSetHandler.mock.calls[0][0].handleNotification;
+    };
+    const notificationWith = (categoryIdentifier: string | null) =>
+      ({ request: { content: { categoryIdentifier } } }) as Notifications.Notification;
+
+    it('mutes the rest ping sound while the rest chime is enabled', async () => {
+      const handler = await getHandler();
+      const result = await handler(notificationWith('rest-complete'));
+      expect(result.shouldPlaySound).toBe(false);
+    });
+
+    it('restores the rest ping sound when the chime is disabled', async () => {
+      useAppPreferencesStore.getState().setRestTimerSoundEnabled(false);
+      const handler = await getHandler();
+      const result = await handler(notificationWith('rest-complete'));
+      expect(result.shouldPlaySound).toBe(true);
+    });
+
+    it('keeps sound for non-rest notifications regardless of the chime preference', async () => {
+      const handler = await getHandler();
+      const medReminder = await handler(notificationWith('medication-reminder'));
+      expect(medReminder.shouldPlaySound).toBe(true);
+      const uncategorized = await handler(notificationWith(null));
+      expect(uncategorized.shouldPlaySound).toBe(true);
     });
   });
 
@@ -251,24 +283,48 @@ describe('notifications service', () => {
     });
   });
 
-  describe('fireRestCompleteHaptic', () => {
+  describe('fireRestCompleteCue', () => {
     const mockHaptic = Haptics.notificationAsync as jest.MockedFunction<
       typeof Haptics.notificationAsync
     >;
+    const mockCreatePlayer = createAudioPlayer as jest.MockedFunction<typeof createAudioPlayer>;
 
     beforeEach(() => {
       mockHaptic.mockClear();
+      mockCreatePlayer.mockClear();
+      __resetSoundsForTests();
+      Object.defineProperty(AppState, 'currentState', {
+        get: () => 'active',
+        configurable: true,
+      });
     });
 
     it('calls Haptics.notificationAsync with Success feedback type', () => {
-      fireRestCompleteHaptic();
+      fireRestCompleteCue();
       expect(mockHaptic).toHaveBeenCalledTimes(1);
       expect(mockHaptic).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Success);
     });
 
+    it('plays the rest chime when the preference is enabled', async () => {
+      fireRestCompleteCue();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mockCreatePlayer).toHaveBeenCalledTimes(1);
+      const player = mockCreatePlayer.mock.results[0].value;
+      expect(player.seekTo).toHaveBeenCalledWith(0);
+      expect(player.play).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips the chime when the preference is disabled but still fires the haptic', async () => {
+      useAppPreferencesStore.getState().setRestTimerSoundEnabled(false);
+      fireRestCompleteCue();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mockCreatePlayer).not.toHaveBeenCalled();
+      expect(mockHaptic).toHaveBeenCalledTimes(1);
+    });
+
     it('swallows rejections from Haptics', () => {
       mockHaptic.mockRejectedValueOnce(new Error('boom'));
-      expect(() => fireRestCompleteHaptic()).not.toThrow();
+      expect(() => fireRestCompleteCue()).not.toThrow();
     });
   });
 

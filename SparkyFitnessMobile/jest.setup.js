@@ -153,6 +153,17 @@ jest.mock('expo-haptics', () => ({
   ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy', Soft: 'soft', Rigid: 'rigid' },
 }));
 
+// Mock expo-audio
+jest.mock('expo-audio', () => ({
+  createAudioPlayer: jest.fn(() => ({
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn().mockResolvedValue(undefined),
+    remove: jest.fn(),
+  })),
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
 // Mock expo-camera
 jest.mock('expo-camera', () => {
   const React = require('react');
