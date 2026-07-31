@@ -4,19 +4,12 @@ import {
   checkInMeasurementsSchema,
   exerciseEntryLapsSchema,
   exerciseEntryGpsPointsSchema,
-  heartRateEntriesSchema,
-  hrvEntriesSchema,
-  respirationEntriesSchema,
-  spo2EntriesSchema,
+  healthMetricSamplesSchema,
   vitalsEntriesSchema,
   dailyHealthMetricsSchema,
   ExerciseEntries,
   ExerciseEntryLaps,
   ExerciseEntryGpsPoints,
-  HeartRateEntries,
-  HrvEntries,
-  RespirationEntries,
-  Spo2Entries,
   VitalsEntries,
   DailyHealthMetrics,
 } from '@workspace/shared';
@@ -165,89 +158,108 @@ describe('Generic Health & Workout Zod Schemas', () => {
     expect(parsed.avg_respiration_brpm).toBe(22.0);
   });
 
-  it('should validate exerciseEntryGpsPointsSchema', () => {
-    const validPoint = {
+  it('should validate exerciseEntryGpsPointsSchema (one row per workout, points array)', () => {
+    const validRow = {
       id: '55555555-5555-5555-5555-555555555555' as ExerciseEntryGpsPoints['id'],
       user_id: '22222222-2222-2222-2222-222222222222',
       exercise_entry_id: '11111111-1111-1111-1111-111111111111',
       entry_date: '2026-07-29',
-      timestamp: new Date('2026-07-29T08:01:00Z'),
-      latitude: 37.774929,
-      longitude: -122.419418,
-      altitude_meters: 15.2,
-      speed_mps: 3.2,
-      heart_rate_bpm: 152,
-      respiration_rate_brpm: 23.5,
-      cadence: 174,
-      power_watts: 245.0,
-      ground_contact_time_ms: 218.0,
-      vertical_oscillation_mm: 8.2,
-      stride_length_cm: 114.0,
-      temperature_celsius: 21.5,
-      distance_meters: 200.0,
-      horizontal_accuracy_meters: 2.5,
-      vertical_accuracy_meters: 3.0,
-      course_degrees: 180.0,
+      points: [
+        {
+          t: '2026-07-29T08:01:00.000Z',
+          lat: 37.774929,
+          lon: -122.419418,
+          alt: 15.2,
+          speed: 3.2,
+          hr: 152,
+          resp: 23.5,
+          cad: 174,
+          power: 245.0,
+          gct: 218.0,
+          vo: 8.2,
+          stride: 114.0,
+          temp: 21.5,
+          dist: 200.0,
+          hacc: 2.5,
+          vacc: 3.0,
+          course: 180.0,
+        },
+      ],
+      created_at: new Date(),
     };
 
-    const parsed = exerciseEntryGpsPointsSchema.parse(validPoint);
-    expect(parsed.latitude).toBe(37.774929);
+    const parsed = exerciseEntryGpsPointsSchema.parse(validRow);
     expect(parsed.entry_date).toBe('2026-07-29');
     expect(parsed.user_id).toBe('22222222-2222-2222-2222-222222222222');
-    expect(parsed.respiration_rate_brpm).toBe(23.5);
+    expect(parsed.points).toHaveLength(1);
+    expect(parsed.points[0].lat).toBe(37.774929);
+    expect(parsed.points[0].resp).toBe(23.5);
   });
 
-  it('should validate heartRateEntriesSchema, respirationEntriesSchema, spo2EntriesSchema, and vitalsEntriesSchema', () => {
+  it('should validate healthMetricSamplesSchema for heart_rate, respiration, spo2, and vitalsEntriesSchema', () => {
     const validHR = {
-      id: '66666666-6666-6666-6666-666666666666' as HeartRateEntries['id'],
+      id: '66666666-6666-6666-6666-666666666666',
       user_id: '22222222-2222-2222-2222-222222222222',
+      metric: 'heart_rate' as const,
       entry_date: '2026-07-29',
-      timestamp: new Date('2026-07-29T10:30:00Z'),
-      heart_rate_bpm: 68,
-      context: 'sleeping',
-      sleep_entry_id: '99999999-9999-9999-9999-999999999999',
-      exercise_entry_id: null,
       source_provider: 'apple_health',
       device_name: 'Apple Watch Series 9',
-      external_id: 'HR-9988',
+      samples: [
+        {
+          t: '2026-07-29T10:30:00.000Z',
+          bpm: 68,
+          context: 'sleeping',
+          sl: '99999999-9999-9999-9999-999999999999',
+        },
+      ],
       created_at: new Date(),
+      updated_at: new Date(),
     };
 
-    const parsedHR = heartRateEntriesSchema.parse(validHR);
-    expect(parsedHR.heart_rate_bpm).toBe(68);
+    const parsedHR = healthMetricSamplesSchema.parse(validHR);
+    expect(parsedHR.metric).toBe('heart_rate');
+    if (parsedHR.metric === 'heart_rate') {
+      expect(parsedHR.samples[0].bpm).toBe(68);
+      expect(parsedHR.samples[0].sl).toBe(
+        '99999999-9999-9999-9999-999999999999'
+      );
+    }
 
     const validResp = {
-      id: '66666666-6666-6666-6666-666666666667' as RespirationEntries['id'],
+      id: '66666666-6666-6666-6666-666666666667',
       user_id: '22222222-2222-2222-2222-222222222222',
+      metric: 'respiration' as const,
       entry_date: '2026-07-29',
-      timestamp: new Date('2026-07-29T10:30:00Z'),
-      breaths_per_minute: 16.5,
-      context: 'sleeping',
-      sleep_entry_id: null,
-      exercise_entry_id: null,
       source_provider: 'apple_health',
       device_name: null,
-      external_id: null,
+      samples: [
+        { t: '2026-07-29T10:30:00.000Z', brpm: 16.5, context: 'sleeping' },
+      ],
       created_at: new Date(),
+      updated_at: new Date(),
     };
-    const parsedResp = respirationEntriesSchema.parse(validResp);
-    expect(parsedResp.breaths_per_minute).toBe(16.5);
+    const parsedResp = healthMetricSamplesSchema.parse(validResp);
+    expect(parsedResp.metric).toBe('respiration');
+    if (parsedResp.metric === 'respiration') {
+      expect(parsedResp.samples[0].brpm).toBe(16.5);
+    }
 
     const validSpo2 = {
-      id: '66666666-6666-6666-6666-666666666668' as Spo2Entries['id'],
+      id: '66666666-6666-6666-6666-666666666668',
       user_id: '22222222-2222-2222-2222-222222222222',
+      metric: 'spo2' as const,
       entry_date: '2026-07-29',
-      timestamp: new Date('2026-07-29T10:30:00Z'),
-      spo2_percentage: 98.5,
-      sleep_entry_id: null,
-      exercise_entry_id: null,
       source_provider: 'garmin',
       device_name: null,
-      external_id: null,
+      samples: [{ t: '2026-07-29T10:30:00.000Z', percentage: 98.5 }],
       created_at: new Date(),
+      updated_at: new Date(),
     };
-    const parsedSpo2 = spo2EntriesSchema.parse(validSpo2);
-    expect(parsedSpo2.spo2_percentage).toBe(98.5);
+    const parsedSpo2 = healthMetricSamplesSchema.parse(validSpo2);
+    expect(parsedSpo2.metric).toBe('spo2');
+    if (parsedSpo2.metric === 'spo2') {
+      expect(parsedSpo2.samples[0].percentage).toBe(98.5);
+    }
 
     const validVitals = {
       id: '66666666-6666-6666-6666-666666666669' as VitalsEntries['id'],
@@ -268,26 +280,33 @@ describe('Generic Health & Workout Zod Schemas', () => {
     expect(parsedVitals.systolic_mmhg).toBe(120);
   });
 
-  it('should validate hrvEntriesSchema with optional sleep_entry_id', () => {
+  it('should validate healthMetricSamplesSchema for hrv with optional sl (sleep) linkage', () => {
     const validHRV = {
-      id: '77777777-7777-7777-7777-777777777777' as HrvEntries['id'],
+      id: '77777777-7777-7777-7777-777777777777',
       user_id: '22222222-2222-2222-2222-222222222222',
+      metric: 'hrv' as const,
       entry_date: '2026-07-29',
-      timestamp: new Date('2026-07-29T05:00:00Z'),
-      hrv_rmssd_ms: 64.5,
-      hrv_sdnn_ms: 72.0,
-      status: 'balanced',
-      sleep_entry_id: '99999999-9999-9999-9999-999999999999',
-      exercise_entry_id: null,
       source_provider: 'apple_health',
       device_name: 'Apple Watch Series 9',
-      external_id: null,
+      samples: [
+        {
+          t: '2026-07-29T05:00:00.000Z',
+          rmssd_ms: 64.5,
+          sdnn_ms: 72.0,
+          status: 'balanced',
+          sl: '99999999-9999-9999-9999-999999999999',
+        },
+      ],
       created_at: new Date(),
+      updated_at: new Date(),
     };
 
-    const parsed = hrvEntriesSchema.parse(validHRV);
-    expect(parsed.hrv_rmssd_ms).toBe(64.5);
-    expect(parsed.sleep_entry_id).toBe('99999999-9999-9999-9999-999999999999');
+    const parsed = healthMetricSamplesSchema.parse(validHRV);
+    expect(parsed.metric).toBe('hrv');
+    if (parsed.metric === 'hrv') {
+      expect(parsed.samples[0].rmssd_ms).toBe(64.5);
+      expect(parsed.samples[0].sl).toBe('99999999-9999-9999-9999-999999999999');
+    }
   });
 
   it('should validate dailyHealthMetricsSchema', () => {

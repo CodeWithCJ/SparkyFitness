@@ -64,8 +64,11 @@ const ActivityReportVisualizer = ({
     water_display_unit,
   } = usePreferences();
 
-  const { data: gpsPoints, isLoading: gpsLoading } =
+  // useWorkoutGpsPoints returns one row for the whole workout (its `points`
+  // array holds every trackpoint), not a list of point-rows.
+  const { data: gpsRow, isLoading: gpsLoading } =
     useWorkoutGpsPoints(exerciseEntryId);
+  const gpsPoints = gpsRow?.points;
   const { data: dbLaps } = useWorkoutLaps(exerciseEntryId);
   const { data: dbHrZones } = useWorkoutHrZones(exerciseEntryId);
 
@@ -449,8 +452,8 @@ const ActivityReportVisualizer = ({
         const mapPolyline =
           gpsPoints && gpsPoints.length > 0
             ? gpsPoints
-                .filter((p) => p.latitude !== 0 && p.longitude !== 0)
-                .map((p) => ({ lat: p.latitude, lon: p.longitude }))
+                .filter((p) => p.lat !== 0 && p.lon !== 0)
+                .map((p) => ({ lat: p.lat, lon: p.lon }))
             : activityData?.activity?.details?.geoPolylineDTO?.polyline || [];
         if (mapPolyline.length === 0) return null;
         return (

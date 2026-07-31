@@ -1,17 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import * as genericHealthService from '@/api/Health/genericHealthService';
+import type { HealthMetric } from '@workspace/shared';
 
 export const genericHealthKeys = {
   metrics: (startDate: string, endDate?: string, userId?: string) =>
     ['generic-health-metrics', startDate, endDate, userId] as const,
-  heartRate: (startDate: string, endDate?: string, userId?: string) =>
-    ['generic-health-heart-rate', startDate, endDate, userId] as const,
-  hrv: (startDate: string, endDate?: string, userId?: string) =>
-    ['generic-health-hrv', startDate, endDate, userId] as const,
-  respiration: (startDate: string, endDate?: string, userId?: string) =>
-    ['generic-health-respiration', startDate, endDate, userId] as const,
-  spo2: (startDate: string, endDate?: string, userId?: string) =>
-    ['generic-health-spo2', startDate, endDate, userId] as const,
+  // `metric` is part of the key itself -- without it, heart_rate/hrv/respiration/
+  // spo2 queries would share one cache entry and clobber each other.
+  samples: (
+    metric: HealthMetric,
+    startDate: string,
+    endDate?: string,
+    userId?: string
+  ) => ['generic-health-samples', metric, startDate, endDate, userId] as const,
   vitals: (startDate: string, endDate?: string, userId?: string) =>
     ['generic-health-vitals', startDate, endDate, userId] as const,
   workoutLaps: (exerciseEntryId: string) =>
@@ -35,56 +36,27 @@ export const useDailyHealthMetrics = (
     meta: { errorMessage: 'Failed to load daily health metrics.' },
   });
 
-export const useHeartRateEntries = (
+/**
+ * Replaces the former useHeartRateEntries/useHrvEntries/useRespirationEntries/
+ * useSpo2Entries -- all four metrics now live in one table (health_metric_samples).
+ */
+export const useHealthMetricSamples = (
+  metric: HealthMetric,
   startDate: string,
   endDate?: string,
   userId?: string
 ) =>
   useQuery({
-    queryKey: genericHealthKeys.heartRate(startDate, endDate, userId),
+    queryKey: genericHealthKeys.samples(metric, startDate, endDate, userId),
     queryFn: () =>
-      genericHealthService.fetchHeartRateEntries(startDate, endDate, userId),
+      genericHealthService.fetchHealthMetricSamples(
+        metric,
+        startDate,
+        endDate,
+        userId
+      ),
     enabled: Boolean(startDate),
-    meta: { errorMessage: 'Failed to load heart rate telemetry.' },
-  });
-
-export const useHrvEntries = (
-  startDate: string,
-  endDate?: string,
-  userId?: string
-) =>
-  useQuery({
-    queryKey: genericHealthKeys.hrv(startDate, endDate, userId),
-    queryFn: () =>
-      genericHealthService.fetchHrvEntries(startDate, endDate, userId),
-    enabled: Boolean(startDate),
-    meta: { errorMessage: 'Failed to load HRV telemetry.' },
-  });
-
-export const useRespirationEntries = (
-  startDate: string,
-  endDate?: string,
-  userId?: string
-) =>
-  useQuery({
-    queryKey: genericHealthKeys.respiration(startDate, endDate, userId),
-    queryFn: () =>
-      genericHealthService.fetchRespirationEntries(startDate, endDate, userId),
-    enabled: Boolean(startDate),
-    meta: { errorMessage: 'Failed to load respiration telemetry.' },
-  });
-
-export const useSpo2Entries = (
-  startDate: string,
-  endDate?: string,
-  userId?: string
-) =>
-  useQuery({
-    queryKey: genericHealthKeys.spo2(startDate, endDate, userId),
-    queryFn: () =>
-      genericHealthService.fetchSpo2Entries(startDate, endDate, userId),
-    enabled: Boolean(startDate),
-    meta: { errorMessage: 'Failed to load SpO2 telemetry.' },
+    meta: { errorMessage: `Failed to load ${metric} telemetry.` },
   });
 
 export const useVitalsEntries = (

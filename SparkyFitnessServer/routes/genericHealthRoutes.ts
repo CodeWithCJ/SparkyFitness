@@ -3,6 +3,7 @@ import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.j
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import * as genericHealthRepo from '../models/genericHealthRepository.js';
 import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
+import { healthMetricSchema } from '@workspace/shared';
 
 const router = express.Router();
 router.use(express.json());
@@ -55,10 +56,26 @@ const getMetricsHandler: RequestHandler = async (req, res, next) => {
 };
 
 /**
- * GET /api/health-data/heart-rate?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ * GET /api/health-data/samples?metric=heart_rate&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ *
+ * Replaces the former /heart-rate, /hrv, /respiration, /spo2 endpoints — all
+ * four metrics now live in one table (health_metric_samples), one JSONB bucket
+ * per day. See PLAN/telemetry_redesign_phase_3_server.md.
  */
-const getHeartRateHandler: RequestHandler = async (req, res, next) => {
+const getHealthMetricSamplesHandler: RequestHandler = async (
+  req,
+  res,
+  next
+) => {
   try {
+    const metricResult = healthMetricSchema.safeParse(req.query.metric);
+    if (!metricResult.success) {
+      res.status(400).json({
+        error: `Missing or invalid metric (expected one of: ${healthMetricSchema.options.join(', ')})`,
+      });
+      return;
+    }
+
     const startDate =
       (req.query.startDate as string) || (req.query.date as string);
     const endDate = (req.query.endDate as string) || startDate;
@@ -85,138 +102,10 @@ const getHeartRateHandler: RequestHandler = async (req, res, next) => {
       }
     }
 
-    const entries = await genericHealthRepo.getHeartRateEntries(
+    const entries = await genericHealthRepo.getHealthMetricSamples(
       targetUserId,
       actorUserId,
-      startDate,
-      endDate
-    );
-    res.status(200).json({ data: entries });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * GET /api/health-data/hrv?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
- */
-const getHrvHandler: RequestHandler = async (req, res, next) => {
-  try {
-    const startDate =
-      (req.query.startDate as string) || (req.query.date as string);
-    const endDate = (req.query.endDate as string) || startDate;
-
-    if (!startDate || !DATE_REGEX.test(startDate)) {
-      res
-        .status(400)
-        .json({ error: 'Missing or invalid startDate (expected YYYY-MM-DD)' });
-      return;
-    }
-
-    const targetUserId = (req.query.userId as string) || req.userId;
-    const actorUserId = req.originalUserId || req.userId;
-
-    if (targetUserId !== actorUserId) {
-      const hasPermission = await canAccessUserData(
-        targetUserId,
-        'checkin',
-        actorUserId
-      );
-      if (!hasPermission) {
-        res.status(403).json({ error: 'Forbidden' });
-        return;
-      }
-    }
-
-    const entries = await genericHealthRepo.getHrvEntries(
-      targetUserId,
-      actorUserId,
-      startDate,
-      endDate
-    );
-    res.status(200).json({ data: entries });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * GET /api/health-data/respiration?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
- */
-const getRespirationHandler: RequestHandler = async (req, res, next) => {
-  try {
-    const startDate =
-      (req.query.startDate as string) || (req.query.date as string);
-    const endDate = (req.query.endDate as string) || startDate;
-
-    if (!startDate || !DATE_REGEX.test(startDate)) {
-      res
-        .status(400)
-        .json({ error: 'Missing or invalid startDate (expected YYYY-MM-DD)' });
-      return;
-    }
-
-    const targetUserId = (req.query.userId as string) || req.userId;
-    const actorUserId = req.originalUserId || req.userId;
-
-    if (targetUserId !== actorUserId) {
-      const hasPermission = await canAccessUserData(
-        targetUserId,
-        'checkin',
-        actorUserId
-      );
-      if (!hasPermission) {
-        res.status(403).json({ error: 'Forbidden' });
-        return;
-      }
-    }
-
-    const entries = await genericHealthRepo.getRespirationEntries(
-      targetUserId,
-      actorUserId,
-      startDate,
-      endDate
-    );
-    res.status(200).json({ data: entries });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * GET /api/health-data/spo2?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
- */
-const getSpo2Handler: RequestHandler = async (req, res, next) => {
-  try {
-    const startDate =
-      (req.query.startDate as string) || (req.query.date as string);
-    const endDate = (req.query.endDate as string) || startDate;
-
-    if (!startDate || !DATE_REGEX.test(startDate)) {
-      res
-        .status(400)
-        .json({ error: 'Missing or invalid startDate (expected YYYY-MM-DD)' });
-      return;
-    }
-
-    const targetUserId = (req.query.userId as string) || req.userId;
-    const actorUserId = req.originalUserId || req.userId;
-
-    if (targetUserId !== actorUserId) {
-      const hasPermission = await canAccessUserData(
-        targetUserId,
-        'checkin',
-        actorUserId
-      );
-      if (!hasPermission) {
-        res.status(403).json({ error: 'Forbidden' });
-        return;
-      }
-    }
-
-    const entries = await genericHealthRepo.getSpo2Entries(
-      targetUserId,
-      actorUserId,
+      metricResult.data,
       startDate,
       endDate
     );
@@ -294,6 +183,9 @@ const getWorkoutLapsHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * GET /api/health-data/workout-gps/:exerciseEntryId
+ *
+ * Returns `{ data: ExerciseEntryGpsPoints | null }` — one row per workout
+ * holding the whole track as `points`, not a list of point-rows.
  */
 const getWorkoutGpsHandler: RequestHandler = async (req, res, next) => {
   try {
@@ -339,10 +231,7 @@ const getWorkoutHrZonesHandler: RequestHandler = async (req, res, next) => {
 };
 
 router.get('/metrics', getMetricsHandler);
-router.get('/heart-rate', getHeartRateHandler);
-router.get('/hrv', getHrvHandler);
-router.get('/respiration', getRespirationHandler);
-router.get('/spo2', getSpo2Handler);
+router.get('/samples', getHealthMetricSamplesHandler);
 router.get('/vitals', getVitalsHandler);
 router.get('/workout-laps/:exerciseEntryId', getWorkoutLapsHandler);
 router.get('/workout-gps/:exerciseEntryId', getWorkoutGpsHandler);

@@ -1126,7 +1126,10 @@ const EditExerciseEntryDialog = ({
               )}
 
               {/* GPS Route Map & Lap Splits */}
-              <WorkoutGpsMap gpsPoints={gpsData} isLoading={gpsLoading} />
+              <WorkoutGpsMap
+                gpsPoints={gpsData?.points}
+                isLoading={gpsLoading}
+              />
               <WorkoutLapsTable laps={lapsData} isLoading={lapsLoading} />
 
               {/* Telemetry & Detailed Metrics */}

@@ -6,6 +6,177 @@ import foodRepository from '../../models/food.js';
 import foodEntryRepository from '../../models/foodEntry.js';
 import mealTypeRepository from '../../models/mealType.js';
 import * as genericHealthRepo from '../../models/genericHealthRepository.js';
+import { getClient } from '../../db/poolManager.js';
+import { loadUserTimezone } from '../../utils/timezoneLoader.js';
+import {
+  localDateTimeToUtc,
+  HealthMetric,
+  healthMetricSamplesInitializerSchema,
+} from '@workspace/shared';
+
+interface ActivityWindow {
+  id: string;
+  startMs: number;
+  endMs: number;
+}
+
+/**
+ * Loads this user's exercise and sleep windows for the given day range, as
+ * absolute [startMs, endMs] instants, for tagging intraday wellness samples
+ * with the exercise_entry/sleep_entry they fall inside (the `ex`/`sl` keys on
+ * a health_metric_samples row). Exercise entries store a local wall-clock
+ * entry_time, not an instant, so it's converted via the user's timezone;
+ * entries missing entry_time (no known start clock time) are skipped rather
+ * than guessed at. Sleep's bedtime/wake_time are already absolute instants.
+ */
+async function loadActivityWindows(
+  userId: string,
+  actingUserId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ exercise: ActivityWindow[]; sleep: ActivityWindow[] }> {
+  const tz = await loadUserTimezone(userId);
+  const client = await getClient(actingUserId);
+  try {
+    const exerciseRes = await client.query(
+      `SELECT id, entry_date, entry_time, duration_minutes
+       FROM exercise_entries
+       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 AND entry_time IS NOT NULL`,
+      [userId, startDate, endDate]
+    );
+    const exercise: ActivityWindow[] = [];
+    for (const row of exerciseRes.rows as Array<{
+      id: string;
+      entry_date: string;
+      entry_time: string;
+      duration_minutes: number | null;
+    }>) {
+      const start = localDateTimeToUtc(
+        `${row.entry_date}T${row.entry_time}`,
+        tz
+      );
+      const startMs = start.getTime();
+      if (Number.isNaN(startMs)) continue;
+      const endMs = startMs + Math.max(0, row.duration_minutes ?? 0) * 60000;
+      exercise.push({ id: row.id, startMs, endMs });
+    }
+
+    const sleepRes = await client.query(
+      `SELECT id, bedtime, wake_time
+       FROM sleep_entries
+       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3`,
+      [userId, startDate, endDate]
+    );
+    const sleep: ActivityWindow[] = (
+      sleepRes.rows as Array<{
+        id: string;
+        bedtime: Date;
+        wake_time: Date;
+      }>
+    ).map((row) => ({
+      id: row.id,
+      startMs: new Date(row.bedtime).getTime(),
+      endMs: new Date(row.wake_time).getTime(),
+    }));
+
+    return { exercise, sleep };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Finds which window (if any) contains a timestamp. Deliberately NOT
+ * findGroupForTimestamp from garminTelemetryExtractors.ts: that function falls
+ * back to the first group when nothing matches, which is correct for
+ * distributing a workout's own laps/GPS across its child exercises (some
+ * exercise is always the right answer) but wrong here — a background reading
+ * outside every window must stay unlinked, not get force-attached to the day's
+ * first workout or sleep session.
+ */
+function matchActivityWindow(
+  windows: ActivityWindow[],
+  timestampMs: number
+): string | undefined {
+  return windows.find((w) => timestampMs >= w.startMs && timestampMs <= w.endMs)
+    ?.id;
+}
+
+interface WellnessSampleBucket {
+  entry_date: string;
+  device_name: string | null;
+  samples: Record<string, unknown>[];
+}
+
+/**
+ * Groups flat {entry_date, timestamp, ex, sl, ...fields} samples into one
+ * bucket per day and upserts each as a single health_metric_samples row.
+ * Shared by the heart_rate/hrv/respiration/spo2/stress/body_battery sections
+ * below so the bucketing logic only exists once. The per-metric `...fields`
+ * this accepts are validated (and narrowed to the correct discriminated-union
+ * shape) by healthMetricSamplesInitializerSchema.parse before the DB write.
+ */
+async function upsertSamplesByDay(
+  userId: string,
+  actingUserId: string,
+  metric: HealthMetric,
+  sourceProvider: string,
+  flatSamples: Array<{
+    entry_date: string;
+    timestamp: Date;
+    ex?: string;
+    sl?: string;
+    device_name?: string | null;
+    [key: string]: unknown;
+  }>
+): Promise<number> {
+  if (flatSamples.length === 0) return 0;
+
+  const byDate = new Map<string, WellnessSampleBucket>();
+  for (const s of flatSamples) {
+    const { entry_date, timestamp, ex, sl, device_name, ...metricFields } = s;
+    const bucket = byDate.get(entry_date) ?? {
+      entry_date,
+      device_name: device_name ?? null,
+      samples: [],
+    };
+    const sample: Record<string, unknown> = {
+      t: timestamp.toISOString(),
+      ...metricFields,
+    };
+    if (ex) sample.ex = ex;
+    if (sl) sample.sl = sl;
+    bucket.samples.push(sample);
+    if (!bucket.device_name && device_name) bucket.device_name = device_name;
+    byDate.set(entry_date, bucket);
+  }
+
+  for (const bucket of byDate.values()) {
+    bucket.samples.sort((a, b) => String(a.t).localeCompare(String(b.t)));
+  }
+
+  for (const bucket of byDate.values()) {
+    // Validates AND narrows to the metric's specific sample shape (the
+    // discriminated union's whole purpose) instead of an `any`/type-assertion
+    // cast — also catches malformed upstream data at ingest with a clear error
+    // rather than a silent bad write.
+    const row = healthMetricSamplesInitializerSchema.parse({
+      user_id: userId,
+      metric,
+      entry_date: bucket.entry_date,
+      source_provider: sourceProvider,
+      device_name: bucket.device_name,
+      samples: bucket.samples,
+    });
+    await genericHealthRepo.upsertHealthMetricSamples(
+      userId,
+      actingUserId,
+      row
+    );
+  }
+
+  return byDate.size;
+}
 
 export async function processGarminHealthAndWellnessData(
   userId: string,
@@ -297,16 +468,33 @@ export async function processGarminHealthAndWellnessData(
       }
     }
 
-    // 2. Process Intraday Heart Rate Entries
+    // Load this sync's exercise/sleep windows once, for tagging every intraday
+    // sample below with the ex/sl activity it falls inside (see
+    // loadActivityWindows / matchActivityWindow above).
+    const activityWindows = await loadActivityWindows(
+      userId,
+      actingUserId,
+      startDate,
+      endDate
+    );
+    const tagActivity = (timestamp: Date) => {
+      const ms = timestamp.getTime();
+      return {
+        ex: matchActivityWindow(activityWindows.exercise, ms),
+        sl: matchActivityWindow(activityWindows.sleep, ms),
+      };
+    };
+
+    // 2. Intraday Heart Rate -> health_metric_samples (metric: 'heart_rate')
     const rawHrPayload = healthData.heart_rates || healthData.heart_rate || [];
-    const hrEntriesToInsert: Array<{
-      user_id: string;
+    const hrSamples: Array<{
       entry_date: string;
       timestamp: Date;
-      heart_rate_bpm: number;
-      context: string;
-      source_provider: string;
+      ex?: string;
+      sl?: string;
       device_name: string;
+      bpm: number;
+      context: string;
     }> = [];
 
     if (Array.isArray(rawHrPayload)) {
@@ -314,107 +502,114 @@ export async function processGarminHealthAndWellnessData(
         if (item.HeartRate && Array.isArray(item.HeartRate)) {
           for (const sample of item.HeartRate) {
             if (sample.time && sample.data) {
-              hrEntriesToInsert.push({
-                user_id: userId,
+              const timestamp = new Date(sample.time);
+              hrSamples.push({
                 entry_date: item.date || sample.time.substring(0, 10),
-                timestamp: new Date(sample.time),
-                heart_rate_bpm: Number(sample.data),
-                context: 'unspecified',
-                source_provider: 'garmin',
+                timestamp,
+                ...tagActivity(timestamp),
                 device_name: 'Garmin Device',
+                bpm: Number(sample.data),
+                context: 'unspecified',
               });
             }
           }
         } else if (item.date && item.timestamp && item.value) {
-          hrEntriesToInsert.push({
-            user_id: userId,
+          const timestamp = new Date(item.timestamp);
+          hrSamples.push({
             entry_date: item.date,
-            timestamp: new Date(item.timestamp),
-            heart_rate_bpm: Number(item.value),
-            context: item.context || 'unspecified',
-            source_provider: 'garmin',
+            timestamp,
+            ...tagActivity(timestamp),
             device_name: item.device_name || 'Garmin Device',
+            bpm: Number(item.value),
+            context: item.context || 'unspecified',
           });
         }
       }
-
-      if (hrEntriesToInsert.length > 0) {
-        await genericHealthRepo.bulkUpsertHeartRate(
-          userId,
-          actingUserId,
-          hrEntriesToInsert
-        );
-        processedResults.push({
-          type: 'heart_rate_entries',
-          status: 'success',
-          count: hrEntriesToInsert.length,
-        });
-      }
+    }
+    const hrBuckets = await upsertSamplesByDay(
+      userId,
+      actingUserId,
+      'heart_rate',
+      'garmin',
+      hrSamples
+    );
+    if (hrBuckets > 0) {
+      processedResults.push({
+        type: 'health_metric_samples:heart_rate',
+        status: 'success',
+        count: hrSamples.length,
+        buckets: hrBuckets,
+      });
     }
 
-    // 3. Process HRV Entries
+    // 3. HRV -> health_metric_samples (metric: 'hrv')
+    const hrvSamples: Array<{
+      entry_date: string;
+      timestamp: Date;
+      ex?: string;
+      sl?: string;
+      device_name: string;
+      rmssd_ms?: number;
+      sdnn_ms?: number;
+      status?: string;
+    }> = [];
     if (healthData.hrv && Array.isArray(healthData.hrv)) {
-      const hrvEntriesToInsert: Array<{
-        user_id: string;
-        entry_date: string;
-        timestamp: Date;
-        hrv_rmssd_ms: number | null;
-        hrv_sdnn_ms: number | null;
-        status: string;
-        source_provider: string;
-        device_name: string;
-      }> = [];
       for (const item of healthData.hrv) {
         if (item.hrvSummary && item.date) {
-          hrvEntriesToInsert.push({
-            user_id: userId,
+          // Garmin's nightly HRV summary has no intraday timestamp; anchor at
+          // 05:00 UTC, matching this ingest's prior behavior, so it sorts with
+          // the overnight sleep window rather than the following day.
+          const timestamp = new Date(`${item.date}T05:00:00Z`);
+          hrvSamples.push({
             entry_date: item.date,
-            timestamp: new Date(`${item.date}T05:00:00Z`),
-            hrv_rmssd_ms: item.hrvSummary.lastNightAvg ?? null,
-            hrv_sdnn_ms: item.hrvSummary.weeklyAvg ?? null,
-            status: item.hrvSummary.status || 'balanced',
-            source_provider: 'garmin',
+            timestamp,
+            ...tagActivity(timestamp),
             device_name: 'Garmin Device',
+            rmssd_ms: item.hrvSummary.lastNightAvg ?? undefined,
+            sdnn_ms: item.hrvSummary.weeklyAvg ?? undefined,
+            status: item.hrvSummary.status || 'balanced',
           });
         } else if (item.date && item.timestamp) {
-          hrvEntriesToInsert.push({
-            user_id: userId,
+          const timestamp = new Date(item.timestamp);
+          hrvSamples.push({
             entry_date: item.date,
-            timestamp: new Date(item.timestamp),
-            hrv_rmssd_ms: item.rmssd ?? null,
-            hrv_sdnn_ms: item.sdnn ?? null,
-            status: item.status || 'balanced',
-            source_provider: 'garmin',
+            timestamp,
+            ...tagActivity(timestamp),
             device_name: item.device_name || 'Garmin Device',
+            rmssd_ms: item.rmssd ?? undefined,
+            sdnn_ms: item.sdnn ?? undefined,
+            status: item.status || 'balanced',
           });
         }
       }
-
-      if (hrvEntriesToInsert.length > 0) {
-        await genericHealthRepo.bulkUpsertHrv(
-          userId,
-          actingUserId,
-          hrvEntriesToInsert
-        );
-        processedResults.push({
-          type: 'hrv_entries',
-          status: 'success',
-          count: hrvEntriesToInsert.length,
-        });
-      }
+    }
+    const hrvBuckets = await upsertSamplesByDay(
+      userId,
+      actingUserId,
+      'hrv',
+      'garmin',
+      hrvSamples
+    );
+    if (hrvBuckets > 0) {
+      processedResults.push({
+        type: 'health_metric_samples:hrv',
+        status: 'success',
+        count: hrvSamples.length,
+        buckets: hrvBuckets,
+      });
     }
 
-    // 4. Process Respiration Entries
+    // 4. Respiration -> health_metric_samples (metric: 'respiration')
+    const respSamples: Array<{
+      entry_date: string;
+      timestamp: Date;
+      ex?: string;
+      sl?: string;
+      device_name: string;
+      brpm: number;
+      context: string;
+    }> = [];
     if (healthData.respiration && Array.isArray(healthData.respiration)) {
-      const respEntriesToInsert: Array<{
-        user_id: string;
-        entry_date: string;
-        timestamp: Date;
-        breaths_per_minute: number;
-        context: string;
-        source_provider: string;
-        device_name: string;
-      }> = [];
       for (const item of healthData.respiration) {
         if (
           item.respirationValuesArray &&
@@ -422,87 +617,186 @@ export async function processGarminHealthAndWellnessData(
         ) {
           for (const sample of item.respirationValuesArray) {
             if (sample[0] && sample[1]) {
-              respEntriesToInsert.push({
-                user_id: userId,
+              const timestamp = new Date(sample[0]);
+              respSamples.push({
                 entry_date:
                   item.date ||
                   new Date(sample[0]).toISOString().substring(0, 10),
-                timestamp: new Date(sample[0]),
-                breaths_per_minute: Number(sample[1]),
-                context: 'unspecified',
-                source_provider: 'garmin',
+                timestamp,
+                ...tagActivity(timestamp),
                 device_name: 'Garmin Device',
+                brpm: Number(sample[1]),
+                context: 'unspecified',
               });
             }
           }
         } else if (item.date && item.timestamp && item.breaths_per_minute) {
-          respEntriesToInsert.push({
-            user_id: userId,
+          const timestamp = new Date(item.timestamp);
+          respSamples.push({
             entry_date: item.date,
-            timestamp: new Date(item.timestamp),
-            breaths_per_minute: item.breaths_per_minute,
-            context: item.context || 'unspecified',
-            source_provider: 'garmin',
+            timestamp,
+            ...tagActivity(timestamp),
             device_name: item.device_name || 'Garmin Device',
+            brpm: item.breaths_per_minute,
+            context: item.context || 'unspecified',
           });
         }
       }
-
-      if (respEntriesToInsert.length > 0) {
-        await genericHealthRepo.bulkUpsertRespiration(
-          userId,
-          actingUserId,
-          respEntriesToInsert
-        );
-        processedResults.push({
-          type: 'respiration_entries',
-          status: 'success',
-          count: respEntriesToInsert.length,
-        });
-      }
+    }
+    const respBuckets = await upsertSamplesByDay(
+      userId,
+      actingUserId,
+      'respiration',
+      'garmin',
+      respSamples
+    );
+    if (respBuckets > 0) {
+      processedResults.push({
+        type: 'health_metric_samples:respiration',
+        status: 'success',
+        count: respSamples.length,
+        buckets: respBuckets,
+      });
     }
 
-    // 5. Process SpO2 Entries
+    // 5. SpO2 -> health_metric_samples (metric: 'spo2')
+    const spo2Samples: Array<{
+      entry_date: string;
+      timestamp: Date;
+      ex?: string;
+      sl?: string;
+      device_name: string;
+      percentage: number;
+    }> = [];
     if (healthData.spo2 && Array.isArray(healthData.spo2)) {
-      const spo2EntriesToInsert: Array<{
-        user_id: string;
-        entry_date: string;
-        timestamp: Date;
-        spo2_percentage: number;
-        source_provider: string;
-        device_name: string;
-      }> = [];
       for (const item of healthData.spo2) {
         if (
           item.date &&
           item.average_spo2 !== undefined &&
           item.average_spo2 !== null
         ) {
-          spo2EntriesToInsert.push({
-            user_id: userId,
+          // Garmin's daily SpO2 average has no intraday timestamp; anchor at
+          // midday so it sorts sensibly alongside intraday readings.
+          const timestamp = new Date(`${item.date}T12:00:00Z`);
+          spo2Samples.push({
             entry_date: item.date,
-            // Garmin's daily SpO2 average has no intraday timestamp; anchor at midday
-            // so it sorts sensibly alongside intraday readings from other providers.
-            timestamp: new Date(`${item.date}T12:00:00Z`),
-            spo2_percentage: Number(item.average_spo2),
-            source_provider: 'garmin',
+            timestamp,
+            ...tagActivity(timestamp),
             device_name: 'Garmin Device',
+            percentage: Number(item.average_spo2),
           });
         }
       }
+    }
+    const spo2Buckets = await upsertSamplesByDay(
+      userId,
+      actingUserId,
+      'spo2',
+      'garmin',
+      spo2Samples
+    );
+    if (spo2Buckets > 0) {
+      processedResults.push({
+        type: 'health_metric_samples:spo2',
+        status: 'success',
+        count: spo2Samples.length,
+        buckets: spo2Buckets,
+      });
+    }
 
-      if (spo2EntriesToInsert.length > 0) {
-        await genericHealthRepo.bulkUpsertSpo2(
-          userId,
-          actingUserId,
-          spo2EntriesToInsert
-        );
-        processedResults.push({
-          type: 'spo2_entries',
-          status: 'success',
-          count: spo2EntriesToInsert.length,
-        });
+    // 5b. Stress & Body Battery (intraday) -> health_metric_samples
+    // ('stress' / 'body_battery'). Both arrays already arrive on
+    // healthData.stress[i].stressLevel / .BodyBatteryLevel (see the mood-derivation
+    // block above, which uses the SAME per-day stress_data_entry object for a
+    // different purpose — raw_stress_data/derived_mood_value — and is untouched).
+    // Previously fetched by SparkyFitnessGarmin but discarded here entirely.
+    const stressSamples: Array<{
+      entry_date: string;
+      timestamp: Date;
+      ex?: string;
+      sl?: string;
+      device_name: string;
+      level: number;
+    }> = [];
+    const bodyBatterySamples: Array<{
+      entry_date: string;
+      timestamp: Date;
+      ex?: string;
+      sl?: string;
+      device_name: string;
+      level: number;
+    }> = [];
+    if (healthData.stress && Array.isArray(healthData.stress)) {
+      for (const item of healthData.stress) {
+        const entryDate: string | undefined = item.date;
+        if (!entryDate) continue;
+        if (Array.isArray(item.stressLevel)) {
+          for (const sample of item.stressLevel) {
+            if (
+              !sample?.time ||
+              sample.stress_level === null ||
+              sample.stress_level === undefined
+            )
+              continue;
+            const timestamp = new Date(sample.time);
+            stressSamples.push({
+              entry_date: entryDate,
+              timestamp,
+              ...tagActivity(timestamp),
+              device_name: 'Garmin Device',
+              level: Number(sample.stress_level),
+            });
+          }
+        }
+        if (Array.isArray(item.BodyBatteryLevel)) {
+          for (const sample of item.BodyBatteryLevel) {
+            if (
+              !sample?.time ||
+              sample.stress_level === null ||
+              sample.stress_level === undefined
+            )
+              continue;
+            const timestamp = new Date(sample.time);
+            bodyBatterySamples.push({
+              entry_date: entryDate,
+              timestamp,
+              ...tagActivity(timestamp),
+              device_name: 'Garmin Device',
+              level: Number(sample.stress_level),
+            });
+          }
+        }
       }
+    }
+    const stressBuckets = await upsertSamplesByDay(
+      userId,
+      actingUserId,
+      'stress',
+      'garmin',
+      stressSamples
+    );
+    if (stressBuckets > 0) {
+      processedResults.push({
+        type: 'health_metric_samples:stress',
+        status: 'success',
+        count: stressSamples.length,
+        buckets: stressBuckets,
+      });
+    }
+    const bodyBatteryBuckets = await upsertSamplesByDay(
+      userId,
+      actingUserId,
+      'body_battery',
+      'garmin',
+      bodyBatterySamples
+    );
+    if (bodyBatteryBuckets > 0) {
+      processedResults.push({
+        type: 'health_metric_samples:body_battery',
+        status: 'success',
+        count: bodyBatterySamples.length,
+        buckets: bodyBatteryBuckets,
+      });
     }
 
     // 6. Process Vitals (Blood Pressure) Entries

@@ -972,7 +972,7 @@
         "title": "Delete synced data",
         "description": "Remove all entries that were synced or imported from a specific source (e.g. Apple Health, Garmin). This affects only synced data — entries you added manually are never touched. This cannot be undone.",
         "scopeNoteTitle": "What this removes",
-        "scopeIncludes": "Deletes synced diary entries: food, exercise/workout sessions, sleep, water, and custom check-in measurements.",
+        "scopeIncludes": "Deletes synced diary entries (food, exercise/workout sessions, sleep, water, custom check-in measurements) and that provider's wearable telemetry (heart rate, HRV, respiration, SpO2, vitals, and daily wellness metrics).",
         "scopeExcludesLibrary": "Does NOT delete your food or exercise database (the reusable food/exercise definitions) — only the logged entries.",
         "scopeExcludesCheckin": "Does NOT delete standard check-in measurements (weight, steps, body fat, height) — those merge all providers into one daily value and cannot be removed by source here.",
         "scopeExcludesManual": "Does NOT delete anything you created yourself — entries you typed in, logged via the Sparky assistant, or workouts from a saved preset or plan are always kept.",

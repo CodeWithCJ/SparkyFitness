@@ -5,10 +5,68 @@ import {
   ExerciseEntryLaps,
   ExerciseEntryLapsInitializer,
   ExerciseEntryGpsPoints,
-  ExerciseEntryGpsPointsInitializer,
   ExerciseEntryHrZones,
   ExerciseEntryHrZonesInitializer,
+  GpsTrackPoint,
 } from '@workspace/shared';
+
+/**
+ * One flat trackpoint row as every current caller (garminActivityProcessor.ts,
+ * fitImportService.ts, the backfill script) already builds it — same shape as the
+ * pre-20260801000000 per-row table. bulkInsertExerciseEntryGpsPoints groups these
+ * by exercise_entry_id and writes one JSONB row per workout; callers do not need
+ * to change.
+ */
+export interface FlatGpsPointRow {
+  user_id: string;
+  exercise_entry_id: string;
+  entry_date: string;
+  timestamp: Date;
+  latitude: number;
+  longitude: number;
+  altitude_meters?: number | null;
+  speed_mps?: number | null;
+  heart_rate_bpm?: number | null;
+  respiration_rate_brpm?: number | null;
+  cadence?: number | null;
+  power_watts?: number | null;
+  ground_contact_time_ms?: number | null;
+  vertical_oscillation_mm?: number | null;
+  stride_length_cm?: number | null;
+  temperature_celsius?: number | null;
+  distance_meters?: number | null;
+  horizontal_accuracy_meters?: number | null;
+  vertical_accuracy_meters?: number | null;
+  course_degrees?: number | null;
+}
+
+const has = <T>(v: T | null | undefined): v is T =>
+  v !== null && v !== undefined;
+
+function flatRowToTrackPoint(pt: FlatGpsPointRow): GpsTrackPoint {
+  const point: GpsTrackPoint = {
+    t: pt.timestamp.toISOString(),
+    lat: pt.latitude,
+    lon: pt.longitude,
+  };
+  if (has(pt.altitude_meters)) point.alt = pt.altitude_meters;
+  if (has(pt.speed_mps)) point.speed = pt.speed_mps;
+  if (has(pt.heart_rate_bpm)) point.hr = pt.heart_rate_bpm;
+  if (has(pt.respiration_rate_brpm)) point.resp = pt.respiration_rate_brpm;
+  if (has(pt.cadence)) point.cad = pt.cadence;
+  if (has(pt.power_watts)) point.power = pt.power_watts;
+  if (has(pt.ground_contact_time_ms)) point.gct = pt.ground_contact_time_ms;
+  if (has(pt.vertical_oscillation_mm)) point.vo = pt.vertical_oscillation_mm;
+  if (has(pt.stride_length_cm)) point.stride = pt.stride_length_cm;
+  if (has(pt.temperature_celsius)) point.temp = pt.temperature_celsius;
+  if (has(pt.distance_meters)) point.dist = pt.distance_meters;
+  if (has(pt.horizontal_accuracy_meters))
+    point.hacc = pt.horizontal_accuracy_meters;
+  if (has(pt.vertical_accuracy_meters))
+    point.vacc = pt.vertical_accuracy_meters;
+  if (has(pt.course_degrees)) point.course = pt.course_degrees;
+  return point;
+}
 
 /**
  * Repository for workout lap splits, second-by-second GPS trackpoints, and
@@ -101,66 +159,59 @@ export async function getLapsForExerciseEntry(
   }
 }
 
-// 2. Workout GPS Points
+// 2. Workout GPS Points — one row per exercise_entry_id (per workout), holding
+// the whole track as a JSONB array. A 45-minute run at 1Hz is ~2,700 rows under
+// the old per-point design; this is 1. See
+// PLAN/telemetry_redesign_phase_1_database.md for the full rationale.
 export async function bulkInsertExerciseEntryGpsPoints(
   userId: string,
   actingUserId: string,
-  points: ExerciseEntryGpsPointsInitializer[]
+  points: FlatGpsPointRow[]
 ): Promise<ExerciseEntryGpsPoints[]> {
   if (!points || points.length === 0) return [];
+
+  const byEntry = new Map<
+    string,
+    { entry_date: string; points: GpsTrackPoint[] }
+  >();
+  for (const pt of points) {
+    const group = byEntry.get(pt.exercise_entry_id);
+    const trackPoint = flatRowToTrackPoint(pt);
+    if (group) {
+      group.points.push(trackPoint);
+    } else {
+      byEntry.set(pt.exercise_entry_id, {
+        entry_date: pt.entry_date,
+        points: [trackPoint],
+      });
+    }
+  }
+  for (const group of byEntry.values()) {
+    group.points.sort((a, b) => a.t.localeCompare(b.t));
+  }
+
   const client = await getClient(actingUserId);
   try {
-    const values = points.map((pt) => [
-      userId,
-      pt.exercise_entry_id,
-      pt.entry_date,
-      pt.timestamp,
-      pt.latitude,
-      pt.longitude,
-      pt.altitude_meters ?? null,
-      pt.speed_mps ?? null,
-      pt.heart_rate_bpm ?? null,
-      pt.respiration_rate_brpm ?? null,
-      pt.cadence ?? null,
-      pt.power_watts ?? null,
-      pt.ground_contact_time_ms ?? null,
-      pt.vertical_oscillation_mm ?? null,
-      pt.stride_length_cm ?? null,
-      pt.temperature_celsius ?? null,
-      pt.distance_meters ?? null,
-      pt.horizontal_accuracy_meters ?? null,
-      pt.vertical_accuracy_meters ?? null,
-      pt.course_degrees ?? null,
-    ]);
-    const query = format(
-      `INSERT INTO exercise_entry_gps_points
-        (user_id, exercise_entry_id, entry_date, timestamp, latitude, longitude, altitude_meters, speed_mps, heart_rate_bpm, respiration_rate_brpm, cadence, power_watts, ground_contact_time_ms, vertical_oscillation_mm, stride_length_cm, temperature_celsius, distance_meters, horizontal_accuracy_meters, vertical_accuracy_meters, course_degrees)
-       VALUES %L
-       ON CONFLICT (exercise_entry_id, timestamp) DO UPDATE SET
-         entry_date = EXCLUDED.entry_date,
-         latitude = EXCLUDED.latitude,
-         longitude = EXCLUDED.longitude,
-         altitude_meters = EXCLUDED.altitude_meters,
-         speed_mps = EXCLUDED.speed_mps,
-         heart_rate_bpm = EXCLUDED.heart_rate_bpm,
-         respiration_rate_brpm = EXCLUDED.respiration_rate_brpm,
-         cadence = EXCLUDED.cadence,
-         power_watts = EXCLUDED.power_watts,
-         ground_contact_time_ms = EXCLUDED.ground_contact_time_ms,
-         vertical_oscillation_mm = EXCLUDED.vertical_oscillation_mm,
-         stride_length_cm = EXCLUDED.stride_length_cm,
-         temperature_celsius = EXCLUDED.temperature_celsius,
-         distance_meters = EXCLUDED.distance_meters,
-         horizontal_accuracy_meters = EXCLUDED.horizontal_accuracy_meters,
-         vertical_accuracy_meters = EXCLUDED.vertical_accuracy_meters,
-         course_degrees = EXCLUDED.course_degrees
-       RETURNING *`,
-      values
-    );
-    const res = (await client.query(query)) as {
-      rows: ExerciseEntryGpsPoints[];
-    };
-    return res.rows;
+    const rows: ExerciseEntryGpsPoints[] = [];
+    for (const [exerciseEntryId, group] of byEntry) {
+      const res = (await client.query(
+        `INSERT INTO exercise_entry_gps_points
+          (user_id, exercise_entry_id, entry_date, points)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (exercise_entry_id) DO UPDATE SET
+           entry_date = EXCLUDED.entry_date,
+           points = EXCLUDED.points
+         RETURNING *`,
+        [
+          userId,
+          exerciseEntryId,
+          group.entry_date,
+          JSON.stringify(group.points),
+        ]
+      )) as { rows: ExerciseEntryGpsPoints[] };
+      if (res.rows[0]) rows.push(res.rows[0]);
+    }
+    return rows;
   } finally {
     if (client && typeof client.release === 'function') client.release();
   }
@@ -169,16 +220,14 @@ export async function bulkInsertExerciseEntryGpsPoints(
 export async function getGpsPointsForExerciseEntry(
   exerciseEntryId: string,
   actingUserId: string
-): Promise<ExerciseEntryGpsPoints[]> {
+): Promise<ExerciseEntryGpsPoints | null> {
   const client = await getClient(actingUserId);
   try {
     const res = (await client.query(
-      `SELECT * FROM exercise_entry_gps_points
-       WHERE exercise_entry_id = $1
-       ORDER BY timestamp ASC`,
+      'SELECT * FROM exercise_entry_gps_points WHERE exercise_entry_id = $1',
       [exerciseEntryId]
     )) as { rows: ExerciseEntryGpsPoints[] };
-    return res.rows;
+    return res.rows[0] ?? null;
   } finally {
     client.release();
   }

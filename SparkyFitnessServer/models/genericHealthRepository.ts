@@ -1,13 +1,8 @@
 import { getClient } from '../db/poolManager.js';
 import {
-  HeartRateEntries,
-  HeartRateEntriesInitializer,
-  HrvEntries,
-  HrvEntriesInitializer,
-  RespirationEntries,
-  RespirationEntriesInitializer,
-  Spo2Entries,
-  Spo2EntriesInitializer,
+  HealthMetric,
+  HealthMetricSamples,
+  HealthMetricSamplesInitializer,
   VitalsEntries,
   VitalsEntriesInitializer,
   DailyHealthMetrics,
@@ -18,271 +13,70 @@ import {
  * Repository for continuous intraday health telemetry and daily summary metrics.
  */
 
-// 1. Heart Rate Entries
-export async function bulkUpsertHeartRate(
+// 1. Health Metric Samples (heart_rate / hrv / respiration / spo2 / stress /
+// body_battery) — one row per (user, metric, entry_date, source_provider),
+// holding the whole day's readings as a JSONB array. Replaces the four former
+// per-sample tables (heart_rate_entries, hrv_entries, respiration_entries,
+// spo2_entries); see PLAN/telemetry_redesign_phase_1_database.md.
+//
+// The upsert REPLACES the day's array (samples = EXCLUDED.samples), not merges
+// it. Correct for Garmin, which returns the full day on every sync, and keeps
+// re-syncs idempotent. A future provider delivering partial-day increments
+// would need merge-on-conflict instead of this replace semantics.
+export async function upsertHealthMetricSamples(
   userId: string,
   actingUserId: string,
-  entries: HeartRateEntriesInitializer[]
-): Promise<HeartRateEntries[]> {
-  if (!entries || entries.length === 0) return [];
+  row: HealthMetricSamplesInitializer
+): Promise<HealthMetricSamples> {
   const client = await getClient(actingUserId);
   try {
-    const results: HeartRateEntries[] = [];
-
-    for (const entry of entries) {
-      const res = (await client.query(
-        `INSERT INTO heart_rate_entries 
-          (user_id, entry_date, timestamp, heart_rate_bpm, context, sleep_entry_id, exercise_entry_id, source_provider, device_name, external_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         ON CONFLICT (user_id, source_provider, timestamp) 
-         DO UPDATE SET 
-           heart_rate_bpm = EXCLUDED.heart_rate_bpm,
-           context = COALESCE(EXCLUDED.context, heart_rate_entries.context),
-           sleep_entry_id = COALESCE(EXCLUDED.sleep_entry_id, heart_rate_entries.sleep_entry_id),
-           exercise_entry_id = COALESCE(EXCLUDED.exercise_entry_id, heart_rate_entries.exercise_entry_id),
-           device_name = COALESCE(EXCLUDED.device_name, heart_rate_entries.device_name),
-           external_id = COALESCE(EXCLUDED.external_id, heart_rate_entries.external_id)
-         RETURNING *`,
-        [
-          userId,
-          entry.entry_date,
-          entry.timestamp,
-          entry.heart_rate_bpm,
-          entry.context || 'unspecified',
-          entry.sleep_entry_id || null,
-          entry.exercise_entry_id || null,
-          entry.source_provider,
-          entry.device_name || null,
-          entry.external_id || null,
-        ]
-      )) as { rows: HeartRateEntries[] };
-      if (res.rows[0]) results.push(res.rows[0]);
-    }
-    return results;
+    const res = (await client.query(
+      `INSERT INTO health_metric_samples
+        (user_id, metric, entry_date, source_provider, device_name, samples)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT ON CONSTRAINT uq_health_metric_samples
+       DO UPDATE SET
+         samples = EXCLUDED.samples,
+         device_name = COALESCE(EXCLUDED.device_name, health_metric_samples.device_name),
+         updated_at = NOW()
+       RETURNING *`,
+      [
+        userId,
+        row.metric,
+        row.entry_date,
+        row.source_provider,
+        row.device_name || null,
+        JSON.stringify(row.samples),
+      ]
+    )) as { rows: HealthMetricSamples[] };
+    return res.rows[0];
   } finally {
     if (client && typeof client.release === 'function') client.release();
   }
 }
 
-export async function getHeartRateEntries(
+export async function getHealthMetricSamples(
   userId: string,
   actingUserId: string,
+  metric: HealthMetric,
   startDate: string,
   endDate: string
-): Promise<HeartRateEntries[]> {
+): Promise<HealthMetricSamples[]> {
   const client = await getClient(actingUserId);
   try {
     const res = (await client.query(
-      `SELECT * FROM heart_rate_entries 
-       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 
-       ORDER BY timestamp ASC`,
-      [userId, startDate, endDate]
-    )) as { rows: HeartRateEntries[] };
+      `SELECT * FROM health_metric_samples
+       WHERE user_id = $1 AND metric = $2 AND entry_date BETWEEN $3 AND $4
+       ORDER BY entry_date ASC`,
+      [userId, metric, startDate, endDate]
+    )) as { rows: HealthMetricSamples[] };
     return res.rows;
   } finally {
     client.release();
   }
 }
 
-// 2. HRV Entries
-export async function bulkUpsertHrv(
-  userId: string,
-  actingUserId: string,
-  entries: HrvEntriesInitializer[]
-): Promise<HrvEntries[]> {
-  if (!entries || entries.length === 0) return [];
-  const client = await getClient(actingUserId);
-  try {
-    const results: HrvEntries[] = [];
-
-    for (const entry of entries) {
-      const res = (await client.query(
-        `INSERT INTO hrv_entries 
-          (user_id, entry_date, timestamp, hrv_rmssd_ms, hrv_sdnn_ms, status, sleep_entry_id, exercise_entry_id, source_provider, device_name, external_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-         ON CONFLICT (user_id, source_provider, timestamp) 
-         DO UPDATE SET 
-           hrv_rmssd_ms = COALESCE(EXCLUDED.hrv_rmssd_ms, hrv_entries.hrv_rmssd_ms),
-           hrv_sdnn_ms = COALESCE(EXCLUDED.hrv_sdnn_ms, hrv_entries.hrv_sdnn_ms),
-           status = COALESCE(EXCLUDED.status, hrv_entries.status),
-           sleep_entry_id = COALESCE(EXCLUDED.sleep_entry_id, hrv_entries.sleep_entry_id),
-           exercise_entry_id = COALESCE(EXCLUDED.exercise_entry_id, hrv_entries.exercise_entry_id),
-           device_name = COALESCE(EXCLUDED.device_name, hrv_entries.device_name),
-           external_id = COALESCE(EXCLUDED.external_id, hrv_entries.external_id)
-         RETURNING *`,
-        [
-          userId,
-          entry.entry_date,
-          entry.timestamp,
-          entry.hrv_rmssd_ms ?? null,
-          entry.hrv_sdnn_ms ?? null,
-          entry.status || null,
-          entry.sleep_entry_id || null,
-          entry.exercise_entry_id || null,
-          entry.source_provider,
-          entry.device_name || null,
-          entry.external_id || null,
-        ]
-      )) as { rows: HrvEntries[] };
-      if (res.rows[0]) results.push(res.rows[0]);
-    }
-    return results;
-  } finally {
-    client.release();
-  }
-}
-
-export async function getHrvEntries(
-  userId: string,
-  actingUserId: string,
-  startDate: string,
-  endDate: string
-): Promise<HrvEntries[]> {
-  const client = await getClient(actingUserId);
-  try {
-    const res = (await client.query(
-      `SELECT * FROM hrv_entries 
-       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 
-       ORDER BY timestamp ASC`,
-      [userId, startDate, endDate]
-    )) as { rows: HrvEntries[] };
-    return res.rows;
-  } finally {
-    client.release();
-  }
-}
-
-// 3. Respiration Entries
-export async function bulkUpsertRespiration(
-  userId: string,
-  actingUserId: string,
-  entries: RespirationEntriesInitializer[]
-): Promise<RespirationEntries[]> {
-  if (!entries || entries.length === 0) return [];
-  const client = await getClient(actingUserId);
-  try {
-    const results: RespirationEntries[] = [];
-
-    for (const entry of entries) {
-      const res = (await client.query(
-        `INSERT INTO respiration_entries 
-          (user_id, entry_date, timestamp, breaths_per_minute, context, sleep_entry_id, exercise_entry_id, source_provider, device_name, external_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         ON CONFLICT (user_id, source_provider, timestamp) 
-         DO UPDATE SET 
-           breaths_per_minute = EXCLUDED.breaths_per_minute,
-           context = COALESCE(EXCLUDED.context, respiration_entries.context),
-           sleep_entry_id = COALESCE(EXCLUDED.sleep_entry_id, respiration_entries.sleep_entry_id),
-           exercise_entry_id = COALESCE(EXCLUDED.exercise_entry_id, respiration_entries.exercise_entry_id),
-           device_name = COALESCE(EXCLUDED.device_name, respiration_entries.device_name),
-           external_id = COALESCE(EXCLUDED.external_id, respiration_entries.external_id)
-         RETURNING *`,
-        [
-          userId,
-          entry.entry_date,
-          entry.timestamp,
-          entry.breaths_per_minute,
-          entry.context || 'unspecified',
-          entry.sleep_entry_id || null,
-          entry.exercise_entry_id || null,
-          entry.source_provider,
-          entry.device_name || null,
-          entry.external_id || null,
-        ]
-      )) as { rows: RespirationEntries[] };
-      if (res.rows[0]) results.push(res.rows[0]);
-    }
-    return results;
-  } finally {
-    client.release();
-  }
-}
-
-export async function getRespirationEntries(
-  userId: string,
-  actingUserId: string,
-  startDate: string,
-  endDate: string
-): Promise<RespirationEntries[]> {
-  const client = await getClient(actingUserId);
-  try {
-    const res = (await client.query(
-      `SELECT * FROM respiration_entries 
-       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 
-       ORDER BY timestamp ASC`,
-      [userId, startDate, endDate]
-    )) as { rows: RespirationEntries[] };
-    return res.rows;
-  } finally {
-    client.release();
-  }
-}
-
-// 4. SpO2 Entries
-export async function bulkUpsertSpo2(
-  userId: string,
-  actingUserId: string,
-  entries: Spo2EntriesInitializer[]
-): Promise<Spo2Entries[]> {
-  if (!entries || entries.length === 0) return [];
-  const client = await getClient(actingUserId);
-  try {
-    const results: Spo2Entries[] = [];
-
-    for (const entry of entries) {
-      const res = (await client.query(
-        `INSERT INTO spo2_entries 
-          (user_id, entry_date, timestamp, spo2_percentage, sleep_entry_id, exercise_entry_id, source_provider, device_name, external_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         ON CONFLICT (user_id, source_provider, timestamp) 
-         DO UPDATE SET 
-           spo2_percentage = EXCLUDED.spo2_percentage,
-           sleep_entry_id = COALESCE(EXCLUDED.sleep_entry_id, spo2_entries.sleep_entry_id),
-           exercise_entry_id = COALESCE(EXCLUDED.exercise_entry_id, spo2_entries.exercise_entry_id),
-           device_name = COALESCE(EXCLUDED.device_name, spo2_entries.device_name),
-           external_id = COALESCE(EXCLUDED.external_id, spo2_entries.external_id)
-         RETURNING *`,
-        [
-          userId,
-          entry.entry_date,
-          entry.timestamp,
-          entry.spo2_percentage,
-          entry.sleep_entry_id || null,
-          entry.exercise_entry_id || null,
-          entry.source_provider,
-          entry.device_name || null,
-          entry.external_id || null,
-        ]
-      )) as { rows: Spo2Entries[] };
-      if (res.rows[0]) results.push(res.rows[0]);
-    }
-    return results;
-  } finally {
-    client.release();
-  }
-}
-
-export async function getSpo2Entries(
-  userId: string,
-  actingUserId: string,
-  startDate: string,
-  endDate: string
-): Promise<Spo2Entries[]> {
-  const client = await getClient(actingUserId);
-  try {
-    const res = (await client.query(
-      `SELECT * FROM spo2_entries 
-       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 
-       ORDER BY timestamp ASC`,
-      [userId, startDate, endDate]
-    )) as { rows: Spo2Entries[] };
-    return res.rows;
-  } finally {
-    client.release();
-  }
-}
-
-// 5. Vitals Entries
+// 2. Vitals Entries
 export async function bulkUpsertVitals(
   userId: string,
   actingUserId: string,
@@ -350,7 +144,7 @@ export async function getVitalsEntries(
   }
 }
 
-// 6. Daily Health Metrics (Wearable daily summaries & scores)
+// 3. Daily Health Metrics (Wearable daily summaries & scores)
 export async function upsertDailyHealthMetrics(
   userId: string,
   actingUserId: string,

@@ -1,10 +1,8 @@
 import { apiCall } from '@/api/api';
 import {
   DailyHealthMetrics,
-  HeartRateEntries,
-  HrvEntries,
-  RespirationEntries,
-  Spo2Entries,
+  HealthMetric,
+  HealthMetricSamples,
   VitalsEntries,
   ExerciseEntryLaps,
   ExerciseEntryGpsPoints,
@@ -30,75 +28,25 @@ export const fetchDailyHealthMetrics = async (
   return response?.data || [];
 };
 
-export const fetchHeartRateEntries = async (
+/**
+ * Replaces the former fetchHeartRateEntries/fetchHrvEntries/fetchRespirationEntries/
+ * fetchSpo2Entries — all four metrics now live in one table (health_metric_samples),
+ * one JSONB bucket per day. See PLAN/telemetry_redesign_phase_4_frontend_docs.md.
+ */
+export const fetchHealthMetricSamples = async (
+  metric: HealthMetric,
   startDate: string,
   endDate?: string,
   userId?: string
-): Promise<HeartRateEntries[]> => {
+): Promise<HealthMetricSamples[]> => {
   const params = new URLSearchParams({
+    metric,
     startDate,
     endDate: endDate || startDate,
   });
   if (userId) params.append('userId', userId);
-  const response = await apiCall<{ data: HeartRateEntries[] }>(
-    `/generic-health/heart-rate?${params.toString()}`,
-    {
-      method: 'GET',
-    }
-  );
-  return response?.data || [];
-};
-
-export const fetchHrvEntries = async (
-  startDate: string,
-  endDate?: string,
-  userId?: string
-): Promise<HrvEntries[]> => {
-  const params = new URLSearchParams({
-    startDate,
-    endDate: endDate || startDate,
-  });
-  if (userId) params.append('userId', userId);
-  const response = await apiCall<{ data: HrvEntries[] }>(
-    `/generic-health/hrv?${params.toString()}`,
-    {
-      method: 'GET',
-    }
-  );
-  return response?.data || [];
-};
-
-export const fetchRespirationEntries = async (
-  startDate: string,
-  endDate?: string,
-  userId?: string
-): Promise<RespirationEntries[]> => {
-  const params = new URLSearchParams({
-    startDate,
-    endDate: endDate || startDate,
-  });
-  if (userId) params.append('userId', userId);
-  const response = await apiCall<{ data: RespirationEntries[] }>(
-    `/generic-health/respiration?${params.toString()}`,
-    {
-      method: 'GET',
-    }
-  );
-  return response?.data || [];
-};
-
-export const fetchSpo2Entries = async (
-  startDate: string,
-  endDate?: string,
-  userId?: string
-): Promise<Spo2Entries[]> => {
-  const params = new URLSearchParams({
-    startDate,
-    endDate: endDate || startDate,
-  });
-  if (userId) params.append('userId', userId);
-  const response = await apiCall<{ data: Spo2Entries[] }>(
-    `/generic-health/spo2?${params.toString()}`,
+  const response = await apiCall<{ data: HealthMetricSamples[] }>(
+    `/generic-health/samples?${params.toString()}`,
     {
       method: 'GET',
     }
@@ -135,14 +83,18 @@ export const fetchWorkoutLaps = async (
   return response?.data || [];
 };
 
+/**
+ * Returns one row for the whole workout (its `points` array holds every
+ * trackpoint), or null if the workout has no GPS data — not a list of rows.
+ */
 export const fetchWorkoutGpsPoints = async (
   exerciseEntryId: string
-): Promise<ExerciseEntryGpsPoints[]> => {
-  const response = await apiCall<{ data: ExerciseEntryGpsPoints[] }>(
+): Promise<ExerciseEntryGpsPoints | null> => {
+  const response = await apiCall<{ data: ExerciseEntryGpsPoints | null }>(
     `/generic-health/workout-gps/${exerciseEntryId}`,
     { method: 'GET' }
   );
-  return response?.data || [];
+  return response?.data ?? null;
 };
 
 export const fetchWorkoutHrZones = async (

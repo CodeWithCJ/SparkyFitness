@@ -8,7 +8,7 @@ import {
 import {
   ExerciseEntries,
   ExerciseEntryResponse,
-  ExerciseEntryGpsPoints,
+  GpsTrackPoint,
 } from '@workspace/shared';
 import { ChartDataPoint } from '@/types/reports';
 
@@ -354,7 +354,9 @@ export const processChartData = (
 };
 
 export const processGpsPointsToChartData = (
-  points: ExerciseEntryGpsPoints[] | undefined,
+  // The workout's trackpoint array (ExerciseEntryGpsPoints.points), not the
+  // wrapping row -- callers pass gpsData?.points.
+  points: GpsTrackPoint[] | undefined,
   convertDistance: (
     value: number,
     from: DistanceUnit,
@@ -365,14 +367,14 @@ export const processGpsPointsToChartData = (
   if (!points || points.length === 0) return [];
   const firstPt = points[0];
   if (!firstPt) return [];
-  const startTs = new Date(firstPt.timestamp).getTime();
-  const initialDist = firstPt.distance_meters ?? 0;
+  const startTs = new Date(firstPt.t).getTime();
+  const initialDist = firstPt.dist ?? 0;
 
   return points.map((pt) => {
-    const currentTs = new Date(pt.timestamp).getTime();
-    const speed = pt.speed_mps ?? 0;
+    const currentTs = new Date(pt.t).getTime();
+    const speed = pt.speed ?? 0;
     const paceMinutesPerKm = speed > 0 ? 1000 / (speed * 60) : 0;
-    const relDistance = (pt.distance_meters ?? 0) - initialDist;
+    const relDistance = (pt.dist ?? 0) - initialDist;
 
     return {
       timestamp: currentTs,
@@ -380,9 +382,9 @@ export const processGpsPointsToChartData = (
       distance: convertDistance(relDistance / 1000, 'km', distanceUnit),
       speed: speed ? parseFloat(speed.toFixed(2)) : 0,
       pace: paceMinutesPerKm > 0 ? parseFloat(paceMinutesPerKm.toFixed(2)) : 0,
-      heartRate: pt.heart_rate_bpm ?? null,
-      runCadence: pt.cadence ?? 0,
-      elevation: pt.altitude_meters ?? null,
+      heartRate: pt.hr ?? null,
+      runCadence: pt.cad ?? 0,
+      elevation: pt.alt ?? null,
     };
   });
 };

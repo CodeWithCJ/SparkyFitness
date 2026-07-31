@@ -106,10 +106,7 @@ BEGIN
     'exercise_entry_laps',
     'exercise_entry_gps_points',
     'exercise_entry_hr_zones',
-    'heart_rate_entries',
-    'hrv_entries',
-    'respiration_entries',
-    'spo2_entries',
+    'health_metric_samples',
     'vitals_entries',
     'daily_health_metrics'
   ]::text[])
@@ -683,10 +680,7 @@ SELECT create_diary_policy('exercise_entry_laps');
 SELECT create_diary_policy('exercise_entry_gps_points');
 SELECT create_diary_policy('exercise_entry_hr_zones');
 
-SELECT create_checkin_policy('heart_rate_entries');
-SELECT create_checkin_policy('hrv_entries');
-SELECT create_checkin_policy('respiration_entries');
-SELECT create_checkin_policy('spo2_entries');
+SELECT create_checkin_policy('health_metric_samples');
 SELECT create_checkin_policy('vitals_entries');
 SELECT create_checkin_policy('daily_health_metrics');
 
