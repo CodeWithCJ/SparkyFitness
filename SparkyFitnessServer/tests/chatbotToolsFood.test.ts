@@ -2363,6 +2363,63 @@ describe('update_entry', () => {
     expect(foodEntryService.updateFoodEntryMeal).not.toHaveBeenCalled();
   });
 
+  // A plain no-op (redundant quantity, no meal type change) must not rebuild
+  // components and must not fabricate a change message.
+  it('no-ops when a redundant quantity equals the existing value and no meal type is given', async () => {
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: 'default-id',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        quantity: 1,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry already has the requested values.');
+    expect(foodEntryService.moveFoodEntryMealToMealType).not.toHaveBeenCalled();
+    expect(foodEntryService.updateFoodEntryMeal).not.toHaveBeenCalled();
+    expect(
+      foodEntryService.getFoodEntryMealWithComponents
+    ).not.toHaveBeenCalled();
+  });
+
+  // Same meal type + redundant quantity/unit: nothing to do, no fake message.
+  it('no-ops when the meal type and quantity are unchanged', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.getFoodEntryMealMeta).mockResolvedValue({
+      id: ENTRY_ID,
+      quantity: 1,
+      unit: 'serving',
+      meal_type_id: MEAL_TYPE_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry_meal',
+        meal_type_id: MEAL_TYPE_ID,
+        quantity: 1,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry already has the requested values.');
+    expect(foodEntryService.moveFoodEntryMealToMealType).not.toHaveBeenCalled();
+    expect(foodEntryService.updateFoodEntryMeal).not.toHaveBeenCalled();
+  });
+
   // A REAL quantity change still uses the full rebuild path (components are
   // re-scaled to the new portion).
   it('rebuilds components when the quantity actually changes', async () => {

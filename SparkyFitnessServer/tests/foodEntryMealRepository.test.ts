@@ -10,9 +10,13 @@ vi.mock('../config/logging', () => ({
   log: vi.fn(),
 }));
 
+interface MockDbClient {
+  query: ReturnType<typeof vi.fn>;
+  release: ReturnType<typeof vi.fn>;
+}
+
 describe('foodEntryMealRepository.moveFoodEntryMealToMealType', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockDbClient;
   const MEAL_ENTRY_ID = 'meal-entry-1';
   const MEAL_TYPE_ID = 'custom-breakfast-id';
   const USER_ID = 'user-1';
@@ -29,11 +33,10 @@ describe('foodEntryMealRepository.moveFoodEntryMealToMealType', () => {
 
   const updateCalls = () =>
     mockClient.query.mock.calls.filter(
-      ([sql]: [string]) =>
-        typeof sql === 'string' && sql.trim().startsWith('UPDATE')
+      ([sql]) => typeof sql === 'string' && sql.trim().startsWith('UPDATE')
     );
   const rawCalls = () =>
-    mockClient.query.mock.calls.map(([sql]: [string]) =>
+    mockClient.query.mock.calls.map(([sql]) =>
       typeof sql === 'string' ? sql.trim() : String(sql)
     );
 
@@ -88,6 +91,10 @@ describe('foodEntryMealRepository.moveFoodEntryMealToMealType', () => {
       MEAL_ENTRY_ID,
       USER_ID,
     ]);
+    // food_entries has no updated_at column — it must not appear in the
+    // components UPDATE (the real schema would reject it).
+    const componentsSql = String(updateCalls()[1][0]);
+    expect(componentsSql).not.toContain('updated_at');
 
     expect(mockClient.release).toHaveBeenCalledTimes(1);
   });
@@ -116,7 +123,7 @@ describe('foodEntryMealRepository.moveFoodEntryMealToMealType', () => {
     expect(calls).not.toContain('COMMIT');
     // No components UPDATE after the parent failed.
     expect(
-      updateCalls().filter(([sql]: [string]) => sql.includes('food_entries'))
+      updateCalls().filter(([sql]) => sql.includes('food_entries'))
     ).toHaveLength(0);
     expect(mockClient.release).toHaveBeenCalledTimes(1);
   });

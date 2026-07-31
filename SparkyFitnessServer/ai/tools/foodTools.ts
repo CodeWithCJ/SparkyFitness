@@ -1928,10 +1928,9 @@ Actions:
                 } else {
                   // Lightweight parent read (no components) to decide whether
                   // the quantity/unit actually change. A redundant quantity or
-                  // unit copied from list_diary must not trigger the full
-                  // delete-and-rebuild path — only a real quantity/unit change
-                  // (or no meal type change at all) goes through
-                  // updateFoodEntryMeal.
+                  // unit copied from list_diary (or a plain no-op) must never
+                  // trigger the destructive delete-and-rebuild path — only a
+                  // real quantity/unit change does.
                   const existingMeta =
                     await foodEntryService.getFoodEntryMealMeta(
                       userId,
@@ -1945,39 +1944,53 @@ Actions:
                     Number(args.quantity) !== Number(existingMeta.quantity);
                   unitChanged =
                     args.unit !== undefined && args.unit !== existingMeta.unit;
-                  if (mealType && !quantityChanged && !unitChanged) {
-                    await foodEntryService.moveFoodEntryMealToMealType(
-                      userId,
-                      userId,
-                      args.entry_id,
-                      mealType.id
-                    );
-                  } else {
-                    // Round-trip the template link and component foods so the
-                    // server's edit path rescales components instead of
-                    // detaching them.
-                    const existing =
-                      await foodEntryService.getFoodEntryMealWithComponents(
+                  const mealTypeChanged =
+                    mealType !== undefined &&
+                    mealType.id !== existingMeta.meal_type_id;
+
+                  if (!quantityChanged && !unitChanged) {
+                    // No effective quantity/unit change: either a metadata-only
+                    // category move, or a genuine no-op.
+                    if (mealTypeChanged) {
+                      await foodEntryService.moveFoodEntryMealToMealType(
                         userId,
-                        args.entry_id
+                        userId,
+                        args.entry_id,
+                        mealType.id
                       );
-                    if (!existing) {
-                      return ERRORS.NOT_FOUND('Entry', args.entry_id);
+                      return formatConfirmation(
+                        `Entry updated: meal type to ${mealType.name}.`
+                      );
                     }
-                    await foodEntryService.updateFoodEntryMeal(
-                      userId,
-                      userId,
-                      args.entry_id,
-                      {
-                        meal_template_id: existing.meal_template_id,
-                        entry_date: dayString(existing.entry_date),
-                        quantity: args.quantity ?? existing.quantity,
-                        unit: args.unit ?? existing.unit,
-                        ...mealTypeUpdate,
-                        foods: existing.foods,
-                      }
+                    return formatConfirmation(
+                      'Entry already has the requested values.'
                     );
                   }
+
+                  // Real quantity/unit change: round-trip the template link and
+                  // component foods so the server's edit path rescales
+                  // components instead of detaching them.
+                  const existing =
+                    await foodEntryService.getFoodEntryMealWithComponents(
+                      userId,
+                      args.entry_id
+                    );
+                  if (!existing) {
+                    return ERRORS.NOT_FOUND('Entry', args.entry_id);
+                  }
+                  await foodEntryService.updateFoodEntryMeal(
+                    userId,
+                    userId,
+                    args.entry_id,
+                    {
+                      meal_template_id: existing.meal_template_id,
+                      entry_date: dayString(existing.entry_date),
+                      quantity: args.quantity ?? existing.quantity,
+                      unit: args.unit ?? existing.unit,
+                      ...mealTypeUpdate,
+                      foods: existing.foods,
+                    }
+                  );
                 }
               } catch (error) {
                 if (

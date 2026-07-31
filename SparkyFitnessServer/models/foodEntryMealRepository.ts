@@ -299,8 +299,7 @@ async function moveFoodEntryMealToMealType(
     await client.query(
       `UPDATE food_entries
        SET meal_type_id = $1,
-           updated_by_user_id = $2,
-           updated_at = CURRENT_TIMESTAMP
+           updated_by_user_id = $2
        WHERE food_entry_meal_id = $3 AND user_id = $4`,
       [mealTypeId, updatedByUserId, foodEntryMealId, userId]
     );
