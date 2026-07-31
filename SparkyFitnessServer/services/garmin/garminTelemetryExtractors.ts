@@ -379,9 +379,20 @@ export function extractGarminTelemetryFields(
       ? Math.round(activity.active_calories)
       : null;
 
+  // Garmin's activity-weather endpoint returns Fahrenheit and mph regardless of
+  // the user's Garmin Connect unit preference (it's a separate imperial-native
+  // weather backend, unlike the main fitness metrics which are metric-native).
+  // Confirmed for temp via a real synced value (72.0 — a plausible running
+  // temperature in F, physically impossible as C). Wind speed is inferred from
+  // the same payload/backend rather than independently confirmed.
   const weather: AnyRecord = payload?.weather ?? {};
-  const weatherTempCelsius =
+  const rawWeatherTemp =
     weather?.temp ?? weather?.apparentTemp ?? weather?.currentTemp ?? null;
+  const weatherTempCelsius =
+    rawWeatherTemp !== null ? ((rawWeatherTemp - 32) * 5) / 9 : null;
+  const rawWindSpeed = weather?.windSpeed ?? null;
+  const weatherWindSpeedMps =
+    rawWindSpeed !== null ? rawWindSpeed * 0.44704 : null;
   const weatherCondition =
     weather?.weatherTypeDTO?.desc ?? weather?.conditions ?? null;
 
@@ -418,7 +429,7 @@ export function extractGarminTelemetryFields(
     max_elevation_meters: activity.maxElevation ?? null,
     weather_temp_celsius: weatherTempCelsius,
     weather_condition: weatherCondition,
-    weather_wind_speed_mps: weather?.windSpeed ?? null,
+    weather_wind_speed_mps: weatherWindSpeedMps,
     weather_humidity_percentage: weather?.relativeHumidity ?? null,
     gear_name: gearName,
     gear_external_id: gearExternalId,

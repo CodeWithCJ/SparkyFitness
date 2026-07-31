@@ -253,9 +253,12 @@ export async function processGarminHealthAndWellnessData(
             bbItem?.body_battery_drained ??
             summaryItem.body_battery_drained ??
             null,
+          // NOT stressItem?.derived_mood_value — that's an inverted 0-100 mood
+          // score for a different feature (mood tracking), not a stress
+          // percentage; using it here would mislabel mood data as stress.
           avg_stress_level:
-            stressItem?.derived_mood_value ??
             summaryItem.avg_stress_level ??
+            stressItem?.average_stress_level ??
             null,
           max_stress_level: summaryItem.max_stress_level ?? null,
           vo2_max: maxMetricsItem?.vo2_max ?? summaryItem.vo2_max ?? null,
