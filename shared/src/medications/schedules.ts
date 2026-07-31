@@ -104,7 +104,8 @@ export interface SharedMedication {
 }
 
 /**
- * Filters and returns all scheduled dose slots for a given date.
+ * Filters and returns all scheduled dose slots for a given date,
+ * sorted by time of day with untimed slots last.
  */
 export function getDueDosesForDate<M extends SharedMedication>(
   medications: M[],
@@ -137,5 +138,16 @@ export function getDueDosesForDate<M extends SharedMedication>(
       }
     }
   }
+  // Stable sort: same-time slots keep their medication order.
+  result.sort((a, b) => {
+    const aTime = a.schedule.time_of_day != null && a.schedule.time_of_day !== '' ? a.schedule.time_of_day : null;
+    const bTime = b.schedule.time_of_day != null && b.schedule.time_of_day !== '' ? b.schedule.time_of_day : null;
+    if (aTime === null && bTime === null) return 0;
+    if (aTime === null) return 1;
+    if (bTime === null) return -1;
+    if (aTime < bTime) return -1;
+    if (aTime > bTime) return 1;
+    return 0;
+  });
   return result;
 }

@@ -33,6 +33,62 @@ describe('CardioEffortForm', () => {
     expect(getByLabelText('Distance in km for Run').props.value).toBe('5.2');
   });
 
+  it('renders assumed duration/distance as placeholders while the fields are empty', () => {
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        assumed={{ weight: null, reps: null, duration: 1500, distance: 5 }}
+      />,
+    );
+    expect(getByLabelText('Duration in minutes for Run').props.placeholder).toBe('25');
+    expect(getByLabelText('Distance in km for Run').props.placeholder).toBe('5');
+    expect(getByLabelText('Duration in minutes for Run').props.value).toBe('');
+  });
+
+  it('shows no assumed placeholder over a filled field or outside live mode', () => {
+    const filled = render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        assumed={{ weight: null, reps: null, duration: 1500, distance: 5 }}
+      />,
+    );
+    expect(
+      filled.getByLabelText('Duration in minutes for Run').props.placeholder,
+    ).toBe('–');
+
+    const editMode = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="edit"
+        distanceUnit="km"
+        assumed={{ weight: null, reps: null, duration: 1500, distance: 5 }}
+      />,
+    );
+    expect(
+      editMode.getByLabelText('Duration in minutes for Run').props.placeholder,
+    ).toBe('–');
+  });
+
+  it('converts the assumed distance placeholder into the display unit', () => {
+    const { getByLabelText } = render(
+      <CardioEffortForm
+        set={makeSet({ duration: null, distance: null })}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="miles"
+        assumed={{ weight: null, reps: null, duration: null, distance: 1.609344 }}
+      />,
+    );
+    expect(getByLabelText('Distance in mi for Run').props.placeholder).toBe('1');
+  });
+
   it('converts the seeded distance into miles for a miles user', () => {
     const { getByLabelText } = render(
       <CardioEffortForm
@@ -264,18 +320,36 @@ describe('CardioEffortForm', () => {
     expect(upcoming.queryByTestId('cardio-log-ring')).toBeNull();
   });
 
-  it('renders flat text in view mode', () => {
+  it('renders a labeled duration/distance table in view mode', () => {
     const { getByText, queryByLabelText } = render(
       <CardioEffortForm set={makeSet()} exerciseName="Run" mode="view" distanceUnit="km" />,
     );
-    expect(getByText('30:00 · 5.2 km')).toBeTruthy();
+    expect(getByText('Duration (min)')).toBeTruthy();
+    expect(getByText('30')).toBeTruthy();
+    expect(getByText('Distance (km)')).toBeTruthy();
+    expect(getByText('5.2')).toBeTruthy();
     expect(queryByLabelText('Duration in minutes for Run')).toBeNull();
   });
 
-  it('view mode reads sensibly for a legacy set-less entry', () => {
+  it('view mode converts the distance column into the display unit', () => {
     const { getByText } = render(
+      <CardioEffortForm
+        set={makeSet({ distance: 1.609344 })}
+        exerciseName="Run"
+        mode="view"
+        distanceUnit="miles"
+      />,
+    );
+    expect(getByText('Distance (mi)')).toBeTruthy();
+    expect(getByText('1')).toBeTruthy();
+  });
+
+  it('view mode shows dashes for a legacy set-less entry', () => {
+    const { getByText, getAllByText } = render(
       <CardioEffortForm set={null} exerciseName="Run" mode="view" distanceUnit="km" />,
     );
-    expect(getByText('No duration recorded')).toBeTruthy();
+    expect(getByText('Duration (min)')).toBeTruthy();
+    expect(getByText('Distance (km)')).toBeTruthy();
+    expect(getAllByText('–')).toHaveLength(2);
   });
 });

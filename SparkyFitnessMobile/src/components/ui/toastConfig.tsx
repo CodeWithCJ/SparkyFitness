@@ -1,8 +1,15 @@
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ToastConfig } from 'react-native-toast-message';
 
 type ToastVariant = 'success' | 'error' | 'info';
+
+// Tap actions ride in via Toast.show({ props: { onPress } }); the library's
+// own onPress option defaults to a noop, so an action passed there can't be
+// told apart from no action.
+interface ToastTapProps {
+  onPress?: () => void;
+}
 
 const variantTokens: Record<ToastVariant, { bg: string; text: string; border: string }> = {
   success: {
@@ -26,10 +33,12 @@ function ToastContent({
   variant,
   text1,
   text2,
+  onPress,
 }: {
   variant: ToastVariant;
   text1?: string;
   text2?: string;
+  onPress?: () => void;
 }) {
   const tokens = variantTokens[variant];
   const [bgColor, textColor] = useCSSVariable([tokens.bg, tokens.text]) as [
@@ -37,7 +46,7 @@ function ToastContent({
     string,
   ];
 
-  return (
+  const body = (
     <View
       style={{
         backgroundColor: bgColor,
@@ -64,16 +73,23 @@ function ToastContent({
       ) : null}
     </View>
   );
+
+  if (!onPress) return body;
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} accessibilityRole="button">
+      {body}
+    </TouchableOpacity>
+  );
 }
 
 export const toastConfig: ToastConfig = {
-  success: ({ text1, text2 }) => (
-    <ToastContent variant="success" text1={text1} text2={text2} />
+  success: ({ text1, text2, props }) => (
+    <ToastContent variant="success" text1={text1} text2={text2} onPress={(props as ToastTapProps | undefined)?.onPress} />
   ),
-  error: ({ text1, text2 }) => (
-    <ToastContent variant="error" text1={text1} text2={text2} />
+  error: ({ text1, text2, props }) => (
+    <ToastContent variant="error" text1={text1} text2={text2} onPress={(props as ToastTapProps | undefined)?.onPress} />
   ),
-  info: ({ text1, text2 }) => (
-    <ToastContent variant="info" text1={text1} text2={text2} />
+  info: ({ text1, text2, props }) => (
+    <ToastContent variant="info" text1={text1} text2={text2} onPress={(props as ToastTapProps | undefined)?.onPress} />
   ),
 };

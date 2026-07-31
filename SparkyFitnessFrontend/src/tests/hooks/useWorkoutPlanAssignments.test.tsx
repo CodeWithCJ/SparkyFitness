@@ -62,6 +62,31 @@ const planWithTimedSet = {
   ],
 } as unknown as WorkoutPlanTemplate;
 
+const planWithWeightedSet = {
+  id: 'plan-2',
+  user_id: 'user-1',
+  plan_name: 'Push',
+  assignments: [
+    {
+      id: 'assignment-2',
+      template_id: 'plan-2',
+      day_of_week: 1,
+      exercise_id: 'exercise-4',
+      exercise_name: 'Bench Press',
+      sets: [
+        {
+          id: 3,
+          set_number: 1,
+          set_type: 'Working Set',
+          reps: 5,
+          weight: 100,
+          duration: null,
+        },
+      ],
+    },
+  ],
+} as unknown as WorkoutPlanTemplate;
+
 const addExercise = (exercise: Partial<Exercise>) => {
   const { result } = renderHook(() => useWorkoutPlanAssignments(null));
 
@@ -88,6 +113,18 @@ describe('useWorkoutPlanAssignments weight handling', () => {
     );
     // An explicit 0 is a real value and must not be nulled.
     expect(savedSets?.[1]).toEqual(expect.objectContaining({ weight: 0 }));
+  });
+
+  it('keeps a populated weight unchanged through load and save (no unit conversion)', () => {
+    const { result } = renderHook(() =>
+      useWorkoutPlanAssignments(planWithWeightedSet)
+    );
+
+    expect(result.current.assignments[0]?.sets?.[0]?.weight).toBe(100);
+
+    const savedSets = result.current.buildAssignmentsForSave()[0]?.sets;
+
+    expect(savedSets?.[0]).toEqual(expect.objectContaining({ weight: 100 }));
   });
 });
 

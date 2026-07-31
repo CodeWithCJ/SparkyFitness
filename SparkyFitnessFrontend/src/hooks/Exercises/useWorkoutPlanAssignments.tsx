@@ -24,7 +24,7 @@ export function useWorkoutPlanAssignments(
 ) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { weightUnit, loggingLevel, convertWeight } = usePreferences();
+  const { loggingLevel } = usePreferences();
 
   const { data: presetData } = useWorkoutPresets(user?.id);
   const workoutPresets = useMemo(
@@ -41,13 +41,7 @@ export function useWorkoutPlanAssignments(
           a.sets?.map((s) => ({
             ...s,
             id: s.id ? String(s.id) : generateClientId(),
-            // null means no weight (e.g. a time-only set) and must survive the round trip.
-            weight:
-              s.weight != null
-                ? parseFloat(
-                    convertWeight(s.weight, 'kg', weightUnit).toFixed(1)
-                  )
-                : null,
+            weight: s.weight != null ? Number(s.weight) : null,
           })) || [],
       })) || []
   );
@@ -343,17 +337,10 @@ export function useWorkoutPlanAssignments(
           return {
             ...a,
             sort_order: dayAssignments.indexOf(a),
-            sets:
-              a.sets?.map((s) => ({
-                ...s,
-                weight:
-                  s.weight != null
-                    ? convertWeight(s.weight, weightUnit, 'kg')
-                    : null,
-              })) || [],
+            sets: a.sets || [],
           };
         }),
-    [assignments, convertWeight, weightUnit]
+    [assignments]
   );
 
   return {

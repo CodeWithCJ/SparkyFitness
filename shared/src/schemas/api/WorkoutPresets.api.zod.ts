@@ -17,6 +17,9 @@ export const workoutPresetSetResponseSchema = z.object({
   weight: z.number().nullable(),
   // Per-set duration is integer SECONDS.
   duration: z.number().int().nullable(),
+  // Km, meaningful on duration_distance sets. Optional: pre-distance servers
+  // omit it.
+  distance: z.number().nullable().optional(),
   rest_time: z.number().nullable(),
   notes: z.string().nullable(),
 });
@@ -66,6 +69,8 @@ export const workoutPresetSetRequestSchema = z.object({
   weight: z.number().nullable().optional(),
   // Per-set duration is integer SECONDS.
   duration: z.number().int().nullable().optional(),
+  // Km, meaningful on duration_distance sets.
+  distance: z.number().nullable().optional(),
   rest_time: z.number().nullable().optional(),
   notes: z.string().nullable().optional(),
 });

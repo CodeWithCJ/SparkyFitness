@@ -8,6 +8,16 @@ body:
       value: |
         Got an idea that would make SparkyFitness better? We'd love to hear it!
 
+  - type: dropdown
+    id: pr_willingness
+    attributes:
+      label: Are you willing to submit a PR?
+      description: Would you like to submit a Pull Request to implement this feature yourself?
+      options:
+        - Yes, I'd like to submit a PR!
+        - No, but I can help test
+        - No
+
   - type: textarea
     id: problem
     attributes:

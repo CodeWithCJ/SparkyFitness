@@ -173,7 +173,6 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const handleStartWorkout = () => {
     void startLiveWorkout({
       exercises: buildSingleExerciseStartPayload(exercise),
-      modalities: [resolveSnapshotModality(exercise)],
     });
   };
 

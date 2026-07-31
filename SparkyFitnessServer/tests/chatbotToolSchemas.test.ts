@@ -81,6 +81,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'quantity',
         'unit',
         'meal_type',
+        'meal_type_id',
         'entry_date',
         'entry_time',
         'meal_id',
@@ -119,6 +120,7 @@ describe('published (flat) chatbot tool schemas', () => {
       actions: [
         'search_food',
         'lookup_food_nutrition',
+        'list_meal_types',
         'log_food',
         'log_external_food',
         'create_food',
@@ -416,6 +418,52 @@ describe('strict discriminated-union validation schemas', () => {
       entry_date: '2026-06-11',
     });
     expect(result.success).toBe(true);
+  });
+
+  it('manageFoodSchema accepts custom meal type IDs for logging and moving entries', () => {
+    const customMealTypeId = '66666666-6666-4666-8666-666666666666';
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'log_food',
+        food_name: 'Eggs',
+        meal_type_id: customMealTypeId,
+      }).success
+    ).toBe(true);
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'update_entry',
+        entry_id: '33333333-3333-4333-8333-333333333333',
+        entry_type: 'food_entry',
+        meal_type_id: customMealTypeId,
+      }).success
+    ).toBe(true);
+  });
+
+  it('manageFoodSchema keeps meal_type as a built-in enum fallback (custom types go through meal_type_id)', () => {
+    // The legacy fallback accepts only the built-in slots...
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'log_food',
+        food_name: 'Eggs',
+        meal_type: 'breakfast',
+      }).success
+    ).toBe(true);
+    // ...and rejects anything else: custom meal types must NOT be passed by name.
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'log_food',
+        food_name: 'Eggs',
+        meal_type: 'invalid-slot',
+      }).success
+    ).toBe(false);
+    // Custom meal types are selected by ID, not by name.
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'log_food',
+        food_name: 'Eggs',
+        meal_type_id: '66666666-6666-4666-8666-666666666666',
+      }).success
+    ).toBe(true);
   });
 
   it('manageFoodSchema rejects fields that do not belong to the action', () => {

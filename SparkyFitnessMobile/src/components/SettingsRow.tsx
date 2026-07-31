@@ -49,6 +49,8 @@ interface SettingsRowProps {
   icon?: IconName;
   title: string;
   subtitle?: React.ReactNode;
+  /** Line clamp for string subtitles; 0 lets the text wrap freely. */
+  subtitleNumberOfLines?: number;
   onPress?: () => void;
   rightAccessory?: React.ReactNode;
   iconColor?: string;
@@ -62,6 +64,7 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
   icon,
   title,
   subtitle,
+  subtitleNumberOfLines = 1,
   onPress,
   rightAccessory,
   iconColor,
@@ -103,7 +106,7 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
         {typeof subtitle === 'string' ? (
           <Text
             className="text-sm text-text-secondary mt-0.5"
-            numberOfLines={1}
+            numberOfLines={subtitleNumberOfLines}
             ellipsizeMode="middle"
           >
             {subtitle}

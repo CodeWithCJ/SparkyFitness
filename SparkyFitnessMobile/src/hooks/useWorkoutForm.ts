@@ -85,6 +85,7 @@ type WorkoutFormAction =
       type: 'POPULATE_FROM_PRESET';
       preset: WorkoutPreset;
       weightUnit: 'kg' | 'lbs';
+      distanceUnit: 'km' | 'miles';
       date?: string;
       clientIds: PresetClientIds;
     };
@@ -183,8 +184,9 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
               ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
               : '',
             reps: set.reps != null ? String(set.reps) : '',
-            // Presets have no distance column.
-            distance: '',
+            distance: set.distance != null
+              ? String(parseFloat(distanceFromKm(set.distance, action.distanceUnit).toFixed(2)))
+              : '',
           })),
         })),
       };
@@ -273,13 +275,18 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
   );
 
   const populateFromPreset = useCallback(
-    (preset: WorkoutPreset, weightUnit: 'kg' | 'lbs', date?: string): string[] => {
+    (
+      preset: WorkoutPreset,
+      weightUnit: 'kg' | 'lbs',
+      distanceUnit: 'km' | 'miles',
+      date?: string,
+    ): string[] => {
       const clientIds: PresetClientIds = preset.exercises.map(e => ({
         exerciseClientId: generateClientId(),
         setClientIds: e.sets.map(() => generateClientId()),
       }));
       exercisesModifiedRef.current = false;
-      dispatch({ type: 'POPULATE_FROM_PRESET', preset, weightUnit, date, clientIds });
+      dispatch({ type: 'POPULATE_FROM_PRESET', preset, weightUnit, distanceUnit, date, clientIds });
       return clientIds.map(c => c.exerciseClientId);
     },
     [exercisesModifiedRef],

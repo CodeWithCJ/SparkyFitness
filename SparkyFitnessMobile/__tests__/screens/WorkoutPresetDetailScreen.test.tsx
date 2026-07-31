@@ -73,7 +73,7 @@ function buildSet(overrides: Partial<WorkoutPresetSet> = {}): WorkoutPresetSet {
 
 function buildPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
   return {
-    id: 'preset-1',
+    id: 7,
     user_id: 'user-1',
     name: 'Push Day',
     description: 'Chest, shoulders, triceps',
@@ -139,7 +139,7 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(startLiveWorkout).toHaveBeenCalledWith({
       name: 'Push Day',
       exercises: buildPresetStartExercisesPayload(preset),
-      modalities: ['weight_reps'],
+      sourcePresetId: 7,
     });
     expect(navigation.navigate).not.toHaveBeenCalled();
   });
@@ -400,27 +400,4 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(screen.getByText('90')).toBeTruthy();
   });
 
-  it('starts a duration preset forwarding its per-exercise modalities', () => {
-    const preset = buildPreset({
-      exercises: [
-        {
-          id: 'pe-1',
-          exercise_id: 'ex-1',
-          exercise_name: 'Plank',
-          image_url: null,
-          modality: 'duration',
-          sets: [buildSet({ id: 's-1', set_number: 1, duration: 45 })],
-        },
-      ],
-    });
-    const screen = renderScreen(preset);
-
-    fireEvent.press(screen.getByText('Start workout'));
-
-    expect(startLiveWorkout).toHaveBeenCalledWith({
-      name: 'Push Day',
-      exercises: buildPresetStartExercisesPayload(preset),
-      modalities: ['duration'],
-    });
-  });
 });
