@@ -48,12 +48,13 @@ interface MealTypeRow {
 }
 
 // Resolves a meal type selector (a UUID or a legacy name) to its canonical
-// id. Callers that already hold a meal_type_id (e.g. the MCP food tools) pass
-// the UUID through and get exactly that type back, even when a custom type
-// shares its name with a system default. The name-based fallback only matches
-// system defaults (user_id IS NULL): custom types are selected by id, and a
-// custom type may share a name with a system default because uniqueness is
-// per (name, user_id).
+// id. Exact id matches always win so a caller holding a meal_type_id gets
+// exactly that type back, even when a custom type shares its name with a
+// system default. The name fallback matches any type the user can see
+// (system defaults and custom types): this helper is shared with the REST
+// API, web and mobile clients, which still send custom type NAMES as
+// selectors. The MCP food tools restrict the legacy-name path to system
+// defaults on their side and pass the canonical id into the service.
 async function resolveMealTypeId(
   userId: string,
   mealTypeSelector: string | null | undefined
@@ -67,12 +68,11 @@ async function resolveMealTypeId(
   const byId = types.find((type) => type.id.toLowerCase() === normalized);
   if (byId) return byId.id;
 
-  const systemByName = types.find(
-    (type) =>
-      type.user_id === null && type.name.trim().toLowerCase() === normalized
+  const byName = types.find(
+    (type) => type.name.trim().toLowerCase() === normalized
   );
 
-  return systemByName?.id ?? null;
+  return byName?.id ?? null;
 }
 
 // ── Diary CSV import ────────────────────────────────────────────────────────
@@ -3257,7 +3257,6 @@ export { copyFoodEntriesFromYesterday };
 export { copyAllFoodEntries };
 export { copyAllFoodEntriesFromYesterday };
 export { getDailyNutritionSummary };
-export { resolveMealTypeId };
 export { createFoodEntryMeal };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealWithComponents };

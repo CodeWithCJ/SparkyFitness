@@ -1531,8 +1531,29 @@ describe('log_external_food', () => {
     );
 
     expect(result).toBe(
-      'Error [VALIDATION]: No external match found for "dragonfruit smoothie". Please estimate the nutrition yourself and call create_food (include meal_type and entry_date to save and log in one step), for example: {"action":"create_food","food_name":"dragonfruit smoothie","calories":300,"protein":15,"carbs":40,"fat":5,"meal_type":"snacks"}'
+      'Error [VALIDATION]: No external match found for "dragonfruit smoothie". Please estimate the nutrition yourself and call create_food (include meal_type and entry_date to save and log in one step), for example: {"action":"create_food","food_name":"dragonfruit smoothie","calories":300,"protein":15,"carbs":40,"fat":5,"meal_type":"snacks","entry_date":"2026-06-10"}'
     );
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+  });
+
+  // Regression: a custom meal_type_id must survive into the retry example so
+  // the model is not steered back to a built-in category (issue #1959).
+  it('keeps a custom meal_type_id in the create_food retry example', async () => {
+    mockUsdaLookup([]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_external_food',
+        food_name: 'dragonfruit smoothie',
+        meal_type_id: MEAL_TYPE_ID,
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toContain('"meal_type_id":"' + MEAL_TYPE_ID + '"');
+    expect(result).not.toContain('"meal_type":');
     expect(foodCoreService.createFood).not.toHaveBeenCalled();
     expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
   });
@@ -2529,6 +2550,44 @@ describe('save_as_meal_template', () => {
         entry_date: '2026-06-10',
       })
     );
+    expect(foodEntryService.copyFoodEntries).not.toHaveBeenCalled();
+    expect(foodEntryService.copyAllFoodEntries).not.toHaveBeenCalled();
+  });
+
+  // Regression: an incomplete log_meal (meal_name/meal_id + a date but no meal
+  // type selector) must surface a validation error instead of falling through
+  // to a full-day copy. The action inference routes any meal intent with a
+  // date to log_meal before copy_from_yesterday.
+  it('returns MISSING_PARAMS (not a copy) for meal_name + date without a meal type selector', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        meal_name: 'Overnight Oats',
+        target_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toContain(
+      'Missing required parameters: meal_type_id (or meal_type)'
+    );
+    expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
+    expect(foodEntryService.copyFoodEntries).not.toHaveBeenCalled();
+    expect(foodEntryService.copyAllFoodEntries).not.toHaveBeenCalled();
+  });
+
+  it('returns MISSING_PARAMS (not a copy) for meal_id + date without a meal type selector', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        meal_id: MEAL_ID,
+        target_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toContain(
+      'Missing required parameters: meal_type_id (or meal_type)'
+    );
+    expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
     expect(foodEntryService.copyFoodEntries).not.toHaveBeenCalled();
     expect(foodEntryService.copyAllFoodEntries).not.toHaveBeenCalled();
   });

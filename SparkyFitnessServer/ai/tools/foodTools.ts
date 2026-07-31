@@ -855,11 +855,21 @@ Actions:
             // log_meal must be checked before copy_from_yesterday: small
             // models often file a logging date under target_date/source_date,
             // and the salvage logic remaps those to entry_date for logging
-            // actions. Inferring copy first would silently drop meal_name and
-            // run a different data-writing operation.
+            // actions. A meal_name or meal_id combined with any date (or a
+            // type selector) is a log intent — inferring copy first would
+            // silently drop meal_name/meal_id and run a different
+            // data-writing operation instead of a validation error when the
+            // type selector is missing.
+            if (args.meal_id) {
+              return 'log_meal';
+            }
             if (
-              (args.meal_name || args.meal_id) &&
-              (args.meal_type || args.meal_type_id)
+              args.meal_name &&
+              (args.meal_type ||
+                args.meal_type_id ||
+                args.entry_date ||
+                args.target_date ||
+                args.source_date)
             ) {
               return 'log_meal';
             }
@@ -1272,8 +1282,25 @@ Actions:
                 args.provider_type
               );
               if (result.source === 'ai_estimate' || !result.food) {
+                // Preserve the caller's meal selector in the retry example: a
+                // custom meal_type_id must not be silently replaced with the
+                // lunch fallback (that is exactly the kind of category
+                // substitution issue #1959 is about).
+                const mealSelector = args.meal_type_id
+                  ? { meal_type_id: args.meal_type_id }
+                  : { meal_type: args.meal_type ?? 'lunch' };
+                const exampleCall = JSON.stringify({
+                  action: 'create_food',
+                  food_name: args.food_name,
+                  calories: 300,
+                  protein: 15,
+                  carbs: 40,
+                  fat: 5,
+                  ...mealSelector,
+                  entry_date: entryDate,
+                });
                 return ERRORS.VALIDATION(
-                  `No external match found for "${args.food_name}". Please estimate the nutrition yourself and call create_food (include meal_type and entry_date to save and log in one step), for example: {"action":"create_food","food_name":"${args.food_name}","calories":300,"protein":15,"carbs":40,"fat":5,"meal_type":"${args.meal_type || 'lunch'}"}`
+                  `No external match found for "${args.food_name}". Please estimate the nutrition yourself and call create_food (include meal_type and entry_date to save and log in one step), for example: ${exampleCall}`
                 );
               }
               // eslint-disable-next-line @typescript-eslint/no-explicit-any

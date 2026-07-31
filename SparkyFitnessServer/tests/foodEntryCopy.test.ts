@@ -1,8 +1,10 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import {
+  copyAllFoodEntries,
+  copyFoodEntries,
   copyFoodEntriesFromUser,
+  copyFoodEntriesFromYesterday,
   copyFoodEntriesToUser,
-  resolveMealTypeId,
 } from '../services/foodEntryService.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import foodRepository from '../models/foodRepository.js';
@@ -11,7 +13,7 @@ import mealTypeRepository from '../models/mealType.js';
 vi.mock('../models/familyAccessRepository');
 vi.mock('../models/foodRepository');
 vi.mock('../models/foodEntryMealRepository');
-vi.mock('../models/mealType');
+vi.mock('../models/mealType.js');
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
 
 const ACTOR_A = 'actor-a';
@@ -311,54 +313,178 @@ describe('foodEntryService symmetrical cross-user copy tests', () => {
   });
 });
 
-describe('resolveMealTypeId (service-level meal type resolution)', () => {
-  const SYSTEM_LUNCH_ID = 'system-lunch-id';
+describe('copy flows resolve custom meal types by name (shared service contract)', () => {
+  const CUSTOM_MEAL_TYPE_ID = 'custom-second-breakfast-id';
   const CUSTOM_LUNCH_ID = 'custom-lunch-id';
+  const SYSTEM_LUNCH_ID = 'system-lunch-id';
 
-  // A custom type may share its name with a system default (uniqueness is per
-  // (name, user_id)). The legacy-name fallback must resolve only to the system
-  // type, even when a same-named custom type sorts first; custom types are
-  // selected exclusively by id.
-  it('resolves a legacy name to the system type even when a same-named custom type sorts first', async () => {
+  // Source entry fixture: no food_entry_meal_id, so the copy path goes
+  // straight to the per-entry duplicate check and bulk create.
+  const mockEntry = {
+    id: 'entry-1',
+    food_id: 'food-abc',
+    variant_id: 'variant-xyz',
+    quantity: 1.5,
+    unit: 'serving',
+    food_name: 'Banana',
+    brand_name: 'Fresh',
+    serving_size: 1,
+    serving_unit: 'piece',
+    calories: 105,
+    protein: 1.3,
+    carbs: 27,
+    fat: 0.3,
+    saturated_fat: 0.1,
+    polyunsaturated_fat: 0.1,
+    monounsaturated_fat: 0.1,
+    trans_fat: 0,
+    cholesterol: 0,
+    sodium: 1,
+    potassium: 422,
+    dietary_fiber: 3.1,
+    sugars: 14,
+    vitamin_a: 1,
+    vitamin_c: 10,
+    calcium: 6,
+    iron: 0.3,
+    glycemic_index: 51,
+    custom_nutrients: {},
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(foodRepository.getFoodEntryByDetails).mockResolvedValue(
+      undefined
+    );
+  });
+
+  it('copyFoodEntries resolves a custom type by its name', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: CUSTOM_MEAL_TYPE_ID, name: 'Second breakfast', user_id: 'user-1' },
+    ]);
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [mockEntry]
+    );
+    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+      { id: 'entry-copied-1', user_id: 'user-1', food_id: 'food-abc' },
+    ]);
+
+    const result = await copyFoodEntries(
+      'user-1',
+      'user-1',
+      '2026-06-09',
+      'Second breakfast',
+      '2026-06-10',
+      'Second breakfast'
+    );
+
+    expect(result).toEqual([
+      { id: 'entry-copied-1', user_id: 'user-1', food_id: 'food-abc' },
+    ]);
+    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ meal_type_id: CUSTOM_MEAL_TYPE_ID }),
+      ]),
+      'user-1'
+    );
+  });
+
+  it('copyFoodEntriesFromYesterday resolves a custom type by its name', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: CUSTOM_MEAL_TYPE_ID, name: 'Second breakfast', user_id: 'user-1' },
+    ]);
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [mockEntry]
+    );
+    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+      { id: 'entry-copied-1' },
+    ]);
+
+    const result = await copyFoodEntriesFromYesterday(
+      'user-1',
+      'user-1',
+      'Second breakfast',
+      '2026-06-10'
+    );
+
+    expect(result).toHaveLength(1);
+    expect(foodRepository.getFoodEntriesByDateAndMealType).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-09',
+      'Second breakfast'
+    );
+  });
+
+  it('copyAllFoodEntries copies a day that contains a custom meal type', async () => {
+    vi.mocked(foodRepository.getFoodEntriesByDate).mockResolvedValue([
+      { ...mockEntry, meal_type: 'Second breakfast' },
+      {
+        ...mockEntry,
+        id: 'entry-2',
+        food_id: 'food-def',
+        meal_type: 'Lunch',
+      },
+    ]);
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: CUSTOM_MEAL_TYPE_ID, name: 'Second breakfast', user_id: 'user-1' },
+      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
+    ]);
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [mockEntry]
+    );
+    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+      { id: 'entry-copied-1' },
+    ]);
+
+    const result = await copyAllFoodEntries(
+      'user-1',
+      'user-1',
+      '2026-06-09',
+      '2026-06-10'
+    );
+
+    expect(result.length).toBeGreaterThan(0);
+    // Both used slots were routed through copyFoodEntries by name.
+    expect(foodRepository.getFoodEntriesByDateAndMealType).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-09',
+      'Second breakfast'
+    );
+    expect(foodRepository.getFoodEntriesByDateAndMealType).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-09',
+      'Lunch'
+    );
+  });
+
+  it('copyFoodEntries prefers an exact id over a same-named system type', async () => {
+    // A custom type shares its name with a system default; passing the custom
+    // UUID must resolve to the custom type, not the system one.
     vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
       { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
       { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
     ]);
-
-    const id = await resolveMealTypeId('user-1', 'Lunch');
-
-    expect(id).toBe(SYSTEM_LUNCH_ID);
-  });
-
-  it('resolves an exact custom type id to that custom type', async () => {
-    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
-      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [mockEntry]
+    );
+    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+      { id: 'entry-copied-1' },
     ]);
 
-    const id = await resolveMealTypeId('user-1', CUSTOM_LUNCH_ID);
+    await copyFoodEntries(
+      'user-1',
+      'user-1',
+      '2026-06-09',
+      'Lunch',
+      '2026-06-10',
+      CUSTOM_LUNCH_ID
+    );
 
-    expect(id).toBe(CUSTOM_LUNCH_ID);
-  });
-
-  it('resolves an exact system type id to that system type', async () => {
-    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
-      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
-    ]);
-
-    const id = await resolveMealTypeId('user-1', SYSTEM_LUNCH_ID);
-
-    expect(id).toBe(SYSTEM_LUNCH_ID);
-  });
-
-  it('returns null for an unknown name', async () => {
-    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
-    ]);
-
-    const id = await resolveMealTypeId('user-1', 'Dinner');
-
-    expect(id).toBeNull();
+    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ meal_type_id: CUSTOM_LUNCH_ID }),
+      ]),
+      'user-1'
+    );
   });
 });
