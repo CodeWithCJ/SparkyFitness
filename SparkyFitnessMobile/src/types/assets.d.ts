@@ -5,3 +5,7 @@
 // `expo-env.d.ts`, which is not generated in the CI typecheck job — so declare it
 // here in a tracked file. Keep this in sync with Expo's asset module declarations.
 declare module '*.css';
+declare module '*.wav' {
+  const asset: number;
+  export default asset;
+}

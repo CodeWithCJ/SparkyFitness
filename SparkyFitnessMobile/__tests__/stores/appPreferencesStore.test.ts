@@ -25,6 +25,7 @@ describe('appPreferencesStore', () => {
       expect(state.diarySummaryVisible).toBe(false);
       expect(state.diarySummaryExpanded).toBe(false);
       expect(state.defaultRestSec).toBe(90);
+      expect(state.restTimerSoundEnabled).toBe(true);
     });
   });
 
@@ -54,6 +55,9 @@ describe('appPreferencesStore', () => {
 
       store.setDefaultRestSec(120);
       expect(useAppPreferencesStore.getState().defaultRestSec).toBe(120);
+
+      store.setRestTimerSoundEnabled(false);
+      expect(useAppPreferencesStore.getState().restTimerSoundEnabled).toBe(false);
     });
   });
 

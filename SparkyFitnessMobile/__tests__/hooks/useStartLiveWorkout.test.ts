@@ -31,7 +31,7 @@ jest.mock('../../src/services/notifications', () => ({
   maybePromptForExactAlarmPermission: jest.fn(async () => undefined),
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
   cancelScheduledNotification: jest.fn(async () => undefined),
-  fireRestCompleteHaptic: jest.fn(),
+  fireRestCompleteCue: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({

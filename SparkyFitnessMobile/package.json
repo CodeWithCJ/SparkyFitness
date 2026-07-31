@@ -48,6 +48,7 @@
     "expo": "~56.0.13",
     "expo-application": "~56.0.3",
     "expo-asset": "~56.0.18",
+    "expo-audio": "~56.0.13",
     "expo-background-task": "~56.0.20",
     "expo-build-properties": "^56.0.20",
     "expo-camera": "~56.0.8",
