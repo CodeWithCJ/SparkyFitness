@@ -9,8 +9,6 @@ import {
 } from '@/components/ui/select';
 
 interface ExerciseDashboardFiltersProps {
-  aggregationLevel: string;
-  setAggregationLevel: (value: string) => void;
   comparisonPeriod: string | null;
   setComparisonPeriod: (value: string | null) => void;
   selectedEquipment: string | null;
@@ -25,8 +23,6 @@ interface ExerciseDashboardFiltersProps {
 }
 
 export const ExerciseDashboardFilters = ({
-  aggregationLevel,
-  setAggregationLevel,
   comparisonPeriod,
   setComparisonPeriod,
   selectedEquipment,
@@ -47,33 +43,12 @@ export const ExerciseDashboardFilters = ({
         <CardTitle>
           {t(
             'exerciseReportsDashboard.filtersAggregation',
-            'Filters & Aggregation'
+            'Exercise Filters & Options'
           )}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <Select value={aggregationLevel} onValueChange={setAggregationLevel}>
-            <SelectTrigger className="w-full">
-              <SelectValue
-                placeholder={t(
-                  'exerciseReportsDashboard.aggregation',
-                  'Aggregation'
-                )}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">
-                {t('exerciseReportsDashboard.daily', 'Daily')}
-              </SelectItem>
-              <SelectItem value="weekly">
-                {t('exerciseReportsDashboard.weekly', 'Weekly')}
-              </SelectItem>
-              <SelectItem value="monthly">
-                {t('exerciseReportsDashboard.monthly', 'Monthly')}
-              </SelectItem>
-            </SelectContent>
-          </Select>
           <Select
             value={comparisonPeriod || 'none'}
             onValueChange={(value) =>

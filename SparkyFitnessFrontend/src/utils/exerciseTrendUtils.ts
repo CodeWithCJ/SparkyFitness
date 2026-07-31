@@ -1,18 +1,56 @@
 import { ExerciseProgressResponse } from '@workspace/shared';
 
+/**
+ * Returns the Monday (week start) of the week containing the given date.
+ */
+const getWeekStart = (date: Date): Date => {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday
+  const diff = day === 0 ? -6 : 1 - day; // offset to Monday
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const getTrendDateFormat = (aggregationLevel?: string) => {
+  if (aggregationLevel === 'weekly' || aggregationLevel === 'week') {
+    return 'MMM dd'; // applied to week-start date
+  }
+  if (aggregationLevel === 'monthly' || aggregationLevel === 'month') {
+    return 'MMM yyyy';
+  }
+  if (aggregationLevel === 'yearly' || aggregationLevel === 'year') {
+    return 'yyyy';
+  }
+  return 'MMM dd, yyyy';
+};
+
+/**
+ * Given an entry date and aggregation level, returns the Date to use as the bucket key.
+ * For weekly aggregation this snaps to the Monday of that week.
+ */
+const getBucketDate = (date: Date, aggregationLevel: string): Date => {
+  if (aggregationLevel === 'weekly' || aggregationLevel === 'week') {
+    return getWeekStart(date);
+  }
+  return date;
+};
+
 export const calculateVolumeTrendData = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
-  parseISO: (dateString: string) => Date
+  parseISO: (dateString: string) => Date,
+  aggregationLevel: string = 'daily'
 ) => {
+  const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
-          parseISO(entry.entry_date),
-          'MMM dd, yyyy'
+          getBucketDate(parseISO(entry.entry_date), aggregationLevel),
+          formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
 
@@ -49,15 +87,17 @@ export const calculateMaxWeightTrendData = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
-  parseISO: (dateString: string) => Date
+  parseISO: (dateString: string) => Date,
+  aggregationLevel: string = 'daily'
 ) => {
+  const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
-          parseISO(entry.entry_date),
-          'MMM dd, yyyy'
+          getBucketDate(parseISO(entry.entry_date), aggregationLevel),
+          formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
 
@@ -100,15 +140,17 @@ export const calculateEstimated1RMTrendData = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
-  parseISO: (dateString: string) => Date
+  parseISO: (dateString: string) => Date,
+  aggregationLevel: string = 'daily'
 ) => {
+  const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
-          parseISO(entry.entry_date),
-          'MMM dd, yyyy'
+          getBucketDate(parseISO(entry.entry_date), aggregationLevel),
+          formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
 

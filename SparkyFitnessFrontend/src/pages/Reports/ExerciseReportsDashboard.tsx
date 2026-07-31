@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { LayoutDashboard, Dumbbell, Activity } from 'lucide-react';
 import WorkoutHeatmap from './WorkoutHeatmap';
 import MuscleGroupRecoveryTracker from './MuscleGroupRecoveryTracker';
 import { PrProgressionChart } from './PrProgressionChart';
@@ -35,7 +37,17 @@ import { BestSetRepRangeChart } from '@/components/ExerciseCharts/BestSetRepRang
 import { TrainingVolumeByMuscleGroupChart } from '@/components/ExerciseCharts/TrainingVolumeByMuscleGroupChart';
 import { PrVisualizationWidget } from '@/components/ExerciseCharts/PrVisualizationWidget';
 import { GarminActivityList } from '@/components/ExerciseCharts/GarminActivityList';
-import { ExerciseProgressResponse } from '@workspace/shared';
+import { CardioVolumeIntervalChart } from '@/components/ExerciseCharts/CardioVolumeIntervalChart';
+import { ActivityInterrogationFinder } from '@/components/ExerciseCharts/ActivityInterrogationFinder';
+import { CardioPRBadgesWidget } from '@/components/ExerciseCharts/CardioPRBadgesWidget';
+import { MatchedCoursesList } from '@/components/ExerciseCharts/MatchedCoursesList';
+import {
+  useExerciseStatsSummary,
+  useExercisePRs,
+  useMatchedCourses,
+  queryExerciseActivities,
+} from '@/hooks/Reports/useExerciseStats';
+import type { ExerciseProgressResponse } from '@workspace/shared';
 
 interface ExerciseReportsDashboardProps {
   exerciseDashboardData: ExerciseDashboardData | undefined;
@@ -61,13 +73,49 @@ const DEFAULT_LAYOUT = [
   'timeUnderTension',
   'prVisualization',
 ];
+
+const STRENGTH_LAYOUT = [
+  'filtersAggregation',
+  'volumeTrend',
+  'maxWeightTrend',
+  'estimated1RMTrend',
+  'heatmap',
+  'muscleGroupRecovery',
+  'prProgression',
+  'exerciseVariety',
+  'bestSetRepRange',
+  'trainingVolumeByMuscleGroup',
+  'repsVsWeightScatter',
+  'setPerformance',
+  'timeUnderTension',
+  'prVisualization',
+];
+
+const STRENGTH_CATEGORIES = [
+  'Strength',
+  'Powerlifting',
+  'Olympic Weightlifting',
+  'Strongman',
+  'Plyometrics',
+  'Isometric',
+];
+
 const ExerciseReportsDashboard = ({
   exerciseDashboardData,
   startDate,
   endDate,
 }: ExerciseReportsDashboardProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, weightUnit } = usePreferences();
+  const { formatDateInUserTimezone, weightUnit, distanceUnit } =
+    usePreferences();
+  const unitSystem: 'metric' | 'imperial' =
+    distanceUnit === 'miles' ? 'imperial' : 'metric';
+
+  // Domain view selector: 'all' | 'strength' | 'cardio'
+  const [viewMode, setViewMode] = useState<'all' | 'strength' | 'cardio'>(
+    'all'
+  );
+
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(
     null
   );
@@ -75,6 +123,20 @@ const ExerciseReportsDashboard = ({
   const [selectedExercise, setSelectedExercise] = useState<string>('All');
   const [aggregationLevel, setAggregationLevel] = useState<string>('daily'); // New state for aggregation level
   const [comparisonPeriod, setComparisonPeriod] = useState<string | null>(null); // New state for comparison period
+
+  const [statsInterval, setStatsInterval] = useState<
+    'day' | 'week' | 'month' | 'year'
+  >('day');
+
+  const { data: statsSummary } = useExerciseStatsSummary(
+    statsInterval,
+    startDate,
+    endDate,
+    undefined,
+    unitSystem
+  );
+  const { data: prMatrix } = useExercisePRs(undefined, unitSystem);
+  const { data: matchedCourses } = useMatchedCourses(undefined, unitSystem);
 
   const { data: availableEquipment = [], isLoading: equipmentLoading } =
     useAvailableEquipment();
@@ -84,6 +146,15 @@ const ExerciseReportsDashboard = ({
     useAvailableExercises(selectedMuscle, selectedEquipment);
 
   const loading = equipmentLoading || musclesLoading || exercisesLoading;
+
+  const handleQueryFetch = useCallback(
+    (params: {
+      category?: string;
+      distanceStandard?: string;
+      searchKeyword?: string;
+    }) => queryExerciseActivities({ ...params, unitSystem }),
+    [unitSystem]
+  );
 
   const selectedExercisesForChart = useMemo(() => {
     if (selectedExercise && selectedExercise !== 'All') {
@@ -220,8 +291,6 @@ const ExerciseReportsDashboard = ({
         return (
           <ExerciseDashboardFilters
             key="filtersAggregation"
-            aggregationLevel={aggregationLevel}
-            setAggregationLevel={setAggregationLevel}
             comparisonPeriod={comparisonPeriod}
             setComparisonPeriod={setComparisonPeriod}
             selectedEquipment={selectedEquipment}
@@ -287,7 +356,8 @@ const ExerciseReportsDashboard = ({
                 exerciseProgressData,
                 comparisonExerciseProgressData,
                 formatDateInUserTimezone,
-                parseISO
+                parseISO,
+                aggregationLevel
               )
             : [];
         return volumeTrendData.length > 0 &&
@@ -307,7 +377,8 @@ const ExerciseReportsDashboard = ({
                 exerciseProgressData,
                 comparisonExerciseProgressData,
                 formatDateInUserTimezone,
-                parseISO
+                parseISO,
+                aggregationLevel
               )
             : [];
         return maxWeightTrendData.length > 0 &&
@@ -327,7 +398,8 @@ const ExerciseReportsDashboard = ({
                 exerciseProgressData,
                 comparisonExerciseProgressData,
                 formatDateInUserTimezone,
-                parseISO
+                parseISO,
+                aggregationLevel
               )
             : [];
         return estimated1RMTrendData.length > 0 &&
@@ -499,30 +571,189 @@ const ExerciseReportsDashboard = ({
     parseISO
   );
 
+  const filteredGarminActivityEntries = (() => {
+    if (viewMode === 'cardio') {
+      return allGarminActivityEntries.filter(
+        (entry) =>
+          (entry.distance && entry.distance > 0) ||
+          !entry.sets ||
+          entry.sets.length === 0
+      );
+    }
+    if (viewMode === 'strength') {
+      return allGarminActivityEntries.filter((entry) => {
+        const hasStrengthSets =
+          entry.sets &&
+          entry.sets.length > 0 &&
+          entry.sets.some((s) => (s.weight || 0) > 0 || (s.reps || 0) > 0);
+        const category = (entry as unknown as { category?: string }).category;
+        const isStrengthCategory =
+          category !== undefined && STRENGTH_CATEGORIES.includes(category);
+        return hasStrengthSets || isStrengthCategory;
+      });
+    }
+    return allGarminActivityEntries;
+  })();
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {loading && (
-          <p>
-            {t('exerciseReportsDashboard.loadingCharts', 'Loading charts...')}
-          </p>
-        )}
-        {!loading && DEFAULT_LAYOUT.map((widgetId) => renderWidget(widgetId))}
+      {/* Tier 1: View Mode Tabs & Global Interval Selector */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-3 rounded-xl border bg-card shadow-sm">
+        {/* Domain View Selector */}
+        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+          <Button
+            variant={viewMode === 'all' ? 'default' : 'ghost'}
+            size="sm"
+            className="text-xs font-semibold h-8"
+            onClick={() => setViewMode('all')}
+          >
+            <LayoutDashboard className="w-3.5 h-3.5 mr-1.5" />
+            All Workouts
+          </Button>
+          <Button
+            variant={viewMode === 'strength' ? 'default' : 'ghost'}
+            size="sm"
+            className="text-xs font-semibold h-8"
+            onClick={() => setViewMode('strength')}
+          >
+            <Dumbbell className="w-3.5 h-3.5 mr-1.5" />
+            Strength & Resistance
+          </Button>
+          <Button
+            variant={viewMode === 'cardio' ? 'default' : 'ghost'}
+            size="sm"
+            className="text-xs font-semibold h-8"
+            onClick={() => setViewMode('cardio')}
+          >
+            <Activity className="w-3.5 h-3.5 mr-1.5" />
+            Cardio & GPS
+          </Button>
+        </div>
+
+        {/* Global Interval Selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            Interval:
+          </span>
+          <div className="flex items-center bg-muted p-1 rounded-md text-xs">
+            {(['day', 'week', 'month', 'year'] as const).map((int) => (
+              <button
+                key={int}
+                onClick={() => {
+                  setStatsInterval(int);
+                  setAggregationLevel(
+                    int === 'day'
+                      ? 'daily'
+                      : int === 'week'
+                        ? 'weekly'
+                        : int === 'month'
+                          ? 'monthly'
+                          : 'yearly'
+                  );
+                }}
+                className={`px-2.5 py-1 rounded font-medium capitalize text-xs transition-all ${
+                  statsInterval === int
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {int}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-      {!loading &&
-        selectedExercisesForChart.length > 0 &&
-        Object.keys(exerciseProgressData).length === 0 && (
-          <p className="text-center text-muted-foreground">
-            {t(
-              'exerciseReportsDashboard.noProgressDataAvailable',
-              'No progress data available for the selected exercises in the chosen date range.'
-            )}
-          </p>
-        )}
+
+      {/* Tier 2: Executive Performance Overview Banner & Heatmap */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Side: KPIs & PR Badges Matrix */}
+        <div className="lg:col-span-7 space-y-6">
+          <KeyStatsWidget
+            data={exerciseDashboardData}
+            totalTonnage={totalTonnage}
+            weightUnit={weightUnit}
+          />
+          <CardioPRBadgesWidget prData={prMatrix} viewMode={viewMode} />
+        </div>
+
+        {/* Right Side: Workout Heatmap Calendar */}
+        <div className="lg:col-span-5">
+          {exerciseDashboardData?.exerciseEntries &&
+          exerciseDashboardData.exerciseEntries.length > 0 ? (
+            <WorkoutHeatmap
+              workoutDates={Array.from(
+                new Set(
+                  exerciseDashboardData.exerciseEntries.map(
+                    (entry) => entry.entry_date
+                  )
+                )
+              )}
+            />
+          ) : (
+            <Card className="h-full border shadow-sm flex items-center justify-center p-6">
+              <p className="text-center text-muted-foreground text-xs py-8">
+                No workout data available for heatmap.
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Tier 3: Domain Analytics Sections */}
+
+      {/* 3A: ALL WORKOUTS VIEW */}
+      {viewMode === 'all' && (
+        <div className="space-y-6">
+          <CardioVolumeIntervalChart summaryData={statsSummary} />
+
+          <MatchedCoursesList matchedData={matchedCourses} />
+
+          <ActivityInterrogationFinder onQueryFetch={handleQueryFetch} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {!loading &&
+              DEFAULT_LAYOUT.filter(
+                (id) => id !== 'keyStats' && id !== 'heatmap'
+              ).map((widgetId) => renderWidget(widgetId))}
+          </div>
+        </div>
+      )}
+
+      {/* 3B: STRENGTH & RESISTANCE VIEW */}
+      {viewMode === 'strength' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {!loading &&
+              STRENGTH_LAYOUT.filter((id) => id !== 'heatmap').map((widgetId) =>
+                renderWidget(widgetId)
+              )}
+          </div>
+        </div>
+      )}
+
+      {/* 3C: CARDIO & GPS VIEW */}
+      {viewMode === 'cardio' && (
+        <div className="space-y-6">
+          <CardioVolumeIntervalChart summaryData={statsSummary} />
+
+          <MatchedCoursesList matchedData={matchedCourses} />
+
+          <ActivityInterrogationFinder onQueryFetch={handleQueryFetch} />
+        </div>
+      )}
+
+      {/* Tier 4: Synced Activity Logs (Filtered by domain) */}
       <GarminActivityList
-        entries={allGarminActivityEntries}
+        entries={filteredGarminActivityEntries}
         formatDate={formatDateInUserTimezone}
         parseISO={parseISO}
+        title={
+          viewMode === 'strength'
+            ? 'Strength Workout Activity Logs'
+            : viewMode === 'cardio'
+              ? 'Cardio & GPS Activity Maps'
+              : 'Workout Activity History & Maps'
+        }
       />
     </div>
   );

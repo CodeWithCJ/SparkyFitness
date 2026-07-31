@@ -6,12 +6,14 @@ interface GarminActivityListProps {
   entries: ExerciseProgressResponse[];
   formatDate: (date: Date, formatStr: string) => string;
   parseISO: (dateString: string) => Date;
+  title?: string;
 }
 
 export const GarminActivityList = ({
   entries,
   formatDate,
   parseISO,
+  title,
 }: GarminActivityListProps) => {
   const { t } = useTranslation();
 
@@ -20,7 +22,7 @@ export const GarminActivityList = ({
   return (
     <div className="mt-8 space-y-8">
       <h2 className="text-2xl font-bold">
-        {t('exerciseReportsDashboard.activityMaps', 'Activity Maps')}
+        {title || t('exerciseReportsDashboard.activityMaps', 'Activity Maps')}
       </h2>
       {entries.map((entry) => (
         <div
