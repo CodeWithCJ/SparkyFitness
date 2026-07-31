@@ -89,6 +89,17 @@ export default function AddMedicationDialog({
   const [strengthUnit, setStrengthUnit] = useState(
     editMed?.strength_unit ?? 'mg'
   );
+  const [doseAmount, setDoseAmount] = useState(
+    editMed?.dose_amount != null ? String(editMed.dose_amount) : ''
+  );
+  const [doseUnit, setDoseUnit] = useState(editMed?.dose_unit ?? '');
+  // Rows whose dose mirrors strength (or is all-null) keep live-following the
+  // strength inputs; a distinct dose (e.g. set from mobile) is preserved verbatim.
+  const [doseTouched, setDoseTouched] = useState(
+    editMed != null &&
+      (editMed.dose_amount !== editMed.strength_value ||
+        (editMed.dose_unit ?? null) !== (editMed.strength_unit ?? null))
+  );
   const [prescriber, setPrescriber] = useState(editMed?.prescriber ?? '');
   const [pharmacy, setPharmacy] = useState(editMed?.pharmacy ?? '');
   const [rxNumber, setRxNumber] = useState(editMed?.rx_number ?? '');
@@ -104,6 +115,33 @@ export default function AddMedicationDialog({
   const updateMutation = useUpdateMedicationMutation();
   const mutation = isEdit ? updateMutation : createMutation;
 
+  // Injectable GLP-1 doses must stay in the strength unit: Glp1LogInjection,
+  // the inventory manager, and the server injection repository all read
+  // dose_amount as mg-per-injection, so the unit input is locked for them.
+  const isInjectableGlp1 = isGlp1 && typeId === 'injection';
+  const displayedDoseAmount = doseTouched ? doseAmount : strength;
+  const displayedDoseUnit = isInjectableGlp1
+    ? strengthUnit
+    : doseTouched
+      ? doseUnit
+      : strengthUnit;
+
+  const handleDoseAmountChange = (value: string) => {
+    if (!doseTouched) {
+      setDoseTouched(true);
+      setDoseUnit(displayedDoseUnit);
+    }
+    setDoseAmount(value);
+  };
+
+  const handleDoseUnitChange = (value: string) => {
+    if (!doseTouched) {
+      setDoseTouched(true);
+      setDoseAmount(displayedDoseAmount);
+    }
+    setDoseUnit(value);
+  };
+
   const handleSave = () => {
     const body: Partial<Medication> & { name: string } = {
       name: name.trim(),
@@ -111,8 +149,8 @@ export default function AddMedicationDialog({
       is_glp1: isGlp1,
       strength_value: strength ? Number(strength) : null,
       strength_unit: strengthUnit || null,
-      dose_amount: strength ? Number(strength) : null,
-      dose_unit: strengthUnit || null,
+      dose_amount: displayedDoseAmount ? Number(displayedDoseAmount) : null,
+      dose_unit: displayedDoseUnit || null,
       prescriber: prescriber.trim() || null,
       pharmacy: pharmacy.trim() || null,
       rx_number: rxNumber.trim() || null,
@@ -146,6 +184,11 @@ export default function AddMedicationDialog({
       onSuccess: () => {
         setOpen(false);
         setName('');
+        setStrength('');
+        setStrengthUnit('mg');
+        setDoseAmount('');
+        setDoseUnit('');
+        setDoseTouched(false);
         setPrescriber('');
         setPharmacy('');
         setRxNumber('');
@@ -210,9 +253,12 @@ export default function AddMedicationDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>{t('medications.cabinet.strength', 'Strength')}</Label>
+              <Label htmlFor="med-strength-value">
+                {t('medications.cabinet.strength', 'Strength')}
+              </Label>
               <div className="flex gap-2">
                 <Input
+                  id="med-strength-value"
                   type="number"
                   value={strength}
                   onChange={(e) => setStrength(e.target.value)}
@@ -220,10 +266,47 @@ export default function AddMedicationDialog({
                 />
                 <Input
                   className="w-20"
+                  aria-label={t(
+                    'medications.cabinet.strengthUnit',
+                    'Strength unit'
+                  )}
                   value={strengthUnit}
                   onChange={(e) => setStrengthUnit(e.target.value)}
                 />
               </div>
+            </div>
+            <div className="space-y-2 col-start-2">
+              <Label htmlFor="med-dose-amount">
+                {isInjectableGlp1
+                  ? t(
+                      'medications.cabinet.dosePerInjection',
+                      'Dose per injection'
+                    )
+                  : t('medications.cabinet.dose', 'Dose')}
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="med-dose-amount"
+                  type="number"
+                  value={displayedDoseAmount}
+                  onChange={(e) => handleDoseAmountChange(e.target.value)}
+                />
+                <Input
+                  className="w-20"
+                  aria-label={t('medications.cabinet.doseUnit', 'Dose unit')}
+                  value={displayedDoseUnit}
+                  onChange={(e) => handleDoseUnitChange(e.target.value)}
+                  disabled={isInjectableGlp1}
+                />
+              </div>
+              {!doseTouched && (
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'medications.cabinet.doseFollowsStrength',
+                    'Matches strength until you change it.'
+                  )}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center justify-between rounded-md border p-3">

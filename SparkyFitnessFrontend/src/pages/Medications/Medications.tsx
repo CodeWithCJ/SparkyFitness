@@ -14,7 +14,13 @@ import {
   Pill,
   Syringe,
 } from 'lucide-react';
-import { todayInZone, addDays, getDueDosesForDate } from '@workspace/shared';
+import {
+  todayInZone,
+  addDays,
+  getDueDosesForDate,
+  formatDose,
+  formatStrengthPerUnit,
+} from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -343,11 +349,7 @@ export default function Medications() {
                           {med.display_name || med.name}
                         </p>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                          <span>
-                            {med.strength_value
-                              ? `${med.strength_value} ${med.strength_unit ?? ''}`
-                              : med.type_id}
-                          </span>
+                          <span>{formatDose(med) ?? med.type_id}</span>
                           {med.schedules?.[0] && (
                             <>
                               <span>·</span>
@@ -409,9 +411,12 @@ export default function Medications() {
                           )}
                         </div>
                         <CardDescription className="text-xs mt-0.5">
-                          {selected.strength_value
-                            ? `${selected.strength_value} ${selected.strength_unit ?? ''}`
-                            : selected.type_id}
+                          {[
+                            formatDose(selected),
+                            formatStrengthPerUnit(selected),
+                          ]
+                            .filter(Boolean)
+                            .join(' · ') || selected.type_id}
                         </CardDescription>
                       </div>
                       <div className="flex items-center gap-1">

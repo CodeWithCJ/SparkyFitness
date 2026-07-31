@@ -21,6 +21,7 @@ import {
   dayToUtcRange,
   localDateTimeToUtc,
   utcToLocalDateTimeInput,
+  formatDose,
   INJECTION_SITES,
   type SharedScheduleRule,
 } from '@workspace/shared';
@@ -844,6 +845,7 @@ export default function TodayMedications({
                       entry &&
                       (entry.status === 'taken' || entry.status === 'skipped');
                     const isSnoozed = entry && entry.status === 'snoozed';
+                    const doseLabel = formatDose(due.medication, due.schedule);
 
                     return (
                       <div
@@ -886,14 +888,12 @@ export default function TodayMedications({
                               </Badge>
                             </div>
                             <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground mt-0.5">
-                              <span>
-                                {due.schedule.dose_amount ||
-                                  due.medication.strength_value}{' '}
-                                {due.schedule.dose_amount
-                                  ? due.medication.type_id
-                                  : due.medication.strength_unit}
-                              </span>
-                              <span>•</span>
+                              {doseLabel != null && (
+                                <>
+                                  <span>{doseLabel}</span>
+                                  <span>•</span>
+                                </>
+                              )}
                               <span className="flex items-center gap-1 font-medium text-primary">
                                 <Clock className="h-3 w-3" />
                                 {due.schedule.time_of_day
@@ -1023,9 +1023,7 @@ export default function TodayMedications({
                                 {med.display_name || med.name}
                               </p>
                               <p className="text-[10px] text-muted-foreground">
-                                {med.strength_value
-                                  ? `${med.strength_value} ${med.strength_unit ?? ''}`
-                                  : med.type_id}
+                                {formatDose(med) ?? med.type_id}
                               </p>
                             </div>
                           </div>
