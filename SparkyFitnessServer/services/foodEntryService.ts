@@ -40,24 +40,39 @@ function getGlycemicIndexCategory(value: any) {
   if (value <= 90) return 'High';
   return 'Very High';
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveMealTypeId(userId: any, mealTypeSelector: any) {
+
+interface MealTypeRow {
+  id: string;
+  name: string;
+  user_id: string | null;
+}
+
+// Resolves a meal type selector (a UUID or a legacy name) to its canonical
+// id. Callers that already hold a meal_type_id (e.g. the MCP food tools) pass
+// the UUID through and get exactly that type back, even when a custom type
+// shares its name with a system default. The name-based fallback only matches
+// system defaults (user_id IS NULL): custom types are selected by id, and a
+// custom type may share a name with a system default because uniqueness is
+// per (name, user_id).
+async function resolveMealTypeId(
+  userId: string,
+  mealTypeSelector: string | null | undefined
+): Promise<string | null> {
   if (!mealTypeSelector) return null;
-  const types = await mealTypeRepository.getAllMealTypes(userId);
-  const normalized = String(mealTypeSelector).toLowerCase();
-  // Prefer an exact id match: the MCP tools pass meal_type_id through to the
-  // service, so a selector that is a UUID must resolve to exactly that type
-  // even when a custom type shares its name with a system default.
-  const byId = types.find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (t: any) => String(t.id).toLowerCase() === normalized
-  );
+
+  const types: MealTypeRow[] = await mealTypeRepository.getAllMealTypes(userId);
+
+  const normalized = mealTypeSelector.trim().toLowerCase();
+
+  const byId = types.find((type) => type.id.toLowerCase() === normalized);
   if (byId) return byId.id;
-  const match = types.find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (t: any) => t.name.toLowerCase() === normalized
+
+  const systemByName = types.find(
+    (type) =>
+      type.user_id === null && type.name.trim().toLowerCase() === normalized
   );
-  return match ? match.id : null;
+
+  return systemByName?.id ?? null;
 }
 
 // ── Diary CSV import ────────────────────────────────────────────────────────
@@ -3242,6 +3257,7 @@ export { copyFoodEntriesFromYesterday };
 export { copyAllFoodEntries };
 export { copyAllFoodEntriesFromYesterday };
 export { getDailyNutritionSummary };
+export { resolveMealTypeId };
 export { createFoodEntryMeal };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealWithComponents };

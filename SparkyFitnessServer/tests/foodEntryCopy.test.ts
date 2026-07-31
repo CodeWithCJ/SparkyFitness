@@ -2,6 +2,7 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import {
   copyFoodEntriesFromUser,
   copyFoodEntriesToUser,
+  resolveMealTypeId,
 } from '../services/foodEntryService.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import foodRepository from '../models/foodRepository.js';
@@ -51,7 +52,7 @@ describe('foodEntryService symmetrical cross-user copy tests', () => {
 
       // Mock mealType resolution
       vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-        { id: 'meal-type-lunch-id', name: 'Lunch' },
+        { id: 'meal-type-lunch-id', name: 'Lunch', user_id: null },
       ]);
 
       // Mock source food entries returned from B
@@ -165,7 +166,7 @@ describe('foodEntryService symmetrical cross-user copy tests', () => {
 
       // Mock mealType resolution for target user B
       vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-        { id: 'meal-type-lunch-id', name: 'Lunch' },
+        { id: 'meal-type-lunch-id', name: 'Lunch', user_id: null },
       ]);
 
       // Mock source food entries returned from A
@@ -307,5 +308,57 @@ describe('foodEntryService symmetrical cross-user copy tests', () => {
         familyAccessRepository.checkCopyPermissions
       ).not.toHaveBeenCalledWith(ACTIVE_VICTIM, MEMBER_B);
     });
+  });
+});
+
+describe('resolveMealTypeId (service-level meal type resolution)', () => {
+  const SYSTEM_LUNCH_ID = 'system-lunch-id';
+  const CUSTOM_LUNCH_ID = 'custom-lunch-id';
+
+  // A custom type may share its name with a system default (uniqueness is per
+  // (name, user_id)). The legacy-name fallback must resolve only to the system
+  // type, even when a same-named custom type sorts first; custom types are
+  // selected exclusively by id.
+  it('resolves a legacy name to the system type even when a same-named custom type sorts first', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
+      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
+    ]);
+
+    const id = await resolveMealTypeId('user-1', 'Lunch');
+
+    expect(id).toBe(SYSTEM_LUNCH_ID);
+  });
+
+  it('resolves an exact custom type id to that custom type', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
+      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
+    ]);
+
+    const id = await resolveMealTypeId('user-1', CUSTOM_LUNCH_ID);
+
+    expect(id).toBe(CUSTOM_LUNCH_ID);
+  });
+
+  it('resolves an exact system type id to that system type', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
+      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
+    ]);
+
+    const id = await resolveMealTypeId('user-1', SYSTEM_LUNCH_ID);
+
+    expect(id).toBe(SYSTEM_LUNCH_ID);
+  });
+
+  it('returns null for an unknown name', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
+    ]);
+
+    const id = await resolveMealTypeId('user-1', 'Dinner');
+
+    expect(id).toBeNull();
   });
 });
