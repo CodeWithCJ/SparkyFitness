@@ -1294,7 +1294,7 @@ async function updateCustomMeasurement(
       [
         input.value ?? null,
         input.notes ?? null,
-        input.source ?? 'manual',
+        input.source ?? null,
         actingUserId,
         id,
         userId,

@@ -449,4 +449,143 @@ describe('MeasurementsAddScreen custom measurements', () => {
       }),
     );
   });
+
+  test('after a failed save the visible form restores server data, not the typed values', async () => {
+    mockRefetchCustomEntries.mockImplementation(() => {
+      byDateResults['2024-06-15'].data = [
+        { id: 'entry-1', category_id: 'cat-1', value: '118', entry_date: '2024-06-15' },
+      ];
+      return Promise.resolve();
+    });
+    updateCustomMutation.mutateAsync.mockRejectedValueOnce(new Error('network down'));
+
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getAllByPlaceholderText('0')[0], '80');
+    fireEvent.changeText(screen.getByDisplayValue('120'), '125');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('118')).toBeTruthy();
+    });
+
+    // The typed custom value is gone; the built-in weight field was cleared to
+    // match the server (no stored weight), and the screen stayed open.
+    expect(screen.queryByDisplayValue('125')).toBeNull();
+    expect(screen.queryByDisplayValue('80')).toBeNull();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+
+    const { default: Toast } = require('react-native-toast-message');
+    expect(Toast.show).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+  });
+
+  test('blocks saving duplicate Hourly hours with a localized error', async () => {
+    mockUseCustomCategories.mockReturnValue({
+      data: [
+        {
+          id: 'cat-h',
+          name: 'Caffeine',
+          display_name: 'Caffeine',
+          measurement_type: 'mg',
+          frequency: 'Hourly',
+          data_type: 'numeric',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomCategories,
+    });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomEntries,
+    });
+
+    const screen = renderScreen();
+
+    // Two new rows share the same default (current) hour.
+    fireEvent.press(screen.getByTestId('add-custom-cat-h'));
+    fireEvent.press(screen.getByTestId('add-custom-cat-h'));
+    fireEvent.changeText(screen.getByTestId('custom-input-new-1'), '80');
+    fireEvent.changeText(screen.getByTestId('custom-input-new-2'), '120');
+
+    fireEvent.press(screen.getByText('Save'));
+
+    const { default: Toast } = require('react-native-toast-message');
+    await waitFor(() => {
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          text1: 'An entry already exists at this hour for Caffeine.',
+        }),
+      );
+    });
+
+    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(updateCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  test('changing a new Hourly row hour with the stepper updates its timestamp', async () => {
+    mockUseCustomCategories.mockReturnValue({
+      data: [
+        {
+          id: 'cat-h',
+          name: 'Caffeine',
+          display_name: 'Caffeine',
+          measurement_type: 'mg',
+          frequency: 'Hourly',
+          data_type: 'numeric',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomCategories,
+    });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomEntries,
+    });
+
+    const screen = renderScreen();
+    fireEvent.press(screen.getByTestId('add-custom-cat-h'));
+    fireEvent.changeText(screen.getByTestId('custom-input-new-1'), '80');
+
+    const before = screen.getByText(/^\d{2}:00$/).props.children;
+    fireEvent.press(screen.getByTestId('hour-plus-new-1'));
+    const after = screen.getByText(/^\d{2}:00$/).props.children;
+
+    // The stepper changed the displayed hour label.
+    expect(after).not.toBe(before);
+
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(saveCustomMutation.mutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = saveCustomMutation.mutateAsync.mock.calls[0][0];
+    expect(payload).toMatchObject({
+      category_id: 'cat-h',
+      value: 80,
+      entry_date: '2024-06-15',
+    });
+    expect(Number.isInteger(payload.entry_hour)).toBe(true);
+    expect(payload.entry_hour).toBeGreaterThanOrEqual(0);
+    expect(payload.entry_hour).toBeLessThanOrEqual(23);
+    // The timestamp is derived from selectedDate + the chosen hour in the local
+    // timezone: it must land on the selected local day and match entry_hour,
+    // regardless of the runner's timezone.
+    const local = new Date(payload.entry_timestamp);
+    const localDate = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`;
+    expect(localDate).toBe('2024-06-15');
+    expect(local.getHours()).toBe(payload.entry_hour);
+  });
 });

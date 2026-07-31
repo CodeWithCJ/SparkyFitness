@@ -26,6 +26,8 @@ export interface CustomRow {
   hour: number | null;
   /** `entry_timestamp` from the server or the creation timestamp on add. */
   timestamp: string | null;
+  /** `source` from the server, or `'manual'` for locally added rows. */
+  source: string | null;
   /** Editable value: numeric/text as typed, boolean as 'true' | 'false' | ''. */
   value: string;
 }
@@ -87,6 +89,66 @@ export function rowValue(
 }
 
 /**
+ * Builds an ISO-8601 UTC instant from a calendar-day string and an hour chosen
+ * in the local timezone. Near a timezone boundary the serialized instant may
+ * land on the adjacent UTC day, but the `entry_date` column is the separate
+ * calendar-day string passed in, so it is never shifted by UTC conversion.
+ */
+export function entryTimestampFor(
+  selectedDate: string,
+  hour: number,
+  options: { minutes?: number } = {},
+): string {
+  const [year, month, day] = selectedDate.split('-').map(Number);
+  const date = new Date(year, month - 1, day, hour, options.minutes ?? 0, 0, 0);
+  return date.toISOString();
+}
+
+export interface HourlyHourConflict {
+  categoryId: string;
+  hour: number;
+}
+
+/**
+ * Detects a duplicate Hourly slot: a locally added row whose (hour, source)
+ * collides with a server entry or with another local row in the same category.
+ * Server rows at the same hour with a different source are legitimate and do
+ * not conflict. Returns the first conflict or null when none exists.
+ */
+export function findHourlyHourConflict(params: {
+  categories: CustomCategoryMeta[];
+  form: CustomFormState;
+  serverEntries: CustomMeasurementEntry[];
+}): HourlyHourConflict | null {
+  const { categories, form, serverEntries } = params;
+  for (const cat of categories) {
+    if (cat.frequency !== 'Hourly') continue;
+    const catForm = form[cat.id];
+    if (!catForm) continue;
+    const serverSourcesByHour = new Map<number, string>();
+    for (const entry of serverEntries) {
+      if (entry.category_id !== cat.id || entry.entry_hour == null) continue;
+      serverSourcesByHour.set(entry.entry_hour, entry.source ?? 'manual');
+    }
+    const seen = new Set<string>();
+    for (const row of catForm.rows) {
+      if (row.hour == null) continue;
+      if (row.entryId != null) continue; // existing rows keep their server slot
+      const source = row.source ?? 'manual';
+      if (serverSourcesByHour.get(row.hour) === source) {
+        return { categoryId: cat.id, hour: row.hour };
+      }
+      const key = `${row.hour}:${source}`;
+      if (seen.has(key)) {
+        return { categoryId: cat.id, hour: row.hour };
+      }
+      seen.add(key);
+    }
+  }
+  return null;
+}
+
+/**
  * Reconciles server entries with the local form. Rules:
  * - Dirty rows keep their local value; non-dirty rows mirror the server.
  * - A non-dirty entry that disappears from the response is dropped.
@@ -144,6 +206,7 @@ function syncSingleEntry(
       entryId: serverEntry.id,
       hour: serverEntry.entry_hour ?? null,
       timestamp: serverEntry.entry_timestamp ?? null,
+      source: serverEntry.source ?? null,
       value: isDirty && prevRow ? prevRow.value : String(serverEntry.value),
     });
   } else if (prevRow != null && isDirty) {
@@ -165,6 +228,11 @@ function syncMultiEntry(
   const rows: CustomRow[] = [];
 
   for (const entry of server) {
+    // A tombstoned id (deleted locally, DELETE not confirmed yet) that the
+    // server still returns must not be resurrected into rows; it stays in the
+    // deleted markers until the server stops reporting it.
+    const isTombstoned = (prev?.deleted ?? []).some((d) => d.entryId === entry.id);
+    if (isTombstoned) continue;
     const prevRow = prev?.rows.find((r) => r.entryId === entry.id);
     const isDirty = prevRow != null && dirtyKeys.has(prevRow.key);
     rows.push({
@@ -172,6 +240,7 @@ function syncMultiEntry(
       entryId: entry.id,
       hour: entry.entry_hour ?? null,
       timestamp: entry.entry_timestamp ?? null,
+      source: entry.source ?? null,
       value: isDirty && prevRow ? prevRow.value : String(entry.value),
     });
   }
@@ -247,6 +316,17 @@ export function buildCustomOps(params: {
 
       // Unchanged rows are never re-sent.
       if (!dirtyKeys.has(row.key)) continue;
+
+      // Hourly slots are constrained to the valid 0-23 range. The UI only
+      // produces in-range hours, but a corrupted row must not reach the server.
+      if (
+        cat.frequency === 'Hourly' &&
+        (row.hour == null || !Number.isInteger(row.hour) || row.hour < 0 || row.hour > 23)
+      ) {
+        const label = cat.display_name ?? cat.name;
+        onInvalid?.(label);
+        return { ok: false };
+      }
 
       const parsed = rowValue(value, cat.data_type);
       if (parsed === null) {

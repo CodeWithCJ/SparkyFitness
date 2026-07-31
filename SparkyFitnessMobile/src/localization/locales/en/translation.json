@@ -130,6 +130,7 @@
     "clear": "Clear",
     "addEntry": "Add entry",
     "someChangesSaved": "Some changes may not have been saved.",
+    "duplicateHour": "An entry already exists at this hour for {{label}}.",
     "weightLabel": "Weight ({{unit}})",
     "weightStLabel": "Weight (st, lb)"
   },

@@ -25,6 +25,7 @@ vi.mock('../middleware/authMiddleware.js', () => ({
   authenticate: (req: Request, _res: Response, next: NextFunction) => {
     req.userId = 'test-user-id';
     req.authenticatedUserId = 'test-user-id';
+    req.originalUserId = 'test-original-user-id';
     next();
   },
   isAdmin: (req: Request, _res: Response, next: NextFunction) => next(),
@@ -232,6 +233,7 @@ describe('Measurement Routes - PUT /custom-entries/:id', () => {
     });
     expect(measurementService.updateCustomMeasurementEntry).toHaveBeenCalledWith(
       'test-user-id',
+      'test-original-user-id',
       entryId,
       { value: 125 }
     );
@@ -252,9 +254,42 @@ describe('Measurement Routes - PUT /custom-entries/:id', () => {
     expect(res.statusCode).toBe(200);
     expect(measurementService.updateCustomMeasurementEntry).toHaveBeenCalledWith(
       'test-user-id',
+      'test-original-user-id',
       entryId,
       { value: true }
     );
+  });
+
+  it('passes the acting user id (req.originalUserId) through to the service', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist
+    measurementService.updateCustomMeasurementEntry.mockResolvedValue({
+      id: entryId,
+      value: 125,
+    });
+
+    const res = await request(app)
+      .put(`/api/measurements/custom-entries/${entryId}`)
+      .set('Content-Type', 'application/json')
+      .send({ value: 125 });
+
+    expect(res.statusCode).toBe(200);
+    // Data owner is req.userId, actor is req.originalUserId.
+    expect(measurementService.updateCustomMeasurementEntry).toHaveBeenCalledWith(
+      'test-user-id',
+      'test-original-user-id',
+      entryId,
+      { value: 125 }
+    );
+  });
+
+  it('returns 400 for an empty update body without calling the service', async () => {
+    const res = await request(app)
+      .put(`/api/measurements/custom-entries/${entryId}`)
+      .set('Content-Type', 'application/json')
+      .send({});
+
+    expect(res.statusCode).toBe(400);
+    expect(measurementService.updateCustomMeasurementEntry).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the entry does not exist', async () => {

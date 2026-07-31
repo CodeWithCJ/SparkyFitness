@@ -131,6 +131,7 @@
     "clear": "Wyczyść",
     "addEntry": "Dodaj wpis",
     "someChangesSaved": "Niektóre zmiany mogły nie zostać zapisane.",
+    "duplicateHour": "Wpis o tej godzinie już istnieje dla {{label}}.",
     "weightLabel": "Waga ({{unit}})",
     "weightStLabel": "Waga (st, lb)"
   },

@@ -35,6 +35,8 @@ import {
   syncCustomForm,
   buildCustomOps,
   isMultiEntryFrequency,
+  entryTimestampFor,
+  findHourlyHourConflict,
   type CustomFormState,
   type CustomRow,
   type CustomOp,
@@ -326,7 +328,14 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       const row = catForm?.rows[0] ?? null;
       const nextRow: CustomRow = row
         ? { ...row, value }
-        : { key, entryId: null, hour: null, timestamp: new Date().toISOString(), value };
+        : {
+            key,
+            entryId: null,
+            hour: null,
+            timestamp: new Date().toISOString(),
+            source: 'manual',
+            value,
+          };
       return { ...prev, [categoryId]: { rows: [nextRow], deleted: catForm?.deleted ?? [] } };
     });
   }, []);
@@ -335,11 +344,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     (categoryId: string, frequency: string) => {
       const key = makeNewRowKey();
       const now = new Date();
+      const hour = frequency === 'Hourly' ? now.getHours() : null;
       const row: CustomRow = {
         key,
         entryId: null,
-        hour: frequency === 'Hourly' ? now.getHours() : null,
-        timestamp: now.toISOString(),
+        hour,
+        timestamp: hour != null ? entryTimestampFor(selectedDate, hour) : now.toISOString(),
+        source: 'manual',
         value: '',
       };
       dirtyCustomKeysRef.current.add(key);
@@ -348,7 +359,29 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         return { ...prev, [categoryId]: { ...catForm, rows: [...catForm.rows, row] } };
       });
     },
-    [makeNewRowKey],
+    [makeNewRowKey, selectedDate],
+  );
+
+  const changeCustomRowHour = useCallback(
+    (categoryId: string, rowKey: string, hour: number) => {
+      dirtyCustomKeysRef.current.add(rowKey);
+      setCustomForm((prev) => {
+        const catForm = prev[categoryId];
+        if (!catForm) return prev;
+        return {
+          ...prev,
+          [categoryId]: {
+            ...catForm,
+            rows: catForm.rows.map((r) =>
+              r.key === rowKey
+                ? { ...r, hour, timestamp: entryTimestampFor(selectedDate, hour) }
+                : r,
+            ),
+          },
+        };
+      });
+    },
+    [selectedDate],
   );
 
   const deleteCustomRow = useCallback((categoryId: string, row: CustomRow) => {
@@ -509,6 +542,18 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     // Build operation descriptors for CHANGED custom rows only. `ok: false`
     // means a changed row failed validation, so handleSave stops before any
     // mutation runs; untouched rows are never parsed and cannot block saves.
+    const hourConflict = findHourlyHourConflict({
+      categories: customCategories ?? [],
+      form: customForm,
+      serverEntries: customMeasurements ?? [],
+    });
+    if (hourConflict) {
+      const cat = customCategories?.find((c) => c.id === hourConflict.categoryId);
+      const label = cat ? (cat.display_name ?? cat.name) : hourConflict.categoryId;
+      Toast.show({ type: 'error', text1: t('measurements.duplicateHour', { label }) });
+      return;
+    }
+
     const customResult = buildCustomOps({
       categories: customCategories ?? [],
       form: customForm,
@@ -557,6 +602,9 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         // server and surface one partial-failure message.
         dirtyCustomKeysRef.current = new Set();
         setCustomForm({});
+        dirtyFieldsRef.current = new Set();
+        setForm(EMPTY_FORM);
+        setPrefilledKeys(new Set());
         await Promise.allSettled([
           refetchMeasurements(),
           refetchCustomCategories(),
@@ -593,7 +641,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, updateCustomMutation, navigation, t, customCategories, customForm, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, updateCustomMutation, navigation, t, customCategories, customForm, customMeasurements, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
 
   const isCustomDataLoading = isCustomCategoriesLoading || isCustomMeasurementsLoading;
   const isCustomDataError = isCustomCategoriesError || isCustomMeasurementsError;
@@ -679,11 +727,36 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           {catForm.rows.map((row) => (
             <View key={row.key} className="mb-2">
               <View className="flex-row items-center gap-2">
-                {cat.frequency === 'Hourly' && (
-                  <Text className="text-text-secondary text-sm w-12">
-                    {formatHourLabel(row.hour)}
-                  </Text>
-                )}
+                {cat.frequency === 'Hourly' &&
+                  (row.entryId == null ? (
+                    <View className="flex-row items-center gap-1" testID={`hour-stepper-${row.key}`}>
+                      <TouchableOpacity
+                        onPress={() =>
+                          changeCustomRowHour(cat.id, row.key, ((row.hour ?? 0) + 23) % 24)
+                        }
+                        hitSlop={8}
+                        testID={`hour-minus-${row.key}`}
+                      >
+                        <Icon name="remove" size={16} color={accentPrimary} />
+                      </TouchableOpacity>
+                      <Text className="text-text-secondary text-sm w-12 text-center">
+                        {formatHourLabel(row.hour)}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() =>
+                          changeCustomRowHour(cat.id, row.key, ((row.hour ?? 0) + 1) % 24)
+                        }
+                        hitSlop={8}
+                        testID={`hour-plus-${row.key}`}
+                      >
+                        <Icon name="add" size={16} color={accentPrimary} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <Text className="text-text-secondary text-sm w-12">
+                      {formatHourLabel(row.hour)}
+                    </Text>
+                  ))}
                 <View className="flex-1">
                   {isBoolean ? (
                     <CustomBooleanControl
@@ -698,6 +771,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       keyboardType={isNumeric ? 'decimal-pad' : 'default'}
                       placeholder="0"
                       returnKeyType="done"
+                      testID={`custom-input-${row.key}`}
                     />
                   )}
                 </View>

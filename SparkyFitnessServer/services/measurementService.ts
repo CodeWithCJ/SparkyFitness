@@ -1671,6 +1671,7 @@ async function deleteCustomMeasurementEntry(authenticatedUserId: any, id: any) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateCustomMeasurementEntry(
   authenticatedUserId: any,
+  actingUserId: any,
   id: string,
   updateData: {
     value?: string | number | boolean;
@@ -1696,7 +1697,7 @@ async function updateCustomMeasurementEntry(
       await measurementRepository.updateCustomMeasurement(
         id,
         authenticatedUserId,
-        authenticatedUserId,
+        actingUserId,
         updateData
       );
     if (!updated) {

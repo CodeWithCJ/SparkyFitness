@@ -1269,6 +1269,7 @@ router.put(
     try {
       const updatedEntry = await measurementService.updateCustomMeasurementEntry(
         req.userId,
+        req.originalUserId || req.userId,
         id,
         bodyResult.data
       );

@@ -239,7 +239,57 @@ describe('measurementRepository.updateCustomMeasurement', () => {
     const [text, values] = mockClient.query.mock.calls[0];
     expect(text).toContain('value = COALESCE($1, value)');
     expect(values![0]).toBeNull();
-    expect(values![2]).toBe('manual');
+    expect(values![2]).toBeNull();
+  });
+
+  it('preserves the current source via COALESCE when source is omitted (value-only PUT)', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ id: 'cm-existing', value: '130' }] });
+
+    await measurementRepository.updateCustomMeasurement(
+      'cm-existing',
+      'user-1',
+      'acting-1',
+      { value: 130 }
+    );
+
+    const [text, values] = mockClient.query.mock.calls[0];
+    expect(text).toContain('source = COALESCE($3, source)');
+    expect(values![2]).toBeNull();
+    expect(getClient).toHaveBeenCalledWith('acting-1');
+  });
+
+  it('updates the source explicitly when one is provided', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ id: 'cm-existing', source: 'apple_health' }] });
+
+    await measurementRepository.updateCustomMeasurement(
+      'cm-existing',
+      'user-1',
+      'acting-1',
+      { source: 'apple_health' }
+    );
+
+    const [text, values] = mockClient.query.mock.calls[0];
+    expect(text).toContain('source = COALESCE($3, source)');
+    expect(values![2]).toBe('apple_health');
+  });
+
+  it('stamps updated_by_user_id with the acting user and runs RLS as the actor', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ id: 'cm-existing', value: '125' }] });
+
+    await measurementRepository.updateCustomMeasurement(
+      'cm-existing',
+      'user-1',
+      'acting-1',
+      { value: 125 }
+    );
+
+    const [text, values] = mockClient.query.mock.calls[0];
+    expect(text).toContain('updated_by_user_id = $4');
+    expect(text).toContain('WHERE id = $5 AND user_id = $6');
+    expect(values![3]).toBe('acting-1');
+    expect(values![4]).toBe('cm-existing');
+    expect(values![5]).toBe('user-1');
+    expect(getClient).toHaveBeenCalledWith('acting-1');
   });
 
   it('returns an empty row set when the entry does not belong to the user', async () => {

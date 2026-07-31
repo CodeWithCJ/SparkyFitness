@@ -160,7 +160,15 @@ export const UpdateCustomEntryBodySchema = z
     notes: optionalLegacyString,
     source: optionalLegacyString,
   })
-  .loose();
+  .loose()
+  .refine(
+    (data) =>
+      data.value !== undefined || data.notes !== undefined || data.source !== undefined,
+    {
+      message: 'At least one of value, notes, or source is required.',
+      path: ['value'],
+    }
+  );
 
 export type UpdateCustomEntryBody = z.infer<typeof UpdateCustomEntryBodySchema>;
 
