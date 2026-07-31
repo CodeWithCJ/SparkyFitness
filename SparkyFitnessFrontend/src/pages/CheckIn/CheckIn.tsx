@@ -29,7 +29,7 @@ const CheckIn = () => {
 
   const {
     bodyFatPercentage,
-    customCategories,
+    visibleCustomCategories,
     customNotes,
     customValues,
     handleCalculateBodyFat,
@@ -203,7 +203,7 @@ const CheckIn = () => {
         >
           <CheckInForm
             bodyFatPercentage={bodyFatPercentage}
-            customCategories={customCategories}
+            customCategories={visibleCustomCategories}
             customNotes={customNotes}
             customValues={customValues}
             handleCalculateBodyFat={handleCalculateBodyFat}

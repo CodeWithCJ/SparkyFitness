@@ -11,6 +11,7 @@ import {
 } from '../utils/unitConversions';
 import type { CheckInMeasurement } from '../types/measurements';
 import type { CustomMeasurementEntry } from '../types/customMeasurements';
+import { getVisibleCustomMeasurementEntries } from '../utils/customCategories';
 
 interface MeasurementsSummaryProps {
   measurements: CheckInMeasurement | undefined;
@@ -60,6 +61,12 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
 
   if (!measurements && (!customMeasurements || customMeasurements.length === 0)) return null;
 
+  // Hidden categories never surface in the daily summary even though the API
+  // returns them; entries are ordered by the category's sort_order.
+  const visibleCustomMeasurements = getVisibleCustomMeasurementEntries(
+    customMeasurements ?? [],
+  );
+
   const rows: { kind: MeasurementKind | 'custom'; label: string; value: string }[] = [];
   if (measurements?.weight != null) {
     rows.push({ kind: 'weight', label: 'Weight', value: formatWeight(measurements.weight, weightMode) });
@@ -87,13 +94,11 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
     rows.push({ kind: 'steps', label: 'Steps', value: String(measurements.steps) });
   }
 
-  if (customMeasurements) {
-    for (const entry of customMeasurements) {
-      const cat = entry.custom_categories;
-      const label = cat?.display_name ?? cat?.name ?? 'Measurement';
-      const suffix = cat?.measurement_type ? ` ${cat.measurement_type}` : '';
-      rows.push({ kind: 'custom', label, value: `${entry.value}${suffix}` });
-    }
+  for (const entry of visibleCustomMeasurements) {
+    const cat = entry.custom_categories;
+    const label = cat?.display_name ?? cat?.name ?? 'Measurement';
+    const suffix = cat?.measurement_type ? ` ${cat.measurement_type}` : '';
+    rows.push({ kind: 'custom', label, value: `${entry.value}${suffix}` });
   }
 
   if (rows.length === 0) return null;

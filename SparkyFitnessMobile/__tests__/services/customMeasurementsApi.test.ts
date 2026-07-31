@@ -145,7 +145,7 @@ describe('customMeasurementsApi', () => {
   });
 
   describe('category fields', () => {
-    test('preserves id, name, measurement_type, display_name, data_type, frequency', async () => {
+    test('preserves id, name, measurement_type, display_name, data_type, frequency, is_visible, sort_order', async () => {
       const categories = [
         {
           id: 'cat-1',
@@ -154,6 +154,8 @@ describe('customMeasurementsApi', () => {
           display_name: 'Blood Pressure (Systolic)',
           data_type: 'numeric',
           frequency: 'Daily',
+          is_visible: false,
+          sort_order: 40,
         },
       ];
       mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(categories) });
@@ -166,6 +168,8 @@ describe('customMeasurementsApi', () => {
       expect(cat.display_name).toBe('Blood Pressure (Systolic)');
       expect(cat.data_type).toBe('numeric');
       expect(cat.frequency).toBe('Daily');
+      expect(cat.is_visible).toBe(false);
+      expect(cat.sort_order).toBe(40);
     });
   });
 });

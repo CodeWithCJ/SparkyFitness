@@ -673,7 +673,10 @@ async function getCustomCategories(userId: any) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT id, name, display_name, frequency, measurement_type, data_type FROM custom_categories WHERE user_id = $1',
+      `SELECT id, name, display_name, frequency, measurement_type, data_type, is_visible, sort_order
+       FROM custom_categories
+       WHERE user_id = $1
+       ORDER BY sort_order ASC, created_at ASC, id ASC`,
       [userId]
     );
     return result.rows;
@@ -686,8 +689,11 @@ async function createCustomCategory(categoryData: any) {
   const client = await getClient(categoryData.created_by_user_id); // User-specific operation, using created_by_user_id for RLS context
   try {
     const result = await client.query(
-      `INSERT INTO custom_categories (user_id, name, display_name, frequency, measurement_type, data_type, created_by_user_id, updated_by_user_id, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, now(), now()) RETURNING id`,
+      `INSERT INTO custom_categories (user_id, name, display_name, frequency, measurement_type, data_type, is_visible, sort_order, created_by_user_id, updated_by_user_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6,
+               COALESCE($7, true),
+               COALESCE($8, (SELECT COALESCE(MAX(sort_order), 0) + 10 FROM custom_categories WHERE user_id = $1)),
+               $9, $9, now(), now()) RETURNING *`,
       [
         categoryData.user_id,
         categoryData.name,
@@ -695,6 +701,8 @@ async function createCustomCategory(categoryData: any) {
         categoryData.frequency,
         categoryData.measurement_type,
         categoryData.data_type,
+        categoryData.is_visible,
+        categoryData.sort_order,
         categoryData.created_by_user_id,
       ]
     );
@@ -723,9 +731,11 @@ async function updateCustomCategory(
         frequency = COALESCE($3, frequency),
         measurement_type = COALESCE($4, measurement_type),
         data_type = COALESCE($5, data_type),
+        is_visible = COALESCE($6, is_visible),
+        sort_order = COALESCE($7, sort_order),
         updated_at = now(),
-        updated_by_user_id = $6
-      WHERE id = $7 AND user_id = $8
+        updated_by_user_id = $8
+      WHERE id = $9 AND user_id = $10
       RETURNING *`,
       [
         updateData.name,
@@ -733,6 +743,8 @@ async function updateCustomCategory(
         updateData.frequency,
         updateData.measurement_type,
         updateData.data_type,
+        updateData.is_visible,
+        updateData.sort_order,
         actingUserId,
         id,
         userId,
@@ -786,11 +798,14 @@ async function getCustomMeasurementEntries(
     let query = `
       SELECT cm.*, cm.entry_date::TEXT,
              json_build_object(
+               'id', cc.id,
                'name', cc.name,
                'display_name', cc.display_name,
                'measurement_type', cc.measurement_type,
                'frequency', cc.frequency,
-               'data_type', cc.data_type
+               'data_type', cc.data_type,
+               'is_visible', cc.is_visible,
+               'sort_order', cc.sort_order
              ) AS custom_categories
       FROM custom_measurements cm
       JOIN custom_categories cc ON cm.category_id = cc.id
@@ -850,11 +865,14 @@ async function getCustomMeasurementEntriesByDate(userId: any, date: any) {
     const result = await client.query(
       `SELECT cm.*,
              json_build_object(
+               'id', cc.id,
                'name', cc.name,
                'display_name', cc.display_name,
                'measurement_type', cc.measurement_type,
                'frequency', cc.frequency,
-               'data_type', cc.data_type
+               'data_type', cc.data_type,
+               'is_visible', cc.is_visible,
+               'sort_order', cc.sort_order
              ) AS custom_categories
        FROM custom_measurements cm
        JOIN custom_categories cc ON cm.category_id = cc.id

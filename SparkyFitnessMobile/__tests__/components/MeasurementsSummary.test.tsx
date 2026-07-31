@@ -104,6 +104,46 @@ describe('MeasurementsSummary', () => {
     expect(getByText('120 mmHg')).toBeTruthy();
   });
 
+  test('hides custom measurement rows whose category is not visible', () => {
+    const { getByText, queryByText } = render(
+      <MeasurementsSummary
+        measurements={{}}
+        customMeasurements={[
+          {
+            id: 'entry-1',
+            category_id: 'cat-1',
+            value: '120',
+            entry_date: '2024-06-15',
+            custom_categories: {
+              id: 'cat-1',
+              name: 'Blood Pressure',
+              measurement_type: 'mmHg',
+              frequency: 'Daily',
+              is_visible: true,
+            },
+          },
+          {
+            id: 'entry-2',
+            category_id: 'cat-2',
+            value: '95',
+            entry_date: '2024-06-15',
+            custom_categories: {
+              id: 'cat-2',
+              name: 'Hidden Category',
+              measurement_type: 'mg/dL',
+              frequency: 'Daily',
+              is_visible: false,
+            },
+          },
+        ]}
+      />,
+    );
+    expect(getByText('Blood Pressure')).toBeTruthy();
+    expect(getByText('120 mmHg')).toBeTruthy();
+    expect(queryByText('Hidden Category')).toBeNull();
+    expect(queryByText('95 mg/dL')).toBeNull();
+  });
+
   test('shows measurements section header', () => {
     const { getByText } = render(
       <MeasurementsSummary

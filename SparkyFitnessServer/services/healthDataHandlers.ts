@@ -541,11 +541,12 @@ export function createCategoryResolver(): HealthBatchContext['resolveCategory'] 
       measurement_type: measurementType, // Default to numeric for Health Connect data
       frequency: 'Daily', // Default frequency, can be refined later if needed
       data_type: dataType, // Default to numeric for new categories from health data
+      is_visible: true, // Health-synced categories always show in input screens
     };
     const newCategory =
       await measurementRepository.createCustomCategory(newCategoryData);
     // To return the full category object including the id and the default data_type
-    const created = { id: newCategory.id, ...newCategoryData };
+    const created = { ...newCategoryData, ...newCategory };
     byName.set(categoryName, created);
     return created;
   };

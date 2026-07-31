@@ -5,21 +5,28 @@ export interface CustomCategory {
   measurement_type: string;
   frequency: string;
   data_type?: string | null;
+  /** Hidden categories are filtered out of input screens and the daily summary. */
+  is_visible?: boolean;
+  /** Ascending display order; the server fills defaults when omitted. */
+  sort_order?: number;
   updated_at?: string;
 }
 
 /**
  * Shape of the nested `custom_categories` object the server embeds in every
- * custom-entry row. The repository builds it with `json_build_object` and does
- * NOT include `id` (or any other category column beyond the ones listed here),
- * so this must stay a separate type instead of reusing `CustomCategory`.
+ * custom-entry row. The repository builds it with `json_build_object`; it
+ * carries the category's display metadata plus `id`, `is_visible`, and
+ * `sort_order` so consumers can filter/sort entries without an extra lookup.
  */
 export interface CustomCategoryEntryInfo {
+  id?: string;
   name: string;
   display_name: string | null;
   measurement_type: string;
   frequency: string;
   data_type: string;
+  is_visible?: boolean;
+  sort_order?: number;
 }
 
 export interface CustomMeasurementEntry {

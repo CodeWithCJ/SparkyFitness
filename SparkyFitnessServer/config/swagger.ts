@@ -1059,10 +1059,20 @@ const options = {
               enum: ['numeric', 'boolean', 'text'],
               nullable: true,
             },
+            is_visible: {
+              type: 'boolean',
+              description:
+                'Controls whether the category appears in input screens and the daily summary. Hidden categories remain visible in the manager, reports, and history.',
+            },
+            sort_order: {
+              type: 'integer',
+              description:
+                'Ascending display order within a user (tie-break created_at, then id). New categories default to max(sort_order)+10.',
+            },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['name', 'frequency'],
+          required: ['name', 'frequency', 'is_visible', 'sort_order'],
         },
         CustomMeasurementEntry: {
           type: 'object',

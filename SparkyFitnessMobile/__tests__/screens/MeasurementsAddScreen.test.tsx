@@ -703,4 +703,108 @@ describe('MeasurementsAddScreen custom measurements', () => {
     );
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
+
+  test('does not render hidden categories nor their server entries', async () => {
+    mockUseCustomCategories.mockReturnValue({
+      data: [
+        {
+          id: 'cat-1',
+          name: 'Blood Pressure',
+          display_name: 'Blood Pressure',
+          measurement_type: 'mmHg',
+          frequency: 'Daily',
+          data_type: 'numeric',
+          is_visible: true,
+        },
+        {
+          id: 'cat-hidden',
+          name: 'Hidden',
+          display_name: 'Hidden',
+          measurement_type: 'mL',
+          frequency: 'Daily',
+          data_type: 'numeric',
+          is_visible: false,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomCategories,
+    });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [
+        { id: 'entry-1', category_id: 'cat-1', value: '120', entry_date: '2024-06-15' },
+        { id: 'entry-hidden', category_id: 'cat-hidden', value: '95', entry_date: '2024-06-15' },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomEntries,
+    });
+
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+    });
+    // The hidden category's entry is never surfaced as an input.
+    expect(screen.queryByDisplayValue('95')).toBeNull();
+    expect(screen.queryByText(/Hidden/)).toBeNull();
+  });
+
+  test('renders categories in sort_order order and saves only visible ones', async () => {
+    mockUseCustomCategories.mockReturnValue({
+      data: [
+        {
+          id: 'cat-late',
+          name: 'Late',
+          display_name: 'Late',
+          measurement_type: '',
+          frequency: 'Daily',
+          data_type: 'numeric',
+          is_visible: true,
+          sort_order: 100,
+        },
+        {
+          id: 'cat-first',
+          name: 'First',
+          display_name: 'First',
+          measurement_type: '',
+          frequency: 'Daily',
+          data_type: 'numeric',
+          is_visible: true,
+          sort_order: 10,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomCategories,
+    });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomEntries,
+    });
+
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByText('First')).toBeTruthy();
+    });
+
+    // Single-entry inputs render in sort_order order.
+    const inputs = screen.getAllByTestId(/^custom-single-/);
+    expect(inputs.map((n) => n.props.testID)).toEqual([
+      'custom-single-cat-first',
+      'custom-single-cat-late',
+    ]);
+    fireEvent.changeText(inputs[0], '5');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(saveCustomMutation.mutateAsync).toHaveBeenCalledTimes(1);
+    });
+    expect(saveCustomMutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ category_id: 'cat-first', value: 5, entry_date: '2024-06-15' }),
+    );
+  });
 });

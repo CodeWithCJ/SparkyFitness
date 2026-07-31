@@ -127,4 +127,35 @@ describe('CheckInForm', () => {
       screen.queryByRole('button', { name: 'Use last' })
     ).not.toBeInTheDocument();
   });
+
+  it('renders one input per category passed in (the hook already filters to visible categories)', () => {
+    const customCategories = [
+      {
+        id: 'c1',
+        name: 'Blood Pressure',
+        display_name: 'BP',
+        measurement_type: 'mmHg',
+        frequency: 'Daily',
+        data_type: 'numeric',
+        is_visible: true,
+        sort_order: 10,
+      },
+      {
+        id: 'c2',
+        name: 'Mood Score',
+        display_name: null,
+        measurement_type: '1-10',
+        frequency: 'Daily',
+        data_type: 'numeric',
+        is_visible: true,
+        sort_order: 20,
+      },
+    ];
+    render(
+      <CheckInForm {...defaultProps} customCategories={customCategories} />
+    );
+
+    expect(screen.getByLabelText('BP (mmHg)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mood Score (1-10)')).toBeInTheDocument();
+  });
 });

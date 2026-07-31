@@ -55,6 +55,19 @@ const nullableOptionalLegacyNumber = z.preprocess((value) => {
   return coerceLegacyNumber(value);
 }, z.number().nullable().optional());
 
+const optionalLegacyInteger = z.preprocess((value) => {
+  if (value === '') {
+    return undefined;
+  }
+
+  return coerceLegacyNumber(value);
+}, z.number().int().min(0).max(1000000).optional());
+
+const optionalLegacyBoolean = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.boolean().optional()
+);
+
 export const UpsertWaterIntakeBodySchema = z
   .object({
     entry_date: requiredLegacyString('entry_date'),
@@ -113,6 +126,8 @@ export const CreateCustomCategoryBodySchema = z
     frequency: requiredLegacyString('frequency'),
     measurement_type: requiredLegacyString('measurement_type'),
     data_type: nullableOptionalLegacyString,
+    is_visible: optionalLegacyBoolean,
+    sort_order: optionalLegacyInteger,
   })
   .loose();
 
@@ -127,6 +142,8 @@ export const UpdateCustomCategoryBodySchema = z
     frequency: optionalLegacyString,
     measurement_type: optionalLegacyString,
     data_type: nullableOptionalLegacyString,
+    is_visible: optionalLegacyBoolean,
+    sort_order: optionalLegacyInteger,
   })
   .loose();
 

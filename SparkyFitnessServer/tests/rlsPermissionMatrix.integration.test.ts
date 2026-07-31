@@ -787,6 +787,59 @@ describe.runIf(RUN)('RLS permission matrix', () => {
         touchColumn: 'name',
         rowId: () => id,
       });
+
+      // Stage 4 visibility/ordering columns: defaults applied on insert, owner
+      // can read and update them, and explicit false/0 survive the write.
+      it('owner can read and update is_visible and sort_order (defaults + explicit values)', async () => {
+        const sys = await getSystemClient();
+        let createdId = '';
+        try {
+          const r = await sys.query(
+            `INSERT INTO public.custom_categories
+               (user_id, name, measurement_type, frequency)
+             VALUES ($1, 'rls-matrix-vis', 'numeric', 'Daily')
+             RETURNING id, is_visible, sort_order`,
+            [OWNER]
+          );
+          createdId = r.rows[0].id;
+          expect(r.rows[0].is_visible).toBe(true);
+          expect(r.rows[0].sort_order).toBe(100);
+
+          const owner = await getClient(OWNER);
+          try {
+            const read = await owner.query(
+              'SELECT is_visible, sort_order FROM public.custom_categories WHERE id = $1',
+              [createdId]
+            );
+            expect(read.rows[0].is_visible).toBe(true);
+            expect(read.rows[0].sort_order).toBe(100);
+            const update = await owner.query(
+              `UPDATE public.custom_categories
+               SET is_visible = false, sort_order = 0
+               WHERE id = $1 AND user_id = $2`,
+              [createdId, OWNER]
+            );
+            expect(update.rowCount).toBe(1);
+          } finally {
+            owner.release();
+          }
+
+          const after = await sys.query(
+            'SELECT is_visible, sort_order FROM public.custom_categories WHERE id = $1',
+            [createdId]
+          );
+          expect(after.rows[0].is_visible).toBe(false);
+          expect(after.rows[0].sort_order).toBe(0);
+        } finally {
+          if (createdId) {
+            await sys.query(
+              'DELETE FROM public.custom_categories WHERE id = $1',
+              [createdId]
+            );
+          }
+          sys.release();
+        }
+      });
     });
 
     // -- custom/library: delegates read when entitled, only owner writes (F1) -

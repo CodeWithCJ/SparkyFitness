@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ import {
   stonesLbsToKg,
 } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
+import { getVisibleSortedCustomCategories } from '../utils/customCategories';
 import {
   syncCustomForm,
   buildCustomOps,
@@ -183,6 +184,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     isError: isCustomCategoriesError,
     refetch: refetchCustomCategories,
   } = useCustomCategories();
+  // Only categories the user wants in input screens are rendered and validated.
+  // Hidden categories still exist server-side (they stay in the manager and
+  // reports) but must not appear here; ordering follows `sort_order`.
+  const visibleCategories = useMemo(
+    () => getVisibleSortedCustomCategories(customCategories ?? []),
+    [customCategories],
+  );
   const {
     data: customMeasurements,
     isLoading: isCustomMeasurementsLoading,
@@ -277,13 +285,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     const dirtyKeys = new Set(dirtyCustomKeysRef.current);
     const synced = syncCustomForm({
-      categories: customCategories ?? [],
+      categories: visibleCategories,
       serverEntries: customMeasurements ?? [],
       current: customFormRef.current,
       dirtyKeys,
     });
     setCustomForm(synced.form);
-  }, [selectedDate, customCategories, customMeasurements]);
+  }, [selectedDate, visibleCategories, customMeasurements]);
 
   const updateField = useCallback((key: keyof FormState, value: string) => {
     dirtyFieldsRef.current.add(FORM_FIELD_KEYS[key]);
@@ -553,20 +561,20 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     // means a changed row failed validation, so handleSave stops before any
     // mutation runs; untouched rows are never parsed and cannot block saves.
     const hourConflict = findHourlyHourConflict({
-      categories: customCategories ?? [],
+      categories: visibleCategories,
       form: customForm,
       serverEntries: customMeasurements ?? [],
       dirtyKeys: new Set(dirtyCustomKeysRef.current),
     });
     if (hourConflict) {
-      const cat = customCategories?.find((c) => c.id === hourConflict.categoryId);
+      const cat = visibleCategories.find((c) => c.id === hourConflict.categoryId);
       const label = cat ? (cat.display_name ?? cat.name) : hourConflict.categoryId;
       Toast.show({ type: 'error', text1: t('measurements.duplicateHour', { label }) });
       return;
     }
 
     const customResult = buildCustomOps({
-      categories: customCategories ?? [],
+      categories: visibleCategories,
       form: customForm,
       dirtyKeys: new Set(dirtyCustomKeysRef.current),
       onInvalid: (label) => {
@@ -633,7 +641,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const clearingLabels = [
       ...cleared.map((k) => getFieldLabels(t)[k]),
       ...customDeleteOps.map((op) => {
-        const cat = customCategories?.find((c) => c.id === op.categoryId);
+        const cat = visibleCategories.find((c) => c.id === op.categoryId);
         return cat ? (cat.display_name ?? cat.name) : op.categoryId;
       }),
     ];
@@ -652,7 +660,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, updateCustomMutation, navigation, t, customCategories, customForm, customMeasurements, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, updateCustomMutation, navigation, t, visibleCategories, customForm, customMeasurements, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
 
   const isCustomDataLoading = isCustomCategoriesLoading || isCustomMeasurementsLoading;
   const isCustomDataError = isCustomCategoriesError || isCustomMeasurementsError;
@@ -721,7 +729,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     clear: t('measurements.clear'),
   };
 
-  const renderCustomCategory = (cat: NonNullable<typeof customCategories>[number]) => {
+  const renderCustomCategory = (cat: NonNullable<typeof visibleCategories>[number]) => {
     const label = cat.display_name ?? cat.name;
     const suffix = cat.measurement_type ? ` (${cat.measurement_type})` : '';
     const isMulti = isMultiEntryFrequency(cat.frequency);
@@ -831,6 +839,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             keyboardType={isNumeric ? 'decimal-pad' : 'default'}
             placeholder="0"
             returnKeyType="done"
+            testID={`custom-single-${cat.id}`}
           />
         )}
         {row?.entryId != null && row.value.trim() === '' ? (
@@ -1020,13 +1029,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color={accentPrimary} />
               </View>
             ) : (
-              customCategories &&
-              customCategories.length > 0 && (
+              visibleCategories &&
+              visibleCategories.length > 0 && (
                 <View className="mt-4 mb-2">
                   <Text className="text-text-primary text-base font-semibold mb-3">
                     Custom Measurements
                   </Text>
-                  {customCategories.map(renderCustomCategory)}
+                  {visibleCategories.map(renderCustomCategory)}
                 </View>
               )
             )}
