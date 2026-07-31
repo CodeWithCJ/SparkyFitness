@@ -277,49 +277,98 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
     });
     expect(getStore().hasUnsavedChanges).toBe(true);
 
-    // The server echoes the live session back (200), as the real backend does
-    // for an accepted nested update.
-    mockUpdateWorkout.mockImplementation(async () => getStore().session!);
+    // Spy on applyServerSession: the flush folds the server response back
+    // into the store before the End flow clears it. Capturing the call proves
+    // the response (with the persisted completed_at) was accepted, not just
+    // that the PUT was sent.
+    const originalApply = getStore().applyServerSession;
+    const applySpy = jest.fn(originalApply);
+    useActiveWorkoutStore.setState({ applyServerSession: applySpy });
+    try {
+      // The server echoes a 200 with an INDEPENDENT object (a deep copy, not
+      // a reference into the store) that carries the saved completed_at on
+      // the completed set — mirroring what the real backend persists.
+      mockUpdateWorkout.mockImplementation(async (_sessionId, payload) => {
+        const serverSession = JSON.parse(
+          JSON.stringify(getStore().session),
+        ) as PresetSessionResponse;
+        const sentSet = (
+          payload as {
+            exercises: {
+              sets: { id?: number; completed_at: string | null }[];
+            }[];
+          }
+        ).exercises[0].sets[0];
+        if (sentSet?.completed_at) {
+          serverSession.exercises[0].sets[0].completed_at =
+            sentSet.completed_at;
+        }
+        return serverSession;
+      });
 
-    const { getByText } = renderScreen();
-    await pressEndWorkout(getByText);
+      const { getByText } = renderScreen();
+      await pressEndWorkout(getByText);
 
-    // The final flush hit the PUT with the completed set.
-    expect(mockUpdateWorkout).toHaveBeenCalledWith(
-      'session-1',
-      expect.objectContaining({
-        exercises: [
-          expect.objectContaining({
-            sets: [
-              expect.objectContaining({
-                reps: 10,
-                weight: 60,
-                completed_at: expect.any(String),
-              }),
-              expect.anything(),
-            ],
-          }),
-        ],
-      }),
-    );
-    expect(mockSyncCache).toHaveBeenCalled();
+      // The final flush hit the PUT with the completed set.
+      expect(mockUpdateWorkout).toHaveBeenCalledWith(
+        'session-1',
+        expect.objectContaining({
+          exercises: [
+            expect.objectContaining({
+              sets: [
+                expect.objectContaining({
+                  reps: 10,
+                  weight: 60,
+                  completed_at: expect.any(String),
+                }),
+                expect.anything(),
+              ],
+            }),
+          ],
+        }),
+      );
+      expect(mockSyncCache).toHaveBeenCalled();
 
-    // No failure warning, and the celebration screen replaced the stack.
-    expect(
-      alertSpy.mock.calls.some(
-        call => call[0] === 'Could not save your workout',
-      ),
-    ).toBe(false);
-    expect(navigation.replace).toHaveBeenCalledTimes(1);
-    const [routeName, params] = navigation.replace.mock.calls[0];
-    expect(routeName).toBe('WorkoutComplete');
-    expect(params.session.id).toBe('session-1');
-    expect(params.session.source).toBe('Workout Plan');
-    expect(params.completedSetIds['101']).toBeTruthy();
+      // The store accepted the server response before the workout was
+      // cleared: applyServerSession was handed the response with the saved
+      // completed_at on the completed set.
+      expect(applySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'session-1',
+          exercises: [
+            expect.objectContaining({
+              sets: [
+                expect.objectContaining({
+                  completed_at: expect.any(String),
+                }),
+                expect.anything(),
+              ],
+            }),
+          ],
+        }),
+        expect.any(Number),
+        expect.any(Array),
+      );
 
-    // The store is neither dirty nor still holding the session.
-    expect(getStore().session).toBeNull();
-    expect(getStore().hasUnsavedChanges).toBe(false);
+      // No failure warning, and the celebration screen replaced the stack.
+      expect(
+        alertSpy.mock.calls.some(
+          call => call[0] === 'Could not save your workout',
+        ),
+      ).toBe(false);
+      expect(navigation.replace).toHaveBeenCalledTimes(1);
+      const [routeName, params] = navigation.replace.mock.calls[0];
+      expect(routeName).toBe('WorkoutComplete');
+      expect(params.session.id).toBe('session-1');
+      expect(params.session.source).toBe('Workout Plan');
+      expect(params.completedSetIds['101']).toBeTruthy();
+
+      // The store is neither dirty nor still holding the session.
+      expect(getStore().session).toBeNull();
+      expect(getStore().hasUnsavedChanges).toBe(false);
+    } finally {
+      useActiveWorkoutStore.setState({ applyServerSession: originalApply });
+    }
   });
 
   it('keeps the local session and warns when the final PUT is rejected with 409', async () => {

@@ -1115,6 +1115,12 @@ describe('exerciseService grouped workouts', () => {
     const newEntryId = '66666666-6666-4666-8666-666666666666';
     const workoutPlanAssignmentId = 987;
 
+    // Parent session: a Workout Plan run. Children generated from the preset
+    // carry their own source ('Workout Preset' — confirmed against production
+    // data: exercise_entries rows from a plan run have source='Workout Preset'
+    // while the exercise_preset_entries parent has source='Workout Plan'). The
+    // reconcile path must preserve that child source rather than overwriting it
+    // with the session source.
     const existingSession = {
       type: 'preset' as const,
       id: 'preset-entry-1',
@@ -1133,7 +1139,7 @@ describe('exerciseService grouped workouts', () => {
           duration_minutes: 10,
           distance: null,
           avg_heart_rate: null,
-          source: 'Workout Plan Child',
+          source: 'Workout Preset',
           sets: [{ id: 1, set_number: 1, reps: 10, weight: 60 }],
         },
       ],
@@ -1194,6 +1200,9 @@ describe('exerciseService grouped workouts', () => {
     };
 
     it('reconciles an existing exercise and keeps its own child source', async () => {
+      // Policy: an existing child generated from the preset keeps its own
+      // source ('Workout Preset'); the reconcile update must NOT stamp the
+      // parent session source ('Workout Plan') onto it.
       setupPlanSession(existingSession, updatedSession);
 
       const result = await exerciseService.updateGroupedWorkoutSession(
@@ -1234,7 +1243,7 @@ describe('exerciseService grouped workouts', () => {
           duration_minutes: 12,
         }),
         'actor-1',
-        'Workout Plan Child'
+        'Workout Preset'
       );
       expect(
         exerciseEntryDb._reconcileExerciseEntrySetsWithClient
@@ -1256,6 +1265,10 @@ describe('exerciseService grouped workouts', () => {
     });
 
     it('creates a client-added exercise with the workout plan assignment id', async () => {
+      // Policy: an exercise manually added mid-session is new — there is no
+      // existing row whose source to preserve, so it is created with the
+      // session source ('Workout Plan') plus the recovered
+      // workout_plan_assignment_id.
       const afterSession = {
         ...existingSession,
         exercises: [
@@ -1350,7 +1363,7 @@ describe('exerciseService grouped workouts', () => {
           duration_minutes: 12,
         }),
         'actor-1',
-        'Workout Plan Child'
+        'Workout Preset'
       );
       expect(
         exerciseEntryDb._reconcileExerciseEntrySetsWithClient
@@ -1361,6 +1374,10 @@ describe('exerciseService grouped workouts', () => {
     });
 
     it('preserves the workout plan assignment id on delete-and-recreate', async () => {
+      // Policy: with no exercises[].id the server deletes all children and
+      // recreates them; the recreated rows carry the session source
+      // ('Workout Plan') — the delete removed any per-child source that
+      // existed, and the new rows inherit the parent's.
       const afterSession = {
         ...existingSession,
         exercises: [
