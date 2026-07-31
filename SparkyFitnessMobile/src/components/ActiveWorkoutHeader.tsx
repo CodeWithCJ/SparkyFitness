@@ -36,15 +36,15 @@ interface ActiveWorkoutHeaderProps {
   progress: ExerciseProgress[];
   onBack: () => void;
   onDiscard: () => void;
-  /** Adds an "End workout" action (the finish flow) below Workout settings. */
+  /** Adds an "End workout" action (the finish flow) in its own menu group. */
   onEndWorkout?: () => void;
   /** Opens the rename dialog from a "Rename workout" menu action. */
   onRename?: () => void;
-  /** Adds an "Add exercise" action at the top of the menu. */
+  /** When provided, adds an "Add exercise" action. */
   onAddExercise?: () => void;
-  /** When provided, adds a "Reorder exercises" action above Discard. */
+  /** When provided, adds a "Reorder exercises" action. */
   onReorder?: () => void;
-  /** When provided, adds a "Workout settings" action above the destructive items. */
+  /** When provided, adds a "Workout settings" action. */
   onOpenSettings?: () => void;
   /** When provided (any set logged), adds a "Clear all logged sets" action. */
   onClearAllSets?: () => void;
@@ -134,17 +134,11 @@ function ActiveWorkoutHeader({
   ).length;
 
   const menuItems: ActionSheetItem[] = [];
-  if (onRename) {
-    menuItems.push({
-      key: 'rename',
-      label: 'Rename workout',
-      onPress: onRename,
-    });
-  }
   if (onAddExercise) {
     menuItems.push({
       key: 'add-exercise',
       label: 'Add exercise',
+      group: 'edit',
       onPress: onAddExercise,
     });
   }
@@ -152,13 +146,23 @@ function ActiveWorkoutHeader({
     menuItems.push({
       key: 'reorder',
       label: 'Reorder exercises',
+      group: 'edit',
       onPress: onReorder,
+    });
+  }
+  if (onRename) {
+    menuItems.push({
+      key: 'rename',
+      label: 'Rename workout',
+      group: 'workout',
+      onPress: onRename,
     });
   }
   if (onOpenSettings) {
     menuItems.push({
       key: 'workout-settings',
       label: 'Workout settings',
+      group: 'workout',
       onPress: onOpenSettings,
     });
   }
@@ -166,6 +170,7 @@ function ActiveWorkoutHeader({
     menuItems.push({
       key: 'end-workout',
       label: 'End workout',
+      group: 'finish',
       onPress: onEndWorkout,
     });
   }
@@ -173,6 +178,7 @@ function ActiveWorkoutHeader({
     menuItems.push({
       key: 'clear-sets',
       label: 'Clear all logged sets',
+      group: 'danger',
       destructive: true,
       onPress: onClearAllSets,
     });
@@ -180,6 +186,7 @@ function ActiveWorkoutHeader({
   menuItems.push({
     key: 'discard',
     label: 'Discard workout',
+    group: 'danger',
     destructive: true,
     onPress: onDiscard,
   });
