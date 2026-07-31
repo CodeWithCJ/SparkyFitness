@@ -123,7 +123,7 @@ export const WorkoutSessionBreakdown = ({
 
       for (const set of entrySets) {
         const reps = set?.reps || 0;
-        const weightKg = (set?.weight || 0) * 2.204622;
+        const weightKg = set?.weight || 0;
         items.push({
           setNumber: set?.set_number || setCounter,
           exerciseName,

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import SetPerformanceAnalysisChart from './SetPerformanceAnalysisChart';
-import { usePreferences, type WeightUnit } from '@/contexts/PreferencesContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatNumber, formatWeight } from '@/utils/numberFormatting';
 import {
   FaDumbbell,
@@ -92,7 +92,11 @@ const WorkoutReportVisualizer = ({
   const totalVolume =
     allExecutableSteps.reduce((total, step) => {
       if (step.weightValue && step.endCondition?.conditionTypeKey === 'reps') {
-        const weight = step.weightValue || 0;
+        const weight = convertWeight(
+          step.weightValue,
+          step.weightUnit?.unitKey === 'pound' ? 'lbs' : 'kg',
+          'kg'
+        );
         const reps = step.endConditionValue || 0;
         return total + weight * reps;
       }
@@ -113,7 +117,13 @@ const WorkoutReportVisualizer = ({
     if (step.exerciseName) {
       const exerciseName = step.exerciseName;
       const setName = `Set ${stepIndex + 1}`;
-      const weight = step.weightValue || 0;
+      const weight = step.weightValue
+        ? convertWeight(
+            step.weightValue,
+            step.weightUnit?.unitKey === 'pound' ? 'lbs' : 'kg',
+            'kg'
+          )
+        : 0;
       const reps = step.endConditionValue || 0;
 
       if (!setPerformanceData[exerciseName]) {
@@ -133,7 +143,13 @@ const WorkoutReportVisualizer = ({
   allExecutableSteps.forEach((step) => {
     if (step.exerciseName) {
       const exerciseName = step.exerciseName;
-      const weight = step.weightValue || 0;
+      const weight = step.weightValue
+        ? convertWeight(
+            step.weightValue,
+            step.weightUnit?.unitKey === 'pound' ? 'lbs' : 'kg',
+            'kg'
+          )
+        : 0;
       const reps = step.endConditionValue || 0;
       const oneRM = weight * (1 + reps / 30);
 
@@ -193,7 +209,7 @@ const WorkoutReportVisualizer = ({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatNumber(Math.round(totalVolume))}
+                {formatWeight(totalVolume, weightUnit)}
               </div>
             </CardContent>
           </Card>
@@ -277,10 +293,9 @@ const WorkoutReportVisualizer = ({
                         ? formatWeight(
                             convertWeight(
                               step.weightValue,
-                              (step.weightUnit?.unitKey === 'pound'
+                              step.weightUnit?.unitKey === 'pound'
                                 ? 'lbs'
-                                : step.weightUnit?.unitKey ||
-                                  'kg') as WeightUnit,
+                                : 'kg',
                               'kg'
                             ),
                             weightUnit
@@ -308,7 +323,7 @@ const WorkoutReportVisualizer = ({
               key={`set-performance-${exerciseName}`}
               setPerformanceData={data.map((d) => ({
                 setName: d.setName,
-                avgWeight: convertWeight(d.avgWeight, 'lbs', 'kg'),
+                avgWeight: d.avgWeight,
                 avgReps: d.avgReps,
               }))}
               exerciseName={exerciseName}
@@ -339,10 +354,7 @@ const WorkoutReportVisualizer = ({
                     <div className="flex flex-col items-center justify-center p-2 border rounded-lg">
                       <FaTrophy className="h-5 w-5 text-yellow-500 mb-1" />
                       <span className="text-lg font-bold">
-                        {formatWeight(
-                          convertWeight(pr.oneRM, 'lbs', 'kg'),
-                          weightUnit
-                        )}
+                        {formatWeight(pr.oneRM, weightUnit)}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {t('workoutReport.estimated1RM', 'Estimated 1RM')}
@@ -351,10 +363,7 @@ const WorkoutReportVisualizer = ({
                     <div className="flex flex-col items-center justify-center p-2 border rounded-lg">
                       <FaWeight className="h-5 w-5 text-red-500 mb-1" />
                       <span className="text-lg font-bold">
-                        {formatWeight(
-                          convertWeight(pr.weight, 'lbs', 'kg'),
-                          weightUnit
-                        )}
+                        {formatWeight(pr.weight, weightUnit)}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {t('workoutReport.maxWeight', 'Max Weight')}

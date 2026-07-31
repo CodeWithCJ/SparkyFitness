@@ -178,10 +178,25 @@ async function upsertSamplesByDay(
   return byDate.size;
 }
 
+interface ProcessedResult {
+  type: string;
+  status: string;
+  count?: number;
+  date?: string;
+  message?: string;
+}
+
+interface ProcessError {
+  type: string;
+  status: string;
+  date?: string;
+  message: string;
+}
+
 export async function processGarminHealthAndWellnessData(
   userId: string,
   actingUserId: string,
-  healthData: any,
+  healthData: Record<string, unknown>,
   startDate: string,
   endDate: string
 ) {
@@ -189,8 +204,8 @@ export async function processGarminHealthAndWellnessData(
     'info',
     `[garminHealthProcessor] Processing Garmin health and wellness data for user ${userId} from ${startDate} to ${endDate}.`
   );
-  const processedResults: any[] = [];
-  const errors: any[] = [];
+  const processedResults: ProcessedResult[] = [];
+  const errors: ProcessError[] = [];
 
   try {
     // Process Stress Data
@@ -229,7 +244,7 @@ export async function processGarminHealthAndWellnessData(
               status: 'success',
               date,
             });
-          } catch (error: any) {
+          } catch (error: unknown) {
             log(
               'error',
               `Error storing raw stress data for user ${userId} on ${date}:`,
@@ -257,7 +272,7 @@ export async function processGarminHealthAndWellnessData(
               status: 'success',
               date,
             });
-          } catch (error: any) {
+          } catch (error: unknown) {
             log(
               'error',
               `Error storing derived mood value for user ${userId} on ${date}:`,
@@ -840,7 +855,7 @@ export async function processGarminHealthAndWellnessData(
         });
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     log(
       'error',
       `[garminHealthProcessor] Unexpected error in processGarminHealthAndWellnessData for user ${userId}:`,
@@ -873,12 +888,12 @@ export async function processGarminHealthAndWellnessData(
 export async function processGarminSleepData(
   userId: string,
   actingUserId: string,
-  sleepDataArray: any[],
+  sleepDataArray: Array<Record<string, unknown>>,
   startDate: string,
   endDate: string
 ) {
-  const processedResults: any[] = [];
-  const errors: any[] = [];
+  const processedResults: Array<Record<string, unknown>> = [];
+  const errors: Array<Record<string, unknown>> = [];
 
   log(
     'info',
@@ -899,7 +914,7 @@ export async function processGarminSleepData(
         sleepEntry
       );
       processedResults.push({ status: 'success', data: result });
-    } catch (error: any) {
+    } catch (error: unknown) {
       log(
         'error',
         `Error processing Garmin sleep entry for user ${userId}:`,
@@ -936,7 +951,9 @@ const GARMIN_MEAL_TYPE_MAP: Record<string, string> = {
   SNACKS: 'snacks',
 };
 
-function mapGarminNutrition(nutritionContent: any) {
+function mapGarminNutrition(
+  nutritionContent: Record<string, number | null | undefined>
+) {
   return {
     calories: nutritionContent.calories ?? null,
     protein: nutritionContent.protein ?? null,
@@ -960,7 +977,7 @@ function mapGarminNutrition(nutritionContent: any) {
 
 export async function processGarminNutritionData(
   userId: string,
-  nutritionData: any[],
+  nutritionData: Array<Record<string, unknown>>,
   startDate: string,
   endDate: string
 ) {
