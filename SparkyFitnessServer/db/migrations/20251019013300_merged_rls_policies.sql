@@ -28,7 +28,17 @@ ALTER TABLE public.meal_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mood_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sparky_chat_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_api_keys ENABLE ROW LEVEL SECURITY;
+-- Some legacy installations no longer have this deprecated table but still
+-- need to replay the historical migration set when migration tracking is
+-- missing. Preserve the old policy setup when the table exists and otherwise
+-- allow the replay to continue to the migration that creates `api_key`.
+DO $$
+BEGIN
+    IF to_regclass('public.user_api_keys') IS NOT NULL THEN
+        ALTER TABLE public.user_api_keys ENABLE ROW LEVEL SECURITY;
+    END IF;
+END;
+$$;
 ALTER TABLE public.user_goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_nutrient_display_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_oidc_links ENABLE ROW LEVEL SECURITY;
@@ -403,7 +413,13 @@ SELECT create_user_centric_policy('custom_measurements');
 SELECT create_user_centric_policy('external_data_providers');
 SELECT create_user_centric_policy('meal_plans');
 SELECT create_user_centric_policy('sparky_chat_history');
-SELECT create_user_centric_policy('user_api_keys');
+DO $$
+BEGIN
+    IF to_regclass('public.user_api_keys') IS NOT NULL THEN
+        PERFORM create_user_centric_policy('user_api_keys');
+    END IF;
+END;
+$$;
 SELECT create_user_centric_policy('user_goals');
 SELECT create_user_centric_policy('user_nutrient_display_preferences');
 SELECT create_user_centric_policy('water_intake');

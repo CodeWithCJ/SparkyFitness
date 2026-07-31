@@ -252,8 +252,29 @@ jobs:
       # The schema + RLS policies are now applied and the non-superuser app role
       # exists, so the permission matrix can verify every table's real RLS
       # behaviour as the app role (superuser DB user seeds, app role is enforced).
-      - name: Verify RLS permission matrix
-        run: pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts
+      - name: Verify RLS permission matrix and legacy migration replay
+        run: |
+          set -euo pipefail
+          pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts
+
+          # Reproduce a legacy deployment that has the pre-api-key migrations
+          # but no deprecated user_api_keys table, then replay the remainder.
+          PGPASSWORD="$SPARKY_FITNESS_DB_PASSWORD" \
+            psql -h "$SPARKY_FITNESS_DB_HOST" -U "$SPARKY_FITNESS_DB_USER" \
+              -d postgres -v ON_ERROR_STOP=1 \
+              -c 'CREATE DATABASE sparky_legacy_test'
+          MIGRATION_STOP_BEFORE=20251019013300_merged_rls_policies.sql \
+            SPARKY_FITNESS_DB_NAME=sparky_legacy_test \
+            pnpm run test:migrations
+          PGPASSWORD="$SPARKY_FITNESS_DB_PASSWORD" \
+            psql -h "$SPARKY_FITNESS_DB_HOST" -U "$SPARKY_FITNESS_DB_USER" \
+              -d sparky_legacy_test -v ON_ERROR_STOP=1 \
+              -c 'DROP TABLE public.user_api_keys CASCADE'
+          SPARKY_FITNESS_DB_NAME=sparky_legacy_test pnpm run test:migrations
+          test "$(PGPASSWORD="$SPARKY_FITNESS_DB_PASSWORD" \
+            psql -h "$SPARKY_FITNESS_DB_HOST" -U "$SPARKY_FITNESS_DB_USER" \
+              -d sparky_legacy_test -Atc \
+              "SELECT to_regclass('public.api_key')")" = "api_key"
         env:
           # Default-on (SKIP_RLS_MATRIX unset) — runs against the Postgres this
           # job provisions, with policies already applied by the steps above.

@@ -38,7 +38,15 @@ SELECT create_owner_centric_all_policy('mood_entries');
 -- SELECT create_owner_centric_all_policy('oidc_providers'); -- No user_id
 -- SELECT create_owner_centric_all_policy('session'); -- No user_id
 SELECT create_owner_centric_all_policy('sparky_chat_history');
-SELECT create_owner_centric_all_policy('user_api_keys');
+-- Legacy databases may have dropped this deprecated table before replaying
+-- their untracked migrations.
+DO $$
+BEGIN
+    IF to_regclass('public.user_api_keys') IS NOT NULL THEN
+        PERFORM create_owner_centric_all_policy('user_api_keys');
+    END IF;
+END;
+$$;
 SELECT create_owner_centric_all_policy('user_goals');
 SELECT create_owner_centric_all_policy('user_ignored_updates');
 SELECT create_owner_centric_all_policy('user_nutrient_display_preferences');

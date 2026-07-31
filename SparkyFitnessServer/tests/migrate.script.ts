@@ -1,4 +1,4 @@
-// Standalone migration runner used by CI to prove a fresh install boots cleanly.
+// Standalone migration runner used by CI for full and partial migration checks.
 import { applyMigrations } from '../utils/dbMigrations.js';
 import { applyRlsPolicies } from '../utils/applyRlsPolicies.js';
 import { endPool } from '../db/poolManager.js';
@@ -10,8 +10,13 @@ import { log } from '../config/logging.js';
 // so a failure closing the pool can't surface as an unhandled rejection.
 async function run() {
   try {
-    await applyMigrations();
-    await applyRlsPolicies();
+    const stopBefore = process.env.MIGRATION_STOP_BEFORE;
+    await applyMigrations(stopBefore ? { stopBefore } : undefined);
+    if (stopBefore) {
+      log('info', `Migration check stopped before ${stopBefore}.`);
+    } else {
+      await applyRlsPolicies();
+    }
     log('info', 'Migration check completed successfully.');
   } catch (error) {
     log('error', 'Migration check failed:', error);

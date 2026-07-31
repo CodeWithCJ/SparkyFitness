@@ -8,7 +8,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const migrationsDir = path.join(__dirname, '../db/migrations');
-async function applyMigrations() {
+
+interface ApplyMigrationsOptions {
+  stopBefore?: string;
+}
+
+async function applyMigrations(options: ApplyMigrationsOptions = {}) {
   const client = await getSystemClient();
   try {
     // The preflightChecks.js script now ensures these variables are set.
@@ -56,7 +61,13 @@ async function applyMigrations() {
       .readdirSync(migrationsDir)
       .filter((file) => file.endsWith('.sql'))
       .sort();
+    let reachedStopBefore = options.stopBefore === undefined;
     for (const file of migrationFiles) {
+      if (file === options.stopBefore) {
+        reachedStopBefore = true;
+        log('info', `Stopping migration check before: ${file}`);
+        break;
+      }
       if (!appliedMigrations.has(file)) {
         log('info', `Applying migration: ${file}`);
         const filePath = path.join(migrationsDir, file);
@@ -72,6 +83,11 @@ async function applyMigrations() {
       } else {
         //log("info", `Migration already applied: ${file}`);
       }
+    }
+    if (!reachedStopBefore) {
+      throw new Error(
+        `Requested stop-before migration was not found: ${options.stopBefore}`
+      );
     }
     // After all migrations are applied, grant necessary permissions to the app user
     await grantPermissions();
