@@ -1,5 +1,6 @@
 import { compareByEntryTime, earliestEntryTime } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
+import type { PoolClient } from 'pg';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
 import { log } from '../config/logging.js';
@@ -801,15 +802,21 @@ async function updateExerciseEntriesDateByPresetEntryIdWithClient(
     [entryDate, updatedByUserId, userId, presetEntryId]
   );
 }
+/**
+ * The single non-null workout plan assignment id shared by the child
+ * exercise_entries of a grouped session, or null when the session is not
+ * linked to a workout plan. Throws if the children carry more than one
+ * distinct non-null assignment id.
+ */
 async function getWorkoutPlanAssignmentIdByPresetEntryIdWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  presetEntryId: any
-) {
-  const result = await client.query(
+  client: PoolClient,
+  userId: string,
+  presetEntryId: string
+): Promise<number | null> {
+  interface AssignmentRow {
+    workout_plan_assignment_id: number;
+  }
+  const result = await client.query<AssignmentRow>(
     `SELECT DISTINCT workout_plan_assignment_id
        FROM exercise_entries
       WHERE user_id = $1

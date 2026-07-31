@@ -14,7 +14,11 @@ import { updateWorkout } from '../../src/services/api/exerciseApi';
 import { invalidateExerciseCache } from '../../src/hooks/invalidateExerciseCache';
 import { syncExerciseSessionInCache } from '../../src/hooks/syncExerciseSessionInCache';
 import { addLog } from '../../src/services/LogService';
-import type { PresetSessionResponse } from '@workspace/shared';
+import type {
+  ExerciseEntrySetResponse,
+  PresetSessionResponse,
+} from '@workspace/shared';
+import type { RootStackScreenProps } from '../../src/types/navigation';
 
 // This suite drives the REAL useActiveWorkoutAutosave hook (unlike the main
 // ActiveWorkoutScreen suite, which stubs { flush }), so the End-workout flow
@@ -88,15 +92,17 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
 
 jest.mock('../../src/components/RestPeriodSheet', () => {
   const React = require('react');
+  const Component = React.forwardRef((_props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      present: jest.fn(),
+      dismiss: jest.fn(),
+    }));
+    return null;
+  });
+  Component.displayName = 'RestPeriodSheet';
   return {
     __esModule: true,
-    default: React.forwardRef((_props: any, ref: any) => {
-      React.useImperativeHandle(ref, () => ({
-        present: jest.fn(),
-        dismiss: jest.fn(),
-      }));
-      return null;
-    }),
+    default: Component,
   };
 });
 
@@ -107,29 +113,33 @@ jest.mock('../../src/components/WorkoutReorderList', () => ({
 
 jest.mock('../../src/components/WorkoutDurationSheet', () => {
   const React = require('react');
+  const Component = React.forwardRef((_props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      present: jest.fn(),
+      dismiss: jest.fn(),
+    }));
+    return null;
+  });
+  Component.displayName = 'WorkoutDurationSheet';
   return {
     __esModule: true,
-    default: React.forwardRef((_props: any, ref: any) => {
-      React.useImperativeHandle(ref, () => ({
-        present: jest.fn(),
-        dismiss: jest.fn(),
-      }));
-      return null;
-    }),
+    default: Component,
   };
 });
 
 jest.mock('../../src/components/ActionSheet', () => {
   const React = require('react');
+  const Component = React.forwardRef((_props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      present: jest.fn(),
+      dismiss: jest.fn(),
+    }));
+    return null;
+  });
+  Component.displayName = 'ActionSheet';
   return {
     __esModule: true,
-    default: React.forwardRef((_props: any, ref: any) => {
-      React.useImperativeHandle(ref, () => ({
-        present: jest.fn(),
-        dismiss: jest.fn(),
-      }));
-      return null;
-    }),
+    default: Component,
   };
 });
 
@@ -144,7 +154,10 @@ const mockSyncCache = syncExerciseSessionInCache as jest.MockedFunction<
 >;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
-function makeSet(id: number, overrides?: Record<string, unknown>) {
+function makeSet(
+  id: number,
+  overrides?: Partial<ExerciseEntrySetResponse>,
+): ExerciseEntrySetResponse {
   return {
     id,
     set_number: 1,
@@ -189,28 +202,40 @@ function makeSession(): PresetSessionResponse {
           name: 'Bench Press',
           category: 'Strength',
           images: [],
+          primary_muscles: null,
+          secondary_muscles: null,
+          equipment: null,
+          instructions: null,
+          force: null,
+          level: null,
+          mechanic: null,
           calories_per_hour: 400,
         },
         activity_details: [],
         // Both sets start uncompleted so completeActiveSet logs the first one.
         sets: [makeSet(101), makeSet(102, { set_number: 2 })],
-      } as any,
+      },
     ],
   };
 }
 
+type ActiveWorkoutProps = RootStackScreenProps<'ActiveWorkout'>;
+
+const mockReplace = jest.fn();
+
 const navigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
-  replace: jest.fn(),
+  replace: mockReplace,
   canGoBack: jest.fn(() => true),
   addListener: jest.fn(() => jest.fn()),
-} as any;
-const route = {
+} as unknown as ActiveWorkoutProps['navigation'];
+
+const route: ActiveWorkoutProps['route'] = {
   key: 'ActiveWorkout-1',
   name: 'ActiveWorkout',
   params: undefined,
-} as any;
+};
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -285,6 +310,10 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
     const applySpy = jest.fn(originalApply);
     useActiveWorkoutStore.setState({ applyServerSession: applySpy });
     try {
+      // Capture the completed_at the store sends in the PUT payload, so we
+      // can verify it survives the server echo → applyServerSession →
+      // WorkoutComplete nav-params round-trip.
+      let sentCompletedAt: string | null | undefined;
       // The server echoes a 200 with an INDEPENDENT object (a deep copy, not
       // a reference into the store) that carries the saved completed_at on
       // the completed set — mirroring what the real backend persists.
@@ -299,6 +328,7 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
             }[];
           }
         ).exercises[0].sets[0];
+        sentCompletedAt = sentSet?.completed_at;
         if (sentSet?.completed_at) {
           serverSession.exercises[0].sets[0].completed_at =
             sentSet.completed_at;
@@ -356,12 +386,18 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
           call => call[0] === 'Could not save your workout',
         ),
       ).toBe(false);
-      expect(navigation.replace).toHaveBeenCalledTimes(1);
-      const [routeName, params] = navigation.replace.mock.calls[0];
+      expect(mockReplace).toHaveBeenCalledTimes(1);
+      const [routeName, params] = mockReplace.mock.calls[0];
       expect(routeName).toBe('WorkoutComplete');
       expect(params.session.id).toBe('session-1');
       expect(params.session.source).toBe('Workout Plan');
       expect(params.completedSetIds['101']).toBeTruthy();
+
+      // The completed_at that the store sent in the PUT payload survived the
+      // server echo → applyServerSession → WorkoutComplete params round-trip.
+      expect(params.session.exercises[0].sets[0].completed_at).toBe(
+        sentCompletedAt,
+      );
 
       // The store is neither dirty nor still holding the session.
       expect(getStore().session).toBeNull();
@@ -394,7 +430,7 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
 
     // The failure alert is shown, not the celebration.
     expect(lastAlertTitle()).toBe('Could not save your workout');
-    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
     expect(navigation.goBack).not.toHaveBeenCalled();
 
     // Local data survives: the session and its unsaved completion stay put.
