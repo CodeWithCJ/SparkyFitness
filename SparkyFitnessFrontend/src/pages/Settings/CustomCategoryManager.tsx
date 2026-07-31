@@ -18,7 +18,7 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -68,23 +68,8 @@ const CustomCategoryManager = () => {
       measurement_type: '',
       frequency: 'Daily',
       data_type: 'numeric',
-      is_visible: true,
     }
   );
-
-  const handleToggleVisibility = async (category: CustomCategoriesResponse) => {
-    if (!user) return;
-    try {
-      await updateCategory({
-        categoryId: category.id,
-        categoryData: {
-          is_visible: !category.is_visible,
-        },
-      });
-    } catch (error) {
-      console.error('Error toggling custom category visibility:', error);
-    }
-  };
 
   const handleAddCategory = async () => {
     if (
@@ -111,8 +96,6 @@ const CustomCategoryManager = () => {
         measurement_type: newCategory.measurement_type.trim(),
         frequency: newCategory.frequency,
         data_type: newCategory.data_type,
-        is_visible: newCategory.is_visible ?? true,
-        sort_order: newCategory.sort_order,
       }); // Pass loggingLevel
       setNewCategory({
         name: '',
@@ -120,7 +103,6 @@ const CustomCategoryManager = () => {
         measurement_type: '',
         frequency: 'Daily',
         data_type: 'numeric',
-        is_visible: true,
       });
       setIsAddDialogOpen(false);
     } catch (error) {
@@ -155,8 +137,6 @@ const CustomCategoryManager = () => {
           measurement_type: editingCategory.measurement_type.trim(),
           frequency: editingCategory.frequency,
           data_type: editingCategory.data_type,
-          is_visible: editingCategory.is_visible,
-          sort_order: editingCategory.sort_order,
         },
       });
       setEditingCategory(null);
@@ -399,35 +379,6 @@ const CustomCategoryManager = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="sort_order">
-                  {t('customCategoryManager.sortOrderLabel', 'Sort Order')}
-                </Label>
-                <Input
-                  id="sort_order"
-                  type="number"
-                  value={newCategory.sort_order ?? ''}
-                  onChange={(e) =>
-                    setNewCategory({
-                      ...newCategory,
-                      sort_order:
-                        e.target.value === ''
-                          ? undefined
-                          : Math.max(0, Number(e.target.value)),
-                    })
-                  }
-                  placeholder={t(
-                    'customCategoryManager.sortOrderAuto',
-                    'Auto (appended last)'
-                  )}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {t(
-                    'customCategoryManager.sortOrderHelp',
-                    'Lower numbers appear first in check-in and the daily summary. Leave empty to add after existing categories.'
-                  )}
-                </p>
-              </div>
               <Button onClick={handleAddCategory} className="w-full">
                 {t('customCategoryManager.addCategoryAction', 'Add Category')}
               </Button>
@@ -458,34 +409,10 @@ const CustomCategoryManager = () => {
                 )}
                 <div className="text-sm text-gray-500">
                   {category.measurement_type} • {category.frequency} •{' '}
-                  {category.data_type} •{' '}
-                  {t('customCategoryManager.sortOrderShort', 'Order')}{' '}
-                  {category.sort_order}
+                  {category.data_type}
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleToggleVisibility(category)}
-                  title={
-                    category.is_visible
-                      ? t(
-                          'customCategoryManager.hideFromCheckIn',
-                          'Hide from Check-In'
-                        )
-                      : t(
-                          'customCategoryManager.showInCheckIn',
-                          'Show in Check-In'
-                        )
-                  }
-                >
-                  {category.is_visible ? (
-                    <Eye className="w-4 h-4" />
-                  ) : (
-                    <EyeOff className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -683,28 +610,6 @@ const CustomCategoryManager = () => {
                     </SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label htmlFor="edit-sort_order">
-                  {t('customCategoryManager.sortOrderLabel', 'Sort Order')}
-                </Label>
-                <Input
-                  id="edit-sort_order"
-                  type="number"
-                  value={editingCategory.sort_order ?? ''}
-                  onChange={(e) =>
-                    setEditingCategory({
-                      ...editingCategory,
-                      sort_order: Math.max(0, Number(e.target.value) || 0),
-                    })
-                  }
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {t(
-                    'customCategoryManager.sortOrderHelp',
-                    'Lower numbers appear first in check-in and the daily summary. Leave empty to add after existing categories.'
-                  )}
-                </p>
               </div>
               <Button onClick={handleEditCategory} className="w-full">
                 {t(

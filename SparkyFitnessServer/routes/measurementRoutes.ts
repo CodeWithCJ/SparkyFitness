@@ -1040,14 +1040,6 @@ router.get(
  *                 type: string
  *                 nullable: true
  *                 description: Data type (e.g. numeric, boolean, text).
- *               is_visible:
- *                 type: boolean
- *                 description: Show in input screens and the daily summary. Defaults to true.
- *               sort_order:
- *                 type: integer
- *                 minimum: 0
- *                 maximum: 1000000
- *                 description: Ascending display order. Defaults to max(sort_order)+10 for the user.
  *             required: [name, frequency, measurement_type]
  *     responses:
  *       201:
@@ -1332,14 +1324,6 @@ router.put(
  *               data_type:
  *                 type: string
  *                 nullable: true
- *               is_visible:
- *                 type: boolean
- *                 description: Show in input screens and the daily summary.
- *               sort_order:
- *                 type: integer
- *                 minimum: 0
- *                 maximum: 1000000
- *                 description: Ascending display order (tie-break created_at, then id).
  *     responses:
  *       200:
  *         description: Category updated successfully.

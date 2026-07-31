@@ -2684,14 +2684,7 @@
     "deleteCategorySuccess": "Custom category deleted successfully",
     "deleteCategoryError": "Failed to delete custom category",
     "invalidIdError": "Cannot delete category: Invalid ID.",
-    "userNotAuthenticatedError": "Cannot delete category: User not authenticated.",
-    "sortOrderLabel": "Sort Order",
-    "sortOrderAuto": "Auto (appended last)",
-    "sortOrderHelp": "Lower numbers appear first in check-in and the daily summary. Leave empty to add after existing categories.",
-    "sortOrderShort": "Order:",
-    "showInCheckIn": "Show in Check-In",
-    "hideFromCheckIn": "Hide from Check-In",
-    "hiddenHint": "Hidden categories no longer appear in check-in or the mobile daily summary, but stay visible in reports and history."
+    "userNotAuthenticatedError": "Cannot delete category: User not authenticated."
   },
   "customFoodForm": {
     "foodNameLabel": "Food Name *",

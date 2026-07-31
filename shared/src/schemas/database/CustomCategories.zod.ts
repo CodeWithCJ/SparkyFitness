@@ -13,8 +13,6 @@ export const customCategoriesSchema = z.object({
   created_by_user_id: z.string().nullable(),
   updated_by_user_id: z.string().nullable(),
   display_name: z.string().nullable(),
-  is_visible: z.boolean(),
-  sort_order: z.number(),
 });
 
 export const customCategoriesInitializerSchema = z.object({
@@ -29,8 +27,6 @@ export const customCategoriesInitializerSchema = z.object({
   created_by_user_id: z.string().optional().nullable(),
   updated_by_user_id: z.string().optional().nullable(),
   display_name: z.string().optional().nullable(),
-  is_visible: z.boolean().optional(),
-  sort_order: z.number().optional(),
 });
 
 export const customCategoriesMutatorSchema = z.object({
@@ -45,8 +41,6 @@ export const customCategoriesMutatorSchema = z.object({
   created_by_user_id: z.string().optional().nullable(),
   updated_by_user_id: z.string().optional().nullable(),
   display_name: z.string().optional().nullable(),
-  is_visible: z.boolean().optional(),
-  sort_order: z.number().optional(),
 });
 
 export type DatabaseCustomCategories = z.infer<typeof customCategoriesSchema>;

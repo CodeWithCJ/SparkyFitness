@@ -21,7 +21,6 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences, useMealTypes } from '../hooks';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
-import { getVisibleCustomMeasurementEntries } from '../utils/customCategories';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import {
@@ -159,12 +158,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     refetch: refetchCustomMeasurements,
     isRefetching: isCustomMeasurementsRefetching,
   } = useCustomMeasurementsByDate(selectedDate, { enabled: isConnected });
-  // Hidden categories are excluded from the daily summary (they stay visible in
-  // the manager and reports); entries are ordered by the category's sort_order.
-  const visibleCustomMeasurements = useMemo(
-    () => getVisibleCustomMeasurementEntries(customMeasurements ?? []),
-    [customMeasurements],
-  );
   const { mealTypes } = useMealTypes();
   const {
     customNutrients,
@@ -181,7 +174,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   );
   const customNutrientKeys = (diaryNutrientRow?.visible_nutrients ?? []).slice(0, 4);
   const hasAnyMeasurement = useMemo(() => {
-    if (visibleCustomMeasurements.length > 0) return true;
+    if (customMeasurements && customMeasurements.length > 0) return true;
     if (!measurements) return false;
     return (
       measurements.weight != null ||
@@ -192,7 +185,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       measurements.hips != null ||
       measurements.steps != null
     );
-  }, [measurements, visibleCustomMeasurements]);
+  }, [measurements, customMeasurements]);
 
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
@@ -349,7 +342,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               weightMode={weightMode}
               bodyUnit={bodyUnit}
               heightMode={heightMode}
-              customMeasurements={visibleCustomMeasurements}
+              customMeasurements={customMeasurements}
               onPress={() => navigation.navigate('MeasurementsAdd', { date: selectedDate })}
             />
           </>

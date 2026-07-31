@@ -40,7 +40,6 @@ import {
 import { useAuth } from '../useAuth';
 import { useSearchParams } from 'react-router-dom';
 import { addDays, todayInZone } from '@workspace/shared';
-import { getVisibleSortedCustomCategories } from '@/utils/customCategories';
 
 /**
  * Builds the check-in upsert payload with per-field edit semantics:
@@ -165,12 +164,6 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   const { data: customCategories = [] } = useCustomCategories(
     user?.activeUserId
   );
-  // Only visible categories render as input fields; hidden ones stay visible in
-  // the manager, reports, and history (recentMeasurements keeps the full list).
-  const visibleCustomCategories = useMemo(
-    () => getVisibleSortedCustomCategories(customCategories),
-    [customCategories]
-  );
   // Form values come from what was actually recorded on the selected date;
   // the latest carried-forward values are only shown as input placeholders.
   const { data: existingCheckIn } = useCheckInMeasurementsForDate(selectedDate);
@@ -257,11 +250,11 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     if (
       existingCustom &&
       existingCustom.length > 0 &&
-      visibleCustomCategories &&
-      visibleCustomCategories.length > 0
+      customCategories &&
+      customCategories.length > 0
     ) {
       existingCustom.forEach((measurement: CustomMeasurementsResponse) => {
-        const category = visibleCustomCategories.find(
+        const category = customCategories.find(
           (c) => c.id === measurement.category_id
         );
         if (category && category.frequency !== 'Unlimited') {
@@ -283,7 +276,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       derivedCustomValues: newCustomValues,
       derivedCustomNotes: newCustomNotes,
     };
-  }, [existingCustom, visibleCustomCategories]);
+  }, [existingCustom, customCategories]);
 
   const [weight, setWeight] = useDerivedState<string>(
     derivedWeight,
@@ -576,9 +569,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       hourlyDateTime.setHours(currentHour, 0, 0, 0);
       const hourlyTimestamp = hourlyDateTime.toISOString();
 
-      const categoryMap = new Map(
-        visibleCustomCategories.map((c) => [c.id, c])
-      );
+      const categoryMap = new Map(customCategories.map((c) => [c.id, c]));
 
       const savePromises = Object.entries(customValues)
         .filter(([categoryId, inputValue]) => {
@@ -739,7 +730,6 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   return {
     bodyFatPercentage,
     customCategories,
-    visibleCustomCategories,
     customNotes,
     customValues,
     handleCalculateBodyFat,

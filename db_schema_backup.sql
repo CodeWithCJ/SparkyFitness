@@ -1291,8 +1291,6 @@ CREATE TABLE public.custom_categories (
     created_by_user_id uuid,
     updated_by_user_id uuid,
     display_name character varying(100),
-    is_visible boolean DEFAULT true NOT NULL,
-    sort_order integer DEFAULT 100 NOT NULL,
     CONSTRAINT custom_categories_frequency_check CHECK ((frequency = ANY (ARRAY['All'::text, 'Daily'::text, 'Hourly'::text])))
 );
 
@@ -1302,20 +1300,6 @@ CREATE TABLE public.custom_categories (
 --
 
 COMMENT ON COLUMN public.custom_categories.display_name IS 'User-editable display name for the category. If NULL, the name field is used for display. The name field serves as the stable identifier for syncing and lookups.';
-
-
---
--- Name: COLUMN custom_categories.is_visible; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.custom_categories.is_visible IS 'Controls whether the category appears in input screens and the daily summary. Hidden categories remain visible in the manager, reports, and history.';
-
-
---
--- Name: COLUMN custom_categories.sort_order; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.custom_categories.sort_order IS 'Ascending display order within a user (tie-break created_at, then id). New categories default to max(sort_order)+10.';
 
 
 --
@@ -4997,13 +4981,6 @@ CREATE INDEX idx_assignment_sets_assignment_id ON public.workout_plan_assignment
 --
 
 CREATE INDEX idx_custom_categories_user_id ON public.custom_categories USING btree (user_id);
-
-
---
--- Name: idx_custom_categories_user_sort_order; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_custom_categories_user_sort_order ON public.custom_categories USING btree (user_id, sort_order, created_at, id);
 
 
 --
