@@ -1,7 +1,13 @@
--- Migration: Create Generic Health, Telemetry and Workout Tables
+-- Migration: Create Generic Health, Telemetry and Workout Tables (Consolidated)
 -- Date: 2026-07-30
+--
+-- Consolidated migration combining workout telemetry enhancement, lap splits,
+-- heart rate zones, daily health metrics, vitals, GPS trackpoints, and
+-- consolidated health metric samples.
 
+-- ============================================================================
 -- 1. Enhancing exercise_entries with workout & FIT telemetry
+-- ============================================================================
 ALTER TABLE exercise_entries
 ADD COLUMN IF NOT EXISTS max_heart_rate INTEGER,
 ADD COLUMN IF NOT EXISTS heart_rate_recovery_1min INTEGER,
@@ -28,16 +34,34 @@ ADD COLUMN IF NOT EXISTS stroke_count INTEGER,
 ADD COLUMN IF NOT EXISTS training_load NUMERIC(6, 2),
 ADD COLUMN IF NOT EXISTS aerobic_training_effect NUMERIC(3, 1),
 ADD COLUMN IF NOT EXISTS anaerobic_training_effect NUMERIC(3, 1),
-ADD COLUMN IF NOT EXISTS vo2_max_estimate NUMERIC(4, 1);
+ADD COLUMN IF NOT EXISTS vo2_max_estimate NUMERIC(4, 1),
+ADD COLUMN IF NOT EXISTS moving_time_seconds INTEGER,
+ADD COLUMN IF NOT EXISTS elapsed_time_seconds INTEGER,
+ADD COLUMN IF NOT EXISTS work_time_seconds INTEGER,
+ADD COLUMN IF NOT EXISTS resting_calories NUMERIC(8, 2),
+ADD COLUMN IF NOT EXISTS active_calories NUMERIC(8, 2),
+ADD COLUMN IF NOT EXISTS avg_moving_speed_mps NUMERIC(6, 2),
+ADD COLUMN IF NOT EXISTS min_elevation_meters NUMERIC(7, 2),
+ADD COLUMN IF NOT EXISTS max_elevation_meters NUMERIC(7, 2),
+ADD COLUMN IF NOT EXISTS weather_temp_celsius NUMERIC(4, 1),
+ADD COLUMN IF NOT EXISTS weather_condition TEXT,
+ADD COLUMN IF NOT EXISTS weather_wind_speed_mps NUMERIC(5, 2),
+ADD COLUMN IF NOT EXISTS weather_humidity_percentage NUMERIC(5, 2),
+ADD COLUMN IF NOT EXISTS gear_name TEXT,
+ADD COLUMN IF NOT EXISTS gear_external_id TEXT;
 
+-- ============================================================================
 -- 2. Enhancing check_in_measurements with Smart Scale Composition
+-- ============================================================================
 ALTER TABLE check_in_measurements
 ADD COLUMN IF NOT EXISTS muscle_mass_kg NUMERIC(5, 2),
 ADD COLUMN IF NOT EXISTS bone_mass_kg NUMERIC(5, 2),
 ADD COLUMN IF NOT EXISTS body_water_percentage NUMERIC(5, 2),
 ADD COLUMN IF NOT EXISTS bmi NUMERIC(4, 1);
 
--- 3. exercise_entry_laps (Workout splits)
+-- ============================================================================
+-- 3. exercise_entry_laps (Workout splits & lap telemetry)
+-- ============================================================================
 CREATE TABLE IF NOT EXISTS exercise_entry_laps (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
@@ -59,125 +83,71 @@ CREATE TABLE IF NOT EXISTS exercise_entry_laps (
     avg_power_watts NUMERIC(6, 2),
     elevation_gain_meters NUMERIC(7, 2),
     elevation_loss_meters NUMERIC(7, 2),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT uq_exercise_entry_lap UNIQUE (exercise_entry_id, lap_index)
 );
 
 CREATE INDEX IF NOT EXISTS idx_exercise_entry_laps_entry ON exercise_entry_laps(exercise_entry_id, lap_index);
 CREATE INDEX IF NOT EXISTS idx_exercise_entry_laps_user_date ON exercise_entry_laps(user_id, entry_date DESC);
 
--- 4. exercise_entry_gps_points (Workout GPS trackpoints & telemetry)
+-- ============================================================================
+-- 4. exercise_entry_hr_zones (Time-in-heart-rate-zone splits)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS exercise_entry_hr_zones (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    exercise_entry_id UUID NOT NULL REFERENCES exercise_entries(id) ON DELETE CASCADE,
+    entry_date DATE NOT NULL,
+    zone_index INTEGER NOT NULL,
+    zone_lower_bpm INTEGER,
+    zone_upper_bpm INTEGER,
+    seconds_in_zone INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT uq_exercise_entry_hr_zone UNIQUE (exercise_entry_id, zone_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_exercise_entry_hr_zones_entry ON exercise_entry_hr_zones(exercise_entry_id, zone_index);
+CREATE INDEX IF NOT EXISTS idx_exercise_entry_hr_zones_user_date ON exercise_entry_hr_zones(user_id, entry_date DESC);
+
+-- ============================================================================
+-- 5. exercise_entry_gps_points (Workout GPS trackpoints & telemetry - 1 row per workout)
+-- ============================================================================
 CREATE TABLE IF NOT EXISTS exercise_entry_gps_points (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
     exercise_entry_id UUID NOT NULL REFERENCES exercise_entries(id) ON DELETE CASCADE,
     entry_date DATE NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    latitude NUMERIC(10, 7) NOT NULL,
-    longitude NUMERIC(10, 7) NOT NULL,
-    altitude_meters NUMERIC(7, 2),
-    speed_mps NUMERIC(6, 2),
-    heart_rate_bpm INTEGER,
-    respiration_rate_brpm NUMERIC(5, 2),
-    cadence INTEGER,
-    power_watts NUMERIC(6, 2),
-    ground_contact_time_ms NUMERIC(5, 1),
-    vertical_oscillation_mm NUMERIC(5, 1),
-    stride_length_cm NUMERIC(5, 1),
-    temperature_celsius NUMERIC(4, 1),
-    distance_meters NUMERIC(10, 2),
-    horizontal_accuracy_meters NUMERIC(6, 2),
-    vertical_accuracy_meters NUMERIC(6, 2),
-    course_degrees NUMERIC(5, 2)
+    points JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT uq_exercise_entry_gps_points UNIQUE (exercise_entry_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_exercise_entry_gps_time ON exercise_entry_gps_points(exercise_entry_id, timestamp ASC);
-CREATE INDEX IF NOT EXISTS idx_exercise_entry_gps_user_date ON exercise_entry_gps_points(user_id, entry_date DESC, timestamp ASC);
+CREATE INDEX IF NOT EXISTS idx_exercise_entry_gps_points_user_date ON exercise_entry_gps_points(user_id, entry_date DESC);
 
--- 5. heart_rate_entries (Intraday continuous heart rate)
-CREATE TABLE IF NOT EXISTS heart_rate_entries (
+-- ============================================================================
+-- 6. health_metric_samples (Consolidated intraday 24/7 wellness metrics)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS health_metric_samples (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    metric TEXT NOT NULL,
     entry_date DATE NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    heart_rate_bpm INTEGER NOT NULL,
-    context TEXT DEFAULT 'unspecified',
-    sleep_entry_id UUID REFERENCES sleep_entries(id) ON DELETE SET NULL,
-    exercise_entry_id UUID REFERENCES exercise_entries(id) ON DELETE SET NULL,
     source_provider TEXT NOT NULL,
     device_name TEXT,
-    external_id TEXT,
+    samples JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CONSTRAINT uq_heart_rate_entry UNIQUE (user_id, source_provider, timestamp)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT uq_health_metric_samples UNIQUE (user_id, metric, entry_date, source_provider),
+    CONSTRAINT chk_health_metric_samples_metric CHECK (metric IN (
+        'heart_rate', 'hrv', 'respiration', 'spo2', 'stress', 'body_battery'
+    ))
 );
 
-CREATE INDEX IF NOT EXISTS idx_heart_rate_user_date ON heart_rate_entries(user_id, entry_date DESC, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_heart_rate_sleep ON heart_rate_entries(sleep_entry_id) WHERE sleep_entry_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_heart_rate_workout ON heart_rate_entries(exercise_entry_id) WHERE exercise_entry_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_health_metric_samples_user_date ON health_metric_samples(user_id, metric, entry_date DESC);
 
--- 6. hrv_entries (Intraday & overnight HRV)
-CREATE TABLE IF NOT EXISTS hrv_entries (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-    entry_date DATE NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    hrv_rmssd_ms NUMERIC(6, 2),
-    hrv_sdnn_ms NUMERIC(6, 2),
-    status TEXT,
-    sleep_entry_id UUID REFERENCES sleep_entries(id) ON DELETE SET NULL,
-    exercise_entry_id UUID REFERENCES exercise_entries(id) ON DELETE SET NULL,
-    source_provider TEXT NOT NULL,
-    device_name TEXT,
-    external_id TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CONSTRAINT uq_hrv_entry UNIQUE (user_id, source_provider, timestamp)
-);
-
-CREATE INDEX IF NOT EXISTS idx_hrv_user_date ON hrv_entries(user_id, entry_date DESC, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_hrv_sleep ON hrv_entries(sleep_entry_id) WHERE sleep_entry_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_hrv_workout ON hrv_entries(exercise_entry_id) WHERE exercise_entry_id IS NOT NULL;
-
--- 7. respiration_entries (Intraday breathing rate)
-CREATE TABLE IF NOT EXISTS respiration_entries (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-    entry_date DATE NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    breaths_per_minute NUMERIC(5, 2) NOT NULL,
-    context TEXT DEFAULT 'unspecified',
-    sleep_entry_id UUID REFERENCES sleep_entries(id) ON DELETE SET NULL,
-    exercise_entry_id UUID REFERENCES exercise_entries(id) ON DELETE SET NULL,
-    source_provider TEXT NOT NULL,
-    device_name TEXT,
-    external_id TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CONSTRAINT uq_respiration_entry UNIQUE (user_id, source_provider, timestamp)
-);
-
-CREATE INDEX IF NOT EXISTS idx_respiration_user_date ON respiration_entries(user_id, entry_date DESC, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_respiration_sleep ON respiration_entries(sleep_entry_id) WHERE sleep_entry_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_respiration_workout ON respiration_entries(exercise_entry_id) WHERE exercise_entry_id IS NOT NULL;
-
--- 8. spo2_entries (Pulse ox SpO2 %)
-CREATE TABLE IF NOT EXISTS spo2_entries (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-    entry_date DATE NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    spo2_percentage NUMERIC(5, 2) NOT NULL,
-    sleep_entry_id UUID REFERENCES sleep_entries(id) ON DELETE SET NULL,
-    exercise_entry_id UUID REFERENCES exercise_entries(id) ON DELETE SET NULL,
-    source_provider TEXT NOT NULL,
-    device_name TEXT,
-    external_id TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CONSTRAINT uq_spo2_entry UNIQUE (user_id, source_provider, timestamp)
-);
-
-CREATE INDEX IF NOT EXISTS idx_spo2_user_date ON spo2_entries(user_id, entry_date DESC, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_spo2_sleep ON spo2_entries(sleep_entry_id) WHERE sleep_entry_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_spo2_workout ON spo2_entries(exercise_entry_id) WHERE exercise_entry_id IS NOT NULL;
-
--- 9. vitals_entries (Blood pressure, blood glucose, temperature)
+-- ============================================================================
+-- 7. vitals_entries (Blood pressure, blood glucose, temperature)
+-- ============================================================================
 CREATE TABLE IF NOT EXISTS vitals_entries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
@@ -191,12 +161,15 @@ CREATE TABLE IF NOT EXISTS vitals_entries (
     source_provider TEXT NOT NULL,
     device_name TEXT,
     external_id TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT uq_vitals_entry UNIQUE (user_id, source_provider, timestamp)
 );
 
 CREATE INDEX IF NOT EXISTS idx_vitals_user_date ON vitals_entries(user_id, entry_date DESC, timestamp DESC);
 
--- 10. daily_health_metrics (Automated wearable daily summaries & scores)
+-- ============================================================================
+-- 8. daily_health_metrics (Automated wearable daily summaries & scores)
+-- ============================================================================
 CREATE TABLE IF NOT EXISTS daily_health_metrics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
@@ -249,3 +222,6 @@ CREATE TABLE IF NOT EXISTS daily_health_metrics (
 );
 
 CREATE INDEX IF NOT EXISTS idx_daily_health_metrics_user_date ON daily_health_metrics(user_id, entry_date DESC);
+
+-- Clean up any legacy table references from pre-consolidation dev runs
+DROP TABLE IF EXISTS heart_rate_entries, hrv_entries, respiration_entries, spo2_entries;

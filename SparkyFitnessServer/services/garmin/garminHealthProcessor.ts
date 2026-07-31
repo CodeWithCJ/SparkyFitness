@@ -182,6 +182,7 @@ interface ProcessedResult {
   type: string;
   status: string;
   count?: number;
+  buckets?: number;
   date?: string;
   message?: string;
 }
@@ -196,7 +197,7 @@ interface ProcessError {
 export async function processGarminHealthAndWellnessData(
   userId: string,
   actingUserId: string,
-  healthData: Record<string, unknown>,
+  healthData: Record<string, any>,
   startDate: string,
   endDate: string
 ) {
