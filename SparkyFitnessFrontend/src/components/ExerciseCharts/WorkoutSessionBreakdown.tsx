@@ -1,5 +1,4 @@
-import type React from 'react';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePreferences, type WeightUnit } from '@/contexts/PreferencesContext';
 import { formatWeight } from '@/utils/numberFormatting';
@@ -376,7 +375,7 @@ export const WorkoutSessionBreakdown = ({
                 {groupedExercises.map((group) => {
                   const isExpanded = expandedExercises[group.exerciseName];
                   return (
-                    <div key={group.exerciseName} className="contents">
+                    <React.Fragment key={group.exerciseName}>
                       <tr
                         className="hover:bg-muted/40 cursor-pointer font-medium transition-colors"
                         onClick={() => toggleExerciseExpand(group.exerciseName)}
@@ -453,7 +452,7 @@ export const WorkoutSessionBreakdown = ({
                           </td>
                         </tr>
                       )}
-                    </div>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -484,7 +483,7 @@ export const WorkoutSessionBreakdown = ({
                 {muscleGroupSummaries.map((mgSummary) => {
                   const isExpanded = expandedMuscles[mgSummary.muscleName];
                   return (
-                    <div key={mgSummary.muscleName} className="contents">
+                    <React.Fragment key={mgSummary.muscleName}>
                       <tr
                         className="hover:bg-muted/40 cursor-pointer font-medium transition-colors"
                         onClick={() => toggleMuscleExpand(mgSummary.muscleName)}
@@ -518,17 +517,22 @@ export const WorkoutSessionBreakdown = ({
                               <thead className="bg-muted/50 border-b">
                                 <tr>
                                   <th className="py-2 px-3">Exercise Name</th>
+                                  <th className="py-2 px-3">Set</th>
                                   <th className="py-2 px-3">Time</th>
                                   <th className="py-2 px-3">Reps</th>
                                   <th className="py-2 px-3">Volume</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-border">
+                              <tbody className="divide-y">
                                 {mgSummary.sets.map((s, idx) => (
-                                  <tr key={idx}>
-                                    <td className="py-2 px-3 font-semibold">
+                                  <tr
+                                    key={`${s.exerciseName}-${s.setNumber}-${idx}`}
+                                    className="hover:bg-muted/30"
+                                  >
+                                    <td className="py-2 px-3 font-medium text-foreground">
                                       {formatExerciseName(s.exerciseName)}
                                     </td>
+                                    <td className="py-2 px-3">{s.setNumber}</td>
                                     <td className="py-2 px-3">
                                       {formatSeconds(s.durationSeconds)}
                                     </td>
@@ -545,7 +549,7 @@ export const WorkoutSessionBreakdown = ({
                           </td>
                         </tr>
                       )}
-                    </div>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
