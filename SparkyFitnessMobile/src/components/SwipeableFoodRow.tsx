@@ -11,7 +11,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
-import { usePreferences } from '../hooks/usePreferences';
 import type { FoodEntry } from '../types/foodEntries';
 import type { EntryNutrition } from '../utils/mealNutrition';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
@@ -27,8 +26,6 @@ const DELETE_ACTION_WIDTH = 80;
 
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, onAdjustServing }) => {
   const navigation = useNavigation();
-  const { preferences } = usePreferences();
-  const timeFormat = preferences?.time_format;
   const swipeableRef = useRef<any>(null);
   const rowHeight = useSharedValue<number | null>(null);
   const isRemoving = useSharedValue(false);
@@ -104,7 +101,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
 
   const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
   const name = entry.food_name || 'Unknown food';
-  const timeLabel = formatTimeLabel(entry.entry_time, timeFormat);
+  const timeLabel = formatTimeLabel(entry.entry_time);
 
   const handlePress = () => {
     if (isMealComponent && entry.food_entry_meal_id) {

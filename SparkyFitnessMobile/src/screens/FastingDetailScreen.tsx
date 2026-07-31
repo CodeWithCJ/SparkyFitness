@@ -16,8 +16,6 @@ import { useFastingTimer } from '../hooks/useFastingTimer';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { formatFastingStats } from '../utils/fasting';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
-import { formatTimeOfDay } from '../utils/entryTimeDisplay';
-import { usePreferences } from '../hooks/usePreferences';
 import {
   METABOLIC_STAGES,
   getMetabolicStageIndex,
@@ -30,8 +28,8 @@ type Props = RootStackScreenProps<'FastingDetail'>;
 
 const RING_SIZE = 240;
 
-function formatTime(iso: string, timeFormat?: string | null): string {
-  return formatTimeOfDay(iso, timeFormat) ?? '';
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 const DetailRow: React.FC<{ label: string; value: string; isLast?: boolean }> = ({
@@ -54,8 +52,6 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const protocolSheetRef = useRef<FastingProtocolSheetRef>(null);
   const endFastSheetRef = useRef<EndFastSheetRef>(null);
-  const { preferences } = usePreferences();
-  const timeFormat = preferences?.time_format;
 
   // Read-only here — the dashboard `FastingGoalReconciler` is the single owner
   // of goal-notification reconciliation.
@@ -243,13 +239,12 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                 label="Started"
                 value={`${formatDateLabel(toLocalDateString(currentFast.start_time))}, ${formatTime(
                   currentFast.start_time,
-                  timeFormat,
                 )}`}
               />
               {currentFast.target_end_time && (
                 <DetailRow
                   label="Goal reached"
-                  value={formatTime(currentFast.target_end_time, timeFormat)}
+                  value={formatTime(currentFast.target_end_time)}
                 />
               )}
 

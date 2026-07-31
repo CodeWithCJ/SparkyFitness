@@ -8,11 +8,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from './Icon';
 import DoseRow from './medications/DoseRow';
 import { useMedications, useMedicationEntries, useLogDose } from '../hooks/useMedications';
-import { usePreferences } from '../hooks/usePreferences';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { getDueDosesForDate, formatDose } from '@workspace/shared';
+import { getDueDosesForDate, formatDose, formatTimeOfDay } from '@workspace/shared';
 import { getDeviceTimezone } from '../utils/dateUtils';
-import { formatTimeOfDay } from '../utils/entryTimeDisplay';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { MEDICATION_TYPES } from '../types/medications';
 import { doseSlotStatus } from '../utils/medications';
@@ -31,8 +29,6 @@ const typeLabelFor = (typeId: string | null): string =>
 
 const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
-  const { preferences } = usePreferences();
-  const timeFormat = preferences?.time_format;
 
   const { data: medications, isLoading: isLoadingMeds } = useMedications({ activeOnly: true });
   const { data: entries, isLoading: isLoadingEntries } = useMedicationEntries({ fromDate: selectedDate, toDate: selectedDate });
@@ -98,7 +94,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
             onTake={() => logDose(due, 'taken')}
             onSkip={() => logDose(due, 'skipped')}
             title={med.name}
-            time={due.schedule.time_of_day ? (formatTimeOfDay(due.schedule.time_of_day, timeFormat) ?? undefined) : undefined}
+            time={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : undefined}
             subtitle={subtitle}
             onPress={() => navigation.navigate('MedicationDetail', { medicationId: med.id })}
           />

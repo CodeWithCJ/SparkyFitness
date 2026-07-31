@@ -79,7 +79,6 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const { meal, isLoading, isError, error } = useFoodEntryMealDetails(foodEntryMealId, { initialMeal });
   const { mealTypes } = useMealTypes();
   const { preferences } = usePreferences();
-  const timeFormat = preferences?.time_format;
   const showNetCarbs = preferences?.show_net_carbs === true;
 
   const [name, setName] = useState<string | null>(null);
@@ -447,7 +446,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
             className="flex-row items-center"
           >
             <Text className="text-text-primary text-base font-medium">
-              {formatTimeLabel(effectiveEntryTime, timeFormat) ?? 'None'}
+              {formatTimeLabel(effectiveEntryTime) ?? 'None'}
             </Text>
             <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
           </TouchableOpacity>

@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { useQuery } from '@tanstack/react-query';
-import { formatTimeOfDay } from '../utils/entryTimeDisplay';
 import Animated, {
   cancelAnimation,
   interpolate,
@@ -276,7 +275,6 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
   const { preferences } = usePreferences();
   const weightUnit = normalizeWeightUnit(preferences?.default_weight_unit);
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
-  const timeFormat = preferences?.time_format;
   const { getImageSource } = useExerciseImageSource();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
 
@@ -419,7 +417,10 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
     useCSSVariable(RPE_TONE_VARS[rpeTone ?? 'easy']),
   );
 
-  const finishedTimeText = formatTimeOfDay(new Date(finishedAt), timeFormat) ?? '';
+  const finishedTimeText = new Date(finishedAt).toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 
   const sessionForDetail = refreshedSession ?? session;
   const handleViewWorkout = () => {

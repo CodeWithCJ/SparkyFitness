@@ -23,9 +23,7 @@ import { FastingProtocolBadge } from './FastingSharedComponents';
 import { useFastingHistory, useDeleteFast } from '../hooks/useFasting';
 import { formatHoursMinutes, relativeDayLabel } from '../utils/fasting';
 import { toLocalDateString } from '../utils/dateUtils';
-import { formatTimeOfDay } from '../utils/entryTimeDisplay';
 import { addLog } from '../services/LogService';
-import { usePreferences } from '../hooks/usePreferences';
 import type { FastingLog } from '../types/fasting';
 
 // Render the sheet inside an iOS UIWindow so it sits above any native modal
@@ -35,8 +33,8 @@ const sheetContainer =
     ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
     : undefined;
 
-function formatTime(iso: string, timeFormat?: string | null): string {
-  return formatTimeOfDay(iso, timeFormat) ?? '';
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 const PAGE_SIZE = 25;
@@ -48,7 +46,6 @@ interface FastingHistoryRowProps {
   onEdit: (fast: FastingLog) => void;
   onDelete: (fast: FastingLog) => void;
   textMuted: string;
-  timeFormat?: string;
 }
 
 const FastingHistoryRow: React.FC<FastingHistoryRowProps> = ({
@@ -57,14 +54,13 @@ const FastingHistoryRow: React.FC<FastingHistoryRowProps> = ({
   onEdit,
   onDelete,
   textMuted,
-  timeFormat,
 }) => {
   const dayLabel = relativeDayLabel(toLocalDateString(fast.end_time ?? fast.start_time));
   const durationLabel =
     fast.duration_minutes != null ? formatHoursMinutes(fast.duration_minutes * 60000) : '—';
   const timeRangeLabel = fast.end_time
-    ? `${formatTime(fast.start_time, timeFormat)} → ${formatTime(fast.end_time, timeFormat)}`
-    : formatTime(fast.start_time, timeFormat);
+    ? `${formatTime(fast.start_time)} → ${formatTime(fast.end_time)}`
+    : formatTime(fast.start_time);
 
   const renderRightActions = () => (
     <TouchableOpacity
@@ -118,8 +114,6 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => 
   const editSheetRef = useRef<FastingEditSheetRef>(null);
   const { theme } = useUniwind();
   const isDarkMode = theme === 'dark' || theme === 'amoled';
-  const { preferences } = usePreferences();
-  const timeFormat = preferences?.time_format;
 
   const [limit, setLimit] = useState(PAGE_SIZE);
 
@@ -214,7 +208,6 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => 
                   onEdit={openEdit}
                   onDelete={confirmDelete}
                   textMuted={textMuted}
-                  timeFormat={timeFormat}
                 />
               ))}
             </View>

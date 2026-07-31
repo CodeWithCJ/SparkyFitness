@@ -2,17 +2,12 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import MedicationsCard from '../../src/components/MedicationsCard';
 import { useMedications, useMedicationEntries, useLogDose } from '../../src/hooks/useMedications';
-import { usePreferences } from '../../src/hooks/usePreferences';
 import type { MedicationDetail, MedicationEntry, MedicationSchedule } from '@workspace/shared';
 
 jest.mock('../../src/hooks/useMedications', () => ({
   useMedications: jest.fn(),
   useMedicationEntries: jest.fn(),
   useLogDose: jest.fn(),
-}));
-
-jest.mock('../../src/hooks/usePreferences', () => ({
-  usePreferences: jest.fn(() => ({ preferences: { time_format: 'HH:mm' } })),
 }));
 
 jest.mock('../../src/stores/diaryDateStore', () => ({
@@ -117,7 +112,6 @@ function setupCard(medications: MedicationDetail[], entries: MedicationEntry[] =
 describe('MedicationsCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (usePreferences as jest.Mock).mockReturnValue({ preferences: { time_format: 'HH:mm' } });
     mockEntryForDue.mockReturnValue(undefined);
     mockUseLogDose.mockReturnValue({
       entryForDue: mockEntryForDue,
@@ -131,8 +125,8 @@ describe('MedicationsCard', () => {
     const screen = setupCard([buildMedication()]);
 
     expect(screen.getByText('Lisinopril')).toBeTruthy();
-    expect(screen.getByText('08:00')).toBeTruthy();
-    expect(screen.getByText('08:00 · Pill · 1 tablet', { exact: false })).toBeTruthy();
+    expect(screen.getByText('8:00 AM')).toBeTruthy();
+    expect(screen.getByText('8:00 AM · Pill · 1 tablet', { exact: false })).toBeTruthy();
     fireEvent.press(screen.getByText('Take'));
     expect(mockLogDose).toHaveBeenCalledWith(
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
@@ -143,24 +137,6 @@ describe('MedicationsCard', () => {
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
       'skipped',
     );
-  });
-
-  it('renders scheduled dose time in 12-hour format when preference is h:mm A', () => {
-    (usePreferences as jest.Mock).mockReturnValue({ preferences: { time_format: 'h:mm A' } });
-    const screen = setupCard([buildMedication()]);
-
-    expect(screen.getByText('Lisinopril')).toBeTruthy();
-    expect(screen.getByText('8:00 AM')).toBeTruthy();
-    expect(screen.getByText('8:00 AM · Pill · 1 tablet', { exact: false })).toBeTruthy();
-  });
-
-  it('renders scheduled dose time in 12-hour lowercase format when preference is h:mm a', () => {
-    (usePreferences as jest.Mock).mockReturnValue({ preferences: { time_format: 'h:mm a' } });
-    const screen = setupCard([buildMedication()]);
-
-    expect(screen.getByText('Lisinopril')).toBeTruthy();
-    expect(screen.getByText('8:00 am')).toBeTruthy();
-    expect(screen.getByText('8:00 am · Pill · 1 tablet', { exact: false })).toBeTruthy();
   });
 
   it('lists due doses in time order regardless of medication order', () => {
@@ -195,7 +171,7 @@ describe('MedicationsCard', () => {
       buildMedication({ schedules: [buildSchedule({ dose_amount: 2 })] }),
     ]);
 
-    expect(screen.getByText('08:00 · Pill · 2 tablet', { exact: false })).toBeTruthy();
+    expect(screen.getByText('8:00 AM · Pill · 2 tablet', { exact: false })).toBeTruthy();
   });
 
   it('logs PRN medications from the circle and the Take button', () => {

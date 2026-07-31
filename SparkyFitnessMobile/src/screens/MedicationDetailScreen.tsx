@@ -12,7 +12,6 @@ import {
   useLogDose,
 } from '../hooks/useMedications';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { usePreferences } from '../hooks/usePreferences';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
@@ -21,11 +20,11 @@ import {
   getDueDosesForDate,
   formatDose,
   formatStrengthPerUnit,
+  formatTimeOfDay,
   formatWithMeal,
   describeSchedule,
 } from '@workspace/shared';
 import { getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
-import { formatTimeOfDay } from '../utils/entryTimeDisplay';
 import type { RootStackScreenProps } from '../types/navigation';
 import { MEDICATION_TYPES } from '../types/medications';
 import type { MedicationEntry } from '@workspace/shared';
@@ -40,8 +39,6 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
-  const { preferences } = usePreferences();
-  const timeFormat = preferences?.time_format;
 
   const { data: med, isLoading } = useMedicationDetail(medicationId);
   const { data: entries } = useMedicationEntries({ fromDate: selectedDate, toDate: selectedDate, medicationId });
@@ -93,7 +90,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
     (entry: MedicationEntry) => {
       Alert.alert(
         'Remove Dose',
-        `Remove this logged dose from ${entry.taken_at ? (formatTimeOfDay(entry.taken_at, timeFormat) ?? '') : 'today'}?`,
+        `Remove this logged dose from ${entry.taken_at ? new Date(entry.taken_at).toLocaleTimeString() : 'today'}?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -110,7 +107,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         ],
       );
     },
-    [deleteEntryMutation, timeFormat],
+    [deleteEntryMutation],
   );
 
   const header = useScreenHeader({
@@ -172,7 +169,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                 onToggle={() => toggleTaken(due)}
                 onTake={() => logDose(due, 'taken')}
                 onSkip={() => logDose(due, 'skipped')}
-                title={due.schedule.time_of_day ? (formatTimeOfDay(due.schedule.time_of_day, timeFormat) ?? '') : describeSchedule(due.schedule)}
+                title={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : describeSchedule(due.schedule)}
                 subtitle={formatDose(due.medication, due.schedule) ?? undefined}
               />
             ))}
@@ -193,7 +190,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                     <View className="flex-1">
                       <Text className="text-base text-text-primary">
                         {dose.taken_at
-                          ? formatTimeOfDay(dose.taken_at, timeFormat)
+                          ? new Date(dose.taken_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
                           : 'Logged'}
                       </Text>
                       {dose.notes && (

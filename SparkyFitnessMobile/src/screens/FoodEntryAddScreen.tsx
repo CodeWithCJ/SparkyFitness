@@ -199,7 +199,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
-  const timeFormat = preferences?.time_format;
   const showNetCarbs = preferences?.show_net_carbs === true;
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
   // When editing an existing meal ingredient, pre-populate adjustedValues from
@@ -1472,7 +1471,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               >
                 <Text className="text-text-secondary text-base">Time</Text>
                 <Text className="text-text-primary text-base font-medium mx-1.5">
-                  {formatTimeLabel(entryTime, timeFormat) ?? 'None'}
+                  {formatTimeLabel(entryTime) ?? 'None'}
                 </Text>
                 <Icon
                   name="chevron-down"
