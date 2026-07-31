@@ -60,6 +60,7 @@ import { useScreenHeader, SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../h
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { UpdatePresetSessionRequest } from '@workspace/shared';
+import { canEditGroupedWorkout } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
@@ -118,7 +119,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const { label: sourceLabel, canEditWorkout } = getSourceLabel(session.source);
+  const sourceLabel = getSourceLabel(session.source);
+  const canEdit = canEditGroupedWorkout(session.source);
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
 
@@ -304,19 +306,19 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleStartWorkout = () => beginWorkout();
 
   // Long-pressing a set opens a menu-style bottom sheet (same ActionSheet the
-  // live/edit exercise ⋮ menus use). Gated on canEditWorkout like the Start button:
-  // synced (non-manual) sessions can be neither edited nor run live — a live
-  // workout autosaves via the nested-exercise update, which the server
-  // rejects (409) for them.
+  // live/edit exercise ⋮ menus use). Gated on canEdit like the Start button:
+  // sessions that are not editable (external/unknown sources) can be neither
+  // edited nor run live — a live workout autosaves via the nested-exercise
+  // update, which the server rejects (409) for them.
   const setMenuSheetRef = useRef<ActionSheetRef>(null);
   const [setMenuTargetId, setSetMenuTargetId] = useState<string | null>(null);
   const handleLongPressSet = useCallback(
     (setId: string) => {
-      if (!canEditWorkout) return;
+      if (!canEdit) return;
       setSetMenuTargetId(setId);
       setMenuSheetRef.current?.present();
     },
-    [canEditWorkout],
+    [canEdit],
   );
 
   const setMenuItems = useMemo<ActionSheetItem[]>(() => {
@@ -335,7 +337,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout]);
 
   // "Save as preset": review-and-save through the preset create form,
-  // prefilled from this session. Not gated on canEditWorkout — templating a synced
+  // prefilled from this session. Not gated on canEdit — templating a synced
   // workout (e.g. a Garmin strength import) only reads the session.
   const handleSaveAsPreset = useCallback(() => {
     navigation.navigate('WorkoutPresetForm', {
@@ -431,7 +433,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             distanceUnit={distanceUnit}
             getImageSource={getImageSource}
             excludePresetEntryId={session.id}
-            showRestChip={canEditWorkout}
+            showRestChip={canEdit}
             onPressThumb={handleViewExercise}
             onToggleExpanded={toggleSection}
             onPressMetricHeader={handlePressMetricHeader}
@@ -610,7 +612,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       ? canReorderEdit
         ? [reorderHeaderItem, saveHeaderItem]
         : saveHeaderItem
-      : canEditWorkout
+      : canEdit
         ? [
             saveAsPresetHeaderItem,
             {
@@ -684,7 +686,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {renderSummaryCard()}
 
         {/* Start Workout button */}
-        {!isEditing && canEditWorkout && !isWorkoutActive && (
+        {!isEditing && canEdit && !isWorkoutActive && (
           <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
             Start Workout
           </Button>

@@ -16,6 +16,7 @@ import calorieCalculationService from '../services/CalorieCalculationService.js'
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 import { getGroupedExerciseSessionByIdWithClient } from '../services/exerciseEntryHistoryService.js';
 import exerciseService from '../services/exerciseService.js';
+import { canEditGroupedWorkout } from '@workspace/shared';
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
   getSystemClient: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock('../models/exerciseEntry', () => ({
     _reconcileExerciseEntrySetsWithClient: vi.fn(),
     deleteExerciseEntriesByPresetEntryIdWithClient: vi.fn(),
     updateExerciseEntriesDateByPresetEntryIdWithClient: vi.fn(),
+    getWorkoutPlanAssignmentIdByPresetEntryIdWithClient: vi.fn(),
   },
 }));
 vi.mock('../models/activityDetailsRepository', () => ({}));
@@ -87,6 +89,12 @@ describe('exerciseService grouped workouts', () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     getClient.mockResolvedValue(client);
     client.query.mockResolvedValue({});
+    // Manual/sparky tests don't care about workout plan assignments; default
+    // to "not from a plan" so every existing test keeps passing unchanged.
+    // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+    exerciseEntryDb.getWorkoutPlanAssignmentIdByPresetEntryIdWithClient.mockResolvedValue(
+      null
+    );
   });
   it('rolls back grouped workout creation when a child insert fails', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
@@ -384,7 +392,7 @@ describe('exerciseService grouped workouts', () => {
     ).rejects.toMatchObject({
       status: 409,
       message:
-        'Nested exercise editing is only supported for manual or sparky workouts.',
+        'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.',
     });
     expect(
       exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient
@@ -1100,6 +1108,423 @@ describe('exerciseService grouped workouts', () => {
       ).not.toHaveBeenCalled();
     });
   });
+
+  describe('Workout Plan nested updates', () => {
+    const exerciseId = '44444444-4444-4444-8444-444444444444';
+    const newExerciseId = '55555555-5555-4555-8555-555555555555';
+    const newEntryId = '66666666-6666-4666-8666-666666666666';
+    const workoutPlanAssignmentId = 987;
+
+    const existingSession = {
+      type: 'preset' as const,
+      id: 'preset-entry-1',
+      entry_date: '2026-03-12',
+      workout_preset_id: null,
+      name: 'Plan Day',
+      description: null,
+      notes: null,
+      source: 'Workout Plan',
+      total_duration_minutes: 0,
+      exercises: [
+        {
+          id: 'entry-a',
+          exercise_id: exerciseId,
+          sort_order: 0,
+          duration_minutes: 10,
+          distance: null,
+          avg_heart_rate: null,
+          source: 'Workout Plan Child',
+          sets: [{ id: 1, set_number: 1, reps: 10, weight: 60 }],
+        },
+      ],
+      activity_details: [],
+    };
+
+    const updatedSession = {
+      ...existingSession,
+      exercises: [
+        {
+          ...existingSession.exercises[0],
+          duration_minutes: 12,
+          sets: [
+            {
+              id: 1,
+              set_number: 1,
+              reps: 12,
+              weight: 60,
+              duration: 45,
+              completed_at: '2026-03-12T10:00:00.000Z',
+              is_pr: true,
+            },
+          ],
+        },
+      ],
+    };
+
+    const setupPlanSession = (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      first: any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      second: any
+    ) => {
+      (getGroupedExerciseSessionByIdWithClient as unknown as Mock)
+        .mockReset()
+        .mockResolvedValueOnce(first)
+        .mockResolvedValueOnce(second);
+      // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
+        { id: 'preset-entry-1' }
+      );
+      // @ts-expect-error TS(2339): mockImplementation on mocked fn
+      resolveExerciseIdToUuid.mockImplementation(async (id: string) => id);
+      // @ts-expect-error TS(2339): mockImplementation on mocked fn
+      exerciseDb.getExerciseById.mockImplementation(async (id: string) => ({
+        id,
+        name: 'Test Exercise',
+        calories_per_hour: 600,
+      }));
+      // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+      calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValue(
+        600
+      );
+      // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+      exerciseEntryDb.getWorkoutPlanAssignmentIdByPresetEntryIdWithClient.mockResolvedValue(
+        workoutPlanAssignmentId
+      );
+    };
+
+    it('reconciles an existing exercise and keeps its own child source', async () => {
+      setupPlanSession(existingSession, updatedSession);
+
+      const result = await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseId,
+              sort_order: 0,
+              duration_minutes: 12,
+              sets: [
+                {
+                  id: 1,
+                  set_number: 1,
+                  reps: 12,
+                  weight: 60,
+                  duration: 45,
+                  completed_at: '2026-03-12T10:00:00.000Z',
+                  is_pr: true,
+                },
+              ],
+            },
+          ],
+        }
+      );
+
+      expect(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).toHaveBeenCalledWith(
+        client,
+        'entry-a',
+        'user-1',
+        expect.objectContaining({
+          exercise_id: exerciseId,
+          duration_minutes: 12,
+        }),
+        'actor-1',
+        'Workout Plan Child'
+      );
+      expect(
+        exerciseEntryDb._reconcileExerciseEntrySetsWithClient
+      ).toHaveBeenCalledWith(client, 'entry-a', [
+        expect.objectContaining({
+          id: 1,
+          reps: 12,
+          weight: 60,
+          duration: 45,
+          completed_at: '2026-03-12T10:00:00.000Z',
+          is_pr: true,
+        }),
+      ]);
+      expect(
+        exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient
+      ).not.toHaveBeenCalled();
+      expect(client.query).toHaveBeenCalledWith('COMMIT');
+      expect(result).toEqual(updatedSession);
+    });
+
+    it('creates a client-added exercise with the workout plan assignment id', async () => {
+      const afterSession = {
+        ...existingSession,
+        exercises: [
+          existingSession.exercises[0],
+          {
+            id: newEntryId,
+            exercise_id: newExerciseId,
+            sort_order: 1,
+            duration_minutes: 5,
+            sets: [{ id: 21, set_number: 1, reps: 8, weight: 40 }],
+          },
+        ],
+      };
+      setupPlanSession(existingSession, afterSession);
+      // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+      exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
+        entry: { id: newEntryId },
+        operation: 'created',
+      });
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseId,
+              sort_order: 0,
+              duration_minutes: 12,
+              sets: [
+                {
+                  id: 1,
+                  set_number: 1,
+                  reps: 12,
+                  weight: 60,
+                  duration: 45,
+                  completed_at: '2026-03-12T10:00:00.000Z',
+                  is_pr: true,
+                },
+              ],
+            },
+            {
+              id: newEntryId,
+              exercise_id: newExerciseId,
+              sort_order: 1,
+              duration_minutes: 5,
+              sets: [{ set_number: 1, reps: 8, weight: 40 }],
+            },
+          ],
+        }
+      );
+
+      expect(
+        exerciseEntryDb._createExerciseEntryWithClient
+      ).toHaveBeenCalledWith(
+        client,
+        'user-1',
+        expect.objectContaining({
+          id: newEntryId,
+          exercise_id: newExerciseId,
+          workout_plan_assignment_id: workoutPlanAssignmentId,
+          sets: [
+            expect.objectContaining({
+              set_number: 1,
+              reps: 8,
+              weight: 40,
+            }),
+          ],
+        }),
+        'actor-1',
+        'Workout Plan',
+        'preset-entry-1'
+      );
+      // The new exercise is created, not updated/reconciled; the existing
+      // one still goes through update + set reconcile.
+      expect(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        exerciseEntryDb._reconcileExerciseEntrySetsWithClient
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).toHaveBeenCalledWith(
+        client,
+        'entry-a',
+        'user-1',
+        expect.objectContaining({
+          exercise_id: exerciseId,
+          duration_minutes: 12,
+        }),
+        'actor-1',
+        'Workout Plan Child'
+      );
+      expect(
+        exerciseEntryDb._reconcileExerciseEntrySetsWithClient
+      ).toHaveBeenCalledWith(client, 'entry-a', [
+        expect.objectContaining({ id: 1, reps: 12, weight: 60 }),
+      ]);
+      expect(client.query).toHaveBeenCalledWith('COMMIT');
+    });
+
+    it('preserves the workout plan assignment id on delete-and-recreate', async () => {
+      const afterSession = {
+        ...existingSession,
+        exercises: [
+          {
+            id: 'new-entry-1',
+            exercise_id: exerciseId,
+            sort_order: 0,
+            duration_minutes: 12,
+            source: 'Workout Plan',
+            sets: [
+              {
+                id: 11,
+                set_number: 1,
+                reps: 12,
+                weight: 60,
+                duration: 45,
+                completed_at: '2026-03-12T10:00:00.000Z',
+                is_pr: true,
+              },
+            ],
+          },
+        ],
+      };
+      setupPlanSession(existingSession, afterSession);
+      // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+      exerciseEntryDb._createExerciseEntryWithClient.mockResolvedValue({
+        entry: { id: 'new-entry-1' },
+        operation: 'created',
+      });
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              exercise_id: exerciseId,
+              sort_order: 0,
+              duration_minutes: 12,
+              sets: [
+                {
+                  set_number: 1,
+                  reps: 12,
+                  weight: 60,
+                  duration: 45,
+                  completed_at: '2026-03-12T10:00:00.000Z',
+                  is_pr: true,
+                },
+              ],
+            },
+          ],
+        }
+      );
+
+      expect(
+        exerciseEntryDb.getWorkoutPlanAssignmentIdByPresetEntryIdWithClient
+      ).toHaveBeenCalledWith(client, 'user-1', 'preset-entry-1');
+      expect(
+        exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient
+      ).toHaveBeenCalledWith(client, 'user-1', 'preset-entry-1');
+      expect(
+        exerciseEntryDb._createExerciseEntryWithClient
+      ).toHaveBeenCalledWith(
+        client,
+        'user-1',
+        expect.objectContaining({
+          workout_plan_assignment_id: workoutPlanAssignmentId,
+          exercise_id: exerciseId,
+          duration_minutes: 12,
+          sets: [
+            expect.objectContaining({
+              reps: 12,
+              weight: 60,
+              duration: 45,
+              completed_at: '2026-03-12T10:00:00.000Z',
+              is_pr: true,
+            }),
+          ],
+        }),
+        'actor-1',
+        'Workout Plan',
+        'preset-entry-1'
+      );
+      expect(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).not.toHaveBeenCalled();
+      expect(
+        exerciseEntryDb._reconcileExerciseEntrySetsWithClient
+      ).not.toHaveBeenCalled();
+      expect(client.query).toHaveBeenCalledWith('COMMIT');
+    });
+
+    it.each(['Health Connect', 'garmin'])(
+      'rejects nested edits for external source %s with 409',
+      async (source) => {
+        const externalSession = {
+          ...existingSession,
+          name: 'External Workout',
+          source,
+          exercises: [],
+        };
+        (getGroupedExerciseSessionByIdWithClient as unknown as Mock)
+          .mockReset()
+          .mockResolvedValue(externalSession);
+        // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
+        exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
+          { id: 'preset-entry-1' }
+        );
+
+        await expect(
+          exerciseService.updateGroupedWorkoutSession(
+            'user-1',
+            'actor-1',
+            'preset-entry-1',
+            {
+              exercises: [
+                {
+                  exercise_id: exerciseId,
+                  sort_order: 0,
+                  sets: [],
+                },
+              ],
+            }
+          )
+        ).rejects.toMatchObject({
+          status: 409,
+          message:
+            'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.',
+        });
+
+        expect(
+          exerciseEntryDb._updateExerciseEntryWithClient
+        ).not.toHaveBeenCalled();
+        expect(
+          exerciseEntryDb._reconcileExerciseEntrySetsWithClient
+        ).not.toHaveBeenCalled();
+        expect(
+          exerciseEntryDb._createExerciseEntryWithClient
+        ).not.toHaveBeenCalled();
+        expect(
+          exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient
+        ).not.toHaveBeenCalled();
+        expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+      }
+    );
+  });
+});
+
+describe('canEditGroupedWorkout policy', () => {
+  it.each([
+    ['manual', true],
+    ['sparky', true],
+    ['Workout Plan', true],
+    ['WORKOUT PLAN', true],
+    ['  Workout Plan  ', true],
+    [null, true],
+    [undefined, true],
+    ['Health Connect', false],
+    ['garmin', false],
+    ['Some Unknown Source', false],
+  ])('returns %s for source %j', (source, expected) => {
+    expect(canEditGroupedWorkout(source)).toBe(expected);
+  });
 });
 
 describe('_reconcileExerciseEntrySetsWithClient', () => {
@@ -1457,295 +1882,4 @@ describe('_createExerciseEntryWithClient id threading', () => {
     expect(insert!.sql).not.toContain('modality, id');
     expect(insert!.params).toHaveLength(31);
   });
-}
-  describe('canEditGroupedWorkout source validation', () => {
-    it('allows nested editing for Workout Plan source', async () => {
-      const client = {
-        query: vi.fn(),
-        release: vi.fn(),
-      };
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getClient.mockResolvedValue(client);
-      client.query.mockResolvedValue({});
-
-      // Mock a workout plan session
-      const mockSession = {
-        type: 'preset',
-        id: 'preset-entry-1',
-        entry_date: '2026-03-12',
-        workout_preset_id: null,
-        name: 'Workout Plan Session',
-        description: null,
-        notes: null,
-        source: 'Workout Plan',
-        total_duration_minutes: 0,
-        workout_plan_assignment_id: 123,
-        exercises: [
-          {
-            id: 'exercise-1',
-            exercise_id: 'ex-1',
-            sort_order: 0,
-            sets: [{ id: 1, set_number: 1, reps: 10, weight: 50, completed_at: null }],
-          },
-        ],
-        activity_details: [],
-      };
-
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
-        { id: 'preset-entry-1' }
-      );
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      exercisePresetEntryRepository.getExercisePresetEntryById.mockResolvedValue(
-        mockSession
-      );
-
-      const result = await exerciseService.updateGroupedWorkoutSession(
-        'user-1',
-        'actor-1',
-        'preset-entry-1',
-        {
-          exercises: [
-            {
-              id: 'exercise-1',
-              exercise_id: 'ex-1',
-              sort_order: 0,
-              sets: [{ id: 1, set_number: 1, reps: 12, weight: 60, completed_at: '2026-03-12T10:00:00Z' }],
-            },
-          ],
-        }
-      );
-
-      // Should succeed with 200 equivalent (no error thrown)
-      expect(result).toBeDefined();
-      expect(result.exercises[0].sets[0].reps).toBe(12);
-      expect(result.exercises[0].sets[0].weight).toBe(60);
-      expect(result.source).toBe('Workout Plan');
-      expect(result.workout_plan_assignment_id).toBe(123);
-      expect(client.query).toHaveBeenCalledWith('COMMIT');
-    });
-
-    it('rejects nested editing for external synced sources like Health Connect', async () => {
-      const client = {
-        query: vi.fn(),
-        release: vi.fn(),
-      };
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getClient.mockResolvedValue(client);
-      client.query.mockResolvedValue({});
-
-      const mockSession = {
-        type: 'preset',
-        id: 'preset-entry-1',
-        entry_date: '2026-03-12',
-        workout_preset_id: null,
-        name: 'Health Connect Workout',
-        description: null,
-        notes: null,
-        source: 'Health Connect',
-        total_duration_minutes: 0,
-        exercises: [],
-        activity_details: [],
-      };
-
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
-        { id: 'preset-entry-1' }
-      );
-
-      await expect(
-        exerciseService.updateGroupedWorkoutSession(
-          'user-1',
-          'actor-1',
-          'preset-entry-1',
-          {
-            exercises: [
-              {
-                id: 'exercise-1',
-                exercise_id: 'ex-1',
-                sort_order: 0,
-                sets: [{ id: 1, set_number: 1, reps: 10, weight: 50 }],
-              },
-            ],
-          }
-        )
-      ).rejects.toThrow('Nested exercise editing is only supported for manual, sparky, or workout plan sessions.');
-
-      expect(client.query).toHaveBeenCalledWith('ROLLBACK');
-    });
-
-    it('rejects nested editing for Garmin source', async () => {
-      const client = {
-        query: vi.fn(),
-        release: vi.fn(),
-      };
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getClient.mockResolvedValue(client);
-      client.query.mockResolvedValue({});
-
-      const mockSession = {
-        type: 'preset',
-        id: 'preset-entry-1',
-        entry_date: '2026-03-12',
-        workout_preset_id: null,
-        name: 'Garmin Workout',
-        description: null,
-        notes: null,
-        source: 'garmin',
-        total_duration_minutes: 0,
-        exercises: [],
-        activity_details: [],
-      };
-
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
-        { id: 'preset-entry-1' }
-      );
-
-      await expect(
-        exerciseService.updateGroupedWorkoutSession(
-          'user-1',
-          'actor-1',
-          'preset-entry-1',
-          {
-            exercises: [
-              {
-                id: 'exercise-1',
-                exercise_id: 'ex-1',
-                sort_order: 0,
-                sets: [{ id: 1, set_number: 1, reps: 10, weight: 50 }],
-              },
-            ],
-          }
-        )
-      ).rejects.toThrow('Nested exercise editing is only supported for manual, sparky, or workout plan sessions.');
-
-      expect(client.query).toHaveBeenCalledWith('ROLLBACK');
-    });
-
-    it('allows nested editing for manual source', async () => {
-      const client = {
-        query: vi.fn(),
-        release: vi.fn(),
-      };
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getClient.mockResolvedValue(client);
-      client.query.mockResolvedValue({});
-
-      const mockSession = {
-        type: 'preset',
-        id: 'preset-entry-1',
-        entry_date: '2026-03-12',
-        workout_preset_id: null,
-        name: 'Manual Workout',
-        description: null,
-        notes: null,
-        source: 'manual',
-        total_duration_minutes: 0,
-        exercises: [
-          {
-            id: 'exercise-1',
-            exercise_id: 'ex-1',
-            sort_order: 0,
-            sets: [{ id: 1, set_number: 1, reps: 10, weight: 50 }],
-          },
-        ],
-        activity_details: [],
-      };
-
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
-        { id: 'preset-entry-1' }
-      );
-
-      const result = await exerciseService.updateGroupedWorkoutSession(
-        'user-1',
-        'actor-1',
-        'preset-entry-1',
-        {
-          exercises: [
-            {
-              id: 'exercise-1',
-              exercise_id: 'ex-1',
-              sort_order: 0,
-              sets: [{ id: 1, set_number: 1, reps: 12, weight: 60 }],
-            },
-          ],
-        }
-      );
-
-      expect(result).toBeDefined();
-      expect(result.exercises[0].sets[0].reps).toBe(12);
-      expect(result.source).toBe('manual');
-      expect(client.query).toHaveBeenCalledWith('COMMIT');
-    });
-
-    it('allows nested editing for sparky source', async () => {
-      const client = {
-        query: vi.fn(),
-        release: vi.fn(),
-      };
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getClient.mockResolvedValue(client);
-      client.query.mockResolvedValue({});
-
-      const mockSession = {
-        type: 'preset',
-        id: 'preset-entry-1',
-        entry_date: '2026-03-12',
-        workout_preset_id: null,
-        name: 'Sparky Workout',
-        description: null,
-        notes: null,
-        source: 'sparky',
-        total_duration_minutes: 0,
-        exercises: [
-          {
-            id: 'exercise-1',
-            exercise_id: 'ex-1',
-            sort_order: 0,
-            sets: [{ id: 1, set_number: 1, reps: 10, weight: 50 }],
-          },
-        ],
-        activity_details: [],
-      };
-
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      getGroupedExerciseSessionByIdWithClient.mockResolvedValue(mockSession);
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
-        { id: 'preset-entry-1' }
-      );
-
-      const result = await exerciseService.updateGroupedWorkoutSession(
-        'user-1',
-        'actor-1',
-        'preset-entry-1',
-        {
-          exercises: [
-            {
-              id: 'exercise-1',
-              exercise_id: 'ex-1',
-              sort_order: 0,
-              sets: [{ id: 1, set_number: 1, reps: 12, weight: 60 }],
-            },
-          ],
-        }
-      );
-
-      expect(result).toBeDefined();
-      expect(result.exercises[0].sets[0].reps).toBe(12);
-      expect(result.source).toBe('sparky');
-      expect(client.query).toHaveBeenCalledWith('COMMIT');
-    });
-  });
-
 });

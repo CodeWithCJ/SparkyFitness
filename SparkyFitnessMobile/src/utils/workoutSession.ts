@@ -13,7 +13,6 @@ import {
   isExerciseModality,
   resolveExerciseModality,
   setsDurationMinutes,
-  canEditGroupedWorkout,
 } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 // Type-only, so the store's runtime import of this module stays acyclic.
@@ -104,6 +103,9 @@ export function getWorkoutIcon(session: ExerciseSessionResponse): IconName {
 }
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
+  manual: 'Sparky',
+  sparky: 'Sparky',
+  'workout plan': 'Sparky',
   healthkit: 'Apple Health',
   'health connect': 'Health Connect',
   garmin: 'Garmin',
@@ -113,23 +115,22 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   withings: 'Withings',
 };
 
-export function getSourceLabel(source: string | null): { label: string; canEditWorkout: boolean } {
-  const s = source?.toLowerCase() ?? null;
-  if (s == null || s === 'manual' || s === 'sparky' || s === 'workout plan') {
-    return { label: 'Sparky', canEditWorkout: true };
-  }
-  return { label: SOURCE_DISPLAY_NAMES[s] ?? source!, canEditWorkout: false };
-}
-
 /**
- * Check if a workout source supports editing.
- * This is the same logic used by the backend for nested exercise editing.
- *
- * @param source - The workout session source string
- * @returns true if the source supports editing, false otherwise
+ * Present a human-readable label for a workout session source. This function
+ * is purely presentational — editability is decided by
+ * `canEditGroupedWorkout` from `@workspace/shared`, never by this label map.
  */
-export function canEditWorkout(source: string | null): boolean {
-  return canEditGroupedWorkout(source);
+export function getSourceLabel(
+  source: string | null | undefined
+): string {
+  if (source == null) {
+    return 'Sparky';
+  }
+
+  const trimmed = source.trim();
+  const normalized = trimmed.toLowerCase();
+
+  return SOURCE_DISPLAY_NAMES[normalized] ?? trimmed;
 }
 
 export function formatDuration(minutes: number): string {

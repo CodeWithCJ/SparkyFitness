@@ -801,6 +801,31 @@ async function updateExerciseEntriesDateByPresetEntryIdWithClient(
     [entryDate, updatedByUserId, userId, presetEntryId]
   );
 }
+async function getWorkoutPlanAssignmentIdByPresetEntryIdWithClient(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  presetEntryId: any
+) {
+  const result = await client.query(
+    `SELECT DISTINCT workout_plan_assignment_id
+       FROM exercise_entries
+      WHERE user_id = $1
+        AND exercise_preset_entry_id = $2
+        AND workout_plan_assignment_id IS NOT NULL`,
+    [userId, presetEntryId]
+  );
+
+  if (result.rows.length > 1) {
+    throw new Error(
+      'Grouped workout contains multiple workout plan assignment ids.'
+    );
+  }
+
+  return result.rows[0]?.workout_plan_assignment_id ?? null;
+}
 async function deleteExerciseEntriesByPresetEntryIdWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -1568,6 +1593,7 @@ export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };
 export { updateExerciseEntry };
 export { updateExerciseEntriesDateByPresetEntryIdWithClient };
+export { getWorkoutPlanAssignmentIdByPresetEntryIdWithClient };
 export { deleteExerciseEntriesByPresetEntryIdWithClient };
 export { deleteExerciseEntry };
 export { getExerciseEntriesByDate };
@@ -1594,6 +1620,7 @@ export default {
   getExerciseEntryOwnerId,
   updateExerciseEntry,
   updateExerciseEntriesDateByPresetEntryIdWithClient,
+  getWorkoutPlanAssignmentIdByPresetEntryIdWithClient,
   deleteExerciseEntriesByPresetEntryIdWithClient,
   deleteExerciseEntry,
   getExerciseEntriesByDate,
