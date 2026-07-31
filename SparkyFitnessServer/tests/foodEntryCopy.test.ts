@@ -516,8 +516,8 @@ describe('copy flows resolve custom meal types by name (shared service contract)
 
   // A plain name that collides between a custom type (sorts first) and the
   // system default must deterministically resolve to the system default,
-  // regardless of sort_order.
-  it('copyFoodEntries resolves a colliding plain name to the system type', async () => {
+  // regardless of sort_order, when the spellings are identical.
+  it('copyFoodEntries resolves a same-spelled colliding name to the system type', async () => {
     vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
       { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
       { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
@@ -557,6 +557,105 @@ describe('copy flows resolve custom meal types by name (shared service contract)
         expect.objectContaining({ meal_type_id: SYSTEM_LUNCH_ID }),
       ]),
       'user-1'
+    );
+  });
+
+  // System defaults are stored lowercase while a custom type may be created
+  // with a different casing ("Lunch"). An exact-case name match must win, so
+  // web/mobile sending the selected label "Lunch" resolves to the custom
+  // type, not the system "lunch".
+  it('copyFoodEntries resolves an exact-case name to the custom type over a lowercase system default', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
+      { id: SYSTEM_LUNCH_ID, name: 'lunch', user_id: null },
+    ]);
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [mockEntry]
+    );
+    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+      { id: 'entry-copied-1' },
+    ]);
+
+    await copyFoodEntries(
+      'user-1',
+      'user-1',
+      '2026-06-09',
+      'Lunch',
+      '2026-06-10',
+      'Lunch'
+    );
+
+    expect(foodRepository.getFoodEntriesByDateAndMealType).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-09',
+      CUSTOM_LUNCH_ID
+    );
+    expect(foodRepository.getFoodEntryByDetails).toHaveBeenCalledWith(
+      'user-1',
+      'food-abc',
+      CUSTOM_LUNCH_ID,
+      '2026-06-10',
+      'variant-xyz',
+      null
+    );
+  });
+
+  // The lowercase system spelling resolves to the system type.
+  it('copyFoodEntries resolves the lowercase system name to the system type', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
+      { id: SYSTEM_LUNCH_ID, name: 'lunch', user_id: null },
+    ]);
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [mockEntry]
+    );
+    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+      { id: 'entry-copied-1' },
+    ]);
+
+    await copyFoodEntries(
+      'user-1',
+      'user-1',
+      '2026-06-09',
+      'lunch',
+      '2026-06-10',
+      'lunch'
+    );
+
+    expect(foodRepository.getFoodEntriesByDateAndMealType).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-09',
+      SYSTEM_LUNCH_ID
+    );
+  });
+
+  // With no exact-case match, the case-insensitive fallback deterministically
+  // prefers the system default.
+  it('copyFoodEntries falls back to the system type for a differently-cased name', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
+      { id: SYSTEM_LUNCH_ID, name: 'lunch', user_id: null },
+    ]);
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [mockEntry]
+    );
+    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+      { id: 'entry-copied-1' },
+    ]);
+
+    await copyFoodEntries(
+      'user-1',
+      'user-1',
+      '2026-06-09',
+      'LUNCH',
+      '2026-06-10',
+      'LUNCH'
+    );
+
+    expect(foodRepository.getFoodEntriesByDateAndMealType).toHaveBeenCalledWith(
+      'user-1',
+      '2026-06-09',
+      SYSTEM_LUNCH_ID
     );
   });
 
@@ -607,10 +706,20 @@ describe('copy flows resolve custom meal types by name (shared service contract)
     vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
       true
     );
-    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
-      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
-    ]);
+    // Each user gets their own meal types so the test proves the resolver is
+    // called in the right user context.
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockImplementation(
+      async (userId) => {
+        if (userId === MEMBER_B) {
+          return [
+            { id: 'member-source-lunch-id', name: 'Lunch', user_id: MEMBER_B },
+          ];
+        }
+        return [
+          { id: 'active-target-lunch-id', name: 'Lunch', user_id: 'user-1' },
+        ];
+      }
+    );
     vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
       [mockEntry]
     );
@@ -628,17 +737,24 @@ describe('copy flows resolve custom meal types by name (shared service contract)
       'Lunch'
     );
 
-    // Source is resolved against MEMBER_B, target against user-1; both are
-    // queried/written by canonical id.
+    // Source resolved against MEMBER_B, target against user-1.
+    expect(mealTypeRepository.getAllMealTypes).toHaveBeenNthCalledWith(
+      1,
+      MEMBER_B
+    );
+    expect(mealTypeRepository.getAllMealTypes).toHaveBeenNthCalledWith(
+      2,
+      'user-1'
+    );
     expect(foodRepository.getFoodEntriesByDateAndMealType).toHaveBeenCalledWith(
       MEMBER_B,
       '2026-06-17',
-      SYSTEM_LUNCH_ID
+      'member-source-lunch-id'
     );
     expect(foodRepository.getFoodEntryByDetails).toHaveBeenCalledWith(
       'user-1',
       'food-abc',
-      SYSTEM_LUNCH_ID,
+      'active-target-lunch-id',
       '2026-06-17',
       'variant-xyz',
       null
@@ -649,10 +765,18 @@ describe('copy flows resolve custom meal types by name (shared service contract)
     vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
       true
     );
-    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-      { id: CUSTOM_LUNCH_ID, name: 'Lunch', user_id: 'user-1' },
-      { id: SYSTEM_LUNCH_ID, name: 'Lunch', user_id: null },
-    ]);
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockImplementation(
+      async (userId) => {
+        if (userId === MEMBER_B) {
+          return [
+            { id: 'member-target-lunch-id', name: 'Lunch', user_id: MEMBER_B },
+          ];
+        }
+        return [
+          { id: 'active-source-lunch-id', name: 'Lunch', user_id: 'user-1' },
+        ];
+      }
+    );
     vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
       [mockEntry]
     );
@@ -670,16 +794,24 @@ describe('copy flows resolve custom meal types by name (shared service contract)
       'Lunch'
     );
 
-    // Source is resolved against user-1, target against MEMBER_B.
+    // Source resolved against user-1, target against MEMBER_B.
+    expect(mealTypeRepository.getAllMealTypes).toHaveBeenNthCalledWith(
+      1,
+      'user-1'
+    );
+    expect(mealTypeRepository.getAllMealTypes).toHaveBeenNthCalledWith(
+      2,
+      MEMBER_B
+    );
     expect(foodRepository.getFoodEntriesByDateAndMealType).toHaveBeenCalledWith(
       'user-1',
       '2026-06-17',
-      SYSTEM_LUNCH_ID
+      'active-source-lunch-id'
     );
     expect(foodRepository.getFoodEntryByDetails).toHaveBeenCalledWith(
       MEMBER_B,
       'food-abc',
-      SYSTEM_LUNCH_ID,
+      'member-target-lunch-id',
       '2026-06-17',
       'variant-xyz',
       null

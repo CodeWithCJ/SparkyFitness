@@ -48,14 +48,19 @@ interface MealTypeRow {
 }
 
 // Resolves a meal type selector (a UUID or a legacy name) to its canonical
-// id. Exact id matches always win so a caller holding a meal_type_id gets
-// exactly that type back, even when a custom type shares its name with a
-// system default. The name fallback is deterministic: when several types
-// share the same name (a custom type may collide with a system default
-// because uniqueness is per (name, user_id)), the system default wins
-// regardless of sort_order; otherwise the first name match is used. This
-// helper is shared with the REST API, web and mobile clients, which still
-// send custom type NAMES as selectors.
+// id. Resolution order:
+//   1. Exact id match (a caller holding a meal_type_id gets exactly that
+//      type back, even when a custom type shares its name with a system
+//      default).
+//   2. Exact-case name match — web/mobile send the exact label of the
+//      selected item, so "Lunch" must resolve to the custom "Lunch" even
+//      when a system "lunch" exists (system defaults are stored lowercase;
+//      uniqueness is per (name, user_id)).
+//   3. Case-insensitive fallback, deterministic: the system default wins
+//      among same-named types regardless of sort_order, otherwise the first
+//      match is used.
+// This helper is shared with the REST API, web and mobile clients, which
+// still send custom type NAMES as selectors.
 async function resolveMealTypeId(
   userId: string,
   mealTypeSelector: string | null | undefined
@@ -64,19 +69,33 @@ async function resolveMealTypeId(
 
   const types: MealTypeRow[] = await mealTypeRepository.getAllMealTypes(userId);
 
-  const normalized = mealTypeSelector.trim().toLowerCase();
+  const selector = mealTypeSelector.trim();
 
-  const byId = types.find((type) => type.id.toLowerCase() === normalized);
+  const byId = types.find(
+    (type) => type.id.toLowerCase() === selector.toLowerCase()
+  );
   if (byId) return byId.id;
 
-  const nameMatches = types.filter(
+  const exactNameMatches = types.filter(
+    (type) => type.name.trim() === selector
+  );
+
+  const exactByName =
+    exactNameMatches.find((type) => type.user_id === null) ??
+    exactNameMatches[0];
+
+  if (exactByName) return exactByName.id;
+
+  const normalized = selector.toLowerCase();
+  const insensitiveMatches = types.filter(
     (type) => type.name.trim().toLowerCase() === normalized
   );
 
-  const byName =
-    nameMatches.find((type) => type.user_id === null) ?? nameMatches[0];
+  const fallback =
+    insensitiveMatches.find((type) => type.user_id === null) ??
+    insensitiveMatches[0];
 
-  return byName?.id ?? null;
+  return fallback?.id ?? null;
 }
 
 // ── Diary CSV import ────────────────────────────────────────────────────────
