@@ -284,6 +284,7 @@ export const getActivityDetails = async (
     `/exercises/activity-details/${exerciseEntryId}/${providerName}`,
     {
       method: 'GET',
+      suppress404Toast: true,
     }
   );
 };
