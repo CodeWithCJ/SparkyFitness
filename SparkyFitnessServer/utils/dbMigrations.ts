@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import type { QueryResult } from 'pg';
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import { grantPermissions } from '../db/grantPermissions.js';
@@ -14,6 +15,19 @@ interface ApplyMigrationsOptions {
 }
 
 async function applyMigrations(options: ApplyMigrationsOptions = {}) {
+  const migrationFiles = fs
+    .readdirSync(migrationsDir)
+    .filter((file) => file.endsWith('.sql'))
+    .sort();
+  if (
+    options.stopBefore !== undefined &&
+    !migrationFiles.includes(options.stopBefore)
+  ) {
+    throw new Error(
+      `Requested stop-before migration was not found: ${options.stopBefore}`
+    );
+  }
+
   const client = await getSystemClient();
   try {
     // The preflightChecks.js script now ensures these variables are set.
@@ -49,22 +63,15 @@ async function applyMigrations(options: ApplyMigrationsOptions = {}) {
       );
     `);
     log('info', 'Ensured schema_migrations table exists.');
-    const appliedMigrationsResult = await client.query(
+    const appliedMigrationsResult = (await client.query(
       'SELECT name FROM system.schema_migrations ORDER BY name'
-    );
+    )) as QueryResult<{ name: string }>;
     const appliedMigrations = new Set(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      appliedMigrationsResult.rows.map((row: any) => row.name)
+      appliedMigrationsResult.rows.map((row) => row.name)
     );
     log('info', 'Applied migrations:', Array.from(appliedMigrations));
-    const migrationFiles = fs
-      .readdirSync(migrationsDir)
-      .filter((file) => file.endsWith('.sql'))
-      .sort();
-    let reachedStopBefore = options.stopBefore === undefined;
     for (const file of migrationFiles) {
       if (file === options.stopBefore) {
-        reachedStopBefore = true;
         log('info', `Stopping migration check before: ${file}`);
         break;
       }
@@ -83,11 +90,6 @@ async function applyMigrations(options: ApplyMigrationsOptions = {}) {
       } else {
         //log("info", `Migration already applied: ${file}`);
       }
-    }
-    if (!reachedStopBefore) {
-      throw new Error(
-        `Requested stop-before migration was not found: ${options.stopBefore}`
-      );
     }
     // After all migrations are applied, grant necessary permissions to the app user
     await grantPermissions();
