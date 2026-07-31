@@ -486,12 +486,15 @@ async function resolveMealType(
   if (!mealType) {
     return null;
   }
-  // For built-in meal types (by name), resolve to actual ID
+  // For built-in meal types (by name), resolve to actual ID. The legacy
+  // fallback must only match system defaults (user_id IS NULL): custom types
+  // are selected exclusively via meal_type_id, and a custom type may share a
+  // name with a system default (uniqueness is per (name, user_id)).
   const mealTypes = await mealTypeRepository.getAllMealTypes(userId);
   const normalizedName = mealType.trim().toLowerCase();
   const resolved = mealTypes.find(
-    (type: { id: string; name: string }) =>
-      type.name.trim().toLowerCase() === normalizedName
+    (type: { id: string; name: string; user_id: string | null }) =>
+      type.user_id === null && type.name.trim().toLowerCase() === normalizedName
   );
   return resolved ? { id: resolved.id, name: resolved.name } : null;
 }
@@ -849,11 +852,19 @@ Actions:
             if (args.food_name) {
               return 'lookup_food_nutrition';
             }
+            // log_meal must be checked before copy_from_yesterday: small
+            // models often file a logging date under target_date/source_date,
+            // and the salvage logic remaps those to entry_date for logging
+            // actions. Inferring copy first would silently drop meal_name and
+            // run a different data-writing operation.
+            if (
+              (args.meal_name || args.meal_id) &&
+              (args.meal_type || args.meal_type_id)
+            ) {
+              return 'log_meal';
+            }
             if (args.target_date || args.source_date) {
               return 'copy_from_yesterday';
-            }
-            if (args.meal_name && (args.meal_type || args.meal_type_id)) {
-              return 'log_meal';
             }
             if (args.meal_name) {
               return 'search_meal';
@@ -2048,9 +2059,9 @@ Actions:
                     userId,
                     userId,
                     sourceDate,
-                    mealType.name,
+                    mealType.id,
                     targetDate,
-                    mealType.name
+                    mealType.id
                   )
                 : await foodEntryService.copyAllFoodEntries(
                     userId,
@@ -2085,7 +2096,7 @@ Actions:
               const meal = await mealService.createMealFromDiaryEntries(
                 userId,
                 args.entry_date,
-                mealType.name,
+                mealType.id,
                 args.meal_name,
                 args.description ?? null
               );

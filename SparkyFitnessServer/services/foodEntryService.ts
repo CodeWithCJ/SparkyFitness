@@ -41,12 +41,21 @@ function getGlycemicIndexCategory(value: any) {
   return 'Very High';
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveMealTypeId(userId: any, mealTypeName: any) {
-  if (!mealTypeName) return null;
+async function resolveMealTypeId(userId: any, mealTypeSelector: any) {
+  if (!mealTypeSelector) return null;
   const types = await mealTypeRepository.getAllMealTypes(userId);
+  const normalized = String(mealTypeSelector).toLowerCase();
+  // Prefer an exact id match: the MCP tools pass meal_type_id through to the
+  // service, so a selector that is a UUID must resolve to exactly that type
+  // even when a custom type shares its name with a system default.
+  const byId = types.find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (t: any) => String(t.id).toLowerCase() === normalized
+  );
+  if (byId) return byId.id;
   const match = types.find(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (t: any) => t.name.toLowerCase() === mealTypeName.toLowerCase()
+    (t: any) => t.name.toLowerCase() === normalized
   );
   return match ? match.id : null;
 }

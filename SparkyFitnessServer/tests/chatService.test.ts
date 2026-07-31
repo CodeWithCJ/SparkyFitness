@@ -47,7 +47,7 @@ vi.mock('../models/foodRepository', () => ({
     getFoodVariantsByFoodId: vi.fn(),
   },
 }));
-vi.mock('../models/mealType', () => ({
+vi.mock('../models/mealType.js', () => ({
   default: {
     getAllMealTypes: vi.fn(),
     getMealTypeById: vi.fn(),
@@ -434,21 +434,25 @@ describe('chatService', () => {
           id: 'breakfast-id',
           name: 'Breakfast',
           sort_order: 1,
+          user_id: null,
         },
         {
           id: 'lunch-id',
           name: 'Lunch',
           sort_order: 2,
+          user_id: null,
         },
         {
           id: 'dinner-id',
           name: 'Dinner',
           sort_order: 3,
+          user_id: null,
         },
         {
           id: 'snacks-id',
           name: 'Snacks',
           sort_order: 4,
+          user_id: null,
         },
       ]);
     });

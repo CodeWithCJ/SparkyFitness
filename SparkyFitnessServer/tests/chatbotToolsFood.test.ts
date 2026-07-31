@@ -162,11 +162,16 @@ beforeEach(() => {
     undefined as any
   );
   vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-    { id: 'default-id', name: 'Breakfast', sort_order: 1 },
-    { id: 'lunch-id', name: 'Lunch', sort_order: 2 },
-    { id: 'dinner-id', name: 'Dinner', sort_order: 3 },
-    { id: 'snacks-id', name: 'Snacks', sort_order: 4 },
-    { id: MEAL_TYPE_ID, name: 'Second breakfast', sort_order: 5 },
+    { id: 'default-id', name: 'Breakfast', sort_order: 1, user_id: null },
+    { id: 'lunch-id', name: 'Lunch', sort_order: 2, user_id: null },
+    { id: 'dinner-id', name: 'Dinner', sort_order: 3, user_id: null },
+    { id: 'snacks-id', name: 'Snacks', sort_order: 4, user_id: null },
+    {
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+      sort_order: 5,
+      user_id: 'user-1',
+    },
   ]);
   tools = buildFoodTools('user-1', 'UTC');
 });
@@ -302,8 +307,13 @@ describe('sparky_manage_food validation', () => {
 describe('list_meal_types', () => {
   it('lists built-in and custom meal types using the REST repository contract', async () => {
     vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-      { id: 'default-id', name: 'Breakfast', sort_order: 1 },
-      { id: MEAL_TYPE_ID, name: 'Second breakfast', sort_order: 2 },
+      { id: 'default-id', name: 'Breakfast', sort_order: 1, user_id: null },
+      {
+        id: MEAL_TYPE_ID,
+        name: 'Second breakfast',
+        sort_order: 2,
+        user_id: 'user-1',
+      },
     ]);
 
     const result = await tools.sparky_manage_food.execute!(
@@ -318,18 +328,26 @@ describe('list_meal_types', () => {
 
   it('filters out meal types with is_visible: false', async () => {
     vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-      { id: 'default-id', name: 'Breakfast', sort_order: 1, is_visible: true },
+      {
+        id: 'default-id',
+        name: 'Breakfast',
+        sort_order: 1,
+        is_visible: true,
+        user_id: null,
+      },
       {
         id: MEAL_TYPE_ID,
         name: 'Second breakfast',
         sort_order: 2,
         is_visible: true,
+        user_id: 'user-1',
       },
       {
         id: 'hidden-id',
         name: 'Hidden meal',
         sort_order: 5,
         is_visible: false,
+        user_id: null,
       },
     ]);
 
@@ -736,6 +754,58 @@ describe('log_food', () => {
     expect(result).toContain('Meal type "breakfast" was not found');
     expect(result).not.toContain('Meal type "undefined"');
     expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+  });
+
+  // The legacy meal_type fallback must only resolve to system defaults
+  // (user_id IS NULL). A user-defined type may share a name with a system
+  // default (uniqueness is per (name, user_id)); custom types are selected
+  // exclusively through meal_type_id.
+  it('resolves legacy meal_type only to system defaults, not same-named custom types', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      {
+        id: 'custom-breakfast-id',
+        name: 'Breakfast',
+        sort_order: 0,
+        user_id: 'user-1',
+      },
+      { id: 'default-id', name: 'Breakfast', sort_order: 1, user_id: null },
+    ]);
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      {
+        ...eggsRow,
+        name: 'eggs',
+        default_variant: {
+          ...eggsRow.default_variant,
+          serving_size: 1,
+          serving_unit: 'serving',
+        },
+      },
+    ]);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'eggs',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: 'Eggs',
+        quantity: 1,
+        unit: 'serving',
+        meal_type: 'breakfast',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Logged "eggs" (1 serving) for Breakfast on 2026-06-10.'
+    );
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ meal_type_id: 'default-id' })
+    );
   });
 
   it('logs to a custom meal type by ID and gives the ID precedence over the legacy name', async () => {
@@ -2038,8 +2108,13 @@ describe('update_entry', () => {
 
   it('switches from a custom meal type to a built-in meal type by resolving to ID', async () => {
     vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
-      { id: 'default-id', name: 'Breakfast', sort_order: 1 },
-      { id: MEAL_TYPE_ID, name: 'Second breakfast', sort_order: 2 },
+      { id: 'default-id', name: 'Breakfast', sort_order: 1, user_id: null },
+      {
+        id: MEAL_TYPE_ID,
+        name: 'Second breakfast',
+        sort_order: 2,
+        user_id: 'user-1',
+      },
     ]);
     vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
       id: ENTRY_ID,
@@ -2320,17 +2395,18 @@ describe('copy_from_yesterday', () => {
     );
 
     expect(result).toBe('✅ No entries found to copy from the source date.');
+    // The resolved system default is passed through as its ID.
     expect(foodEntryService.copyFoodEntries).toHaveBeenCalledWith(
       'user-1',
       'user-1',
       '2026-06-09',
-      'Breakfast',
+      'default-id',
       '2026-06-10',
-      'Breakfast'
+      'default-id'
     );
   });
 
-  it('copies entries using meal_type_id and resolves to name', async () => {
+  it('copies entries using meal_type_id and passes the ID through to the service', async () => {
     vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
       id: MEAL_TYPE_ID,
       name: 'Second breakfast',
@@ -2348,13 +2424,43 @@ describe('copy_from_yesterday', () => {
     );
 
     expect(result).toBe('✅ Copied 1 entries to 2026-06-10.');
+    // The resolved ID must survive to the end of the flow so the repository
+    // query matches exactly this meal type (not any same-named one).
     expect(foodEntryService.copyFoodEntries).toHaveBeenCalledWith(
       'user-1',
       'user-1',
       '2026-06-09',
-      'Second breakfast',
+      MEAL_TYPE_ID,
       '2026-06-10',
-      'Second breakfast'
+      MEAL_TYPE_ID
+    );
+  });
+
+  // Without a meal name or id, a target/source date must still infer
+  // copy_from_yesterday even when meal_type_id is present.
+  it('infers copy_from_yesterday for target_date + meal_type_id without meal name or id', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(foodEntryService.copyFoodEntries).mockResolvedValue([{}]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        target_date: '2026-06-10',
+        meal_type_id: MEAL_TYPE_ID,
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Copied 1 entries to 2026-06-10.');
+    expect(foodEntryService.copyFoodEntries).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.any(String),
+      MEAL_TYPE_ID,
+      '2026-06-10',
+      MEAL_TYPE_ID
     );
   });
 });
@@ -2385,6 +2491,48 @@ describe('save_as_meal_template', () => {
     expect(mealService.createMealFromDiaryEntries).not.toHaveBeenCalled();
   });
 
+  // Regression: a logging date misfiled under target_date must not be
+  // interpreted as copy_from_yesterday when a meal selector is present.
+  // The action inference checks log_meal before copy_from_yesterday so the
+  // salvage logic can remap target_date -> entry_date instead of running a
+  // different data-writing operation.
+  it('infers log_meal (not copy_from_yesterday) for meal_name + meal_type_id + target_date without action', async () => {
+    vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
+      id: MEAL_TYPE_ID,
+      name: 'Second breakfast',
+    });
+    vi.mocked(mealService.searchMeals).mockResolvedValue([
+      { id: MEAL_ID, name: 'Overnight Oats' },
+    ]);
+    vi.mocked(foodEntryService.createFoodEntryMeal).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        meal_name: 'Overnight Oats',
+        meal_type_id: MEAL_TYPE_ID,
+        target_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Meal "Overnight Oats" logged for Second breakfast on 2026-06-10.'
+    );
+    expect(foodEntryService.createFoodEntryMeal).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        meal_template_id: MEAL_ID,
+        meal_type_id: MEAL_TYPE_ID,
+        entry_date: '2026-06-10',
+      })
+    );
+    expect(foodEntryService.copyFoodEntries).not.toHaveBeenCalled();
+    expect(foodEntryService.copyAllFoodEntries).not.toHaveBeenCalled();
+  });
+
   it('requires explicit action for save_as_meal_template', async () => {
     vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
       id: MEAL_TYPE_ID,
@@ -2413,10 +2561,11 @@ describe('save_as_meal_template', () => {
     expect(result).toBe(
       '✅ Meal template "My Second Breakfast" saved with 2 food items.'
     );
+    // The resolved ID is passed through to the service, not the name.
     expect(mealService.createMealFromDiaryEntries).toHaveBeenCalledWith(
       'user-1',
       '2026-06-10',
-      'Second breakfast',
+      MEAL_TYPE_ID,
       'My Second Breakfast',
       null
     );
@@ -2445,16 +2594,17 @@ describe('save_as_meal_template', () => {
     );
 
     expect(result).toBe('✅ Meal template "My Lunch" saved with 2 food items.');
+    // The resolved system default is passed through as its ID.
     expect(mealService.createMealFromDiaryEntries).toHaveBeenCalledWith(
       'user-1',
       '2026-06-10',
-      'Lunch',
+      'lunch-id',
       'My Lunch',
       null
     );
   });
 
-  it('saves using meal_type_id and resolves to name', async () => {
+  it('saves using meal_type_id and passes the ID through to the service', async () => {
     vi.mocked(mealTypeRepository.getMealTypeById).mockResolvedValue({
       id: MEAL_TYPE_ID,
       name: 'Second breakfast',
@@ -2482,10 +2632,12 @@ describe('save_as_meal_template', () => {
     expect(result).toBe(
       '✅ Meal template "My Second Breakfast" saved with 2 food items.'
     );
+    // The resolved ID must survive to the end of the flow so the repository
+    // query matches exactly this meal type (not any same-named one).
     expect(mealService.createMealFromDiaryEntries).toHaveBeenCalledWith(
       'user-1',
       '2026-06-10',
-      'Second breakfast',
+      MEAL_TYPE_ID,
       'My Second Breakfast',
       null
     );
