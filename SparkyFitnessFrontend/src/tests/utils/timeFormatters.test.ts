@@ -1,4 +1,7 @@
-import { formatTimeWithPreference } from '@/utils/timeFormatters';
+import {
+  formatTimeWithPreference,
+  formatTimeOfDayString,
+} from '@/utils/timeFormatters';
 
 const MIDNIGHT = new Date('2024-01-15T00:00:00');
 const NOON = new Date('2024-01-15T12:00:00');
@@ -111,6 +114,41 @@ describe('formatTimeWithPreference — 12h lowercase (h:mm a)', () => {
   it('does not contain uppercase AM/PM when lowercase is selected', () => {
     const result = formatTimeWithPreference(MORNING, 'h:mm a');
     expect(result).not.toMatch(/AM|PM/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Time-of-day string format (formatTimeOfDayString)
+// ---------------------------------------------------------------------------
+describe('formatTimeOfDayString', () => {
+  it('formats a morning schedule time in 24-hour format', () => {
+    expect(formatTimeOfDayString('08:00', 'HH:mm')).toBe('08:00');
+  });
+
+  it('formats an afternoon schedule time in 24-hour format', () => {
+    expect(formatTimeOfDayString('14:00', 'HH:mm')).toBe('14:00');
+  });
+
+  it('formats a morning schedule time in 12-hour uppercase format', () => {
+    expect(formatTimeOfDayString('08:00', 'h:mm A')).toBe('8:00 AM');
+  });
+
+  it('formats an afternoon schedule time in 12-hour uppercase format', () => {
+    expect(formatTimeOfDayString('14:00', 'h:mm A')).toBe('2:00 PM');
+  });
+
+  it('formats a morning schedule time in 12-hour lowercase format', () => {
+    expect(formatTimeOfDayString('08:00', 'h:mm a')).toBe('8:00 am');
+  });
+
+  it('formats an afternoon schedule time in 12-hour lowercase format', () => {
+    expect(formatTimeOfDayString('14:00', 'h:mm a')).toBe('2:00 pm');
+  });
+
+  it('handles time strings with seconds', () => {
+    expect(formatTimeOfDayString('08:30:00', 'HH:mm')).toBe('08:30');
+    expect(formatTimeOfDayString('08:30:00', 'h:mm A')).toBe('8:30 AM');
+    expect(formatTimeOfDayString('08:30:00', 'h:mm a')).toBe('8:30 am');
   });
 });
 

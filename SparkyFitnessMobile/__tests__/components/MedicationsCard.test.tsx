@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import MedicationsCard from '../../src/components/MedicationsCard';
 import { useMedications, useMedicationEntries, useLogDose } from '../../src/hooks/useMedications';
+import { usePreferences } from '../../src/hooks/usePreferences';
 import type { MedicationDetail, MedicationEntry, MedicationSchedule } from '@workspace/shared';
 
 jest.mock('../../src/hooks/useMedications', () => ({
@@ -116,6 +117,7 @@ function setupCard(medications: MedicationDetail[], entries: MedicationEntry[] =
 describe('MedicationsCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (usePreferences as jest.Mock).mockReturnValue({ preferences: { time_format: 'HH:mm' } });
     mockEntryForDue.mockReturnValue(undefined);
     mockUseLogDose.mockReturnValue({
       entryForDue: mockEntryForDue,
@@ -141,6 +143,24 @@ describe('MedicationsCard', () => {
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
       'skipped',
     );
+  });
+
+  it('renders scheduled dose time in 12-hour format when preference is h:mm A', () => {
+    (usePreferences as jest.Mock).mockReturnValue({ preferences: { time_format: 'h:mm A' } });
+    const screen = setupCard([buildMedication()]);
+
+    expect(screen.getByText('Lisinopril')).toBeTruthy();
+    expect(screen.getByText('8:00 AM')).toBeTruthy();
+    expect(screen.getByText('8:00 AM · Pill · 1 tablet', { exact: false })).toBeTruthy();
+  });
+
+  it('renders scheduled dose time in 12-hour lowercase format when preference is h:mm a', () => {
+    (usePreferences as jest.Mock).mockReturnValue({ preferences: { time_format: 'h:mm a' } });
+    const screen = setupCard([buildMedication()]);
+
+    expect(screen.getByText('Lisinopril')).toBeTruthy();
+    expect(screen.getByText('8:00 am')).toBeTruthy();
+    expect(screen.getByText('8:00 am · Pill · 1 tablet', { exact: false })).toBeTruthy();
   });
 
   it('lists due doses in time order regardless of medication order', () => {

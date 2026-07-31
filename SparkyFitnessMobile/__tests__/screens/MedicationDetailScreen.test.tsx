@@ -10,6 +10,7 @@ import {
   useDeleteMedicationEntry,
   useLogDose,
 } from '../../src/hooks/useMedications';
+import { usePreferences } from '../../src/hooks/usePreferences';
 import type { MedicationDetail, MedicationEntry, MedicationSchedule } from '@workspace/shared';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
@@ -174,6 +175,7 @@ function setupScreen(med: MedicationDetail, entries: MedicationEntry[] = []) {
 describe('MedicationDetailScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (usePreferences as jest.Mock).mockReturnValue({ preferences: { time_format: 'HH:mm' } });
     mockEntryForDue.mockReturnValue(undefined);
     mockUseLogDose.mockReturnValue({
       entryForDue: mockEntryForDue,
@@ -221,6 +223,20 @@ describe('MedicationDetailScreen', () => {
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
       'skipped',
     );
+  });
+
+  it('renders today dose time in 12-hour format when preference is h:mm A', () => {
+    (usePreferences as jest.Mock).mockReturnValue({ preferences: { time_format: 'h:mm A' } });
+    const screen = setupScreen(buildMedication());
+
+    expect(screen.getByText('8:00 AM')).toBeTruthy();
+  });
+
+  it('renders today dose time in 12-hour lowercase format when preference is h:mm a', () => {
+    (usePreferences as jest.Mock).mockReturnValue({ preferences: { time_format: 'h:mm a' } });
+    const screen = setupScreen(buildMedication());
+
+    expect(screen.getByText('8:00 am')).toBeTruthy();
   });
 
   it('shows the schedule dose override on the today row', () => {
