@@ -198,7 +198,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                     onChange={(e) => setDoseAmount(e.target.value)}
                   />
                   <span className="text-sm text-muted-foreground capitalize">
-                    {med.dose_unit}
+                    {med.dose_unit ?? med.type_id}
                   </span>
                 </div>
               </div>
