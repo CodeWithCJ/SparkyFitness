@@ -84,11 +84,20 @@ describe('WorkoutSettingsScreen', () => {
   });
 
   it('toggles the rest timer sound preference from the switch', () => {
-    const { getByRole } = renderScreen();
-    const toggle = getByRole('switch');
-    expect(toggle.props.value).toBe(true);
+    const { getAllByRole } = renderScreen();
+    const [soundToggle] = getAllByRole('switch');
+    expect(soundToggle.props.value).toBe(true);
 
-    fireEvent(toggle, 'valueChange', false);
+    fireEvent(soundToggle, 'valueChange', false);
     expect(useAppPreferencesStore.getState().restTimerSoundEnabled).toBe(false);
+  });
+
+  it('toggles the keep screen awake preference from the switch', () => {
+    const { getAllByRole } = renderScreen();
+    const [, keepAwakeToggle] = getAllByRole('switch');
+    expect(keepAwakeToggle.props.value).toBe(false);
+
+    fireEvent(keepAwakeToggle, 'valueChange', true);
+    expect(useAppPreferencesStore.getState().workoutKeepAwakeEnabled).toBe(true);
   });
 });
