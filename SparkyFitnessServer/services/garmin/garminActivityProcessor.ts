@@ -292,13 +292,15 @@ export async function processGarminWorkoutSession(
         const durationSeconds = garminSet.duration
           ? Math.round(garminSet.duration)
           : 0;
-        // Garmin's raw exerciseSets[].weight is pounds * 1000, not grams, despite the
-        // field's appearance — divide by 2.204622 (lb->kg) after the /1000 to get the
-        // true kg value Garmin Connect itself displays. See the matching correction
-        // this used to require in WorkoutSessionBreakdown.tsx's raw-JSON parsing path
-        // (removed when that view moved to reading this column directly).
+        // Garmin's raw exerciseSets[].weight is grams, as the field's shape suggests.
+        // Verified directly against a real synced set: raw 12473 -> 12.47kg -> 27.5lbs,
+        // matching Garmin Connect's own displayed volume (275lbs / 10 reps) exactly.
+        // A previous version of this line incorrectly divided by 2.204622 again here,
+        // based on comparing against WorkoutSessionBreakdown.tsx's display, which had
+        // its own separate double-conversion bug (now fixed) — that made it look like
+        // this raw value needed a second lb->kg correction when it didn't.
         const weightKg = garminSet.weight
-          ? parseFloat(((garminSet.weight * 0.001) / 2.204622).toFixed(2))
+          ? parseFloat((garminSet.weight * 0.001).toFixed(2))
           : 0;
 
         if (garminSet.setType !== 'REST') {
@@ -624,11 +626,8 @@ export async function processGarminSimpleActivity(
         set_type: setTypeMapping[s.setType] || 'Working Set',
         reps: Math.round(s.repetitionCount || 0),
         // See the matching comment on the workout-session path above: Garmin's raw
-        // weight field is pounds * 1000, not grams, so /1000 alone leaves it 2.204622x
-        // too high once treated as kg.
-        weight: s.weight
-          ? parseFloat(((s.weight * 0.001) / 2.204622).toFixed(2))
-          : 0,
+        // weight field is grams, no further lb->kg correction needed.
+        weight: s.weight ? parseFloat((s.weight * 0.001).toFixed(2)) : 0,
         duration: s.duration ? Math.round(s.duration) : 0,
         rest_time: 0,
         notes: s.notes || '',
