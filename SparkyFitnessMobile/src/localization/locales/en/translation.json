@@ -123,6 +123,7 @@
     "measurement_other": "measurements",
     "clearCount": "Clear {{count}} {{noun}}?",
     "willBeClearedList": "{{labels}} will be cleared.",
+    "customLoadError": "Couldn't load custom measurements.",
     "weightLabel": "Weight ({{unit}})",
     "weightStLabel": "Weight (st, lb)"
   },

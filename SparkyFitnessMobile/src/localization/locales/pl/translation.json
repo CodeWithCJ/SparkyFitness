@@ -124,6 +124,7 @@
     "measurement_other": "pomiarów",
     "clearCount": "Wyczyścić {{count}} {{noun}}?",
     "willBeClearedList": "{{labels}} zostanie wyczyszczone.",
+    "customLoadError": "Nie udało się wczytać niestandardowych pomiarów.",
     "weightLabel": "Waga ({{unit}})",
     "weightStLabel": "Waga (st, lb)"
   },

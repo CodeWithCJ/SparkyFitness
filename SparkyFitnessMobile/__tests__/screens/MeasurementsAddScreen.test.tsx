@@ -1,8 +1,37 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MeasurementsAddScreen from '../../src/screens/MeasurementsAddScreen';
+import Button from '../../src/components/ui/Button';
 import { useCustomCategories, useCustomMeasurementsByDate } from '../../src/hooks/useCustomMeasurements';
+
+jest.spyOn(Alert, 'alert');
+
+// Shared t spy: the screen's useTranslation() calls route through it so we can
+// prove dynamic category names are never used as translation keys while real
+// keys still resolve against the English resource (with {{var}} interpolation).
+const mockT = jest.fn((key: string, options?: Record<string, unknown>) => {
+  const en: unknown = require('../../src/localization/locales/en/translation.json');
+  let current: unknown = en;
+  for (const part of key.split('.')) {
+    if (current == null || typeof current !== 'object') return key;
+    current = (current as Record<string, unknown>)[part];
+  }
+  if (typeof current !== 'string') return key;
+  return current.replace(/\{\{(\w+)\}\}/g, (_match: string, name: string) => {
+    const value = options?.[name];
+    return value == null ? `{{${name}}}` : String(value);
+  });
+});
+
+jest.mock('react-i18next', () => {
+  const actual = jest.requireActual('react-i18next');
+  return {
+    ...actual,
+    useTranslation: () => ({ t: mockT, i18n: null, ready: true }),
+  };
+});
 
 const mockNavigation = {
   setOptions: jest.fn(),
@@ -138,7 +167,7 @@ const renderScreen = () =>
     </SafeAreaProvider>,
   );
 
-const categoriesResult = { data: categories } as any;
+const categoriesResult = { data: categories, isLoading: false, isError: false } as any;
 const byDateResults: Record<string, any> = {};
 
 describe('MeasurementsAddScreen custom measurements', () => {
@@ -147,7 +176,7 @@ describe('MeasurementsAddScreen custom measurements', () => {
     mockUseCustomCategories.mockReturnValue(categoriesResult);
     mockUseCustomMeasurementsByDate.mockImplementation((date: string) => {
       if (!byDateResults[date]) {
-        byDateResults[date] = { data: entriesByDate[date] ?? [] };
+        byDateResults[date] = { data: entriesByDate[date] ?? [], isLoading: false, isError: false };
       }
       return byDateResults[date];
     });
@@ -199,7 +228,7 @@ describe('MeasurementsAddScreen custom measurements', () => {
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
 
-  test('clearing a prefilled custom measurement deletes the existing entry', async () => {
+  test('clearing a custom measurement requires confirmation; cancelling performs no delete', async () => {
     const screen = renderScreen();
 
     await waitFor(() => {
@@ -209,13 +238,108 @@ describe('MeasurementsAddScreen custom measurements', () => {
     fireEvent.changeText(screen.getByDisplayValue('120'), '');
     fireEvent.press(screen.getByText('Save'));
 
+    expect(Alert.alert).toHaveBeenCalledTimes(1);
+    const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+    expect(alertCall[1]).toContain('Blood Pressure');
+
+    const cancelButton = alertCall[2].find((b: { style?: string }) => b.style === 'cancel');
+    cancelButton.onPress?.();
+
     await waitFor(() => {
+      expect(deleteCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    });
+    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(upsertMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  test('confirming the delete alert deletes the custom measurement exactly once', async () => {
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getByDisplayValue('120'), '');
+    fireEvent.press(screen.getByText('Save'));
+
+    const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+    const confirmButton = alertCall[2].find((b: { style?: string }) => b.style === 'destructive');
+    confirmButton.onPress();
+
+    await waitFor(() => {
+      expect(deleteCustomMutation.mutateAsync).toHaveBeenCalledTimes(1);
       expect(deleteCustomMutation.mutateAsync).toHaveBeenCalledWith({
         id: 'entry-1',
         entryDate: '2024-06-15',
       });
     });
     expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(upsertMutation.mutateAsync).not.toHaveBeenCalled();
     expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  test('an invalid custom value blocks saving a valid built-in measurement', async () => {
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getAllByPlaceholderText('0')[0], '80');
+    fireEvent.changeText(screen.getByDisplayValue('120'), 'abc');
+    fireEvent.press(screen.getByText('Save'));
+
+    const { default: Toast } = require('react-native-toast-message');
+    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    await waitFor(() => {
+      expect(upsertMutation.mutateAsync).not.toHaveBeenCalled();
+    });
+    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(deleteCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  test('renders custom category names literally, never passing them to t()', async () => {
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+    });
+
+    expect(screen.getByText(/Blood Pressure/)).toBeTruthy();
+    // The spy is connected: the screen translates its own field labels via t().
+    expect(mockT).toHaveBeenCalledWith('measurements.bodyFat');
+    expect(mockT).not.toHaveBeenCalledWith('Blood Pressure');
+  });
+
+  test('disables save while custom measurements are loading', async () => {
+    mockUseCustomCategories.mockReturnValue({ data: undefined, isLoading: true, isError: false });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+    });
+
+    const screen = renderScreen();
+    expect(screen.UNSAFE_getByType(Button).props.disabled).toBe(true);
+    fireEvent.press(screen.getByText('Save'));
+    expect(upsertMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(deleteCustomMutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  test('shows an error instead of an empty list when custom measurements fail to load', async () => {
+    mockUseCustomCategories.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+    });
+
+    const screen = renderScreen();
+    expect(screen.getByText(/couldn't load custom measurements/i)).toBeTruthy();
+    expect(screen.UNSAFE_getByType(Button).props.disabled).toBe(true);
   });
 });

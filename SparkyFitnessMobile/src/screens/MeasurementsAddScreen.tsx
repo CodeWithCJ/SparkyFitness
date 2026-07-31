@@ -118,7 +118,13 @@ const joinWithAnd = (items: string[]): string => {
 // Describes a custom-measurement mutation without calling the API directly.
 type CustomOp =
   | { kind: 'save'; categoryId: string; value: string | number | boolean }
-  | { kind: 'delete'; entryId: string };
+  | { kind: 'delete'; entryId: string; categoryId: string };
+
+// Distinguishes "no custom changes" from "custom form failed validation" so
+// handleSave can abort before any mutation runs when the form is invalid.
+type BuildCustomOpsResult =
+  | { ok: true; operations: CustomOp[] }
+  | { ok: false };
 
 const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
@@ -161,8 +167,16 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const upsertMutation = useUpsertCheckIn();
   const saveCustomMutation = useSaveCustomMeasurement();
   const deleteCustomMutation = useDeleteCustomMeasurement();
-  const { data: customCategories } = useCustomCategories();
-  const { data: customMeasurements } = useCustomMeasurementsByDate(selectedDate);
+  const {
+    data: customCategories,
+    isLoading: isCustomCategoriesLoading,
+    isError: isCustomCategoriesError,
+  } = useCustomCategories();
+  const {
+    data: customMeasurements,
+    isLoading: isCustomMeasurementsLoading,
+    isError: isCustomMeasurementsError,
+  } = useCustomMeasurementsByDate(selectedDate);
 
   // Sync the form to the latest measurements snapshot. Re-runs on every
   // measurements change (including background refetches) so cached-then-fresh
@@ -425,10 +439,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const hasAnyField = fieldKeys.some((k) => payload[k] !== undefined);
 
     // Build operation descriptors only; execution happens through the mutation
-    // layer in doSave below.
-    const buildCustomOps = (): CustomOp[] => {
+    // layer in doSave below. `ok: false` means the custom form failed
+    // validation, so handleSave must stop before touching the API.
+    const buildCustomOps = (): BuildCustomOpsResult => {
       const ops: CustomOp[] = [];
-      if (!customCategories) return ops;
+      if (!customCategories) return { ok: true, operations: ops };
       const entryByCat = new Map<string, CustomMeasurementEntry>();
       for (const entry of customMeasurements ?? []) {
         entryByCat.set(entry.category_id, entry);
@@ -445,21 +460,23 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 text1: `Invalid ${cat.display_name ?? cat.name}`,
                 text2: 'Enter a number.',
               });
-              return [];
+              return { ok: false };
             }
           }
           ops.push({ kind: 'save', categoryId: cat.id, value: parsedValue });
         } else if (prefilledCustom.has(cat.id)) {
           const existing = entryByCat.get(cat.id);
           if (existing) {
-            ops.push({ kind: 'delete', entryId: existing.id });
+            ops.push({ kind: 'delete', entryId: existing.id, categoryId: cat.id });
           }
         }
       }
-      return ops;
+      return { ok: true, operations: ops };
     };
 
-    const customOps = buildCustomOps();
+    const customResult = buildCustomOps();
+    if (!customResult.ok) return;
+    const customOps = customResult.operations;
 
     if (!hasAnyField && customOps.length === 0) {
       Toast.show({ type: 'info', text1: 'Nothing to save', text2: 'Enter or clear at least one value.' });
@@ -489,12 +506,24 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       }
     };
 
-    if (cleared.length > 0) {
-      const labels = cleared.map((k) => getFieldLabels(t)[k]);
-      const noun = t('measurements.measurement', { count: cleared.length });
+    // Custom deletes (clearing a prefilled custom field) must also go through
+    // the confirmation Alert, and the message lists the affected category names.
+    const customDeleteOps = customOps.filter(
+      (op): op is Extract<CustomOp, { kind: 'delete' }> => op.kind === 'delete',
+    );
+    const clearingLabels = [
+      ...cleared.map((k) => getFieldLabels(t)[k]),
+      ...customDeleteOps.map((op) => {
+        const cat = customCategories?.find((c) => c.id === op.categoryId);
+        return cat ? (cat.display_name ?? cat.name) : op.categoryId;
+      }),
+    ];
+
+    if (clearingLabels.length > 0) {
+      const noun = t('measurements.measurement', { count: clearingLabels.length });
       Alert.alert(
-        t('measurements.clearCount', { count: cleared.length, noun }),
-        t('measurements.willBeClearedList', { labels: joinWithAnd(labels) }),
+        t('measurements.clearCount', { count: clearingLabels.length, noun }),
+        t('measurements.willBeClearedList', { labels: joinWithAnd(clearingLabels) }),
         [
           { text: t('common.cancel'), style: 'cancel' },
           { text: t('common.save'), style: 'destructive', onPress: doSave },
@@ -506,9 +535,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     doSave();
   }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, t, customCategories, customMeasurements, customForm, prefilledCustom]);
 
+  const isCustomDataLoading = isCustomCategoriesLoading || isCustomMeasurementsLoading;
+  const isCustomDataError = isCustomCategoriesError || isCustomMeasurementsError;
   const isSaveDisabled =
     isLoading ||
     isPreferencesLoading ||
+    isCustomDataLoading ||
+    isCustomDataError ||
     upsertMutation.isPending ||
     saveCustomMutation.isPending ||
     deleteCustomMutation.isPending;
@@ -719,7 +752,19 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
               {renderClearHint('steps')}
             </View>
 
-            {customCategories && customCategories.length > 0 && (
+            {isCustomDataError ? (
+              <View className="mt-4 mb-2 py-6 items-center">
+                <Text className="text-text-secondary text-sm text-center">
+                  {t('measurements.customLoadError')}
+                </Text>
+              </View>
+            ) : isCustomDataLoading ? (
+              <View className="mt-4 mb-2 py-6 items-center">
+                <ActivityIndicator size="small" color={accentPrimary} />
+              </View>
+            ) : (
+              customCategories &&
+              customCategories.length > 0 && (
               <View className="mt-4 mb-2">
                 <Text className="text-text-primary text-base font-semibold mb-3">
                   Custom Measurements
@@ -761,6 +806,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   );
                 })}
               </View>
+              )
             )}
           </>
         )}
