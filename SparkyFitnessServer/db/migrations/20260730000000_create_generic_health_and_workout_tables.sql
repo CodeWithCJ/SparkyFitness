@@ -54,10 +54,13 @@ ADD COLUMN IF NOT EXISTS gear_external_id TEXT;
 -- 2. Enhancing check_in_measurements with Smart Scale Composition
 -- ============================================================================
 ALTER TABLE check_in_measurements
+-- Measured smart-scale values only. BMI is deliberately absent: it is derived
+-- from weight and height, both already stored here, and is computed at the
+-- point of use (see bodyCompositionService). Persisting it would let a stored
+-- value drift out of sync the moment weight changes.
 ADD COLUMN IF NOT EXISTS muscle_mass_kg NUMERIC(5, 2),
 ADD COLUMN IF NOT EXISTS bone_mass_kg NUMERIC(5, 2),
-ADD COLUMN IF NOT EXISTS body_water_percentage NUMERIC(5, 2),
-ADD COLUMN IF NOT EXISTS bmi NUMERIC(4, 1);
+ADD COLUMN IF NOT EXISTS body_water_percentage NUMERIC(5, 2);
 
 -- ============================================================================
 -- 3. exercise_entry_laps (Workout splits & lap telemetry)
@@ -223,5 +226,117 @@ CREATE TABLE IF NOT EXISTS daily_health_metrics (
 
 CREATE INDEX IF NOT EXISTS idx_daily_health_metrics_user_date ON daily_health_metrics(user_id, entry_date DESC);
 
--- Clean up any legacy table references from pre-consolidation dev runs
-DROP TABLE IF EXISTS heart_rate_entries, hrv_entries, respiration_entries, spo2_entries;
+-- ============================================================================
+-- 9. updated_at maintenance for the two tables that carry the column
+-- ============================================================================
+-- Reuses update_updated_at_column(), defined in
+-- 20250713125323_create_oidc_settings_and_update_users_table.sql.
+
+CREATE OR REPLACE TRIGGER update_health_metric_samples_updated_at
+BEFORE UPDATE ON health_metric_samples
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+CREATE OR REPLACE TRIGGER update_daily_health_metrics_updated_at
+BEFORE UPDATE ON daily_health_metrics
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 10. Move provider-synced smart-scale composition into check_in_measurements
+-- ============================================================================
+-- Depends on the muscle_mass_kg / bone_mass_kg / body_water_percentage columns
+-- added in section 2, so it must stay after that.
+--
+-- Garmin and Withings historically wrote muscle mass, bone mass, and body water
+-- to auto-created custom_measurements categories. Both now write these columns
+-- directly, so this moves their existing history across to keep each user's
+-- charts continuous. Re-running is a no-op: migrated rows are gone from
+-- custom_measurements, so the second pass matches nothing.
+--
+-- Scoping is by cm.source, NOT by category measurement_type:
+--   * measurement_type is unreliable here. Withings hardcodes 'health' when
+--     creating the category (withingsDataProcessor.ts) while the Garmin path
+--     stores the mapping's unit ('kg'), so the same logical category carries
+--     different types depending on which provider created it first.
+--   * source is what tells us the units are trustworthy: these rows came from a
+--     provider mapping that guarantees kg. Manual rows are whatever unit the
+--     user had in mind, so they are never touched — a hand-kept "Muscle Mass"
+--     category in lbs survives this migration intact.
+--
+-- Safety properties:
+--   * COALESCE on conflict: an existing check-in value always wins. This only
+--     fills gaps, it never overwrites what the user already recorded.
+--   * A row is deleted ONLY when its own value is verifiably present in the
+--     target column for that user and date. Rows that lost the COALESCE, extra
+--     same-day rows that were not the one copied, and non-numeric values are
+--     all left in place rather than destroyed.
+--   * The numeric cast is guarded by CASE, so a non-numeric value yields NULL
+--     instead of aborting the migration (WHERE clause evaluation order is not
+--     guaranteed, so a bare `value::numeric` alongside a regex test is unsafe).
+--
+-- Emptied categories are intentionally left behind for the user to remove.
+
+DO $$
+DECLARE
+  metric RECORD;
+  -- Only numeric text is considered; anything else is skipped, not deleted.
+  numeric_pattern CONSTANT text := '^[0-9]+(\.[0-9]+)?$';
+BEGIN
+  FOR metric IN
+    SELECT *
+    FROM (VALUES
+      -- category name,             target column,            max plausible value
+      ('Muscle Mass',           'muscle_mass_kg',        1000::numeric),
+      ('Bone Mass',             'bone_mass_kg',          1000::numeric),
+      -- Garmin-only. Withings reports water as MASS in kg ('Hydration', and
+      -- 'Body Water Breakdown' for extra/intracellular), never a percentage,
+      -- so those categories are deliberately out of scope here.
+      ('Body Water Percentage', 'body_water_percentage',  100::numeric)
+    ) AS t(category_name, column_name, max_value)
+  LOOP
+    -- 1. Copy the latest provider value per user and day into the column.
+    EXECUTE format(
+      $sql$
+      WITH candidate AS (
+        SELECT cm.user_id,
+               cm.entry_date,
+               cm.entry_timestamp,
+               CASE WHEN cm.value ~ %L THEN round(cm.value::numeric, 2) END AS value
+        FROM custom_measurements cm
+        JOIN custom_categories cc ON cc.id = cm.category_id
+        WHERE cc.name = %L
+          AND lower(cm.source) IN ('garmin', 'withings')
+      ),
+      picked AS (
+        SELECT DISTINCT ON (user_id, entry_date) user_id, entry_date, value
+        FROM candidate
+        WHERE value IS NOT NULL AND value > 0 AND value <= %L
+        ORDER BY user_id, entry_date, entry_timestamp DESC
+      )
+      INSERT INTO check_in_measurements (user_id, entry_date, %I)
+      SELECT user_id, entry_date, value FROM picked
+      ON CONFLICT (user_id, entry_date) DO UPDATE
+        SET %I = COALESCE(check_in_measurements.%I, EXCLUDED.%I)
+      $sql$,
+      numeric_pattern, metric.category_name, metric.max_value,
+      metric.column_name, metric.column_name, metric.column_name, metric.column_name
+    );
+
+    -- 2. Remove only the rows whose value demonstrably landed in the column.
+    EXECUTE format(
+      $sql$
+      DELETE FROM custom_measurements cm
+      USING custom_categories cc, check_in_measurements ci
+      WHERE cc.id = cm.category_id
+        AND cc.name = %L
+        AND lower(cm.source) IN ('garmin', 'withings')
+        AND ci.user_id = cm.user_id
+        AND ci.entry_date = cm.entry_date
+        AND ci.%I IS NOT NULL
+        AND ci.%I = round((CASE WHEN cm.value ~ %L THEN cm.value END)::numeric, 2)
+      $sql$,
+      metric.category_name, metric.column_name, metric.column_name, numeric_pattern
+    );
+  END LOOP;
+END $$;

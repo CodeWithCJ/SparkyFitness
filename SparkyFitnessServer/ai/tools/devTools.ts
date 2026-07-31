@@ -58,6 +58,40 @@ async function assertDevAccess(userId: string): Promise<string | null> {
   return null;
 }
 
+// Read-only enforcement for the two SQL-running dev tools. These run on
+// getSystemClient(), which bypasses RLS, so the guarantee has to come from
+// Postgres rather than from keyword matching on the query text: a blocklist
+// both over-blocks (a literal containing "create") and under-blocks
+// (pg_read_file, dblink, lo_import, pg_sleep). BEGIN READ ONLY makes the
+// engine reject any write, and statement_timeout caps runaway queries.
+const READ_ONLY_STATEMENT_TIMEOUT = '10s';
+
+async function runReadOnlyQuery(
+  sql: string
+): Promise<Record<string, unknown>[]> {
+  const client = await getSystemClient();
+  try {
+    await client.query('BEGIN READ ONLY');
+    await client.query(
+      `SET LOCAL statement_timeout = '${READ_ONLY_STATEMENT_TIMEOUT}'`
+    );
+    const result = await client.query(sql);
+    await client.query('ROLLBACK');
+    return result.rows;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Connection already unusable; releasing below is all we can do.
+    }
+    throw error;
+  } finally {
+    if (client && typeof client.release === 'function') {
+      client.release();
+    }
+  }
+}
+
 // The admin/debug tools, kept out of buildChatbotTools so the chatbot never
 // sees them; registered only for an admin when DEV_TOOLS_ENABLED=true. Each
 // execute() returns a plain string — registerToolMap does the MCP wrapping.
@@ -193,18 +227,6 @@ export function buildDevTools(userId: string) {
           return ERRORS.VALIDATION('Invalid table name');
         }
 
-        const forbiddenRegex =
-          /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXECUTE|CALL)\b|;/i;
-        if (
-          forbiddenRegex.test(select) ||
-          (where && forbiddenRegex.test(where)) ||
-          (orderBy && forbiddenRegex.test(orderBy))
-        ) {
-          return ERRORS.FORBIDDEN(
-            'Modifying SQL operations or multi-statements are strictly prohibited'
-          );
-        }
-
         const sqlParts = [
           `SELECT ${select} FROM "${table.replace(/"/g, '""')}"`,
         ];
@@ -213,20 +235,15 @@ export function buildDevTools(userId: string) {
         sqlParts.push(`LIMIT ${limit}`);
 
         const querySql = sqlParts.join(' ');
-        const client = await getSystemClient();
         try {
-          const result = await client.query(querySql);
+          const rows = await runReadOnlyQuery(querySql);
           return formatSuccess(
-            { table, rows: result.rows, row_count: result.rows.length },
+            { table, rows, row_count: rows.length },
             `Query Table: ${table}`
           );
         } catch (error) {
           log('error', '[Dev Tool] queryTable error:', error);
           return ERRORS.DB_ERROR(error);
-        } finally {
-          if (client && typeof client.release === 'function') {
-            client.release();
-          }
         }
       },
     }),
@@ -252,32 +269,19 @@ export function buildDevTools(userId: string) {
           );
         }
 
-        const forbiddenRegex =
-          /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXECUTE|CALL)\b|;/i;
-        if (forbiddenRegex.test(trimmedQuery)) {
-          return ERRORS.FORBIDDEN(
-            'Modifying SQL operations or multi-statements are strictly prohibited'
-          );
-        }
-
-        const client = await getSystemClient();
         try {
-          const result = await client.query(trimmedQuery);
+          const rows = await runReadOnlyQuery(trimmedQuery);
           return formatSuccess(
             {
               query: trimmedQuery,
-              rows: result.rows,
-              row_count: result.rows.length,
+              rows,
+              row_count: rows.length,
             },
             'Execute Read-Only SQL'
           );
         } catch (error) {
           log('error', '[Dev Tool] executeReadOnlySql error:', error);
           return ERRORS.DB_ERROR(error);
-        } finally {
-          if (client && typeof client.release === 'function') {
-            client.release();
-          }
         }
       },
     }),

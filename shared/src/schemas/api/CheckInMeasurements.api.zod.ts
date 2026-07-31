@@ -21,7 +21,6 @@ export const checkInMeasurementsResponseSchema = checkInMeasurementsSchema
     muscle_mass_kg: z.number().nullish(),
     bone_mass_kg: z.number().nullish(),
     body_water_percentage: z.number().nullish(),
-    bmi: z.number().nullish(),
   })
   .omit({
     created_at: true,
@@ -38,7 +37,6 @@ export const recentCheckInMeasurementsSchema = z.object({
   muscle_mass_kg: z.number().nullish(),
   bone_mass_kg: z.number().nullish(),
   body_water_percentage: z.number().nullish(),
-  bmi: z.number().nullish(),
 });
 
 export const updateCheckInMeasurementsRequestSchema =

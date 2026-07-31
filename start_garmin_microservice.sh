@@ -6,16 +6,16 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR" || exit 1
 
-# Load environment variables from .env if present
+# Load environment variables from .env if present.
+# Sourcing rather than parsing line-by-line: an IFS='=' read truncates any value
+# containing '=' (base64 secrets, connection strings) and passing values through
+# xargs word-splits them and strips quotes.
 if [ -f .env ]; then
   echo "Loading environment variables from .env..."
-  while IFS='=' read -r key value; do
-    if [[ -n "$key" && ! "$key" =~ ^[[:space:]]*# ]]; then
-      key=$(echo "$key" | xargs)
-      value=$(echo "$value" | xargs)
-      export "$key"="$value"
-    fi
-  done < .env
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
 fi
 
 # Set default values if not defined
@@ -75,5 +75,12 @@ else
   source venv/bin/activate
 fi
 
-# Start uvicorn server
-python3 -m uvicorn main:app --host 0.0.0.0 --port "$GARMIN_SERVICE_PORT" --reload
+# Start uvicorn server. Auto-reload is opt-in so this stays usable as a plain
+# start script; set GARMIN_DEV_RELOAD=true for hot reload during development.
+UVICORN_ARGS=(main:app --host 0.0.0.0 --port "$GARMIN_SERVICE_PORT")
+if [ "$GARMIN_DEV_RELOAD" = "true" ]; then
+  echo "Dev reload enabled."
+  UVICORN_ARGS+=(--reload)
+fi
+
+python3 -m uvicorn "${UVICORN_ARGS[@]}"

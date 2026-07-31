@@ -117,13 +117,13 @@ describe('Generic Health & Workout Zod Schemas', () => {
       muscle_mass_kg: 34.2,
       bone_mass_kg: 3.1,
       body_water_percentage: 61.4,
-      bmi: 23.8,
     };
 
     const parsed = checkInMeasurementsSchema.parse(validCheckIn);
     expect(parsed.weight).toBe(75.5);
     expect(parsed.muscle_mass_kg).toBe(34.2);
-    expect(parsed.bmi).toBe(23.8);
+    expect(parsed.bone_mass_kg).toBe(3.1);
+    expect(parsed.body_water_percentage).toBe(61.4);
   });
 
   it('should validate exerciseEntryLapsSchema', () => {

@@ -47,10 +47,11 @@ const UseLastButton: React.FC<UseLastButtonProps> = ({
 
 interface CheckInFormProps {
   bodyFatPercentage: string;
-  muscleMassKg?: string;
-  boneMassKg?: string;
-  bodyWaterPercentage?: string;
-  bmi?: string;
+  // Required, not optional: optional props plus `set...?.()` calls previously let
+  // these render as permanently-empty inputs without failing typecheck.
+  muscleMassKg: string;
+  boneMassKg: string;
+  bodyWaterPercentage: string;
   customCategories: CustomCategoriesResponse[];
   customNotes: Record<string, string>;
   customValues: Record<string, string>;
@@ -62,10 +63,9 @@ interface CheckInFormProps {
   neck: string;
   placeholders: CheckInPlaceholders;
   setBodyFatPercentage: (value: string) => void;
-  setMuscleMassKg?: (value: string) => void;
-  setBoneMassKg?: (value: string) => void;
-  setBodyWaterPercentage?: (value: string) => void;
-  setBmi?: (value: string) => void;
+  setMuscleMassKg: (value: string) => void;
+  setBoneMassKg: (value: string) => void;
+  setBodyWaterPercentage: (value: string) => void;
   setCustomNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setCustomValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setHeight: (value: string) => void;
@@ -84,10 +84,9 @@ interface CheckInFormProps {
 
 export const CheckInForm: React.FC<CheckInFormProps> = ({
   bodyFatPercentage,
-  muscleMassKg = '',
-  boneMassKg = '',
-  bodyWaterPercentage = '',
-  bmi = '',
+  muscleMassKg,
+  boneMassKg,
+  bodyWaterPercentage,
   customNotes,
   customCategories,
   customValues,
@@ -102,7 +101,6 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
   setMuscleMassKg,
   setBoneMassKg,
   setBodyWaterPercentage,
-  setBmi,
   setCustomNotes,
   setCustomValues,
   setHeight,
@@ -309,32 +307,37 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
               </div>
             </div>
 
-            {/* Smart Scale Composition Metrics */}
+            {/* Smart Scale Composition Metrics. Masses go through UnitInput so
+                they follow the user's weight-unit preference like weight does;
+                state stays metric (kg). BMI is intentionally not a field here —
+                it is derived from weight and height at the point of use. */}
             <div>
               <Label htmlFor="muscleMass">
-                {t('checkIn.muscleMass', 'Muscle Mass (kg)')}
+                {t('checkIn.muscleMass', 'Muscle Mass')}
               </Label>
-              <Input
+              <UnitInput
                 id="muscleMass"
-                type="number"
-                step="0.1"
+                type="weight"
+                unit={defaultWeightUnit}
                 value={muscleMassKg}
-                onChange={(e) => setMuscleMassKg?.(e.target.value)}
-                placeholder="0.0"
+                onChange={(val) =>
+                  setMuscleMassKg(val !== null ? val.toString() : '')
+                }
               />
             </div>
 
             <div>
               <Label htmlFor="boneMass">
-                {t('checkIn.boneMass', 'Bone Mass (kg)')}
+                {t('checkIn.boneMass', 'Bone Mass')}
               </Label>
-              <Input
+              <UnitInput
                 id="boneMass"
-                type="number"
-                step="0.1"
+                type="weight"
+                unit={defaultWeightUnit}
                 value={boneMassKg}
-                onChange={(e) => setBoneMassKg?.(e.target.value)}
-                placeholder="0.0"
+                onChange={(val) =>
+                  setBoneMassKg(val !== null ? val.toString() : '')
+                }
               />
             </div>
 
@@ -347,19 +350,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 type="number"
                 step="0.1"
                 value={bodyWaterPercentage}
-                onChange={(e) => setBodyWaterPercentage?.(e.target.value)}
-                placeholder="0.0"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="bmi">{t('checkIn.bmi', 'BMI')}</Label>
-              <Input
-                id="bmi"
-                type="number"
-                step="0.1"
-                value={bmi}
-                onChange={(e) => setBmi?.(e.target.value)}
+                onChange={(e) => setBodyWaterPercentage(e.target.value)}
                 placeholder="0.0"
               />
             </div>

@@ -18,6 +18,9 @@ const emptyForm = {
   steps: '',
   height: '',
   bodyFatPercentage: '',
+  muscleMassKg: '',
+  boneMassKg: '',
+  bodyWaterPercentage: '',
 };
 
 const dayRecord = (
@@ -36,7 +39,6 @@ const dayRecord = (
   muscle_mass_kg: null,
   bone_mass_kg: null,
   body_water_percentage: null,
-  bmi: null,
   created_by_user_id: 'user-1',
   updated_by_user_id: 'user-1',
   updated_at: '2026-07-14T00:00:00Z',
@@ -104,5 +106,40 @@ describe('buildCheckInMeasurementsPayload', () => {
     );
 
     expect(payload).toEqual({ entry_date: '2026-07-14' });
+  });
+
+  // These three shipped unwired: the form rendered inputs the page never fed,
+  // so nothing ever reached the payload. Guard the round-trip.
+  it('includes the smart-scale composition fields', () => {
+    const payload = buildCheckInMeasurementsPayload(
+      '2026-07-14',
+      {
+        ...emptyForm,
+        muscleMassKg: '34.2',
+        boneMassKg: '3.1',
+        bodyWaterPercentage: '55.4',
+      },
+      null
+    );
+
+    expect(payload).toEqual({
+      entry_date: '2026-07-14',
+      muscle_mass_kg: 34.2,
+      bone_mass_kg: 3.1,
+      body_water_percentage: 55.4,
+    });
+  });
+
+  it('clears a recorded smart-scale field when the user empties it', () => {
+    const payload = buildCheckInMeasurementsPayload(
+      '2026-07-14',
+      emptyForm,
+      dayRecord({ muscle_mass_kg: 34.2 })
+    );
+
+    expect(payload).toEqual({
+      entry_date: '2026-07-14',
+      muscle_mass_kg: null,
+    });
   });
 });

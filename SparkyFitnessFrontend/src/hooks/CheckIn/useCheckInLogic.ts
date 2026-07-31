@@ -57,10 +57,9 @@ export function buildCheckInMeasurementsPayload(
     steps: string;
     height: string;
     bodyFatPercentage: string;
-    muscleMassKg?: string;
-    boneMassKg?: string;
-    bodyWaterPercentage?: string;
-    bmi?: string;
+    muscleMassKg: string;
+    boneMassKg: string;
+    bodyWaterPercentage: string;
   },
   existing: CheckInMeasurementsResponse | null | undefined
 ): UpdateCheckInMeasurementsRequest {
@@ -77,8 +76,7 @@ export function buildCheckInMeasurementsPayload(
       | 'body_fat_percentage'
       | 'muscle_mass_kg'
       | 'bone_mass_kg'
-      | 'body_water_percentage'
-      | 'bmi',
+      | 'body_water_percentage',
     raw: string | undefined,
     parse: (value: string) => number
   ) => {
@@ -104,7 +102,6 @@ export function buildCheckInMeasurementsPayload(
   apply('muscle_mass_kg', form.muscleMassKg, parseFloat);
   apply('bone_mass_kg', form.boneMassKg, parseFloat);
   apply('body_water_percentage', form.bodyWaterPercentage, parseFloat);
-  apply('bmi', form.bmi, parseFloat);
 
   return payload;
 }
@@ -243,6 +240,20 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     return existingCheckIn?.steps?.toString() || '';
   }, [existingCheckIn?.steps]);
 
+  // Smart-scale composition. Masses are metric (kg) in state, like weight;
+  // UnitInput handles preferred-unit display.
+  const derivedMuscleMass = useMemo(() => {
+    return existingCheckIn?.muscle_mass_kg?.toString() || '';
+  }, [existingCheckIn?.muscle_mass_kg]);
+
+  const derivedBoneMass = useMemo(() => {
+    return existingCheckIn?.bone_mass_kg?.toString() || '';
+  }, [existingCheckIn?.bone_mass_kg]);
+
+  const derivedBodyWater = useMemo(() => {
+    return existingCheckIn?.body_water_percentage?.toString() || '';
+  }, [existingCheckIn?.body_water_percentage]);
+
   const derivedMood = useMemo(() => {
     return existingMood?.mood_value ?? 50;
   }, [existingMood?.mood_value]);
@@ -302,6 +313,18 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     selectedDate
   );
   const [steps, setSteps] = useDerivedState<string>(derivedSteps, selectedDate);
+  const [muscleMassKg, setMuscleMassKg] = useDerivedState<string>(
+    derivedMuscleMass,
+    selectedDate
+  );
+  const [boneMassKg, setBoneMassKg] = useDerivedState<string>(
+    derivedBoneMass,
+    selectedDate
+  );
+  const [bodyWaterPercentage, setBodyWaterPercentage] = useDerivedState<string>(
+    derivedBodyWater,
+    selectedDate
+  );
   const [bodyFatPercentage, setBodyFatPercentage] = useDerivedState<string>(
     derivedBodyFat,
     selectedDate
@@ -567,7 +590,18 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     try {
       const measurementData = buildCheckInMeasurementsPayload(
         selectedDate,
-        { weight, neck, waist, hips, steps, height, bodyFatPercentage },
+        {
+          weight,
+          neck,
+          waist,
+          hips,
+          steps,
+          height,
+          bodyFatPercentage,
+          muscleMassKg,
+          boneMassKg,
+          bodyWaterPercentage,
+        },
         existingCheckIn
       );
 
@@ -741,6 +775,9 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
 
   return {
     bodyFatPercentage,
+    boneMassKg,
+    bodyWaterPercentage,
+    muscleMassKg,
     customCategories,
     customNotes,
     customValues,
@@ -758,6 +795,9 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     recentMeasurements,
     selectedDate,
     setBodyFatPercentage,
+    setBoneMassKg,
+    setBodyWaterPercentage,
+    setMuscleMassKg,
     setCustomNotes,
     setCustomValues,
     setHeight,

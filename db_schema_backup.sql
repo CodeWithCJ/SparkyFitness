@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict xDBOc6tzbNLHa2o8WXuBedOgfNRKjyZHu7uTLkAdcWz5y8leo9vzyRTcMVPSWtC
+\restrict Qau9B1NGBnnKgdybrGlkgVV0OIvGgdII3L0aepacWY93Dzm7rTLZgwHw5IjhfeO
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1257,8 +1257,7 @@ CREATE TABLE public.check_in_measurements (
     updated_by_user_id uuid,
     muscle_mass_kg numeric(5,2),
     bone_mass_kg numeric(5,2),
-    body_water_percentage numeric(5,2),
-    bmi numeric(4,1)
+    body_water_percentage numeric(5,2)
 );
 
 
@@ -6187,6 +6186,13 @@ CREATE TRIGGER trg_sync_user_mfa_global BEFORE UPDATE OF two_factor_enabled ON p
 
 
 --
+-- Name: daily_health_metrics update_daily_health_metrics_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_daily_health_metrics_updated_at BEFORE UPDATE ON public.daily_health_metrics FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: exercise_entry_sets update_exercise_entry_sets_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -6219,6 +6225,13 @@ CREATE TRIGGER update_food_variants_timestamp BEFORE UPDATE ON public.food_varia
 --
 
 CREATE TRIGGER update_global_settings_updated_at BEFORE UPDATE ON public.global_settings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: health_metric_samples update_health_metric_samples_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_health_metric_samples_updated_at BEFORE UPDATE ON public.health_metric_samples FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -10600,5 +10613,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict xDBOc6tzbNLHa2o8WXuBedOgfNRKjyZHu7uTLkAdcWz5y8leo9vzyRTcMVPSWtC
+\unrestrict Qau9B1NGBnnKgdybrGlkgVV0OIvGgdII3L0aepacWY93Dzm7rTLZgwHw5IjhfeO
 

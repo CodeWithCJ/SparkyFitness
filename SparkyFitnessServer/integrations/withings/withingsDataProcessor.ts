@@ -99,10 +99,15 @@ const WITHINGS_METRIC_MAPPING = {
   76: {
     name: 'Muscle Mass',
     unit: 'kg',
-    type: 'custom_measurement',
-    categoryName: 'Muscle Mass',
+    sparky_unit: 'kg',
+    type: 'check_in_measurement',
+    column: 'muscle_mass_kg',
     frequency: 'Daily',
   },
+  // Withings type 77 is water MASS in kg, not the body-water percentage that
+  // check_in_measurements.body_water_percentage stores. Deriving a percentage
+  // would need a same-day weight and would go stale when weight changes, so
+  // this deliberately stays a custom measurement.
   77: {
     name: 'Hydration',
     unit: 'kg',
@@ -113,8 +118,9 @@ const WITHINGS_METRIC_MAPPING = {
   88: {
     name: 'Bone Mass',
     unit: 'kg',
-    type: 'custom_measurement',
-    categoryName: 'Bone Mass',
+    sparky_unit: 'kg',
+    type: 'check_in_measurement',
+    column: 'bone_mass_kg',
     frequency: 'Daily',
   },
   91: {

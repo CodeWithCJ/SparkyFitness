@@ -552,14 +552,24 @@ export async function processGarminWorkoutDefinition(
                 individualStep.category
               );
 
+              // Workout *preset* steps carry their own unit on weightUnit.unitKey,
+              // unlike the raw exerciseSets[].weight paths above/below (which are
+              // always grams). Only convert when Garmin actually says pounds —
+              // converting unconditionally stored ~45% of the true load for
+              // accounts configured in kilograms. WorkoutReportVisualizer.tsx
+              // reads the same DTO shape and must stay in sync with this.
+              const stepWeightKg = individualStep.weightValue
+                ? individualStep.weightUnit?.unitKey === 'pound'
+                  ? individualStep.weightValue * 0.453592
+                  : individualStep.weightValue
+                : 0;
+
               const sets = [
                 {
                   set_number: 1,
                   set_type: individualStep.stepType?.stepTypeKey,
                   reps: individualStep.endConditionValue || 0,
-                  weight: individualStep.weightValue
-                    ? individualStep.weightValue * 0.453592
-                    : 0,
+                  weight: stepWeightKg,
                   duration: 0,
                   rest_time: 0,
                   notes: individualStep.description || '',

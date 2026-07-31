@@ -15,7 +15,6 @@ const ALLOWED_CHECK_IN_COLUMNS = [
   'muscle_mass_kg',
   'bone_mass_kg',
   'body_water_percentage',
-  'bmi',
 ];
 // Column types for the batch-UPDATE unnest casts in bulkUpsertCheckInMeasurements.
 const CHECK_IN_COLUMN_TYPES: Record<string, string> = {
@@ -29,7 +28,6 @@ const CHECK_IN_COLUMN_TYPES: Record<string, string> = {
   muscle_mass_kg: 'numeric',
   bone_mass_kg: 'numeric',
   body_water_percentage: 'numeric',
-  bmi: 'numeric',
 };
 // Tolerance in milliliters for matching historical manual records with incoming sync data
 const WATER_ADOPTION_TOLERANCE_ML = 5;
@@ -550,7 +548,6 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
          (SELECT muscle_mass_kg FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND muscle_mass_kg IS NOT NULL AND muscle_mass_kg > 0 ORDER BY entry_date DESC LIMIT 1) as muscle_mass_kg,
          (SELECT bone_mass_kg FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND bone_mass_kg IS NOT NULL AND bone_mass_kg > 0 ORDER BY entry_date DESC LIMIT 1) as bone_mass_kg,
          (SELECT body_water_percentage FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND body_water_percentage IS NOT NULL AND body_water_percentage > 0 ORDER BY entry_date DESC LIMIT 1) as body_water_percentage,
-         (SELECT bmi FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND bmi IS NOT NULL AND bmi > 0 ORDER BY entry_date DESC LIMIT 1) as bmi,
          le.created_at,
          le.updated_at,
          le.created_by_user_id,
