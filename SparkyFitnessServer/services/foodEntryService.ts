@@ -1,5 +1,7 @@
 import foodRepository from '../models/foodRepository.js';
-import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
+import foodEntryMealRepository, {
+  type MealEntryMoveResult,
+} from '../models/foodEntryMealRepository.js';
 import mealRepository from '../models/mealRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
@@ -1906,21 +1908,47 @@ async function createFoodEntryMeal(
     throw error;
   }
 }
+// Lightweight parent read for a meal container, without its component
+// food_entries. Used to decide whether a quantity/unit change is real before
+// choosing between the metadata-only move and the full rebuild path.
+export interface FoodEntryMealMeta {
+  id: string;
+  quantity: number | null;
+  unit: string | null;
+  meal_type_id: string | null;
+}
+
+async function getFoodEntryMealMeta(
+  userId: string,
+  foodEntryMealId: string
+): Promise<FoodEntryMealMeta | null> {
+  const row = await foodEntryMealRepository.getFoodEntryMealById(
+    foodEntryMealId,
+    userId
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    quantity:
+      row.quantity !== null && row.quantity !== undefined
+        ? Number(row.quantity)
+        : null,
+    unit: row.unit ?? null,
+    meal_type_id: row.meal_type_id ?? null,
+  };
+}
+
 // Metadata-only move of a meal container (and its components) to another meal
 // type. This intentionally avoids the delete-and-rebuild path used by
 // updateFoodEntryMeal: moving a meal between categories must not re-read
 // current food variants or rewrite the historical nutrition snapshots, and
 // must not drop components when a food/variant is no longer available.
 async function moveFoodEntryMealToMealType(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealTypeId: any
-) {
+  authenticatedUserId: string,
+  actingUserId: string,
+  foodEntryMealId: string,
+  mealTypeId: string
+): Promise<MealEntryMoveResult> {
   try {
     const updated = await foodEntryMealRepository.moveFoodEntryMealToMealType(
       foodEntryMealId,
@@ -3345,6 +3373,7 @@ export { copyAllFoodEntriesFromYesterday };
 export { getDailyNutritionSummary };
 export { createFoodEntryMeal };
 export { moveFoodEntryMealToMealType };
+export { getFoodEntryMealMeta };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealWithComponents };
 export { getFoodEntryMealsByDate };
@@ -3366,6 +3395,7 @@ export default {
   getDailyNutritionSummary,
   createFoodEntryMeal,
   moveFoodEntryMealToMealType,
+  getFoodEntryMealMeta,
   updateFoodEntryMeal,
   getFoodEntryMealWithComponents,
   getFoodEntryMealsByDate,

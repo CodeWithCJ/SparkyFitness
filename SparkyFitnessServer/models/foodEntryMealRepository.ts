@@ -261,20 +261,22 @@ async function deleteFoodEntryMeal(foodEntryMealId: any, userId: any) {
     client.release();
   }
 }
+// Result of a metadata-only meal-type move.
+export interface MealEntryMoveResult {
+  id: string;
+  meal_type_id: string;
+}
+
 // Metadata-only move of a meal container (and its component food_entries) to
 // another meal type, in one transaction. Unlike updateFoodEntryMeal, this
 // does NOT delete and rebuild the components, so historical nutrition
 // snapshots and quantities are preserved untouched.
 async function moveFoodEntryMealToMealType(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealTypeId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updatedByUserId: any
-) {
+  foodEntryMealId: string,
+  mealTypeId: string,
+  userId: string,
+  updatedByUserId: string
+): Promise<MealEntryMoveResult> {
   log(
     'info',
     `moveFoodEntryMealToMealType in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, mealTypeId: ${mealTypeId}, userId: ${userId}`
@@ -288,7 +290,7 @@ async function moveFoodEntryMealToMealType(
            updated_by_user_id = $2,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $3 AND user_id = $4
-       RETURNING id`,
+       RETURNING id, meal_type_id`,
       [mealTypeId, updatedByUserId, foodEntryMealId, userId]
     );
     if (parent.rows.length === 0) {
@@ -303,7 +305,7 @@ async function moveFoodEntryMealToMealType(
       [mealTypeId, updatedByUserId, foodEntryMealId, userId]
     );
     await client.query('COMMIT');
-    return parent.rows[0];
+    return parent.rows[0] as MealEntryMoveResult;
   } catch (error) {
     await client.query('ROLLBACK');
     log(
