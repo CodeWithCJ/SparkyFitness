@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 
 export function normalizeTimeFormat(timeFormat: string): string {
-  if (timeFormat === 'h:mm A') return 'h:mm a'; // date-fns `a` -> AM/PM
+  if (timeFormat === 'h:mm A') return 'h:mm aa'; // date-fns `aa` -> AM/PM
   if (timeFormat === 'h:mm a') return 'h:mm aaa'; // date-fns `aaa` -> am/pm
   return timeFormat;
 }

@@ -1,6 +1,6 @@
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
-import { isValidTimeZone } from '@workspace/shared';
+import { isValidTimeZone, SUPPORTED_TIME_FORMATS } from '@workspace/shared';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function validateTimezone(preferenceData: any) {
   if (
@@ -9,6 +9,19 @@ async function validateTimezone(preferenceData: any) {
   ) {
     throw Object.assign(
       new Error(`Invalid timezone: '${preferenceData.timezone}'`),
+      { status: 400 }
+    );
+  }
+}
+async function validateTimeFormat(preferenceData: any) {
+  if (
+    preferenceData.time_format !== undefined &&
+    !SUPPORTED_TIME_FORMATS.includes(preferenceData.time_format)
+  ) {
+    throw Object.assign(
+      new Error(
+        `Invalid time_format: '${preferenceData.time_format}'. Must be one of: ${SUPPORTED_TIME_FORMATS.join(', ')}`
+      ),
       { status: 400 }
     );
   }
@@ -64,6 +77,7 @@ async function updateUserPreferences(
 ) {
   try {
     await validateTimezone(preferenceData);
+    await validateTimeFormat(preferenceData);
     await validateGoalMode(preferenceData);
     const updatedPreferences = await preferenceRepository.updateUserPreferences(
       targetUserId,
@@ -166,6 +180,7 @@ async function upsertUserPreferences(
 ) {
   try {
     await validateTimezone(preferenceData);
+    await validateTimeFormat(preferenceData);
     await validateGoalMode(preferenceData);
     preferenceData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
     // Provide a default for calorie_goal_adjustment_mode if it's not present
