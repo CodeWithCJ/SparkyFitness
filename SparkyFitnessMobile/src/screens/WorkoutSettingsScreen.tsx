@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, ScrollView, Switch } from 'react-native';
+import { View, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -24,6 +24,8 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
   const setDefaultRestSec = useAppPreferencesStore((s) => s.setDefaultRestSec);
   const restTimerSoundEnabled = useAppPreferencesStore((s) => s.restTimerSoundEnabled);
   const setRestTimerSoundEnabled = useAppPreferencesStore((s) => s.setRestTimerSoundEnabled);
+  const workoutKeepAwakeEnabled = useAppPreferencesStore((s) => s.workoutKeepAwakeEnabled);
+  const setWorkoutKeepAwakeEnabled = useAppPreferencesStore((s) => s.setWorkoutKeepAwakeEnabled);
   const restSheetRef = useRef<RestPeriodSheetRef>(null);
   const [formEnabled, formDisabled] = useCSSVariable([
     '--color-form-enabled',
@@ -42,30 +44,42 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Default rest period</Text>
+        <SettingsRow
+          title="Default rest period"
+          subtitle="Rest between sets for newly added exercises."
+          subtitleNumberOfLines={0}
+          rightAccessory={
             <PickerTrigger
               label={formatRestLabel(defaultRestSec)}
               onPress={() => restSheetRef.current?.present(defaultRestSec)}
               accessibilityLabel={`Default rest period, ${formatRestLabel(defaultRestSec)}`}
-              containerStyle={{ flex: 1, maxWidth: 200 }}
+              containerStyle={{ width: 110 }}
             />
-          </View>
-          <Text className="text-text-secondary text-sm mt-2">
-            Rest between sets for newly added exercises. Each exercise can still
-            set its own rest period.
-          </Text>
-        </View>
+          }
+        />
 
         <SettingsRow
           title="Rest timer sound"
-          subtitle="Play a chime when rest ends while the app is open."
+          subtitle="Play a sound when the rest timer ends while the app is open."
           subtitleNumberOfLines={0}
           rightAccessory={
             <Switch
               value={restTimerSoundEnabled}
               onValueChange={setRestTimerSoundEnabled}
+              trackColor={{ false: formDisabled, true: formEnabled }}
+              thumbColor="#FFFFFF"
+            />
+          }
+        />
+
+        <SettingsRow
+          title="Keep screen awake"
+          subtitle="Prevent the screen from sleeping while a workout is active."
+          subtitleNumberOfLines={0}
+          rightAccessory={
+            <Switch
+              value={workoutKeepAwakeEnabled}
+              onValueChange={setWorkoutKeepAwakeEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
             />
