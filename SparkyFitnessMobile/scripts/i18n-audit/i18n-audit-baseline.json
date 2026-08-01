@@ -9,125 +9,9 @@
     },
     {
       "rule": "dynamic-i18n-key",
-      "file": "src/screens/AppSettingsScreen.tsx",
-      "expression": "opt.labelKey",
-      "fingerprint": "dynamic-i18n-key:src/screens/AppSettingsScreen.tsx:opt.labelKey"
-    },
-    {
-      "rule": "dynamic-i18n-key",
-      "file": "src/screens/AppSettingsScreen.tsx",
-      "expression": "opt.labelKey",
-      "fingerprint": "dynamic-i18n-key:src/screens/AppSettingsScreen.tsx:opt.labelKey"
-    },
-    {
-      "rule": "dynamic-i18n-key",
       "file": "src/screens/MealTypeDetailScreen.tsx",
       "expression": "translationKey",
       "fingerprint": "dynamic-i18n-key:src/screens/MealTypeDetailScreen.tsx:translationKey"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "Cancel",
-      "context": {
-        "context": "Alert.alert:button"
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:Cancel:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "Cancel",
-      "context": {
-        "context": "Alert.alert:button"
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:Cancel:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "Could not initialize health data access. Check your permissions in Settings.",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 1
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:Could not initialize health data access. Check your permissions in Settings.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "Discard & Continue",
-      "context": {
-        "context": "Alert.alert:button"
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:Discard & Continue:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "Draft in Progress",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 0
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:Draft in Progress:{\"context\":\"Alert.alert\",\"argIndex\":0}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "Go to Settings",
-      "context": {
-        "context": "Alert.alert:button"
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:Go to Settings:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "Health Data Unavailable",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 0
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:Health Data Unavailable:{\"context\":\"Alert.alert\",\"argIndex\":0}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "No Server Connected",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 0
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:No Server Connected:{\"context\":\"Alert.alert\",\"argIndex\":0}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "Resume Draft",
-      "context": {
-        "context": "Alert.alert:button"
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:Resume Draft:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "App.tsx",
-      "value": "You have an unsaved {{dynamic}} draft. What would you like to do?",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 1
-      },
-      "fingerprint": "hardcoded-ui-text:App.tsx:You have an unsaved {{dynamic}} draft. What would you like to do?:{\"context\":\"Alert.alert\",\"argIndex\":1}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ActionSheet.tsx",
-      "value": "Back",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ActionSheet.tsx:Back:{\"attr\":\"accessibilityLabel\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -10119,42 +10003,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/screens/DashboardScreen.tsx",
-      "value": "30d",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DashboardScreen.tsx:30d:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/DashboardScreen.tsx",
-      "value": "7d",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DashboardScreen.tsx:7d:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/DashboardScreen.tsx",
-      "value": "90d",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DashboardScreen.tsx:90d:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/DashboardScreen.tsx",
-      "value": "Choose dashboard date",
-      "context": {
-        "prop": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DashboardScreen.tsx:Choose dashboard date:{\"prop\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/screens/DashboardSettingsScreen.tsx",
       "value": "Ask Sparky",
       "context": {
@@ -10301,64 +10149,6 @@
         "attr": "subtitle"
       },
       "fingerprint": "hardcoded-ui-text:src/screens/DashboardSettingsScreen.tsx:Show the wellness card on the Dashboard:{\"attr\":\"subtitle\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/DiaryScreen.tsx",
-      "value": "Choose diary date",
-      "context": {
-        "prop": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Choose diary date:{\"prop\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/DiaryScreen.tsx",
-      "value": "Diary",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Diary:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/DiaryScreen.tsx",
-      "value": "Failed to load diary",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Failed to load diary:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/DiaryScreen.tsx",
-      "value": "Go to Settings",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Go to Settings:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/DiaryScreen.tsx",
-      "value": "Loading diary...",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Loading diary...:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/DiaryScreen.tsx",
-      "value": "Please check your connection and try again.",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Please check your connection and try again.:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -14682,107 +14472,6 @@
         "form": "text"
       },
       "fingerprint": "hardcoded-ui-text:src/screens/FoodsLibraryScreen.tsx:Try changing your ownership filter.:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Create",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Create:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Exercise routine",
-      "context": {
-        "attr": "subtitle"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Exercise routine:{\"attr\":\"subtitle\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Exercise",
-      "context": {
-        "attr": "title"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Exercise:{\"attr\":\"title\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Food",
-      "context": {
-        "attr": "title"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Food:{\"attr\":\"title\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Group foods",
-      "context": {
-        "attr": "subtitle"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Group foods:{\"attr\":\"subtitle\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Library",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Library:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Loading library...",
-      "context": {
-        "attr": "title"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Loading library...:{\"attr\":\"title\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Manual entry",
-      "context": {
-        "attr": "subtitle"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Manual entry:{\"attr\":\"subtitle\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Manual entry",
-      "context": {
-        "attr": "subtitle"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Manual entry:{\"attr\":\"subtitle\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Meal",
-      "context": {
-        "attr": "title"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Meal:{\"attr\":\"title\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/LibraryScreen.tsx",
-      "value": "Workout preset",
-      "context": {
-        "attr": "title"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Workout preset:{\"attr\":\"title\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -21355,18 +21044,7 @@
   ],
   "counts": {
     "dynamic-i18n-key:src/components/FoodSummary.tsx:translationKey": 1,
-    "dynamic-i18n-key:src/screens/AppSettingsScreen.tsx:opt.labelKey": 2,
     "dynamic-i18n-key:src/screens/MealTypeDetailScreen.tsx:translationKey": 1,
-    "hardcoded-ui-text:App.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 2,
-    "hardcoded-ui-text:App.tsx:Could not initialize health data access. Check your permissions in Settings.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
-    "hardcoded-ui-text:App.tsx:Discard & Continue:{\"context\":\"Alert.alert:button\"}": 1,
-    "hardcoded-ui-text:App.tsx:Draft in Progress:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
-    "hardcoded-ui-text:App.tsx:Go to Settings:{\"context\":\"Alert.alert:button\"}": 1,
-    "hardcoded-ui-text:App.tsx:Health Data Unavailable:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
-    "hardcoded-ui-text:App.tsx:No Server Connected:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
-    "hardcoded-ui-text:App.tsx:Resume Draft:{\"context\":\"Alert.alert:button\"}": 1,
-    "hardcoded-ui-text:App.tsx:You have an unsaved {{dynamic}} draft. What would you like to do?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
-    "hardcoded-ui-text:src/components/ActionSheet.tsx:Back:{\"attr\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/components/ActiveWorkoutBar.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 2,
     "hardcoded-ui-text:src/components/ActiveWorkoutBar.tsx:Clear workout:{\"attr\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/components/ActiveWorkoutBar.tsx:Clear workout?:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
@@ -22328,10 +22006,6 @@
     "hardcoded-ui-text:src/screens/DailyNutritionDetailsScreen.tsx:Nutrient Breakdown:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/DailyNutritionDetailsScreen.tsx:Nutrition Details:{\"prop\":\"title\"}": 1,
     "hardcoded-ui-text:src/screens/DailyNutritionDetailsScreen.tsx:Please check your connection and try again.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/DashboardScreen.tsx:30d:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/screens/DashboardScreen.tsx:7d:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/screens/DashboardScreen.tsx:90d:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/screens/DashboardScreen.tsx:Choose dashboard date:{\"prop\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/screens/DashboardSettingsScreen.tsx:Ask Sparky:{\"attr\":\"title\"}": 1,
     "hardcoded-ui-text:src/screens/DashboardSettingsScreen.tsx:Custom Nutrient Display:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/DashboardSettingsScreen.tsx:Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Dashboard.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
@@ -22348,12 +22022,6 @@
     "hardcoded-ui-text:src/screens/DashboardSettingsScreen.tsx:Show the hydration card on the Dashboard:{\"attr\":\"subtitle\"}": 1,
     "hardcoded-ui-text:src/screens/DashboardSettingsScreen.tsx:Show the medications card on the Dashboard:{\"attr\":\"subtitle\"}": 1,
     "hardcoded-ui-text:src/screens/DashboardSettingsScreen.tsx:Show the wellness card on the Dashboard:{\"attr\":\"subtitle\"}": 1,
-    "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Choose diary date:{\"prop\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Diary:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Failed to load diary:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Go to Settings:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Loading diary...:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/DiaryScreen.tsx:Please check your connection and try again.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/DiarySettingsScreen.tsx:Custom Nutrient Display:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/DiarySettingsScreen.tsx:Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Diary.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/DiarySettingsScreen.tsx:Diary Settings:{\"prop\":\"title\"}": 1,
@@ -22768,16 +22436,6 @@
     "hardcoded-ui-text:src/screens/FoodsLibraryScreen.tsx:Retry:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/FoodsLibraryScreen.tsx:Search foods...:{\"attr\":\"placeholder\"}": 1,
     "hardcoded-ui-text:src/screens/FoodsLibraryScreen.tsx:Try changing your ownership filter.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Create:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Exercise routine:{\"attr\":\"subtitle\"}": 1,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Exercise:{\"attr\":\"title\"}": 1,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Food:{\"attr\":\"title\"}": 1,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Group foods:{\"attr\":\"subtitle\"}": 1,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Library:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Loading library...:{\"attr\":\"title\"}": 1,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Manual entry:{\"attr\":\"subtitle\"}": 2,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Meal:{\"attr\":\"title\"}": 1,
-    "hardcoded-ui-text:src/screens/LibraryScreen.tsx:Workout preset:{\"attr\":\"title\"}": 1,
     "hardcoded-ui-text:src/screens/LogScreen.tsx:All:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/LogScreen.tsx:Are you sure you want to clear all logs?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
     "hardcoded-ui-text:src/screens/LogScreen.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 1,

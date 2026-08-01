@@ -58,16 +58,22 @@
     "checkConnection": "Please check your connection and try again.",
     "food": "Food",
     "tapToAddFood": "Tap to add food",
-    "askSparky": "Ask Sparky…"
+    "askSparky": "Ask Sparky…",
+    "chooseDate": "Choose dashboard date",
+    "range7d": "7d",
+    "range30d": "30d",
+    "range90d": "90d"
   },
   "diary": {
     "title": "Diary",
     "summary": "Diary Summary",
-    "noServerSubtitle": "Configure your server connection in Settings to view your diary."
+    "noServerSubtitle": "Configure your server connection in Settings to view your diary.",
+    "loading": "Loading diary...",
+    "failedToLoad": "Failed to load diary",
+    "chooseDate": "Choose diary date"
   },
   "diarySummary": {
-    "title": "Summary",
-    "protein": "Protein",
+    "title": "Summary",    "protein": "Protein",
     "carbs": "Carbs",
     "netCarbs": "Net Carbs",
     "fat": "Fat",
@@ -93,7 +99,9 @@
     "exerciseRoutine": "Exercise routine",
     "workoutPreset": "Workout preset",
     "workoutPresets": "Workout presets",
-    "exercise": "Exercise"
+    "exercise": "Exercise",
+    "food": "Food",
+    "meal": "Meal"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -152,7 +160,8 @@
     "syncHealthData": "Sync Health Data",
     "exerciseSubtitleWorkout": "Live sets & reps",
     "exerciseSubtitleActivity": "Duration & distance",
-    "exerciseSubtitleLog": "Past sets & reps"
+    "exerciseSubtitleLog": "Past sets & reps",
+    "wellness": "Wellness"
   },
   "workout": {
     "couldNotSave": "Could not save your workout"
@@ -271,5 +280,23 @@
     "medications": "Medications",
     "medication": "Medication",
     "logDailyEntry": "Log Daily Entry"
+  },
+  "appAlerts": {
+    "noServer": {
+      "title": "No Server Connected",
+      "goToSettings": "Go to Settings",
+      "addExercise": "Configure your server connection in Settings to add an exercise.",
+      "startWorkout": "Configure your server connection in Settings to start a workout."
+    },
+    "healthUnavailable": {
+      "title": "Health Data Unavailable",
+      "message": "Could not initialize health data access. Check your permissions in Settings."
+    },
+    "draft": {
+      "title": "Draft in Progress",
+      "message": "You have an unsaved {{draftType}} draft. What would you like to do?",
+      "resume": "Resume Draft",
+      "discardAndContinue": "Discard & Continue"
+    }
   }
 }

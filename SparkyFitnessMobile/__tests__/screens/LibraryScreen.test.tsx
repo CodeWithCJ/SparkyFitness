@@ -43,6 +43,26 @@ const mockFetchFoodsPage = fetchFoodsPage as jest.MockedFunction<typeof fetchFoo
 const mockFetchExercisesCount = fetchExercisesCount as jest.MockedFunction<typeof fetchExercisesCount>;
 const mockFetchWorkoutPresetsPage = fetchWorkoutPresetsPage as jest.MockedFunction<typeof fetchWorkoutPresetsPage>;
 
+const enResource = require('../../src/localization/locales/en/translation.json');
+const plResource = require('../../src/localization/locales/pl/translation.json');
+(globalThis as any).__I18N_EN = enResource;
+(globalThis as any).__I18N_PL = plResource;
+(globalThis as any).__I18N_LANG = (globalThis as any).__I18N_LANG || 'en';
+jest.mock('react-i18next', () => {
+  const actual = jest.requireActual('react-i18next');
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string) => {
+        const res = (globalThis.__I18N_LANG === 'pl' ? globalThis.__I18N_PL : globalThis.__I18N_EN) ?? {};
+        return key.split('.').reduce((acc: any, part: string) => (acc == null ? acc : acc[part]), res) ?? key;
+      },
+      i18n: null,
+      ready: true,
+    }),
+  };
+});
+
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -422,5 +442,60 @@ describe('LibraryScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('ExerciseForm', {
       mode: 'create-exercise',
     });
+  });
+});
+
+describe('LibraryScreen localization', () => {
+  beforeAll(() => {
+    (globalThis as any).__I18N_EN = enResource;
+    (globalThis as any).__I18N_PL = plResource;
+    (globalThis as any).__I18N_LANG = 'en';
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (globalThis as any).__I18N_LANG = 'en';
+    mockUseServerConnection.mockReturnValue({
+      isConnected: true,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+  });
+
+  const navigation = {
+    navigate: jest.fn(),
+    addListener: jest.fn(() => jest.fn()),
+  } as any;
+  const route = { key: 'Library-key', name: 'Library' as const, params: undefined };
+
+  function renderLib() {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(['foods', 'count'], 0);
+    queryClient.setQueryData(['exercises', 'count'], 0);
+    queryClient.setQueryData(['workoutPresets', 'count'], 0);
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <LibraryScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('renders Library and Create in English', () => {
+    const screen = renderLib();
+    expect(screen.getByText('Library')).toBeTruthy();
+    expect(screen.getByText('Create')).toBeTruthy();
+    expect(screen.getByText('Recently Logged')).toBeTruthy();
+  });
+
+  it('renders Library and Create in Polish', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    const screen = renderLib();
+    expect(screen.getByText('Biblioteka')).toBeTruthy();
+    expect(screen.getByText('Utwórz')).toBeTruthy();
+    expect(screen.getByText('Ostatnio zalogowane')).toBeTruthy();
   });
 });

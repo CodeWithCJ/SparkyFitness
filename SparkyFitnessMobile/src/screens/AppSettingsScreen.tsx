@@ -32,24 +32,6 @@ import {
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
 
-interface LabelKeyOption<T> {
-  labelKey: string;
-  value: T;
-}
-
-const languageOptions: LabelKeyOption<LanguagePreference>[] = [
-  { labelKey: 'settings.language.system', value: 'system' },
-  { labelKey: 'settings.language.english', value: 'en' },
-  { labelKey: 'settings.language.polish', value: 'pl' },
-];
-
-const themeOptions: LabelKeyOption<ThemePreference>[] = [
-  { labelKey: 'settings.theme.light', value: 'Light' },
-  { labelKey: 'settings.theme.dark', value: 'Dark' },
-  { labelKey: 'settings.theme.amoled', value: 'Amoled' },
-  { labelKey: 'settings.theme.system', value: 'System' },
-];
-
 const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -89,14 +71,17 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
     [setLanguagePreference],
   );
 
-  const languagePickerOptions = languageOptions.map((opt) => ({
-    label: t(opt.labelKey),
-    value: opt.value,
-  }));
-  const themePickerOptions = themeOptions.map((opt) => ({
-    label: t(opt.labelKey),
-    value: opt.value,
-  }));
+  const languagePickerOptions = [
+    { label: t('settings.language.system'), value: 'system' as LanguagePreference },
+    { label: t('settings.language.english'), value: 'en' as LanguagePreference },
+    { label: t('settings.language.polish'), value: 'pl' as LanguagePreference },
+  ];
+  const themePickerOptions = [
+    { label: t('settings.theme.light'), value: 'Light' as ThemePreference },
+    { label: t('settings.theme.dark'), value: 'Dark' as ThemePreference },
+    { label: t('settings.theme.amoled'), value: 'Amoled' as ThemePreference },
+    { label: t('settings.theme.system'), value: 'System' as ThemePreference },
+  ];
 
   const handleNotificationsToggle = useCallback(async (value: boolean) => {
     if (!value) {

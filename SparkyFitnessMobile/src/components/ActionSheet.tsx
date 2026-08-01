@@ -16,6 +16,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { FullWindowOverlay } from 'react-native-screens';
 import { useUniwind, useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 
 // Render the sheet inside an iOS UIWindow so it sits above any native modal
@@ -68,6 +69,7 @@ interface ActionSheetProps {
  */
 const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
   ({ title, items, onBack, onDismiss }, ref) => {
+    const { t } = useTranslation();
     const modalRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
@@ -240,7 +242,7 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
                 onPress={onBack}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 accessibilityRole="button"
-                accessibilityLabel="Back"
+                accessibilityLabel={t('common.back')}
                 className="absolute left-2 top-0 bottom-0 justify-center px-2"
               >
                 <Icon name="chevron-back" size={20} color={accentPrimary} />

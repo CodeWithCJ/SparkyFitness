@@ -56,6 +56,27 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation,
 }));
 
+const enResource = require('../../src/localization/locales/en/translation.json');
+const plResource = require('../../src/localization/locales/pl/translation.json');
+(globalThis as any).__I18N_EN = enResource;
+(globalThis as any).__I18N_PL = plResource;
+(globalThis as any).__I18N_LANG = (globalThis as any).__I18N_LANG || 'en';
+
+jest.mock('react-i18next', () => {
+  const actual = jest.requireActual('react-i18next');
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string) => {
+        const res = (globalThis.__I18N_LANG === 'pl' ? globalThis.__I18N_PL : globalThis.__I18N_EN) ?? {};
+        return key.split('.').reduce((acc: any, part: string) => (acc == null ? acc : acc[part]), res) ?? key;
+      },
+      i18n: null,
+      ready: true,
+    }),
+  };
+});
+
 const mockRequestPermission = requestNotificationPermission as jest.MockedFunction<
   typeof requestNotificationPermission
 >;
@@ -116,5 +137,40 @@ describe('AppSettingsScreen medication reminders toggle', () => {
     });
     expect(mockRequestPermission).not.toHaveBeenCalled();
     expect(mockMaybePrompt).not.toHaveBeenCalled();
+  });
+});
+
+describe('AppSettingsScreen localization', () => {
+  beforeAll(() => {
+    (globalThis as any).__I18N_EN = enResource;
+    (globalThis as any).__I18N_PL = plResource;
+    (globalThis as any).__I18N_LANG = 'en';
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
+    (globalThis as any).__I18N_LANG = 'en';
+  });
+
+  it('renders language options in English', () => {
+    const screen = renderScreen();
+    expect(screen.getByText('Language')).toBeTruthy();
+    expect(screen.getByText('Theme')).toBeTruthy();
+  });
+
+  it('renders language options in Polish after the language changes', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    const screen = renderScreen();
+    expect(screen.getByText('Język')).toBeTruthy();
+    expect(screen.getByText('Motyw')).toBeTruthy();
+  });
+
+  it('changing language does not reset the screen or navigation', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    const screen = renderScreen();
+    expect(screen.getByText('Język')).toBeTruthy();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(mockNavigation.setOptions).toHaveBeenCalled();
   });
 });

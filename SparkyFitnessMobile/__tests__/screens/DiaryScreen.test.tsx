@@ -79,6 +79,26 @@ jest.mock('../../src/utils/nativeHeaderDatePicker', () => ({
   setNativeHeaderDatePickerOptions: jest.fn(),
 }));
 
+const enResource = require('../../src/localization/locales/en/translation.json');
+const plResource = require('../../src/localization/locales/pl/translation.json');
+(globalThis as any).__I18N_EN = enResource;
+(globalThis as any).__I18N_PL = plResource;
+(globalThis as any).__I18N_LANG = (globalThis as any).__I18N_LANG || 'en';
+jest.mock('react-i18next', () => {
+  const actual = jest.requireActual('react-i18next');
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string) => {
+        const res = (globalThis.__I18N_LANG === 'pl' ? globalThis.__I18N_PL : globalThis.__I18N_EN) ?? {};
+        return key.split('.').reduce((acc: any, part: string) => (acc == null ? acc : acc[part]), res) ?? key;
+      },
+      i18n: null,
+      ready: true,
+    }),
+  };
+});
+
 jest.mock('../../src/stores/activeWorkoutStore', () => ({
   useActiveWorkoutStore: { getState: () => ({ sessionId: null }) },
 }));
@@ -323,5 +343,54 @@ describe('DiaryScreen custom queries', () => {
       expect.objectContaining({ enabled: true }),
     );
     expect(getByTestId('date-navigator')).toBeTruthy();
+  });
+});
+
+describe('DiaryScreen localization', () => {
+  beforeAll(() => {
+    (globalThis as any).__I18N_EN = enResource;
+    (globalThis as any).__I18N_PL = plResource;
+    (globalThis as any).__I18N_LANG = 'en';
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (globalThis as any).__I18N_LANG = 'en';
+    useDiaryDateStore.setState({ selectedDate: '2024-06-15', lastKnownToday: getTodayDate() });
+    configureConnection(true);
+    configureOnlineData();
+  });
+
+  it('renders diary loading text in English', () => {
+    mockUseDailySummary.mockReturnValue({
+      summary: baseSummary,
+      isLoading: true,
+      isError: false,
+      isRefetching: false,
+      refetch: refetchSummary,
+    } as any);
+    const screen = renderScreen();
+    expect(screen.getByText('Loading diary...')).toBeTruthy();
+  });
+
+  it('renders diary loading text in Polish', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    mockUseDailySummary.mockReturnValue({
+      summary: baseSummary,
+      isLoading: true,
+      isError: false,
+      isRefetching: false,
+      refetch: refetchSummary,
+    } as any);
+    const screen = renderScreen();
+    expect(screen.getByText('Ładowanie dziennika...')).toBeTruthy();
+  });
+
+  it('renders no-server action label in Polish', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    configureConnection(false);
+    const screen = renderScreen();
+    expect(screen.getByTestId('status-view')).toBeTruthy();
+    expect((globalThis as any).__I18N_LANG).toBe('pl');
   });
 });

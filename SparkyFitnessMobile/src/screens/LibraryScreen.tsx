@@ -184,7 +184,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   if (isConnectionLoading) {
     return (
       <View className="flex-1 bg-background" style={usesNativeTabs ? undefined : { paddingTop: insets.top }}>
-        <StatusView loading title="Loading library..." />
+        <StatusView loading title={t('library.loading')} />
       </View>
     );
   }
@@ -211,19 +211,19 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
       >
         {!usesNativeTabs && (
           <View className="mb-6">
-            <Text className="text-2xl font-bold text-text-primary">Library</Text>
+            <Text className="text-2xl font-bold text-text-primary">{t('library.title')}</Text>
           </View>
         )}
 
         <View className="mb-3">
-          <Text className="text-lg font-semibold text-text-primary">Create</Text>
+          <Text className="text-lg font-semibold text-text-primary">{t('library.create')}</Text>
         </View>
 
         <View className="flex-row flex-wrap justify-between mb-6">
           <CreateTile
             icon="food"
-            title="Food"
-            subtitle="Manual entry"
+            title={t('library.food')}
+            subtitle={t('library.manualEntry')}
             disabled={isNavigationLocked}
             onPress={() =>
               runNavigationAction(() =>
@@ -234,16 +234,16 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           />
           <CreateTile
             icon="meal"
-            title="Meal"
-            subtitle="Group foods"
+            title={t('library.meal')}
+            subtitle={t('library.groupFoods')}
             disabled={isNavigationLocked}
             onPress={() => runNavigationAction(() => navigation.navigate('MealAdd'))}
             className="w-[48%] mb-3"
           />
           <CreateTile
             icon="exercise-weights"
-            title="Exercise"
-            subtitle="Manual entry"
+            title={t('library.exercise')}
+            subtitle={t('library.manualEntry')}
             disabled={isNavigationLocked}
             onPress={() =>
               runNavigationAction(() =>
@@ -254,8 +254,8 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           />
           <CreateTile
             icon="bookmark-filled"
-            title="Workout preset"
-            subtitle="Exercise routine"
+            title={t('library.workoutPreset')}
+            subtitle={t('library.exerciseRoutine')}
             disabled={isNavigationLocked}
             onPress={() =>
               runNavigationAction(() =>

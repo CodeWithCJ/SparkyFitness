@@ -58,12 +58,19 @@
     "checkConnection": "Sprawdź swoje połączenie i spróbuj ponownie.",
     "food": "Jedzenie",
     "tapToAddFood": "Dotknij, aby dodać jedzenie",
-    "askSparky": "Zapytaj Sparky'ego…"
+    "askSparky": "Zapytaj Sparky'ego…",
+    "chooseDate": "Wybierz datę pulpitu",
+    "range7d": "7d",
+    "range30d": "30d",
+    "range90d": "90d"
   },
   "diary": {
     "title": "Dziennik",
     "summary": "Podsumowanie dziennika",
-    "noServerSubtitle": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić dziennik."
+    "noServerSubtitle": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić dziennik.",
+    "loading": "Ładowanie dziennika...",
+    "failedToLoad": "Nie udało się załadować dziennika",
+    "chooseDate": "Wybierz datę dziennika"
   },
   "diarySummary": {
     "title": "Podsumowanie",
@@ -93,7 +100,9 @@
     "exerciseRoutine": "Plan treningowy",
     "workoutPreset": "Szablon treningu",
     "workoutPresets": "Szablony treningów",
-    "exercise": "Ćwiczenie"
+    "exercise": "Ćwiczenie",
+    "food": "Produkt",
+    "meal": "Posiłek"
   },
   "navigation": {
     "dashboard": "Panel",
@@ -154,7 +163,8 @@
     "syncHealthData": "Synchronizuj dane zdrowotne",
     "exerciseSubtitleWorkout": "Żywe serie i powtórzenia",
     "exerciseSubtitleActivity": "Czas i dystans",
-    "exerciseSubtitleLog": "Poprzednie serie i powtórzenia"
+    "exerciseSubtitleLog": "Poprzednie serie i powtórzenia",
+    "wellness": "Wellness"
   },
   "workout": {
     "couldNotSave": "Nie udało się zapisać treningu"
@@ -273,5 +283,23 @@
     "medications": "Leki",
     "medication": "Lek",
     "logDailyEntry": "Dzienny wpis"
+  },
+  "appAlerts": {
+    "noServer": {
+      "title": "Brak połączenia z serwerem",
+      "goToSettings": "Przejdź do Ustawień",
+      "addExercise": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby dodać ćwiczenie.",
+      "startWorkout": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby rozpocząć trening."
+    },
+    "healthUnavailable": {
+      "title": "Dane zdrowotne niedostępne",
+      "message": "Nie udało się zainicjalizować dostępu do danych zdrowotnych. Sprawdź uprawnienia w Ustawieniach."
+    },
+    "draft": {
+      "title": "Trwa draft",
+      "message": "Masz niezapisany draft {{draftType}}. Co chcesz zrobić?",
+      "resume": "Wznów draft",
+      "discardAndContinue": "Odrzuć i kontynuuj"
+    }
   }
 }

@@ -92,7 +92,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         onDatePress: openCalendar,
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
-        accessibilityLabel: 'Choose diary date',
+        accessibilityLabel: t('diary.chooseDate'),
       },
     );
   }, [
@@ -102,6 +102,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     navigation,
     openCalendar,
     selectedDate,
+    t,
     usesNativeTabs,
   ]);
 
@@ -229,7 +230,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           iconSize={64}
           title={t('dashboard.noServerTitle')}
           subtitle={t('diary.noServerSubtitle')}
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
+          action={{ label: t('dashboard.goToSettings'), onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
         />
       );
     }
@@ -238,7 +239,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       return (
         <View className="flex-1 items-center justify-center p-8 shadow-sm">
           <ActivityIndicator size="large" color="#3B82F6" />
-          <Text className="text-text-muted text-base mt-4">Loading diary...</Text>
+          <Text className="text-text-muted text-base mt-4">{t('diary.loading')}</Text>
         </View>
       );
     }
@@ -248,17 +249,17 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         <View className="flex-1 items-center justify-center p-8 shadow-sm">
           <Icon name="alert-circle" size={64} color="#EF4444" />
           <Text className="text-text-muted text-lg text-center mt-4">
-            Failed to load diary
+            {t('diary.failedToLoad')}
           </Text>
           <Text className="text-text-muted text-sm text-center mt-2">
-            Please check your connection and try again.
+            {t('dashboard.checkConnection')}
           </Text>
           <Button
             variant="primary"
             className="px-6 mt-6"
             onPress={() => refetch()}
           >
-            Retry
+            {t('common.retry')}
           </Button>
         </View>
       );
@@ -384,7 +385,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           className="px-4 pb-5"
           style={{ paddingTop: insets.top + 16 }}
         >
-          <Text className="text-2xl font-bold text-text-primary">Diary</Text>
+          <Text className="text-2xl font-bold text-text-primary">{t('screens.diary')}</Text>
         </View>
       )}
       {renderedContent}

@@ -411,3 +411,42 @@ describe('applyLanguagePreference', () => {
     });
   });
 });
+
+
+describe('A4.1 shell localization keys', () => {
+  const en = require('../../src/localization/locales/en/translation.json');
+  const pl = require('../../src/localization/locales/pl/translation.json');
+
+  it('defines appAlerts keys in both EN and PL', () => {
+    for (const lang of [en, pl]) {
+      expect(lang.appAlerts.noServer.title).toBeTruthy();
+      expect(lang.appAlerts.noServer.goToSettings).toBeTruthy();
+      expect(lang.appAlerts.healthUnavailable.title).toBeTruthy();
+      expect(lang.appAlerts.healthUnavailable.message).toBeTruthy();
+      expect(lang.appAlerts.draft.title).toBeTruthy();
+      expect(lang.appAlerts.draft.message).toContain('{{draftType}}');
+      expect(lang.appAlerts.draft.resume).toBeTruthy();
+      expect(lang.appAlerts.draft.discardAndContinue).toBeTruthy();
+    }
+  });
+
+  it('defines shell hub keys in both EN and PL', () => {
+    for (const lang of [en, pl]) {
+      expect(lang.diary.loading).toBeTruthy();
+      expect(lang.diary.failedToLoad).toBeTruthy();
+      expect(lang.diary.chooseDate).toBeTruthy();
+      expect(lang.dashboard.chooseDate).toBeTruthy();
+      expect(lang.dashboard.range7d).toBeTruthy();
+      expect(lang.dashboard.range30d).toBeTruthy();
+      expect(lang.dashboard.range90d).toBeTruthy();
+      expect(lang.library.food).toBeTruthy();
+      expect(lang.library.meal).toBeTruthy();
+      expect(lang.addSheet.wellness).toBeTruthy();
+    }
+  });
+
+  it('English and Polish draft messages both interpolate draftType', () => {
+    expect(en.appAlerts.draft.message).toContain('{{draftType}}');
+    expect(pl.appAlerts.draft.message).toContain('{{draftType}}');
+  });
+});

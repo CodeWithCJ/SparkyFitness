@@ -50,12 +50,6 @@ import { NUTRIENT_META } from '../constants/nutrients';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { useTranslation } from 'react-i18next';
 
-const RANGE_SEGMENTS: Segment<StepsRange>[] = [
-  { key: '7d', label: '7d' },
-  { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
-];
-
 type DashboardScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Dashboard'>,
   NativeStackScreenProps<RootStackParamList>
@@ -63,6 +57,11 @@ type DashboardScreenProps = CompositeScreenProps<
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
+  const rangeSegments: Segment<StepsRange>[] = [
+    { key: '7d', label: t('dashboard.range7d') },
+    { key: '30d', label: t('dashboard.range30d') },
+    { key: '90d', label: t('dashboard.range90d') },
+  ];
   const queryClient = useQueryClient();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
@@ -106,7 +105,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         onDatePress: openCalendar,
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
-        accessibilityLabel: 'Choose dashboard date',
+        accessibilityLabel: t('dashboard.chooseDate'),
       },
     );
   }, [
@@ -116,6 +115,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     navigation,
     openCalendar,
     selectedDate,
+    t,
     usesNativeTabs,
   ]);
 
@@ -336,7 +336,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   const customDef = !meta
                     ? customNutrients.find((cn) => cn.name === nutrientKey)
                     : undefined;
-                  const label = meta?.label ?? customDef?.name ?? nutrientKey;
+                  // Built-in core macros resolve their label through static
+                  // translation keys; user-defined nutrients keep their literal
+                  // name (never translated).
+                  let builtInLabel: string | undefined;
+                  switch (nutrientKey) {
+                    case 'protein':
+                      builtInLabel = t('macroLabels.protein');
+                      break;
+                    case 'carbs':
+                      builtInLabel = t('macroLabels.carbs');
+                      break;
+                    case 'fat':
+                      builtInLabel = t('macroLabels.fat');
+                      break;
+                    case 'dietary_fiber':
+                      builtInLabel = t('macroLabels.fiber');
+                      break;
+                  }
+                  const label = builtInLabel ?? customDef?.name ?? nutrientKey;
                   const unit = meta?.unit ?? customDef?.unit ?? 'g';
 
                   // Use theme-aware CSS variable colors for the 4 core macros;
@@ -444,7 +462,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         {medicationsCardVisible && <MedicationsCard navigation={navigation} />}
 
         <Text className="text-text-primary text-xl font-bold mb-2">{t('dashboard.healthTrends')}</Text>
-        <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
+        <SegmentedControl segments={rangeSegments} activeKey={stepsRange} onSelect={setStepsRange} />
 
         <HealthTrendsPager
           stepsData={stepsData}
