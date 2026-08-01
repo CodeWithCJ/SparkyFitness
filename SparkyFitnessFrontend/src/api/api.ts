@@ -56,6 +56,24 @@ function reloadOnceForGatewayInterception(): void {
   window.location.reload();
 }
 
+export interface BlobWithHeaders {
+  blob: Blob;
+  headers: Headers;
+}
+
+export function apiCall(
+  endpoint: string,
+  options: ApiCallOptions & { responseType: 'blob'; returnHeaders: true }
+): Promise<BlobWithHeaders>;
+export function apiCall(
+  endpoint: string,
+  options: ApiCallOptions & { responseType: 'blob' }
+): Promise<Blob>;
+export function apiCall(
+  endpoint: string,
+  options?: ApiCallOptions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any>;
 export async function apiCall(
   endpoint: string,
   options?: ApiCallOptions
@@ -258,9 +276,27 @@ export async function apiCall(
   }
 }
 
+interface ApiGet {
+  (
+    endpoint: string,
+    options: ApiCallOptions & { responseType: 'blob'; returnHeaders: true }
+  ): Promise<BlobWithHeaders>;
+  (
+    endpoint: string,
+    options: ApiCallOptions & { responseType: 'blob' }
+  ): Promise<Blob>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (endpoint: string, options?: ApiCallOptions): Promise<any>;
+}
+
+const get: ApiGet = (
+  endpoint: string,
+  options?: ApiCallOptions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> => apiCall(endpoint, { ...options, method: 'GET' });
+
 export const api = {
-  get: (endpoint: string, options?: ApiCallOptions) =>
-    apiCall(endpoint, { ...options, method: 'GET' }),
+  get,
   post: (endpoint: string, options?: ApiCallOptions) =>
     apiCall(endpoint, { ...options, method: 'POST' }),
   put: (endpoint: string, options?: ApiCallOptions) =>
