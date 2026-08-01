@@ -5,6 +5,8 @@ import {
   performBackup,
   performRestore,
   BACKUP_DIR,
+  BACKUP_FILE_PATTERN,
+  listBackups,
 } from '../services/backupService.js';
 import { rescheduleBackups } from '../services/backupScheduler.js';
 import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
@@ -369,12 +371,69 @@ router.post('/settings', authenticate, isAdmin, async (req, res) => {
 });
 /**
  * @swagger
- * /admin/backup/download:
+ * /admin/backup/list:
  *   get:
- *     summary: Download the last backup file
+ *     summary: List all available backup files
  *     tags: [System & Admin]
  *     security:
  *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Backup files listed successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 backups:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       fileName:
+ *                         type: string
+ *                       size:
+ *                         type: integer
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *       500:
+ *         description: Server error.
+ */
+router.get('/list', authenticate, isAdmin, async (req, res) => {
+  try {
+    const backupFiles = await listBackups(BACKUP_DIR);
+    res.status(200).json({
+      backups: backupFiles.map((backup) => ({
+        fileName: backup.fileName,
+        size: backup.size,
+        createdAt: backup.createdAt.toISOString(),
+      })),
+    });
+  } catch (error) {
+    log('error', 'Error listing backup files:', error);
+    res.status(500).json({
+      message: 'Internal server error listing backup files.',
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      error: error?.message,
+    });
+  }
+});
+/**
+ * @swagger
+ * /admin/backup/download/{fileName}:
+ *   get:
+ *     summary: Download a specific backup file
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: fileName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The backup file name, as returned by GET /admin/backup/list.
  *     responses:
  *       200:
  *         description: Backup file downloaded successfully.
@@ -383,66 +442,41 @@ router.post('/settings', authenticate, isAdmin, async (req, res) => {
  *             schema:
  *               type: string
  *               format: binary
+ *       400:
+ *         description: Invalid backup file name.
  *       404:
- *         description: No backup file found.
+ *         description: Backup file not found.
  *       500:
  *         description: Server error.
  */
-router.get('/download', authenticate, isAdmin, async (req, res) => {
-  try {
-    log('info', 'Download backup initiated by admin.');
+router.get('/download/:fileName', authenticate, isAdmin, async (req, res) => {
+  const { fileName } = req.params;
 
-    const files = await fs.readdir(BACKUP_DIR);
-
-    const backupFiles = files.filter(
-      (file) =>
-        file.startsWith('sparkyfitness_full_backup_') &&
-        file.endsWith('.tar.gz')
-    );
-
-    if (backupFiles.length === 0) {
-      return res.status(404).json({
-        message: 'No backup file found.',
-      });
-    }
-
-    const backupFilesWithStats = await Promise.all(
-      backupFiles.map(async (file) => {
-        const filePath = path.join(BACKUP_DIR, file);
-        const stats = await fs.stat(filePath);
-        return { file, mtime: stats.mtime };
-      })
-    );
-
-    backupFilesWithStats.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-
-    const lastBackupFile = backupFilesWithStats[0].file;
-    const lastBackupPath = path.join(BACKUP_DIR, lastBackupFile);
-
-    await fs.access(lastBackupPath, fs.constants.R_OK);
-
-    res.download(lastBackupPath, lastBackupFile, (err) => {
-      if (err) {
-        log('error', 'Error sending backup file:', err);
-        if (!res.headersSent) {
-          res.status(500).json({
-            message: 'Error downloading backup file.',
-            error: err.message,
-          });
-        }
-      } else {
-        log('info', `Backup file downloaded: ${lastBackupFile}`);
-      }
-    });
-  } catch (error) {
-    log('error', 'Error during backup download:', error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        message: 'Internal server error during backup download.',
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error: error?.message,
-      });
-    }
+  if (!BACKUP_FILE_PATTERN.test(fileName)) {
+    return res.status(400).json({ message: 'Invalid backup file name.' });
   }
+
+  const backupPath = path.join(BACKUP_DIR, fileName);
+
+  try {
+    log('info', `Download backup initiated by admin: ${fileName}`);
+    await fs.access(backupPath, fs.constants.R_OK);
+  } catch {
+    return res.status(404).json({ message: 'Backup file not found.' });
+  }
+
+  res.download(backupPath, fileName, (err) => {
+    if (err) {
+      log('error', 'Error sending backup file:', err);
+      if (!res.headersSent) {
+        res.status(500).json({
+          message: 'Error downloading backup file.',
+          error: err.message,
+        });
+      }
+    } else {
+      log('info', `Backup file downloaded: ${fileName}`);
+    }
+  });
 });
 export default router;

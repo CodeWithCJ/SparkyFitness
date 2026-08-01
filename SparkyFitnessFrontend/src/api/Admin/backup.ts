@@ -1,7 +1,9 @@
 import { api } from '@/api/api';
 import {
+  BackupListResponse,
   BackupSettings,
   BackupSettingsMutator,
+  backupListResponseSchema,
   backupSettingsMutatorSchema,
   backupSettingsSchema,
 } from '@workspace/shared';
@@ -27,27 +29,13 @@ export const restoreBackup = async (formData: FormData) => {
   });
 };
 
-export const downloadLastBackup = async (): Promise<{
-  blob: Blob;
-  filename: string;
-}> => {
-  const blob = await api.get('/admin/backup/download', {
+export const listBackups = async (): Promise<BackupListResponse> => {
+  const response = await api.get('/admin/backup/list');
+  return backupListResponseSchema.parse(response);
+};
+
+export const downloadBackupFile = async (fileName: string): Promise<Blob> => {
+  return api.get(`/admin/backup/download/${encodeURIComponent(fileName)}`, {
     responseType: 'blob',
-    returnHeaders: true,
   });
-
-  // blob is now { blob: Blob, headers: Headers }
-  const contentDisposition = blob.headers?.get('content-disposition') || '';
-  let filename = 'sparkyfitness_backup.tar.gz';
-
-  // Extract filename from Content-Disposition header
-  const match = contentDisposition.match(/filename="?([^"]+)"?/);
-  if (match && match[1]) {
-    filename = match[1];
-  }
-
-  return {
-    blob: blob.blob,
-    filename,
-  };
 };
