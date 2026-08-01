@@ -264,7 +264,7 @@ describe('HydrationGauge and library rows A4.2 localization', () => {
     expect(screen.getByText('Posiłek')).toBeTruthy();
     expect(screen.getByText('Breakfast Bowl')).toBeTruthy();
     expect(screen.getByText('My description')).toBeTruthy();
-    expect(screen.getAllByLabelText('Ulubione')).toHaveLength(2);
+    expect(screen.getAllByLabelText('W ulubionych')).toHaveLength(2);
     expect(screen.getByText('1 składnik')).toBeTruthy();
     expect(screen.getByText('1 serving')).toBeTruthy();
   });
