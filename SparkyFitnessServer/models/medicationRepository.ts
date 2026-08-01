@@ -3,6 +3,7 @@ import type {
   CreateMedicationBody,
   UpdateMedicationBody,
   CreateScheduleBody,
+  UpdateScheduleBody,
 } from '../schemas/medicationSchemas.js';
 
 // Column lists kept in one place so SELECTs stay consistent.
@@ -255,6 +256,72 @@ async function addSchedule(
   }
 }
 
+async function updateSchedule(
+  userId: string,
+  scheduleId: string,
+  data: UpdateScheduleBody
+) {
+  const client = await getClient(userId);
+  try {
+    const updates: string[] = [];
+    const values: unknown[] = [scheduleId, userId];
+    let index = 3;
+
+    // source is deliberately absent — it is set at creation and never updated.
+    const fields: (keyof UpdateScheduleBody)[] = [
+      'schedule_type_id',
+      'time_of_day',
+      'dose_amount',
+      'days_of_week',
+      'interval_days',
+      'day_of_month',
+      'cycle_on_days',
+      'cycle_off_days',
+      'with_meal',
+      'prn_reason',
+      'prn_max_per_day',
+      'start_date',
+      'end_date',
+      'active',
+      'custom_fields',
+    ];
+
+    for (const key of fields) {
+      if (data[key] !== undefined) {
+        updates.push(`${key} = $${index}`);
+        if (key === 'custom_fields') {
+          values.push(
+            data.custom_fields ? JSON.stringify(data.custom_fields) : '{}'
+          );
+        } else {
+          values.push(data[key]);
+        }
+        index++;
+      }
+    }
+
+    if (updates.length === 0) {
+      const current = await client.query(
+        `SELECT ${SCHEDULE_COLS} FROM medication_schedules WHERE id = $1 AND user_id = $2`,
+        [scheduleId, userId]
+      );
+      return current.rows[0] ?? null;
+    }
+
+    const result = await client.query(
+      `UPDATE medication_schedules SET
+         ${updates.join(',\n')},
+         updated_at = NOW()
+       WHERE id = $1 AND user_id = $2
+       RETURNING ${SCHEDULE_COLS}`,
+      values
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+
 async function deleteSchedule(userId: string, scheduleId: string) {
   const client = await getClient(userId);
   try {
@@ -275,6 +342,7 @@ export {
   updateMedication,
   deleteMedication,
   addSchedule,
+  updateSchedule,
   deleteSchedule,
 };
 export default {
@@ -284,5 +352,6 @@ export default {
   updateMedication,
   deleteMedication,
   addSchedule,
+  updateSchedule,
   deleteSchedule,
 };

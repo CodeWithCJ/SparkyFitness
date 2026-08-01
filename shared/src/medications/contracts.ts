@@ -79,6 +79,31 @@ export interface MedicationSchedule extends SharedScheduleRule {
 
 export type MedicationDetail = Medication & { schedules: MedicationSchedule[] };
 
+export interface CreateScheduleInput {
+  schedule_type_id: string;
+  /** 'HH:MM' or 'HH:MM:SS'. Null for schedules without a fixed time (e.g. PRN). */
+  time_of_day?: string | null;
+  dose_amount?: number | null;
+  days_of_week?: number[] | null;
+  interval_days?: number | null;
+  day_of_month?: number | null;
+  cycle_on_days?: number | null;
+  cycle_off_days?: number | null;
+  with_meal?: MedicationWithMeal | null;
+  prn_reason?: string | null;
+  prn_max_per_day?: number | null;
+  /** 'YYYY-MM-DD' calendar-day string. */
+  start_date?: string | null;
+  /** 'YYYY-MM-DD' calendar-day string. */
+  end_date?: string | null;
+  active?: boolean;
+  source?: string;
+  custom_fields?: Record<string, unknown> | null;
+}
+
+/** source is set at creation and never updateable — the server ignores it on update. */
+export type UpdateScheduleInput = Partial<Omit<CreateScheduleInput, 'source'>>;
+
 export interface CreateMedicationInput {
   name: string;
   display_name?: string | null;

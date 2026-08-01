@@ -40,7 +40,7 @@ jest.mock('../../src/services/LogService', () => ({
 jest.mock('../../src/services/notifications', () => ({
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
   cancelScheduledNotification: jest.fn(async () => undefined),
-  fireRestCompleteHaptic: jest.fn(),
+  fireRestCompleteCue: jest.fn(),
 }));
 
 const mockUpdateWorkout = updateWorkout as jest.MockedFunction<typeof updateWorkout>;

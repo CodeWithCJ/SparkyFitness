@@ -286,6 +286,28 @@ describe('MedicationDetailScreen', () => {
     expect(screen.queryByText('Take')).toBeNull();
   });
 
+  it('shows the schedules card with an Add action even when no schedules exist', () => {
+    const screen = setupScreen(buildMedication({ schedules: [] }));
+
+    expect(screen.getByText('Schedules')).toBeTruthy();
+    expect(screen.getByText('No schedules. Take as needed.')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Add schedule'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('MedicationScheduleForm', {
+      medicationId: 'med-1',
+    });
+  });
+
+  it('opens the schedule editor when a schedule row is pressed', () => {
+    const screen = setupScreen(buildMedication());
+
+    fireEvent.press(screen.getByText('Daily at 8:00 AM'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('MedicationScheduleForm', {
+      medicationId: 'med-1',
+      scheduleId: 'sched-1',
+    });
+  });
+
   it('confirms before deleting the medication', () => {
     const screen = setupScreen(buildMedication());
 

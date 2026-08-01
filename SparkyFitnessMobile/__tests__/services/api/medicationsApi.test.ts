@@ -1,4 +1,10 @@
-import { listEntries, updateEntry } from '../../../src/services/api/medicationsApi';
+import {
+  listEntries,
+  updateEntry,
+  createSchedule,
+  updateSchedule,
+  deleteSchedule,
+} from '../../../src/services/api/medicationsApi';
 
 const mockApiFetch = jest.fn();
 jest.mock('../../../src/services/api/apiClient', () => ({
@@ -30,6 +36,57 @@ describe('medicationsApi', () => {
             status: 'skipped',
             taken_at: '2026-07-28T09:05:00Z',
           },
+        }),
+      );
+    });
+  });
+
+  describe('createSchedule', () => {
+    test('POSTs the body to /api/v2/medications/:medicationId/schedules', async () => {
+      mockApiFetch.mockResolvedValueOnce({ id: 'sched-1' });
+
+      const result = await createSchedule('med-1', {
+        schedule_type_id: 'daily',
+        time_of_day: '08:00',
+      });
+
+      expect(result).toEqual({ id: 'sched-1' });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: '/api/v2/medications/med-1/schedules',
+          method: 'POST',
+          body: { schedule_type_id: 'daily', time_of_day: '08:00' },
+        }),
+      );
+    });
+  });
+
+  describe('updateSchedule', () => {
+    test('PUTs the patch to /api/v2/medications/schedules/:id', async () => {
+      mockApiFetch.mockResolvedValueOnce({ id: 'sched-1' });
+
+      await updateSchedule('sched-1', { time_of_day: '09:00', days_of_week: null });
+
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: '/api/v2/medications/schedules/sched-1',
+          method: 'PUT',
+          body: { time_of_day: '09:00', days_of_week: null },
+        }),
+      );
+    });
+  });
+
+  describe('deleteSchedule', () => {
+    test('DELETEs /api/v2/medications/schedules/:id', async () => {
+      mockApiFetch.mockResolvedValueOnce(undefined);
+
+      await deleteSchedule('sched-1');
+
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: '/api/v2/medications/schedules/sched-1',
+          method: 'DELETE',
         }),
       );
     });

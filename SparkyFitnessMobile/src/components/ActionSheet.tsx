@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  BackHandler,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetScrollView,
@@ -20,6 +28,11 @@ const sheetContainer =
 export interface ActionSheetItem {
   key: string;
   label: string;
+  /**
+   * Consecutive items sharing a group render as one block, separated from
+   * adjacent blocks by a spacer band. Ungrouped items chunk together.
+   */
+  group?: string;
   /** Danger tint on the label. */
   destructive?: boolean;
   /**
@@ -65,6 +78,7 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
     // Cleared in onDismiss (the terminal signal), not at dismissal start, so a
     // Back press during the close animation is still swallowed by the sheet.
     const [isOpen, setIsOpen] = useState(false);
+    const { height: windowHeight } = useWindowDimensions();
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
 
@@ -191,11 +205,21 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
       item.onPress();
     };
 
+    const sections: ActionSheetItem[][] = [];
+    for (const item of items) {
+      const current = sections[sections.length - 1];
+      if (current && current[0].group === item.group) {
+        current.push(item);
+      } else {
+        sections.push([item]);
+      }
+    }
+
     return (
       <BottomSheetModal
         ref={modalRef}
         enableDynamicSizing
-        maxDynamicContentSize={500}
+        maxDynamicContentSize={windowHeight * 0.8}
         backdropComponent={renderBackdrop}
         containerComponent={sheetContainer}
         backgroundStyle={{ backgroundColor: surfaceBg }}
@@ -223,24 +247,31 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
               </Pressable>
             )}
           </View>
-          {items.map((item) => (
-            <Pressable
-              key={item.key}
-              testID={`action-sheet-item-${item.key}`}
-              onPress={() => handleItemPress(item)}
-              className="flex-row items-center px-4 py-3.5 border-b border-border-subtle"
-              style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-            >
-              <Text
-                className={`text-base font-medium ${
-                  item.destructive ? 'text-text-danger-subtle' : 'text-text-primary'
-                }`}
-              >
-                {item.label}
-              </Text>
-            </Pressable>
+          {sections.map((section, sectionIndex) => (
+            <React.Fragment key={section[0].key}>
+              {sectionIndex > 0 && (
+                <View testID="action-sheet-group-spacer" className="h-3 bg-background" />
+              )}
+              {section.map((item) => (
+                <Pressable
+                  key={item.key}
+                  testID={`action-sheet-item-${item.key}`}
+                  onPress={() => handleItemPress(item)}
+                  className="flex-row items-center px-4 py-3.5 border-b border-border-subtle"
+                  style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                >
+                  <Text
+                    className={`text-base font-medium ${
+                      item.destructive ? 'text-text-danger-subtle' : 'text-text-primary'
+                    }`}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </React.Fragment>
           ))}
         </BottomSheetScrollView>
       </BottomSheetModal>

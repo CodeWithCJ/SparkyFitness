@@ -45,6 +45,8 @@ export const PREFERENCE_DEFAULTS = {
   diarySummaryVisible: false,
   diarySummaryExpanded: false,
   defaultRestSec: DEFAULT_REST_SEC as number,
+  restTimerSoundEnabled: true,
+  workoutKeepAwakeEnabled: false,
 } as const;
 
 export type AppPreferencesData = {
@@ -64,6 +66,8 @@ export type AppPreferencesData = {
   diarySummaryVisible: boolean;
   diarySummaryExpanded: boolean;
   defaultRestSec: number;
+  restTimerSoundEnabled: boolean;
+  workoutKeepAwakeEnabled: boolean;
 };
 
 export interface AppPreferencesState extends AppPreferencesData {
@@ -83,6 +87,8 @@ export interface AppPreferencesState extends AppPreferencesData {
   setDiarySummaryVisible: (value: boolean) => void;
   setDiarySummaryExpanded: (value: boolean) => void;
   setDefaultRestSec: (value: number) => void;
+  setRestTimerSoundEnabled: (value: boolean) => void;
+  setWorkoutKeepAwakeEnabled: (value: boolean) => void;
 }
 
 /**
@@ -142,6 +148,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
       setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
+      setRestTimerSoundEnabled: (value) => set({ restTimerSoundEnabled: value }),
+      setWorkoutKeepAwakeEnabled: (value) => set({ workoutKeepAwakeEnabled: value }),
     }),
     {
       name: STORE_KEY,
@@ -166,6 +174,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         diarySummaryVisible: state.diarySummaryVisible,
         diarySummaryExpanded: state.diarySummaryExpanded,
         defaultRestSec: state.defaultRestSec,
+        restTimerSoundEnabled: state.restTimerSoundEnabled,
+        workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
       }),
       migrate: (persistedState, version) => {
         if (

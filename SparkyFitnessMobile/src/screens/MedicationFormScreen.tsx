@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, Switch, Alert } from 'react-native';
+import { View, Text, Switch, Alert, TouchableOpacity } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -8,6 +9,7 @@ import { useMedicationDetail, useCreateMedication, useUpdateMedication } from '.
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import FormInput from '../components/FormInput';
+import Icon from '../components/Icon';
 import type { RootStackScreenProps } from '../types/navigation';
 import { MEDICATION_TYPES } from '../types/medications';
 
@@ -41,6 +43,9 @@ const EMPTY_FORM: FormState = {
   isActive: true,
 };
 
+const hasDetailsContent = (form: FormState): boolean =>
+  Boolean(form.reason || form.prescriber || form.pharmacy || form.notes);
+
 function baseFromMed(
   existingMed?: NonNullable<ReturnType<typeof useMedicationDetail>['data']>,
 ): FormState {
@@ -66,10 +71,11 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [formEnabled, formDisabled] = useCSSVariable([
+  const [formEnabled, formDisabled, textMuted] = useCSSVariable([
     '--color-form-enabled',
     '--color-form-disabled',
-  ]) as [string, string];
+    '--color-text-muted',
+  ]) as [string, string, string];
 
   const { data: existingMed } = useMedicationDetail(medicationId ?? '', { enabled: isEditing });
   const createMedication = useCreateMedication();
@@ -81,6 +87,11 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     () => ({ ...baseFromMed(existingMed), ...edits }),
     [existingMed, edits],
   );
+
+  // null until the user toggles; until then follow the data, so a medication
+  // with detail content opens expanded even when it arrives after mount.
+  const [detailsToggle, setDetailsToggle] = useState<boolean | null>(null);
+  const showDetails = detailsToggle ?? hasDetailsContent(form);
 
   const updateField = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setEdits((prev) => ({ ...prev, [key]: value }));
@@ -154,12 +165,17 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {header}
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
+      <KeyboardAwareScrollView
+        contentContainerStyle={{
+          padding: 16,
+          rowGap: 24,
+          paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
+        }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
         keyboardShouldPersistTaps="handled"
+        bottomOffset={80}
       >
-        <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm gap-4">
+        <View className="gap-4">
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">Name *</Text>
             <FormInput
@@ -219,57 +235,74 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
               />
             </View>
           </View>
-
-          <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Reason</Text>
-            <FormInput
-              placeholder="Blood pressure"
-              value={form.reason}
-              onChangeText={(v) => updateField('reason', v)}
-            />
-          </View>
-
-          <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Prescriber</Text>
-            <FormInput
-              placeholder="Dr. Ipsum"
-              value={form.prescriber}
-              onChangeText={(v) => updateField('prescriber', v)}
-            />
-          </View>
-
-          <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Pharmacy</Text>
-            <FormInput
-              placeholder="Sunny Pharmacy"
-              value={form.pharmacy}
-              onChangeText={(v) => updateField('pharmacy', v)}
-            />
-          </View>
-
-          <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Notes</Text>
-            <FormInput
-              value={form.notes}
-              onChangeText={(v) => updateField('notes', v)}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-              style={{ minHeight: 72 }}
-            />
-          </View>
-
-          <View className="flex-row justify-between items-center py-3 border-t border-chrome-border">
-            <Text className="text-base text-text-primary">Active</Text>
-            <Switch
-              value={form.isActive}
-              onValueChange={(v) => updateField('isActive', v)}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
         </View>
-      </ScrollView>
+
+        <TouchableOpacity
+          onPress={() => setDetailsToggle(!showDetails)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showDetails }}
+          className="flex-row items-center gap-1 py-2 self-start"
+        >
+          <Text className="text-text-primary font-medium" style={{ fontSize: 16 }}>
+            Details
+          </Text>
+          <Icon name={showDetails ? 'chevron-down' : 'chevron-forward'} size={12} color={textMuted} />
+        </TouchableOpacity>
+
+        {showDetails && (
+          <View className="gap-4">
+            <View className="gap-1.5">
+              <Text className="text-text-secondary text-sm font-medium">Reason</Text>
+              <FormInput
+                placeholder="Blood pressure"
+                value={form.reason}
+                onChangeText={(v) => updateField('reason', v)}
+              />
+            </View>
+
+            <View className="gap-1.5">
+              <Text className="text-text-secondary text-sm font-medium">Prescriber</Text>
+              <FormInput
+                placeholder="Dr. Ipsum"
+                value={form.prescriber}
+                onChangeText={(v) => updateField('prescriber', v)}
+              />
+            </View>
+
+            <View className="gap-1.5">
+              <Text className="text-text-secondary text-sm font-medium">Pharmacy</Text>
+              <FormInput
+                placeholder="Sunny Pharmacy"
+                value={form.pharmacy}
+                onChangeText={(v) => updateField('pharmacy', v)}
+              />
+            </View>
+
+            <View className="gap-1.5">
+              <Text className="text-text-secondary text-sm font-medium">Notes</Text>
+              <FormInput
+                value={form.notes}
+                onChangeText={(v) => updateField('notes', v)}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                style={{ minHeight: 72 }}
+              />
+            </View>
+          </View>
+        )}
+
+        <View className="flex-row justify-between items-center">
+          <Text className="text-base text-text-primary">Active</Text>
+          <Switch
+            value={form.isActive}
+            onValueChange={(v) => updateField('isActive', v)}
+            trackColor={{ false: formDisabled, true: formEnabled }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+      </KeyboardAwareScrollView>
     </View>
   );
 };

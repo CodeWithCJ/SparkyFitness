@@ -364,6 +364,124 @@ describe('Medication Routes V2', () => {
     });
   });
 
+  describe('Schedules', () => {
+    it('adds a schedule', async () => {
+      const schedule = { id: 'sched-1', schedule_type_id: 'daily' };
+      vi.mocked(medicationRepository.addSchedule).mockResolvedValue(schedule);
+      const res = await request(app)
+        .post(`/api/v2/medications/${UID}/schedules`)
+        .set('Cookie', cookie)
+        .send({ schedule_type_id: 'daily', time_of_day: '08:00' });
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toEqual(schedule);
+      expect(medicationRepository.addSchedule).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ schedule_type_id: 'daily' })
+      );
+    });
+
+    it('returns 400 when schedule_type_id is missing on create', async () => {
+      const res = await request(app)
+        .post(`/api/v2/medications/${UID}/schedules`)
+        .set('Cookie', cookie)
+        .send({ time_of_day: '08:00' });
+      expect(res.statusCode).toBe(400);
+      expect(medicationRepository.addSchedule).not.toHaveBeenCalled();
+    });
+
+    it('updates a schedule, passing explicit-null discriminators through', async () => {
+      const updated = { id: UID, schedule_type_id: 'daily' };
+      vi.mocked(medicationRepository.updateSchedule).mockResolvedValue(updated);
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({
+          schedule_type_id: 'daily',
+          time_of_day: '09:00',
+          dose_amount: 2,
+          days_of_week: null,
+          interval_days: null,
+          day_of_month: null,
+          cycle_on_days: null,
+          cycle_off_days: null,
+          with_meal: null,
+          prn_reason: null,
+          prn_max_per_day: null,
+          start_date: null,
+          end_date: null,
+          active: true,
+        });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(updated);
+      expect(medicationRepository.updateSchedule).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({
+          schedule_type_id: 'daily',
+          time_of_day: '09:00',
+          dose_amount: 2,
+          days_of_week: null,
+          interval_days: null,
+          day_of_month: null,
+          cycle_on_days: null,
+          cycle_off_days: null,
+          with_meal: null,
+          prn_reason: null,
+          prn_max_per_day: null,
+          start_date: null,
+          end_date: null,
+          active: true,
+        })
+      );
+    });
+
+    it('returns 200 with the current row on an empty update', async () => {
+      const current = { id: UID, schedule_type_id: 'weekly' };
+      vi.mocked(medicationRepository.updateSchedule).mockResolvedValue(current);
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({});
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(current);
+    });
+
+    it('returns 404 when the schedule to update is missing', async () => {
+      vi.mocked(medicationRepository.updateSchedule).mockResolvedValue(null);
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({ time_of_day: '09:00' });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('returns 400 when updating with an out-of-range weekday', async () => {
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({ days_of_week: [9] });
+      expect(res.statusCode).toBe(400);
+      expect(medicationRepository.updateSchedule).not.toHaveBeenCalled();
+    });
+
+    it('deletes a schedule', async () => {
+      vi.mocked(medicationRepository.deleteSchedule).mockResolvedValue(true);
+      const res = await request(app)
+        .delete(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(204);
+    });
+
+    it('returns 404 when the schedule to delete is missing', async () => {
+      vi.mocked(medicationRepository.deleteSchedule).mockResolvedValue(false);
+      const res = await request(app)
+        .delete(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
   describe('Titration / taper', () => {
     it('adds a titration step', async () => {
       const step = { id: 'step-1', dose_mg: 0.5, status: 'planned' };
