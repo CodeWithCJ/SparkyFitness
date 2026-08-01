@@ -64,8 +64,8 @@
     "ofGoal": "of {{goal}} {{unit}}",
     "perBottle": "{{volume}} {{unit}} per bottle",
     "configureContainer": "Configure water container on server to enable quick add/remove buttons",
-    "add": "Add hydration",
-    "remove": "Remove hydration"
+    "add": "Add water",
+    "remove": "Remove water"
   },
   "foodSummary": {
     "tapToAdd": "Tap to add food",

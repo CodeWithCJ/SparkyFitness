@@ -143,12 +143,31 @@ describe('FoodSummary A4.2 localization', () => {
     const onAddFood = jest.fn();
     const screen = render(<FoodSummary foodEntries={[]} mealTypes={[]} onAddFood={onAddFood} />);
     expect(screen.getByText('Tap to add food')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Tap to add food' })).toBeTruthy();
     fireEvent.press(screen.getByText('Tap to add food'));
     expect(onAddFood).toHaveBeenCalledTimes(1);
     screen.rerender(<FoodSummary foodEntries={[]} mealTypes={[]} onAddFood={onAddFood} />);
     setLanguage('pl');
     screen.rerender(<FoodSummary foodEntries={[]} mealTypes={[]} onAddFood={onAddFood} />);
     expect(screen.getByText('Dotknij, aby dodać jedzenie')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Dotknij, aby dodać jedzenie' })).toBeTruthy();
+  });
+
+  it('keeps custom labels and text/boolean values literal in both locales', () => {
+    const customMeasurements = [
+      { id: 'text-en', category_id: 'text', value: 'Morning note', entry_date: '2026-01-01', custom_categories: { name: 'Mood', display_name: 'Mood', measurement_type: 'note', data_type: 'text' } },
+      { id: 'bool-en', category_id: 'bool', value: 'true', entry_date: '2026-01-01', custom_categories: { name: 'Fasted', display_name: 'Fasted', measurement_type: '', data_type: 'boolean' } },
+    ] as never;
+    const screen = render(<MeasurementsSummary measurements={{}} customMeasurements={customMeasurements} />);
+    expect(screen.getByText('Mood')).toBeTruthy();
+    expect(screen.getByText('Morning note note')).toBeTruthy();
+    expect(screen.getByText('true')).toBeTruthy();
+
+    setLanguage('pl');
+    screen.rerender(<MeasurementsSummary measurements={{}} customMeasurements={customMeasurements} />);
+    expect(screen.getByText('Mood')).toBeTruthy();
+    expect(screen.getByText('Morning note note')).toBeTruthy();
+    expect(screen.getByText('true')).toBeTruthy();
   });
 
   it('translates system meal types and keeps a custom meal type literal', () => {
@@ -215,10 +234,10 @@ describe('HydrationGauge and library rows A4.2 localization', () => {
     const screen = render(<HydrationGauge consumed={1234} goal={2500} unit="ml" containerVolume={500} onIncrement={onIncrement} onDecrement={onDecrement} containers={[{ id: 1, name: 'My Bottle' }, { id: 2, name: 'Other Bottle' }]} />);
     expect(screen.getByText('Nawodnienie')).toBeTruthy();
     expect(screen.getByText('z 2500 ml')).toBeTruthy();
-    expect(screen.getByLabelText('Dodaj nawodnienie')).toBeTruthy();
-    expect(screen.getByLabelText('Usuń nawodnienie')).toBeTruthy();
+    expect(screen.getByLabelText('Dodaj porcję wody')).toBeTruthy();
+    expect(screen.getByLabelText('Odejmij porcję wody')).toBeTruthy();
     expect(screen.getByText('My Bottle')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('Dodaj nawodnienie'));
+    fireEvent.press(screen.getByLabelText('Dodaj porcję wody'));
     expect(onIncrement).toHaveBeenCalledTimes(1);
   });
 
@@ -247,6 +266,7 @@ describe('HydrationGauge and library rows A4.2 localization', () => {
     expect(screen.getByText('My description')).toBeTruthy();
     expect(screen.getAllByLabelText('Ulubione')).toHaveLength(2);
     expect(screen.getByText('1 składnik')).toBeTruthy();
+    expect(screen.getByText('1 serving')).toBeTruthy();
   });
 
   it('uses English and Polish meal plural forms for 1, 2, and 5 items', () => {
@@ -324,6 +344,22 @@ describe('MeasurementsSummary A4.2 localization', () => {
     }
     expect(screen.getByLabelText('Edytuj pomiary')).toBeTruthy();
     expect(screen.getByText('120 mmHg')).toBeTruthy();
+  });
+
+  it('formats custom numeric values in EN and PL, including five digits', () => {
+    const customMeasurements = [{
+      id: 'numeric',
+      category_id: 'cat',
+      value: '12345.6',
+      entry_date: '2026-01-01',
+      custom_categories: { name: 'Distance', display_name: null, measurement_type: 'm', data_type: 'numeric' },
+    }] as never;
+    setLanguage('en');
+    const screen = render(<MeasurementsSummary measurements={{}} customMeasurements={customMeasurements} />);
+    expect(screen.getByText('12,345.6 m')).toBeTruthy();
+    setLanguage('pl');
+    screen.rerender(<MeasurementsSummary measurements={{}} customMeasurements={customMeasurements} />);
+    expect(screen.getByText('12 345,6 m')).toBeTruthy();
   });
 });
 

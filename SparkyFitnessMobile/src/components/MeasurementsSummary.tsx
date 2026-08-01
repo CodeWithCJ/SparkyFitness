@@ -48,6 +48,20 @@ const formatBodyLength = (cm: number, unit: 'cm' | 'inches'): string => {
   return `${formatNumber(lengthFromCm(cm, unit))} ${suffix}`;
 };
 
+const formatCustomValue = (
+  value: string,
+  dataType: string | null | undefined,
+): string => {
+  if (dataType === 'numeric') {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue)
+      ? formatLocalizedNumber(numericValue, { maximumFractionDigits: 4 })
+      : value;
+  }
+
+  return value;
+};
+
 const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
   measurements,
   weightMode = 'kg',
@@ -96,7 +110,11 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
       const cat = entry.custom_categories;
       const label = cat?.display_name ?? cat?.name ?? t('measurements.fallbackLabel');
       const suffix = cat?.measurement_type ? ` ${cat.measurement_type}` : '';
-      rows.push({ kind: 'custom', label, value: `${entry.value}${suffix}` });
+      rows.push({
+        kind: 'custom',
+        label,
+        value: `${formatCustomValue(entry.value, cat?.data_type)}${suffix}`,
+      });
     }
   }
 

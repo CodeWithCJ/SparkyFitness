@@ -142,7 +142,12 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
   const { t } = useTranslation();
   if (foodEntries.length === 0) {
     return (
-      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
+      <Pressable
+        onPress={onAddFood}
+        accessibilityRole="button"
+        accessibilityLabel={t('foodSummary.tapToAdd')}
+        className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
+      >
         <Text className="text-text-muted text-base">{t('foodSummary.tapToAdd')}</Text>
       </Pressable>
     );
@@ -153,7 +158,12 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
 
   if (visibleGroups.length === 0) {
     return (
-      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
+      <Pressable
+        onPress={onAddFood}
+        accessibilityRole="button"
+        accessibilityLabel={t('foodSummary.tapToAdd')}
+        className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
+      >
         <Text className="text-text-muted text-base">{t('foodSummary.tapToAdd')}</Text>
       </Pressable>
     );

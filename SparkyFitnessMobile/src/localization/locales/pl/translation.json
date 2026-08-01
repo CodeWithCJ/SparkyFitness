@@ -64,8 +64,8 @@
     "ofGoal": "z {{goal}} {{unit}}",
     "perBottle": "{{volume}} {{unit}} na butelkę",
     "configureContainer": "Skonfiguruj pojemnik na wodę na serwerze, aby włączyć szybkie dodawanie i odejmowanie",
-    "add": "Dodaj nawodnienie",
-    "remove": "Usuń nawodnienie"
+    "add": "Dodaj porcję wody",
+    "remove": "Odejmij porcję wody"
   },
   "foodSummary": {
     "tapToAdd": "Dotknij, aby dodać jedzenie",

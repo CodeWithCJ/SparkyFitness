@@ -113,4 +113,38 @@ describe('MeasurementsSummary', () => {
     );
     expect(getByText('Measurements')).toBeTruthy();
   });
+
+  test('formats numeric custom values and translates boolean values', () => {
+    const { getByText } = render(
+      <MeasurementsSummary
+        measurements={{}}
+        customMeasurements={[
+          {
+            id: 'numeric',
+            category_id: 'cat-1',
+            value: '1234.5',
+            entry_date: '2024-06-15',
+            custom_categories: { name: 'Glucose', display_name: null, measurement_type: 'mg/dL', frequency: 'Daily', data_type: 'numeric' },
+          },
+          {
+            id: 'boolean',
+            category_id: 'cat-2',
+            value: 'true',
+            entry_date: '2024-06-15',
+            custom_categories: { name: 'Fasted', display_name: null, measurement_type: '', frequency: 'Daily', data_type: 'boolean' },
+          },
+          {
+            id: 'invalid',
+            category_id: 'cat-3',
+            value: 'not-a-number',
+            entry_date: '2024-06-15',
+            custom_categories: { name: 'Note', display_name: null, measurement_type: '', frequency: 'Daily', data_type: 'numeric' },
+          },
+        ]}
+      />,
+    );
+    expect(getByText('1,234.5 mg/dL')).toBeTruthy();
+    expect(getByText('true')).toBeTruthy();
+    expect(getByText('not-a-number')).toBeTruthy();
+  });
 });

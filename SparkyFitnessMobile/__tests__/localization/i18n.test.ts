@@ -154,6 +154,37 @@ describe('localized number formatting', () => {
   });
 });
 
+describe('real i18next pluralization', () => {
+  it('uses English plural forms for 1, 2, and 5', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await i18n.changeLanguage('en');
+      expect([1, 2, 5].map((count) => i18n.t('mealLibrary.item', { count }))).toEqual([
+        'item',
+        'items',
+        'items',
+      ]);
+    });
+  });
+
+  it('uses Polish plural forms for 1, 2, 5, 12, 22, and 25', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await i18n.changeLanguage('pl');
+      expect([1, 2, 5, 12, 22, 25].map((count) => i18n.t('mealLibrary.item', { count }))).toEqual([
+        'składnik',
+        'składniki',
+        'składników',
+        'składników',
+        'składniki',
+        'składników',
+      ]);
+    });
+  });
+});
+
 describe('initializeI18n hydration', () => {
   beforeEach(() => {
     delete mockStorage['@SparkyFitness/app-preferences'];
