@@ -200,6 +200,25 @@ describe('MedicationFormScreen — optional text fields', () => {
     );
   });
 
+  it('collapses detail fields on create until the Details toggle is expanded', () => {
+    mockUseMedicationDetail.mockReturnValue(
+      { data: undefined } as unknown as ReturnType<typeof useMedicationDetail>,
+    );
+    const screen = renderScreen();
+
+    expect(screen.queryByPlaceholderText('Dr. Ipsum')).toBeNull();
+
+    fireEvent.press(screen.getByText('Details'));
+
+    expect(screen.getByPlaceholderText('Dr. Ipsum')).toBeTruthy();
+  });
+
+  it('starts with detail fields expanded when the medication has detail content', () => {
+    const screen = renderScreen('med-1');
+
+    expect(screen.getByPlaceholderText('Dr. Ipsum')).toBeTruthy();
+  });
+
   it('sends null for empty optional fields on create', () => {
     mockUseMedicationDetail.mockReturnValue(
       { data: undefined } as unknown as ReturnType<typeof useMedicationDetail>,

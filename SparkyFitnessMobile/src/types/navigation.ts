@@ -216,6 +216,7 @@ export type RootStackParamList = {
   MedicationsList: undefined;
   MedicationDetail: { medicationId: string };
   MedicationForm: { medicationId?: string };
+  MedicationScheduleForm: { medicationId: string; scheduleId?: string };
 };
 
 declare global {

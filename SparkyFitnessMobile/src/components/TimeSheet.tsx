@@ -1,5 +1,5 @@
-import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react';
-import { Platform } from 'react-native';
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { Platform, View } from 'react-native';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -9,6 +9,7 @@ import {
 import { FullWindowOverlay } from 'react-native-screens';
 import { useCSSVariable, useUniwind } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
+import Button from './ui/Button';
 
 // Render the sheet inside an iOS UIWindow so it sits above any native modal
 // presentation. No-op on Android.
@@ -55,15 +56,24 @@ const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(({ value, onSelectTim
   const { theme } = useUniwind();
   const isDarkMode = theme === 'dark' || theme === 'amoled';
 
-  const [surfaceBg, textMuted, accentPrimary, textPrimary] = useCSSVariable([
+  const [surfaceBg, textMuted, accentPrimary, textPrimary, borderSubtle] = useCSSVariable([
     '--color-surface',
     '--color-text-muted',
     '--color-accent-primary',
     '--color-text-primary',
-  ]) as [string, string, string, string];
+    '--color-border-subtle',
+  ]) as [string, string, string, string, string];
+
+  // The time the wheel is showing, committed by Done even if never scrolled.
+  // Seeded at present() so an open sheet doesn't re-seed to "now" on parent
+  // re-renders while the value is still empty.
+  const [displayed, setDisplayed] = useState('');
 
   useImperativeHandle(ref, () => ({
-    present: () => bottomSheetRef.current?.present(),
+    present: () => {
+      setDisplayed(dateToTimeString(timeStringToDate(value)));
+      bottomSheetRef.current?.present();
+    },
     dismiss: () => bottomSheetRef.current?.dismiss(),
   }));
 
@@ -82,19 +92,29 @@ const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(({ value, onSelectTim
   const handleChange = useCallback(
     ({ date }: { date: DateType }) => {
       const js = dateTypeToDate(date);
-      if (js && !Number.isNaN(js.getTime())) onSelectTime(dateToTimeString(js));
+      if (js && !Number.isNaN(js.getTime())) {
+        const time = dateToTimeString(js);
+        setDisplayed(time);
+        onSelectTime(time);
+      }
     },
     [onSelectTime],
   );
 
+  const handleDone = useCallback(() => {
+    if (displayed) onSelectTime(displayed);
+    bottomSheetRef.current?.dismiss();
+  }, [displayed, onSelectTime]);
+
   const pickerStyles = useMemo(
     () => ({
       time_selector_label: { color: textPrimary, fontWeight: '600' as const },
-      time_label: { color: textPrimary },
+      time_label: { color: textPrimary, fontSize: 24, fontWeight: '500' as const },
+      time_selected_indicator: { backgroundColor: borderSubtle, borderRadius: 10 },
       selected_month: { backgroundColor: accentPrimary },
       selected_month_label: { color: '#FFFFFF' },
     }),
-    [accentPrimary, textPrimary],
+    [accentPrimary, textPrimary, borderSubtle],
   );
 
   return (
@@ -110,14 +130,22 @@ const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(({ value, onSelectTim
       <BottomSheetView className="pb-safe-or-5 px-2">
         <DateTimePicker
           mode="single"
-          date={timeStringToDate(value)}
+          date={timeStringToDate(displayed || value)}
           timePicker
           initialView="time"
           hideHeader
           use12Hours
           onChange={handleChange}
           styles={pickerStyles}
+          // The wheels render 5 rows of 44px; the default 300px container
+          // centers them inside ~80px of dead space.
+          containerHeight={220}
         />
+        <View className="px-2 pt-2">
+          <Button variant="primary" onPress={handleDone}>
+            Done
+          </Button>
+        </View>
       </BottomSheetView>
     </BottomSheetModal>
   );
