@@ -141,7 +141,11 @@ const ICON_MAP = {
   'share-public': { sf: 'square.and.arrow.up', ion: 'share-social-outline', useIoniconOnIOS: true },
 
   // Wellness / Cycle
-  'wellness': { sf: 'heart.circle', ion: 'heart-circle-outline' },
+  // Must stay legible as plain hydration: this fronts cycle tracking, which
+  // renders under a neutral "Wellness" label when discreet mode is on. A moon
+  // or calendar-heart would give the feature away to anyone glancing over.
+  'wellness': { sf: 'drop', ion: 'water-outline' },
+  'medication': { sf: 'pills', ion: 'medkit-outline' },
   'calendar': { sf: 'calendar', ion: 'calendar-outline' },
 } as const;
 

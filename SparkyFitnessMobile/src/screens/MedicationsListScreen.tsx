@@ -83,7 +83,7 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
         </View>
       ) : active.length === 0 && inactive.length === 0 ? (
         <View className="flex-1 items-center justify-center p-8">
-          <Icon name="wellness" size={48} color={iconDecorative} />
+          <Icon name="medication" size={48} color={iconDecorative} />
           <Text className="text-text-muted text-lg mt-4 text-center">No medications yet</Text>
           <Text className="text-text-muted text-sm mt-2 text-center">
             Add your first medication to start tracking.
