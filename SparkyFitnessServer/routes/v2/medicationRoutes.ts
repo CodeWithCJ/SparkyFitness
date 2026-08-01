@@ -111,7 +111,7 @@ router.use(checkPermissionMiddleware('medications'));
  *     tags: [Medications & GLP-1]
  *     security: [{ cookieAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
- *     responses: { 200: { description: Updated. }, 404: { description: Not found. } }
+ *     responses: { 200: { description: Updated. }, 400: { description: Invalid request. }, 404: { description: Not found. } }
  *   delete:
  *     summary: Delete a schedule rule
  *     tags: [Medications & GLP-1]
