@@ -68,6 +68,7 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
               onValueChange={setRestTimerSoundEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
+              accessibilityLabel="Rest timer sound"
             />
           }
         />
@@ -82,6 +83,7 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
               onValueChange={setWorkoutKeepAwakeEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
+              accessibilityLabel="Keep screen awake"
             />
           }
         />

@@ -29,13 +29,18 @@ export function playRestCompleteSound(): void {
   void (async () => {
     try {
       if (!audioModeConfigured) {
-        audioModeConfigured = true;
-        // Short UI cue: mix with (never duck) the user's music, and stay
-        // silent when the ringer/silent switch is off — the haptic still fires.
-        await setAudioModeAsync({
-          playsInSilentMode: false,
-          interruptionMode: 'mixWithOthers',
-        });
+        try {
+          // Short UI cue: mix with (never duck) the user's music, and stay
+          // silent when the ringer/silent switch is off — the haptic still fires.
+          await setAudioModeAsync({
+            playsInSilentMode: false,
+            interruptionMode: 'mixWithOthers',
+          });
+          audioModeConfigured = true;
+        } catch (err) {
+          // Retry on the next chime; a config failure must not mute the cue.
+          addLog(`rest chime audio mode config failed: ${(err as Error).message}`, 'WARNING');
+        }
       }
       if (restChimePlayer == null) {
         restChimePlayer = createAudioPlayer(require('../../assets/sounds/rest-chime.wav'));
