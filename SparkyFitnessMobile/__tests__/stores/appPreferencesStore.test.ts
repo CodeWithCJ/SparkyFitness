@@ -26,6 +26,7 @@ describe('appPreferencesStore', () => {
       expect(state.diarySummaryExpanded).toBe(false);
       expect(state.defaultRestSec).toBe(90);
       expect(state.languagePreference).toBe('system');
+      expect(state.restTimerSoundEnabled).toBe(true);
     });
   });
 
@@ -58,6 +59,9 @@ describe('appPreferencesStore', () => {
 
       store.setLanguagePreference('pl');
       expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
+
+      store.setRestTimerSoundEnabled(false);
+      expect(useAppPreferencesStore.getState().restTimerSoundEnabled).toBe(false);
     });
   });
 

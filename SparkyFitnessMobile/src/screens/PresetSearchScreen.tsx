@@ -20,7 +20,6 @@ import {
   CATEGORY_ICON_MAP,
   buildPresetStartExercisesPayload,
   buildSingleExerciseStartPayload,
-  resolveSnapshotModality,
 } from '../utils/workoutSession';
 import SegmentedControl from '../components/SegmentedControl';
 import type { Exercise } from '../types/exercise';
@@ -96,7 +95,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     void startLiveWorkout({
       name: preset.name,
       exercises: buildPresetStartExercisesPayload(preset),
-      modalities: preset.exercises.map((e) => resolveSnapshotModality(e)),
+      sourcePresetId: preset.id,
     });
   }, [startLiveWorkout]);
 
@@ -116,7 +115,6 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     setStartingId(EMPTY_START_ID);
     void startLiveWorkout({
       exercises: buildSingleExerciseStartPayload(exercise),
-      modalities: [resolveSnapshotModality(exercise)],
     });
   }, [startLiveWorkout]);
 

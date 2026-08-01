@@ -36,7 +36,8 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
-  const { formatDateInUserTimezone, loggingLevel } = usePreferences();
+  const { formatDateInUserTimezone, formatTime, loggingLevel } =
+    usePreferences();
 
   const [sleepSessions, setSleepSessions] = useState<
     Array<{ bedtime: string; wakeTime: string; stageEvents: SleepStageEvent[] }>
@@ -489,11 +490,8 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                         }}
                         // Pass basic sleep entry details to SleepTimelineEditor for display
                         entryDetails={{
-                          bedtime: formatDateInUserTimezone(entry.bedtime, 'p'),
-                          wakeTime: formatDateInUserTimezone(
-                            entry.wake_time,
-                            'p'
-                          ),
+                          bedtime: formatTime(entry.bedtime),
+                          wakeTime: formatTime(entry.wake_time),
                           duration: formatSecondsToHHMM(
                             entry.duration_in_seconds
                           ),

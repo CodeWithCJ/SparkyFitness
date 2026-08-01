@@ -18,13 +18,13 @@ import {
   Layers,
 } from 'lucide-react';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
-import { formatMinutesToHHMM } from '@/utils/timeFormatters';
-import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import {
-  earliestEntryTime,
-  setsDurationMinutes,
-  toHourMinute,
-} from '@workspace/shared';
+  formatMinutesToHHMM,
+  formatTimeOfDayString,
+} from '@/utils/timeFormatters';
+import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
+import { earliestEntryTime, setsDurationMinutes } from '@workspace/shared';
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: PresetSessionEntry;
@@ -58,6 +58,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
+  const { timeFormat } = usePreferences();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpansion = useCallback(() => {
@@ -143,7 +144,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                   </span>
                   {earliestTime && (
                     <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
-                      {toHourMinute(earliestTime)}
+                      {formatTimeOfDayString(earliestTime, timeFormat)}
                     </span>
                   )}
                   {exerciseCount > 0 && (

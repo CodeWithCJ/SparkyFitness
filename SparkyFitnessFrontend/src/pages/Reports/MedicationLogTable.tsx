@@ -65,23 +65,17 @@ export default function MedicationLogTable({
   endDate,
 }: MedicationLogTableProps) {
   const { t } = useTranslation();
-  const { timezone } = usePreferences();
-
+  const { formatTime: formatTimePref } = usePreferences();
   const formatTime = useCallback(
     (timestamp: string | null | undefined) => {
       if (!timestamp) return null;
       try {
-        return new Intl.DateTimeFormat('en-US', {
-          timeZone: timezone,
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        }).format(new Date(timestamp));
+        return formatTimePref(timestamp);
       } catch {
         return null;
       }
     },
-    [timezone]
+    [formatTimePref]
   );
 
   // Group medication entries + symptoms by medication, then by day.

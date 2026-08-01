@@ -76,6 +76,14 @@ export const searchWorkoutPresets = async (
   });
 };
 
+export const getWorkoutPresetById = async (id: number): Promise<WorkoutPreset> => {
+  return apiFetch<WorkoutPreset>({
+    endpoint: `/api/workout-presets/${id}`,
+    serviceName: 'Workout Presets API',
+    operation: 'fetch workout preset',
+  });
+};
+
 export const createWorkoutPreset = async (
   body: WorkoutPresetCreatePayload,
 ): Promise<WorkoutPreset> => {

@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import { fireSuccessHaptic } from './haptics';
+import { isRestTimerSoundEnabled, playRestCompleteSound } from './sounds';
 import { ExactAlarmBridge } from './ExactAlarmBridge';
 import { useAppPreferencesStore, __resetAppPreferencesStoreForTests } from '../stores/appPreferencesStore';
 
@@ -63,11 +64,17 @@ export async function initNotifications(): Promise<void> {
   try {
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {
-        const isMedReminder = notification.request.content.categoryIdentifier === MEDICATION_REMINDER_CATEGORY;
+        const category = notification.request.content.categoryIdentifier;
+        const isMedReminder = category === MEDICATION_REMINDER_CATEGORY;
+        // While the in-app chime owns the foreground rest cue, the rest ping's
+        // notification sound is muted so the two never double up; turning the
+        // chime off restores it.
+        const restPingMuted =
+          category === REST_COMPLETE_CATEGORY && isRestTimerSoundEnabled();
         return {
           shouldShowBanner: isMedReminder,
           shouldShowList: isMedReminder,
-          shouldPlaySound: true,
+          shouldPlaySound: !restPingMuted,
           shouldSetBadge: false,
         };
       },
@@ -183,8 +190,9 @@ export async function requestNotificationPermission(): Promise<AppNotificationPe
 /**
  * One-time Android prompt for the "Alarms & reminders" special access.
  * Without it, expo-notifications schedules inexact alarms that the OS batches
- * ~15s late, so the rest-complete ping lags the actual deadline. Denied by
- * default on Android 13+; only the user can grant it, via system settings.
+ * ~15s late, so rest-complete pings and medication reminders lag their
+ * deadline. Denied by default on Android 13+; only the user can grant it,
+ * via system settings.
  */
 export async function maybePromptForExactAlarmPermission(): Promise<void> {
   if (!ExactAlarmBridge.isAvailable) return;
@@ -195,8 +203,8 @@ export async function maybePromptForExactAlarmPermission(): Promise<void> {
     if ((await AsyncStorage.getItem(EXACT_ALARM_PROMPT_KEY)) === 'true') return;
     await AsyncStorage.setItem(EXACT_ALARM_PROMPT_KEY, 'true');
     Alert.alert(
-      'On-time rest alerts',
-      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers ring on time.',
+      'On-time alerts',
+      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers and medication reminders ring on time.',
       [
         { text: 'Not Now', style: 'cancel' },
         {
@@ -358,8 +366,10 @@ export async function cancelAllScheduledNotifications(): Promise<void> {
   }
 }
 
-export function fireRestCompleteHaptic(): void {
+/** Haptic + optional foreground chime for the resting → ready flip. */
+export function fireRestCompleteCue(): void {
   fireSuccessHaptic();
+  playRestCompleteSound();
 }
 
 /** Test-only helper — resets module-level state and the preferences store. */

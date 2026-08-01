@@ -75,4 +75,30 @@ describe('CardioLog', () => {
     expect(onDistanceChange).toHaveBeenLastCalledWith(5.3);
     expect(distance).toHaveValue(5.3);
   });
+
+  it('clamps a negative distance to 0 on blur', () => {
+    const onDistanceChange = jest.fn();
+    render(<Harness onDistanceChange={onDistanceChange} />);
+
+    const distance = inputFor(/Distance/);
+    fireEvent.focus(distance);
+    fireEvent.change(distance, { target: { value: '-5' } });
+    fireEvent.blur(distance);
+
+    expect(onDistanceChange).toHaveBeenLastCalledWith(0);
+    expect(distance).toHaveValue(0);
+  });
+
+  it('clamps a negative duration to 0 on blur', () => {
+    const onDurationChange = jest.fn();
+    render(<Harness onDurationChange={onDurationChange} />);
+
+    const duration = inputFor(/Duration \(min\)/);
+    fireEvent.focus(duration);
+    fireEvent.change(duration, { target: { value: '-2' } });
+    fireEvent.blur(duration);
+
+    expect(onDurationChange).toHaveBeenLastCalledWith(0);
+    expect(duration).toHaveValue(0);
+  });
 });

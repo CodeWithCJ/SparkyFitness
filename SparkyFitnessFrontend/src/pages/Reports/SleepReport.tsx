@@ -28,7 +28,7 @@ interface SleepReportProps {
 
 const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, dateFormat } = usePreferences();
+  const { formatDateInUserTimezone, dateFormat, formatTime } = usePreferences();
   const { data: sleepEntries = [], isLoading: loadingEntries } =
     useSleepEntriesQuery(startDate, endDate);
   const { data: sleepDebtData, isLoading: loadingDebt } = useSleepDebtQuery();
@@ -71,8 +71,8 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
 
       return [
         formatDateInUserTimezone(sleepEntry.entry_date, dateFormat),
-        formatDateInUserTimezone(sleepEntry.bedtime, 'HH:mm'),
-        formatDateInUserTimezone(sleepEntry.wake_time, 'HH:mm'),
+        formatTime(sleepEntry.bedtime),
+        formatTime(sleepEntry.wake_time),
         formatSecondsToHHMM(sleepEntry.duration_in_seconds),
         sleepEntry.time_asleep_in_seconds
           ? formatSecondsToHHMM(sleepEntry.time_asleep_in_seconds)

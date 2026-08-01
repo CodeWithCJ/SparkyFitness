@@ -71,11 +71,10 @@ interface ActiveWorkoutExerciseCardProps {
   distanceUnit?: 'km' | 'miles';
   /**
    * False keeps cardio (`duration_distance`) exercises on the duration-style
-   * set table — the preset surfaces, whose sets have no distance column. When
-   * true (default), a cardio exercise with at most one set renders the
-   * Duration+Distance form instead of a set table; multi-set cardio entries
-   * (imports, future intervals) still fall back to the table so no rows are
-   * hidden.
+   * set table. When true (default), a cardio exercise with at most one set
+   * renders the Duration+Distance form instead of a set table; multi-set
+   * cardio entries (imports, future intervals) still fall back to the table
+   * so no rows are hidden.
    */
   cardioFormEnabled?: boolean;
   getImageSource: GetImageSource;
@@ -759,6 +758,7 @@ function ActiveWorkoutExerciseCard({
             exerciseName={name}
             mode={mode}
             distanceUnit={distanceUnit}
+            assumed={assumedSetValues?.[0] ?? null}
             state={((): SetRowState => {
               // Same state derivation as the table rows, so the form's log
               // affordance matches: done check, pulsing cursor ring, or muted
@@ -800,9 +800,19 @@ function ActiveWorkoutExerciseCard({
               </Text>
             )}
             {durationLike ? (
-              <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-                Sec
-              </Text>
+              <>
+                <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+                  Sec
+                </Text>
+                {/* Read-only cardio tables surface per-set distance (imports,
+                    intervals); live/edit tables keep the single editable Sec
+                    cell, so the column only exists in view mode. */}
+                {readOnly && modality === 'duration_distance' && (
+                  <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+                    {distanceUnit === 'miles' ? 'Mi' : 'Km'}
+                  </Text>
+                )}
+              </>
             ) : (
               <>
                 {modality !== 'reps_only' && (
@@ -859,6 +869,7 @@ function ActiveWorkoutExerciseCard({
               <ActiveWorkoutSetRow
                 set={set}
                 modality={modality}
+                distanceUnit={distanceUnit}
                 renderKey={renderKey}
                 displayNumber={workingSetNumbers[index]}
                 state={state}

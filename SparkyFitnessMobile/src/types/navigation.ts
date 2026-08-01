@@ -21,6 +21,7 @@ import type { WorkoutPreset } from './workoutPresets';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { SaveFoodPayload } from '../services/api/foodsApi';
 import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
+import type { AssumedSetValues } from '../utils/workoutSession';
 
 export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'library';
 
@@ -188,6 +189,13 @@ export type RootStackParamList = {
     prSetIds: PrSetMap;
     startedAt: number | null;
     finishedAt: number;
+    // Update-preset prompt inputs, snapshotted with the rest because the
+    // store is cleared before this screen mounts. The config id scopes the
+    // numeric preset id to the server it lives on; plannedSetValues backfills
+    // skipped sets with their programmed values.
+    sourcePresetId: number | null;
+    sourceServerConfigId: string | null;
+    plannedSetValues: Record<string, AssumedSetValues>;
   };
   ActivityDetail: { session: IndividualSessionResponse };
   FastingDetail: undefined;
@@ -209,6 +217,7 @@ export type RootStackParamList = {
   MedicationsList: undefined;
   MedicationDetail: { medicationId: string };
   MedicationForm: { medicationId?: string };
+  MedicationScheduleForm: { medicationId: string; scheduleId?: string };
 };
 
 declare global {

@@ -150,6 +150,16 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     plugins: [
       ...(config.plugins ?? []),
       'expo-image',
+      [
+        // Foreground playback only (rest-timer chime): no mic permission, no
+        // background-audio mode, no Android record/foreground-service perms.
+        'expo-audio',
+        {
+          microphonePermission: false,
+          recordAudioAndroid: false,
+          enableBackgroundPlayback: false,
+        },
+      ],
       './plugins/withGlanceAndroidSupport',
       './plugins/withCalorieWidget',
       './plugins/withExactAlarmModule',

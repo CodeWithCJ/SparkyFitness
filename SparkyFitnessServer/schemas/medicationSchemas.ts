@@ -68,6 +68,10 @@ export const CreateScheduleBodySchema = z
   .loose();
 export type CreateScheduleBody = z.infer<typeof CreateScheduleBodySchema>;
 
+// Update is a partial patch — every field optional, including schedule_type_id.
+export const UpdateScheduleBodySchema = CreateScheduleBodySchema.partial();
+export type UpdateScheduleBody = z.infer<typeof UpdateScheduleBodySchema>;
+
 // --------------------------------------------------------------------------
 // Pens / vials
 // --------------------------------------------------------------------------

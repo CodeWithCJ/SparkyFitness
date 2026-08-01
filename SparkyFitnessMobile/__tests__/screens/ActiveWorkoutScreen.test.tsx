@@ -633,7 +633,12 @@ describe('ActiveWorkoutScreen finish success celebration', () => {
   }
 
   it('replaces to WorkoutComplete with a snapshot taken before clearing the store', async () => {
-    useActiveWorkoutStore.getState().startWorkout(makeSession());
+    useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+      createdByLiveStart: true,
+      plannedSetValues: [[{ weight: 80, reps: 5, duration: null }]],
+      sourcePresetId: 42,
+      sourceServerConfigId: 'config-1',
+    });
     act(() => useActiveWorkoutStore.getState().completeSet('102'));
     const { getByText } = renderScreen();
 
@@ -648,6 +653,10 @@ describe('ActiveWorkoutScreen finish success celebration', () => {
     expect(params.completedSetIds['101']).toBeTruthy();
     expect(params.prSetIds).toEqual({});
     expect(typeof params.finishedAt).toBe('number');
+    // The update-preset prompt inputs ride the same pre-clear snapshot.
+    expect(params.sourcePresetId).toBe(42);
+    expect(params.sourceServerConfigId).toBe('config-1');
+    expect(params.plannedSetValues).toEqual({ '101': { weight: 80, reps: 5, duration: null } });
     expect(useActiveWorkoutStore.getState().session).toBeNull();
     expect(navigation.goBack).not.toHaveBeenCalled();
   });

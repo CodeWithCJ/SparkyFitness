@@ -16,6 +16,7 @@ import {
   type ThemePreference,
 } from '../services/themeService';
 import {
+  maybePromptForExactAlarmPermission,
   requestNotificationPermission,
   setNotificationsEnabled,
 } from '../services/notifications';
@@ -70,6 +71,8 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const setMedicationRemindersEnabled = useAppPreferencesStore((s) => s.setMedicationRemindersEnabled);
   const medicationReminderRepeats = useAppPreferencesStore((s) => s.medicationReminderRepeats);
   const setMedicationReminderRepeats = useAppPreferencesStore((s) => s.setMedicationReminderRepeats);
+  const medicationReminderHideNames = useAppPreferencesStore((s) => s.medicationReminderHideNames);
+  const setMedicationReminderHideNames = useAppPreferencesStore((s) => s.setMedicationReminderHideNames);
   const liquidGlassEnabled = useAppPreferencesStore((s) => s.liquidGlassTabBarEnabled);
   const setLiquidGlassTabBarEnabled = useAppPreferencesStore(
     (s) => s.setLiquidGlassTabBarEnabled,
@@ -113,8 +116,14 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
       }
       const status = await requestNotificationPermission();
       bannerRef.current?.refresh();
+      // Without OS permission the toggle would show "on" while reminders
+      // silently never fire; leave it off until permission is granted. The
+      // permission banner above explains and links to system settings.
       if (status === 'granted') {
         setMedicationRemindersEnabled(true);
+        // Scheduled reminders ring late on Android without the exact-alarm
+        // special access; nudge once when the user opts in.
+        await maybePromptForExactAlarmPermission();
       }
     },
     [setMedicationRemindersEnabled],
@@ -224,6 +233,24 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
                 <Switch
                   value={medicationReminderRepeats}
                   onValueChange={setMedicationReminderRepeats}
+                  trackColor={{ false: formDisabled, true: formEnabled }}
+                  thumbColor="#FFFFFF"
+                />
+              }
+            />
+          )}
+          {notificationsEnabled && medicationRemindersEnabled && (
+            <SettingsRow
+              title={t('hideMedicationNames.title')}
+              subtitle={
+                <Text className="text-sm text-text-secondary">
+                  {t('hideMedicationNames.subtitle')}
+                </Text>
+              }
+              rightAccessory={
+                <Switch
+                  value={medicationReminderHideNames}
+                  onValueChange={setMedicationReminderHideNames}
                   trackColor={{ false: formDisabled, true: formEnabled }}
                   thumbColor="#FFFFFF"
                 />

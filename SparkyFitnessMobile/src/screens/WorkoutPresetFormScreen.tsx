@@ -44,6 +44,7 @@ interface PresetFormBodyProps {
   setName: (s: string) => void;
   setDescription: (s: string) => void;
   weightUnit: 'kg' | 'lbs';
+  distanceUnit: 'km' | 'miles';
   exerciseSetEditing: ReturnType<typeof useExerciseSetEditing>;
   updateSetField: (
     exerciseClientId: string,
@@ -74,6 +75,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   setName,
   setDescription,
   weightUnit,
+  distanceUnit,
   exerciseSetEditing,
   updateSetField,
   updateSetMeta,
@@ -125,7 +127,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           ref={listRef}
           exercises={state.exercises}
           weightUnit={weightUnit}
-          cardioFormEnabled={false}
+          distanceUnit={distanceUnit}
           getImageSource={getImageSource}
           activeSetKey={exerciseSetEditing.activeSetKey}
           activeSetField={exerciseSetEditing.activeSetField}
@@ -169,6 +171,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
   const { sourceSession } = params;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = getWeightUnit(preferences?.default_weight_unit);
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
 
   const {
     state,
@@ -242,8 +245,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
   useEffect(() => {
     if (sourceSession == null || hasPopulatedRef.current || isPreferencesLoading) return;
     hasPopulatedRef.current = true;
-    populateFromSession(sourceSession, weightUnit);
-  }, [sourceSession, isPreferencesLoading, populateFromSession, weightUnit]);
+    populateFromSession(sourceSession, weightUnit, distanceUnit);
+  }, [sourceSession, isPreferencesLoading, populateFromSession, weightUnit, distanceUnit]);
 
   const { createPresetAsync, isPending } = useCreateWorkoutPreset();
 
@@ -300,7 +303,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
       name: trimmedName,
       description: trimmedDescription.length > 0 ? trimmedDescription : null,
       is_public: false,
-      exercises: buildPresetExercisesPayload(state.exercises, weightUnit),
+      exercises: buildPresetExercisesPayload(state.exercises, weightUnit, distanceUnit),
     };
 
     try {
@@ -327,6 +330,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
         setName={setName}
         setDescription={setDescription}
         weightUnit={weightUnit}
+        distanceUnit={distanceUnit}
         exerciseSetEditing={exerciseSetEditing}
         updateSetField={updateSetField}
         updateSetMeta={updateSetMeta}
@@ -360,8 +364,10 @@ export function buildPresetEditPayload(args: {
   initialDescription: string;
   exercisesModified: boolean;
   weightUnit: 'kg' | 'lbs';
+  distanceUnit: 'km' | 'miles';
 }): WorkoutPresetUpdatePayload {
-  const { state, initialPreset, initialDescription, exercisesModified, weightUnit } = args;
+  const { state, initialPreset, initialDescription, exercisesModified, weightUnit, distanceUnit } =
+    args;
   const payload: WorkoutPresetUpdatePayload = {};
 
   const trimmedName = state.name.trim();
@@ -378,7 +384,7 @@ export function buildPresetEditPayload(args: {
   // would unshare a previously-public preset (server uses COALESCE).
 
   if (exercisesModified) {
-    payload.exercises = buildPresetExercisesPayload(state.exercises, weightUnit);
+    payload.exercises = buildPresetExercisesPayload(state.exercises, weightUnit, distanceUnit);
   }
 
   return payload;
@@ -389,6 +395,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
   const { preset, returnKey } = params;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = getWeightUnit(preferences?.default_weight_unit);
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
 
   const {
     state,
@@ -462,8 +469,8 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
   useEffect(() => {
     if (hasPopulatedRef.current || isPreferencesLoading) return;
     hasPopulatedRef.current = true;
-    populateFromPreset(preset, weightUnit);
-  }, [isPreferencesLoading, populateFromPreset, preset, weightUnit]);
+    populateFromPreset(preset, weightUnit, distanceUnit);
+  }, [isPreferencesLoading, populateFromPreset, preset, weightUnit, distanceUnit]);
 
   const { updatePresetAsync, isPending } = useUpdateWorkoutPreset();
 
@@ -515,6 +522,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
       initialDescription: initialDescriptionRef.current,
       exercisesModified: exercisesModifiedRef.current,
       weightUnit,
+      distanceUnit,
     });
 
     if (Object.keys(payload).length === 0) {
@@ -550,6 +558,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         setName={setName}
         setDescription={setDescription}
         weightUnit={weightUnit}
+        distanceUnit={distanceUnit}
         exerciseSetEditing={exerciseSetEditing}
         updateSetField={updateSetField}
         updateSetMeta={updateSetMeta}
