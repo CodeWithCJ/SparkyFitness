@@ -14,9 +14,10 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import StepperInput from '../components/StepperInput';
+import StepperInput, { useStepperDraft } from '../components/StepperInput';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
+import { CYCLE_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 
 import {
   BIRTH_CONTROL_METHODS,
@@ -62,6 +63,17 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
   const [periodLength, setPeriodLength] = useState(5);
   const [birthControl, setBirthControl] = useState('none');
   const [conditions, setConditions] = useState<string[]>([]);
+
+  const cycleLengthProps = useStepperDraft({
+    value: cycleLength,
+    ...CYCLE_SETTING_LIMITS.cycleLength,
+    onCommit: setCycleLength,
+  });
+  const periodLengthProps = useStepperDraft({
+    value: periodLength,
+    ...CYCLE_SETTING_LIMITS.periodLength,
+    onCommit: setPeriodLength,
+  });
 
   // Refs
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
@@ -233,23 +245,13 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
                   <SettingsRow
                     title="Average Cycle Length"
                     rightAccessory={
-                      <StepperInput
-                        value={String(cycleLength)}
-                        onChangeText={(t) => setCycleLength(parseInt(t, 10) || 28)}
-                        onIncrement={() => setCycleLength((c) => c + 1)}
-                        onDecrement={() => setCycleLength((c) => Math.max(15, c - 1))}
-                      />
+                      <StepperInput {...cycleLengthProps} keyboardType="number-pad" />
                     }
                   />
                   <SettingsRow
                     title="Average Period Length"
                     rightAccessory={
-                      <StepperInput
-                        value={String(periodLength)}
-                        onChangeText={(t) => setPeriodLength(parseInt(t, 10) || 5)}
-                        onIncrement={() => setPeriodLength((p) => p + 1)}
-                        onDecrement={() => setPeriodLength((p) => Math.max(1, p - 1))}
-                      />
+                      <StepperInput {...periodLengthProps} keyboardType="number-pad" />
                     }
                   />
                 </SettingsRowGroup>

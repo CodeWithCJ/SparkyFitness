@@ -10,6 +10,81 @@ import {
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 
+interface StepperDraftOptions {
+  /** Committed value, shown whenever the field is not mid-edit. */
+  value: number;
+  min: number;
+  max: number;
+  /** Amount the +/- buttons move by. Defaults to 1. */
+  step?: number;
+  onCommit: (value: number) => void;
+  /** Called when an optional field is left empty. Required fields omit this. */
+  onClear?: () => void;
+}
+
+interface StepperDraftProps {
+  value: string;
+  onChangeText: (text: string) => void;
+  onBlur: () => void;
+  onIncrement: () => void;
+  onDecrement: () => void;
+}
+
+/**
+ * Holds keystrokes for a bounded integer field in local state so a partial
+ * entry ("2" on the way to "28") is never clamped or pushed to a caller that
+ * rejects out-of-range values. In-range text commits as it is typed; anything
+ * still out of range is clamped and committed on blur. Empty text restores a
+ * required field or invokes the optional field's clear handler.
+ */
+export function useStepperDraft({
+  value,
+  min,
+  max,
+  step = 1,
+  onCommit,
+  onClear,
+}: StepperDraftOptions): StepperDraftProps {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const handleChangeText = (text: string) => {
+    if (text !== '' && !/^\d+$/.test(text)) return;
+    setDraft(text);
+    const parsed = parseInt(text, 10);
+    if (!Number.isNaN(parsed) && parsed >= min && parsed <= max && parsed !== value) {
+      onCommit(parsed);
+    }
+  };
+
+  const handleBlur = () => {
+    if (draft === null) return;
+    setDraft(null);
+    if (draft === '') {
+      onClear?.();
+      return;
+    }
+    const parsed = parseInt(draft, 10);
+    const clamped = Math.max(min, Math.min(max, parsed));
+    if (clamped !== value) onCommit(clamped);
+  };
+
+  const adjust = (delta: number) => {
+    const parsed = draft === null ? NaN : parseInt(draft, 10);
+    const base = Number.isNaN(parsed) ? value : parsed;
+    setDraft(null);
+    const next = Math.max(min, Math.min(max, base + delta));
+    if (next !== value) onCommit(next);
+  };
+
+  return {
+    value: draft ?? String(value),
+    onChangeText: handleChangeText,
+    onBlur: handleBlur,
+    onIncrement: () => adjust(step),
+    onDecrement: () => adjust(-step),
+  };
+}
+
 interface StepperInputProps {
   value: string;
   onChangeText: (text: string) => void;

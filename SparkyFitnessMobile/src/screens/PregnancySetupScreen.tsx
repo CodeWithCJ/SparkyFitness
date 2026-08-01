@@ -10,8 +10,9 @@ import { getTodayDate, formatDate, addDays } from '../utils/dateUtils';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import Button from '../components/ui/Button';
-import StepperInput from '../components/StepperInput';
+import StepperInput, { useStepperDraft } from '../components/StepperInput';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
+import { PREGNANCY_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 
 const BASIS_OPTIONS: { value: PregnancyDueDateBasis; label: string }[] = [
@@ -56,6 +57,12 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const [date, setDate] = useState<string>(initialDate);
   const [fetusCount, setFetusCount] = useState(existing?.fetus_count ?? 1);
   const [notes, setNotes] = useState(existing?.notes ?? '');
+
+  const fetusCountProps = useStepperDraft({
+    value: fetusCount,
+    ...PREGNANCY_SETTING_LIMITS.fetusCount,
+    onCommit: setFetusCount,
+  });
 
   const { createPregnancyAsync, isCreating, updatePregnancyAsync, isUpdating } =
     usePregnancyMutations();
@@ -151,14 +158,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
           <SettingsRow
             title="Number of babies"
             rightAccessory={
-              <StepperInput
-                value={String(fetusCount)}
-                onChangeText={(t) => setFetusCount(Math.max(1, Math.min(6, parseInt(t, 10) || 1)))}
-                onIncrement={() => setFetusCount((n) => Math.min(6, n + 1))}
-                onDecrement={() => setFetusCount((n) => Math.max(1, n - 1))}
-                keyboardType="number-pad"
-                compact
-              />
+              <StepperInput {...fetusCountProps} keyboardType="number-pad" compact />
             }
           />
         </SettingsRowGroup>
