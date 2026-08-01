@@ -140,10 +140,12 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
     }
   }, []);
 
-  const discreetMode = useDiscreetMode();
+  const { discreetMode } = useDiscreetMode();
+  const headerTitle = discreetMode ? 'Wellness Settings' : 'Cycle & Pregnancy';
 
   const header = useScreenHeader({
-    title: discreetMode ? 'Wellness Settings' : 'Cycle Settings',
+    title: headerTitle,
+    nativeTitle: headerTitle,
     left: { kind: 'back' },
   });
 

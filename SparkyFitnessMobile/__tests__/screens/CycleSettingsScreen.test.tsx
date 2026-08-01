@@ -49,29 +49,45 @@ function renderScreen(initialSettings: any) {
   };
 }
 
+const baseSettings = {
+  enabled: true,
+  mode: 'standard',
+  avg_cycle_length_override: 28,
+  avg_period_length_override: 5,
+  luteal_phase_length: 14,
+  birth_control_method: 'none',
+  conditions: [],
+  show_fertile_window: true,
+  preferred_products: [],
+  dismissed_prompts: [],
+  terminology: 'default',
+  discreet_mode: false,
+};
+
 describe('CycleSettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders settings fields when enabled is true', async () => {
-    const settings = {
-      enabled: true,
-      mode: 'standard',
-      avg_cycle_length_override: 28,
-      avg_period_length_override: 5,
-      luteal_phase_length: 14,
-      birth_control_method: 'none',
-      conditions: [],
-      show_fertile_window: true,
-      preferred_products: [],
-      dismissed_prompts: [],
-      terminology: 'default',
-      discreet_mode: false,
-    };
-    const { getByText } = renderScreen(settings);
+    const { getByText } = renderScreen(baseSettings);
     expect(getByText('Enable Cycle & Pregnancy Tracking')).toBeTruthy();
     expect(getByText('Tracking Mode')).toBeTruthy();
     expect(getByText('Birth Control Method')).toBeTruthy();
+  });
+
+  it('switches the native header title on discreet mode', () => {
+    const nativeTitleFor = (settings: unknown): string | undefined => {
+      mockNavigation.setOptions.mockClear();
+      const view = renderScreen(settings);
+      view.unmount();
+      return mockNavigation.setOptions.mock.calls
+        .map(([options]: [{ title?: string }]) => options?.title)
+        .filter((title: string | undefined): title is string => typeof title === 'string')
+        .pop();
+    };
+
+    expect(nativeTitleFor(baseSettings)).toBe('Cycle & Pregnancy');
+    expect(nativeTitleFor({ ...baseSettings, discreet_mode: true })).toBe('Wellness Settings');
   });
 });

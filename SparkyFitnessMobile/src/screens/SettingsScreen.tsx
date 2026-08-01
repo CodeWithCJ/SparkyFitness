@@ -37,7 +37,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { isConnected } = useServerConnection();
   const { activeConfig } = useServerConfigs();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
-  const discreetMode = useDiscreetMode();
+  const { discreetMode } = useDiscreetMode();
   const [isSharing, setIsSharing] = useState<boolean>(false);
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
 
@@ -206,7 +206,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="wellness"
-                  title={discreetMode ? 'Wellness Settings' : 'Cycle & Pregnancy'}
+                  title={discreetMode ? 'Wellness Settings' : 'Cycle & Pregnancy Settings'}
                   onPress={() => navigation.navigate('CycleSettings')}
                   iconColor={catPink}
                 />

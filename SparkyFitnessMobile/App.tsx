@@ -1203,7 +1203,7 @@ function AppContent() {
           <Stack.Screen
             name="CycleSettings"
             component={SafeCycleSettings}
-            options={createStackScreenOptions('Cycle Settings', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions('Cycle & Pregnancy', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="CycleOnboarding"

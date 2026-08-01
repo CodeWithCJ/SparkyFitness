@@ -21,7 +21,7 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { mode } = useCycleMode();
-  const discreetMode = useDiscreetMode();
+  const { discreetMode } = useDiscreetMode();
   const calendarRef = useRef<CalendarSheetRef>(null);
 
   const [selectedDate, setSelectedDate] = React.useState(route.params?.date || getTodayDate());
