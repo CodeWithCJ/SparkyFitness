@@ -61,7 +61,7 @@ Object.defineProperty(Date.prototype, 'toLocaleTimeString', {
   writable: true,
   value(locales, options) {
     const useDefaultTestLocale =
-      locales == null ||
+      locales === undefined ||
       (Array.isArray(locales) && locales.length === 0);
 
     return nativeToLocaleTimeString.call(

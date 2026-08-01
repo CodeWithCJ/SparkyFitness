@@ -226,6 +226,7 @@ describe('buildCustomOps', () => {
           value: 100,
           hour: null,
           timestamp: '2026-07-30T08:00:00Z',
+          source: 'manual',
         },
       ]);
     }
@@ -333,6 +334,144 @@ describe('buildCustomOps', () => {
     const result = buildCustomOps({ categories: [numericCat('Daily')], form, dirtyKeys: new Set() });
 
     expect(result).toEqual({ ok: true, operations: [] });
+  });
+
+  it('preserves the server source for an existing Daily entry', () => {
+    const form: CustomFormState = {
+      'daily-category': {
+        rows: [row({ key: 'entry-d1', entryId: 'daily-1', source: 'healthkit', value: '125' })],
+        deleted: [],
+      },
+    };
+
+    const result = buildCustomOps({
+      categories: [numericCat('Daily', 'daily-category')],
+      form,
+      dirtyKeys: new Set(['entry-d1']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        {
+          kind: 'save',
+          categoryId: 'daily-category',
+          value: 125,
+          hour: null,
+          timestamp: null,
+          source: 'healthkit',
+        },
+      ]);
+    }
+  });
+
+  it('preserves the server source and hour for an existing Hourly entry', () => {
+    const form: CustomFormState = {
+      'cat-hourly': {
+        rows: [row({ key: 'entry-h1', entryId: 'hourly-1', source: 'garmin', hour: 8, value: '80' })],
+        deleted: [],
+      },
+    };
+
+    const result = buildCustomOps({
+      categories: [numericCat('Hourly')],
+      form,
+      dirtyKeys: new Set(['entry-h1']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        {
+          kind: 'save',
+          categoryId: 'cat-hourly',
+          value: 80,
+          hour: 8,
+          timestamp: null,
+          source: 'garmin',
+        },
+      ]);
+    }
+  });
+
+  it('uses manual source for a new locally-added row', () => {
+    const form: CustomFormState = {
+      'cat-unlimited': {
+        rows: [row({ key: 'new-1', entryId: null, source: 'manual', value: '50' })],
+        deleted: [],
+      },
+    };
+
+    const result = buildCustomOps({
+      categories: [numericCat('Unlimited')],
+      form,
+      dirtyKeys: new Set(['new-1']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        {
+          kind: 'save',
+          categoryId: 'cat-unlimited',
+          value: 50,
+          hour: null,
+          timestamp: null,
+          source: 'manual',
+        },
+      ]);
+    }
+  });
+
+  it('normalizes a legacy row with a missing source to manual', () => {
+    const form: CustomFormState = {
+      'cat-daily': {
+        rows: [row({ key: 'entry-l1', entryId: 'legacy', source: null, value: '90' })],
+        deleted: [],
+      },
+    };
+
+    const result = buildCustomOps({
+      categories: [numericCat('Daily')],
+      form,
+      dirtyKeys: new Set(['entry-l1']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        {
+          kind: 'save',
+          categoryId: 'cat-daily',
+          value: 90,
+          hour: null,
+          timestamp: null,
+          source: 'manual',
+        },
+      ]);
+    }
+  });
+
+  it('never emits a save for an existing All/Unlimited entry regardless of source', () => {
+    for (const frequency of ['All', 'Unlimited']) {
+      const form: CustomFormState = {
+        'cat-multi': {
+          rows: [row({ key: 'entry-1', entryId: 'm1', source: 'healthkit', value: '120' })],
+          deleted: [],
+        },
+      };
+
+      const result = buildCustomOps({
+        categories: [numericCat(frequency, 'cat-multi')],
+        form,
+        dirtyKeys: new Set(['entry-1']),
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.operations).toEqual([]);
+      }
+    }
   });
 });
 
@@ -626,6 +765,7 @@ describe('buildCustomOps - Hourly hours', () => {
           value: 80,
           hour: 8,
           timestamp: '2026-07-30T08:00:00.000Z',
+          source: 'manual',
         },
         {
           kind: 'save',
@@ -633,6 +773,7 @@ describe('buildCustomOps - Hourly hours', () => {
           value: 120,
           hour: 17,
           timestamp: '2026-07-30T17:00:00.000Z',
+          source: 'manual',
         },
       ]);
     }
@@ -741,6 +882,7 @@ describe('buildCustomOps - tombstone deletes', () => {
           value: 60,
           hour: 6,
           timestamp: null,
+          source: 'manual',
         },
       ]);
     }
@@ -812,6 +954,7 @@ describe('buildCustomOps - tombstone deletes', () => {
           value: 80,
           hour: 8,
           timestamp: '2026-07-30T08:00:00.000Z',
+          source: 'manual',
         },
       ]);
     }

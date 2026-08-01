@@ -597,6 +597,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
               entry_date: selectedDate,
               entry_hour: op.hour,
               entry_timestamp: op.timestamp ?? undefined,
+              source: op.source,
             });
           }
         }

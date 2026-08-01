@@ -56,6 +56,7 @@ export type CustomOp =
       value: string | number | boolean;
       hour: number | null;
       timestamp: string | null;
+      source: string;
     }
   | { kind: 'delete'; entryId: string; categoryId: string };
 
@@ -359,13 +360,16 @@ export function buildCustomOps(params: {
       }
 
       // Every save goes through POST; no id is attached because the screen
-      // never edits an entry by id.
+      // never edits an entry by id. Preserve the source the server stored for
+      // existing entries; local/legacy rows without a source normalize to
+      // 'manual'.
       operations.push({
         kind: 'save',
         categoryId: cat.id,
         value: parsed,
         hour: row.hour,
         timestamp: row.timestamp,
+        source: row.source ?? 'manual',
       });
     }
   }

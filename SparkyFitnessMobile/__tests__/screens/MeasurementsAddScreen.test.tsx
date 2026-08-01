@@ -238,10 +238,210 @@ describe('MeasurementsAddScreen custom measurements', () => {
         entry_date: '2024-06-15',
         entry_hour: null,
         entry_timestamp: undefined,
+        source: 'manual',
       });
     });
     expect(upsertMutation.mutateAsync).not.toHaveBeenCalled();
     expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  test('preserves an existing Daily entry source (healthkit) on POST', async () => {
+    const catId = 'cat-daily';
+    mockUseCustomCategories.mockReturnValue({
+      data: [
+        {
+          id: catId,
+          name: 'BP',
+          display_name: 'BP',
+          measurement_type: 'mmHg',
+          frequency: 'Daily',
+          data_type: 'numeric',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomCategories,
+    });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [
+        {
+          id: 'daily-healthkit',
+          category_id: catId,
+          value: '120',
+          entry_date: '2024-06-15',
+          source: 'healthkit',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomEntries,
+    });
+
+    const screen = renderScreen();
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('120')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getByDisplayValue('120'), '125');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(saveCustomMutation.mutateAsync).toHaveBeenCalled();
+    });
+    expect(saveCustomMutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category_id: catId,
+        source: 'healthkit',
+      }),
+    );
+    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'manual' }),
+    );
+  });
+
+  test('preserves an existing Hourly entry source (garmin) and hour on POST', async () => {
+    const catId = 'cat-hourly';
+    mockUseCustomCategories.mockReturnValue({
+      data: [
+        {
+          id: catId,
+          name: 'Caffeine',
+          display_name: 'Caffeine',
+          measurement_type: 'mg',
+          frequency: 'Hourly',
+          data_type: 'numeric',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomCategories,
+    });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [
+        {
+          id: 'hourly-garmin',
+          category_id: catId,
+          value: '80',
+          entry_date: '2024-06-15',
+          entry_hour: 8,
+          source: 'garmin',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomEntries,
+    });
+
+    const screen = renderScreen();
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('80')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getByDisplayValue('80'), '85');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(saveCustomMutation.mutateAsync).toHaveBeenCalled();
+    });
+    expect(saveCustomMutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category_id: catId,
+        source: 'garmin',
+        entry_hour: 8,
+      }),
+    );
+    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'manual' }),
+    );
+  });
+
+  test('a new manually-added entry is sent with source manual', async () => {
+    const catId = 'cat-daily-new';
+    mockUseCustomCategories.mockReturnValue({
+      data: [
+        {
+          id: catId,
+          name: 'BP',
+          display_name: 'BP',
+          measurement_type: 'mmHg',
+          frequency: 'Daily',
+          data_type: 'numeric',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomCategories,
+    });
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: mockRefetchCustomEntries,
+    });
+
+    const screen = renderScreen();
+    await waitFor(() => {
+      expect(screen.getAllByPlaceholderText('0').length).toBeGreaterThan(0);
+    });
+
+    // The custom Daily single-row input renders after the built-in fields, so
+    // it is the last "0" placeholder.
+    const customInput = screen.getAllByPlaceholderText('0').at(-1)!;
+    fireEvent.changeText(customInput, '130');
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(saveCustomMutation.mutateAsync).toHaveBeenCalled();
+    });
+    expect(saveCustomMutation.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category_id: catId,
+        source: 'manual',
+      }),
+    );
+  });
+
+  test('a new All/Unlimited entry is sent with source manual', async () => {
+    for (const frequency of ['All', 'Unlimited']) {
+      const catId = `cat-${frequency.toLowerCase()}`;
+      mockUseCustomCategories.mockReturnValue({
+        data: [
+          {
+            id: catId,
+            name: 'Caffeine',
+            display_name: 'Caffeine',
+            measurement_type: 'mg',
+            frequency,
+            data_type: 'numeric',
+          },
+        ],
+        isLoading: false,
+        isError: false,
+        refetch: mockRefetchCustomCategories,
+      });
+      mockUseCustomMeasurementsByDate.mockReturnValue({
+        data: [],
+        isLoading: false,
+        isError: false,
+        refetch: mockRefetchCustomEntries,
+      });
+
+      const screen = renderScreen();
+      fireEvent.press(screen.getByTestId(`add-custom-${catId}`));
+      fireEvent.changeText(screen.getByTestId('custom-input-new-1'), '80');
+      fireEvent.press(screen.getByText('Save'));
+
+      await waitFor(() => {
+        expect(saveCustomMutation.mutateAsync).toHaveBeenCalled();
+      });
+      expect(saveCustomMutation.mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category_id: catId,
+          source: 'manual',
+        }),
+      );
+      jest.clearAllMocks();
+    }
   });
 
   test('clearing a custom measurement requires confirmation; cancelling performs no delete', async () => {
