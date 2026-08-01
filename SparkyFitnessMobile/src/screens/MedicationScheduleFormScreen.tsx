@@ -14,7 +14,7 @@ import {
   useDeleteMedicationSchedule,
 } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import FormInput from '../components/FormInput';
 import StepperInput from '../components/StepperInput';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
@@ -358,9 +358,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
       busy: createScheduleMutation.isPending || updateScheduleMutation.isPending,
-      busyLabel: SAVING_LABEL,
       disabled: isEditing && !existing,
       onPress: handleSave,
     },

@@ -46,6 +46,32 @@ if (typeof globalThis.fetch !== 'function') {
   });
 }
 
+// Deterministic test-time locale for Date#toLocaleTimeString.
+//
+// The production code in shared/src/medications/format.ts formats times with an
+// EMPTY locale list, so the output depends on the OS/ICU default locale (e.g.
+// `pl-PL` yields 24h "8:00" while `en-US` yields "12h 8:00 AM"). To keep tests
+// reproducible on any machine we map "no explicit locale" to `en-US`, while
+// preserving any locale the caller passes explicitly (e.g. `pl-PL`). This only
+// runs under Jest and never touches production code or shared/.
+const nativeToLocaleTimeString = Date.prototype.toLocaleTimeString;
+
+Object.defineProperty(Date.prototype, 'toLocaleTimeString', {
+  configurable: true,
+  writable: true,
+  value(locales, options) {
+    const useDefaultTestLocale =
+      locales == null ||
+      (Array.isArray(locales) && locales.length === 0);
+
+    return nativeToLocaleTimeString.call(
+      this,
+      useDefaultTestLocale ? 'en-US' : locales,
+      options,
+    );
+  },
+});
+
 // Global react-i18next mock: components use useTranslation(), but tests don't
 // initialize the i18n instance. Resolve dotted keys against the English resource
 // so components render their default (en) copy. Other exports (initReactI18next

@@ -6,12 +6,18 @@ import type {
 /**
  * Pure form state for custom measurements, keyed by category id.
  *
- * Frequencies:
- * - `Daily`: at most one entry per category per day → a single row.
- * - `Hourly`: multiple entries per day, identified by id + `entry_hour`.
- * - `All` / `Unlimited`: an independent list of entries identified by id +
- *   `entry_timestamp`. The server always INSERTs on POST, so existing entries
- *   are edited via PUT-by-id and new ones are created with POST.
+ * Write contract (matches upstream backend POST semantics):
+ * - `Daily` saves through POST with upsert semantics (matched by category,
+ *   date and source).
+ * - `Hourly` saves through POST with upsert semantics per category, date,
+ *   source and hour.
+ * - `All` / `Unlimited` always INSERT a new entry on POST. Existing entries
+ *   are read-only in the UI and can only be explicitly deleted; the user adds
+ *   a new entry as a separate action. Existing entries are never edited by id;
+ *   there is no automatic DELETE+POST disguised as a single edit.
+ * - `entryId` on a row identifies a server entry (and stays on the `delete`
+ *   operation), but a `save` operation never carries it because the screen
+ *   does not use an id to POST.
  *
  * This module contains no React or side effects so every frequency rule can be
  * unit tested directly.
@@ -47,8 +53,6 @@ export type CustomOp =
   | {
       kind: 'save';
       categoryId: string;
-      /** `null` → POST (new entry); set → PUT-by-id (edit existing entry). */
-      entryId: string | null;
       value: string | number | boolean;
       hour: number | null;
       timestamp: string | null;
@@ -161,7 +165,7 @@ export function findHourlyHourConflict(params: {
  * - Dirty rows keep their local value; non-dirty rows mirror the server.
  * - A non-dirty entry that disappears from the response is dropped.
  * - A dirty row whose entry disappears is kept and re-targeted as a new row so
- *   it can still be saved (POST) instead of PUT-ing a stale id.
+ *   it can still be saved (POST) rather than carried as an existing entry.
  * - A date change must clear the dirty set beforehand; this function never
  *   reuses a previous day's rows across categories beyond the dirty rules.
  * - Multi-entry categories keep one row per server entry (never flattened).
@@ -344,9 +348,9 @@ export function buildCustomOps(params: {
       }
 
       // All/Unlimited entries are always INSERTed by upstream POST, so an
-      // existing entry cannot be edited by id. The UI renders those rows
-      // read-only; here we defensively skip a save so a stale id never turns
-      // into an accidental duplicate insert. Clearing (delete) is handled above.
+      // existing entry cannot be edited. The UI renders those rows read-only;
+      // here we defensively skip a save so an existing row never turns into an
+      // accidental duplicate insert. Clearing (delete) is handled above.
       if (
         row.entryId != null &&
         (cat.frequency === 'All' || cat.frequency === 'Unlimited')
@@ -354,10 +358,11 @@ export function buildCustomOps(params: {
         continue;
       }
 
+      // Every save goes through POST; no id is attached because the screen
+      // never edits an entry by id.
       operations.push({
         kind: 'save',
         categoryId: cat.id,
-        entryId: row.entryId,
         value: parsed,
         hour: row.hour,
         timestamp: row.timestamp,

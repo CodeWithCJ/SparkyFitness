@@ -630,6 +630,95 @@ describe('MeasurementsAddScreen custom measurements', () => {
     },
   );
 
+  test.each(['All', 'Unlimited'])(
+    'existing %s entry is read-only: no edit, no implicit DELETE+POST, explicit delete + re-add',
+    async (frequency) => {
+      const catId = frequency === 'All' ? 'cat-a' : 'cat-u';
+      const existingEntry = {
+        id: 'entry-x',
+        category_id: catId,
+        value: '100',
+        entry_date: '2024-06-15',
+        source: 'manual',
+      };
+      mockUseCustomCategories.mockReturnValue({
+        data: [
+          {
+            id: catId,
+            name: 'Caffeine',
+            display_name: 'Caffeine',
+            measurement_type: 'mg',
+            frequency,
+            data_type: 'numeric',
+          },
+        ],
+        isLoading: false,
+        isError: false,
+        refetch: mockRefetchCustomCategories,
+      });
+      mockUseCustomMeasurementsByDate.mockReturnValue({
+        data: [existingEntry],
+        isLoading: false,
+        isError: false,
+        refetch: mockRefetchCustomEntries,
+      });
+
+      const screen = renderScreen();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('custom-readonly-entry-entry-x')).toBeTruthy();
+      });
+
+      // 1. value is visible as read-only text
+      expect(screen.getByText('100')).toBeTruthy();
+      // 2. the read-only row testID exists
+      expect(screen.getByTestId('custom-readonly-entry-entry-x')).toBeTruthy();
+      // 3. no editable TextInput for the existing row
+      expect(screen.queryByTestId('custom-input-entry-entry-x')).toBeNull();
+      // 6. delete button still exists
+      expect(screen.getByTestId('delete-custom-entry-entry-x')).toBeTruthy();
+
+      // 4/5. saving without changes performs neither POST nor DELETE
+      fireEvent.press(screen.getByText('Save'));
+      await waitFor(() => {
+        expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
+      });
+      // 9. no automatic DELETE+POST as a single edit
+      expect(deleteCustomMutation.mutateAsync).not.toHaveBeenCalled();
+      expect(upsertMutation.mutateAsync).not.toHaveBeenCalled();
+
+      // 7. deletion is an explicit user action (trash button exists)
+      expect(screen.getByTestId('delete-custom-entry-entry-x')).toBeTruthy();
+
+      // Explicit delete, then (8) the user can separately add a new row.
+      fireEvent.press(screen.getByTestId('delete-custom-entry-entry-x'));
+      expect(screen.getByTestId(`add-custom-${catId}`)).toBeTruthy();
+
+      fireEvent.press(screen.getByTestId(`add-custom-${catId}`));
+      await waitFor(() => {
+        expect(screen.getByTestId('custom-input-new-1')).toBeTruthy();
+      });
+      fireEvent.changeText(screen.getByTestId('custom-input-new-1'), '80');
+      fireEvent.press(screen.getByText('Save'));
+
+      // Saving with a tombstoned delete requires confirming the delete alert.
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalled();
+      });
+      const alertCall = (Alert.alert as jest.Mock).mock.calls.at(-1);
+      const confirmButton = alertCall[2].find((b: { style?: string }) => b.style === 'destructive');
+      confirmButton.onPress();
+
+      await waitFor(() => {
+        expect(saveCustomMutation.mutateAsync).toHaveBeenCalledTimes(1);
+        expect(deleteCustomMutation.mutateAsync).toHaveBeenCalledWith({
+          id: 'entry-x',
+          entryDate: '2024-06-15',
+        });
+      });
+    },
+  );
+
   test('an empty new Hourly row colliding with the server does not block a weight save', async () => {
     const defaultHour = new Date().getHours();
     mockUseCustomCategories.mockReturnValue({

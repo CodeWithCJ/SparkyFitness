@@ -223,7 +223,6 @@ describe('buildCustomOps', () => {
         {
           kind: 'save',
           categoryId: 'cat-unlimited',
-          entryId: null,
           value: 100,
           hour: null,
           timestamp: '2026-07-30T08:00:00Z',
@@ -624,7 +623,6 @@ describe('buildCustomOps - Hourly hours', () => {
         {
           kind: 'save',
           categoryId: 'cat-hourly',
-          entryId: null,
           value: 80,
           hour: 8,
           timestamp: '2026-07-30T08:00:00.000Z',
@@ -632,7 +630,6 @@ describe('buildCustomOps - Hourly hours', () => {
         {
           kind: 'save',
           categoryId: 'cat-hourly',
-          entryId: null,
           value: 120,
           hour: 17,
           timestamp: '2026-07-30T17:00:00.000Z',
@@ -741,7 +738,6 @@ describe('buildCustomOps - tombstone deletes', () => {
         {
           kind: 'save',
           categoryId: 'cat-hourly',
-          entryId: 'h6',
           value: 60,
           hour: 6,
           timestamp: null,
@@ -813,7 +809,6 @@ describe('buildCustomOps - tombstone deletes', () => {
         {
           kind: 'save',
           categoryId: 'cat-hourly',
-          entryId: null,
           value: 80,
           hour: 8,
           timestamp: '2026-07-30T08:00:00.000Z',
