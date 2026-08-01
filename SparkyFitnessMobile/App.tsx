@@ -455,7 +455,10 @@ function AppContent() {
         Alert.alert(
           t('appAlerts.draft.title'),
           t('appAlerts.draft.message', {
-            draftType: draft.type === 'workout' ? t('addSheet.workout') : t('addSheet.activity'),
+            draftType:
+              draft.type === 'workout'
+                ? t('appAlerts.draft.workoutType')
+                : t('appAlerts.draft.activityType'),
           }),
           [
             { text: t('common.cancel'), style: 'cancel' },

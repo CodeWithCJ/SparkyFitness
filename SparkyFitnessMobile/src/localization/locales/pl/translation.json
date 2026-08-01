@@ -90,11 +90,11 @@
     "loading": "Ładowanie biblioteki...",
     "create": "Utwórz",
     "browse": "Przeglądaj",
-    "recentlyLogged": "Ostatnio zalogowane",
+    "recentlyLogged": "Ostatnio zapisane",
     "loadingRecent": "Ładowanie ostatnich pozycji...",
     "failedToLoadRecent": "Nie udało się załadować ostatnich pozycji.",
     "noRecentItemsTitle": "Brak ostatnich pozycji",
-    "noRecentItemsSubtitle": "Produkty, posiłki i ćwiczenia, które zalogujesz, pojawią się tutaj dla szybkiego dostępu.",
+    "noRecentItemsSubtitle": "Produkty, posiłki i ćwiczenia, które zapiszesz, pojawią się tutaj, aby zapewnić szybki dostęp.",
     "manualEntry": "Ręczne wprowadzanie",
     "groupFoods": "Grupuj produkty",
     "exerciseRoutine": "Plan treningowy",
@@ -164,7 +164,7 @@
     "exerciseSubtitleWorkout": "Żywe serie i powtórzenia",
     "exerciseSubtitleActivity": "Czas i dystans",
     "exerciseSubtitleLog": "Poprzednie serie i powtórzenia",
-    "wellness": "Wellness"
+    "wellness": "Samopoczucie"
   },
   "workout": {
     "couldNotSave": "Nie udało się zapisać treningu"
@@ -296,10 +296,12 @@
       "message": "Nie udało się zainicjalizować dostępu do danych zdrowotnych. Sprawdź uprawnienia w Ustawieniach."
     },
     "draft": {
-      "title": "Trwa draft",
-      "message": "Masz niezapisany draft {{draftType}}. Co chcesz zrobić?",
-      "resume": "Wznów draft",
-      "discardAndContinue": "Odrzuć i kontynuuj"
+      "title": "Niezapisany szkic",
+      "message": "Masz niezapisany szkic: {{draftType}}. Co chcesz zrobić?",
+      "resume": "Wznów szkic",
+      "discardAndContinue": "Odrzuć i kontynuuj",
+      "workoutType": "trening",
+      "activityType": "aktywność"
     }
   }
 }

@@ -296,7 +296,9 @@
       "title": "Draft in Progress",
       "message": "You have an unsaved {{draftType}} draft. What would you like to do?",
       "resume": "Resume Draft",
-      "discardAndContinue": "Discard & Continue"
+      "discardAndContinue": "Discard & Continue",
+      "workoutType": "workout",
+      "activityType": "activity"
     }
   }
 }

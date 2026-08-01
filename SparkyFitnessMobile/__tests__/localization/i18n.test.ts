@@ -105,6 +105,34 @@ describe('SUPPORTED_LANGUAGES', () => {
   });
 });
 
+describe('A4.1.1 shell interpolation and Polish copy', () => {
+  it('interpolates draft types and verifies the updated Polish shell labels', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+
+      await i18n.changeLanguage('en');
+      expect(
+        i18n.t('appAlerts.draft.message', {
+          draftType: i18n.t('appAlerts.draft.workoutType'),
+        }),
+      ).toBe('You have an unsaved workout draft. What would you like to do?');
+
+      await i18n.changeLanguage('pl');
+      expect(
+        i18n.t('appAlerts.draft.message', {
+          draftType: i18n.t('appAlerts.draft.workoutType'),
+        }),
+      ).toBe('Masz niezapisany szkic: trening. Co chcesz zrobić?');
+      expect(i18n.t('common.back')).toBe('Cofnij');
+      expect(i18n.t('addSheet.wellness')).toBe('Samopoczucie');
+      expect(i18n.t('library.recentlyLogged')).toBe('Ostatnio zapisane');
+
+      await i18n.changeLanguage('en');
+    });
+  });
+});
+
 describe('initializeI18n hydration', () => {
   beforeEach(() => {
     delete mockStorage['@SparkyFitness/app-preferences'];

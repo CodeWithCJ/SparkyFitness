@@ -134,8 +134,29 @@ jest.mock('../../src/components/DateNavigator', () => {
 });
 
 jest.mock('../../src/components/StatusView', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="status-view" /> };
+  const { Pressable, Text, View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({
+      title,
+      subtitle,
+      action,
+    }: {
+      title?: string;
+      subtitle?: string;
+      action?: { label: string; onPress: () => void };
+    }) => (
+      <View testID="status-view">
+        <Text>{title}</Text>
+        <Text>{subtitle}</Text>
+        {action ? (
+          <Pressable testID="status-action" onPress={action.onPress}>
+            <Text>{action.label}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    ),
+  };
 });
 
 jest.mock('../../src/components/FoodSummary', () => {
@@ -390,7 +411,42 @@ describe('DiaryScreen localization', () => {
     (globalThis as any).__I18N_LANG = 'pl';
     configureConnection(false);
     const screen = renderScreen();
-    expect(screen.getByTestId('status-view')).toBeTruthy();
-    expect((globalThis as any).__I18N_LANG).toBe('pl');
+    expect(screen.getByText('Brak skonfigurowanego serwera')).toBeTruthy();
+    expect(screen.getByText('Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić dziennik.')).toBeTruthy();
+    expect(screen.getByText('Przejdź do Ustawień')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('status-action'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Settings');
+  });
+
+  it('renders the diary error state in English with Retry', () => {
+    mockUseDailySummary.mockReturnValue({
+      summary: baseSummary,
+      isLoading: false,
+      isError: true,
+      isRefetching: false,
+      refetch: refetchSummary,
+    } as any);
+    const screen = renderScreen();
+
+    expect(screen.getByText('Failed to load diary')).toBeTruthy();
+    expect(screen.getByText('Please check your connection and try again.')).toBeTruthy();
+    expect(screen.getByText('Retry')).toBeTruthy();
+  });
+
+  it('renders the diary error state in Polish with Spróbuj ponownie', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    mockUseDailySummary.mockReturnValue({
+      summary: baseSummary,
+      isLoading: false,
+      isError: true,
+      isRefetching: false,
+      refetch: refetchSummary,
+    } as any);
+    const screen = renderScreen();
+
+    expect(screen.getByText('Nie udało się załadować dziennika')).toBeTruthy();
+    expect(screen.getByText('Sprawdź swoje połączenie i spróbuj ponownie.')).toBeTruthy();
+    expect(screen.getByText('Spróbuj ponownie')).toBeTruthy();
   });
 });

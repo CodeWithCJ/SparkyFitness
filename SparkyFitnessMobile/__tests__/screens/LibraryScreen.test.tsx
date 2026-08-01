@@ -462,6 +462,27 @@ describe('LibraryScreen localization', () => {
       error: null,
       refetch: jest.fn(),
     });
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    mockUseRecentMeals.mockReturnValue({
+      recentMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+    mockUseSuggestedExercises.mockReturnValue({
+      recentExercises: [],
+      topExercises: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
   });
 
   const navigation = {
@@ -489,6 +510,13 @@ describe('LibraryScreen localization', () => {
     expect(screen.getByText('Library')).toBeTruthy();
     expect(screen.getByText('Create')).toBeTruthy();
     expect(screen.getByText('Recently Logged')).toBeTruthy();
+    expect(screen.getByText('Food')).toBeTruthy();
+    expect(screen.getByText('Meal')).toBeTruthy();
+    expect(screen.getByText('Exercise')).toBeTruthy();
+    expect(screen.getByText('Workout preset')).toBeTruthy();
+    expect(screen.getAllByText('Manual entry')).toHaveLength(2);
+    expect(screen.getByText('Group foods')).toBeTruthy();
+    expect(screen.getByText('Exercise routine')).toBeTruthy();
   });
 
   it('renders Library and Create in Polish', () => {
@@ -496,6 +524,90 @@ describe('LibraryScreen localization', () => {
     const screen = renderLib();
     expect(screen.getByText('Biblioteka')).toBeTruthy();
     expect(screen.getByText('Utwórz')).toBeTruthy();
-    expect(screen.getByText('Ostatnio zalogowane')).toBeTruthy();
+    expect(screen.getByText('Ostatnio zapisane')).toBeTruthy();
+    expect(screen.getByText('Produkt')).toBeTruthy();
+    expect(screen.getByText('Posiłek')).toBeTruthy();
+    expect(screen.getByText('Ćwiczenie')).toBeTruthy();
+    expect(screen.getByText('Szablon treningu')).toBeTruthy();
+    expect(screen.getAllByText('Ręczne wprowadzanie')).toHaveLength(2);
+    expect(screen.getByText('Grupuj produkty')).toBeTruthy();
+    expect(screen.getByText('Plan treningowy')).toBeTruthy();
+  });
+
+  it('renders loading state for recent items', () => {
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderLib();
+    expect(screen.getByText('Loading recent items...')).toBeTruthy();
+  });
+
+  it('renders the Polish loading state for recent items', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderLib();
+    expect(screen.getByText('Ładowanie ostatnich pozycji...')).toBeTruthy();
+  });
+
+  it('renders recent item error and retries recent queries', () => {
+    const refetchFoods = jest.fn();
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: false,
+      isError: true,
+      error: null,
+      refetch: refetchFoods,
+    });
+
+    const screen = renderLib();
+    expect(screen.getByText('Failed to load recent items.')).toBeTruthy();
+    fireEvent.press(screen.getByText('Retry'));
+    expect(refetchFoods).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the Polish recent item error and retry action', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: false,
+      isError: true,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderLib();
+    expect(screen.getByText('Nie udało się załadować ostatnich pozycji.')).toBeTruthy();
+    expect(screen.getByText('Spróbuj ponownie')).toBeTruthy();
+  });
+
+  it('renders the empty recent state with title and subtitle', () => {
+    const screen = renderLib();
+    expect(screen.getByText('No recent items yet')).toBeTruthy();
+    expect(screen.getByText('Foods, meals, and exercises you log will appear here for quick access.')).toBeTruthy();
+    expect(screen.getByText('Recently Logged')).toBeTruthy();
+  });
+
+  it('renders the Polish empty recent state with title and subtitle', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    const screen = renderLib();
+    expect(screen.getByText('Brak ostatnich pozycji')).toBeTruthy();
+    expect(screen.getByText('Produkty, posiłki i ćwiczenia, które zapiszesz, pojawią się tutaj, aby zapewnić szybki dostęp.')).toBeTruthy();
+    expect(screen.getByText('Ostatnio zapisane')).toBeTruthy();
   });
 });

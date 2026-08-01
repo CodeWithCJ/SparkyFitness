@@ -6,6 +6,7 @@ import {
   maybePromptForExactAlarmPermission,
   requestNotificationPermission,
 } from '../../src/services/notifications';
+import { applyLanguagePreference } from '../../src/localization';
 import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
@@ -28,10 +29,37 @@ jest.mock('../../src/components/NotificationPermissionBanner', () => {
   };
 });
 
-jest.mock('../../src/components/BottomSheetPicker', () => ({
-  __esModule: true,
-  default: () => null,
-}));
+jest.mock('../../src/components/BottomSheetPicker', () => {
+  const ReactNative = require('react-native');
+  return {
+    __esModule: true,
+    default: ({
+      title,
+      value,
+      options,
+      onSelect,
+    }: {
+      title: string;
+      value: string;
+      options: { label: string; value: string }[];
+      onSelect: (value: string) => void;
+    }) => (
+      <ReactNative.View>
+        <ReactNative.Text>{title}</ReactNative.Text>
+        <ReactNative.Text testID={`picker-value-${value}`}>{value}</ReactNative.Text>
+        {options.map((option) => (
+          <ReactNative.Pressable
+            key={option.value}
+            testID={`picker-option-${option.value}`}
+            onPress={() => onSelect(option.value)}
+          >
+            <ReactNative.Text>{option.label}</ReactNative.Text>
+          </ReactNative.Pressable>
+        ))}
+      </ReactNative.View>
+    ),
+  };
+});
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: () => 0,
@@ -77,11 +105,24 @@ jest.mock('react-i18next', () => {
   };
 });
 
+jest.mock('../../src/localization', () => {
+  const actual = jest.requireActual('../../src/localization');
+  return {
+    ...actual,
+    applyLanguagePreference: jest.fn(async (value: 'en' | 'pl' | 'system') => {
+      globalThis.__I18N_LANG = value === 'system' ? 'en' : value;
+    }),
+  };
+});
+
 const mockRequestPermission = requestNotificationPermission as jest.MockedFunction<
   typeof requestNotificationPermission
 >;
 const mockMaybePrompt = maybePromptForExactAlarmPermission as jest.MockedFunction<
   typeof maybePromptForExactAlarmPermission
+>;
+const mockApplyLanguagePreference = applyLanguagePreference as jest.MockedFunction<
+  typeof applyLanguagePreference
 >;
 
 const route = { params: {} } as never;
@@ -155,22 +196,44 @@ describe('AppSettingsScreen localization', () => {
 
   it('renders language options in English', () => {
     const screen = renderScreen();
-    expect(screen.getByText('Language')).toBeTruthy();
-    expect(screen.getByText('Theme')).toBeTruthy();
+    expect(screen.getAllByText('Language').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Theme').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('System').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('English').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Polish').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Light').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Dark').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('AMOLED').length).toBeGreaterThan(0);
   });
 
   it('renders language options in Polish after the language changes', () => {
     (globalThis as any).__I18N_LANG = 'pl';
     const screen = renderScreen();
-    expect(screen.getByText('Język')).toBeTruthy();
-    expect(screen.getByText('Motyw')).toBeTruthy();
+    expect(screen.getAllByText('Język').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Motyw').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Systemowy').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Angielski').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Polski').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Jasny').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Ciemny').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('AMOLED').length).toBeGreaterThan(0);
   });
 
-  it('changing language does not reset the screen or navigation', () => {
-    (globalThis as any).__I18N_LANG = 'pl';
+  it('changes language through the picker without resetting the screen or navigation', async () => {
     const screen = renderScreen();
-    expect(screen.getByText('Język')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('picker-option-pl'));
+
+    await waitFor(() => {
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
+      expect(mockApplyLanguagePreference).toHaveBeenCalledWith('pl');
+      expect(screen.getAllByText('Język').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Motyw').length).toBeGreaterThan(0);
+    });
+
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
-    expect(mockNavigation.setOptions).toHaveBeenCalled();
+    expect(screen.getByTestId('picker-option-pl')).toBeTruthy();
+    expect(screen.queryByText('Onboarding')).toBeNull();
+    expect(screen.queryByText('Log in')).toBeNull();
   });
 });
