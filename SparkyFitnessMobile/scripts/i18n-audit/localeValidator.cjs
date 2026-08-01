@@ -78,6 +78,75 @@ function placeholderNames(value) {
   return [...value.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort();
 }
 
+function samePlaceholderMultiset(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function firstAvailablePluralValue(enFormMap, plFormMap) {
+  const forms = [...new Set([...enFormMap.keys(), ...plFormMap.keys()])];
+  for (const form of forms) {
+    const val = enFormMap.get(form) ?? plFormMap.get(form);
+    if (val !== undefined) return val;
+  }
+  return undefined;
+}
+
+/**
+ * Returns an array of plural-form suffixes (e.g. '_one', '_other') used in a
+ * locale for the given base key, when the key is a plural group.
+ */
+function pluralFormsFor(keys, base) {
+  const forms = [];
+  for (const key of keys) {
+    const kBase = getPluralBase(key);
+    if (kBase === base) {
+      forms.push(key.slice(base.length));
+    }
+  }
+  return forms;
+}
+
+/**
+ * Detects a plain (singular) key sharing its base with a plural group in the
+ * same locale, e.g. both `item` and `item_one`/`item_other`. This is ambiguous
+ * for i18next lookups and is a structural error that cannot be suppressed.
+ */
+function detectSingularPluralCollision(data, groups, localeName) {
+  const errors = [];
+  const pluralBases = new Set();
+  const plainKeys = new Set();
+
+  for (const group of groups) {
+    if (group.isPlural) {
+      pluralBases.add(group.base);
+    } else {
+      plainKeys.add(group.base);
+    }
+  }
+
+  for (const base of pluralBases) {
+    if (plainKeys.has(base)) {
+      const forms = groups
+        .find((g) => g.base === base && g.isPlural)
+        .keys.map((k) => k.slice(base.length));
+      errors.push({
+        rule: 'singular-plural-collision',
+        locale: localeName,
+        key: base,
+        plain_key: base,
+        plural_forms: forms,
+        message: `Singular key "${base}" collides with plural forms in ${localeName}: ${forms.join(', ')}`,
+      });
+    }
+  }
+
+  return errors;
+}
+
 class LocaleValidator {
   constructor(enPath, plPath) {
     this.enPath = enPath;
@@ -116,6 +185,17 @@ class LocaleValidator {
 
     const enBases = new Set(enGroups.map((g) => g.base));
     const plBases = new Set(plGroups.map((g) => g.base));
+
+    // Detect a plain key colliding with a plural group of the same base.
+    for (const localeName of ['en', 'pl']) {
+      const isEn = localeName === 'en';
+      const groups = isEn ? enGroups : plGroups;
+      const data = isEn ? enData : plData;
+      const collisionErrors = detectSingularPluralCollision(data, groups, localeName);
+      for (const error of collisionErrors) {
+        errors.push(error);
+      }
+    }
 
     for (const base of enBases) {
       if (!plBases.has(base)) {
@@ -212,21 +292,31 @@ class LocaleValidator {
           plFormMap.set('_' + key.slice(base.length + 1), plData[key]);
         }
 
+        // Canonical placeholder set for the whole plural group. Prefer EN _one;
+        // if absent (which is already a structural error), fall back to the
+        // first available form purely to collect additional diagnostics.
+        const canonicalForm =
+          enFormMap.get('_one') ?? firstAvailablePluralValue(enFormMap, plFormMap);
+        const canonicalPlaceholders = placeholderNames(canonicalForm ?? '');
+
         const allForms = new Set([...enFormMap.keys(), ...plFormMap.keys()]);
         for (const form of allForms) {
-          const enVal = enFormMap.get(form);
-          const plVal = plFormMap.get(form);
-          if (enVal !== undefined && plVal !== undefined) {
-            const enPlaceholders = placeholderNames(enVal);
-            const plPlaceholders = placeholderNames(plVal);
-            if (enPlaceholders.length !== plPlaceholders.length ||
-                !enPlaceholders.every((p, i) => p === plPlaceholders[i])) {
+          const checks = [
+            ['en', enFormMap.get(form)],
+            ['pl', plFormMap.get(form)],
+          ];
+          for (const [locale, val] of checks) {
+            if (val === undefined) continue;
+            const placeholders = placeholderNames(val);
+            if (!samePlaceholderMultiset(placeholders, canonicalPlaceholders)) {
               errors.push({
                 rule: 'placeholder-mismatch',
+                locale,
                 key: `${base}${form}`,
-                enPlaceholders,
-                plPlaceholders,
-                message: `Placeholder mismatch for "${base}${form}"`,
+                enPlaceholders: placeholderNames(enFormMap.get(form) ?? ''),
+                plPlaceholders: placeholderNames(plFormMap.get(form) ?? ''),
+                forms: [...allForms],
+                message: `Placeholder mismatch for "${base}${form}" in ${locale} (expected ${canonicalPlaceholders.join(', ') || 'none'})`,
               });
             }
           }

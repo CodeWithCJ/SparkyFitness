@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { LocaleValidator } = require('./localeValidator.cjs');
-const { collectFindings: scanFindings, getSuppressionWithoutJustificationFindings } = require('./sourceScanner.cjs');
+const { LocaleValidator, PLURAL_SUFFIXES } = require('./localeValidator.cjs');
+const { collectFindings: scanFindings, getAllSuppressionIssues } = require('./sourceScanner.cjs');
 
 const MOBILE_ROOT = path.resolve(__dirname, '..', '..');
 const EN_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', 'en', 'translation.json');
@@ -68,7 +68,12 @@ function buildDynamicMigrationFingerprint(finding) {
 
 function localeHasKey(keySet, key) {
   if (keySet.has(key)) return true;
-  return [...keySet].some((candidate) => candidate.startsWith(`${key}_`));
+  // An exact key that is the base of a recognized plural group is also valid
+  // (i18next resolves t('measurement', { count }) to measurement_one/other).
+  for (const suffix of PLURAL_SUFFIXES) {
+    if (keySet.has(`${key}${suffix}`)) return true;
+  }
+  return false;
 }
 
 function runAudit(options = {}) {
@@ -120,12 +125,14 @@ function runAudit(options = {}) {
 
   const findings = collectFindingsForSource(rootDir, sourceRoots);
 
-  const suppressionWithoutJust = getSuppressionWithoutJustificationFindings();
-  for (const suppression of suppressionWithoutJust) {
+  const suppressionIssues = getAllSuppressionIssues();
+  for (const suppression of suppressionIssues) {
     report.localeStructuralErrors.push({
-      rule: 'suppression-without-justification',
-      file: suppression,
-      message: `Suppression comment without justification at ${suppression}`,
+      rule: suppression.rule,
+      file: suppression.file,
+      line: suppression.line,
+      directiveRule: suppression.directiveRule,
+      message: suppression.message,
     });
   }
 
@@ -213,7 +220,6 @@ function runAudit(options = {}) {
       migrationBaseline.push({
         rule: 'dynamic-i18n-key',
         file: finding.file,
-        line: finding.line,
         expression: finding.expression,
         fingerprint: buildDynamicMigrationFingerprint({ file: finding.file, expression: finding.expression }),
       });
@@ -299,69 +305,84 @@ function runAudit(options = {}) {
 
     let acceptedCount = 0;
 
+    // Compare each fingerprint by (baselineCount, currentCount). A fingerprint
+    // may carry multiple occurrences; accepted counts are the truly accepted
+    // occurrences, computed as Math.min(baselineCount, currentCount).
     for (const [fp, current] of currentBaselineFindings.entries()) {
       const baselineEntry = baselineFindings.get(fp);
-      if (baselineEntry && baselineEntry.count === current.count) {
-        acceptedCount += current.count;
-      }
-    }
+      const baselineCount = baselineEntry ? baselineEntry.count : 0;
+      const currentCount = current.count;
 
-    report.acceptedBaselineFindings = acceptedCount;
-
-    for (const [fp, current] of currentBaselineFindings.entries()) {
-      const baselineEntry = baselineFindings.get(fp);
-      if (!baselineEntry || baselineEntry.count !== current.count) {
-        if (baselineEntry) {
-          if (current.count > baselineEntry.count) {
-            const firstFinding = report.hardcodedUiFindings.find((f) => buildMigrationFingerprint({
-              file: f.file,
-              value: f.value,
-              kind: 'hardcoded-ui-text',
-              context: f.context,
-            }) === fp) || report.dynamicI18nFindings.find((f) => buildDynamicMigrationFingerprint({ file: f.file, expression: f.expression }) === fp);
-
-            if (firstFinding) {
-              report.newFindings.push({
-                fingerprint: fp,
-                rule: current.kind,
-                file: firstFinding.file,
-                line: firstFinding.line,
-                value: firstFinding.value ?? firstFinding.expression,
-                message: `Increased occurrences of "${firstFinding.value ?? firstFinding.expression}" (${current.count} > ${baselineEntry.count})`,
-              });
-            }
-          }
-        } else {
-          const firstFinding = report.hardcodedUiFindings.find((f) => buildMigrationFingerprint({
-            file: f.file,
-            value: f.value,
-            kind: 'hardcoded-ui-text',
-            context: f.context,
-          }) === fp) || report.dynamicI18nFindings.find((f) => buildDynamicMigrationFingerprint({ file: f.file, expression: f.expression }) === fp);
-
-          if (firstFinding) {
-            report.newFindings.push({
-              fingerprint: fp,
-              rule: current.kind,
-              file: firstFinding.file,
-              line: firstFinding.line,
-              value: firstFinding.value ?? firstFinding.expression,
-              message: `New finding: "${firstFinding.value ?? firstFinding.expression}" at ${firstFinding.file}:${firstFinding.line}`,
-            });
-          }
+      if (baselineCount > 0) {
+        acceptedCount += Math.min(baselineCount, currentCount);
+        if (currentCount === baselineCount) {
+          continue; // equal: fully accepted, no new, no stale
         }
       }
-    }
 
-    for (const [fp, baselineEntry] of baselineFindings.entries()) {
-      if (!currentBaselineFindings.has(fp)) {
+      // currentCount > baselineCount (or new fingerprint) → new violation.
+      if (currentCount > baselineCount) {
+        const firstFinding = report.hardcodedUiFindings.find((f) => buildMigrationFingerprint({
+          file: f.file,
+          value: f.value,
+          kind: 'hardcoded-ui-text',
+          context: f.context,
+        }) === fp) || report.dynamicI18nFindings.find((f) => buildDynamicMigrationFingerprint({ file: f.file, expression: f.expression }) === fp);
+
+        if (firstFinding) {
+          report.newFindings.push({
+            fingerprint: fp,
+            rule: current.kind,
+            baselineCount,
+            currentCount,
+            delta: currentCount - baselineCount,
+            file: firstFinding.file,
+            line: firstFinding.line,
+            value: firstFinding.value ?? firstFinding.expression,
+            message: baselineCount === 0
+              ? `New finding: "${firstFinding.value ?? firstFinding.expression}" at ${firstFinding.file}:${firstFinding.line}`
+              : `Increased occurrences of "${firstFinding.value ?? firstFinding.expression}" (${currentCount} > ${baselineCount})`,
+          });
+        }
+        continue;
+      }
+
+      // currentCount < baselineCount (partial decrease) → stale.
+      if (currentCount < baselineCount) {
+        const firstFinding = report.hardcodedUiFindings.find((f) => buildMigrationFingerprint({
+          file: f.file,
+          value: f.value,
+          kind: 'hardcoded-ui-text',
+          context: f.context,
+        }) === fp) || report.dynamicI18nFindings.find((f) => buildDynamicMigrationFingerprint({ file: f.file, expression: f.expression }) === fp);
+
         report.staleBaselineFindings.push({
           fingerprint: fp,
-          rule: baselineEntry.entry?.rule || 'unknown',
-          message: `Stale baseline entry - finding no longer present`,
+          rule: current.kind,
+          baselineCount,
+          currentCount,
+          removed: baselineCount - currentCount,
+          file: firstFinding?.file,
+          value: firstFinding?.value ?? firstFinding?.expression,
+          message: `Stale baseline entry - occurrences decreased (${baselineCount} → ${currentCount})`,
         });
       }
     }
+
+    // Fingerprints present in baseline but completely absent from current code.
+    for (const [fp, baselineEntry] of baselineFindings.entries()) {
+      if (currentBaselineFindings.has(fp)) continue;
+      report.staleBaselineFindings.push({
+        fingerprint: fp,
+        rule: baselineEntry.entry?.rule || 'unknown',
+        baselineCount: baselineEntry.count,
+        currentCount: 0,
+        removed: baselineEntry.count,
+        message: `Stale baseline entry - finding no longer present (removed ${baselineEntry.count})`,
+      });
+    }
+
+    report.acceptedBaselineFindings = acceptedCount;
   } else {
     for (const finding of report.hardcodedUiFindings) {
       report.newFindings.push({

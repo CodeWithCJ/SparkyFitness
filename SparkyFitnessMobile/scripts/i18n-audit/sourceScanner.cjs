@@ -65,7 +65,8 @@ function isStaticTranslationKey(node) {
   const arg = node.arguments[0];
   if (!arg) return false;
 
-  return ts.isStringLiteral(arg);
+  const resolved = resolveStaticTranslationKeyArg(arg);
+  return resolved !== null;
 }
 
 function isDynamicTranslationKey(node) {
@@ -77,9 +78,49 @@ function isDynamicTranslationKey(node) {
 
   const arg = node.arguments[0];
   if (!arg) return false;
-  if (ts.isStringLiteral(arg)) return false;
+  if (resolveStaticTranslationKeyArg(arg) !== null) return false;
 
   return true;
+}
+
+/**
+ * Resolves the first argument of a `t(...)` call to a static string, or null
+ * if it is dynamic. Handles:
+ *  - StringLiteral
+ *  - NoSubstitutionTemplateLiteral (t(`common.save`))
+ *  - parenthesized expressions t(('common.save'))
+ *  - `as const` / simple type assertions t(('common.save' as const))
+ *  - `satisfies` if present in the running TypeScript
+ * It never executes code and never resolves variables.
+ */
+function resolveStaticTranslationKeyArg(arg) {
+  let node = arg;
+  // Iteratively peel wrappers (parentheses, as-assertions, type assertions,
+  // satisfies) so nested forms still resolve.
+  let iterations = 0;
+  while (iterations++ < 10) {
+    if (ts.isParenthesizedExpression(node)) {
+      node = node.expression;
+      continue;
+    }
+    if (ts.isAsExpression(node)) {
+      node = node.expression;
+      continue;
+    }
+    if (ts.isTypeAssertionExpression(node)) {
+      node = node.expression;
+      continue;
+    }
+    if (typeof ts.isSatisfiesExpression === 'function' && ts.isSatisfiesExpression(node)) {
+      node = node.expression;
+      continue;
+    }
+    break;
+  }
+
+  if (ts.isStringLiteral(node)) return node.text;
+  if (ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+  return null;
 }
 
 function isTextLikeElement(node) {
@@ -150,38 +191,72 @@ function getFileRelativePath(filePath, rootDir) {
 const findings = [];
 let currentFile = '';
 let currentLine = 0;
-let suppressionLines = new Set();
-let suppressionWithoutJustification = new Set();
-let allSuppressionWithoutJustification = new Set();
+let suppressionRecords = [];
+let suppressionIssues = new Map(); // key `${file}:${commentLine}:${index}` -> issue object
+let alertButtonTextProps = new Set();
+let toastTextProps = new Set();
 
-const SUPPRESSION_REGEX = /^\s*\/\/\s*i18n-audit-ignore-next-line\s+(hardcoded-ui-text)(?:\s*--\s*(.+))?$/;
+const ALLOWED_SUPPRESSION_RULES = new Set(['hardcoded-ui-text', 'dynamic-i18n-key']);
 
-function parseSuppressions(source) {
+const SUPPRESSION_REGEX = /^\s*\/\/\s*i18n-audit-ignore-next-line\s+(\S+)(?:\s*--\s*(.+))?$/;
+
+/**
+ * Parses suppression directives. Returns an array of records:
+ * { commentLine, targetLine, rule, reason }. Also records structural issues for
+ * unknown rules and missing justifications. A directive is per-rule and applies
+ * to at most the single closest matching finding on the next line.
+ */
+function parseSuppressions(source, relPath) {
   const lines = source.split('\n');
-  const suppressed = new Set();
-  const withoutJustification = new Set();
+  const records = [];
   for (let i = 0; i < lines.length; i++) {
     const match = lines[i].match(SUPPRESSION_REGEX);
-    if (match) {
-      const justification = match[2];
-      const nextLine = i + 2;
-      if (!justification || justification.trim().length === 0) {
-        withoutJustification.add(nextLine);
-        suppressed.add(nextLine);
-      } else {
-        suppressed.add(nextLine);
-      }
+    if (!match) continue;
+    const rule = match[1];
+    const reason = (match[2] || '').trim();
+    const commentLine = i + 1;
+    const targetLine = i + 2;
+
+    if (!ALLOWED_SUPPRESSION_RULES.has(rule)) {
+      suppressionIssues.set(`${relPath}:${commentLine}`, {
+        rule: 'unknown-suppression-rule',
+        file: relPath,
+        line: commentLine,
+        directiveRule: rule,
+        message: `Unknown suppression rule "${rule}" at ${relPath}:${commentLine}`,
+      });
+      continue;
     }
+
+    if (reason.length === 0) {
+      suppressionIssues.set(`${relPath}:${commentLine}`, {
+        rule: 'suppression-without-justification',
+        file: relPath,
+        line: commentLine,
+        directiveRule: rule,
+        message: `Suppression comment without justification at ${relPath}:${commentLine}`,
+      });
+      continue;
+    }
+
+    records.push({ commentLine, targetLine, rule, reason, consumed: false });
   }
-  return { suppressed, withoutJustification };
+  return records;
 }
 
 function recordFinding(relPath, line, value, kind, context) {
   const normalized = normalizeText(value);
   if (!normalized || !/[A-Za-z]/.test(normalized)) return;
 
-  if (kind === 'hardcoded-ui-text') {
-    if (suppressionLines.has(line)) {
+  if (kind === 'hardcoded-ui-text' || kind === 'dynamic-t-key') {
+    const rule = kind === 'hardcoded-ui-text' ? 'hardcoded-ui-text' : 'dynamic-i18n-key';
+    // Consume the nearest unconsumed suppression record for this exact rule on
+    // this exact line. At most one finding per directive is suppressed.
+    const idx = suppressionRecords.findIndex(
+      (r) => !r.consumed && r.rule === rule && r.targetLine === line,
+    );
+    if (idx !== -1) {
+      suppressionRecords[idx].consumed = true;
       return;
     }
   }
@@ -212,12 +287,9 @@ function visitSourceFile(filePath, rootDir) {
 
   const relPath = getFileRelativePath(filePath, rootDir);
 
-  const { suppressed, withoutJustification } = parseSuppressions(source);
-  suppressionLines = suppressed;
-  suppressionWithoutJustification = withoutJustification;
-  for (const line of withoutJustification) {
-    allSuppressionWithoutJustification.add(`${relPath}:${line}`);
-  }
+  suppressionRecords = parseSuppressions(source, relPath);
+  alertButtonTextProps = new Set();
+  toastTextProps = new Set();
 
   function visit(node) {
     if (ts.isCallExpression(node)) {
@@ -226,9 +298,11 @@ function visitSourceFile(filePath, rootDir) {
       const isPropertyTCall = ts.isPropertyAccessExpression(expression) && expression.name.text === 't';
       if (isTCall || isPropertyTCall) {
         if (isStaticTranslationKey(node)) {
-          const key = node.arguments[0].text;
+          const key = resolveStaticTranslationKeyArg(node.arguments[0]);
           const line = getLinePosition(node, sourceFile);
-          recordFinding(relPath, line, key, 'static-t-key', { key });
+          if (key !== null) {
+            recordFinding(relPath, line, key, 'static-t-key', { key });
+          }
         } else if (isDynamicTranslationKey(node)) {
           const argText = node.arguments[0].getText(sourceFile);
           const line = getLinePosition(node, sourceFile);
@@ -280,6 +354,14 @@ function visitSourceFile(filePath, rootDir) {
     }
 
     if (ts.isPropertyAssignment(node)) {
+      // Skip `text` props belonging to Alert.alert buttons and `text1`/`text2`
+      // props belonging to Toast.show — those are reported by their specialized
+      // handlers with their own contexts, so the generic scanner must not
+      // double-count them.
+      if (alertButtonTextProps.has(node) || toastTextProps.has(node)) {
+        ts.forEachChild(node, visit);
+        return;
+      }
       const propName = propertyNameText(node.name);
       if (propName && LOCALIZED_ATTRIBUTE_NAMES.has(propName)) {
         const line = getLinePosition(node, sourceFile);
@@ -310,6 +392,7 @@ function visitSourceFile(filePath, rootDir) {
       if (buttonsArg) {
         function visitAlertButtons(buttonNode) {
           if (ts.isPropertyAssignment(buttonNode) && propertyNameText(buttonNode.name) === 'text') {
+            alertButtonTextProps.add(buttonNode);
             const value = literalText(buttonNode.initializer);
             if (value !== null && value !== undefined && !isLikelyFalsePositive(value)) {
               recordFinding(relPath, getLinePosition(buttonNode, sourceFile), value, 'hardcoded-ui-text', { context: 'Alert.alert:button' });
@@ -334,6 +417,7 @@ function visitSourceFile(filePath, rootDir) {
             if (ts.isPropertyAssignment(prop)) {
               const propName = propertyNameText(prop.name);
               if (propName === 'text1' || propName === 'text2') {
+                toastTextProps.add(prop);
                 const value = literalText(prop.initializer);
                 if (value !== null && value !== undefined && !isLikelyFalsePositive(value)) {
                   recordFinding(relPath, line, value, 'hardcoded-ui-text', { context: 'Toast.show', prop: propName });
@@ -368,7 +452,7 @@ function walkFiles(directory, rootDir, sourceFilesSet) {
 
 function collectFindings(rootDir, sourceRoots) {
   findings.length = 0;
-  allSuppressionWithoutJustification.clear();
+  suppressionIssues.clear();
   const sourceFilesSet = new Set();
   for (const sourceRoot of sourceRoots) {
     walkFiles(sourceRoot, rootDir, sourceFilesSet);
@@ -397,7 +481,13 @@ function collectFindings(rootDir, sourceRoots) {
 }
 
 function getSuppressionWithoutJustificationFindings() {
-  return [...allSuppressionWithoutJustification];
+  return [...suppressionIssues.values()].filter(
+    (issue) => issue.rule === 'suppression-without-justification',
+  );
+}
+
+function getAllSuppressionIssues() {
+  return [...suppressionIssues.values()];
 }
 
 function buildFingerprint(finding) {
@@ -424,7 +514,8 @@ module.exports = {
   SOURCE_EXTENSIONS,
   buildFingerprint,
   buildMigrationFingerprint,
-  getSuppressionWithoutJustificationFindings,
+  getAllSuppressionIssues,
+  resolveStaticTranslationKeyArg,
   KNOWN_ICONS,
   isLikelyRoute,
   isLikelyCss,
