@@ -15,7 +15,11 @@ jest.mock('../../src/components/CalendarSheet', () => {
 
 jest.mock('../../src/components/StepperInput', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="stepper-input" /> };
+  return {
+    __esModule: true,
+    ...jest.requireActual('../../src/components/StepperInput'),
+    default: () => <View testID="stepper-input" />,
+  };
 });
 
 jest.mock('../../src/components/Icon', () => {
