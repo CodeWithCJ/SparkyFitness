@@ -16,7 +16,17 @@ vi.mock('../models/exerciseEntry', () => ({
   default: {
     _createExerciseEntryWithClient: vi.fn(),
     updateExerciseEntryTelemetryOnly: vi.fn(),
+    // Telemetry now writes inside persistFitEntry's transaction.
+    _updateExerciseEntryTelemetryOnlyWithClient: vi.fn(),
   },
+}));
+vi.mock('../models/workoutTelemetryRepository', () => ({
+  _bulkInsertExerciseEntryLapsWithClient: vi.fn(),
+  _bulkInsertExerciseEntryGpsPointsWithClient: vi.fn(),
+  _bulkInsertExerciseEntryHrZonesWithClient: vi.fn(),
+  bulkInsertExerciseEntryLaps: vi.fn(),
+  bulkInsertExerciseEntryGpsPoints: vi.fn(),
+  bulkInsertExerciseEntryHrZones: vi.fn(),
 }));
 vi.mock('../models/activityDetailsRepository', () => ({
   default: {
@@ -201,6 +211,26 @@ describe('importFitFiles', () => {
     // per telemetry writer invoked for the successful file's laps/GPS/HR-zones — not
     // asserting an exact count here since that varies with the fixture's content.
     expect(mockClient.release.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('rolls back the entry when a telemetry write fails', async () => {
+    // Telemetry used to be written after COMMIT on separate connections, so a
+    // failure here left a committed activity with no laps/GPS/zones attached.
+    // It now shares persistFitEntry's transaction, so the whole import unwinds.
+    vi.mocked(
+      exerciseEntryRepository._updateExerciseEntryTelemetryOnlyWithClient
+    ).mockRejectedValueOnce(new Error('telemetry write failed'));
+
+    const response = await importFitFiles('user-1', 'actor-1', [
+      fixtureFile('first.fit'),
+    ]);
+
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.query).not.toHaveBeenCalledWith('COMMIT');
+    expect(response.results[0]).toMatchObject({
+      status: 'failed',
+      reason: 'telemetry write failed',
+    });
   });
 
   it('falls back to the profile timezone when the file has no local time', async () => {

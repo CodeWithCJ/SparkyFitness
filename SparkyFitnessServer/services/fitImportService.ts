@@ -43,7 +43,8 @@ async function persistFitEntry(
   targetUserId: string,
   actingUserId: string,
   entryData: FitEntryData & { exercise_id: string; entry_date: string },
-  detailData: FitDetailData
+  detailData: FitDetailData,
+  entryDate: string
 ): Promise<PersistedFitEntry> {
   const client = await getClient(targetUserId, actingUserId);
   try {
@@ -70,6 +71,56 @@ async function persistFitEntry(
       created_by_user_id: actingUserId,
       updated_by_user_id: actingUserId,
     });
+    // Telemetry belongs to the same unit of work as the entry itself. These
+    // used to run after COMMIT on their own connections, so a failure part-way
+    // left a committed activity with only some of its laps/GPS/zones attached.
+    const detailRecord = detailData as unknown as Record<string, unknown>;
+    await exerciseEntryRepository._updateExerciseEntryTelemetryOnlyWithClient(
+      client,
+      entry.id,
+      targetUserId,
+      extractGarminTelemetryFields(detailRecord)
+    );
+    const laps = extractGarminLaps(detailRecord);
+    if (laps.length > 0) {
+      await workoutTelemetryRepo._bulkInsertExerciseEntryLapsWithClient(
+        client,
+        targetUserId,
+        laps.map(({ startMs: _s, endMs: _e, ...lap }) => ({
+          user_id: targetUserId,
+          exercise_entry_id: entry.id,
+          entry_date: entryDate,
+          ...lap,
+        }))
+      );
+    }
+    const gpsPoints = extractGarminGpsPoints(detailRecord);
+    if (gpsPoints.length > 0) {
+      await workoutTelemetryRepo._bulkInsertExerciseEntryGpsPointsWithClient(
+        client,
+        targetUserId,
+        gpsPoints.map(({ timestampMs: _t, ...pt }) => ({
+          user_id: targetUserId,
+          exercise_entry_id: entry.id,
+          entry_date: entryDate,
+          ...pt,
+        }))
+      );
+    }
+    const hrZones = extractGarminHrZones(detailRecord);
+    if (hrZones.length > 0) {
+      await workoutTelemetryRepo._bulkInsertExerciseEntryHrZonesWithClient(
+        client,
+        targetUserId,
+        hrZones.map((zone) => ({
+          user_id: targetUserId,
+          exercise_entry_id: entry.id,
+          entry_date: entryDate,
+          ...zone,
+        }))
+      );
+    }
+
     await client.query('COMMIT');
     return { entry, operation };
   } catch (error) {
@@ -140,61 +191,9 @@ async function importSingleFitFile(
         exercise_id: exercise.id,
         entry_date: entryDate,
       },
-      transformed.detailData
+      transformed.detailData,
+      entryDate
     );
-
-    // FitDetailData is deliberately shaped like Garmin Connect's activity payload (see
-    // fitActivityTransform.ts), so the same relational extraction used for Garmin sync
-    // applies unchanged here — laps, GPS trackpoints, HR zones, and the exercise_entries
-    // telemetry columns all come from the FIT file's own records, not a re-derived guess.
-    const detailData = transformed.detailData as unknown as Record<
-      string,
-      unknown
-    >;
-    await exerciseEntryRepository.updateExerciseEntryTelemetryOnly(
-      entry.id,
-      targetUserId,
-      extractGarminTelemetryFields(detailData)
-    );
-    const laps = extractGarminLaps(detailData);
-    if (laps.length > 0) {
-      await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
-        targetUserId,
-        actingUserId,
-        laps.map(({ startMs: _s, endMs: _e, ...lap }) => ({
-          user_id: targetUserId,
-          exercise_entry_id: entry.id,
-          entry_date: entryDate,
-          ...lap,
-        }))
-      );
-    }
-    const gpsPoints = extractGarminGpsPoints(detailData);
-    if (gpsPoints.length > 0) {
-      await workoutTelemetryRepo.bulkInsertExerciseEntryGpsPoints(
-        targetUserId,
-        actingUserId,
-        gpsPoints.map(({ timestampMs: _t, ...pt }) => ({
-          user_id: targetUserId,
-          exercise_entry_id: entry.id,
-          entry_date: entryDate,
-          ...pt,
-        }))
-      );
-    }
-    const hrZones = extractGarminHrZones(detailData);
-    if (hrZones.length > 0) {
-      await workoutTelemetryRepo.bulkInsertExerciseEntryHrZones(
-        targetUserId,
-        actingUserId,
-        hrZones.map((zone) => ({
-          user_id: targetUserId,
-          exercise_entry_id: entry.id,
-          entry_date: entryDate,
-          ...zone,
-        }))
-      );
-    }
 
     const result: ImportFitFileResult = {
       fileName,

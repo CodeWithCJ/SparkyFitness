@@ -8,6 +8,10 @@
 // logic only exists once — the "rule of two" in AGENTS.md applies here since this is
 // already the third caller if you count both processor paths as one.
 
+// Provider payloads are untyped JSON off the wire. Tightening this to
+// Record<string, unknown> is the right end state but needs explicit narrowing
+// at ~98 read sites across this file and stravaTelemetryExtractors.ts; left as
+// a focused follow-up rather than a rushed sweep.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
 
@@ -61,12 +65,15 @@ export function extractGarminLaps(payload: AnyRecord): ExtractedLap[] {
   const rawLaps: AnyRecord[] = payload?.laps || payload?.splits?.lapDTOs || [];
   if (!Array.isArray(rawLaps) || rawLaps.length === 0) return [];
 
-  return rawLaps.map((lap: AnyRecord, index: number) => {
-    const startTime = lap.startTimeLocal
-      ? new Date(lap.startTimeLocal)
-      : lap.startTimeGMT
-        ? new Date(lap.startTimeGMT)
-        : new Date();
+  return rawLaps.flatMap((lap: AnyRecord, index: number) => {
+    // A lap with no usable start time is skipped rather than stamped with the
+    // import time: exercise_entry_laps.start_time is NOT NULL, and a fabricated
+    // "now" is indistinguishable from a real reading once stored.
+    const rawStart = lap.startTimeLocal ?? lap.startTimeGMT;
+    if (rawStart === undefined || rawStart === null) return [];
+    const startTime = new Date(rawStart);
+    if (Number.isNaN(startTime.getTime())) return [];
+
     const durationSeconds = Math.round(
       Number(lap.duration_seconds ?? lap.duration ?? lap.elapsedDuration ?? 0)
     );
@@ -76,83 +83,90 @@ export function extractGarminLaps(payload: AnyRecord): ExtractedLap[] {
         ? new Date(lap.endTimeGMT)
         : new Date(startTime.getTime() + durationSeconds * 1000);
 
-    return {
-      lap_index: lap.lap_index ?? lap.lapIndex ?? index + 1,
-      start_time: startTime,
-      end_time: endTime,
-      duration_seconds: durationSeconds,
-      distance_meters:
-        lap.distance_meters !== undefined && lap.distance_meters !== null
-          ? Number(lap.distance_meters)
-          : lap.distance !== undefined && lap.distance !== null
-            ? Number(lap.distance) * (lap.distance < 100 ? 1000 : 1)
-            : null,
-      calories:
-        lap.calories !== undefined && lap.calories !== null
-          ? Number(lap.calories)
-          : null,
-      avg_heart_rate:
-        lap.avg_heart_rate !== undefined && lap.avg_heart_rate !== null
-          ? Math.round(Number(lap.avg_heart_rate))
-          : lap.averageHR !== undefined && lap.averageHR !== null
-            ? Math.round(Number(lap.averageHR))
-            : lap.averageHeartRateInBeatsPerMinute !== undefined &&
-                lap.averageHeartRateInBeatsPerMinute !== null
-              ? Math.round(Number(lap.averageHeartRateInBeatsPerMinute))
+    return [
+      {
+        lap_index: lap.lap_index ?? lap.lapIndex ?? index + 1,
+        start_time: startTime,
+        end_time: endTime,
+        duration_seconds: durationSeconds,
+        // Garmin reports lap distance in metres on every path we ingest: the FIT
+        // transform maps LapMesg.totalDistance (metres) onto `distance`, and
+        // Garmin Connect's lapDTOs are metres too. A previous magnitude heuristic
+        // multiplied anything under 100 by 1000, which turned a 50 m pool length
+        // or a short final lap into 50 km.
+        distance_meters:
+          lap.distance_meters !== undefined && lap.distance_meters !== null
+            ? Number(lap.distance_meters)
+            : lap.distance !== undefined && lap.distance !== null
+              ? Number(lap.distance)
               : null,
-      max_heart_rate:
-        lap.max_heart_rate !== undefined && lap.max_heart_rate !== null
-          ? Math.round(Number(lap.max_heart_rate))
-          : lap.maxHR !== undefined && lap.maxHR !== null
-            ? Math.round(Number(lap.maxHR))
-            : lap.maxHeartRateInBeatsPerMinute !== undefined &&
-                lap.maxHeartRateInBeatsPerMinute !== null
-              ? Math.round(Number(lap.maxHeartRateInBeatsPerMinute))
+        calories:
+          lap.calories !== undefined && lap.calories !== null
+            ? Number(lap.calories)
+            : null,
+        avg_heart_rate:
+          lap.avg_heart_rate !== undefined && lap.avg_heart_rate !== null
+            ? Math.round(Number(lap.avg_heart_rate))
+            : lap.averageHR !== undefined && lap.averageHR !== null
+              ? Math.round(Number(lap.averageHR))
+              : lap.averageHeartRateInBeatsPerMinute !== undefined &&
+                  lap.averageHeartRateInBeatsPerMinute !== null
+                ? Math.round(Number(lap.averageHeartRateInBeatsPerMinute))
+                : null,
+        max_heart_rate:
+          lap.max_heart_rate !== undefined && lap.max_heart_rate !== null
+            ? Math.round(Number(lap.max_heart_rate))
+            : lap.maxHR !== undefined && lap.maxHR !== null
+              ? Math.round(Number(lap.maxHR))
+              : lap.maxHeartRateInBeatsPerMinute !== undefined &&
+                  lap.maxHeartRateInBeatsPerMinute !== null
+                ? Math.round(Number(lap.maxHeartRateInBeatsPerMinute))
+                : null,
+        avg_speed_mps:
+          lap.avg_speed_mps !== undefined && lap.avg_speed_mps !== null
+            ? Number(lap.avg_speed_mps)
+            : lap.averageSpeed !== undefined && lap.averageSpeed !== null
+              ? Number(lap.averageSpeed)
               : null,
-      avg_speed_mps:
-        lap.avg_speed_mps !== undefined && lap.avg_speed_mps !== null
-          ? Number(lap.avg_speed_mps)
-          : lap.averageSpeed !== undefined && lap.averageSpeed !== null
-            ? Number(lap.averageSpeed)
-            : null,
-      max_speed_mps:
-        lap.max_speed_mps !== undefined && lap.max_speed_mps !== null
-          ? Number(lap.max_speed_mps)
-          : lap.maxSpeed !== undefined && lap.maxSpeed !== null
-            ? Number(lap.maxSpeed)
-            : null,
-      avg_cadence:
-        lap.avg_cadence !== undefined && lap.avg_cadence !== null
-          ? Math.round(Number(lap.avg_cadence))
-          : lap.averageRunCadence !== undefined &&
-              lap.averageRunCadence !== null
-            ? Math.round(Number(lap.averageRunCadence))
-            : lap.averageCadence !== undefined && lap.averageCadence !== null
-              ? Math.round(Number(lap.averageCadence))
+        max_speed_mps:
+          lap.max_speed_mps !== undefined && lap.max_speed_mps !== null
+            ? Number(lap.max_speed_mps)
+            : lap.maxSpeed !== undefined && lap.maxSpeed !== null
+              ? Number(lap.maxSpeed)
               : null,
-      avg_power_watts:
-        lap.avg_power_watts !== undefined && lap.avg_power_watts !== null
-          ? Number(lap.avg_power_watts)
-          : lap.averagePower !== undefined && lap.averagePower !== null
-            ? Number(lap.averagePower)
-            : null,
-      elevation_gain_meters:
-        lap.elevation_gain_meters !== undefined &&
-        lap.elevation_gain_meters !== null
-          ? Number(lap.elevation_gain_meters)
-          : lap.elevationGain !== undefined && lap.elevationGain !== null
-            ? Number(lap.elevationGain)
-            : null,
-      elevation_loss_meters:
-        lap.elevation_loss_meters !== undefined &&
-        lap.elevation_loss_meters !== null
-          ? Number(lap.elevation_loss_meters)
-          : lap.elevationLoss !== undefined && lap.elevationLoss !== null
-            ? Number(lap.elevationLoss)
-            : null,
-      startMs: startTime.getTime(),
-      endMs: endTime.getTime(),
-    };
+        avg_cadence:
+          lap.avg_cadence !== undefined && lap.avg_cadence !== null
+            ? Math.round(Number(lap.avg_cadence))
+            : lap.averageRunCadence !== undefined &&
+                lap.averageRunCadence !== null
+              ? Math.round(Number(lap.averageRunCadence))
+              : lap.averageCadence !== undefined && lap.averageCadence !== null
+                ? Math.round(Number(lap.averageCadence))
+                : null,
+        avg_power_watts:
+          lap.avg_power_watts !== undefined && lap.avg_power_watts !== null
+            ? Number(lap.avg_power_watts)
+            : lap.averagePower !== undefined && lap.averagePower !== null
+              ? Number(lap.averagePower)
+              : null,
+        elevation_gain_meters:
+          lap.elevation_gain_meters !== undefined &&
+          lap.elevation_gain_meters !== null
+            ? Number(lap.elevation_gain_meters)
+            : lap.elevationGain !== undefined && lap.elevationGain !== null
+              ? Number(lap.elevationGain)
+              : null,
+        elevation_loss_meters:
+          lap.elevation_loss_meters !== undefined &&
+          lap.elevation_loss_meters !== null
+            ? Number(lap.elevation_loss_meters)
+            : lap.elevationLoss !== undefined && lap.elevationLoss !== null
+              ? Number(lap.elevationLoss)
+              : null,
+        startMs: startTime.getTime(),
+        endMs: endTime.getTime(),
+      },
+    ];
   });
 }
 

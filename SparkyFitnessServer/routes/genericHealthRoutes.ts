@@ -7,6 +7,12 @@ import { healthMetricSchema } from '@workspace/shared';
 
 const router = express.Router();
 router.use(express.json());
+// Every route here is a GET, and checkPermissionMiddleware('checkin') already
+// resolves GETs to 'checkin_read' (see checkPermissionMiddleware.ts), matching
+// how fastingRoutes and moodRoutes guard read-only check-in data. The inline
+// canAccessUserData calls below must use 'checkin_read' for the same reason:
+// hardcoding 'checkin' there demanded write access and locked out delegates
+// holding only can_view_reports or can_manage_diary.
 router.use(checkPermissionMiddleware('checkin'));
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,7 +40,7 @@ const getMetricsHandler: RequestHandler = async (req, res, next) => {
     if (targetUserId !== actorUserId) {
       const hasPermission = await canAccessUserData(
         targetUserId,
-        'checkin',
+        'checkin_read',
         actorUserId
       );
       if (!hasPermission) {
@@ -93,7 +99,7 @@ const getHealthMetricSamplesHandler: RequestHandler = async (
     if (targetUserId !== actorUserId) {
       const hasPermission = await canAccessUserData(
         targetUserId,
-        'checkin',
+        'checkin_read',
         actorUserId
       );
       if (!hasPermission) {
@@ -137,7 +143,7 @@ const getVitalsHandler: RequestHandler = async (req, res, next) => {
     if (targetUserId !== actorUserId) {
       const hasPermission = await canAccessUserData(
         targetUserId,
-        'checkin',
+        'checkin_read',
         actorUserId
       );
       if (!hasPermission) {

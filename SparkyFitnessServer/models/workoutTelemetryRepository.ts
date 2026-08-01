@@ -1,6 +1,15 @@
 import { getClient } from '../db/poolManager.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
+/**
+ * Minimal shape of a pg client, so the _WithClient variants below can join a
+ * caller's open transaction (see fitImportService.persistFitEntry) instead of
+ * each acquiring their own connection and committing independently.
+ */
+export interface TelemetryDbClient {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: unknown[] }>;
+}
+
 import {
   ExerciseEntryLaps,
   ExerciseEntryLapsInitializer,
@@ -87,8 +96,25 @@ export async function bulkInsertExerciseEntryLaps(
   laps: ExerciseEntryLapsInitializer[]
 ): Promise<ExerciseEntryLaps[]> {
   if (!laps || laps.length === 0) return [];
-  const client = await getClient(actingUserId);
+  const client = await getClient(userId, actingUserId);
   try {
+    return await _bulkInsertExerciseEntryLapsWithClient(
+      client as unknown as TelemetryDbClient,
+      userId,
+      laps
+    );
+  } finally {
+    if (client && typeof client.release === 'function') client.release();
+  }
+}
+
+export async function _bulkInsertExerciseEntryLapsWithClient(
+  client: TelemetryDbClient,
+  userId: string,
+  laps: ExerciseEntryLapsInitializer[]
+): Promise<ExerciseEntryLaps[]> {
+  if (!laps || laps.length === 0) return [];
+  {
     const values = laps.map((lap) => [
       userId,
       lap.exercise_entry_id,
@@ -136,8 +162,6 @@ export async function bulkInsertExerciseEntryLaps(
     );
     const res = (await client.query(query)) as { rows: ExerciseEntryLaps[] };
     return res.rows;
-  } finally {
-    if (client && typeof client.release === 'function') client.release();
   }
 }
 
@@ -169,6 +193,24 @@ export async function bulkInsertExerciseEntryGpsPoints(
   points: FlatGpsPointRow[]
 ): Promise<ExerciseEntryGpsPoints[]> {
   if (!points || points.length === 0) return [];
+  const client = await getClient(userId, actingUserId);
+  try {
+    return await _bulkInsertExerciseEntryGpsPointsWithClient(
+      client as unknown as TelemetryDbClient,
+      userId,
+      points
+    );
+  } finally {
+    if (client && typeof client.release === 'function') client.release();
+  }
+}
+
+export async function _bulkInsertExerciseEntryGpsPointsWithClient(
+  client: TelemetryDbClient,
+  userId: string,
+  points: FlatGpsPointRow[]
+): Promise<ExerciseEntryGpsPoints[]> {
+  if (!points || points.length === 0) return [];
 
   const byEntry = new Map<
     string,
@@ -190,8 +232,7 @@ export async function bulkInsertExerciseEntryGpsPoints(
     group.points.sort((a, b) => a.t.localeCompare(b.t));
   }
 
-  const client = await getClient(actingUserId);
-  try {
+  {
     const rows: ExerciseEntryGpsPoints[] = [];
     for (const [exerciseEntryId, group] of byEntry) {
       const res = (await client.query(
@@ -212,8 +253,6 @@ export async function bulkInsertExerciseEntryGpsPoints(
       if (res.rows[0]) rows.push(res.rows[0]);
     }
     return rows;
-  } finally {
-    if (client && typeof client.release === 'function') client.release();
   }
 }
 
@@ -240,8 +279,25 @@ export async function bulkInsertExerciseEntryHrZones(
   zones: ExerciseEntryHrZonesInitializer[]
 ): Promise<ExerciseEntryHrZones[]> {
   if (!zones || zones.length === 0) return [];
-  const client = await getClient(actingUserId);
+  const client = await getClient(userId, actingUserId);
   try {
+    return await _bulkInsertExerciseEntryHrZonesWithClient(
+      client as unknown as TelemetryDbClient,
+      userId,
+      zones
+    );
+  } finally {
+    if (client && typeof client.release === 'function') client.release();
+  }
+}
+
+export async function _bulkInsertExerciseEntryHrZonesWithClient(
+  client: TelemetryDbClient,
+  userId: string,
+  zones: ExerciseEntryHrZonesInitializer[]
+): Promise<ExerciseEntryHrZones[]> {
+  if (!zones || zones.length === 0) return [];
+  {
     const values = zones.map((zone) => [
       userId,
       zone.exercise_entry_id,
@@ -265,8 +321,6 @@ export async function bulkInsertExerciseEntryHrZones(
     );
     const res = (await client.query(query)) as { rows: ExerciseEntryHrZones[] };
     return res.rows;
-  } finally {
-    if (client && typeof client.release === 'function') client.release();
   }
 }
 

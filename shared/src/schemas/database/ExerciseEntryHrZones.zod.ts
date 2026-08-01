@@ -12,6 +12,7 @@ export const exerciseEntryHrZonesSchema = z.object({
   zone_upper_bpm: z.number().nullable(),
   seconds_in_zone: z.number(),
   created_at: z.coerce.date().nullable(),
+  updated_at: z.coerce.date().nullable(),
 });
 
 export const exerciseEntryHrZonesInitializerSchema = z.object({
@@ -24,6 +25,7 @@ export const exerciseEntryHrZonesInitializerSchema = z.object({
   zone_upper_bpm: z.number().optional().nullable(),
   seconds_in_zone: z.number(),
   created_at: z.coerce.date().optional().nullable(),
+  updated_at: z.coerce.date().optional().nullable(),
 });
 
 export const exerciseEntryHrZonesMutatorSchema = exerciseEntryHrZonesInitializerSchema.partial();

@@ -1,6 +1,9 @@
 import React from 'react';
 import { ExerciseEntryLaps } from '@workspace/shared';
 import { Timer, Heart, Wind, Zap, Gauge } from 'lucide-react';
+import { usePreferences } from '@/contexts/PreferencesContext';
+
+const METERS_PER_MILE = 1609.34;
 
 interface WorkoutLapsTableProps {
   laps?: ExerciseEntryLaps[];
@@ -14,15 +17,29 @@ const formatDuration = (seconds?: number | null): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+// Distances are stored in metres; both of these render in the user's preferred
+// distance unit rather than assuming kilometres.
+const formatLapDistance = (
+  distanceMeters: number | null | undefined,
+  distanceUnit: string
+): string => {
+  if (distanceMeters == null) return '-';
+  return distanceUnit === 'miles'
+    ? `${(distanceMeters / METERS_PER_MILE).toFixed(2)} mi`
+    : `${(distanceMeters / 1000).toFixed(2)} km`;
+};
+
 const formatPace = (
-  distanceMeters?: number | null,
-  durationSeconds?: number | null
+  distanceMeters: number | null | undefined,
+  durationSeconds: number | null | undefined,
+  distanceUnit: string
 ): string => {
   if (!distanceMeters || !durationSeconds || distanceMeters === 0)
     return '--:--';
-  const paceSecondsPerKm = (durationSeconds / distanceMeters) * 1000;
-  const mins = Math.floor(paceSecondsPerKm / 60);
-  const secs = Math.floor(paceSecondsPerKm % 60);
+  const metersPerUnit = distanceUnit === 'miles' ? METERS_PER_MILE : 1000;
+  const paceSecondsPerUnit = (durationSeconds / distanceMeters) * metersPerUnit;
+  const mins = Math.floor(paceSecondsPerUnit / 60);
+  const secs = Math.floor(paceSecondsPerUnit % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
@@ -30,6 +47,7 @@ export const WorkoutLapsTable: React.FC<WorkoutLapsTableProps> = ({
   laps,
   isLoading,
 }) => {
+  const { distanceUnit } = usePreferences();
   if (isLoading) {
     return (
       <div className="w-full bg-slate-900/40 border border-slate-800 rounded-xl p-4 animate-pulse">
@@ -62,7 +80,9 @@ export const WorkoutLapsTable: React.FC<WorkoutLapsTableProps> = ({
               <th className="py-2.5 px-3">Lap</th>
               <th className="py-2.5 px-3">Distance</th>
               <th className="py-2.5 px-3">Time</th>
-              <th className="py-2.5 px-3">Pace (/km)</th>
+              <th className="py-2.5 px-3">
+                Pace (/{distanceUnit === 'miles' ? 'mi' : 'km'})
+              </th>
               <th className="py-2.5 px-3 text-rose-400 font-semibold">
                 <Heart className="inline h-3.5 w-3.5 mr-1" />
                 Avg / Max HR
@@ -92,14 +112,18 @@ export const WorkoutLapsTable: React.FC<WorkoutLapsTableProps> = ({
                 </td>
                 <td className="py-2.5 px-3 text-slate-300 font-medium font-sans">
                   {lap.distance_meters != null
-                    ? `${(lap.distance_meters / 1000).toFixed(2)} km`
+                    ? formatLapDistance(lap.distance_meters, distanceUnit)
                     : '--'}
                 </td>
                 <td className="py-2.5 px-3 text-slate-300">
                   {formatDuration(lap.duration_seconds)}
                 </td>
                 <td className="py-2.5 px-3 text-indigo-300 font-semibold">
-                  {formatPace(lap.distance_meters, lap.duration_seconds)}
+                  {formatPace(
+                    lap.distance_meters,
+                    lap.duration_seconds,
+                    distanceUnit
+                  )}
                 </td>
                 <td className="py-2.5 px-3 text-rose-300">
                   {lap.avg_heart_rate ? `${lap.avg_heart_rate} bpm` : '--'}

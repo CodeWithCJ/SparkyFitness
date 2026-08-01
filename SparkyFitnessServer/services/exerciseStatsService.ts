@@ -53,6 +53,17 @@ function formatTimeDuration(totalSeconds: number): string {
   return `${formattedMins}:${formattedSecs}`;
 }
 
+/**
+ * Formats a Date as a YYYY-MM-DD calendar day from its local components.
+ * DATE_TRUNC returns local midnight, so toISOString().slice(0, 10) reports the
+ * previous day whenever the server timezone is behind UTC.
+ */
+function toDayString(d: Date): string {
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
 /** Distance standards in kilometers */
 const DISTANCE_STANDARDS: Record<
   string,
@@ -84,7 +95,7 @@ async function getExerciseStatsSummary(
     let endDateStr = query.endDate;
 
     if (!endDateStr) {
-      endDateStr = now.toISOString().slice(0, 10);
+      endDateStr = toDayString(now);
     }
 
     if (!startDateStr) {
@@ -100,7 +111,7 @@ async function getExerciseStatsSummary(
       } else {
         start.setDate(start.getDate() - 30);
       }
-      startDateStr = start.toISOString().slice(0, 10);
+      startDateStr = toDayString(start);
     }
 
     const totalSql = `
@@ -170,6 +181,26 @@ async function getExerciseStatsSummary(
           : interval === 'year'
             ? 'year'
             : 'month';
+
+    // Last calendar day covered by a bucket that starts at `start`. Both
+    // startDate and endDate previously returned the bucket's start, so every
+    // bucket claimed to span a single day regardless of the interval.
+    const periodEndOf = (start: Date): Date => {
+      const end = new Date(start);
+      if (truncUnit === 'day') return end;
+      if (truncUnit === 'week') {
+        end.setDate(end.getDate() + 6);
+        return end;
+      }
+      if (truncUnit === 'year') {
+        end.setMonth(11, 31);
+        return end;
+      }
+      // month: day 0 of the following month is the last day of this one.
+      end.setMonth(end.getMonth() + 1, 0);
+      return end;
+    };
+
     const breakdownSql = `
       SELECT 
         DATE_TRUNC('${truncUnit}', entry_date) as period_start,
@@ -177,10 +208,11 @@ async function getExerciseStatsSummary(
         COALESCE(SUM(duration_minutes), 0) as duration_minutes,
         COALESCE(SUM(calories_burned), 0) as calories_burned,
         COUNT(DISTINCT id) as workout_count,
-        AVG(avg_heart_rate) as avg_heart_rate
+        AVG(avg_heart_rate) as avg_heart_rate,
+        COALESCE(SUM(elevation_gain_meters), 0) as elevation_gain_meters
       FROM public.exercise_entries
-      WHERE user_id = $1 
-        AND entry_date >= $2 
+      WHERE user_id = $1
+        AND entry_date >= $2
         AND entry_date <= $3
         AND exercise_name != 'Active Calories'
         ${query.category ? 'AND LOWER(category) = LOWER($4)' : ''}
@@ -189,23 +221,56 @@ async function getExerciseStatsSummary(
     `;
 
     const breakdownResult = await client.query(breakdownSql, totalParams);
+
+    // Lifted volume per bucket. Kept as its own grouped query rather than a
+    // join on the breakdown above: joining one-to-many sets would multiply the
+    // distance/duration/calorie sums per set row.
+    const breakdownVolumeSql = `
+      SELECT
+        DATE_TRUNC('${truncUnit}', e.entry_date) as period_start,
+        COALESCE(SUM(s.weight * s.reps), 0) as total_volume
+      FROM public.exercise_entry_sets s
+      JOIN public.exercise_entries e ON s.exercise_entry_id = e.id
+      WHERE e.user_id = $1
+        AND e.entry_date >= $2
+        AND e.entry_date <= $3
+        AND e.exercise_name != 'Active Calories'
+        ${query.category ? 'AND LOWER(e.category) = LOWER($4)' : ''}
+      GROUP BY period_start
+    `;
+    const breakdownVolumeResult = await client.query(
+      breakdownVolumeSql,
+      totalParams
+    );
+    const volumeByPeriod = new Map<string, number>(
+      breakdownVolumeResult.rows.map((row: SqlRow) => [
+        new Date(String(row.period_start)).toISOString(),
+        parseFloat(String(row.total_volume || '0')),
+      ])
+    );
     const intervalsBreakdown = breakdownResult.rows.map((row: SqlRow) => {
       const dKm = parseFloat(String(row.distance_km || '0'));
       const pDate = new Date(String(row.period_start));
       const label =
         interval === 'week'
-          ? `Wk ${pDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+          ? // Year included: 'Wk Jan 5' alone collides across years, merging
+            // buckets and sorting them against each other.
+            `Wk ${pDate.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: '2-digit',
+            })}`
           : interval === 'month'
             ? pDate.toLocaleDateString('en-US', {
                 month: 'short',
                 year: '2-digit',
               })
-            : pDate.toISOString().slice(0, 10);
+            : toDayString(pDate);
 
       return {
         label,
-        startDate: pDate.toISOString().slice(0, 10),
-        endDate: pDate.toISOString().slice(0, 10),
+        startDate: toDayString(pDate),
+        endDate: toDayString(periodEndOf(pDate)),
         distanceMeters: Math.round(dKm * 1000),
         distanceFormatted: convertDistance(dKm, unitSystem),
         durationMinutes: parseFloat(String(row.duration_minutes || '0')),
@@ -216,9 +281,13 @@ async function getExerciseStatsSummary(
         avgHeartRate: row.avg_heart_rate
           ? Math.round(parseFloat(String(row.avg_heart_rate)))
           : null,
-        totalElevationGainMeters: 0,
+        totalElevationGainMeters: Math.round(
+          parseFloat(String(row.elevation_gain_meters || '0'))
+        ),
         movingDurationMinutes: parseFloat(String(row.duration_minutes || '0')),
-        totalLiftedVolumeKg: 0,
+        totalLiftedVolumeKg:
+          Math.round((volumeByPeriod.get(pDate.toISOString()) ?? 0) * 100) /
+          100,
       };
     });
 
@@ -250,15 +319,11 @@ async function getExerciseStatsSummary(
     const prevParams = query.category
       ? [
           targetUserId,
-          prevStartDt.toISOString().slice(0, 10),
-          prevEndDt.toISOString().slice(0, 10),
+          toDayString(prevStartDt),
+          toDayString(prevEndDt),
           query.category,
         ]
-      : [
-          targetUserId,
-          prevStartDt.toISOString().slice(0, 10),
-          prevEndDt.toISOString().slice(0, 10),
-        ];
+      : [targetUserId, toDayString(prevStartDt), toDayString(prevEndDt)];
     const prevResult = await client.query(prevSql, prevParams);
     const prevRow: SqlRow = prevResult.rows[0] || {};
     const prevDistance = parseFloat(String(prevRow.total_distance_km || '0'));
@@ -275,16 +340,35 @@ async function getExerciseStatsSummary(
       return Math.round(((curr - prev) / prev) * 1000) / 10;
     };
 
-    const avgHRVal = avgHeartRate || 140;
+    // Recorded time-in-zone, summed from exercise_entry_hr_zones. This was
+    // previously synthesized from the average heart rate and a workout count,
+    // which produced plausible-looking numbers that were never measured. Zones
+    // with no recorded data stay at 0 rather than falling back to an estimate:
+    // a zero reads as "nothing recorded", an estimate is indistinguishable from
+    // a real reading.
+    const hrZoneSql = `
+      SELECT z.zone_index, COALESCE(SUM(z.seconds_in_zone), 0) AS seconds
+      FROM public.exercise_entry_hr_zones z
+      JOIN public.exercise_entries e ON e.id = z.exercise_entry_id
+      WHERE z.user_id = $1
+        AND z.entry_date >= $2
+        AND z.entry_date <= $3
+        ${query.category ? 'AND LOWER(e.category) = LOWER($4)' : ''}
+      GROUP BY z.zone_index
+    `;
+    const hrZoneResult = await client.query(hrZoneSql, totalParams);
+    const secondsByZone = new Map<number, number>(
+      hrZoneResult.rows.map((row: SqlRow) => [
+        parseInt(String(row.zone_index), 10),
+        Math.round(parseFloat(String(row.seconds || '0'))),
+      ])
+    );
     const hrDistribution = {
-      zone1RecoverySeconds: avgHRVal < 120 ? workoutCount * 1200 : 300,
-      zone2EnduranceSeconds:
-        avgHRVal >= 120 && avgHRVal < 140 ? workoutCount * 1500 : 600,
-      zone3AerobicSeconds:
-        avgHRVal >= 140 && avgHRVal < 160 ? workoutCount * 1800 : 900,
-      zone4ThresholdSeconds:
-        avgHRVal >= 160 && avgHRVal < 175 ? workoutCount * 1200 : 300,
-      zone5AnaerobicSeconds: avgHRVal >= 175 ? workoutCount * 600 : 100,
+      zone1RecoverySeconds: secondsByZone.get(1) ?? 0,
+      zone2EnduranceSeconds: secondsByZone.get(2) ?? 0,
+      zone3AerobicSeconds: secondsByZone.get(3) ?? 0,
+      zone4ThresholdSeconds: secondsByZone.get(4) ?? 0,
+      zone5AnaerobicSeconds: secondsByZone.get(5) ?? 0,
     };
 
     return {
@@ -437,7 +521,7 @@ async function queryExerciseActivities(
 
         const entryDateStr =
           row.entry_date instanceof Date
-            ? row.entry_date.toISOString().slice(0, 10)
+            ? toDayString(row.entry_date)
             : String(row.entry_date);
 
         return {
@@ -494,31 +578,51 @@ async function getPersonalRecordMatrix(
   try {
     const cardioPRs: ExercisePersonalRecordItem[] = [];
 
-    for (const [stdKey, stdConfig] of Object.entries(DISTANCE_STANDARDS)) {
-      const prSql = `
+    // One LATERAL query for every distance standard rather than a query per
+    // standard in a loop — same best-per-band result, a single round trip.
+    const standardEntries = Object.entries(DISTANCE_STANDARDS);
+    const standardsValues = standardEntries
+      .map(
+        (_, i) =>
+          `($${i * 3 + 2}, $${i * 3 + 3}::numeric, $${i * 3 + 4}::numeric)`
+      )
+      .join(', ');
+    const prSql = `
+      WITH standards(std_key, min_km, max_km) AS (VALUES ${standardsValues})
+      SELECT s.std_key, e.id, e.exercise_name, e.entry_date, e.duration_minutes, e.distance
+      FROM standards s
+      CROSS JOIN LATERAL (
         SELECT id, exercise_name, entry_date, duration_minutes, distance
         FROM public.exercise_entries
-        WHERE user_id = $1 
-          AND distance >= $2 AND distance <= $3
+        WHERE user_id = $1
+          AND distance >= s.min_km AND distance <= s.max_km
           AND duration_minutes > 0
         ORDER BY (duration_minutes * 60 / NULLIF(distance, 0)) ASC
         LIMIT 1
-      `;
-      const prResult = await client.query(prSql, [
-        targetUserId,
-        stdConfig.min,
-        stdConfig.max,
-      ]);
+      ) e
+    `;
+    const prResult = await client.query(prSql, [
+      targetUserId,
+      ...standardEntries.flatMap(([key, config]) => [
+        key,
+        config.min,
+        config.max,
+      ]),
+    ]);
+    const bestByStandard = new Map<string, SqlRow>(
+      prResult.rows.map((row: SqlRow) => [String(row.std_key), row])
+    );
 
-      if (prResult.rows.length > 0) {
-        const bestRow: SqlRow = prResult.rows[0];
+    for (const [stdKey, stdConfig] of standardEntries) {
+      const bestRow = bestByStandard.get(stdKey);
+      if (bestRow) {
         const distKm = parseFloat(String(bestRow.distance));
         const durMins = parseFloat(String(bestRow.duration_minutes));
         const totalSecs = Math.round(durMins * 60);
         const paceSecs = Math.round(totalSecs / distKm);
         const entryDateStr =
           bestRow.entry_date instanceof Date
-            ? bestRow.entry_date.toISOString().slice(0, 10)
+            ? toDayString(bestRow.entry_date)
             : String(bestRow.entry_date);
 
         const prLabel =
@@ -571,7 +675,7 @@ async function getPersonalRecordMatrix(
         const paceSecs = Math.round(totalSecs / distKm);
         const entryDateStr =
           bestRow.entry_date instanceof Date
-            ? bestRow.entry_date.toISOString().slice(0, 10)
+            ? toDayString(bestRow.entry_date)
             : String(bestRow.entry_date);
 
         const distVal = convertDistance(distKm, unitSystem);
@@ -617,7 +721,7 @@ async function getPersonalRecordMatrix(
       reps: parseInt(String(row.max_reps || '0'), 10),
       achievedAt:
         row.last_date instanceof Date
-          ? row.last_date.toISOString().slice(0, 10)
+          ? toDayString(row.last_date)
           : String(row.last_date),
     }));
 
@@ -689,7 +793,7 @@ async function getMatchedCourses(
           activityName: String(act.exercise_name || 'Activity'),
           entryDate:
             act.entry_date instanceof Date
-              ? act.entry_date.toISOString().slice(0, 10)
+              ? toDayString(act.entry_date)
               : String(act.entry_date),
           durationMinutes: roundedDMins,
           avgPaceFormatted: formatPace(paceSecs, unitSystem),

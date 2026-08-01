@@ -86,6 +86,13 @@ export const UpsertCheckInBodySchema = z
     steps: nullableOptionalLegacyNumber,
     height: nullableOptionalLegacyNumber,
     body_fat_percentage: nullableOptionalLegacyNumber,
+    // Smart-scale composition. These must be declared even though the schema is
+    // .loose(): without them the values still reach the repository but skip
+    // coercion entirely, so a non-numeric or oversized value surfaced as a 500
+    // from the numeric(5,2) column instead of a 400.
+    muscle_mass_kg: nullableOptionalLegacyNumber,
+    bone_mass_kg: nullableOptionalLegacyNumber,
+    body_water_percentage: nullableOptionalLegacyNumber,
   })
   .loose();
 
@@ -101,6 +108,9 @@ export const UpdateCheckInBodySchema = z
     steps: nullableOptionalLegacyNumber,
     height: nullableOptionalLegacyNumber,
     body_fat_percentage: nullableOptionalLegacyNumber,
+    muscle_mass_kg: nullableOptionalLegacyNumber,
+    bone_mass_kg: nullableOptionalLegacyNumber,
+    body_water_percentage: nullableOptionalLegacyNumber,
   })
   .loose();
 

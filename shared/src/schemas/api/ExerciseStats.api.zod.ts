@@ -85,7 +85,7 @@ export const exerciseActivityQueryRequestSchema = z.object({
   distanceMinMeters: z.number().optional(),
   distanceMaxMeters: z.number().optional(),
   distanceStandard: z
-    .enum(["5k", "10k", "15k", "half_marathon", "marathon", "custom"])
+    .enum(["1k", "1mi", "5k", "10k", "15k", "half_marathon", "marathon", "custom"])
     .optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),

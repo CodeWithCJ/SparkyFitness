@@ -34,6 +34,7 @@ export const exerciseEntryGpsPointsSchema = z.object({
   entry_date: z.string(),
   points: z.array(gpsTrackPointSchema),
   created_at: z.coerce.date().nullable(),
+  updated_at: z.coerce.date().nullable(),
 });
 
 export const exerciseEntryGpsPointsInitializerSchema = z.object({
@@ -43,6 +44,7 @@ export const exerciseEntryGpsPointsInitializerSchema = z.object({
   entry_date: z.string(),
   points: z.array(gpsTrackPointSchema),
   created_at: z.coerce.date().optional().nullable(),
+  updated_at: z.coerce.date().optional().nullable(),
 });
 
 export const exerciseEntryGpsPointsMutatorSchema = exerciseEntryGpsPointsInitializerSchema.partial();

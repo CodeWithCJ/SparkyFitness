@@ -16,6 +16,7 @@ export const vitalsEntriesSchema = z.object({
   device_name: z.string().nullable(),
   external_id: z.string().nullable(),
   created_at: z.coerce.date().nullable(),
+  updated_at: z.coerce.date().nullable(),
 });
 
 export const vitalsEntriesInitializerSchema = z.object({
@@ -32,6 +33,7 @@ export const vitalsEntriesInitializerSchema = z.object({
   device_name: z.string().optional().nullable(),
   external_id: z.string().optional().nullable(),
   created_at: z.coerce.date().optional().nullable(),
+  updated_at: z.coerce.date().optional().nullable(),
 });
 
 export const vitalsEntriesMutatorSchema = vitalsEntriesInitializerSchema.partial();

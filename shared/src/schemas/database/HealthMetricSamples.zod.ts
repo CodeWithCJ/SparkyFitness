@@ -33,7 +33,10 @@ export type HealthMetric = z.infer<typeof healthMetricSchema>;
  * simply unlinked, never assume the referenced row exists.
  */
 const baseSampleSchema = z.object({
-  t: z.string(),
+  // Validated as an ISO datetime: these come straight from provider payloads
+  // into a JSONB column, so an unparseable timestamp would otherwise be stored
+  // and only fail much later at read time.
+  t: z.iso.datetime({ offset: true }),
   ex: z.string().optional(),
   sl: z.string().optional(),
 });

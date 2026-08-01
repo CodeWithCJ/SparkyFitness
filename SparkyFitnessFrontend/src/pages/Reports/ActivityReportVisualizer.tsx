@@ -309,15 +309,23 @@ const ActivityReportVisualizer = ({
       ? formatDuration(stats.elapsedTimeSeconds, true)
       : null;
 
+  // Stored values are kcal; convert before labelling with the selected unit.
   const caloriesBreakdownFormatted =
     stats.activeCalories != null || stats.restingCalories != null
-      ? `${Math.round(stats.activeCalories ?? 0)} / ${Math.round(stats.restingCalories ?? 0)} ${getEnergyUnitString(energyUnit)}`
+      ? `${Math.round(convertEnergy(stats.activeCalories ?? 0, 'kcal', energyUnit))} / ${Math.round(convertEnergy(stats.restingCalories ?? 0, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`
       : null;
 
-  const avgMovingSpeedFormatted =
-    stats.avgMovingSpeedMps != null && stats.avgMovingSpeedMps > 0
-      ? formatPace(1000 / (stats.avgMovingSpeedMps * 60), distanceUnit)
-      : null;
+  // formatPace only formats — the caller converts, as the average-pace block
+  // above does. Without this the value stayed min/km under a "/mi" label.
+  const avgMovingSpeedFormatted = (() => {
+    if (stats.avgMovingSpeedMps == null || stats.avgMovingSpeedMps <= 0) {
+      return null;
+    }
+    const minPerKm = 1000 / (stats.avgMovingSpeedMps * 60);
+    const paceForUnit =
+      distanceUnit === 'miles' ? minPerKm * 1.60934 : minPerKm;
+    return formatPace(paceForUnit, distanceUnit);
+  })();
 
   const elevationRangeFormatted =
     stats.minElevation != null && stats.maxElevation != null

@@ -149,6 +149,7 @@ describe('Generic Health & Workout Zod Schemas', () => {
       elevation_gain_meters: 10.0,
       elevation_loss_meters: 5.0,
       created_at: new Date(),
+      updated_at: new Date(),
     };
 
     const parsed = exerciseEntryLapsSchema.parse(validLap);
@@ -186,6 +187,7 @@ describe('Generic Health & Workout Zod Schemas', () => {
         },
       ],
       created_at: new Date(),
+      updated_at: new Date(),
     };
 
     const parsed = exerciseEntryGpsPointsSchema.parse(validRow);
@@ -275,6 +277,7 @@ describe('Generic Health & Workout Zod Schemas', () => {
       device_name: null,
       external_id: null,
       created_at: new Date(),
+      updated_at: new Date(),
     };
     const parsedVitals = vitalsEntriesSchema.parse(validVitals);
     expect(parsedVitals.systolic_mmhg).toBe(120);

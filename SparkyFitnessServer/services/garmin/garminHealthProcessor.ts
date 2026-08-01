@@ -10,6 +10,7 @@ import { getClient } from '../../db/poolManager.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import {
   localDateTimeToUtc,
+  instantToDay,
   HealthMetric,
   healthMetricSamplesInitializerSchema,
 } from '@workspace/shared';
@@ -36,7 +37,12 @@ async function loadActivityWindows(
   endDate: string
 ): Promise<{ exercise: ActivityWindow[]; sleep: ActivityWindow[] }> {
   const tz = await loadUserTimezone(userId);
-  const client = await getClient(actingUserId);
+  // Explicit (owner, actor) rather than a single argument. RLS keys off
+  // app.authenticated_user_id — the second argument — which previously
+  // resolved to the actor only via AsyncLocalStorage or the single-argument
+  // fallback. Cron-driven syncs run outside a request and so have no ALS
+  // context, and app.user_id should name the data owner regardless.
+  const client = await getClient(userId, actingUserId);
   try {
     const exerciseRes = await client.query(
       `SELECT id, entry_date, entry_time, duration_minutes
@@ -207,6 +213,10 @@ export async function processGarminHealthAndWellnessData(
   );
   const processedResults: ProcessedResult[] = [];
   const errors: ProcessError[] = [];
+  // Used to bucket sample instants onto the user's calendar day. UTC slicing
+  // puts a late-evening reading on the following day for any timezone ahead of
+  // UTC (and the previous day for those behind).
+  const userTz = await loadUserTimezone(userId);
 
   try {
     // Process Stress Data
@@ -635,9 +645,7 @@ export async function processGarminHealthAndWellnessData(
             if (sample[0] && sample[1]) {
               const timestamp = new Date(sample[0]);
               respSamples.push({
-                entry_date:
-                  item.date ||
-                  new Date(sample[0]).toISOString().substring(0, 10),
+                entry_date: item.date || instantToDay(timestamp, userTz),
                 timestamp,
                 ...tagActivity(timestamp),
                 device_name: 'Garmin Device',

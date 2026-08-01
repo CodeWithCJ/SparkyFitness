@@ -46,6 +46,7 @@ describe('exerciseStatsService', () => {
             calories_burned: '1400',
             workout_count: '2',
             avg_heart_rate: '150',
+            elevation_gain_meters: '320.5',
           },
           {
             period_start: new Date('2026-07-15'),
@@ -54,7 +55,15 @@ describe('exerciseStatsService', () => {
             calories_burned: '1400',
             workout_count: '2',
             avg_heart_rate: '154',
+            elevation_gain_meters: '0',
           },
+        ],
+      });
+
+      // Per-bucket lifted volume (only the first bucket has strength work).
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          { period_start: new Date('2026-07-01'), total_volume: '3200.5' },
         ],
       });
 
@@ -66,6 +75,16 @@ describe('exerciseStatsService', () => {
             total_calories_burned: '2000',
             workout_count: '3',
           },
+        ],
+      });
+
+      // Recorded time-in-zone; zone 5 has no rows.
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          { zone_index: '1', seconds: '2224' },
+          { zone_index: '2', seconds: '6259' },
+          { zone_index: '3', seconds: '3103' },
+          { zone_index: '4', seconds: '458' },
         ],
       });
 
@@ -86,7 +105,62 @@ describe('exerciseStatsService', () => {
       expect(res.totals.avgHeartRate).toBe(152);
       expect(res.totals.totalLiftedVolumeKg).toBe(5000);
       expect(res.intervalsBreakdown.length).toBe(2);
+
+      // Per-bucket elevation and lifted volume come from the database rather
+      // than the hardcoded zeros these fields used to return.
+      expect(res.intervalsBreakdown[0].totalElevationGainMeters).toBe(321);
+      expect(res.intervalsBreakdown[0].totalLiftedVolumeKg).toBe(3200.5);
+      expect(res.intervalsBreakdown[1].totalElevationGainMeters).toBe(0);
+      expect(res.intervalsBreakdown[1].totalLiftedVolumeKg).toBe(0);
+
+      // Real recorded time-in-zone. A zone with no rows stays 0 instead of
+      // falling back to an estimate derived from the average heart rate.
+      expect(res.heartRateZoneDistribution).toEqual({
+        zone1RecoverySeconds: 2224,
+        zone2EnduranceSeconds: 6259,
+        zone3AerobicSeconds: 3103,
+        zone4ThresholdSeconds: 458,
+        zone5AnaerobicSeconds: 0,
+      });
+
       expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    it('reports all zones as zero when no time-in-zone was recorded', async () => {
+      const emptyTotals = {
+        total_distance_km: '0',
+        total_duration_minutes: '0',
+        total_calories_burned: '0',
+        workout_count: '0',
+        avg_heart_rate: null,
+      };
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [emptyTotals] })
+        .mockResolvedValueOnce({
+          rows: [{ total_volume: '0', total_reps: '0' }],
+        })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [emptyTotals] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const res = await exerciseStatsService.getExerciseStatsSummary(
+        'user-123',
+        {
+          interval: 'month',
+          startDate: '2026-07-01',
+          endDate: '2026-07-31',
+          unitSystem: 'metric',
+        }
+      );
+
+      expect(res.heartRateZoneDistribution).toEqual({
+        zone1RecoverySeconds: 0,
+        zone2EnduranceSeconds: 0,
+        zone3AerobicSeconds: 0,
+        zone4ThresholdSeconds: 0,
+        zone5AnaerobicSeconds: 0,
+      });
     });
 
     it('should release the client and propagate the error when the query fails', async () => {
@@ -154,23 +228,20 @@ describe('exerciseStatsService', () => {
 
   describe('getPersonalRecordMatrix', () => {
     it('should calculate cardio distance PRs and strength 1RMs', async () => {
-      for (let i = 0; i < 7; i++) {
-        if (i === 5) {
-          mockClient.query.mockResolvedValueOnce({
-            rows: [
-              {
-                id: 'hm-1',
-                exercise_name: 'NYC Half Marathon',
-                entry_date: new Date('2026-03-20'),
-                duration_minutes: 100,
-                distance: 21.1,
-              },
-            ],
-          });
-        } else {
-          mockClient.query.mockResolvedValueOnce({ rows: [] });
-        }
-      }
+      // One LATERAL query now returns a row per matching standard, keyed by
+      // std_key, instead of seven sequential per-standard queries.
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            std_key: 'half_marathon',
+            id: 'hm-1',
+            exercise_name: 'NYC Half Marathon',
+            entry_date: new Date('2026-03-20'),
+            duration_minutes: 100,
+            distance: 21.1,
+          },
+        ],
+      });
 
       mockClient.query.mockResolvedValueOnce({
         rows: [

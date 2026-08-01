@@ -288,24 +288,54 @@ function telemetryValuesFrom(source: any): unknown[] {
  * workout-telemetry backfill script to re-derive telemetry from the stored raw JSON
  * backup without disturbing the rest of the row.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/** Column names this module is allowed to write via the telemetry-only update. */
+type TelemetryColumn = (typeof EXERCISE_ENTRY_TELEMETRY_COLUMNS)[number];
+
+/** Partial telemetry payload: any subset of the telemetry columns. */
+export type TelemetryFields = Partial<Record<TelemetryColumn, unknown>>;
+
+/** Minimal pg client surface needed to run a parameterised statement. */
+export interface TelemetryUpdateClient {
+  query: (text: string, values?: unknown[]) => Promise<unknown>;
+}
+
+async function _updateExerciseEntryTelemetryOnlyWithClient(
+  client: TelemetryUpdateClient,
+  id: string,
+  userId: string,
+  telemetryFields: TelemetryFields
+) {
+  // Only the columns actually supplied are written. Previously every telemetry
+  // column was included, with absent ones coerced to null, so a partial payload
+  // (a provider that reports power but not running dynamics, say) wiped the
+  // columns it had nothing to say about.
+  const columns = EXERCISE_ENTRY_TELEMETRY_COLUMNS.filter(
+    (column) => telemetryFields?.[column] !== undefined
+  );
+  if (columns.length === 0) return;
+
+  const setClause = columns
+    .map((column, index) => `${column} = $${index + 1}`)
+    .join(', ');
+  await client.query(
+    `UPDATE exercise_entries SET ${setClause}, updated_at = now()
+     WHERE id = $${columns.length + 1} AND user_id = $${columns.length + 2}`,
+    [...columns.map((column) => telemetryFields[column]), id, userId]
+  );
+}
+
 async function updateExerciseEntryTelemetryOnly(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  telemetryFields: any
+  id: string,
+  userId: string,
+  telemetryFields: TelemetryFields
 ) {
   const client = await getClient(userId);
   try {
-    const setClause = EXERCISE_ENTRY_TELEMETRY_COLUMNS.map(
-      (column, index) => `${column} = $${index + 1}`
-    ).join(', ');
-    await client.query(
-      `UPDATE exercise_entries SET ${setClause}, updated_at = now()
-       WHERE id = $${EXERCISE_ENTRY_TELEMETRY_COLUMNS.length + 1} AND user_id = $${EXERCISE_ENTRY_TELEMETRY_COLUMNS.length + 2}`,
-      [...telemetryValuesFrom(telemetryFields), id, userId]
+    await _updateExerciseEntryTelemetryOnlyWithClient(
+      client,
+      id,
+      userId,
+      telemetryFields
     );
   } finally {
     client.release();
@@ -811,13 +841,18 @@ async function updateExerciseEntry(
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
+    // Pass the caller's source through as-is (possibly undefined). Defaulting
+    // to 'manual' here reassigned every provider-synced entry to 'manual' on
+    // any diary edit, which silently broke "delete my <provider> data" for that
+    // row. _updateExerciseEntryWithClient already falls back to the entry's
+    // existing source when this is absent.
     const updatedEntry = await _updateExerciseEntryWithClient(
       client,
       id,
       userId,
       updateData,
       actingUserId,
-      updateData.source || 'manual'
+      updateData.source
     );
     await client.query('COMMIT');
     return updatedEntry;
@@ -1620,6 +1655,7 @@ export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };
 export { updateExerciseEntry };
 export { updateExerciseEntryTelemetryOnly };
+export { _updateExerciseEntryTelemetryOnlyWithClient };
 export { updateExerciseEntriesDateByPresetEntryIdWithClient };
 export { deleteExerciseEntriesByPresetEntryIdWithClient };
 export { deleteExerciseEntry };
@@ -1647,6 +1683,7 @@ export default {
   getExerciseEntryOwnerId,
   updateExerciseEntry,
   updateExerciseEntryTelemetryOnly,
+  _updateExerciseEntryTelemetryOnlyWithClient,
   updateExerciseEntriesDateByPresetEntryIdWithClient,
   deleteExerciseEntriesByPresetEntryIdWithClient,
   deleteExerciseEntry,

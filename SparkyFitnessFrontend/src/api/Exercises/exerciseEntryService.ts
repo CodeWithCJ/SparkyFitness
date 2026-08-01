@@ -276,10 +276,12 @@ export const fetchExerciseEntryById = async (
   });
 };
 
+// suppress404Toast means apiCall resolves to null when the provider has no
+// stored details, so the signature has to admit that.
 export const getActivityDetails = async (
   exerciseEntryId: string,
   providerName: string
-): Promise<ActivityDetailsResponse> => {
+): Promise<ActivityDetailsResponse | null> => {
   return apiCall(
     `/exercises/activity-details/${exerciseEntryId}/${providerName}`,
     {

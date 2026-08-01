@@ -24,6 +24,7 @@ export const exerciseEntryLapsSchema = z.object({
   elevation_gain_meters: z.number().nullable(),
   elevation_loss_meters: z.number().nullable(),
   created_at: z.coerce.date().nullable(),
+  updated_at: z.coerce.date().nullable(),
 });
 
 export const exerciseEntryLapsInitializerSchema = z.object({
@@ -48,6 +49,7 @@ export const exerciseEntryLapsInitializerSchema = z.object({
   elevation_gain_meters: z.number().optional().nullable(),
   elevation_loss_meters: z.number().optional().nullable(),
   created_at: z.coerce.date().optional().nullable(),
+  updated_at: z.coerce.date().optional().nullable(),
 });
 
 export const exerciseEntryLapsMutatorSchema = exerciseEntryLapsInitializerSchema.partial();

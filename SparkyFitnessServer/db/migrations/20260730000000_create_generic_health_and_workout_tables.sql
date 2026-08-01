@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS exercise_entry_laps (
     elevation_gain_meters NUMERIC(7, 2),
     elevation_loss_meters NUMERIC(7, 2),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT uq_exercise_entry_lap UNIQUE (exercise_entry_id, lap_index)
 );
 
@@ -106,6 +107,7 @@ CREATE TABLE IF NOT EXISTS exercise_entry_hr_zones (
     zone_upper_bpm INTEGER,
     seconds_in_zone INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT uq_exercise_entry_hr_zone UNIQUE (exercise_entry_id, zone_index)
 );
 
@@ -122,6 +124,7 @@ CREATE TABLE IF NOT EXISTS exercise_entry_gps_points (
     entry_date DATE NOT NULL,
     points JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT uq_exercise_entry_gps_points UNIQUE (exercise_entry_id)
 );
 
@@ -165,6 +168,7 @@ CREATE TABLE IF NOT EXISTS vitals_entries (
     device_name TEXT,
     external_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT uq_vitals_entry UNIQUE (user_id, source_provider, timestamp)
 );
 
@@ -227,10 +231,35 @@ CREATE TABLE IF NOT EXISTS daily_health_metrics (
 CREATE INDEX IF NOT EXISTS idx_daily_health_metrics_user_date ON daily_health_metrics(user_id, entry_date DESC);
 
 -- ============================================================================
--- 9. updated_at maintenance for the two tables that carry the column
+-- 9. updated_at maintenance across the new tables
 -- ============================================================================
--- Reuses update_updated_at_column(), defined in
+-- The CREATE TABLE statements above declare updated_at, but they are all
+-- CREATE TABLE IF NOT EXISTS: on an installation where these tables were
+-- created by an earlier run of this migration, the whole statement is skipped
+-- and the new column never appears. The ALTERs below are what actually add it
+-- there, and are no-ops on a fresh install.
+--
+-- The same applies to uq_vitals_entry, which is declared inline on
+-- vitals_entries and so is likewise skipped on a pre-existing table. Without it
+-- the vitals upsert has no ON CONFLICT target.
+--
+-- Triggers reuse update_updated_at_column(), defined in
 -- 20250713125323_create_oidc_settings_and_update_users_table.sql.
+
+ALTER TABLE exercise_entry_laps ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+ALTER TABLE exercise_entry_hr_zones ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+ALTER TABLE exercise_entry_gps_points ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+ALTER TABLE vitals_entries ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'uq_vitals_entry'
+  ) THEN
+    ALTER TABLE vitals_entries
+      ADD CONSTRAINT uq_vitals_entry UNIQUE (user_id, source_provider, "timestamp");
+  END IF;
+END $$;
 
 CREATE OR REPLACE TRIGGER update_health_metric_samples_updated_at
 BEFORE UPDATE ON health_metric_samples
@@ -239,6 +268,26 @@ EXECUTE FUNCTION update_updated_at_column();
 
 CREATE OR REPLACE TRIGGER update_daily_health_metrics_updated_at
 BEFORE UPDATE ON daily_health_metrics
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+CREATE OR REPLACE TRIGGER update_exercise_entry_laps_updated_at
+BEFORE UPDATE ON exercise_entry_laps
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+CREATE OR REPLACE TRIGGER update_exercise_entry_hr_zones_updated_at
+BEFORE UPDATE ON exercise_entry_hr_zones
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+CREATE OR REPLACE TRIGGER update_exercise_entry_gps_points_updated_at
+BEFORE UPDATE ON exercise_entry_gps_points
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+CREATE OR REPLACE TRIGGER update_vitals_entries_updated_at
+BEFORE UPDATE ON vitals_entries
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 

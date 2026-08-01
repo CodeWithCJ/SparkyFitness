@@ -39,15 +39,17 @@ export const DailyHealthMetricsCard: React.FC<DailyHealthMetricsCardProps> = ({
     return null;
   }
 
+  // `== null` rather than a falsy test: 0 is a real reading (a fully drained
+  // body battery, a stress level of zero) and must not render as "no data".
   const getBodyBatteryColor = (level?: number | null) => {
-    if (!level) return 'bg-muted-foreground/40';
+    if (level == null) return 'bg-muted-foreground/40';
     if (level >= 75) return 'bg-emerald-500';
     if (level >= 40) return 'bg-amber-500';
     return 'bg-rose-500';
   };
 
   const getStressColor = (stress?: number | null) => {
-    if (!stress) return 'text-muted-foreground';
+    if (stress == null) return 'text-muted-foreground';
     if (stress <= 25) return 'text-emerald-500';
     if (stress <= 50) return 'text-blue-500';
     if (stress <= 75) return 'text-amber-500';

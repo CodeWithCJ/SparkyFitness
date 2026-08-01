@@ -188,12 +188,18 @@ export const mealTypeIdFromKey = (key: string) =>
  * Build the ordered list of widget keys for the current user state:
  * fixed top widgets, then one per visible meal type, then exercise.
  */
-export function buildWidgetKeys(visibleMealTypeIds: string[]): string[] {
+export function buildWidgetKeys(
+  visibleMealTypeIds: string[],
+  // Diary.tsx only renders the health-metrics widget when there is wearable
+  // data to show; reserving its key unconditionally left a hole in the grid
+  // for users with none.
+  hasDisplayableHealthMetrics = true
+): string[] {
   return [
     'energy',
     'nutrition',
     'water',
-    'healthMetrics',
+    ...(hasDisplayableHealthMetrics ? ['healthMetrics'] : []),
     ...visibleMealTypeIds.map(mealWidgetKey),
     'exercise',
   ];

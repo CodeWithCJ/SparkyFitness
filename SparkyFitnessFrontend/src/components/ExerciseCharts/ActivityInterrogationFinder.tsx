@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { error } from '@/utils/logging';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +28,7 @@ interface ActivityInterrogationFinderProps {
 export const ActivityInterrogationFinder = ({
   onQueryFetch,
 }: ActivityInterrogationFinderProps) => {
-  const { distanceUnit } = usePreferences();
+  const { distanceUnit, loggingLevel } = usePreferences();
   const isMiles = distanceUnit === 'miles';
 
   const [distancePreset, setDistancePreset] = useState<string>('half_marathon');
@@ -49,14 +50,14 @@ export const ActivityInterrogationFinder = ({
         setQueryResult(res);
         setQueryError(null);
       } catch (err) {
-        console.error('Failed to query activities:', err);
+        error(loggingLevel, 'Failed to query activities:', err);
         setQueryError('Failed to load activities. Please try again.');
         setQueryResult(null);
       } finally {
         setLoading(false);
       }
     },
-    [onQueryFetch]
+    [onQueryFetch, loggingLevel]
   );
 
   useEffect(() => {

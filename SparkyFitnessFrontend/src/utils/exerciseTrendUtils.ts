@@ -14,7 +14,9 @@ const getWeekStart = (date: Date): Date => {
 
 const getTrendDateFormat = (aggregationLevel?: string) => {
   if (aggregationLevel === 'weekly' || aggregationLevel === 'week') {
-    return 'MMM dd'; // applied to week-start date
+    // Year included: without it, the week of Jan 05 2025 and Jan 05 2026 produce
+    // the same label, so they collide into one bucket and sort against each other.
+    return 'MMM dd, yyyy'; // applied to week-start date
   }
   if (aggregationLevel === 'monthly' || aggregationLevel === 'month') {
     return 'MMM yyyy';
