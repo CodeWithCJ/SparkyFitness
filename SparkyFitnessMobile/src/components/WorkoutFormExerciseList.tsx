@@ -400,19 +400,26 @@ const WorkoutFormExerciseList = forwardRef<
     [exercises, onViewExercise],
   );
 
-  // Rest sheet (per-exercise rest duration).
+  // Rest sheet: per-set rest duration (long-press detail panel).
   const restSheetRef = useRef<RestPeriodSheetRef>(null);
-  const restSheetTargetRef = useRef<string | null>(null);
-  const handlePressRestChip = useCallback((entryId: string, currentSec: number | null) => {
-    restSheetTargetRef.current = entryId;
-    restSheetRef.current?.present(currentSec);
-  }, []);
+  const restSheetSetTargetRef = useRef<{ exerciseClientId: string; setClientId: string } | null>(null);
+  const handlePressRestChip = useCallback(
+    (setClientId: string, currentSec: number | null) => {
+      const owner = exercises.find(e => e.sets.some(s => s.clientId === setClientId));
+      if (!owner) return;
+      restSheetSetTargetRef.current = { exerciseClientId: owner.clientId, setClientId };
+      restSheetRef.current?.present(currentSec);
+    },
+    [exercises],
+  );
   const handleRestChange = useCallback(
     (seconds: number) => {
-      const target = restSheetTargetRef.current;
-      if (target != null) setExerciseRest(target, seconds);
+      const target = restSheetSetTargetRef.current;
+      if (target != null) {
+        updateSetMeta(target.exerciseClientId, target.setClientId, { restTime: seconds });
+      }
     },
-    [setExerciseRest],
+    [updateSetMeta],
   );
 
   // Metric column is shared with the active-workout screen (intended).
@@ -583,7 +590,7 @@ const WorkoutFormExerciseList = forwardRef<
             onCommitExerciseNote={setExerciseNotes ? handleCommitExerciseNote : undefined}
             expandedSetKey={expandedSetClientId}
             onLongPressSet={setExerciseNotes ? handleToggleSetDetail : undefined}
-            onPressRestChip={handlePressRestChip}
+            onPressSetRest={handlePressRestChip}
             onPressMetricHeader={handlePressMetricHeader}
             onPressOverflow={handlePressOverflow}
             onCommitField={handleCommitField}

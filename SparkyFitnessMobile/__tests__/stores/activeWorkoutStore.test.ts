@@ -288,21 +288,25 @@ describe('activeWorkoutStore', () => {
       expect(state.activeSetId).toBe('101');
     });
 
-    it('derives restSec from the first set per exercise', () => {
-      useActiveWorkoutStore.getState().startWorkout(makeSession());
+    it('derives restSec from each set individually, not just the first', () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].rest_time = 45;
+      session.exercises[0].sets[1].rest_time = 75;
+      useActiveWorkoutStore.getState().startWorkout(session);
       const { steps } = useActiveWorkoutStore.getState();
-      expect(steps[0].restSec).toBe(60);
-      expect(steps[1].restSec).toBe(60);
+      expect(steps[0].restSec).toBe(45);
+      expect(steps[1].restSec).toBe(75);
       expect(steps[2].restSec).toBe(120);
     });
 
-    it('falls back to 90s when rest_time is null', () => {
+    it('falls back to 90s only for the set whose rest_time is null', () => {
       const session = makeSession();
       session.exercises[0].sets[0].rest_time = null;
       useActiveWorkoutStore.getState().startWorkout(session);
       const { steps } = useActiveWorkoutStore.getState();
       expect(steps[0].restSec).toBe(90);
-      expect(steps[1].restSec).toBe(90);
+      // Unaffected — each set uses its own rest_time, not the first set's.
+      expect(steps[1].restSec).toBe(60);
     });
 
     it('snapshots exerciseName and exerciseImage per step', () => {
@@ -1233,10 +1237,45 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('completeSet rest respects each set\'s own rest_time', () => {
+    it('uses the just-completed set\'s own rest_time, not the exercise\'s first set (regression)', async () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].rest_time = 45;
+      session.exercises[0].sets[1].rest_time = 75;
+      useActiveWorkoutStore.getState().startWorkout(session);
+
+      useActiveWorkoutStore.getState().completeSet('101');
+      expect(useActiveWorkoutStore.getState().rest.durationSec).toBe(45);
+      await flushPromises();
+
+      useActiveWorkoutStore.getState().completeSet('102');
+      expect(useActiveWorkoutStore.getState().rest.durationSec).toBe(75);
+      await flushPromises();
+    });
+  });
+
   describe('completeSet rest (supersets)', () => {
     // Steps: 301(90), 401(0), 302(90), 402(0).
     beforeEach(() => {
       useActiveWorkoutStore.getState().startWorkout(makeSupersetSession(2));
+    });
+
+    it('uses the round-specific rest, not always round 0\'s (regression)', async () => {
+      const session = makeSupersetSession(3);
+      // Round 1 (index 1) has a shorter rest than round 0 and round 2.
+      session.exercises[0].sets[1].rest_time = 60;
+      session.exercises[1].sets[1].rest_time = 60;
+      useActiveWorkoutStore.getState().startWorkout(session);
+
+      useActiveWorkoutStore.getState().completeSet('301');
+      useActiveWorkoutStore.getState().completeSet('401'); // finishes round 0
+      expect(useActiveWorkoutStore.getState().rest.durationSec).toBe(90);
+      await flushPromises();
+
+      useActiveWorkoutStore.getState().completeSet('302');
+      useActiveWorkoutStore.getState().completeSet('402'); // finishes round 1
+      expect(useActiveWorkoutStore.getState().rest.durationSec).toBe(60);
+      await flushPromises();
     });
 
     it('rests between rounds but not between partners when logged in order', async () => {
@@ -1861,15 +1900,15 @@ describe('activeWorkoutStore', () => {
       expect(completedSetIds['101']).toBe(FIXED_NOW);
     });
 
-    it('refreshes restSec on every step when first set rest_time changes', () => {
+    it('refreshes restSec per step from each set\'s own rest_time', () => {
       const updated = makeSession();
       updated.exercises[0].sets[0].rest_time = 180;
-      updated.exercises[0].sets[1].rest_time = 60; // unchanged; should still be overridden
+      updated.exercises[0].sets[1].rest_time = 60; // unchanged — carries its own value
 
       useActiveWorkoutStore.getState().reconcileWithSession(updated);
       const { steps } = useActiveWorkoutStore.getState();
       expect(steps[0].restSec).toBe(180);
-      expect(steps[1].restSec).toBe(180);
+      expect(steps[1].restSec).toBe(60);
     });
 
     it('reorders steps to match new session order', () => {

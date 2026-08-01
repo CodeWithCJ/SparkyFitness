@@ -32,6 +32,8 @@ export interface WorkoutSetMetaPatch {
   notes?: string | null;
   /** ISO string to mark the set complete, null to clear it. */
   completedAt?: string | null;
+  /** Per-set rest duration in seconds; edited via the long-press rest chip. */
+  restTime?: number | null;
 }
 
 export interface WorkoutDraftExercise {

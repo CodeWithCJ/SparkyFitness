@@ -103,8 +103,6 @@ interface ActiveWorkoutExerciseCardProps {
    * best stays historical by design).
    */
   prSetIds?: PrSetMap;
-  /** Hide the rest chip entirely (e.g. imported workouts without rest data). */
-  showRestChip?: boolean;
   /**
    * Edit only: enables the inline calories field in the chip row. The text
    * comes from `exercise.editCaloriesText`; view mode instead shows
@@ -114,7 +112,6 @@ interface ActiveWorkoutExerciseCardProps {
   /** Tapping the exercise thumbnail opens its library detail. */
   onPressThumb?: (entryId: string) => void;
   onToggleExpanded: (entryId: string) => void;
-  onPressRestChip?: (entryId: string, currentSec: number | null) => void;
   /**
    * `clampedToRpe` is true when this card's metric column is display-clamped
    * to RPE (duration-like tables, where the weight metrics are always empty);
@@ -127,6 +124,8 @@ interface ActiveWorkoutExerciseCardProps {
   onCommitField?: (setId: string, patch: ActiveSetPatch) => void;
   onDeleteSet?: (setId: string) => void;
   onLongPressSet?: (setId: string) => void;
+  /** Live/edit only: long-press a set row then tap the rest chip to change per-set rest. */
+  onPressSetRest?: (setId: string, currentSec: number | null) => void;
   /** Live/edit only: tap a set number (or long-press the row) to change its type. */
   onPressSetType?: (setId: string, anchor: AnchorRect) => void;
   onAddSet?: (entryId: string) => void;
@@ -232,11 +231,9 @@ function ActiveWorkoutExerciseCard({
   mode = 'live',
   excludePresetEntryId,
   prSetIds,
-  showRestChip = true,
   onChangeCalories,
   onPressThumb,
   onToggleExpanded,
-  onPressRestChip,
   onPressMetricHeader,
   onPressOverflow,
   onComplete,
@@ -244,6 +241,7 @@ function ActiveWorkoutExerciseCard({
   onCommitField,
   onDeleteSet,
   onLongPressSet,
+  onPressSetRest,
   onPressSetType,
   onAddSet,
   expandedSetKey,
@@ -663,25 +661,11 @@ function ActiveWorkoutExerciseCard({
           </View>
         )}
 
-        {((showRestChip && !cardioForm) ||
-          bestDisplay != null ||
-          caloriesField ||
-          caloriesText != null) && (
+        {(bestDisplay != null || caloriesField || caloriesText != null) && (
           // flex-wrap + gap-y so the rest chip and "Best" stack gracefully on
           // narrow screens instead of shifting off the edge. "Last" lives in the
           // per-set PREVIOUS column, not here.
           <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1 px-1">
-            {showRestChip && !cardioForm && (
-              <RestPeriodChip
-                value={exercise.sets[0]?.rest_time}
-                readOnly={readOnly}
-                onPress={
-                  readOnly
-                    ? undefined
-                    : () => onPressRestChip?.(exercise.id, exercise.sets[0]?.rest_time ?? null)
-                }
-              />
-            )}
             {caloriesField && (caloriesEditing ? (
               <View className="flex-row items-center gap-1">
                 <Icon name="flame" size={14} color={accentPrimary} />
@@ -900,16 +884,23 @@ function ActiveWorkoutExerciseCard({
               {/* Per-set note expand — live and edit, toggled by long-pressing
                   the set row. View mode shows a saved note as plain text. */}
               {!readOnly && expandedSetKey === renderKey && onCommitField != null && (
-                <ActiveWorkoutSetDetail set={set} onCommitField={onCommitField} />
+                <ActiveWorkoutSetDetail
+                  set={set}
+                  onCommitField={onCommitField}
+                  onPressRest={onPressSetRest}
+                />
               )}
-              {readOnly && !!set.notes && (
-                <View className="px-1 pb-2">
-                  <Text
-                    className="text-xs text-text-secondary"
-                    accessibilityLabel={`Notes for set ${set.set_number}`}
-                  >
-                    {set.notes}
-                  </Text>
+              {readOnly && (
+                <View className="px-1 pb-2 gap-1">
+                  <RestPeriodChip value={set.rest_time} readOnly />
+                  {!!set.notes && (
+                    <Text
+                      className="text-xs text-text-secondary"
+                      accessibilityLabel={`Notes for set ${set.set_number}`}
+                    >
+                      {set.notes}
+                    </Text>
+                  )}
                 </View>
               )}
             </React.Fragment>
