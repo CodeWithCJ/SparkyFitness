@@ -152,26 +152,6 @@ export const UpsertCustomEntryBodySchema = z
 
 export type UpsertCustomEntryBody = z.infer<typeof UpsertCustomEntryBodySchema>;
 
-export const UpdateCustomEntryBodySchema = z
-  .object({
-    value: z
-      .union([requiredLegacyNumber, requiredLegacyString('value'), z.boolean()])
-      .optional(),
-    notes: optionalLegacyString,
-    source: optionalLegacyString,
-  })
-  .loose()
-  .refine(
-    (data) =>
-      data.value !== undefined || data.notes !== undefined || data.source !== undefined,
-    {
-      message: 'At least one of value, notes, or source is required.',
-      path: ['value'],
-    }
-  );
-
-export type UpdateCustomEntryBody = z.infer<typeof UpdateCustomEntryBodySchema>;
-
 export const DateParamSchema = z
   .object({
     date: requiredLegacyString('date'),

@@ -232,7 +232,7 @@ describe('buildCustomOps', () => {
     }
   });
 
-  it('emits a PUT-by-id save for an edited existing row', () => {
+  it('does not emit a save for an edited existing Unlimited row (read-only; edit unsupported)', () => {
     const form: CustomFormState = {
       'cat-unlimited': {
         rows: [row({ key: 'entry-u1', entryId: 'u1', value: '150', timestamp: '2026-07-30T08:00:00Z' })],
@@ -248,16 +248,9 @@ describe('buildCustomOps', () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.operations).toEqual([
-        {
-          kind: 'save',
-          categoryId: 'cat-unlimited',
-          entryId: 'u1',
-          value: 150,
-          hour: null,
-          timestamp: '2026-07-30T08:00:00Z',
-        },
-      ]);
+      // All/Unlimited entries are always INSERTed by upstream POST, so an
+      // existing entry cannot be edited by id; the UI renders it read-only.
+      expect(result.operations).toEqual([]);
     }
   });
 

@@ -205,6 +205,10 @@
     "title": "Powtarzaj przypomnienia",
     "subtitle": "Powtarzaj każde przypomnienie co 10 minut, maksymalnie 3 razy, aż dawka zostanie zarejestrowana."
   },
+  "hideMedicationNames": {
+    "title": "Ukryj nazwy leków",
+    "subtitle": "Pokaż ogólne przypomnienie zamiast nazwy i dawki leku."
+  },
   "liquidGlass": {
     "title": "Nawigacja Liquid Glass",
     "subtitle": "Użyj szklanego paska kart i nagłówków ekranów z iOS 26."

@@ -11,7 +11,6 @@ import {
   CreateCustomCategoryBodySchema,
   UpdateCustomCategoryBodySchema,
   UpsertCustomEntryBodySchema,
-  UpdateCustomEntryBodySchema,
   DateParamSchema,
   UuidParamSchema,
   DateRangeParamSchema,
@@ -1202,87 +1201,6 @@ router.delete(
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         error.message ===
           'Custom measurement entry not found or not authorized to delete.'
-      ) {
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
-  }
-);
-/**
- * @swagger
- * /measurements/custom-entries/{id}:
- *   put:
- *     summary: Update a custom measurement entry by id
- *     tags: [Wellness & Metrics]
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               value:
- *                 oneOf:
- *                   - type: number
- *                   - type: string
- *                   - type: boolean
- *               notes:
- *                 type: string
- *               source:
- *                 type: string
- *     responses:
- *       200:
- *         description: Entry updated successfully.
- *       400:
- *         description: Validation error.
- *       404:
- *         description: Custom measurement entry not found.
- */
-router.put(
-  '/custom-entries/:id',
-  authenticate,
-  checkPermissionMiddleware('checkin'),
-  async (req, res, next) => {
-    const paramResult = UuidParamSchema.safeParse(req.params);
-    if (!paramResult.success) {
-      return res.status(400).json({
-        error: paramResult.error.issues.map((i) => i.message).join(', '),
-      });
-    }
-    const bodyResult = UpdateCustomEntryBodySchema.safeParse(req.body);
-    if (!bodyResult.success) {
-      return res.status(400).json({
-        error: bodyResult.error.issues.map((i) => i.message).join(', '),
-      });
-    }
-    const { id } = paramResult.data;
-    try {
-      const updatedEntry = await measurementService.updateCustomMeasurementEntry(
-        req.userId,
-        req.originalUserId || req.userId,
-        id,
-        bodyResult.data
-      );
-      res.status(200).json(updatedEntry);
-    } catch (error) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      if (error.message.startsWith('Forbidden')) {
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        return res.status(403).json({ error: error.message });
-      }
-      if (
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error.message === 'Custom measurement entry not found.'
       ) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(404).json({ error: error.message });

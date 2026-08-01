@@ -51,7 +51,6 @@ import {
   useCustomMeasurementsByDate,
   useSaveCustomMeasurement,
   useDeleteCustomMeasurement,
-  useUpdateCustomMeasurement,
 } from '../hooks/useCustomMeasurements';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
@@ -176,7 +175,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const upsertMutation = useUpsertCheckIn({ showErrorToast: false });
   const saveCustomMutation = useSaveCustomMeasurement();
   const deleteCustomMutation = useDeleteCustomMeasurement();
-  const updateCustomMutation = useUpdateCustomMeasurement();
   const {
     data: customCategories,
     isLoading: isCustomCategoriesLoading,
@@ -586,13 +584,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         for (const op of customOps) {
           if (op.kind === 'delete') {
             await deleteCustomMutation.mutateAsync({ id: op.entryId, entryDate: selectedDate });
-          } else if (op.entryId != null) {
-            await updateCustomMutation.mutateAsync({
-              id: op.entryId,
-              value: op.value,
-              entryDate: selectedDate,
-            });
           } else {
+            // Upstream POST has documented upsert semantics: Daily/Hourly
+            // entries are matched and updated by (category, date, hour, source),
+            // so existing rows and new rows both go through POST. All/Unlimited
+            // entries are never edited in place (see buildCustomOps); their
+            // rows are read-only here so deleting and re-adding stay two
+            // explicit user actions.
             await saveCustomMutation.mutateAsync({
               category_id: op.categoryId,
               value: op.value,
@@ -652,15 +650,14 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, updateCustomMutation, navigation, t, customCategories, customForm, customMeasurements, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, t, customCategories, customForm, customMeasurements, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
 
   const isCustomDataLoading = isCustomCategoriesLoading || isCustomMeasurementsLoading;
   const isCustomDataError = isCustomCategoriesError || isCustomMeasurementsError;
   const isMutationPending =
     upsertMutation.isPending ||
     saveCustomMutation.isPending ||
-    deleteCustomMutation.isPending ||
-    updateCustomMutation.isPending;
+    deleteCustomMutation.isPending;
   const isSaveDisabled =
     isLoading ||
     isPreferencesLoading ||
@@ -726,6 +723,15 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const isBoolean = cat.data_type === 'boolean';
     const isNumeric = cat.data_type === 'numeric' || cat.data_type == null;
     const catForm = customForm[cat.id] ?? { rows: [], deleted: [] };
+    // All/Unlimited entries are always INSERTed by upstream POST, so an
+    // existing entry cannot be edited in place — those rows are rendered
+    // read-only, and the user deletes and re-adds as two explicit actions.
+    const isExistingAllUnlimited =
+      (cat.frequency === 'All' || cat.frequency === 'Unlimited');
+    // The delete row button makes sense for any row; read-only entries keep
+    // their local key so the row-level predicate stays per-row.
+    const isRowReadOnly = (rowId: string | null) =>
+      isExistingAllUnlimited && rowId != null;
 
     if (isMulti) {
       return (
@@ -767,7 +773,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     </Text>
                   ))}
                 <View className="flex-1">
-                  {isBoolean ? (
+                  {isRowReadOnly(row.entryId) ? (
+                    <Text className="text-text-primary text-base" testID={`custom-readonly-${row.key}`}>
+                      {row.value}
+                    </Text>
+                  ) : isBoolean ? (
                     <CustomBooleanControl
                       value={row.value}
                       onChange={(v) => updateCustomRowValue(cat.id, row.key, v)}

@@ -43,9 +43,3 @@ export interface SaveCustomMeasurementPayload {
   notes?: string;
   source?: string;
 }
-
-export interface UpdateCustomMeasurementPayload {
-  value?: string | number | boolean;
-  notes?: string;
-  source?: string;
-}

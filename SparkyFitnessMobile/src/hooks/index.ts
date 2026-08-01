@@ -131,7 +131,7 @@ export {
 } from './useFasting';
 export { useFastingTimer } from './useFastingTimer';
 export type { FastTimerValues } from './useFastingTimer';
-export { useCustomCategories, useCustomMeasurementsByDate, useSaveCustomMeasurement, useDeleteCustomMeasurement, useUpdateCustomMeasurement } from './useCustomMeasurements';
+export { useCustomCategories, useCustomMeasurementsByDate, useSaveCustomMeasurement, useDeleteCustomMeasurement } from './useCustomMeasurements';
 export { customCategoriesQueryKey, customMeasurementsByDateQueryKey } from './queryKeys';
 export { useCustomNutrients } from './useCustomNutrients';
 export type { UserCustomNutrient } from './useCustomNutrients';

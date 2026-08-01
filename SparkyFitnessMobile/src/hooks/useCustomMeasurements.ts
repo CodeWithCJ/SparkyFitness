@@ -5,12 +5,11 @@ import {
   fetchCustomMeasurementsByDate,
   saveCustomMeasurement,
   deleteCustomMeasurement,
-  updateCustomMeasurement,
 } from '../services/api/measurementsApi';
 import { customCategoriesQueryKey, customMeasurementsByDateQueryKey } from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { addLog } from '../services/LogService';
-import type { SaveCustomMeasurementPayload, UpdateCustomMeasurementPayload } from '../types/customMeasurements';
+import type { SaveCustomMeasurementPayload } from '../types/customMeasurements';
 
 export function useCustomCategories() {
   return useQuery({
@@ -58,31 +57,6 @@ export function useDeleteCustomMeasurement() {
     },
     onError: (err: Error) => {
       addLog(`Failed to delete custom measurement: ${err.message}`, 'ERROR');
-    },
-  });
-}
-
-export interface UpdateCustomMeasurementVars extends UpdateCustomMeasurementPayload {
-  id: string;
-  entryDate: string;
-}
-
-export function useUpdateCustomMeasurement() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (vars: UpdateCustomMeasurementVars) =>
-      updateCustomMeasurement(vars.id, {
-        value: vars.value,
-        notes: vars.notes,
-        source: vars.source,
-      }),
-    onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: customMeasurementsByDateQueryKey(vars.entryDate) });
-      refreshHealthSyncCache(queryClient);
-    },
-    onError: (err: Error) => {
-      addLog(`Failed to update custom measurement: ${err.message}`, 'ERROR');
     },
   });
 }

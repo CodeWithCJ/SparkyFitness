@@ -203,6 +203,10 @@
     "title": "Repeat Reminders",
     "subtitle": "Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged."
   },
+  "hideMedicationNames": {
+    "title": "Hide Medication Names",
+    "subtitle": "Show a generic reminder instead of the medication name and dose."
+  },
   "liquidGlass": {
     "title": "Liquid Glass navigation",
     "subtitle": "Use the iOS 26 glass tab bar and screen headers."

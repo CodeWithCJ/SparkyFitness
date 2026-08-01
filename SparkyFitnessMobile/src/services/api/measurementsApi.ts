@@ -1,6 +1,6 @@
 import { apiFetch } from './apiClient';
 import type { CheckInMeasurement, CheckInMeasurementRange, WaterIntake, WaterContainer, WaterIntakeResponse } from '../../types/measurements';
-import type { CustomCategory, CustomMeasurementEntry, SaveCustomMeasurementPayload, UpdateCustomMeasurementPayload } from '../../types/customMeasurements';
+import type { CustomCategory, CustomMeasurementEntry, SaveCustomMeasurementPayload } from '../../types/customMeasurements';
 
 /**
  * Fetches measurements for a given date.
@@ -125,28 +125,6 @@ export const deleteCustomMeasurement = async (id: string): Promise<void> => {
     serviceName: 'Measurements API',
     operation: 'delete custom measurement',
     method: 'DELETE',
-  });
-};
-
-/**
- * Updates a single existing custom-measurement entry by id. The server has no
- * upsert-by-id for `All`/`Unlimited` (POST always inserts a new row), so
- * editing an existing entry must go through this endpoint.
- */
-export const updateCustomMeasurement = async (
-  id: string,
-  payload: UpdateCustomMeasurementPayload,
-): Promise<CustomMeasurementEntry> => {
-  return apiFetch<CustomMeasurementEntry>({
-    endpoint: `/api/measurements/custom-entries/${id}`,
-    serviceName: 'Measurements API',
-    operation: 'update custom measurement',
-    method: 'PUT',
-    body: {
-      value: payload.value,
-      notes: payload.notes,
-      source: payload.source,
-    },
   });
 };
 

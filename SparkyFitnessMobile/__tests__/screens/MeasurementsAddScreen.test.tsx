@@ -59,7 +59,6 @@ jest.mock('../../src/hooks/useCustomMeasurements', () => ({
   useCustomMeasurementsByDate: jest.fn(),
   useSaveCustomMeasurement: jest.fn(),
   useDeleteCustomMeasurement: jest.fn(),
-  useUpdateCustomMeasurement: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useMeasurements', () => ({
@@ -159,11 +158,6 @@ const deleteCustomMutation = {
   isPending: false,
 };
 
-const updateCustomMutation = {
-  mutateAsync: jest.fn().mockResolvedValue({}),
-  isPending: false,
-};
-
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -201,10 +195,9 @@ describe('MeasurementsAddScreen custom measurements', () => {
       return byDateResults[date];
     });
 
-    const { useSaveCustomMeasurement, useDeleteCustomMeasurement, useUpdateCustomMeasurement } = require('../../src/hooks/useCustomMeasurements');
+    const { useSaveCustomMeasurement, useDeleteCustomMeasurement } = require('../../src/hooks/useCustomMeasurements');
     useSaveCustomMeasurement.mockReturnValue(saveCustomMutation);
     useDeleteCustomMeasurement.mockReturnValue(deleteCustomMutation);
-    useUpdateCustomMeasurement.mockReturnValue(updateCustomMutation);
 
     const { useUpsertCheckIn } = require('../../src/hooks/useUpsertCheckIn');
     useUpsertCheckIn.mockReturnValue(upsertMutation);
@@ -228,7 +221,7 @@ describe('MeasurementsAddScreen custom measurements', () => {
     expect(screen.queryByDisplayValue('999')).toBeNull();
   });
 
-  test('saves an edited custom measurement through the update-by-id mutation', async () => {
+  test('saves an edited custom measurement through POST upsert', async () => {
     const screen = renderScreen();
 
     await waitFor(() => {
@@ -239,13 +232,14 @@ describe('MeasurementsAddScreen custom measurements', () => {
     fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
-      expect(updateCustomMutation.mutateAsync).toHaveBeenCalledWith({
-        id: 'entry-1',
+      expect(saveCustomMutation.mutateAsync).toHaveBeenCalledWith({
+        category_id: 'cat-1',
         value: 125,
-        entryDate: '2024-06-15',
+        entry_date: '2024-06-15',
+        entry_hour: null,
+        entry_timestamp: undefined,
       });
     });
-    expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
     expect(upsertMutation.mutateAsync).not.toHaveBeenCalled();
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
@@ -414,7 +408,6 @@ describe('MeasurementsAddScreen custom measurements', () => {
       weight: 80,
     });
     expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
-    expect(updateCustomMutation.mutateAsync).not.toHaveBeenCalled();
     expect(deleteCustomMutation.mutateAsync).not.toHaveBeenCalled();
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
@@ -426,7 +419,7 @@ describe('MeasurementsAddScreen custom measurements', () => {
       expect(screen.getByDisplayValue('120')).toBeTruthy();
     });
 
-    updateCustomMutation.mutateAsync.mockRejectedValueOnce(new Error('network down'));
+    saveCustomMutation.mutateAsync.mockRejectedValueOnce(new Error('network down'));
     fireEvent.changeText(screen.getByDisplayValue('120'), '125');
     fireEvent.press(screen.getByText('Save'));
 
@@ -455,7 +448,7 @@ describe('MeasurementsAddScreen custom measurements', () => {
       ];
       return Promise.resolve();
     });
-    updateCustomMutation.mutateAsync.mockRejectedValueOnce(new Error('network down'));
+    saveCustomMutation.mutateAsync.mockRejectedValueOnce(new Error('network down'));
 
     const screen = renderScreen();
 
@@ -525,7 +518,6 @@ describe('MeasurementsAddScreen custom measurements', () => {
     });
 
     expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
-    expect(updateCustomMutation.mutateAsync).not.toHaveBeenCalled();
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
   });
 
@@ -693,7 +685,7 @@ describe('MeasurementsAddScreen custom measurements', () => {
       weight: 80,
     });
     expect(saveCustomMutation.mutateAsync).not.toHaveBeenCalled();
-    expect(updateCustomMutation.mutateAsync).not.toHaveBeenCalled();
+    expect(deleteCustomMutation.mutateAsync).not.toHaveBeenCalled();
 
     const { default: Toast } = require('react-native-toast-message');
     expect(Toast.show).not.toHaveBeenCalledWith(

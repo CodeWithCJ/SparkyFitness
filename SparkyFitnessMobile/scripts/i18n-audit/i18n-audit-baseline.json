@@ -11,14 +11,14 @@
     {
       "rule": "dynamic-i18n-key",
       "file": "src/screens/AppSettingsScreen.tsx",
-      "line": 90,
+      "line": 93,
       "expression": "opt.labelKey",
       "fingerprint": "dynamic-i18n-key:src/screens/AppSettingsScreen.tsx:opt.labelKey"
     },
     {
       "rule": "dynamic-i18n-key",
       "file": "src/screens/AppSettingsScreen.tsx",
-      "line": 94,
+      "line": 97,
       "expression": "opt.labelKey",
       "fingerprint": "dynamic-i18n-key:src/screens/AppSettingsScreen.tsx:opt.labelKey"
     },
@@ -980,12 +980,32 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/components/CardioEffortForm.tsx",
+      "value": "Distance (",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance (:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/CardioEffortForm.tsx",
       "value": "Distance in {{dynamic}} for {{dynamic}}",
       "context": {
         "attr": "accessibilityLabel",
         "form": "expression"
       },
       "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance in {{dynamic}} for {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/CardioEffortForm.tsx",
+      "value": "Duration (min)",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Duration (min):{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -3682,129 +3702,122 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "{{dynamic}} {{dynamic}}",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "{{dynamic}} {{dynamic}}",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "{{dynamic}} {{dynamic}}",
-      "context": {
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} {{dynamic}}:{\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "{{dynamic}} {{dynamic}}",
-      "context": {
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} {{dynamic}}:{\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "{{dynamic}} logged",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} logged:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "{{dynamic}} logged",
-      "context": {
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} logged:{\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "Go to medications list",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:Go to medications list:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "Log {{dynamic}}",
+      "file": "src/components/medications/DoseRow.tsx",
+      "value": "Skip {{dynamic}}",
       "context": {
         "attr": "accessibilityLabel",
         "form": "expression"
       },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:Log {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
+      "fingerprint": "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Skip {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "Log",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:Log:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "Medications",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:Medications:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
-      "value": "Medications",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:Medications:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
+      "file": "src/components/medications/DoseRow.tsx",
       "value": "Skip",
       "context": {
         "element": "Text",
         "form": "text"
       },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:Skip:{\"element\":\"Text\",\"form\":\"text\"}"
+      "fingerprint": "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Skip:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/components/MedicationsCard.tsx",
+      "file": "src/components/medications/DoseRow.tsx",
+      "value": "Skip",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Skip:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/medications/DoseRow.tsx",
+      "value": "Take {{dynamic}}",
+      "context": {
+        "attr": "accessibilityLabel",
+        "form": "expression"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Take {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/medications/DoseRow.tsx",
       "value": "Take",
       "context": {
         "element": "Text",
         "form": "text"
       },
-      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:Take:{\"element\":\"Text\",\"form\":\"text\"}"
+      "fingerprint": "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Take:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/medications/DoseRow.tsx",
+      "value": "Take",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Take:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/medications/DoseRow.tsx",
+      "value": "Take",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Take:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/medications/WeekdaySheet.tsx",
+      "value": "Days of Week",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/medications/WeekdaySheet.tsx:Days of Week:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/MedicationsCard.tsx",
+      "value": "Medications",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:Medications:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/MedicationsCard.tsx",
+      "value": "Medications",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:Medications:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/MedicationsCard.tsx",
+      "value": "View all medications",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:View all medications:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/MedicationsCard.tsx",
+      "value": "View all",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/MedicationsCard.tsx:View all:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -8816,6 +8829,101 @@
         "prop": "text2"
       },
       "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Please try again.:{\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} {{dynamic}}",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} {{dynamic}}",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} {{dynamic}}",
+      "context": {
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} {{dynamic}}:{\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} {{dynamic}}",
+      "context": {
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} {{dynamic}}:{\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} dose removed",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} dose removed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} dose removed",
+      "context": {
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} dose removed:{\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} logged",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} logged:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} logged",
+      "context": {
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} logged:{\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "Tap to undo",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:Tap to undo:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "Tap to undo",
+      "context": {
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:Tap to undo:{\"prop\":\"text2\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -19818,40 +19926,21 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "{{dynamic}} logged",
+      "value": "Add schedule",
       "context": {
-        "context": "Toast.show",
-        "prop": "text1"
+        "attr": "accessibilityLabel"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:{{dynamic}} logged:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Add schedule:{\"attr\":\"accessibilityLabel\"}"
     },
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "{{dynamic}} logged",
+      "value": "Add",
       "context": {
-        "prop": "text1"
+        "element": "Text",
+        "form": "text"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:{{dynamic}} logged:{\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "{{dynamic}} taken",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:{{dynamic}} taken:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "{{dynamic}} taken",
-      "context": {
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:{{dynamic}} taken:{\"prop\":\"text1\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Add:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -19866,6 +19955,15 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
+      "value": "As needed",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:As needed:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationDetailScreen.tsx",
       "value": "Cancel",
       "context": {
         "context": "Alert.alert:button"
@@ -19898,16 +19996,6 @@
         "prop": "text"
       },
       "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Cancel:{\"prop\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "days",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:days:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -19950,21 +20038,12 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Dose:",
+      "value": "Details",
       "context": {
         "element": "Text",
         "form": "text"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Dose::{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Dose",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Dose:{\"attr\":\"label\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Details:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -19974,16 +20053,6 @@
         "prop": "label"
       },
       "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Edit:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Every",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Every:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -20007,44 +20076,6 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Failed to log {{dynamic}}",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to log {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Failed to log {{dynamic}}",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to log {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Failed to log {{dynamic}}",
-      "context": {
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to log {{dynamic}}:{\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Failed to log {{dynamic}}",
-      "context": {
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to log {{dynamic}}:{\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
       "value": "Failed to remove dose",
       "context": {
         "context": "Toast.show",
@@ -20064,6 +20095,16 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
+      "value": "Inactive",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Inactive:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationDetailScreen.tsx",
       "value": "Loading...",
       "context": {
         "element": "Text",
@@ -20074,32 +20115,22 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Log",
+      "value": "No doses scheduled for this day.",
       "context": {
         "element": "Text",
         "form": "text"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Log:{\"element\":\"Text\",\"form\":\"text\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:No doses scheduled for this day.:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Log",
+      "value": "No schedules. Take as needed.",
       "context": {
         "element": "Text",
         "form": "text"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Log:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "No doses logged today.",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:No doses logged today.:{\"element\":\"Text\",\"form\":\"text\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:No schedules. Take as needed.:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -20131,11 +20162,11 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Reason",
+      "value": "Remove dose",
       "context": {
-        "attr": "label"
+        "attr": "accessibilityLabel"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Reason:{\"attr\":\"label\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Remove dose:{\"attr\":\"accessibilityLabel\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -20178,49 +20209,21 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationDetailScreen.tsx",
+      "value": "Rx number",
+      "context": {
+        "attr": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Rx number:{\"attr\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationDetailScreen.tsx",
       "value": "Schedules",
       "context": {
         "element": "Text",
         "form": "text"
       },
       "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Schedules:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Status",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Status:{\"attr\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Strength",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Strength:{\"attr\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "Type",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Type:{\"attr\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationDetailScreen.tsx",
-      "value": "With:",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:With::{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -20240,6 +20243,16 @@
         "attr": "placeholder"
       },
       "fingerprint": "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Blood pressure:{\"attr\":\"placeholder\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationFormScreen.tsx",
+      "value": "Details",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Details:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -20477,31 +20490,573 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "'{{dynamic}}' deleted",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "A schedule without a time won&apos;t get a reminder.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:A schedule without a time won&apos;t get a reminder.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Active",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Active:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Cancel",
+      "context": {
+        "prop": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Cancel:{\"prop\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Clear end date",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear end date:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Clear start date",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear start date:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Clear time",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear time:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Clear",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Clear",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Clear",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Cycle schedules need a start date.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Cycle schedules need a start date.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Day of month must be between 1 and 31.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Day of month must be between 1 and 31.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Day of month",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Day of month:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Days of week",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Days of week:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Days off",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Days off:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Days on must be at least 1 and days off at least 0.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Days on must be at least 1 and days off at least 0.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Days on",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Days on:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Default",
+      "context": {
+        "attr": "placeholder"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Default:{\"attr\":\"placeholder\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Delete Schedule",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete Schedule:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Delete Schedule",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete Schedule:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Delete this schedule? Logged doses are kept.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete this schedule? Logged doses are kept.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Delete",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Delete",
+      "context": {
+        "prop": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete:{\"prop\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "End date must be on or after the start date.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:End date must be on or after the start date.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "End date",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:End date:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Error",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Error:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Error",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Error:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Every N days schedules need a start date.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Every N days schedules need a start date.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Every N days",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Every N days:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Failed to create schedule: {{dynamic}}",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Failed to create schedule: {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Failed to delete schedule",
       "context": {
         "context": "Toast.show",
         "prop": "text1"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:'{{dynamic}}' deleted:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Failed to delete schedule:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "'{{dynamic}}' deleted",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Failed to delete schedule",
       "context": {
         "prop": "text1"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:'{{dynamic}}' deleted:{\"prop\":\"text1\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Failed to delete schedule:{\"prop\":\"text1\"}"
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Active",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Failed to update schedule: {{dynamic}}",
       "context": {
-        "prop": "title"
+        "context": "Alert.alert",
+        "argIndex": 1
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Active:{\"prop\":\"title\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Failed to update schedule: {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Frequency",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Frequency:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Headache",
+      "context": {
+        "attr": "placeholder"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Headache:{\"attr\":\"placeholder\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Interval must be at least 1 day.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Interval must be at least 1 day.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Invalid cycle",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid cycle:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Invalid dates",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid dates:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Invalid day",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid day:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Invalid dose",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid dose:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Invalid interval",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid interval:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Invalid limit",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid limit:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Max per day must be at least 1.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Max per day must be at least 1.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Max per day",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Max per day:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "No limit",
+      "context": {
+        "attr": "placeholder"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:No limit:{\"attr\":\"placeholder\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "None",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:None:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Please enter a valid dose amount.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Please enter a valid dose amount.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Reason",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Reason:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Required",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Required:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Required",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Required:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Required",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Required:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Schedule Type",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Schedule Type:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Select at least one day of the week.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Select at least one day of the week.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Select days of week",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Select days of week:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Set end date",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Set end date:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Set start date",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Set start date:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Set time",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Set time:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "Time",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Time:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "With meal",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:With meal:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationScheduleFormScreen.tsx",
+      "value": "With Meal",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:With Meal:{\"attr\":\"title\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -20535,81 +21090,6 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Are you sure you want to delete '{{dynamic}}'? This will also remove all schedules and logged entries.",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 1
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Are you sure you want to delete '{{dynamic}}'? This will also remove all schedules and logged entries.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Cancel",
-      "context": {
-        "context": "Alert.alert:button"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Cancel:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Cancel",
-      "context": {
-        "prop": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Cancel:{\"prop\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Delete Medication",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 0
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Delete Medication:{\"context\":\"Alert.alert\",\"argIndex\":0}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Delete",
-      "context": {
-        "context": "Alert.alert:button"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Delete:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Delete",
-      "context": {
-        "prop": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Delete:{\"prop\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Failed to delete medication",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Failed to delete medication:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Failed to delete medication",
-      "context": {
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Failed to delete medication:{\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/screens/MedicationsListScreen.tsx",
       "value": "Failed to load medications.",
       "context": {
         "element": "Text",
@@ -20620,11 +21100,22 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/MedicationsListScreen.tsx",
-      "value": "Inactive",
+      "value": "Inactive (",
       "context": {
-        "prop": "title"
+        "element": "Text",
+        "form": "text"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Inactive:{\"prop\":\"title\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Inactive (:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/MedicationsListScreen.tsx",
+      "value": "Inactive medications ({{dynamic}})",
+      "context": {
+        "attr": "accessibilityLabel",
+        "form": "expression"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Inactive medications ({{dynamic}}):{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -23377,6 +23868,24 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/WorkoutCompleteScreen.tsx",
+      "value": "Keep Preset",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Keep Preset:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutCompleteScreen.tsx",
+      "value": "Keep Preset",
+      "context": {
+        "prop": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Keep Preset:{\"prop\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutCompleteScreen.tsx",
       "value": "of",
       "context": {
         "element": "Text",
@@ -23393,6 +23902,25 @@
         "form": "text"
       },
       "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:of:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutCompleteScreen.tsx",
+      "value": "Preset updated",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Preset updated:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutCompleteScreen.tsx",
+      "value": "Preset updated",
+      "context": {
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Preset updated:{\"prop\":\"text1\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -23411,6 +23939,44 @@
         "attr": "label"
       },
       "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Sets:{\"attr\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutCompleteScreen.tsx",
+      "value": "Today's workout differs from \"{{dynamic}}\". Update the preset to match?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Today's workout differs from \"{{dynamic}}\". Update the preset to match?:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutCompleteScreen.tsx",
+      "value": "Update preset?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Update preset?:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutCompleteScreen.tsx",
+      "value": "Update",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Update:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutCompleteScreen.tsx",
+      "value": "Update",
+      "context": {
+        "prop": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Update:{\"prop\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -24210,20 +24776,72 @@
       "file": "src/screens/WorkoutSettingsScreen.tsx",
       "value": "Default rest period",
       "context": {
-        "element": "Text",
-        "form": "text"
+        "attr": "title"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Default rest period:{\"element\":\"Text\",\"form\":\"text\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Default rest period:{\"attr\":\"title\"}"
     },
     {
       "rule": "hardcoded-ui-text",
       "file": "src/screens/WorkoutSettingsScreen.tsx",
-      "value": "Rest between sets for newly added exercises. Each exercise can still set its own rest period.",
+      "value": "Keep screen awake",
       "context": {
-        "element": "Text",
-        "form": "text"
+        "attr": "accessibilityLabel"
       },
-      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Rest between sets for newly added exercises. Each exercise can still set its own rest period.:{\"element\":\"Text\",\"form\":\"text\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Keep screen awake:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutSettingsScreen.tsx",
+      "value": "Keep screen awake",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Keep screen awake:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutSettingsScreen.tsx",
+      "value": "Play a sound when the rest timer ends while the app is open.",
+      "context": {
+        "attr": "subtitle"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Play a sound when the rest timer ends while the app is open.:{\"attr\":\"subtitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutSettingsScreen.tsx",
+      "value": "Prevent the screen from sleeping while a workout is active.",
+      "context": {
+        "attr": "subtitle"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Prevent the screen from sleeping while a workout is active.:{\"attr\":\"subtitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutSettingsScreen.tsx",
+      "value": "Rest between sets for newly added exercises.",
+      "context": {
+        "attr": "subtitle"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Rest between sets for newly added exercises.:{\"attr\":\"subtitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutSettingsScreen.tsx",
+      "value": "Rest timer sound",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Rest timer sound:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutSettingsScreen.tsx",
+      "value": "Rest timer sound",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Rest timer sound:{\"attr\":\"title\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -24322,12 +24940,12 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/services/notifications.ts",
-      "value": "Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers ring on time.",
+      "value": "Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.",
       "context": {
         "context": "Alert.alert",
         "argIndex": 1
       },
-      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers ring on time.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -24378,12 +24996,12 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/services/notifications.ts",
-      "value": "On-time rest alerts",
+      "value": "On-time alerts",
       "context": {
         "context": "Alert.alert",
         "argIndex": 0
       },
-      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:On-time rest alerts:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:On-time alerts:{\"context\":\"Alert.alert\",\"argIndex\":0}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -24647,6 +25265,15 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/types/medications.ts",
+      "value": "As needed",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:As needed:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
       "value": "Capsule",
       "context": {
         "prop": "label"
@@ -24665,11 +25292,38 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/types/medications.ts",
+      "value": "Cycle (on/off)",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Cycle (on/off):{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Daily",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Daily:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
       "value": "Drops",
       "context": {
         "prop": "label"
       },
       "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Drops:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Every N days",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Every N days:{\"prop\":\"label\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -24697,6 +25351,15 @@
         "prop": "label"
       },
       "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Liquid:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Monthly",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Monthly:{\"prop\":\"label\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -24733,6 +25396,15 @@
         "prop": "label"
       },
       "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Pill:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Specific days",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Specific days:{\"prop\":\"label\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -25079,9 +25751,9 @@
     "hardcoded-ui-text:src/components/CalorieRingCard.tsx:of:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/CalorieRingCard.tsx:remaining:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/CardioEffortForm.tsx:{{dynamic}} effort:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
-    "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance (:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance (:{\"element\":\"Text\",\"form\":\"text\"}": 2,
     "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance in {{dynamic}} for {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
-    "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Duration (min):{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Duration (min):{\"element\":\"Text\",\"form\":\"text\"}": 2,
     "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Duration in minutes for {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
     "hardcoded-ui-text:src/components/chat/TypingIndicator.tsx:Sparky is typing:{\"attr\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/components/ConnectionStatus.tsx:Connected:{\"element\":\"Text\",\"form\":\"text\"}": 1,
@@ -25316,16 +25988,14 @@
     "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Steps:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Waist:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Weight:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 2,
-    "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} {{dynamic}}:{\"prop\":\"text1\"}": 2,
-    "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} logged:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/components/MedicationsCard.tsx:{{dynamic}} logged:{\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/components/MedicationsCard.tsx:Go to medications list:{\"attr\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/components/MedicationsCard.tsx:Log {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
-    "hardcoded-ui-text:src/components/MedicationsCard.tsx:Log:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Skip {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
+    "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Skip:{\"element\":\"Text\",\"form\":\"text\"}": 2,
+    "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Take {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
+    "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Take:{\"element\":\"Text\",\"form\":\"text\"}": 3,
+    "hardcoded-ui-text:src/components/medications/WeekdaySheet.tsx:Days of Week:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/MedicationsCard.tsx:Medications:{\"element\":\"Text\",\"form\":\"text\"}": 2,
-    "hardcoded-ui-text:src/components/MedicationsCard.tsx:Skip:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/MedicationsCard.tsx:Take:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/MedicationsCard.tsx:View all medications:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/components/MedicationsCard.tsx:View all:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/MfaForm.tsx:Authenticator App:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/components/MfaForm.tsx:Email Code:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/components/MfaForm.tsx:Send Code:{\"attr\":\"label\"}": 1,
@@ -25820,6 +26490,14 @@
     "hardcoded-ui-text:src/hooks/useMeals.ts:Failed to update meal:{\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/hooks/useMeals.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 3,
     "hardcoded-ui-text:src/hooks/useMeals.ts:Please try again.:{\"prop\":\"text2\"}": 3,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 2,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} {{dynamic}}:{\"prop\":\"text1\"}": 2,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} dose removed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} dose removed:{\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} logged:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} logged:{\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:Tap to undo:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:Tap to undo:{\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/hooks/useSaveFood.ts:Failed to save food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/hooks/useSaveFood.ts:Failed to save food:{\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/hooks/useSaveFood.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
@@ -26878,46 +27556,39 @@
     "hardcoded-ui-text:src/screens/MeasurementsAddScreen.tsx:Value must be 0 or greater.:{\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/screens/MeasurementsAddScreen.tsx:Values must be 0 or greater.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 2,
     "hardcoded-ui-text:src/screens/MeasurementsAddScreen.tsx:Values must be 0 or greater.:{\"prop\":\"text2\"}": 2,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:{{dynamic}} logged:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:{{dynamic}} logged:{\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:{{dynamic}} taken:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:{{dynamic}} taken:{\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Add schedule:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Add:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Are you sure you want to delete '{{dynamic}}'? This will also remove all schedules and logged entries.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:As needed:{\"attr\":\"title\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 2,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Cancel:{\"prop\":\"text\"}": 2,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:days:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Delete Medication:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Delete Medication:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Delete:{\"context\":\"Alert.alert:button\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Delete:{\"prop\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Dose::{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Dose:{\"attr\":\"label\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Details:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Edit:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Every:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to delete medication:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to delete medication:{\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to log {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 2,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to log {{dynamic}}:{\"prop\":\"text1\"}": 2,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to remove dose:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Failed to remove dose:{\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Inactive:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Loading...:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Log:{\"element\":\"Text\",\"form\":\"text\"}": 2,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:No doses logged today.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:No doses scheduled for this day.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:No schedules. Take as needed.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Notes:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Pharmacy:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Prescriber:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Reason:{\"attr\":\"label\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Remove dose:{\"attr\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Remove Dose:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Remove this logged dose from {{dynamic}}?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Remove:{\"context\":\"Alert.alert:button\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Remove:{\"prop\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Rx number:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Schedules:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Status:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Strength:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:Type:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationDetailScreen.tsx:With::{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Active:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Blood pressure:{\"attr\":\"placeholder\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Details:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Dose:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Dr. Ipsum:{\"attr\":\"placeholder\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Error:{\"context\":\"Alert.alert\",\"argIndex\":0}": 2,
@@ -26940,22 +27611,67 @@
     "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:tablet:{\"attr\":\"placeholder\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Type:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationFormScreen.tsx:Unit:{\"element\":\"Text\",\"form\":\"text\"}": 2,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:'{{dynamic}}' deleted:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:'{{dynamic}}' deleted:{\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Active:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:A schedule without a time won&apos;t get a reminder.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Active:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Cancel:{\"prop\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear end date:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear start date:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear time:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Clear:{\"element\":\"Text\",\"form\":\"text\"}": 3,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Cycle schedules need a start date.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Day of month must be between 1 and 31.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Day of month:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Days of week:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Days off:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Days on must be at least 1 and days off at least 0.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Days on:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Default:{\"attr\":\"placeholder\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete Schedule:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete Schedule:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete this schedule? Logged doses are kept.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Delete:{\"prop\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:End date must be on or after the start date.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:End date:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Error:{\"context\":\"Alert.alert\",\"argIndex\":0}": 2,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Every N days schedules need a start date.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Every N days:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Failed to create schedule: {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Failed to delete schedule:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Failed to delete schedule:{\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Failed to update schedule: {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Frequency:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Headache:{\"attr\":\"placeholder\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Interval must be at least 1 day.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid cycle:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid dates:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid day:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid dose:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid interval:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Invalid limit:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Max per day must be at least 1.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Max per day:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:No limit:{\"attr\":\"placeholder\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:None:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Please enter a valid dose amount.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Reason:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Required:{\"context\":\"Alert.alert\",\"argIndex\":0}": 3,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Schedule Type:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Select at least one day of the week.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Select days of week:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Set end date:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Set start date:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Set time:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:Time:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:With meal:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationScheduleFormScreen.tsx:With Meal:{\"attr\":\"title\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Add Medication:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Add medication:{\"prop\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Add your first medication to start tracking.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Are you sure you want to delete '{{dynamic}}'? This will also remove all schedules and logged entries.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Cancel:{\"prop\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Delete Medication:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Delete:{\"context\":\"Alert.alert:button\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Delete:{\"prop\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Failed to delete medication:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Failed to delete medication:{\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Failed to load medications.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Inactive:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Inactive (:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Inactive medications ({{dynamic}}):{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Loading medications...:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:Medications:{\"prop\":\"title\"}": 1,
     "hardcoded-ui-text:src/screens/MedicationsListScreen.tsx:No medications yet:{\"element\":\"Text\",\"form\":\"text\"}": 1,
@@ -27230,9 +27946,17 @@
     "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Distance:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Duration:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Exercises:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Keep Preset:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Keep Preset:{\"prop\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:of:{\"element\":\"Text\",\"form\":\"text\"}": 2,
+    "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Preset updated:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Preset updated:{\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Save as Preset:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Sets:{\"attr\":\"label\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Today's workout differs from \"{{dynamic}}\". Update the preset to match?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Update preset?:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Update:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Update:{\"prop\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:View Workout:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Volume:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutCompleteScreen.tsx:Volume:{\"element\":\"Text\",\"form\":\"text\"}": 1,
@@ -27309,8 +28033,14 @@
     "hardcoded-ui-text:src/screens/WorkoutPresetsLibraryScreen.tsx:Try changing your ownership filter.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutPresetsLibraryScreen.tsx:Workout presets:{\"prop\":\"title\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Default rest period, {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
-    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Default rest period:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Rest between sets for newly added exercises. Each exercise can still set its own rest period.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Default rest period:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Keep screen awake:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Keep screen awake:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Play a sound when the rest timer ends while the app is open.:{\"attr\":\"subtitle\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Prevent the screen from sleeping while a workout is active.:{\"attr\":\"subtitle\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Rest between sets for newly added exercises.:{\"attr\":\"subtitle\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Rest timer sound:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Rest timer sound:{\"attr\":\"title\"}": 1,
     "hardcoded-ui-text:src/screens/WorkoutSettingsScreen.tsx:Workout Settings:{\"prop\":\"title\"}": 1,
     "hardcoded-ui-text:src/services/healthkit/index.ts:An unexpected error occurred while trying to request Health permissions: {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
     "hardcoded-ui-text:src/services/healthkit/index.ts:Health App Not Available:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
@@ -27321,13 +28051,13 @@
     "hardcoded-ui-text:src/services/LogService.ts:No Debug:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/services/LogService.ts:Warnings & Errors:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/services/medicationReminderService.ts:Medication reminder:{\"prop\":\"title\"}": 1,
-    "hardcoded-ui-text:src/services/notifications.ts:Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers ring on time.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/services/notifications.ts:Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Fasting goal reached:{\"prop\":\"title\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Not Now:{\"context\":\"Alert.alert:button\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Not Now:{\"prop\":\"text\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Notifications off:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Notifications off:{\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/services/notifications.ts:On-time rest alerts:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/services/notifications.ts:On-time alerts:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Open Settings:{\"context\":\"Alert.alert:button\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Open Settings:{\"prop\":\"text\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Timer will still alert in the app.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
@@ -27356,16 +28086,22 @@
     "hardcoded-ui-text:src/types/foodInfo.ts:Trans Fat:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/foodInfo.ts:Vitamin A:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/foodInfo.ts:Vitamin C:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:As needed:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Capsule:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Cream:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Cycle (on/off):{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Daily:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Drops:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Every N days:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Inhaler:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Injection:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Liquid:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Monthly:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Nasal Spray:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Other:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Patch:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Pill:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Specific days:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Suppository:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/types/medications.ts:Tablet:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/utils/activityDetails.ts:Avg Cadence:{\"prop\":\"label\"}": 1,

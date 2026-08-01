@@ -343,6 +343,17 @@ export function buildCustomOps(params: {
         return { ok: false };
       }
 
+      // All/Unlimited entries are always INSERTed by upstream POST, so an
+      // existing entry cannot be edited by id. The UI renders those rows
+      // read-only; here we defensively skip a save so a stale id never turns
+      // into an accidental duplicate insert. Clearing (delete) is handled above.
+      if (
+        row.entryId != null &&
+        (cat.frequency === 'All' || cat.frequency === 'Unlimited')
+      ) {
+        continue;
+      }
+
       operations.push({
         kind: 'save',
         categoryId: cat.id,

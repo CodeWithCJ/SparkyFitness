@@ -34,6 +34,9 @@ import {
 
 export type HeaderRole = 'primary' | 'secondary';
 
+export const SAVE_LABEL = 'Save';
+export const SAVING_LABEL = 'Saving…';
+
 /**
  * `native-only` items are mirrored into the native header but omitted from the
  * custom bar — used by footer-save forms whose sticky-footer Button is the

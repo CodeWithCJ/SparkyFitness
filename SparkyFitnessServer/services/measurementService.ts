@@ -1669,51 +1669,6 @@ async function deleteCustomMeasurementEntry(authenticatedUserId: any, id: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateCustomMeasurementEntry(
-  authenticatedUserId: any,
-  actingUserId: any,
-  id: string,
-  updateData: {
-    value?: string | number | boolean;
-    notes?: string;
-    source?: string;
-  }
-) {
-  try {
-    const entryOwnerId =
-      await measurementRepository.getCustomMeasurementOwnerId(
-        id,
-        authenticatedUserId
-      );
-    if (!entryOwnerId) {
-      throw new Error('Custom measurement entry not found.');
-    }
-    if (entryOwnerId !== authenticatedUserId) {
-      throw new Error(
-        'Forbidden: You do not have permission to update this custom measurement entry.'
-      );
-    }
-    const updated =
-      await measurementRepository.updateCustomMeasurement(
-        id,
-        authenticatedUserId,
-        actingUserId,
-        updateData
-      );
-    if (!updated) {
-      throw new Error('Custom measurement entry not found.');
-    }
-    return updated;
-  } catch (error) {
-    log(
-      'error',
-      `Error updating custom measurement entry ${id} by ${authenticatedUserId}:`,
-      error
-    );
-    throw error;
-  }
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getMostRecentMeasurement(userId: any, measurementType: any) {
   try {
     const measurement = await measurementRepository.getMostRecentMeasurement(
@@ -1755,7 +1710,6 @@ export { getCheckInMeasurementsByDateRange };
 export { getCustomMeasurementsByDateRange };
 export { calculateSleepScore };
 export { upsertCustomMeasurementEntry };
-export { updateCustomMeasurementEntry };
 export { deleteCustomMeasurementEntry };
 export { getMostRecentMeasurement };
 export { processSleepEntry };
@@ -1886,7 +1840,6 @@ export default {
   getCustomMeasurementsByDateRange,
   calculateSleepScore,
   upsertCustomMeasurementEntry,
-  updateCustomMeasurementEntry,
   deleteCustomMeasurementEntry,
   getMostRecentMeasurement,
   processSleepEntry,
