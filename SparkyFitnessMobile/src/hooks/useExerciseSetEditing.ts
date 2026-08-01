@@ -1,5 +1,8 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { ParamListBase } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SetInputField } from '../components/SetRowChrome';
 import type { Exercise } from '../types/exercise';
 
@@ -21,6 +24,22 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
   // RPE column). The activity forms only ever set 'weight' | 'reps' | 'duration'.
   const [activeSetField, setActiveSetField] = useState<SetInputField>('weight');
 
+  // An ExerciseSearch selection lands (via setParams) while the search modal is
+  // still dismissing over this screen, so activating the new set immediately
+  // focuses its weight input mid-transition. On iOS that makes the input first
+  // responder without presenting a keyboard — the cell keeps its focused chrome
+  // with nothing to dismiss, so nothing ever clears it. Hold the activation
+  // until this screen's reveal transition ends and focus lands frontmost.
+  const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
+  const pendingActivationRef = useRef<string | null>(null);
+  useEffect(() => {
+    return navigation.addListener('transitionEnd', (e) => {
+      if (e.data.closing || pendingActivationRef.current == null) return;
+      setActiveSetKey(pendingActivationRef.current);
+      pendingActivationRef.current = null;
+    });
+  }, [navigation]);
+
   // Routes the next ExerciseSearch return to a Replace (holding the target's
   // clientId) instead of an Add. Consumed on selection; the owning screen must
   // clear it when plain Add opens the search, so a cancelled replace can't
@@ -37,7 +56,7 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
       replaceTarget != null && actions.replaceExercise
         ? actions.replaceExercise(replaceTarget, exercise)
         : actions.addExercise(exercise);
-    setActiveSetKey(`${exerciseClientId}:${setClientId}`);
+    pendingActivationRef.current = `${exerciseClientId}:${setClientId}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-properties; spreading `actions` would break memoization
   }, [actions.addExercise, actions.replaceExercise]);
 

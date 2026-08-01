@@ -116,6 +116,9 @@ const mockNavigation = {
   goBack: jest.fn(),
   replace: jest.fn(),
   setParams: jest.fn(),
+  // Returns an unsubscribe; useExerciseSetEditing subscribes to 'transitionEnd'
+  // to defer add-exercise activation until the search modal finishes dismissing.
+  addListener: jest.fn(() => jest.fn()),
 } as any;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
