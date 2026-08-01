@@ -262,7 +262,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
             );
           })}
           {(!med.schedules || med.schedules.length === 0) && (
-            <Text className="text-sm text-text-muted py-2">No schedules — taken as needed.</Text>
+            <Text className="text-sm self-center text-text-muted">No schedules. Take as needed.</Text>
           )}
         </View>
 

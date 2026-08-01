@@ -101,7 +101,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
             activeOpacity={0.6}
             accessibilityRole="button"
-            className="rounded-full px-3 py-1"
+            className="rounded-full px-3 py-1 bg-raised"
           >
             <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Take</Text>
           </TouchableOpacity>
@@ -117,7 +117,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             activeOpacity={0.6}
             accessibilityRole="button"
             accessibilityLabel={`Take ${title}`}
-            className="rounded-full px-3 py-1"
+            className="rounded-full px-3 py-1 bg-raised"
           >
             <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Take</Text>
           </TouchableOpacity>
@@ -127,7 +127,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             activeOpacity={0.6}
             accessibilityRole="button"
             accessibilityLabel={`Skip ${title}`}
-            className="rounded-full px-3 py-1 ml-1"
+            className="rounded-full px-3 py-1 ml-1 bg-raised"
           >
             <Text className="text-sm font-semibold text-accent-primary">Skip</Text>
           </TouchableOpacity>
