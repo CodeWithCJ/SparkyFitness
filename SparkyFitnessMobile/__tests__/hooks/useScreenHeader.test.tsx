@@ -22,7 +22,7 @@ jest.mock('react-i18next', () => {
       const dict = lang === 'pl' ? pl : en;
       return {
         t: (key) => lookup(dict, key),
-        i18n: { language: lang },
+        i18n: { language: lang, resolvedLanguage: lang },
         ready: true,
       };
     },
@@ -34,7 +34,7 @@ jest.mock('@react-navigation/native', () => {
   return {
     ...actual,
     useNavigation: () => ({
-      setOptions: (opts) => { globalThis.__TEST_SET_OPTIONS = opts; },
+      setOptions: jest.fn((opts) => { globalThis.__TEST_SET_OPTIONS = opts; }),
       goBack: jest.fn(),
     }),
   };
@@ -247,6 +247,123 @@ describe('useScreenHeader', () => {
       const opts = globalThis.__TEST_SET_OPTIONS;
       const nativeItems = opts.unstable_headerRightItems();
       expect(nativeItems[0].label).toBe(customLabel);
+    });
+  });
+
+  describe('native language refresh', () => {
+    it('native dismiss refreshes on language change EN → PL', () => {
+      const onPress = jest.fn();
+      globalThis.__TEST_LANG = 'en';
+      mockUseNativeIOSHeadersActive.mockReturnValue(true);
+
+      renderHook(() =>
+        useScreenHeader({
+          left: { kind: 'dismiss', onPress },
+          right: null,
+        }),
+      );
+
+      const firstOpts = globalThis.__TEST_SET_OPTIONS;
+      expect(firstOpts).not.toBeNull();
+      const firstLeftItems = firstOpts!.unstable_headerLeftItems();
+      expect(firstLeftItems[0].accessibilityLabel).toBe('Close');
+
+      globalThis.__TEST_LANG = 'pl';
+
+      renderHook(() =>
+        useScreenHeader({
+          left: { kind: 'dismiss', onPress },
+          right: null,
+        }),
+      );
+
+      const secondOpts = globalThis.__TEST_SET_OPTIONS;
+      expect(secondOpts).not.toBeNull();
+      expect(secondOpts).not.toBe(firstOpts);
+      const secondLeftItems = secondOpts!.unstable_headerLeftItems();
+      expect(secondLeftItems[0].accessibilityLabel).toBe('Zamknij');
+    });
+
+    it('updates explicit translated accessibility label EN → PL without remount', async () => {
+      globalThis.__TEST_LANG = 'en';
+      mockUseNativeIOSHeadersActive.mockReturnValue(true);
+
+      const { rerender } = renderHook(() =>
+        useScreenHeader({
+          right: {
+            kind: 'icon',
+            sfSymbol: 'star',
+            ionicon: 'star',
+            onPress: jest.fn(),
+            accessibilityLabel: 'Favorite',
+          },
+        }),
+      );
+
+      const firstOpts = globalThis.__TEST_SET_OPTIONS;
+      const firstItems = firstOpts.unstable_headerRightItems();
+      expect(firstItems[0].accessibilityLabel).toBe('Favorite');
+
+      globalThis.__TEST_LANG = 'pl';
+      rerender();
+
+      const secondOpts = globalThis.__TEST_SET_OPTIONS;
+      const secondItems = secondOpts.unstable_headerRightItems();
+      expect(secondItems[0].accessibilityLabel).toBe('Favorite');
+    });
+
+    it('native primary label switches Save → Zapisz on language change', () => {
+      globalThis.__TEST_LANG = 'en';
+      mockUseNativeIOSHeadersActive.mockReturnValue(true);
+
+      renderHook(() =>
+        useScreenHeader({
+          right: { kind: 'primary', onPress: jest.fn() },
+        }),
+      );
+
+      const firstOpts = globalThis.__TEST_SET_OPTIONS;
+      const firstItems = firstOpts!.unstable_headerRightItems();
+      expect(firstItems[0].label).toBe('Save');
+
+      globalThis.__TEST_LANG = 'pl';
+
+      renderHook(() =>
+        useScreenHeader({
+          right: { kind: 'primary', onPress: jest.fn() },
+        }),
+      );
+
+      const secondOpts = globalThis.__TEST_SET_OPTIONS;
+      const secondItems = secondOpts!.unstable_headerRightItems();
+      expect(secondItems[0].label).toBe('Zapisz');
+    });
+
+    it('native busy label shows Saving… → Zapisywanie…', () => {
+      globalThis.__TEST_LANG = 'en';
+      mockUseNativeIOSHeadersActive.mockReturnValue(true);
+
+      renderHook(() =>
+        useScreenHeader({
+          right: { kind: 'primary', label: 'Save', busy: true, onPress: jest.fn() },
+        }),
+      );
+
+      const firstOpts = globalThis.__TEST_SET_OPTIONS;
+      const firstItems = firstOpts!.unstable_headerRightItems();
+      expect(firstItems[0].label).toBe('Saving…');
+
+      globalThis.__TEST_LANG = 'pl';
+
+      renderHook(() =>
+        useScreenHeader({
+          right: { kind: 'primary', label: 'Save', busy: true, onPress: jest.fn() },
+        }),
+      );
+
+      const secondOpts = globalThis.__TEST_SET_OPTIONS;
+      const secondItems = secondOpts!.unstable_headerRightItems();
+      expect(secondItems[0].label).toBe('Zapisywanie…');
     });
   });
 });

@@ -134,7 +134,26 @@ function itemIsDisabled(item: HeaderItem): boolean {
   return ('disabled' in item && !!item.disabled) || itemIsBusy(item);
 }
 
-function itemAccessibilityLabel(item: HeaderItem, t: ReturnType<typeof useTranslation>['t']): string | undefined {
+function resolveItemLabel(item: HeaderItem, t: ReturnType<typeof useTranslation>['t']): string | undefined {
+  if ('label' in item) {
+    return item.label;
+  }
+  if (item.kind === 'back') return undefined;
+  if (item.kind === 'dismiss') return undefined;
+  return t('common.save');
+}
+
+function resolveItemBusyLabel(item: HeaderItem, t: ReturnType<typeof useTranslation>['t']): string | undefined {
+  if ('busyLabel' in item) {
+    return item.busyLabel;
+  }
+  if (isPrimaryItem(item)) {
+    return t('common.saving');
+  }
+  return undefined;
+}
+
+function resolveItemAccessibilityLabel(item: HeaderItem, t: ReturnType<typeof useTranslation>['t']): string {
   switch (item.kind) {
     case 'back':
       return t('common.back');
@@ -144,7 +163,7 @@ function itemAccessibilityLabel(item: HeaderItem, t: ReturnType<typeof useTransl
       return item.accessibilityLabel;
     case 'text':
     case 'primary':
-      return item.accessibilityLabel ?? (isPrimaryItem(item) ? (item.label ?? t('common.save')) : item.label);
+      return item.accessibilityLabel ?? (isPrimaryItem(item) ? (item.label ?? t('common.save')) : item.label) ?? t('common.save');
   }
 }
 
@@ -186,30 +205,25 @@ function HeaderBarButton({
   const disabled = itemIsDisabled(item);
   const busy = itemIsBusy(item);
 
-  let content: React.ReactNode;
-  if (busy) {
-    content = <ActivityIndicator size="small" color={color} />;
-  } else if (item.kind === 'back') {
-    content = <Icon name="chevron-back" size={22} color={color} />;
-  } else if (item.kind === 'dismiss') {
-    content = <Icon name="close" size={22} color={color} />;
-  } else if (item.kind === 'icon') {
-    content = (
-      <RawHeaderIcon
-        sf={item.sfSymbol}
-        ion={item.ionicon}
-        color={color}
-        useIoniconOnIOS={item.useIoniconOnIOS}
-      />
-    );
-  } else {
-    const label = isPrimaryItem(item) ? (item.label ?? t('common.save')) : item.label;
-    content = (
-      <Text style={{ color, fontSize: 17, fontWeight: isPrimaryItem(item) ? '600' : '500' }}>
-        {label}
-      </Text>
-    );
-  }
+  const label = resolveItemLabel(item, t);
+  const content = busy ? (
+    <ActivityIndicator size="small" color={color} />
+  ) : item.kind === 'back' ? (
+    <Icon name="chevron-back" size={22} color={color} />
+  ) : item.kind === 'dismiss' ? (
+    <Icon name="close" size={22} color={color} />
+  ) : item.kind === 'icon' ? (
+    <RawHeaderIcon
+      sf={item.sfSymbol}
+      ion={item.ionicon}
+      color={color}
+      useIoniconOnIOS={item.useIoniconOnIOS}
+    />
+  ) : (
+    <Text style={{ color, fontSize: 17, fontWeight: isPrimaryItem(item) ? '600' : '500' }}>
+      {label}
+    </Text>
+  );
 
   return (
     <Pressable
@@ -217,7 +231,7 @@ function HeaderBarButton({
       disabled={disabled}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityRole="button"
-      accessibilityLabel={itemAccessibilityLabel(item, t)}
+      accessibilityLabel={resolveItemAccessibilityLabel(item, t)}
       style={disabled ? { opacity: 0.4 } : undefined}
     >
       {content}
@@ -242,6 +256,7 @@ function buildNativeItem(
   t: ReturnType<typeof useTranslation>['t'],
 ): NativeStackHeaderItem | null {
   const color = itemColor(item, colors);
+  const accessibilityLabel = resolveItemAccessibilityLabel(item, t);
   switch (item.kind) {
     case 'back':
       // System back button owns the native left slot.
@@ -251,7 +266,7 @@ function buildNativeItem(
         sfSymbol: 'xmark',
         identifier,
         tintColor: colors.defaultColor,
-        accessibilityLabel: item.accessibilityLabel ?? t('common.close'),
+        accessibilityLabel: accessibilityLabel,
         onPress: press,
         disabled: !!item.disabled,
       });
@@ -260,19 +275,15 @@ function buildNativeItem(
         sfSymbol: item.sfSymbol,
         identifier,
         tintColor: color,
-        accessibilityLabel: item.accessibilityLabel,
+        accessibilityLabel: accessibilityLabel,
         onPress: press,
         disabled: itemIsDisabled(item),
       });
     case 'text':
     case 'primary': {
-      const resolvedLabel = item.kind === 'primary'
-        ? (item.label ?? t('common.save'))
-        : item.label;
-      const resolvedBusyLabel = isPrimaryItem(item)
-        ? (item.busyLabel ?? t('common.saving'))
-        : item.busyLabel;
-      const label = item.busy && resolvedBusyLabel ? resolvedBusyLabel : (resolvedLabel ?? t('common.save'));
+      const resolvedLabel = resolveItemLabel(item, t);
+      const resolvedBusyLabel = resolveItemBusyLabel(item, t);
+      const label = itemIsBusy(item) && resolvedBusyLabel ? resolvedBusyLabel : (resolvedLabel ?? t('common.save'));
       return createNativeHeaderTextButtonItem({
         label,
         identifier,
@@ -280,7 +291,7 @@ function buildNativeItem(
         onPress: press,
         disabled: itemIsDisabled(item),
         fontWeight: isPrimaryItem(item) ? '600' : '500',
-        accessibilityLabel: itemAccessibilityLabel(item, t),
+        accessibilityLabel,
       });
     }
   }
@@ -337,21 +348,33 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   });
   handlersRef.current = nextHandlers;
 
-  // Native path: mirror the descriptor into stack options. Re-runs only when the
+// Native path: mirror the descriptor into stack options. Re-runs only when the
   // visible signature changes; onPress is dispatched through `handlersRef`.
+  const leftSignature = left
+    ? {
+        id: leftId,
+        kind: left.kind,
+        label: resolveItemLabel(left, t),
+        busyLabel: resolveItemBusyLabel(left, t),
+        accessibilityLabel: resolveItemAccessibilityLabel(left, t),
+        sfSymbol: left.kind === 'icon' ? left.sfSymbol : undefined,
+        role: 'role' in left ? left.role : undefined,
+        disabled: itemIsDisabled(left),
+        busy: itemIsBusy(left),
+      }
+    : null;
   const signature = JSON.stringify({
     usesNativeHeader,
     defaultColor,
     saveColor,
     nativeTitle: nativeTitle ?? null,
-    left: left
-      ? { id: leftId, kind: left.kind, disabled: itemIsDisabled(left), busy: itemIsBusy(left) }
-      : null,
-     right: rightMeta.map(({ item, id }) => ({
+    left: leftSignature,
+    right: rightMeta.map(({ item, id }) => ({
       id,
       kind: item.kind,
-      label: 'label' in item ? (item.label ?? (isPrimaryItem(item) ? t('common.save') : undefined)) : undefined,
-      busyLabel: 'busyLabel' in item ? (item.busyLabel ?? (isPrimaryItem(item) ? t('common.saving') : undefined)) : undefined,
+      label: resolveItemLabel(item, t),
+      busyLabel: resolveItemBusyLabel(item, t),
+      accessibilityLabel: resolveItemAccessibilityLabel(item, t),
       sfSymbol: item.kind === 'icon' ? item.sfSymbol : undefined,
       role: 'role' in item ? item.role : undefined,
       disabled: itemIsDisabled(item),

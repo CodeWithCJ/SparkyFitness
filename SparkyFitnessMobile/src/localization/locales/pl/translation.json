@@ -228,7 +228,7 @@
     "measurements": "Pomiary",
     "diary": "Dziennik",
     "dashboard": "Panel",
-    "foodEntry": "Wpis jedzenia",
+    "foodEntry": "Wpis żywieniowy",
     "activity": "Aktywność",
     "workout": "Trening",
     "meal": "Posiłek",
@@ -240,8 +240,8 @@
     "editPreset": "Edytuj szablon",
     "newFood": "Nowy produkt",
     "editFood": "Edytuj produkt",
-    "adjustNutrition": "Dostosuj żywienie",
-    "photoFood": "Jedzenie zdjęciem",
+    "adjustNutrition": "Dostosuj wartości odżywcze",
+    "photoFood": "Jedzenie ze zdjęcia",
     "sparky": "Sparky",
     "editMeal": "Edytuj posiłek",
     "createMeal": "Utwórz posiłek",
@@ -267,6 +267,6 @@
     "pregnancySetup": "Konfiguracja ciąży",
     "medications": "Leki",
     "medication": "Lek",
-    "logDailyEntry": "Zapisz dzienny wpis"
+    "logDailyEntry": "Dzienny wpis"
   }
 }
