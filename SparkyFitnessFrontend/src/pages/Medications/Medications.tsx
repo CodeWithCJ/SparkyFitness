@@ -60,7 +60,7 @@ export default function Medications() {
   const timezone =
     preferencesContext?.timezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const timeFormat = preferencesContext?.timeFormat ?? 'HH:mm';
+  const timeFormat = preferencesContext?.timeFormat ?? 'h:mm A';
   const today = todayInZone(timezone);
 
   const [selectedDate, setSelectedDate] = useState<string>(

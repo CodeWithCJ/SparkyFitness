@@ -35,7 +35,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
   const timezone =
     preferencesContext?.timezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const timeFormat = preferencesContext?.timeFormat ?? 'HH:mm';
+  const timeFormat = preferencesContext?.timeFormat ?? 'h:mm A';
 
   const [open, setOpen] = useState(false);
   const [scheduleTypeId, setScheduleTypeId] = useState('daily');

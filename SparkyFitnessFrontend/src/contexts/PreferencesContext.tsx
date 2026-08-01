@@ -259,7 +259,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<MeasurementUnit>('cm');
   const [distanceUnit, setDistanceUnitState] = useState<'km' | 'miles'>('km');
   const [dateFormat, setDateFormatState] = useState<string>('MM/dd/yyyy');
-  const [timeFormat, setTimeFormatState] = useState<string>('HH:mm');
+  const [timeFormat, setTimeFormatState] = useState<string>('h:mm A');
   const [autoClearHistory, setAutoClearHistoryState] =
     useState<string>('never');
   const [loggingLevel, setLoggingLevelState] = useState<
@@ -588,7 +588,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       const defaultPrefs: Partial<DefaultPreferences> = {
         user_id: user.id,
         date_format: 'MM/dd/yyyy',
-        time_format: 'HH:mm',
+        time_format: 'h:mm A',
         default_weight_unit: 'kg',
         default_measurement_unit: 'cm',
         default_distance_unit: 'km',
@@ -652,7 +652,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setDateFormatState(
           data.date_format.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy')
         );
-        setTimeFormatState(data.time_format || 'HH:mm');
+        setTimeFormatState(data.time_format || 'h:mm A');
         setAutoClearHistoryState(data.auto_clear_history || 'never');
         setLoggingLevelState(data.logging_level || 'INFO');
         setDefaultFoodDataProviderIdState(
