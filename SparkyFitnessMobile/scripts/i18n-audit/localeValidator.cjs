@@ -51,15 +51,17 @@ function groupPluralKeys(keys) {
 
   for (const key of keys) {
     const base = getPluralBase(key);
-    if (base) {
+    if (base !== null) {
       if (!groups.has(base)) {
         groups.set(base, new Set());
       }
       groups.get(base).add(key);
     } else {
-      if (!groups.has(key)) {
-        singles.add(key);
-      }
+      // Collect plain keys unconditionally. Doing so even when a plural group
+      // of the same base exists is intentional: it lets
+      // detectSingularPluralCollision() spot a plain key that collides with a
+      // plural group, regardless of property order in the locale file.
+      singles.add(key);
     }
   }
 

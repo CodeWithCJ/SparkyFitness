@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(pathToFileURL(__filename));
 const localeMod = require('../../scripts/i18n-audit/localeValidator.cjs');
 const LocaleValidator: any = localeMod.LocaleValidator;
+const groupPluralKeys = localeMod.groupPluralKeys;
 
 const SourceScanner = require('../../scripts/i18n-audit/sourceScanner.cjs');
 const collectFindings = SourceScanner.collectFindings;
@@ -879,6 +880,53 @@ describe('Plural group validation', () => {
     );
     const r = validator.validate();
     expect(r.errors.filter((e: any) => e.rule === 'placeholder-mismatch' || e.rule === 'singular-plural-collision')).toHaveLength(0);
+  });
+
+  it('21b. correct EN plural group without a plain key does not collide', async () => {
+    const tmpDir = await createFixtureStructure({
+      en: '{"item_one":"One item","item_other":"Items"}',
+      pl: '{"item_one":"Jeden","item_few":"Kilka","item_many":"Wiele","item_other":"Elementy"}',
+    });
+    const validator = new LocaleValidator(
+      path.join(tmpDir, 'src', 'localization', 'locales', 'en', 'translation.json'),
+      path.join(tmpDir, 'src', 'localization', 'locales', 'pl', 'translation.json'),
+    );
+    const r = validator.validate();
+    expect(r.errors.some((e: any) => e.rule === 'singular-plural-collision')).toBe(false);
+  });
+
+  it.each([
+    { name: 'plain before plural in EN', en: '{"item":"Item","item_one":"One item","item_other":"Items"}', pl: '{"item_one":"Jeden","item_few":"Kilka","item_many":"Wiele","item_other":"Elementy"}', locale: 'en' },
+    { name: 'plural before plain in EN', en: '{"item_one":"One item","item_other":"Items","item":"Item"}', pl: '{"item_one":"Jeden","item_few":"Kilka","item_many":"Wiele","item_other":"Elementy"}', locale: 'en' },
+    { name: 'mixed order EN', en: '{"item_one":"One","item":"Item","item_other":"Items"}', pl: '{"item_one":"Jeden","item_few":"Kilka","item_many":"Wiele","item_other":"Elementy"}', locale: 'en' },
+    { name: 'mixed order PL', en: '{"item_one":"One","item_other":"Items"}', pl: '{"item_one":"Jeden","item":"Element","item_few":"Elementy","item_many":"Elementów","item_other":"Elementu"}', locale: 'pl' },
+  ])('38. detects singular-plural-collision regardless of order ($name)', async ({ en, pl, locale }) => {
+    const tmpDir = await createFixtureStructure({ en, pl });
+    const validator = new LocaleValidator(
+      path.join(tmpDir, 'src', 'localization', 'locales', 'en', 'translation.json'),
+      path.join(tmpDir, 'src', 'localization', 'locales', 'pl', 'translation.json'),
+    );
+    const r = validator.validate();
+    expect(r.errors.some((e: any) => e.rule === 'singular-plural-collision' && e.locale === locale && e.key === 'item')).toBe(true);
+  });
+
+  it('39. groupPluralKeys returns both plural group and plain single for the same base', () => {
+    const result = groupPluralKeys(['item_one', 'item_other', 'item']);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ base: 'item', isPlural: true }),
+        expect.objectContaining({ base: 'item', isPlural: false, keys: ['item'] }),
+      ]),
+    );
+  });
+
+  it('39b. groupPluralKeys is order-independent for mixed plain/plural keys', () => {
+    const a = groupPluralKeys(['item_one', 'item_other', 'item']);
+    const b = groupPluralKeys(['item', 'item_other', 'item_one']);
+    const normalize = (rows: any[]) =>
+      rows.map((r) => ({ base: r.base, isPlural: r.isPlural, keys: [...r.keys].sort() }))
+        .sort((x: any, y: any) => (x.base + x.isPlural).localeCompare(y.base + y.isPlural));
+    expect(normalize(a)).toEqual(normalize(b));
   });
 });
 
