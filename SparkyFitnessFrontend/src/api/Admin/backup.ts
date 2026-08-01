@@ -26,3 +26,19 @@ export const restoreBackup = async (formData: FormData) => {
     isFormData: true,
   });
 };
+
+export const downloadLastBackup = async (): Promise<Blob> => {
+  const response = await fetch('/api/admin/backup/download', {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(
+      errorData.message || `Download failed with status ${response.status}`
+    );
+  }
+
+  return response.blob();
+};

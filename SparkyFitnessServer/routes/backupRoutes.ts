@@ -367,4 +367,81 @@ router.post('/settings', authenticate, isAdmin, async (req, res) => {
     });
   }
 });
+/**
+ * @swagger
+ * /admin/backup/download:
+ *   get:
+ *     summary: Download the last backup file
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Backup file downloaded successfully.
+ *         content:
+ *           application/gzip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: No backup file found.
+ *       500:
+ *         description: Server error.
+ */
+router.get('/download', authenticate, isAdmin, async (req, res) => {
+  try {
+    log('info', 'Download backup initiated by admin.');
+
+    const files = await fs.readdir(BACKUP_DIR);
+
+    const backupFiles = files.filter(
+      (file) =>
+        file.startsWith('sparkyfitness_full_backup_') &&
+        file.endsWith('.tar.gz')
+    );
+
+    if (backupFiles.length === 0) {
+      return res.status(404).json({
+        message: 'No backup file found.',
+      });
+    }
+
+    const backupFilesWithStats = await Promise.all(
+      backupFiles.map(async (file) => {
+        const filePath = path.join(BACKUP_DIR, file);
+        const stats = await fs.stat(filePath);
+        return { file, mtime: stats.mtime };
+      })
+    );
+
+    backupFilesWithStats.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+
+    const lastBackupFile = backupFilesWithStats[0].file;
+    const lastBackupPath = path.join(BACKUP_DIR, lastBackupFile);
+
+    await fs.access(lastBackupPath, fs.constants.R_OK);
+
+    res.download(lastBackupPath, lastBackupFile, (err) => {
+      if (err) {
+        log('error', 'Error sending backup file:', err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            message: 'Error downloading backup file.',
+            error: err.message,
+          });
+        }
+      } else {
+        log('info', `Backup file downloaded: ${lastBackupFile}`);
+      }
+    });
+  } catch (error) {
+    log('error', 'Error during backup download:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        message: 'Internal server error during backup download.',
+        error: error.message,
+      });
+    }
+  }
+});
 export default router;
