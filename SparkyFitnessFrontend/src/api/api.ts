@@ -11,6 +11,7 @@ interface ApiCallOptions extends RequestInit {
   externalApi?: boolean;
   isFormData?: boolean; // New option to indicate if the body is FormData
   responseType?: 'json' | 'text' | 'blob'; // Add responseType option
+  returnHeaders?: boolean; // Option to return response headers with blob
 }
 
 class HttpApiError extends Error {}
@@ -222,6 +223,13 @@ export async function apiCall(
         userLoggingLevel,
         `API Call: Received blob response from ${url}.`
       );
+
+      if (options?.returnHeaders) {
+        return {
+          blob: blobResponse,
+          headers: response.headers,
+        };
+      }
       return blobResponse;
     }
     // Handle cases where the response might be empty (e.g., DELETE requests)

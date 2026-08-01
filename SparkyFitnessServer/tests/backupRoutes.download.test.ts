@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach, afterAll } from 'vitest';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'supertest'
 import request from 'supertest';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { writeFileSync, rmSync, utimesSync } from 'fs';
 
@@ -19,8 +19,10 @@ vi.mock('../services/backupService.js', () => {
 });
 
 vi.mock('../middleware/authMiddleware', () => ({
-  authenticate: vi.fn((req: any, res: any, next: any) => next()),
-  isAdmin: vi.fn((req: any, res: any, next: any) => next()),
+  authenticate: vi.fn((req: Request, res: Response, next: NextFunction) =>
+    next()
+  ),
+  isAdmin: vi.fn((req: Request, res: Response, next: NextFunction) => next()),
 }));
 
 import backupRoutes from '../routes/backupRoutes.js';

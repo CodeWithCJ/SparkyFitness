@@ -27,18 +27,27 @@ export const restoreBackup = async (formData: FormData) => {
   });
 };
 
-export const downloadLastBackup = async (): Promise<Blob> => {
-  const response = await fetch('/api/admin/backup/download', {
-    method: 'GET',
-    credentials: 'include',
+export const downloadLastBackup = async (): Promise<{
+  blob: Blob;
+  filename: string;
+}> => {
+  const blob = await api.get('/admin/backup/download', {
+    responseType: 'blob',
+    returnHeaders: true,
   });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(
-      errorData.message || `Download failed with status ${response.status}`
-    );
+  // blob is now { blob: Blob, headers: Headers }
+  const contentDisposition = blob.headers?.get('content-disposition') || '';
+  let filename = 'sparkyfitness_backup.tar.gz';
+
+  // Extract filename from Content-Disposition header
+  const match = contentDisposition.match(/filename="?([^"]+)"?/);
+  if (match && match[1]) {
+    filename = match[1];
   }
 
-  return response.blob();
+  return {
+    blob: blob.blob,
+    filename,
+  };
 };

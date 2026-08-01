@@ -81,11 +81,11 @@ export const useDownloadLastBackup = () => {
     mutationFn: downloadLastBackup,
     meta: {
       successMessage: t(
-        'admin.backupSettings.backupDownloaded',
+        'admin.backupSettings.downloadBackupSuccess',
         'Backup download started'
       ),
       errorMessage: t(
-        'admin.backupSettings.backupDownloadFailed',
+        'admin.backupSettings.failedToDownloadBackup',
         'Failed to download backup'
       ),
     },
