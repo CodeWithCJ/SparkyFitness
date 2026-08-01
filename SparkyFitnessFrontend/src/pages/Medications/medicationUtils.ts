@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { BUILT_IN_SYMPTOMS } from '@workspace/shared';
+import { formatTimeOfDayString } from '@/utils/timeFormatters';
 import type { MedicationSchedule } from '@/types/medications';
 
 export const MED_TYPES = [
@@ -172,10 +173,13 @@ export const formatDaysOfWeek = (days: number[] | null) => {
   return days.map((d) => names[d] ?? '').join(', ');
 };
 
-export const formatScheduleDescription = (sched: MedicationSchedule) => {
+export const formatScheduleDescription = (
+  sched: MedicationSchedule,
+  timeFormat: string
+) => {
   const timeStr = sched.time_of_day
     ? i18n.t('medications.scheduleDesc.atTime', ' at {{time}}', {
-        time: sched.time_of_day.substring(0, 5),
+        time: formatTimeOfDayString(sched.time_of_day, timeFormat),
       })
     : '';
   const mealStr = sched.with_meal
