@@ -35,7 +35,7 @@ import {
   cancelScheduledNotification,
   COMPLETE_SET_ACTION,
   dismissDeliveredNotification,
-  fireRestCompleteHaptic,
+  fireRestCompleteCue,
   scheduleRestNotification,
 } from '../services/notifications';
 import { fireSelectionHaptic, fireSuccessHaptic } from '../services/haptics';
@@ -1262,7 +1262,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             // Shrunk past zero — same outcome as the countdown hitting zero.
             cancelCurrentRestNotification(rest);
             set({ rest: READY_REST });
-            fireRestCompleteHaptic();
+            fireRestCompleteCue();
             return;
           }
 
@@ -1290,7 +1290,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           const newRemainingMs = rest.pausedRemainingMs + deltaMs;
           if (newRemainingMs <= 0) {
             set({ rest: READY_REST });
-            fireRestCompleteHaptic();
+            fireRestCompleteCue();
             return;
           }
           set({
@@ -1315,7 +1315,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         }
         cancelCurrentRestNotification(rest);
         set({ rest: READY_REST });
-        fireRestCompleteHaptic();
+        fireRestCompleteCue();
       },
 
       dismissRest: () => {
@@ -1897,7 +1897,7 @@ let restDeadlineTimerId: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Keep exactly one JS timer pointed at the current rest deadline so the
- * resting → ready flip (notification cancel + haptic) happens in the store,
+ * resting → ready flip (notification cancel + haptic/sound cue) happens in the store,
  * independent of which screens are mounted. The callback re-checks live state:
  * a timer that fires early (clock drift) reschedules for the remainder instead
  * of stranding the rest in 'resting'.

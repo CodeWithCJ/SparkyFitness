@@ -124,6 +124,25 @@ describe('ActionSheet', () => {
     expect(getByText('Remove exercise')).toBeTruthy();
   });
 
+  it('renders no group spacers for a flat item list', () => {
+    const { queryAllByTestId } = renderSheet();
+    expect(queryAllByTestId('action-sheet-group-spacer')).toHaveLength(0);
+  });
+
+  it('renders a spacer between consecutive items with different groups', () => {
+    const { queryAllByTestId } = renderSheet({
+      items: [
+        { key: 'a', label: 'A', group: 'one', onPress: jest.fn() },
+        { key: 'b', label: 'B', group: 'one', onPress: jest.fn() },
+        { key: 'c', label: 'C', group: 'two', onPress: jest.fn() },
+        { key: 'd', label: 'D', onPress: jest.fn() },
+        { key: 'e', label: 'E', onPress: jest.fn() },
+      ],
+    });
+    // one|two and two|ungrouped boundaries; d and e chunk together.
+    expect(queryAllByTestId('action-sheet-group-spacer')).toHaveLength(2);
+  });
+
   it('presents through the ref via rAF', () => {
     const { ref } = renderSheet();
     act(() => ref.current?.present());

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n from '@/i18n';
 import { useSearchParams } from 'react-router-dom';
 import DayNavigator from '@/components/DayNavigator';
 import {
@@ -37,52 +36,14 @@ import {
 } from '@/hooks/useMedications';
 import { useSymptomEntries } from '@/hooks/useSymptoms';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import type { MedicationDetail, MedicationSchedule } from '@/types/medications';
+import type { MedicationDetail } from '@/types/medications';
 import Glp1Coach from './Glp1Coach';
 import AddMedicationDialog, { MedTypeIcon } from './AddMedicationDialog';
 import ScheduleManager from './ScheduleManager';
 import TodayMedications from './TodayMedications';
 import SymptomDashboard from './SymptomDashboard';
 import MedicationDisclaimer from './MedicationDisclaimer';
-
-const formatDaysOfWeek = (days: number[] | null) => {
-  if (!days || days.length === 0) return '';
-  const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return days.map((d) => names[d] ?? '').join(', ');
-};
-
-const formatScheduleDescription = (sched: MedicationSchedule) => {
-  const timeStr = sched.time_of_day
-    ? i18n.t('medications.scheduleDesc.atTime', ' at {{time}}', {
-        time: sched.time_of_day.substring(0, 5),
-      })
-    : '';
-  const mealStr = sched.with_meal
-    ? i18n.t('medications.scheduleDesc.mealSuffix', ' ({{meal}} meal)', {
-        meal: sched.with_meal,
-      })
-    : '';
-
-  switch (sched.schedule_type_id) {
-    case 'daily':
-      return `${i18n.t('medications.scheduleDesc.daily', 'Daily')}${timeStr}${mealStr}`;
-    case 'weekly':
-    case 'specific_days':
-      return `${i18n.t('medications.scheduleDesc.weeklyOn', 'Weekly on {{days}}', { days: formatDaysOfWeek(sched.days_of_week) })}${timeStr}${mealStr}`;
-    case 'every_n_days':
-      return `${i18n.t('medications.scheduleDesc.everyNDays', 'Every {{n}} days', { n: sched.interval_days })}${timeStr}${mealStr}`;
-    case 'cyclic':
-      return `${i18n.t('medications.scheduleDesc.cyclic', 'Cycle: {{on}} days on, {{off}} days off', { on: sched.cycle_on_days, off: sched.cycle_off_days })}${timeStr}${mealStr}`;
-    case 'monthly':
-      return `${i18n.t('medications.scheduleDesc.monthly', 'Monthly on day {{day}}', { day: sched.day_of_month })}${timeStr}${mealStr}`;
-    case 'prn':
-      return `${i18n.t('medications.scheduleDesc.prn', 'As needed (PRN)')}${sched.prn_reason ? `: ${sched.prn_reason}` : ''}`;
-    case 'taper':
-      return `${i18n.t('medications.scheduleDesc.taper', 'Taper / titration')}${timeStr}${mealStr}`;
-    default:
-      return `${sched.schedule_type_id}${timeStr}${mealStr}`;
-  }
-};
+import { formatScheduleDescription } from './medicationUtils';
 
 export default function Medications() {
   const { t } = useTranslation();
@@ -99,6 +60,7 @@ export default function Medications() {
   const timezone =
     preferencesContext?.timezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timeFormat = preferencesContext?.timeFormat ?? 'h:mm A';
   const today = todayInZone(timezone);
 
   const [selectedDate, setSelectedDate] = useState<string>(
@@ -354,7 +316,10 @@ export default function Medications() {
                             <>
                               <span>·</span>
                               <span>
-                                {formatScheduleDescription(med.schedules[0])}
+                                {formatScheduleDescription(
+                                  med.schedules[0],
+                                  timeFormat
+                                )}
                               </span>
                             </>
                           )}

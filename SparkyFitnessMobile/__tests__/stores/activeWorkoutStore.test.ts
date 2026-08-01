@@ -9,7 +9,7 @@ import {
   addNotificationResponseListener,
   cancelScheduledNotification,
   dismissDeliveredNotification,
-  fireRestCompleteHaptic,
+  fireRestCompleteCue,
   scheduleRestNotification,
 } from '../../src/services/notifications';
 import { fireSelectionHaptic, fireSuccessHaptic } from '../../src/services/haptics';
@@ -23,7 +23,7 @@ import type { Exercise } from '../../src/types/exercise';
 jest.mock('../../src/services/notifications', () => ({
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
   cancelScheduledNotification: jest.fn(async () => undefined),
-  fireRestCompleteHaptic: jest.fn(),
+  fireRestCompleteCue: jest.fn(),
   COMPLETE_SET_ACTION: 'complete-set',
   addNotificationResponseListener: jest.fn(() => ({ remove: jest.fn() })),
   dismissDeliveredNotification: jest.fn(async () => undefined),
@@ -51,8 +51,8 @@ const mockSchedule = scheduleRestNotification as jest.MockedFunction<
 const mockCancel = cancelScheduledNotification as jest.MockedFunction<
   typeof cancelScheduledNotification
 >;
-const mockHaptic = fireRestCompleteHaptic as jest.MockedFunction<
-  typeof fireRestCompleteHaptic
+const mockHaptic = fireRestCompleteCue as jest.MockedFunction<
+  typeof fireRestCompleteCue
 >;
 const mockSuccessHaptic = fireSuccessHaptic as jest.MockedFunction<
   typeof fireSuccessHaptic

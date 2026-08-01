@@ -73,7 +73,7 @@ const BADGE_STYLES: Record<string, string> = {
 
 export default function TestQuickLog({ currentCycleStart }: TestQuickLogProps) {
   const { t } = useTranslation();
-  const { timezone, formatDateInUserTimezone } = usePreferences();
+  const { formatDateInUserTimezone, formatTime, timezone } = usePreferences();
   const today = useMemo(() => todayInZone(timezone), [timezone]);
 
   // Compute test range (cycle start to today + 14 days)
@@ -127,7 +127,7 @@ export default function TestQuickLog({ currentCycleStart }: TestQuickLogProps) {
   const formatDateShort = (testedAtStr: string) =>
     formatDateInUserTimezone(testedAtStr, 'M/d') +
     ' at ' +
-    formatDateInUserTimezone(testedAtStr, 'HH:mm');
+    formatTime(testedAtStr);
 
   return (
     <Card>

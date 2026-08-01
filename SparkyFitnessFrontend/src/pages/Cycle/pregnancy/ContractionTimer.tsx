@@ -7,6 +7,7 @@ import {
 } from '@/hooks/usePregnancy';
 import type { SharedContraction } from '@workspace/shared';
 import { Card, CardContent } from '@/components/ui/card';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Timer } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export default function ContractionTimer({
   pregnancyId,
 }: ContractionTimerProps) {
   const { t } = useTranslation();
+  const { formatTime } = usePreferences();
   const createMutation = useCreateContractionMutation();
   const updateMutation = useUpdateContractionMutation();
   const { data } = useContractions(true);
@@ -151,7 +153,7 @@ export default function ContractionTimer({
                     key={c.id ?? c.started_at}
                     className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-1.5 text-xs"
                   >
-                    <span>{new Date(c.started_at).toLocaleTimeString()}</span>
+                    <span>{formatTime(c.started_at)}</span>
                     <span className="text-muted-foreground">
                       {t('pregnancy.contractions.dur', 'Duration')}:{' '}
                       {fmtDuration(c.started_at, c.ended_at)}

@@ -8,8 +8,10 @@ This directory contains a Nix flake and a NixOS module for running SparkyFitness
 - [`../flake.nix`](../flake.nix) — packages, dev shell and NixOS modules.
 - [`backend.nix`](./backend.nix) — the Express API server (`tsx index.ts`).
 - [`frontend.nix`](./frontend.nix) — the static Vite build.
+- [`garmin.nix`](./garmin.nix) — the Garmin Connect microservice
 - [`module.nix`](./module.nix) — the `services.sparkyfitness` NixOS module
-  (systemd backend service, optional local PostgreSQL, nginx reverse proxy).
+  (systemd backend service, optional local PostgreSQL, optional Garmin
+  microservice, nginx reverse proxy).
 - [`update-hashes.sh`](./update-hashes.sh) — recompute the pnpm dependency
   hashes after `pnpm-lock.yaml` changes.
 
@@ -18,6 +20,7 @@ This directory contains a Nix flake and a NixOS module for running SparkyFitness
 ```bash
 nix build .#sparkyfitness-server
 nix build .#sparkyfitness-frontend
+nix build .#sparkyfitness-garmin
 ```
 
 > **Updating dependency hashes:** the `pnpmDeps.hash` values in `backend.nix`
@@ -67,7 +70,17 @@ nix develop
 
 Use `nixosModules.sparkyfitness` to get this flake's package builds wired in
 automatically, or `nixosModules.default` and set `backendPackage` /
-`frontendPackage` yourself.
+`frontendPackage` (and `garmin.package`, if Garmin is enabled) yourself.
+
+### Garmin Connect microservice
+
+```nix
+services.sparkyfitness.garmin.enable = true;
+```
+
+Starts `sparkyfitness-garmin.service` under its own `sparkyfitness-garmin`
+system user and sets `GARMIN_MICROSERVICE_URL` on the backend. It listens on
+`127.0.0.1:8000` by default.
 
 ### Required secrets (`environmentFile`)
 

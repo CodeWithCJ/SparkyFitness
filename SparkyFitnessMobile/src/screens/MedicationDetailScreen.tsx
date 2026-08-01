@@ -46,7 +46,10 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
   const deleteEntryMutation = useDeleteMedicationEntry();
   const { entryForDue, logDose, toggleTaken, logPrn } = useLogDose(selectedDate, entries);
 
-  const [iconDanger] = useCSSVariable(['--color-icon-danger']) as [string];
+  const [iconDanger, textSecondary] = useCSSVariable([
+    '--color-icon-danger',
+    '--color-text-secondary',
+  ]) as [string, string];
 
   const isPrn = !med?.schedules || med.schedules.length === 0 || med.schedules.some((s) => s.schedule_type_id === 'prn');
 
@@ -214,30 +217,54 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           </View>
         )}
 
-        {med.schedules && med.schedules.length > 0 && (
-          <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-            <Text className="text-sm font-semibold text-text-secondary mb-2">Schedules</Text>
-            {med.schedules.map((sched, index) => {
-              const parts: string[] = [];
-              if (sched.dose_amount != null) {
-                const scheduleDose = formatDose(med, sched);
-                if (scheduleDose != null) parts.push(scheduleDose);
-              }
-              if (sched.with_meal) parts.push(formatWithMeal(sched.with_meal));
-              if (sched.active === false) parts.push('Inactive');
-              const subtitle = parts.join(' · ');
-              return (
-                <View key={sched.id}>
-                  {index > 0 && <View className="h-px bg-chrome-border my-2" />}
-                  <Text className="text-base text-text-primary">{describeSchedule(sched)}</Text>
-                  {subtitle !== '' && (
-                    <Text className="text-xs text-text-muted mt-0.5">{subtitle}</Text>
-                  )}
-                </View>
-              );
-            })}
+        <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+          <View className="flex-row justify-between items-center mb-2">
+            <Text className="text-sm font-semibold text-text-secondary">Schedules</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('MedicationScheduleForm', { medicationId })}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.6}
+              accessibilityRole="button"
+              accessibilityLabel="Add schedule"
+            >
+              <Text className="text-sm font-semibold text-accent-primary">Add</Text>
+            </TouchableOpacity>
           </View>
-        )}
+          {(med.schedules ?? []).map((sched, index) => {
+            const parts: string[] = [];
+            if (sched.dose_amount != null) {
+              const scheduleDose = formatDose(med, sched);
+              if (scheduleDose != null) parts.push(scheduleDose);
+            }
+            if (sched.with_meal) parts.push(formatWithMeal(sched.with_meal));
+            if (sched.active === false) parts.push('Inactive');
+            const subtitle = parts.join(' · ');
+            return (
+              <View key={sched.id}>
+                {index > 0 && <View className="h-px bg-chrome-border my-2" />}
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate('MedicationScheduleForm', { medicationId, scheduleId: sched.id })
+                  }
+                  activeOpacity={0.6}
+                  accessibilityRole="button"
+                  className="flex-row items-center"
+                >
+                  <View className="flex-1">
+                    <Text className="text-base text-text-primary">{describeSchedule(sched)}</Text>
+                    {subtitle !== '' && (
+                      <Text className="text-xs text-text-muted mt-0.5">{subtitle}</Text>
+                    )}
+                  </View>
+                  <Icon name="chevron-forward" size={16} color={textSecondary} />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+          {(!med.schedules || med.schedules.length === 0) && (
+            <Text className="text-sm self-center text-text-muted">No schedules. Take as needed.</Text>
+          )}
+        </View>
 
         {(med.prescriber || med.pharmacy || med.rx_number || med.notes) && (
           <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">

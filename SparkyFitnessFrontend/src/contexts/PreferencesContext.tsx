@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
 import { format, parseISO, startOfDay } from 'date-fns';
+import { normalizeTimeFormat } from '@/utils/timeFormatters';
 import {
   FatBreakdownAlgorithm,
   MineralCalculationAlgorithm,
@@ -79,6 +80,7 @@ interface PreferencesContextType {
   measurementUnit: MeasurementUnit;
   distanceUnit: DistanceUnit;
   dateFormat: string;
+  timeFormat: string;
   autoClearHistory: string;
   loggingLevel: LoggingLevel;
   defaultFoodDataProviderId: string | null;
@@ -122,6 +124,7 @@ interface PreferencesContextType {
   setMeasurementUnit: (unit: MeasurementUnit) => void;
   setDistanceUnit: (unit: DistanceUnit) => void;
   setDateFormat: (format: string) => void;
+  setTimeFormat: (format: string) => void;
   setAutoClearHistory: (value: string) => void;
   setLoggingLevel: (level: LoggingLevel) => void;
   setDefaultFoodDataProviderId: (id: string | null) => void;
@@ -175,6 +178,7 @@ interface PreferencesContextType {
   getEnergyUnitString: (unit: EnergyUnit) => string;
   formatDate: (date: string | Date) => string;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
+  formatTime: (date: string | Date) => string;
   getDateRelationToToday: (date: string | Date) => string;
   parseDateInUserTimezone: (dateString: string) => Date;
   loadPreferences: () => Promise<void>;
@@ -186,6 +190,7 @@ interface PreferencesContextType {
 export interface DefaultPreferences {
   user_id: string;
   date_format: string;
+  time_format: string;
   default_weight_unit: WeightUnit;
   default_measurement_unit: MeasurementUnit;
   default_distance_unit: DistanceUnit;
@@ -254,6 +259,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<MeasurementUnit>('cm');
   const [distanceUnit, setDistanceUnitState] = useState<'km' | 'miles'>('km');
   const [dateFormat, setDateFormatState] = useState<string>('MM/dd/yyyy');
+  const [timeFormat, setTimeFormatState] = useState<string>('h:mm A');
   const [autoClearHistory, setAutoClearHistoryState] =
     useState<string>('never');
   const [loggingLevel, setLoggingLevelState] = useState<
@@ -527,6 +533,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [formatDateInUserTimezone, dateFormat]
   );
 
+  const formatTime = useCallback(
+    (date: string | Date) => {
+      return formatDateInUserTimezone(date, normalizeTimeFormat(timeFormat));
+    },
+    [formatDateInUserTimezone, timeFormat]
+  );
+
   /**
    * Returns whether the given date is in the past, today, or in the future.
    *
@@ -575,6 +588,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       const defaultPrefs: Partial<DefaultPreferences> = {
         user_id: user.id,
         date_format: 'MM/dd/yyyy',
+        time_format: 'h:mm A',
         default_weight_unit: 'kg',
         default_measurement_unit: 'cm',
         default_distance_unit: 'km',
@@ -638,6 +652,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setDateFormatState(
           data.date_format.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy')
         );
+        setTimeFormatState(data.time_format || 'h:mm A');
         setAutoClearHistoryState(data.auto_clear_history || 'never');
         setLoggingLevelState(data.logging_level || 'INFO');
         setDefaultFoodDataProviderIdState(
@@ -763,6 +778,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           localStorage.setItem('distanceUnit', updates.default_distance_unit);
         if (updates.date_format)
           localStorage.setItem('dateFormat', updates.date_format);
+        if (updates.time_format)
+          localStorage.setItem('timeFormat', updates.time_format);
         if (updates.language)
           localStorage.setItem('language', updates.language);
         if (updates.calorie_goal_adjustment_mode)
@@ -822,6 +839,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         default_measurement_unit: newPrefs?.measurementUnit ?? measurementUnit,
         default_distance_unit: newPrefs?.distanceUnit ?? distanceUnit,
         date_format: newPrefs?.dateFormat ?? dateFormat,
+        time_format: newPrefs?.timeFormat ?? timeFormat,
         auto_clear_history: newPrefs?.autoClearHistory ?? autoClearHistory,
         logging_level: newPrefs?.loggingLevel ?? loggingLevel,
         default_food_data_provider_id:
@@ -905,6 +923,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       measurementUnit,
       distanceUnit,
       dateFormat,
+      timeFormat,
       autoClearHistory,
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
@@ -959,6 +978,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const setDateFormat = useCallback((formatStr: string) => {
     setDateFormatState(formatStr.replace(/DD/g, 'dd').replace(/YYYY/g, 'yyyy'));
+  }, []);
+
+  const setTimeFormat = useCallback((formatStr: string) => {
+    setTimeFormatState(formatStr);
   }, []);
 
   const setAutoClearHistory = useCallback((value: string) => {
@@ -1097,6 +1120,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           | 'km'
           | 'miles';
         const savedDateFormat = localStorage.getItem('dateFormat');
+        const savedTimeFormat = localStorage.getItem('timeFormat');
         const savedLanguage = localStorage.getItem('language');
         const savedCalorieGoalAdjustmentMode = localStorage.getItem(
           'calorieGoalAdjustmentMode'
@@ -1111,6 +1135,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         if (savedWeightUnit) setWeightUnitState(savedWeightUnit);
         if (savedMeasurementUnit) setMeasurementUnitState(savedMeasurementUnit);
         if (savedDateFormat) setDateFormatState(savedDateFormat);
+        if (savedTimeFormat) setTimeFormatState(savedTimeFormat);
         if (savedDistanceUnit) setDistanceUnitState(savedDistanceUnit);
         if (savedLanguage) setLanguageState(savedLanguage);
         if (savedCalorieGoalAdjustmentMode)
@@ -1139,6 +1164,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       measurementUnit,
       distanceUnit,
       dateFormat,
+      timeFormat,
       autoClearHistory,
       loggingLevel,
       defaultFoodDataProviderId,
@@ -1182,6 +1208,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setMeasurementUnit,
       setDistanceUnit,
       setDateFormat,
+      setTimeFormat,
       setAutoClearHistory,
       setLoggingLevel,
       setDefaultFoodDataProviderId,
@@ -1218,6 +1245,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       convertEnergy,
       getEnergyUnitString,
       formatDate,
+      formatTime,
       formatDateInUserTimezone,
       getDateRelationToToday,
       parseDateInUserTimezone,
@@ -1229,6 +1257,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       measurementUnit,
       distanceUnit,
       dateFormat,
+      timeFormat,
       autoClearHistory,
       loggingLevel,
       defaultFoodDataProviderId,
@@ -1271,6 +1300,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setMeasurementUnit,
       setDistanceUnit,
       setDateFormat,
+      setTimeFormat,
       setAutoClearHistory,
       setLoggingLevel,
       setDefaultFoodDataProviderId,
@@ -1292,6 +1322,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       convertEnergy,
       getEnergyUnitString,
       formatDate,
+      formatTime,
       formatDateInUserTimezone,
       getDateRelationToToday,
       parseDateInUserTimezone,

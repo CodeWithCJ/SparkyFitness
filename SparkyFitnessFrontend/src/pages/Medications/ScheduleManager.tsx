@@ -35,6 +35,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
   const timezone =
     preferencesContext?.timezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timeFormat = preferencesContext?.timeFormat ?? 'h:mm A';
 
   const [open, setOpen] = useState(false);
   const [scheduleTypeId, setScheduleTypeId] = useState('daily');
@@ -421,7 +422,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <span className="font-medium text-foreground">
-                      {formatScheduleDescription(sched)}
+                      {formatScheduleDescription(sched, timeFormat)}
                     </span>
                     {sched.dose_amount != null && (
                       <span className="text-xs text-muted-foreground ml-2">
