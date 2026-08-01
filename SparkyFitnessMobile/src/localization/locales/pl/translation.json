@@ -126,6 +126,7 @@
     "saved": "Zapisano",
     "measurement_one": "pomiar",
     "measurement_few": "pomiary",
+    "measurement_many": "pomiarów",
     "measurement_other": "pomiarów",
     "clearCount": "Wyczyścić {{count}} {{noun}}?",
     "willBeClearedList": "{{labels}} zostanie wyczyszczone.",
