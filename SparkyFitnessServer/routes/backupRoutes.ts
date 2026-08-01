@@ -439,7 +439,8 @@ router.get('/download', authenticate, isAdmin, async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({
         message: 'Internal server error during backup download.',
-        error: error.message,
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error: error?.message,
       });
     }
   }
