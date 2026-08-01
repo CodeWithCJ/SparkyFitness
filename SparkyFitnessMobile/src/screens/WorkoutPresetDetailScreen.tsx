@@ -302,7 +302,6 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
                   weightUnit={weightUnit}
                   distanceUnit={distanceUnit}
                   getImageSource={getImageSource}
-                  showRestChip={cardExercise.sets.length > 0}
                   onPressThumb={handleViewExercise}
                   onToggleExpanded={toggleExpanded}
                   onPressMetricHeader={handlePressMetricHeader}

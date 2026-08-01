@@ -1,22 +1,29 @@
 import { View } from 'react-native';
 import WorkoutNotesField from './WorkoutNotesField';
+import RestPeriodChip from './RestPeriodChip';
 import type { WorkoutCardSet } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 
 interface ActiveWorkoutSetDetailProps {
   set: WorkoutCardSet;
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
+  onPressRest?: (setId: string, currentSec: number | null) => void;
 }
 
 /**
  * Inline panel rendered under a set row when its detail expand is open (toggled
- * by long-pressing the set row). Holds a per-set note. Kept as its own
- * component so the per-set advanced area has a home to grow into.
+ * by long-pressing the set row). Holds a per-set rest duration and note. Kept as
+ * its own component so the per-set advanced area has a home to grow into.
  */
-function ActiveWorkoutSetDetail({ set, onCommitField }: ActiveWorkoutSetDetailProps) {
+function ActiveWorkoutSetDetail({ set, onCommitField, onPressRest }: ActiveWorkoutSetDetailProps) {
   const setId = String(set.id);
   return (
-    <View className="px-3 pb-3 pt-1">
+    <View className="px-3 pb-3 pt-1 gap-3">
+      <RestPeriodChip
+        value={set.rest_time}
+        readOnly={onPressRest == null}
+        onPress={onPressRest ? () => onPressRest(setId, set.rest_time ?? null) : undefined}
+      />
       <WorkoutNotesField
         value={set.notes}
         onCommit={(text) => {

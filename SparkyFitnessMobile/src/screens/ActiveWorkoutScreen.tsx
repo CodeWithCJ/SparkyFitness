@@ -478,17 +478,19 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     [navigation, runNavigationAction],
   );
 
-  // Rest sheet (per-exercise rest duration).
+  // Rest sheet (per-set rest duration — opened from the set's long-press detail panel).
   const restSheetRef = useRef<RestPeriodSheetRef>(null);
-  const restSheetEntryIdRef = useRef<string | null>(null);
-  const handlePressRestChip = useCallback((entryId: string, currentSec: number | null) => {
-    restSheetEntryIdRef.current = entryId;
+  const restSheetSetIdRef = useRef<string | null>(null);
+  const handlePressSetRest = useCallback((setId: string, currentSec: number | null) => {
+    restSheetSetIdRef.current = setId;
     restSheetRef.current?.present(currentSec);
   }, []);
   const handleRestChanged = useCallback((seconds: number) => {
-    const entryId = restSheetEntryIdRef.current;
-    if (entryId != null) {
-      useActiveWorkoutStore.getState().setExerciseRest(entryId, seconds);
+    const setId = restSheetSetIdRef.current;
+    if (setId != null) {
+      useActiveWorkoutStore
+        .getState()
+        .updateSetField(setId, { rest_time: seconds } as ActiveSetPatch);
     }
   }, []);
 
@@ -1145,6 +1147,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           const card = (
             <ActiveWorkoutExerciseCard
               exercise={exercise}
+              mode="live"
               expanded={isExpanded}
               completedSetIds={completedSetIds}
               prSetIds={prSetIds}
@@ -1159,7 +1162,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               getImageSource={getImageSource}
               onPressThumb={handlePressThumb}
               onToggleExpanded={handleToggleExpanded}
-              onPressRestChip={handlePressRestChip}
               onPressMetricHeader={handlePressMetricHeader}
               onPressOverflow={handlePressOverflow}
               onComplete={handleCompleteSet}
@@ -1168,6 +1170,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               onDeleteSet={handleDeleteSet}
               onPressSetType={handlePressSetType}
               onLongPressSet={handleToggleSetDetail}
+              onPressSetRest={handlePressSetRest}
               onAddSet={handleAddSet}
               expandedSetKey={expandedSetKey}
               noteEditorOpen={noteEditorEntryId === exercise.id}
