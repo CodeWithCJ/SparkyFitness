@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import type { ParamListBase } from '@react-navigation/native';
 import type {
   NativeStackHeaderItem,
@@ -134,26 +135,36 @@ function itemIsDisabled(item: HeaderItem): boolean {
   return ('disabled' in item && !!item.disabled) || itemIsBusy(item);
 }
 
-function resolveItemLabel(item: HeaderItem, t: ReturnType<typeof useTranslation>['t']): string | undefined {
-  if ('label' in item) {
-    return item.label;
+function resolveItemLabel(item: HeaderItem, t: TFunction): string | undefined {
+  switch (item.kind) {
+    case 'primary':
+      return item.label ?? t('common.save');
+
+    case 'text':
+      return item.label;
+
+    case 'back':
+    case 'dismiss':
+    case 'icon':
+      return undefined;
   }
-  if (item.kind === 'back') return undefined;
-  if (item.kind === 'dismiss') return undefined;
-  return t('common.save');
 }
 
-function resolveItemBusyLabel(item: HeaderItem, t: ReturnType<typeof useTranslation>['t']): string | undefined {
-  if ('busyLabel' in item) {
-    return item.busyLabel;
+function resolveItemBusyLabel(item: HeaderItem, t: TFunction): string | undefined {
+  if (item.kind === 'primary') {
+    return item.busyLabel ?? t('common.saving');
   }
-  if (isPrimaryItem(item)) {
-    return t('common.saving');
+
+  if (item.kind === 'text') {
+    return isPrimaryItem(item)
+      ? item.busyLabel ?? t('common.saving')
+      : item.busyLabel;
   }
+
   return undefined;
 }
 
-function resolveItemAccessibilityLabel(item: HeaderItem, t: ReturnType<typeof useTranslation>['t']): string {
+function resolveItemAccessibilityLabel(item: HeaderItem, t: TFunction): string {
   switch (item.kind) {
     case 'back':
       return t('common.back');
@@ -253,7 +264,7 @@ function buildNativeItem(
   identifier: string,
   colors: HeaderColors,
   press: () => void,
-  t: ReturnType<typeof useTranslation>['t'],
+   t: TFunction,
 ): NativeStackHeaderItem | null {
   const color = itemColor(item, colors);
   const accessibilityLabel = resolveItemAccessibilityLabel(item, t);

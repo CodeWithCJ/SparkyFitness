@@ -29,14 +29,19 @@ jest.mock('react-i18next', () => {
   };
 });
 
+const mockSetOptions = jest.fn((opts) => { globalThis.__TEST_SET_OPTIONS = opts; });
+const mockGoBack = jest.fn();
+
+const mockNavigation = {
+  setOptions: mockSetOptions,
+  goBack: mockGoBack,
+};
+
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
     ...actual,
-    useNavigation: () => ({
-      setOptions: jest.fn((opts) => { globalThis.__TEST_SET_OPTIONS = opts; }),
-      goBack: jest.fn(),
-    }),
+    useNavigation: () => mockNavigation,
   };
 });
 
@@ -50,10 +55,11 @@ jest.mock('../../src/services/nativeTabBarPreference', () => ({
 
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../../src/services/nativeTabBarPreference';
+import { useTranslation } from 'react-i18next';
 
 const mockUseNativeIOSHeadersActive = useNativeIOSHeadersActive as jest.MockedFunction<typeof useNativeIOSHeadersActive>;
 
-function HeaderRenderer({ config }) {
+function HeaderRenderer({ config }: { config: Parameters<typeof useScreenHeader>[0] }) {
   const header = useScreenHeader(config);
   return <>{header ?? <View testID="null-header" />}</>;
 }
@@ -221,8 +227,8 @@ describe('useScreenHeader', () => {
       );
 
       const opts = globalThis.__TEST_SET_OPTIONS;
-      expect(opts.unstable_headerRightItems).toEqual(expect.any(Function));
-      const nativeItems = opts.unstable_headerRightItems();
+      expect(opts!.unstable_headerRightItems).toEqual(expect.any(Function));
+      const nativeItems = opts!.unstable_headerRightItems();
       expect(nativeItems[0].label).toBe('Save');
     });
 
@@ -238,132 +244,238 @@ describe('useScreenHeader', () => {
 
       mockUseNativeIOSHeadersActive.mockReturnValue(true);
       globalThis.__TEST_SET_OPTIONS = null;
+      jest.clearAllMocks();
       renderHook(() =>
         useScreenHeader({
           right: { kind: 'primary', onPress: jest.fn() },
         }),
       );
 
-      const opts = globalThis.__TEST_SET_OPTIONS;
-      const nativeItems = opts.unstable_headerRightItems();
+      expect(mockSetOptions).toHaveBeenCalledTimes(1);
+      const opts = mockSetOptions.mock.calls[0][0];
+      const nativeItems = opts!.unstable_headerRightItems();
       expect(nativeItems[0].label).toBe(customLabel);
     });
   });
 
-  describe('native language refresh', () => {
+  describe('native language refresh on same instance', () => {
     it('native dismiss refreshes on language change EN → PL', () => {
       const onPress = jest.fn();
       globalThis.__TEST_LANG = 'en';
       mockUseNativeIOSHeadersActive.mockReturnValue(true);
 
-      renderHook(() =>
+      const { rerender } = renderHook(() =>
         useScreenHeader({
           left: { kind: 'dismiss', onPress },
           right: null,
         }),
       );
 
-      const firstOpts = globalThis.__TEST_SET_OPTIONS;
-      expect(firstOpts).not.toBeNull();
+      expect(mockSetOptions).toHaveBeenCalledTimes(1);
+      const firstOpts = mockSetOptions.mock.calls[0][0];
       const firstLeftItems = firstOpts!.unstable_headerLeftItems();
       expect(firstLeftItems[0].accessibilityLabel).toBe('Close');
 
       globalThis.__TEST_LANG = 'pl';
+      rerender();
 
-      renderHook(() =>
-        useScreenHeader({
-          left: { kind: 'dismiss', onPress },
-          right: null,
-        }),
-      );
-
-      const secondOpts = globalThis.__TEST_SET_OPTIONS;
-      expect(secondOpts).not.toBeNull();
-      expect(secondOpts).not.toBe(firstOpts);
+      expect(mockSetOptions).toHaveBeenCalledTimes(2);
+      const secondOpts = mockSetOptions.mock.calls[1][0];
       const secondLeftItems = secondOpts!.unstable_headerLeftItems();
       expect(secondLeftItems[0].accessibilityLabel).toBe('Zamknij');
     });
 
-    it('updates explicit translated accessibility label EN → PL without remount', async () => {
+    it('native primary label switches Save → Zapisz on language change (same instance)', () => {
       globalThis.__TEST_LANG = 'en';
       mockUseNativeIOSHeadersActive.mockReturnValue(true);
 
       const { rerender } = renderHook(() =>
+        useScreenHeader({
+          right: { kind: 'primary', onPress: jest.fn() },
+        }),
+      );
+
+      expect(mockSetOptions).toHaveBeenCalledTimes(1);
+      const firstOpts = mockSetOptions.mock.calls[0][0];
+      const firstItems = firstOpts!.unstable_headerRightItems();
+      expect(firstItems[0].label).toBe('Save');
+
+      globalThis.__TEST_LANG = 'pl';
+      rerender();
+
+      expect(mockSetOptions).toHaveBeenCalledTimes(2);
+      const secondOpts = mockSetOptions.mock.calls[1][0];
+      const secondItems = secondOpts!.unstable_headerRightItems();
+      expect(secondItems[0].label).toBe('Zapisz');
+    });
+
+    it('native busy label shows Saving… → Zapisywanie… (same instance)', () => {
+      globalThis.__TEST_LANG = 'en';
+      mockUseNativeIOSHeadersActive.mockReturnValue(true);
+
+      const { rerender } = renderHook(() =>
+        useScreenHeader({
+          right: { kind: 'primary', label: 'Save', busy: true, onPress: jest.fn() },
+        }),
+      );
+
+      expect(mockSetOptions).toHaveBeenCalledTimes(1);
+      const firstOpts = mockSetOptions.mock.calls[0][0];
+      const firstItems = firstOpts!.unstable_headerRightItems();
+      expect(firstItems[0].label).toBe('Saving…');
+
+      globalThis.__TEST_LANG = 'pl';
+      rerender();
+
+      expect(mockSetOptions).toHaveBeenCalledTimes(2);
+      const secondOpts = mockSetOptions.mock.calls[1][0];
+      const secondItems = secondOpts!.unstable_headerRightItems();
+      expect(secondItems[0].label).toBe('Zapisywanie…');
+    });
+
+    it('updates explicitly translated accessibility label EN → PL (same instance)', () => {
+      globalThis.__TEST_LANG = 'en';
+      mockUseNativeIOSHeadersActive.mockReturnValue(true);
+
+      function IconWithDynamicLabel() {
+        const { t } = useTranslation();
         useScreenHeader({
           right: {
             kind: 'icon',
             sfSymbol: 'star',
             ionicon: 'star',
             onPress: jest.fn(),
-            accessibilityLabel: 'Favorite',
+            accessibilityLabel: t('common.edit'),
           },
-        }),
-      );
+        });
+        return <View />;
+      }
 
-      const firstOpts = globalThis.__TEST_SET_OPTIONS;
-      const firstItems = firstOpts.unstable_headerRightItems();
-      expect(firstItems[0].accessibilityLabel).toBe('Favorite');
+      const { rerender } = renderHook(() => IconWithDynamicLabel());
+
+      expect(mockSetOptions).toHaveBeenCalledTimes(1);
+      const firstOpts = mockSetOptions.mock.calls[0][0];
+      const firstItems = firstOpts!.unstable_headerRightItems();
+      expect(firstItems[0].accessibilityLabel).toBe('Edit');
 
       globalThis.__TEST_LANG = 'pl';
       rerender();
 
-      const secondOpts = globalThis.__TEST_SET_OPTIONS;
-      const secondItems = secondOpts.unstable_headerRightItems();
-      expect(secondItems[0].accessibilityLabel).toBe('Favorite');
+      expect(mockSetOptions).toHaveBeenCalledTimes(2);
+      const secondOpts = mockSetOptions.mock.calls[1][0];
+      const secondItems = secondOpts!.unstable_headerRightItems();
+      expect(secondItems[0].accessibilityLabel).toBe('Edytuj');
     });
 
-    it('native primary label switches Save → Zapisz on language change', () => {
+    it('icon with translated accessibility label EN → PL (same instance)', () => {
       globalThis.__TEST_LANG = 'en';
       mockUseNativeIOSHeadersActive.mockReturnValue(true);
 
-      renderHook(() =>
+      function DualItemScreen() {
+        const { t } = useTranslation();
         useScreenHeader({
-          right: { kind: 'primary', onPress: jest.fn() },
-        }),
-      );
+          left: { kind: 'dismiss', onPress: jest.fn() },
+          right: {
+            kind: 'icon',
+            sfSymbol: 'star',
+            ionicon: 'star',
+            onPress: jest.fn(),
+            accessibilityLabel: t('common.edit'),
+          },
+        });
+        return <View />;
+      }
 
-      const firstOpts = globalThis.__TEST_SET_OPTIONS;
-      const firstItems = firstOpts!.unstable_headerRightItems();
-      expect(firstItems[0].label).toBe('Save');
+      const { rerender } = renderHook(() => DualItemScreen());
+
+      expect(mockSetOptions).toHaveBeenCalledTimes(1);
+      const firstOpts = mockSetOptions.mock.calls[0][0];
+      const firstLeftItems = firstOpts!.unstable_headerLeftItems();
+      expect(firstLeftItems![0].accessibilityLabel).toBe('Close');
+      const firstRightItems = firstOpts!.unstable_headerRightItems();
+      expect(firstRightItems[0].accessibilityLabel).toBe('Edit');
 
       globalThis.__TEST_LANG = 'pl';
+      rerender();
 
-      renderHook(() =>
-        useScreenHeader({
-          right: { kind: 'primary', onPress: jest.fn() },
-        }),
-      );
-
-      const secondOpts = globalThis.__TEST_SET_OPTIONS;
-      const secondItems = secondOpts!.unstable_headerRightItems();
-      expect(secondItems[0].label).toBe('Zapisz');
+      expect(mockSetOptions).toHaveBeenCalledTimes(2);
+      const secondOpts = mockSetOptions.mock.calls[1][0];
+      const secondLeftItems = secondOpts!.unstable_headerLeftItems();
+      expect(secondLeftItems![0].accessibilityLabel).toBe('Zamknij');
+      const secondRightItems = secondOpts!.unstable_headerRightItems();
+      expect(secondRightItems![0].accessibilityLabel).toBe('Edytuj');
     });
+  });
 
-    it('native busy label shows Saving… → Zapisywanie…', () => {
+  describe('signature stability', () => {
+    it('does not re-run setOptions on a rerender with unchanged inputs', () => {
       globalThis.__TEST_LANG = 'en';
       mockUseNativeIOSHeadersActive.mockReturnValue(true);
 
-      renderHook(() =>
+      const { rerender } = renderHook(() =>
         useScreenHeader({
-          right: { kind: 'primary', label: 'Save', busy: true, onPress: jest.fn() },
+          right: { kind: 'primary', label: 'Save', onPress: jest.fn() },
         }),
       );
 
-      const firstOpts = globalThis.__TEST_SET_OPTIONS;
-      const firstItems = firstOpts!.unstable_headerRightItems();
-      expect(firstItems[0].label).toBe('Saving…');
+      expect(mockSetOptions).toHaveBeenCalledTimes(1);
 
-      globalThis.__TEST_LANG = 'pl';
+      rerender();
 
-      renderHook(() =>
-        useScreenHeader({
-          right: { kind: 'primary', label: 'Save', busy: true, onPress: jest.fn() },
-        }),
-      );
-
-      const secondOpts = globalThis.__TEST_SET_OPTIONS;
-      const secondItems = secondOpts!.unstable_headerRightItems();
-      expect(secondItems[0].label).toBe('Zapisywanie…');
+      expect(mockSetOptions).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe('useScreenHeader - label: undefined fallback', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    globalThis.__TEST_LANG = 'en';
+    globalThis.__TEST_SET_OPTIONS = null;
+    mockUseNativeIOSHeadersActive.mockReturnValue(false);
+  });
+
+  it('custom path shows Save for primary with label: undefined and busyLabel: undefined', () => {
+    const { getByText } = render(
+      <HeaderRenderer config={{ right: { kind: 'primary', label: undefined, busyLabel: undefined, onPress: jest.fn() } }} />,
+    );
+    expect(getByText('Save')).toBeTruthy();
+    expect(() => getByText('undefined')).toThrow();
+  });
+
+  it('native path shows Saving… for primary with label: undefined, busyLabel: undefined, busy: true', () => {
+    globalThis.__TEST_LANG = 'en';
+    mockUseNativeIOSHeadersActive.mockReturnValue(true);
+
+    renderHook(() =>
+      useScreenHeader({
+        right: { kind: 'primary', label: undefined, busyLabel: undefined, busy: true, onPress: jest.fn() },
+      }),
+    );
+
+    const opts = mockSetOptions.mock.calls[0][0];
+    const nativeItems = opts!.unstable_headerRightItems();
+    expect(nativeItems[0].label).toBe('Saving…');
+  });
+
+  it('icon does not get a text Save label', () => {
+    globalThis.__TEST_LANG = 'en';
+    mockUseNativeIOSHeadersActive.mockReturnValue(true);
+
+    renderHook(() =>
+      useScreenHeader({
+        right: {
+          kind: 'icon',
+          sfSymbol: 'star',
+          ionicon: 'star',
+          onPress: jest.fn(),
+          accessibilityLabel: 'Favorite',
+        },
+      }),
+    );
+
+    const opts = mockSetOptions.mock.calls[0][0];
+    const nativeItems = opts!.unstable_headerRightItems();
+    expect(nativeItems[0].label).toBe('');
   });
 });
