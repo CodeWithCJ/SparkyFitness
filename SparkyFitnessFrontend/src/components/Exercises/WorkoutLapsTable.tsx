@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ExerciseEntryLaps } from '@workspace/shared';
 import { Timer, Heart, Wind, Zap, Gauge } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -47,6 +48,7 @@ export const WorkoutLapsTable: React.FC<WorkoutLapsTableProps> = ({
   laps,
   isLoading,
 }) => {
+  const { t } = useTranslation();
   const { distanceUnit } = usePreferences();
   if (isLoading) {
     return (
@@ -66,10 +68,10 @@ export const WorkoutLapsTable: React.FC<WorkoutLapsTableProps> = ({
       <div className="flex items-center gap-2 mb-3">
         <Timer className="h-5 w-5 text-indigo-400" />
         <h3 className="text-base font-bold text-slate-100">
-          Workout Split Intervals & Laps
+          {t('workoutLaps.title', 'Workout Split Intervals & Laps')}
         </h3>
         <span className="ml-auto text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 font-semibold">
-          {laps.length} Laps
+          {t('workoutLaps.lapsCount', '{{count}} Laps', { count: laps.length })}
         </span>
       </div>
 
@@ -77,27 +79,31 @@ export const WorkoutLapsTable: React.FC<WorkoutLapsTableProps> = ({
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="border-b border-slate-800 text-slate-400 font-medium">
-              <th className="py-2.5 px-3">Lap</th>
-              <th className="py-2.5 px-3">Distance</th>
-              <th className="py-2.5 px-3">Time</th>
+              <th className="py-2.5 px-3">{t('workoutLaps.lap', 'Lap')}</th>
               <th className="py-2.5 px-3">
-                Pace (/{distanceUnit === 'miles' ? 'mi' : 'km'})
+                {t('workoutLaps.distance', 'Distance')}
+              </th>
+              <th className="py-2.5 px-3">{t('workoutLaps.time', 'Time')}</th>
+              <th className="py-2.5 px-3">
+                {t('workoutLaps.pace', 'Pace (/{{unit}})', {
+                  unit: distanceUnit === 'miles' ? 'mi' : 'km',
+                })}
               </th>
               <th className="py-2.5 px-3 text-rose-400 font-semibold">
                 <Heart className="inline h-3.5 w-3.5 mr-1" />
-                Avg / Max HR
+                {t('workoutLaps.avgMaxHr', 'Avg / Max HR')}
               </th>
               <th className="py-2.5 px-3 text-teal-400 font-semibold">
                 <Wind className="inline h-3.5 w-3.5 mr-1" />
-                Resp (brpm)
+                {t('workoutLaps.resp', 'Resp (brpm)')}
               </th>
               <th className="py-2.5 px-3 text-cyan-400 font-semibold">
                 <Gauge className="inline h-3.5 w-3.5 mr-1" />
-                Cadence
+                {t('workoutLaps.cadence', 'Cadence')}
               </th>
               <th className="py-2.5 px-3 text-amber-400 font-semibold">
                 <Zap className="inline h-3.5 w-3.5 mr-1" />
-                Power
+                {t('workoutLaps.power', 'Power')}
               </th>
             </tr>
           </thead>

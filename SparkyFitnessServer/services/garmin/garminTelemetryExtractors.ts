@@ -8,12 +8,57 @@
 // logic only exists once — the "rule of two" in AGENTS.md applies here since this is
 // already the third caller if you count both processor paths as one.
 
-// Provider payloads are untyped JSON off the wire. Tightening this to
-// Record<string, unknown> is the right end state but needs explicit narrowing
-// at ~98 read sites across this file and stravaTelemetryExtractors.ts; left as
-// a focused follow-up rather than a rushed sweep.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRecord = Record<string, any>;
+export type UnknownRecord = Record<string, unknown>;
+
+export function asRecord(val: unknown): UnknownRecord | null {
+  if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+    return val as UnknownRecord;
+  }
+  return null;
+}
+
+export function asArray<T = unknown>(val: unknown): T[] {
+  return Array.isArray(val) ? (val as T[]) : [];
+}
+
+export function num(val: unknown): number | null {
+  if (val === undefined || val === null || val === '') return null;
+  const n = Number(val);
+  return Number.isNaN(n) ? null : n;
+}
+
+export function int(val: unknown): number | null {
+  const n = num(val);
+  return n === null ? null : Math.round(n);
+}
+
+export function str(val: unknown): string | null {
+  if (val === undefined || val === null) return null;
+  const s = String(val).trim();
+  return s.length > 0 ? s : null;
+}
+
+export function firstNum(record: UnknownRecord, keys: string[]): number | null {
+  for (const k of keys) {
+    const v = record[k];
+    const n = num(v);
+    if (n !== null) return n;
+  }
+  return null;
+}
+
+export function firstInt(record: UnknownRecord, keys: string[]): number | null {
+  const n = firstNum(record, keys);
+  return n === null ? null : Math.round(n);
+}
+
+export function firstValue(record: UnknownRecord, keys: string[]): unknown {
+  for (const k of keys) {
+    const v = record[k];
+    if (v !== undefined && v !== null) return v;
+  }
+  return undefined;
+}
 
 export interface ExtractedLap {
   lap_index: number;
@@ -61,108 +106,68 @@ export interface ExtractedHrZone {
  * Extracts lap/split data from a Garmin activity or workout-session payload.
  * Accepts `payload.laps` (already-normalized) or `payload.splits.lapDTOs` (raw Garmin Connect shape).
  */
-export function extractGarminLaps(payload: AnyRecord): ExtractedLap[] {
-  const rawLaps: AnyRecord[] = payload?.laps || payload?.splits?.lapDTOs || [];
-  if (!Array.isArray(rawLaps) || rawLaps.length === 0) return [];
+export function extractGarminLaps(payload: UnknownRecord): ExtractedLap[] {
+  const splits = asRecord(payload.splits);
+  const rawLaps = asArray<UnknownRecord>(payload.laps ?? splits?.lapDTOs);
+  if (rawLaps.length === 0) return [];
 
-  return rawLaps.flatMap((lap: AnyRecord, index: number) => {
+  return rawLaps.flatMap((lap: UnknownRecord, index: number) => {
     // A lap with no usable start time is skipped rather than stamped with the
     // import time: exercise_entry_laps.start_time is NOT NULL, and a fabricated
     // "now" is indistinguishable from a real reading once stored.
-    const rawStart = lap.startTimeLocal ?? lap.startTimeGMT;
+    const rawStart = firstValue(lap, ['startTimeLocal', 'startTimeGMT']);
     if (rawStart === undefined || rawStart === null) return [];
-    const startTime = new Date(rawStart);
+    const startTime = new Date(rawStart as string | number | Date);
     if (Number.isNaN(startTime.getTime())) return [];
 
     const durationSeconds = Math.round(
-      Number(lap.duration_seconds ?? lap.duration ?? lap.elapsedDuration ?? 0)
+      firstNum(lap, ['duration_seconds', 'duration', 'elapsedDuration']) ?? 0
     );
-    const endTime = lap.endTimeLocal
-      ? new Date(lap.endTimeLocal)
-      : lap.endTimeGMT
-        ? new Date(lap.endTimeGMT)
+    const endTimeLocal = firstValue(lap, ['endTimeLocal']);
+    const endTimeGMT = firstValue(lap, ['endTimeGMT']);
+    const endTime = endTimeLocal
+      ? new Date(endTimeLocal as string | number | Date)
+      : endTimeGMT
+        ? new Date(endTimeGMT as string | number | Date)
         : new Date(startTime.getTime() + durationSeconds * 1000);
 
     return [
       {
-        lap_index: lap.lap_index ?? lap.lapIndex ?? index + 1,
+        lap_index: firstInt(lap, ['lap_index', 'lapIndex']) ?? index + 1,
         start_time: startTime,
         end_time: endTime,
         duration_seconds: durationSeconds,
         // Garmin reports lap distance in metres on every path we ingest: the FIT
         // transform maps LapMesg.totalDistance (metres) onto `distance`, and
-        // Garmin Connect's lapDTOs are metres too. A previous magnitude heuristic
-        // multiplied anything under 100 by 1000, which turned a 50 m pool length
-        // or a short final lap into 50 km.
-        distance_meters:
-          lap.distance_meters !== undefined && lap.distance_meters !== null
-            ? Number(lap.distance_meters)
-            : lap.distance !== undefined && lap.distance !== null
-              ? Number(lap.distance)
-              : null,
-        calories:
-          lap.calories !== undefined && lap.calories !== null
-            ? Number(lap.calories)
-            : null,
-        avg_heart_rate:
-          lap.avg_heart_rate !== undefined && lap.avg_heart_rate !== null
-            ? Math.round(Number(lap.avg_heart_rate))
-            : lap.averageHR !== undefined && lap.averageHR !== null
-              ? Math.round(Number(lap.averageHR))
-              : lap.averageHeartRateInBeatsPerMinute !== undefined &&
-                  lap.averageHeartRateInBeatsPerMinute !== null
-                ? Math.round(Number(lap.averageHeartRateInBeatsPerMinute))
-                : null,
-        max_heart_rate:
-          lap.max_heart_rate !== undefined && lap.max_heart_rate !== null
-            ? Math.round(Number(lap.max_heart_rate))
-            : lap.maxHR !== undefined && lap.maxHR !== null
-              ? Math.round(Number(lap.maxHR))
-              : lap.maxHeartRateInBeatsPerMinute !== undefined &&
-                  lap.maxHeartRateInBeatsPerMinute !== null
-                ? Math.round(Number(lap.maxHeartRateInBeatsPerMinute))
-                : null,
-        avg_speed_mps:
-          lap.avg_speed_mps !== undefined && lap.avg_speed_mps !== null
-            ? Number(lap.avg_speed_mps)
-            : lap.averageSpeed !== undefined && lap.averageSpeed !== null
-              ? Number(lap.averageSpeed)
-              : null,
-        max_speed_mps:
-          lap.max_speed_mps !== undefined && lap.max_speed_mps !== null
-            ? Number(lap.max_speed_mps)
-            : lap.maxSpeed !== undefined && lap.maxSpeed !== null
-              ? Number(lap.maxSpeed)
-              : null,
-        avg_cadence:
-          lap.avg_cadence !== undefined && lap.avg_cadence !== null
-            ? Math.round(Number(lap.avg_cadence))
-            : lap.averageRunCadence !== undefined &&
-                lap.averageRunCadence !== null
-              ? Math.round(Number(lap.averageRunCadence))
-              : lap.averageCadence !== undefined && lap.averageCadence !== null
-                ? Math.round(Number(lap.averageCadence))
-                : null,
-        avg_power_watts:
-          lap.avg_power_watts !== undefined && lap.avg_power_watts !== null
-            ? Number(lap.avg_power_watts)
-            : lap.averagePower !== undefined && lap.averagePower !== null
-              ? Number(lap.averagePower)
-              : null,
-        elevation_gain_meters:
-          lap.elevation_gain_meters !== undefined &&
-          lap.elevation_gain_meters !== null
-            ? Number(lap.elevation_gain_meters)
-            : lap.elevationGain !== undefined && lap.elevationGain !== null
-              ? Number(lap.elevationGain)
-              : null,
-        elevation_loss_meters:
-          lap.elevation_loss_meters !== undefined &&
-          lap.elevation_loss_meters !== null
-            ? Number(lap.elevation_loss_meters)
-            : lap.elevationLoss !== undefined && lap.elevationLoss !== null
-              ? Number(lap.elevationLoss)
-              : null,
+        // Garmin Connect's lapDTOs are metres too.
+        distance_meters: firstNum(lap, ['distance_meters', 'distance']),
+        calories: firstNum(lap, ['calories']),
+        avg_heart_rate: firstInt(lap, [
+          'avg_heart_rate',
+          'averageHR',
+          'averageHeartRateInBeatsPerMinute',
+        ]),
+        max_heart_rate: firstInt(lap, [
+          'max_heart_rate',
+          'maxHR',
+          'maxHeartRateInBeatsPerMinute',
+        ]),
+        avg_speed_mps: firstNum(lap, ['avg_speed_mps', 'averageSpeed']),
+        max_speed_mps: firstNum(lap, ['max_speed_mps', 'maxSpeed']),
+        avg_cadence: firstInt(lap, [
+          'avg_cadence',
+          'averageRunCadence',
+          'averageCadence',
+        ]),
+        avg_power_watts: firstNum(lap, ['avg_power_watts', 'averagePower']),
+        elevation_gain_meters: firstNum(lap, [
+          'elevation_gain_meters',
+          'elevationGain',
+        ]),
+        elevation_loss_meters: firstNum(lap, [
+          'elevation_loss_meters',
+          'elevationLoss',
+        ]),
         startMs: startTime.getTime(),
         endMs: endTime.getTime(),
       },
@@ -177,34 +182,43 @@ export function extractGarminLaps(payload: AnyRecord): ExtractedLap[] {
  * then `payload.details.geoPolylineDTO.polyline` (map-only polyline, no telemetry).
  */
 export function extractGarminGpsPoints(
-  payload: AnyRecord
+  payload: UnknownRecord
 ): ExtractedGpsPoint[] {
-  if (Array.isArray(payload?.gps_points)) {
-    return payload.gps_points.map((pt: AnyRecord) => {
-      const timestamp = pt.timestamp ? new Date(pt.timestamp) : new Date();
-      return {
-        timestamp,
-        latitude: pt.latitude ?? 0,
-        longitude: pt.longitude ?? 0,
-        altitude_meters: pt.altitude_meters ?? null,
-        speed_mps: pt.speed_mps ?? null,
-        heart_rate_bpm: pt.heart_rate_bpm ?? null,
-        respiration_rate_brpm: pt.respiration_rate_brpm ?? null,
-        cadence: pt.cadence ?? null,
-        power_watts: pt.power_watts ?? null,
-        timestampMs: timestamp.getTime(),
-      };
-    });
+  if (Array.isArray(payload.gps_points)) {
+    return asArray<UnknownRecord>(payload.gps_points).map(
+      (pt: UnknownRecord) => {
+        const tsVal = pt.timestamp;
+        const timestamp = tsVal
+          ? new Date(tsVal as string | number | Date)
+          : new Date();
+        return {
+          timestamp,
+          latitude: firstNum(pt, ['latitude']) ?? 0,
+          longitude: firstNum(pt, ['longitude']) ?? 0,
+          altitude_meters: firstNum(pt, ['altitude_meters']),
+          speed_mps: firstNum(pt, ['speed_mps']),
+          heart_rate_bpm: firstInt(pt, ['heart_rate_bpm']),
+          respiration_rate_brpm: firstInt(pt, ['respiration_rate_brpm']),
+          cadence: firstInt(pt, ['cadence']),
+          power_watts: firstNum(pt, ['power_watts']),
+          timestampMs: timestamp.getTime(),
+        };
+      }
+    );
   }
 
-  const activityDetailMetrics = payload?.details?.activityDetailMetrics;
-  if (Array.isArray(activityDetailMetrics)) {
-    const descriptors: AnyRecord[] = payload?.details?.metricDescriptors || [];
+  const details = asRecord(payload.details);
+  const activityDetailMetrics = asArray<UnknownRecord>(
+    details?.activityDetailMetrics
+  );
+  if (activityDetailMetrics.length > 0) {
+    const descriptors = asArray<UnknownRecord>(details?.metricDescriptors);
     const getMetricIdx = (key: string, altKey?: string) => {
       const desc = descriptors.find(
-        (d: AnyRecord) => d.key === key || (altKey && d.key === altKey)
+        (d: UnknownRecord) => d.key === key || (altKey && d.key === altKey)
       );
-      return desc && desc.metricsIndex !== undefined ? desc.metricsIndex : -1;
+      const idx = num(desc?.metricsIndex);
+      return idx !== null ? idx : -1;
     };
 
     const latIdx = getMetricIdx('directLatitude', 'latitude');
@@ -216,41 +230,33 @@ export function extractGarminGpsPoints(
     const tsIdx = getMetricIdx('directTimestamp', 'timestamp');
 
     return activityDetailMetrics
-      .map((metricRow: AnyRecord) => {
-        const metrics = metricRow.metrics || [];
+      .map((metricRow: UnknownRecord) => {
+        const metrics = asArray<unknown>(metricRow.metrics);
         const lat =
           latIdx >= 0 &&
           metrics[latIdx] !== null &&
           metrics[latIdx] !== undefined
-            ? metrics[latIdx]
+            ? (num(metrics[latIdx]) ?? 0)
             : 0;
         const lon =
           lonIdx >= 0 &&
           metrics[lonIdx] !== null &&
           metrics[lonIdx] !== undefined
-            ? metrics[lonIdx]
+            ? (num(metrics[lonIdx]) ?? 0)
             : 0;
-        const timestamp =
-          tsIdx >= 0 && metrics[tsIdx] ? new Date(metrics[tsIdx]) : new Date();
+        const tsVal = tsIdx >= 0 ? metrics[tsIdx] : undefined;
+        const timestamp = tsVal
+          ? new Date(tsVal as string | number | Date)
+          : new Date();
         return {
           timestamp,
           latitude: lat,
           longitude: lon,
-          altitude_meters: altIdx >= 0 ? metrics[altIdx] : null,
-          speed_mps: speedIdx >= 0 ? metrics[speedIdx] : null,
-          heart_rate_bpm:
-            hrIdx >= 0 &&
-            metrics[hrIdx] !== null &&
-            metrics[hrIdx] !== undefined
-              ? Math.round(Number(metrics[hrIdx]))
-              : null,
+          altitude_meters: altIdx >= 0 ? num(metrics[altIdx]) : null,
+          speed_mps: speedIdx >= 0 ? num(metrics[speedIdx]) : null,
+          heart_rate_bpm: hrIdx >= 0 ? int(metrics[hrIdx]) : null,
           respiration_rate_brpm: null,
-          cadence:
-            cadIdx >= 0 &&
-            metrics[cadIdx] !== null &&
-            metrics[cadIdx] !== undefined
-              ? Math.round(Number(metrics[cadIdx]))
-              : null,
+          cadence: cadIdx >= 0 ? int(metrics[cadIdx]) : null,
           power_watts: null,
           timestampMs: timestamp.getTime(),
         };
@@ -258,20 +264,24 @@ export function extractGarminGpsPoints(
       .filter(Boolean);
   }
 
-  const polyline = payload?.details?.geoPolylineDTO?.polyline;
-  if (Array.isArray(polyline)) {
-    return polyline.map((pt: AnyRecord) => {
-      const timestamp = pt.time ? new Date(pt.time) : new Date();
+  const geoPolylineDTO = asRecord(details?.geoPolylineDTO);
+  const polyline = asArray<UnknownRecord>(geoPolylineDTO?.polyline);
+  if (polyline.length > 0) {
+    return polyline.map((pt: UnknownRecord) => {
+      const timeVal = firstValue(pt, ['time']);
+      const timestamp = timeVal
+        ? new Date(timeVal as string | number | Date)
+        : new Date();
       return {
         timestamp,
-        latitude: pt.lat ?? pt.latitude ?? 0,
-        longitude: pt.lon ?? pt.longitude ?? 0,
-        altitude_meters: pt.altitude ?? pt.altitude_meters ?? null,
-        speed_mps: pt.speed ?? null,
-        heart_rate_bpm: pt.heartRate ?? pt.bpm ?? null,
-        respiration_rate_brpm: pt.respiration ?? null,
-        cadence: pt.cadence ?? null,
-        power_watts: pt.power ?? null,
+        latitude: firstNum(pt, ['lat', 'latitude']) ?? 0,
+        longitude: firstNum(pt, ['lon', 'longitude']) ?? 0,
+        altitude_meters: firstNum(pt, ['altitude', 'altitude_meters']),
+        speed_mps: firstNum(pt, ['speed']),
+        heart_rate_bpm: firstInt(pt, ['heartRate', 'bpm']),
+        respiration_rate_brpm: firstInt(pt, ['respiration']),
+        cadence: firstInt(pt, ['cadence']),
+        power_watts: firstNum(pt, ['power']),
         timestampMs: timestamp.getTime(),
       };
     });
@@ -286,38 +296,36 @@ export function extractGarminGpsPoints(
  * The upper bound of each zone is inferred from the next zone's lower bound when the
  * list is sorted by zone number, since Garmin only reports the lower boundary per zone.
  */
-export function extractGarminHrZones(payload: AnyRecord): ExtractedHrZone[] {
-  const rawZones: AnyRecord[] = payload?.hr_in_timezones || [];
-  if (!Array.isArray(rawZones) || rawZones.length === 0) return [];
+export function extractGarminHrZones(
+  payload: UnknownRecord
+): ExtractedHrZone[] {
+  const rawZones = asArray<UnknownRecord>(payload.hr_in_timezones);
+  if (rawZones.length === 0) return [];
 
   const normalized = rawZones
-    .map((zone: AnyRecord) => ({
-      zone_index: Number(
-        zone.zone_index ?? zone.zoneNumber ?? zone.zone_number ?? zone.zone ?? 0
-      ),
-      zone_lower_bpm:
-        zone.zone_lower_bpm ??
-        zone.zoneLowBoundary ??
-        zone.zone_low_boundary ??
-        zone.lowerBound ??
-        null,
-      seconds_in_zone: Math.round(
-        Number(
-          zone.seconds_in_zone ?? zone.secsInZone ?? zone.secs_in_zone ?? 0
-        )
-      ),
+    .map((zone: UnknownRecord) => ({
+      zone_index:
+        firstInt(zone, ['zone_index', 'zoneNumber', 'zone_number', 'zone']) ??
+        0,
+      zone_lower_bpm: firstNum(zone, [
+        'zone_lower_bpm',
+        'zoneLowBoundary',
+        'zone_low_boundary',
+        'lowerBound',
+      ]),
+      seconds_in_zone:
+        firstInt(zone, ['seconds_in_zone', 'secsInZone', 'secs_in_zone']) ?? 0,
     }))
     .filter((zone) => zone.zone_index > 0)
     .sort((a, b) => a.zone_index - b.zone_index);
 
   return normalized.map((zone, index) => ({
     zone_index: zone.zone_index,
-    zone_lower_bpm:
-      zone.zone_lower_bpm !== null ? Number(zone.zone_lower_bpm) : null,
+    zone_lower_bpm: zone.zone_lower_bpm,
     zone_upper_bpm:
       index + 1 < normalized.length &&
       normalized[index + 1].zone_lower_bpm !== null
-        ? Number(normalized[index + 1].zone_lower_bpm) - 1
+        ? (normalized[index + 1].zone_lower_bpm as number) - 1
         : null,
     seconds_in_zone: zone.seconds_in_zone,
   }));
@@ -355,96 +363,90 @@ export interface GarminExerciseEntryTelemetry {
  * (scripts/backfillWorkoutTelemetry.script.ts) so this field mapping only exists once.
  */
 export function extractGarminTelemetryFields(
-  payload: AnyRecord
+  payload: UnknownRecord
 ): GarminExerciseEntryTelemetry {
-  const activity: AnyRecord = payload?.activity ?? {};
+  const activity = asRecord(payload.activity) ?? {};
 
-  const maxHR =
-    activity.maxHR || activity.maxHeartRateInBeatsPerMinute
-      ? Math.round(activity.maxHR || activity.maxHeartRateInBeatsPerMinute)
-      : null;
-  const avgCadence = activity.averageRunningCadenceInStepsPerMinute
-    ? Math.round(activity.averageRunningCadenceInStepsPerMinute)
-    : activity.averageCadence
-      ? Math.round(activity.averageCadence)
-      : null;
-  const maxCadence = activity.maxRunningCadenceInStepsPerMinute
-    ? Math.round(activity.maxRunningCadenceInStepsPerMinute)
-    : activity.maxCadence
-      ? Math.round(activity.maxCadence)
-      : null;
+  const maxHR = firstInt(activity, ['maxHR', 'maxHeartRateInBeatsPerMinute']);
+  const avgCadence = firstInt(activity, [
+    'averageRunningCadenceInStepsPerMinute',
+    'averageCadence',
+  ]);
+  const maxCadence = firstInt(activity, [
+    'maxRunningCadenceInStepsPerMinute',
+    'maxCadence',
+  ]);
 
-  // Garmin reports elapsed/moving duration in minutes after service.py's unit
-  // conversion (same as activity.duration); convert to seconds for our columns.
+  const movingDuration = firstNum(activity, ['movingDuration']);
   const movingTimeSeconds =
-    activity.movingDuration !== undefined && activity.movingDuration !== null
-      ? Math.round(activity.movingDuration * 60)
-      : null;
-  const elapsedTimeSeconds =
-    activity.elapsedDuration !== undefined && activity.elapsedDuration !== null
-      ? Math.round(activity.elapsedDuration * 60)
-      : null;
-  const restingCalories =
-    activity.bmrCalories !== undefined && activity.bmrCalories !== null
-      ? Math.round(activity.bmrCalories)
-      : null;
-  const activeCaloriesValue =
-    activity.active_calories !== undefined && activity.active_calories !== null
-      ? Math.round(activity.active_calories)
-      : null;
+    movingDuration !== null ? Math.round(movingDuration * 60) : null;
 
-  // Garmin's activity-weather endpoint returns Fahrenheit and mph regardless of
-  // the user's Garmin Connect unit preference (it's a separate imperial-native
-  // weather backend, unlike the main fitness metrics which are metric-native).
-  // Confirmed for temp via a real synced value (72.0 — a plausible running
-  // temperature in F, physically impossible as C). Wind speed is inferred from
-  // the same payload/backend rather than independently confirmed.
-  const weather: AnyRecord = payload?.weather ?? {};
-  const rawWeatherTemp =
-    weather?.temp ?? weather?.apparentTemp ?? weather?.currentTemp ?? null;
+  const elapsedDuration = firstNum(activity, ['elapsedDuration']);
+  const elapsedTimeSeconds =
+    elapsedDuration !== null ? Math.round(elapsedDuration * 60) : null;
+
+  const restingCalories = firstInt(activity, ['bmrCalories']);
+  const activeCaloriesValue = firstInt(activity, ['active_calories']);
+
+  const weather = asRecord(payload.weather) ?? {};
+  const rawWeatherTemp = firstNum(weather, [
+    'temp',
+    'apparentTemp',
+    'currentTemp',
+  ]);
   const weatherTempCelsius =
     rawWeatherTemp !== null ? ((rawWeatherTemp - 32) * 5) / 9 : null;
-  const rawWindSpeed = weather?.windSpeed ?? null;
+
+  const rawWindSpeed = firstNum(weather, ['windSpeed']);
   const weatherWindSpeedMps =
     rawWindSpeed !== null ? rawWindSpeed * 0.44704 : null;
-  const weatherCondition =
-    weather?.weatherTypeDTO?.desc ?? weather?.conditions ?? null;
 
-  const rawGear: AnyRecord = Array.isArray(payload?.gear)
-    ? payload.gear[0]
-    : (payload?.gear ?? {});
+  const weatherTypeDTO = asRecord(weather.weatherTypeDTO);
+  const weatherCondition = str(weatherTypeDTO?.desc) ?? str(weather.conditions);
+
+  const gearArr = asArray<UnknownRecord>(payload.gear);
+  const rawGear =
+    gearArr.length > 0 ? gearArr[0] : (asRecord(payload.gear) ?? {});
+
   const gearName =
-    rawGear?.displayName ??
-    rawGear?.customMakeModel ??
-    rawGear?.gearMakeName ??
-    null;
+    str(rawGear.displayName) ??
+    str(rawGear.customMakeModel) ??
+    str(rawGear.gearMakeName);
+
+  const gearPkVal = firstValue(rawGear, ['uuid', 'gearPk']);
   const gearExternalId =
-    rawGear?.uuid?.toString() ?? rawGear?.gearPk?.toString() ?? null;
+    gearPkVal !== undefined && gearPkVal !== null ? String(gearPkVal) : null;
 
   return {
     max_heart_rate: maxHR,
-    avg_speed_mps: activity.averageSpeed ?? null,
-    max_speed_mps: activity.maxSpeed ?? null,
+    avg_speed_mps: firstNum(activity, ['averageSpeed']),
+    max_speed_mps: firstNum(activity, ['maxSpeed']),
     avg_cadence: avgCadence,
     max_cadence: maxCadence,
-    elevation_gain_meters:
-      activity.elevationGain ?? activity.elevationCorrectedGain ?? null,
-    elevation_loss_meters:
-      activity.elevationLoss ?? activity.elevationCorrectedLoss ?? null,
-    floors_climbed: activity.floorsClimbed ?? null,
-    vo2_max_estimate: activity.vo2MaxEstimate ?? activity.vO2MaxValue ?? null,
+    elevation_gain_meters: firstNum(activity, [
+      'elevationGain',
+      'elevationCorrectedGain',
+    ]),
+    elevation_loss_meters: firstNum(activity, [
+      'elevationLoss',
+      'elevationCorrectedLoss',
+    ]),
+    floors_climbed: firstInt(activity, ['floorsClimbed']),
+    vo2_max_estimate: firstNum(activity, ['vo2MaxEstimate', 'vO2MaxValue']),
     moving_time_seconds: movingTimeSeconds,
     elapsed_time_seconds: elapsedTimeSeconds,
     resting_calories: restingCalories,
     active_calories: activeCaloriesValue,
-    avg_moving_speed_mps:
-      activity.averageMovingSpeed ?? activity.avgMovingSpeed ?? null,
-    min_elevation_meters: activity.minElevation ?? null,
-    max_elevation_meters: activity.maxElevation ?? null,
+    avg_moving_speed_mps: firstNum(activity, [
+      'averageMovingSpeed',
+      'avgMovingSpeed',
+    ]),
+    min_elevation_meters: firstNum(activity, ['minElevation']),
+    max_elevation_meters: firstNum(activity, ['maxElevation']),
     weather_temp_celsius: weatherTempCelsius,
     weather_condition: weatherCondition,
     weather_wind_speed_mps: weatherWindSpeedMps,
-    weather_humidity_percentage: weather?.relativeHumidity ?? null,
+    weather_humidity_percentage: firstNum(weather, ['relativeHumidity']),
     gear_name: gearName,
     gear_external_id: gearExternalId,
   };

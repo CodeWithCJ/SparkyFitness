@@ -19,6 +19,32 @@
       "medications": "Medications"
     }
   },
+  "workoutLaps": {
+    "title": "Workout Split Intervals & Laps",
+    "lapsCount": "{{count}} Laps",
+    "lap": "Lap",
+    "distance": "Distance",
+    "time": "Time",
+    "pace": "Pace (/{{unit}})",
+    "avgMaxHr": "Avg / Max HR",
+    "resp": "Resp (brpm)",
+    "cadence": "Cadence",
+    "power": "Power"
+  },
+  "dailyHealthMetrics": {
+    "title": "Daily Wearable Health Summary",
+    "bodyBattery": "Body Battery",
+    "peak": "peak",
+    "low": "low: {{val}}",
+    "avgStress": "Avg Stress",
+    "max": "Max: {{val}}",
+    "restingHr": "Resting HR",
+    "recovery": "Recovery: {{val}}",
+    "vo2Max": "VO2 Max",
+    "fitnessAge": "Fit Age: {{val}}",
+    "readiness": "Readiness",
+    "recHours": "Rec: {{val}}"
+  },
   "foodCsvImport": {
     "title": "Import Food Data",
     "addRow": "Add Row",
