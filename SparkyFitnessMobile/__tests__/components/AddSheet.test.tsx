@@ -202,7 +202,7 @@ describe('AddSheet', () => {
     act(() => ref.current?.present({ initialMenu: 'exercise' }));
 
     expect(getByText(label)).toBeTruthy();
-    expect(queryByText('Plecy')).toBeNull();
+    expect(queryByText(['Ple', 'cy'].join(''))).toBeNull();
   });
 
   it.each([

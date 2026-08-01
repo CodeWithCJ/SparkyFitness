@@ -83,7 +83,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
               {` / ${formatLocalizedNumber(Math.round(goal))}`}
             </Text>
           )}
-          <Text className="text-sm font-normal text-text-muted"> kcal</Text>
+          <Text className="text-sm font-normal text-text-muted"> {t('units.kcalShort')}</Text>
         </Text>
         {hasGoal && (
           <Text className="text-sm font-bold text-text-primary">
@@ -186,6 +186,26 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
     return { label: t('diarySummary.fiber'), consumed: summary.fiber.consumed, goal: summary.fiber.goal || undefined };
   };
 
+  const resolveBuiltInLabel = (name: string): string | undefined => {
+    switch (name) {
+      case 'calories': return t('nutrients.calories');
+      case 'saturated_fat': return t('nutrients.saturated_fat');
+      case 'polyunsaturated_fat': return t('nutrients.polyunsaturated_fat');
+      case 'monounsaturated_fat': return t('nutrients.monounsaturated_fat');
+      case 'trans_fat': return t('nutrients.trans_fat');
+      case 'cholesterol': return t('nutrients.cholesterol');
+      case 'sodium': return t('nutrients.sodium');
+      case 'potassium': return t('nutrients.potassium');
+      case 'sugars': return t('nutrients.sugars');
+      case 'vitamin_a': return t('nutrients.vitamin_a');
+      case 'vitamin_c': return t('nutrients.vitamin_c');
+      case 'calcium': return t('nutrients.calcium');
+      case 'iron': return t('nutrients.iron');
+      case 'glycemic_index': return t('nutrients.glycemic_index');
+      default: return undefined;
+    }
+  };
+
   return (
     <View className="mb-4">
       <TouchableOpacity
@@ -193,7 +213,9 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityState={{ expanded: diarySummaryExpanded }}
-        accessibilityHint={diarySummaryExpanded ? 'Collapse this section' : 'Expand this section'}
+         accessibilityHint={
+           diarySummaryExpanded ? t('common.collapseSection') : t('common.expandSection')
+         }
       >
         <View className="flex-row justify-between items-center mb-2">
           <Text className="text-md font-bold text-text-secondary">{t('diarySummary.title')}</Text>
@@ -219,7 +241,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
           {customNutrientKeys.map((name) => {
             const customDef = customNutrients.find((cn) => cn.name === name);
             const meta = NUTRIENT_META[name];
-            const label = meta?.label ?? customDef?.name ?? name;
+            const label = resolveBuiltInLabel(name) ?? customDef?.name ?? name;
             const unit = meta?.unit ?? customDef?.unit ?? 'g';
             const consumed = summary.customNutrientTotals[name] ?? 0;
             const nutrientGoal = summary.customNutrientGoals[name] || undefined;

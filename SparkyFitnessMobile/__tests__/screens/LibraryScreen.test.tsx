@@ -610,4 +610,27 @@ describe('LibraryScreen localization', () => {
     expect(screen.getByText('Produkty, posiłki i ćwiczenia, które zapiszesz, pojawią się tutaj, aby zapewnić szybki dostęp.')).toBeTruthy();
     expect(screen.getByText('Ostatnio zapisane')).toBeTruthy();
   });
+
+  it('keeps the main library loading state separate from recent loading', () => {
+    mockUseServerConnection.mockReturnValue({
+      isConnected: false,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    const screen = renderLib();
+    expect(screen.getByText('Loading library...')).toBeTruthy();
+    expect(screen.queryByText('Loading recent items...')).toBeNull();
+
+    (globalThis as any).__I18N_LANG = 'pl';
+    screen.rerender(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <LibraryScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText('Ładowanie biblioteki...')).toBeTruthy();
+  });
 });

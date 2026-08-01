@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import { MeasurementIcons, type MeasurementKind } from './icons/measurements';
 import {
@@ -11,6 +12,7 @@ import {
 } from '../utils/unitConversions';
 import type { CheckInMeasurement } from '../types/measurements';
 import type { CustomMeasurementEntry } from '../types/customMeasurements';
+import { formatLocalizedNumber } from '../localization';
 
 interface MeasurementsSummaryProps {
   measurements: CheckInMeasurement | undefined;
@@ -21,7 +23,8 @@ interface MeasurementsSummaryProps {
   customMeasurements?: CustomMeasurementEntry[];
 }
 
-const formatNumber = (value: number): string => String(Math.round(value * 10) / 10);
+const formatNumber = (value: number): string =>
+  formatLocalizedNumber(Math.round(value * 10) / 10, { maximumFractionDigits: 1 });
 
 const formatWeight = (kg: number, mode: 'kg' | 'lbs' | 'st_lbs'): string => {
   if (mode === 'st_lbs') {
@@ -53,6 +56,7 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
   onPress,
   customMeasurements,
 }) => {
+  const { t } = useTranslation();
   const [accentPrimary, iconColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-decorative',
@@ -62,35 +66,35 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
 
   const rows: { kind: MeasurementKind | 'custom'; label: string; value: string }[] = [];
   if (measurements?.weight != null) {
-    rows.push({ kind: 'weight', label: 'Weight', value: formatWeight(measurements.weight, weightMode) });
+    rows.push({ kind: 'weight', label: t('measurements.weight'), value: formatWeight(measurements.weight, weightMode) });
   }
   if (measurements?.body_fat_percentage != null) {
     rows.push({
       kind: 'body_fat_percentage',
-      label: 'Body fat',
+      label: t('measurements.bodyFatShort'),
       value: `${formatNumber(measurements.body_fat_percentage)}%`,
     });
   }
   if (measurements?.height != null) {
-    rows.push({ kind: 'height', label: 'Height', value: formatHeight(measurements.height, heightMode) });
+    rows.push({ kind: 'height', label: t('measurements.height'), value: formatHeight(measurements.height, heightMode) });
   }
   if (measurements?.neck != null) {
-    rows.push({ kind: 'neck', label: 'Neck', value: formatBodyLength(measurements.neck, bodyUnit) });
+    rows.push({ kind: 'neck', label: t('measurements.neck'), value: formatBodyLength(measurements.neck, bodyUnit) });
   }
   if (measurements?.waist != null) {
-    rows.push({ kind: 'waist', label: 'Waist', value: formatBodyLength(measurements.waist, bodyUnit) });
+    rows.push({ kind: 'waist', label: t('measurements.waist'), value: formatBodyLength(measurements.waist, bodyUnit) });
   }
   if (measurements?.hips != null) {
-    rows.push({ kind: 'hips', label: 'Hips', value: formatBodyLength(measurements.hips, bodyUnit) });
+    rows.push({ kind: 'hips', label: t('measurements.hips'), value: formatBodyLength(measurements.hips, bodyUnit) });
   }
   if (measurements?.steps != null) {
-    rows.push({ kind: 'steps', label: 'Steps', value: String(measurements.steps) });
+    rows.push({ kind: 'steps', label: t('measurements.steps'), value: formatLocalizedNumber(measurements.steps) });
   }
 
   if (customMeasurements) {
     for (const entry of customMeasurements) {
       const cat = entry.custom_categories;
-      const label = cat?.display_name ?? cat?.name ?? 'Measurement';
+      const label = cat?.display_name ?? cat?.name ?? t('measurements.fallbackLabel');
       const suffix = cat?.measurement_type ? ` ${cat.measurement_type}` : '';
       rows.push({ kind: 'custom', label, value: `${entry.value}${suffix}` });
     }
@@ -100,7 +104,7 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
 
   const header = (
     <View className="flex-row items-center gap-2 mb-2 px-1">
-      <Text className="text-base font-bold text-text-secondary flex-1">Measurements</Text>
+      <Text className="text-base font-bold text-text-secondary flex-1">{t('measurements.title')}</Text>
       {onPress && <Icon name="add" size={14} color={accentPrimary} />}
     </View>
   );
@@ -141,7 +145,7 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
         <Pressable
           onPress={onPress}
           accessibilityRole="button"
-          accessibilityLabel="Edit measurements"
+           accessibilityLabel={t('measurements.edit')}
         >
           {content}
         </Pressable>

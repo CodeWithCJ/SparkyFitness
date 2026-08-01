@@ -3,12 +3,6 @@
   "findings": [
     {
       "rule": "dynamic-i18n-key",
-      "file": "src/components/FoodSummary.tsx",
-      "expression": "translationKey",
-      "fingerprint": "dynamic-i18n-key:src/components/FoodSummary.tsx:translationKey"
-    },
-    {
-      "rule": "dynamic-i18n-key",
       "file": "src/screens/MealTypeDetailScreen.tsx",
       "expression": "translationKey",
       "fingerprint": "dynamic-i18n-key:src/screens/MealTypeDetailScreen.tsx:translationKey"
@@ -707,54 +701,6 @@
         "attr": "accessibilityHint"
       },
       "fingerprint": "hardcoded-ui-text:src/components/BottomSheetPicker.tsx:Opens selection menu:{\"attr\":\"accessibilityHint\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CalorieRingCard.tsx",
-      "value": "Burned",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CalorieRingCard.tsx:Burned:{\"attr\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CalorieRingCard.tsx",
-      "value": "Consumed",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CalorieRingCard.tsx:Consumed:{\"attr\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CalorieRingCard.tsx",
-      "value": "kcal",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CalorieRingCard.tsx:kcal:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CalorieRingCard.tsx",
-      "value": "of",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CalorieRingCard.tsx:of:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CalorieRingCard.tsx",
-      "value": "remaining",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CalorieRingCard.tsx:remaining:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -1585,16 +1531,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/components/DiaryCalorieMacroSummary.tsx",
-      "value": "kcal",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/DiaryCalorieMacroSummary.tsx:kcal:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/components/EditableSetList.tsx",
       "value": "Add Set",
       "context": {
@@ -1670,16 +1606,6 @@
         "argIndex": 0
       },
       "fingerprint": "hardcoded-ui-text:src/components/EditableSetRow.tsx:Set {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":0}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/EmptyDayIllustration.tsx",
-      "value": "No entries recorded for this day",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/EmptyDayIllustration.tsx:No entries recorded for this day:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -1808,35 +1734,6 @@
         "form": "text"
       },
       "fingerprint": "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:No exercise entries yet:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ExerciseSummary.tsx",
-      "value": "Add exercise",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ExerciseSummary.tsx:Add exercise:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ExerciseSummary.tsx",
-      "value": "Exercise",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ExerciseSummary.tsx:Exercise:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ExerciseSummary.tsx",
-      "value": "Tap to add exercise",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ExerciseSummary.tsx:Tap to add exercise:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -2513,65 +2410,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/components/FoodLibraryRow.tsx",
-      "value": "cal",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FoodLibraryRow.tsx:cal:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FoodLibraryRow.tsx",
-      "value": "Favorite",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FoodLibraryRow.tsx:Favorite:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FoodSummary.tsx",
-      "value": "{{dynamic}} nutrition breakdown",
-      "context": {
-        "attr": "accessibilityLabel",
-        "form": "expression"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FoodSummary.tsx:{{dynamic}} nutrition breakdown:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FoodSummary.tsx",
-      "value": "Cal",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FoodSummary.tsx:Cal:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FoodSummary.tsx",
-      "value": "Tap to add food",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FoodSummary.tsx:Tap to add food:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FoodSummary.tsx",
-      "value": "Tap to add food",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FoodSummary.tsx:Tap to add food:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/components/FoodUnitSelectorSheet.tsx",
       "value": "Could not update that unit",
       "context": {
@@ -2790,56 +2628,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/components/HydrationGauge.tsx",
-      "value": "Configure water container on server to",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/HydrationGauge.tsx:Configure water container on server to:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/HydrationGauge.tsx",
-      "value": "enable quick add/remove buttons",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/HydrationGauge.tsx:enable quick add/remove buttons:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/HydrationGauge.tsx",
-      "value": "Hydration",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/HydrationGauge.tsx:Hydration:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/HydrationGauge.tsx",
-      "value": "of",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/HydrationGauge.tsx:of:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/HydrationGauge.tsx",
-      "value": "per bottle",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/HydrationGauge.tsx:per bottle:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/components/MacroSummaryCard.tsx",
       "value": "Macros",
       "context": {
@@ -2847,117 +2635,6 @@
         "form": "text"
       },
       "fingerprint": "hardcoded-ui-text:src/components/MacroSummaryCard.tsx:Macros:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MealLibraryRow.tsx",
-      "value": "cal",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MealLibraryRow.tsx:cal:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MealLibraryRow.tsx",
-      "value": "Favorite",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MealLibraryRow.tsx:Favorite:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MealLibraryRow.tsx",
-      "value": "Meal",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MealLibraryRow.tsx:Meal:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MeasurementsSummary.tsx",
-      "value": "Body fat",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Body fat:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MeasurementsSummary.tsx",
-      "value": "Edit measurements",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Edit measurements:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MeasurementsSummary.tsx",
-      "value": "Height",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Height:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MeasurementsSummary.tsx",
-      "value": "Hips",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Hips:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MeasurementsSummary.tsx",
-      "value": "Measurements",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Measurements:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MeasurementsSummary.tsx",
-      "value": "Neck",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Neck:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MeasurementsSummary.tsx",
-      "value": "Steps",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Steps:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MeasurementsSummary.tsx",
-      "value": "Waist",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Waist:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/MeasurementsSummary.tsx",
-      "value": "Weight",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Weight:{\"prop\":\"label\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -21043,7 +20720,6 @@
     }
   ],
   "counts": {
-    "dynamic-i18n-key:src/components/FoodSummary.tsx:translationKey": 1,
     "dynamic-i18n-key:src/screens/MealTypeDetailScreen.tsx:translationKey": 1,
     "hardcoded-ui-text:src/components/ActiveWorkoutBar.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 2,
     "hardcoded-ui-text:src/components/ActiveWorkoutBar.tsx:Clear workout:{\"attr\":\"accessibilityLabel\"}": 1,
@@ -21110,11 +20786,6 @@
     "hardcoded-ui-text:src/components/AnchoredMenu.tsx:Dismiss menu:{\"attr\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/components/AnnouncementModal.tsx:Got it, don&apos;t show again:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/BottomSheetPicker.tsx:Opens selection menu:{\"attr\":\"accessibilityHint\"}": 1,
-    "hardcoded-ui-text:src/components/CalorieRingCard.tsx:Burned:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/CalorieRingCard.tsx:Consumed:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/CalorieRingCard.tsx:kcal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/CalorieRingCard.tsx:of:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/CalorieRingCard.tsx:remaining:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/CardioEffortForm.tsx:{{dynamic}} effort:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
     "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance (:{\"element\":\"Text\",\"form\":\"text\"}": 2,
     "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance in {{dynamic}} for {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
@@ -21186,7 +20857,6 @@
     "hardcoded-ui-text:src/components/DevTools.tsx:Trigger Sync:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/DevTools.tsx:What's New banner will re-appear.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/components/DevTools.tsx:What&apos;s New Banner:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/DiaryCalorieMacroSummary.tsx:kcal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/EditableSetList.tsx:Add Set:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/EditableSetList.tsx:Reps:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/EditableSetList.tsx:Sec:{\"element\":\"Text\",\"form\":\"text\"}": 1,
@@ -21195,7 +20865,6 @@
     "hardcoded-ui-text:src/components/EditableSetRow.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
     "hardcoded-ui-text:src/components/EditableSetRow.tsx:Delete:{\"context\":\"Alert.alert:button\"}": 1,
     "hardcoded-ui-text:src/components/EditableSetRow.tsx:Set {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
-    "hardcoded-ui-text:src/components/EmptyDayIllustration.tsx:No entries recorded for this day:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:End fast:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Failed to end fast:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Fast ended:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
@@ -21209,9 +20878,6 @@
     "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:Exercise:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:Minutes:{\"attr\":\"label\"}": 1,
     "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:No exercise entries yet:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/ExerciseSummary.tsx:Add exercise:{\"attr\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/components/ExerciseSummary.tsx:Exercise:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/ExerciseSummary.tsx:Tap to add exercise:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/FastingCard.tsx:0h:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/FastingCard.tsx:elapsed:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/FastingCard.tsx:Fasting:{\"element\":\"Text\",\"form\":\"text\"}": 3,
@@ -21272,11 +20938,6 @@
     "hardcoded-ui-text:src/components/FoodForm.tsx:Set a serving size first:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/components/FoodForm.tsx:The food has no trusted default to scale from.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/components/FoodForm.tsx:unit:{\"attr\":\"placeholder\"}": 2,
-    "hardcoded-ui-text:src/components/FoodLibraryRow.tsx:cal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FoodLibraryRow.tsx:Favorite:{\"attr\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/components/FoodSummary.tsx:{{dynamic}} nutrition breakdown:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
-    "hardcoded-ui-text:src/components/FoodSummary.tsx:Cal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FoodSummary.tsx:Tap to add food:{\"element\":\"Text\",\"form\":\"text\"}": 2,
     "hardcoded-ui-text:src/components/FoodUnitSelectorSheet.tsx:Could not update that unit:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 4,
     "hardcoded-ui-text:src/components/FoodUnitSelectorSheet.tsx:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 4,
     "hardcoded-ui-text:src/components/FoodUnitSelectorSheet.tsx:Saved Custom Units:{\"element\":\"Text\",\"form\":\"text\"}": 1,
@@ -21293,24 +20954,7 @@
     "hardcoded-ui-text:src/components/HealthDataWriteback.tsx:Syncs the data you log in SparkyFitness out to:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/HealthDataWriteback.tsx:Write to:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/HealthSourceLabel.tsx:Source::{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/HydrationGauge.tsx:Configure water container on server to:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/HydrationGauge.tsx:enable quick add/remove buttons:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/HydrationGauge.tsx:Hydration:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/HydrationGauge.tsx:of:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/HydrationGauge.tsx:per bottle:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/MacroSummaryCard.tsx:Macros:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/MealLibraryRow.tsx:cal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/MealLibraryRow.tsx:Favorite:{\"attr\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/components/MealLibraryRow.tsx:Meal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Body fat:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Edit measurements:{\"attr\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Height:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Hips:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Measurements:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Neck:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Steps:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Waist:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/MeasurementsSummary.tsx:Weight:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Skip {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
     "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Skip:{\"element\":\"Text\",\"form\":\"text\"}": 2,
     "hardcoded-ui-text:src/components/medications/DoseRow.tsx:Take {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,

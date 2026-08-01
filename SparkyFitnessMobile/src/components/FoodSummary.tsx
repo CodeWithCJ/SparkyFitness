@@ -15,6 +15,7 @@ import {
   getMealTypeSystemKey,
   type MealGroup,
 } from '../utils/mealNutrition';
+import { formatLocalizedNumber } from '../localization';
 
 interface FoodSummaryProps {
   foodEntries: FoodEntry[];
@@ -53,8 +54,23 @@ const MealSection: React.FC<MealSectionProps> = ({
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
-  const translationKey = group.isSystem ? getMealTypeSystemKey(group.name) : '';
-  const label = translationKey ? t(translationKey) : group.name;
+  const label = (() => {
+    if (!group.isSystem) return group.name;
+    switch (getMealTypeSystemKey(group.name)) {
+      case 'mealTypes.breakfast':
+        return t('mealTypes.breakfast');
+      case 'mealTypes.lunch':
+        return t('mealTypes.lunch');
+      case 'mealTypes.dinner':
+        return t('mealTypes.dinner');
+      case 'mealTypes.snacks':
+        return t('mealTypes.snacks');
+      case 'mealTypes.other':
+        return t('mealTypes.other');
+      default:
+        return group.name;
+    }
+  })();
   const icon = getMealTypeIcon(group.name);
 
   const totalCalories = calculateMealNutrition(group.entries).values.calories;
@@ -71,8 +87,9 @@ const MealSection: React.FC<MealSectionProps> = ({
       {(totalCalories > 0 || targetCalories > 0) && (
         <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
           <Text className="text-xs text-accent-primary font-semibold">
-            {totalCalories}
-            {targetCalories > 0 ? ` / ${targetCalories}` : ''} Cal
+            {formatLocalizedNumber(totalCalories)}
+            {targetCalories > 0 ? ` / ${formatLocalizedNumber(targetCalories)}` : ''}{' '}
+            {t('units.kcalShort')}
           </Text>
         </View>
       )}
@@ -89,7 +106,7 @@ const MealSection: React.FC<MealSectionProps> = ({
           onPress={() => onPressMealType(group.name, group.entries)}
           className="flex-row gap-2 mb-3 items-center"
           accessibilityRole="button"
-          accessibilityLabel={`${label} nutrition breakdown`}
+           accessibilityLabel={t('foodSummary.nutritionBreakdown', { mealType: label })}
         >
           {headerContent}
         </Pressable>
@@ -122,10 +139,11 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
   onAdjustServing,
   onPressMealType,
 }) => {
+  const { t } = useTranslation();
   if (foodEntries.length === 0) {
     return (
       <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
-        <Text className="text-text-muted text-base">Tap to add food</Text>
+        <Text className="text-text-muted text-base">{t('foodSummary.tapToAdd')}</Text>
       </Pressable>
     );
   }
@@ -136,7 +154,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
   if (visibleGroups.length === 0) {
     return (
       <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6">
-        <Text className="text-text-muted text-base">Tap to add food</Text>
+        <Text className="text-text-muted text-base">{t('foodSummary.tapToAdd')}</Text>
       </Pressable>
     );
   }

@@ -121,9 +121,12 @@ export async function applyLanguagePreference(
   return language;
 }
 
-export function formatLocalizedNumber(value: number): string {
+export function formatLocalizedNumber(
+  value: number,
+  options?: Intl.NumberFormatOptions,
+): string {
   const locale = getAppLocale();
-  return value.toLocaleString(locale);
+  return value.toLocaleString(locale, options);
 }
 
 export function getAppLocale(): 'pl-PL' | 'en-US' {

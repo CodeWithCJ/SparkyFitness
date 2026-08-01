@@ -16,7 +16,10 @@
     "error": "Error",
     "success": "Success",
     "noResults": "No results",
-    "or": "or"
+    "or": "or",
+    "expandSection": "Expand this section",
+    "collapseSection": "Collapse this section",
+    "favorite": "Favorite"
   },
   "settings": {
     "title": "Settings",
@@ -40,6 +43,59 @@
     "yesterday": "Yesterday",
     "remaining": "remaining",
     "over": "over"
+  },
+  "units": {
+    "kcalShort": "kcal",
+    "calShort": "kcal"
+  },
+  "calorieCard": {
+    "consumed": "Consumed",
+    "burned": "Burned",
+    "remaining": "remaining",
+    "ofGoal": "of {{goal}} {{unit}}"
+  },
+  "macroCard": {
+    "left": "{{value}}{{unit}} left",
+    "over": "{{value}}{{unit}} over",
+    "met": "goal met"
+  },
+  "hydration": {
+    "title": "Hydration",
+    "ofGoal": "of {{goal}} {{unit}}",
+    "perBottle": "{{volume}} {{unit}} per bottle",
+    "configureContainer": "Configure water container on server to enable quick add/remove buttons",
+    "add": "Add hydration",
+    "remove": "Remove hydration"
+  },
+  "foodSummary": {
+    "tapToAdd": "Tap to add food",
+    "nutritionBreakdown": "{{mealType}} nutrition breakdown"
+  },
+  "exerciseSummary": {
+    "tapToAdd": "Tap to add exercise",
+    "add": "Add exercise",
+    "title": "Exercise"
+  },
+  "nutrients": {
+    "calories": "Calories",
+    "saturated_fat": "Sat. Fat",
+    "polyunsaturated_fat": "Poly. Fat",
+    "monounsaturated_fat": "Mono. Fat",
+    "trans_fat": "Trans Fat",
+    "cholesterol": "Cholesterol",
+    "sodium": "Sodium",
+    "potassium": "Potassium",
+    "sugars": "Sugars",
+    "vitamin_a": "Vitamin A",
+    "vitamin_c": "Vitamin C",
+    "calcium": "Calcium",
+    "iron": "Iron",
+    "glycemic_index": "Glycemic Index"
+  },
+  "mealLibrary": {
+    "badge": "Meal",
+    "item_one": "item",
+    "item_other": "items"
   },
   "dashboard": {
     "consumed": "Consumed",
@@ -70,7 +126,8 @@
     "noServerSubtitle": "Configure your server connection in Settings to view your diary.",
     "loading": "Loading diary...",
     "failedToLoad": "Failed to load diary",
-    "chooseDate": "Choose diary date"
+    "chooseDate": "Choose diary date",
+    "noEntriesForDay": "No entries recorded for this day"
   },
   "diarySummary": {
     "title": "Summary",    "protein": "Protein",
@@ -145,7 +202,10 @@
     "someChangesSaved": "Some changes may not have been saved.",
     "duplicateHour": "An entry already exists at this hour for {{label}}.",
     "weightLabel": "Weight ({{unit}})",
-    "weightStLabel": "Weight (st, lb)"
+    "weightStLabel": "Weight (st, lb)",
+    "bodyFatShort": "Body fat",
+    "edit": "Edit measurements",
+    "fallbackLabel": "Measurement"
   },
   "addSheet": {
     "food": "Food",

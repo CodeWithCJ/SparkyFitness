@@ -29,6 +29,7 @@ import {
   resolveLanguagePreference,
   getDeviceLanguage,
   SUPPORTED_LANGUAGES,
+  formatLocalizedNumber,
 } from '../../src/localization/i18n';
 
 describe('resolveLanguagePreference', () => {
@@ -129,6 +130,26 @@ describe('A4.1.1 shell interpolation and Polish copy', () => {
       expect(i18n.t('library.recentlyLogged')).toBe('Ostatnio zapisane');
 
       await i18n.changeLanguage('en');
+    });
+  });
+});
+
+describe('localized number formatting', () => {
+  it('uses the active application locale and supports number options', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n, formatLocalizedNumber: formatNumber } = require('../../src/localization/i18n');
+      await initializeI18n();
+
+      await i18n.changeLanguage('en');
+      expect(formatNumber(12345.678, { maximumFractionDigits: 1 })).toBe(
+        new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(12345.678),
+      );
+
+      await i18n.changeLanguage('pl');
+      expect(formatNumber(12345.678, { maximumFractionDigits: 1 })).toBe(
+        new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 1 }).format(12345.678),
+      );
+      expect(formatLocalizedNumber).toBeDefined();
     });
   });
 });

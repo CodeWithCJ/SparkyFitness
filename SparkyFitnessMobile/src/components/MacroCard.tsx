@@ -3,6 +3,8 @@ import { View, Text } from 'react-native';
 import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 interface MacroCardProps {
   label: string;
@@ -27,6 +29,7 @@ const MacroCard: React.FC<MacroCardProps> = ({
   compact = false,
   widthClassName = 'w-[48%]',
 }) => {
+  const { t } = useTranslation();
   const [barWidth, setBarWidth] = useState(0);
   const hasGoal = !!(goal && goal > 0);
   const progress = hasGoal ? consumed / (goal as number) : 0;
@@ -88,8 +91,8 @@ const MacroCard: React.FC<MacroCardProps> = ({
         </Text>
         <Text className={compact ? 'text-[11px] text-text-secondary' : 'text-xs text-text-secondary'}>
           {goal && goal > 0
-            ? `${Math.round(consumed)}${unit} / ${Math.round(goal)}${unit}`
-            : `${Math.round(consumed)}${unit}`}
+             ? `${formatLocalizedNumber(Math.round(consumed))}${unit} / ${formatLocalizedNumber(Math.round(goal))}${unit}`
+             : `${formatLocalizedNumber(Math.round(consumed))}${unit}`}
         </Text>
       </View>
       {hasGoal && (
@@ -125,10 +128,16 @@ const MacroCard: React.FC<MacroCardProps> = ({
           </View>
           {barWidth > 0 && (
             <Text className="text-[10px] text-text-muted mt-1">
-              {Math.round(progress * 100)}% · {(() => {
-                const diff = goal - consumed;
-                return diff > 0 ? `${Math.round(diff)}${unit} left` : diff < 0 ? `${Math.round(Math.abs(diff))}${unit} over` : 'met';
-              })()}
+               {formatLocalizedNumber(Math.round(progress * 100))}% · {(() => {
+                 const diff = goal - consumed;
+                 if (diff > 0) {
+                   return t('macroCard.left', { value: formatLocalizedNumber(Math.round(diff)), unit });
+                 }
+                 if (diff < 0) {
+                   return t('macroCard.over', { value: formatLocalizedNumber(Math.round(Math.abs(diff))), unit });
+                 }
+                 return t('macroCard.met');
+               })()}
             </Text>
           )}
         </>

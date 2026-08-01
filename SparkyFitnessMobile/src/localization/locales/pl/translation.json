@@ -16,7 +16,10 @@
     "error": "Błąd",
     "success": "Sukces",
     "noResults": "Brak wyników",
-    "or": "lub"
+    "or": "lub",
+    "expandSection": "Rozwiń tę sekcję",
+    "collapseSection": "Zwiń tę sekcję",
+    "favorite": "Ulubione"
   },
   "settings": {
     "title": "Ustawienia",
@@ -40,6 +43,61 @@
     "yesterday": "Wczoraj",
     "remaining": "pozostało",
     "over": "ponad"
+  },
+  "units": {
+    "kcalShort": "kcal",
+    "calShort": "kcal"
+  },
+  "calorieCard": {
+    "consumed": "Spożyte",
+    "burned": "Spalone",
+    "remaining": "pozostało",
+    "ofGoal": "z {{goal}} {{unit}}"
+  },
+  "macroCard": {
+    "left": "pozostało {{value}}{{unit}}",
+    "over": "przekroczono o {{value}}{{unit}}",
+    "met": "cel osiągnięty"
+  },
+  "hydration": {
+    "title": "Nawodnienie",
+    "ofGoal": "z {{goal}} {{unit}}",
+    "perBottle": "{{volume}} {{unit}} na butelkę",
+    "configureContainer": "Skonfiguruj pojemnik na wodę na serwerze, aby włączyć szybkie dodawanie i odejmowanie",
+    "add": "Dodaj nawodnienie",
+    "remove": "Usuń nawodnienie"
+  },
+  "foodSummary": {
+    "tapToAdd": "Dotknij, aby dodać jedzenie",
+    "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{mealType}}"
+  },
+  "exerciseSummary": {
+    "tapToAdd": "Dotknij, aby dodać ćwiczenie",
+    "add": "Dodaj ćwiczenie",
+    "title": "Ćwiczenie"
+  },
+  "nutrients": {
+    "calories": "Kalorie",
+    "saturated_fat": "Tł. nasycone",
+    "polyunsaturated_fat": "Tł. wielonienasycone",
+    "monounsaturated_fat": "Tł. jednonienasycone",
+    "trans_fat": "Tł. trans",
+    "cholesterol": "Cholesterol",
+    "sodium": "Sód",
+    "potassium": "Potas",
+    "sugars": "Cukry",
+    "vitamin_a": "Witamina A",
+    "vitamin_c": "Witamina C",
+    "calcium": "Wapń",
+    "iron": "Żelazo",
+    "glycemic_index": "Indeks glikemiczny"
+  },
+  "mealLibrary": {
+    "badge": "Posiłek",
+    "item_one": "składnik",
+    "item_few": "składniki",
+    "item_many": "składników",
+    "item_other": "składników"
   },
   "dashboard": {
     "consumed": "Spożyte",
@@ -70,7 +128,8 @@
     "noServerSubtitle": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić dziennik.",
     "loading": "Ładowanie dziennika...",
     "failedToLoad": "Nie udało się załadować dziennika",
-    "chooseDate": "Wybierz datę dziennika"
+    "chooseDate": "Wybierz datę dziennika",
+    "noEntriesForDay": "Brak wpisów w tym dniu"
   },
   "diarySummary": {
     "title": "Podsumowanie",
@@ -148,7 +207,10 @@
     "someChangesSaved": "Niektóre zmiany mogły nie zostać zapisane.",
     "duplicateHour": "Wpis o tej godzinie już istnieje dla {{label}}.",
     "weightLabel": "Waga ({{unit}})",
-    "weightStLabel": "Waga (st, lb)"
+    "weightStLabel": "Waga (st, lb)",
+    "bodyFatShort": "Tkanka tłuszczowa",
+    "edit": "Edytuj pomiary",
+    "fallbackLabel": "Pomiar"
   },
   "addSheet": {
     "food": "Jedzenie",

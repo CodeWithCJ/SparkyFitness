@@ -1,12 +1,14 @@
 import React, { useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import type { Meal } from '../types/meals';
 import { mealToFoodInfo } from '../types/foodInfo';
 import { useProfile } from '../hooks';
 import { deriveShareStatus } from '../utils/shareStatus';
 import ShareStatusBadge from './ShareStatusBadge';
 import Icon from './Icon';
+import { formatLocalizedNumber } from '../localization';
 
 interface MealLibraryRowProps {
   meal: Meal;
@@ -31,6 +33,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
   showBadge = false,
   isFavorite = false,
 }) => {
+  const { t } = useTranslation();
   const { profile } = useProfile();
   const status = deriveShareStatus(meal.user_id, meal.is_public, profile?.id);
   const foodInfo = useMemo(() => mealToFoodInfo(meal), [meal]);
@@ -59,7 +62,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
             {showBadge ? (
               <View className="px-1 py-0.5 rounded border border-border-subtle flex-shrink-0">
                 <Text className="text-text-muted text-xs">
-                  Meal
+                   {t('mealLibrary.badge')}
                 </Text>
               </View>
             ) : null}
@@ -79,15 +82,15 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
                 size={13}
                 color={goldColor}
                 style={{ marginTop: 1 }}
-                accessibilityLabel="Favorite"
+                 accessibilityLabel={t('common.favorite')}
               />
             )}
             <Text className="text-text-primary text-base font-semibold">
-              {foodInfo.calories} cal
+              {formatLocalizedNumber(foodInfo.calories)} {t('units.calShort')}
             </Text>
           </View>
           <Text className="text-text-secondary text-xs">
-            {itemCount} {itemCount === 1 ? 'item' : 'items'}
+            {formatLocalizedNumber(itemCount)} {t('mealLibrary.item', { count: itemCount })}
           </Text>
         </View>
       </View>
