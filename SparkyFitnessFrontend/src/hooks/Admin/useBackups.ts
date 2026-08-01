@@ -3,7 +3,8 @@ import {
   restoreBackup,
   saveBackupSettings,
   triggerManualBackup,
-  downloadLastBackup,
+  listBackups,
+  downloadBackupFile,
 } from '@/api/Admin/backup';
 import { backupKeys } from '@/api/keys/admin';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -75,10 +76,26 @@ export const useRestoreBackup = () => {
   });
 };
 
-export const useDownloadLastBackup = () => {
+export const useBackupList = (enabled: boolean) => {
+  const { t } = useTranslation();
+  return useQuery({
+    queryKey: backupKeys.list(),
+    queryFn: listBackups,
+    enabled,
+    meta: {
+      errorTitle: t('admin.backupSettings.error', 'Error'),
+      errorMessage: t(
+        'admin.backupSettings.failedToFetchBackups',
+        'Failed to fetch backup files.'
+      ),
+    },
+  });
+};
+
+export const useDownloadBackupFile = () => {
   const { t } = useTranslation();
   return useMutation({
-    mutationFn: downloadLastBackup,
+    mutationFn: downloadBackupFile,
     meta: {
       successMessage: t(
         'admin.backupSettings.downloadBackupSuccess',

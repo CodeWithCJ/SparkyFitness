@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { BackupSettings, BackupSettingsMutator } from '@workspace/shared';
 import { toast } from '@/hooks/use-toast';
 import { getLocalTimeString } from './backupTimeUtils';
-import { useDownloadLastBackup } from '@/hooks/Admin/useBackups';
+import { BackupListDialog } from './BackupListDialog';
 
 interface BackupSettingsFormProps {
   initialSettings: BackupSettings;
@@ -32,8 +32,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   backupLocation,
 }) => {
   const { t } = useTranslation();
-  const { mutate: downloadBackup, isPending: isDownloading } =
-    useDownloadLastBackup();
+  const [isBackupListOpen, setIsBackupListOpen] = useState(false);
 
   const getStatusText = (status?: string | null, timestamp?: Date | null) => {
     if (status && timestamp) {
@@ -121,18 +120,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   };
 
   const handleDownloadBackup = () => {
-    downloadBackup(undefined, {
-      onSuccess: ({ blob, filename }) => {
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      },
-    });
+    setIsBackupListOpen(true);
   };
 
   return (
@@ -254,17 +242,17 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
         </Button>
         <Button
           onClick={handleDownloadBackup}
-          disabled={isDownloading}
           className="flex items-center gap-2"
         >
-          {isDownloading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-          {t('admin.backupSettings.downloadLastBackup', 'Download Last Backup')}
+          <Download className="h-4 w-4" />
+          {t('admin.backupSettings.downloadBackup', 'Download Backup')}
         </Button>
       </div>
+
+      <BackupListDialog
+        open={isBackupListOpen}
+        onOpenChange={setIsBackupListOpen}
+      />
 
       {/* Restore Section */}
       <div className="mb-4 border-t pt-6 mt-6">
