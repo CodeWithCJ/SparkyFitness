@@ -27,8 +27,8 @@ import { useState } from 'react';
 import {
   resolveExerciseModality,
   setsDurationMinutes,
-  toHourMinute,
 } from '@workspace/shared';
+import { formatTimeOfDayString } from '@/utils/timeFormatters';
 
 interface ExerciseEntryDisplayProps {
   exerciseEntry: ExerciseEntry;
@@ -78,7 +78,8 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
   convertEnergy,
   getEnergyUnitString,
 }) => {
-  const { weightUnit, distanceUnit, convertDistance } = usePreferences();
+  const { weightUnit, distanceUnit, convertDistance, timeFormat } =
+    usePreferences();
   const snapshot = exerciseEntry.exercise_snapshot;
 
   // Distances are stored in km; render in the user's display unit.
@@ -179,7 +180,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           </span>
           {exerciseEntry.entry_time && (
             <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
-              {toHourMinute(exerciseEntry.entry_time)}
+              {formatTimeOfDayString(exerciseEntry.entry_time, timeFormat)}
             </span>
           )}
           {sourceBadge && (

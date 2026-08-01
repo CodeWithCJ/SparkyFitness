@@ -39,7 +39,7 @@ const SleepAnalyticsTable = ({
     'SleepAnalyticsTable received combinedSleepData:',
     combinedSleepData
   );
-  const { formatDateInUserTimezone, dateFormat } = usePreferences();
+  const { formatDateInUserTimezone, dateFormat, formatTime } = usePreferences();
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(
     new Set()
   );
@@ -179,12 +179,8 @@ const SleepAnalyticsTable = ({
                         dateFormat
                       )}
                     </TableCell>
-                    <TableCell>
-                      {formatDateInUserTimezone(sleepEntry.bedtime, 'HH:mm')}
-                    </TableCell>
-                    <TableCell>
-                      {formatDateInUserTimezone(sleepEntry.wake_time, 'HH:mm')}
-                    </TableCell>
+                    <TableCell>{formatTime(sleepEntry.bedtime)}</TableCell>
+                    <TableCell>{formatTime(sleepEntry.wake_time)}</TableCell>
                     <TableCell>{totalSleepDuration}</TableCell>
                     <TableCell>{timeAsleep}</TableCell>
                     <TableCell>
@@ -287,15 +283,8 @@ const SleepAnalyticsTable = ({
                                     )}
                                   </div>
                                   <div className="text-xs opacity-80">
-                                    {formatDateInUserTimezone(
-                                      event.start_time,
-                                      'HH:mm'
-                                    )}{' '}
-                                    -{' '}
-                                    {formatDateInUserTimezone(
-                                      event.end_time,
-                                      'HH:mm'
-                                    )}
+                                    {formatTime(event.start_time)} -{' '}
+                                    {formatTime(event.end_time)}
                                   </div>
                                 </div>
                               ))}

@@ -1911,6 +1911,13 @@ Actions:
               const mealTypeUpdate = mealType
                 ? { meal_type_id: mealType.id }
                 : {};
+              let quantityChanged = args.quantity !== undefined;
+              let unitChanged = args.unit !== undefined;
+              // For a food_entry the type is written whenever a selector is
+              // present; for a food_entry_meal it is refined below against the
+              // container's current meal_type_id so unchanged categories are
+              // not reported as changed.
+              let mealTypeChanged = mealType !== undefined;
               try {
                 if (args.entry_type === 'food_entry') {
                   await foodEntryService.updateFoodEntry(
@@ -1924,9 +1931,55 @@ Actions:
                     }
                   );
                 } else {
-                  // Round-trip the template link and component foods so the
-                  // server's edit path rescales components instead of
-                  // detaching them.
+                  // Lightweight parent read (no components) to decide whether
+                  // the quantity/unit actually change. A redundant quantity or
+                  // unit copied from list_diary (or a plain no-op) must never
+                  // trigger the destructive delete-and-rebuild path — only a
+                  // real quantity/unit change does.
+                  const existingMeta =
+                    await foodEntryService.getFoodEntryMealMeta(
+                      userId,
+                      args.entry_id
+                    );
+                  if (!existingMeta) {
+                    return ERRORS.NOT_FOUND('Entry', args.entry_id);
+                  }
+                  quantityChanged =
+                    args.quantity !== undefined &&
+                    Number(args.quantity) !== Number(existingMeta.quantity);
+                  unitChanged =
+                    args.unit !== undefined && args.unit !== existingMeta.unit;
+                  mealTypeChanged =
+                    mealType !== undefined &&
+                    mealType.id !== existingMeta.meal_type_id;
+
+                  if (!quantityChanged && !unitChanged) {
+                    // No effective quantity/unit change: either a metadata-only
+                    // category move, or a genuine no-op.
+                    if (mealTypeChanged) {
+                      if (!mealType) {
+                        return ERRORS.VALIDATION(
+                          'Meal type could not be resolved.'
+                        );
+                      }
+                      await foodEntryService.moveFoodEntryMealToMealType(
+                        userId,
+                        userId,
+                        args.entry_id,
+                        mealType.id
+                      );
+                      return formatConfirmation(
+                        `Entry updated: meal type to ${mealType.name}.`
+                      );
+                    }
+                    return formatConfirmation(
+                      'Entry already has the requested values.'
+                    );
+                  }
+
+                  // Real quantity/unit change: round-trip the template link and
+                  // component foods so the server's edit path rescales
+                  // components instead of detaching them.
                   const existing =
                     await foodEntryService.getFoodEntryMealWithComponents(
                       userId,
@@ -1959,17 +2012,11 @@ Actions:
                 throw error;
               }
               const updates = [
-                args.quantity !== undefined
-                  ? `quantity to ${args.quantity}`
-                  : '',
-                args.unit !== undefined ? `unit to ${args.unit}` : '',
-                mealType ? `meal type to ${mealType.name}` : '',
+                quantityChanged ? `quantity to ${args.quantity}` : '',
+                unitChanged ? `unit to ${args.unit}` : '',
+                mealTypeChanged ? `meal type to ${mealType?.name}` : '',
               ].filter(Boolean);
-              if (
-                args.quantity !== undefined &&
-                args.unit !== undefined &&
-                !mealType
-              ) {
+              if (quantityChanged && unitChanged && !mealTypeChanged) {
                 return formatConfirmation(
                   `Entry updated to ${args.quantity} ${args.unit}.`
                 );

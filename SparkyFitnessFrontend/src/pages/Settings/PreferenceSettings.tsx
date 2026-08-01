@@ -41,6 +41,8 @@ export const PreferenceSettings = () => {
     setEnergyUnit, // Add energyUnit and setEnergyUnit
     dateFormat,
     setDateFormat,
+    timeFormat,
+    setTimeFormat,
     itemDisplayLimit,
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
     autoScaleOpenFoodFactsImports,
@@ -76,6 +78,7 @@ export const PreferenceSettings = () => {
         distanceUnit,
         energyUnit,
         dateFormat,
+        timeFormat,
         itemDisplayLimit,
         autoScaleOpenFoodFactsImports,
         autoScaleOnlineImports,
@@ -135,6 +138,33 @@ export const PreferenceSettings = () => {
                 </SelectItem>
                 <SelectItem value="MMM dd, yyyy">
                   MMM dd, yyyy (Dec 25, 2024)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="time_format">
+              {t('settings.preferences.timeFormat', 'Time Format')}
+            </Label>
+            <Select value={timeFormat} onValueChange={setTimeFormat}>
+              <SelectTrigger id="time_format">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="HH:mm">
+                  {t('settings.preferences.timeFormat24', '24-hour (14:30)')}
+                </SelectItem>
+                <SelectItem value="h:mm A">
+                  {t(
+                    'settings.preferences.timeFormat12Upper',
+                    '12-hour AM/PM (2:30 PM)'
+                  )}
+                </SelectItem>
+                <SelectItem value="h:mm a">
+                  {t(
+                    'settings.preferences.timeFormat12Lower',
+                    '12-hour am/pm (2:30 pm)'
+                  )}
                 </SelectItem>
               </SelectContent>
             </Select>
