@@ -29,7 +29,8 @@ import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { canReorderDraftExercises } from '../utils/workoutSession';
 import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -42,6 +43,7 @@ import type {
 type Props = RootStackScreenProps<'WorkoutAdd'>;
 
 const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const session = route.params?.session;
   const preset = route.params?.preset;
   const initialDate = route.params?.date ?? useDiaryDateStore.getState().selectedDate;
@@ -467,7 +469,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
-                  {SAVE_LABEL}
+                  {t('common.save')}
                 </Text>
               )}
             </Button>

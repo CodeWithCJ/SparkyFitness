@@ -19,7 +19,8 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
@@ -35,6 +36,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 type Props = RootStackScreenProps<'ActivityAdd'>;
 
 const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const entry = route.params?.entry;
   const initialDate = route.params?.date ?? useDiaryDateStore.getState().selectedDate;
   const popCount = route.params?.popCount ?? 1;
@@ -406,7 +408,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
-              {SAVE_LABEL}
+              {t('common.save')}
             </Text>
           )}
         </Button>

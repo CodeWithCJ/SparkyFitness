@@ -6,7 +6,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useMedicationDetail, useCreateMedication, useUpdateMedication } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import FormInput from '../components/FormInput';
 import type { RootStackScreenProps } from '../types/navigation';
 import { MEDICATION_TYPES } from '../types/medications';
@@ -141,9 +141,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
       busy: createMedication.isPending || updateMedication.isPending,
-      busyLabel: SAVING_LABEL,
       onPress: handleSave,
     },
   });

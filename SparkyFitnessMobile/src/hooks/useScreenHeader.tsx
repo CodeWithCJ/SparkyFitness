@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import type { ParamListBase } from '@react-navigation/native';
 import type {
   NativeStackHeaderItem,
@@ -25,12 +26,10 @@ import {
 } from '../utils/nativeHeaderItems';
 
 /**
- * Canonical label for every form/create/edit save action. The screen title
- * already names the object ("Create Meal", "Edit Preset"), so the button is
- * just "Save" (or "Saving…" while busy).
+ * `useScreenHeader` provides a single declarative API for screen-level headers
+ * that works on both the native iOS 26 / classic header path and the custom
+ * bar path (Android + iOS fallback).
  */
-export const SAVE_LABEL = 'Save';
-export const SAVING_LABEL = 'Saving…';
 
 export type HeaderRole = 'primary' | 'secondary';
 
@@ -78,7 +77,7 @@ export type HeaderItem =
   | {
       // Sugar for `text` + role:'primary' + weight 600.
       kind: 'primary';
-      label: string;
+      label?: string;
       onPress: () => void;
       placement?: HeaderPlacement;
       disabled?: boolean;
@@ -135,17 +134,17 @@ function itemIsDisabled(item: HeaderItem): boolean {
   return ('disabled' in item && !!item.disabled) || itemIsBusy(item);
 }
 
-function itemAccessibilityLabel(item: HeaderItem): string | undefined {
+function itemAccessibilityLabel(item: HeaderItem, t: ReturnType<typeof useTranslation>['t']): string | undefined {
   switch (item.kind) {
     case 'back':
-      return 'Back';
+      return t('common.back');
     case 'dismiss':
-      return item.accessibilityLabel ?? 'Close';
+      return item.accessibilityLabel ?? t('common.close');
     case 'icon':
       return item.accessibilityLabel;
     case 'text':
     case 'primary':
-      return item.accessibilityLabel ?? item.label;
+      return item.accessibilityLabel ?? (isPrimaryItem(item) ? (item.label ?? t('common.save')) : item.label);
   }
 }
 
@@ -183,6 +182,7 @@ function HeaderBarButton({
   color: string;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const disabled = itemIsDisabled(item);
   const busy = itemIsBusy(item);
 
@@ -203,9 +203,10 @@ function HeaderBarButton({
       />
     );
   } else {
+    const label = isPrimaryItem(item) ? (item.label ?? t('common.save')) : item.label;
     content = (
       <Text style={{ color, fontSize: 17, fontWeight: isPrimaryItem(item) ? '600' : '500' }}>
-        {item.label}
+        {label}
       </Text>
     );
   }
@@ -216,7 +217,7 @@ function HeaderBarButton({
       disabled={disabled}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityRole="button"
-      accessibilityLabel={itemAccessibilityLabel(item)}
+      accessibilityLabel={itemAccessibilityLabel(item, t)}
       style={disabled ? { opacity: 0.4 } : undefined}
     >
       {content}
@@ -238,6 +239,7 @@ function buildNativeItem(
   identifier: string,
   colors: HeaderColors,
   press: () => void,
+  t: ReturnType<typeof useTranslation>['t'],
 ): NativeStackHeaderItem | null {
   const color = itemColor(item, colors);
   switch (item.kind) {
@@ -249,7 +251,7 @@ function buildNativeItem(
         sfSymbol: 'xmark',
         identifier,
         tintColor: colors.defaultColor,
-        accessibilityLabel: item.accessibilityLabel ?? 'Close',
+        accessibilityLabel: item.accessibilityLabel ?? t('common.close'),
         onPress: press,
         disabled: !!item.disabled,
       });
@@ -264,7 +266,13 @@ function buildNativeItem(
       });
     case 'text':
     case 'primary': {
-      const label = item.busy && item.busyLabel ? item.busyLabel : item.label;
+      const resolvedLabel = item.kind === 'primary'
+        ? (item.label ?? t('common.save'))
+        : item.label;
+      const resolvedBusyLabel = isPrimaryItem(item)
+        ? (item.busyLabel ?? t('common.saving'))
+        : item.busyLabel;
+      const label = item.busy && resolvedBusyLabel ? resolvedBusyLabel : (resolvedLabel ?? t('common.save'));
       return createNativeHeaderTextButtonItem({
         label,
         identifier,
@@ -272,7 +280,7 @@ function buildNativeItem(
         onPress: press,
         disabled: itemIsDisabled(item),
         fontWeight: isPrimaryItem(item) ? '600' : '500',
-        accessibilityLabel: itemAccessibilityLabel(item),
+        accessibilityLabel: itemAccessibilityLabel(item, t),
       });
     }
   }
@@ -290,6 +298,7 @@ function buildNativeItem(
  * navigation/secondary actions neutral) is enforced here for both paths.
  */
 export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { defaultColor, saveColor } = useHeaderActionColors();
@@ -338,11 +347,11 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     left: left
       ? { id: leftId, kind: left.kind, disabled: itemIsDisabled(left), busy: itemIsBusy(left) }
       : null,
-    right: rightMeta.map(({ item, id }) => ({
+     right: rightMeta.map(({ item, id }) => ({
       id,
       kind: item.kind,
-      label: 'label' in item ? item.label : undefined,
-      busyLabel: 'busyLabel' in item ? item.busyLabel : undefined,
+      label: 'label' in item ? (item.label ?? (isPrimaryItem(item) ? t('common.save') : undefined)) : undefined,
+      busyLabel: 'busyLabel' in item ? (item.busyLabel ?? (isPrimaryItem(item) ? t('common.saving') : undefined)) : undefined,
       sfSymbol: item.kind === 'icon' ? item.sfSymbol : undefined,
       role: 'role' in item ? item.role : undefined,
       disabled: itemIsDisabled(item),
@@ -365,8 +374,9 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       if (!left || left.kind === 'back') {
         options.unstable_headerLeftItems = undefined;
       } else {
-        const leftNative = buildNativeItem(left, leftId, colors, () =>
+         const leftNative = buildNativeItem(left, leftId, colors, () =>
           handlersRef.current[leftId]?.(),
+          t,
         );
         options.unstable_headerLeftItems = leftNative ? () => [leftNative] : undefined;
         // A dismiss/text left item replaces the system back button.
@@ -376,7 +386,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       }
 
       const rightNative = rightMeta
-        .map(({ item, id }) => buildNativeItem(item, id, colors, () => handlersRef.current[id]?.()))
+        .map(({ item, id }) => buildNativeItem(item, id, colors, () => handlersRef.current[id]?.(), t))
         .filter((entry): entry is NativeStackHeaderItem => entry !== null);
       options.unstable_headerRightItems = rightNative.length ? () => rightNative : undefined;
     }

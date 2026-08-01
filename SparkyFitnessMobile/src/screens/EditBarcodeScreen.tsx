@@ -12,7 +12,7 @@ import { updateFood } from '../services/api/foodsApi';
 import { lookupBarcodeV2 } from '../services/api/externalFoodSearchApi';
 import { foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
-import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type EditBarcodeScreenProps = RootStackScreenProps<'EditBarcode'>;
@@ -176,7 +176,6 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     left: { kind: 'back' },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
       disabled: saveDisabled,
       onPress: () => void handleSave(),
       accessibilityLabel: 'Save barcode',

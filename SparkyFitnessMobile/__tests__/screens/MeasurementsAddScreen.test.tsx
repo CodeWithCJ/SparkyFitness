@@ -82,8 +82,6 @@ jest.mock('../../src/hooks/useUpsertCheckIn', () => ({
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: jest.fn(() => null),
-  SAVE_LABEL: 'Save',
-  SAVING_LABEL: 'Saving…',
 }));
 
 jest.mock('../../src/services/nativeTabBarPreference', () => ({

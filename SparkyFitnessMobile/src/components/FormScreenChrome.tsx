@@ -7,8 +7,8 @@ import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 
 interface FormScreenChromeProps {
   title: string;
-  saveLabel: string;
-  savingLabel: string;
+  saveLabel?: string;
+  savingLabel?: string;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;

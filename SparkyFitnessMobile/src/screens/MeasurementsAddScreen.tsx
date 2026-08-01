@@ -43,7 +43,7 @@ import {
 } from '../utils/customMeasurementsForm';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useTranslation } from 'react-i18next';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
@@ -705,8 +705,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     left: { kind: 'dismiss', onPress: handleClose, disabled: isDismissDisabled },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
       busy: isSaving,
       disabled: isSaveDisabled,
       placement: 'native-only',
@@ -1056,7 +1054,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
-              {SAVE_LABEL}
+              {t('common.save')}
             </Text>
           )}
         </Button>

@@ -33,7 +33,8 @@ import {
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
@@ -102,6 +103,7 @@ const mealIngredientToPayload = ({
 }: MealIngredientDraft): MealFoodPayload => ingredient;
 
 const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const isEditMode = route.params?.mode === 'edit';
   const editMealId = isEditMode ? route.params.mealId : undefined;
   const insets = useSafeAreaInsets();
@@ -404,7 +406,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const isSaving = isPending || isUpdatePending;
 
   const header = useScreenHeader({
-    title: isEditMode ? 'Edit Meal' : 'Create Meal',
+    title: isEditMode ? t('screens.editMeal') : t('screens.createMeal'),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -413,8 +415,6 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
       busy: isSaving,
       disabled: isSaving,
       placement: 'native-only',
@@ -748,7 +748,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <Text className="text-white text-base font-semibold">
-                {SAVE_LABEL}
+                {t('common.save')}
               </Text>
             )}
           </Button>

@@ -17,7 +17,8 @@ import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useWorkoutPresetForm, type PresetDraft } from '../hooks/useWorkoutPresetForm';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
+import { type HeaderItem } from '../hooks/useScreenHeader';
 import { buildPresetExercisesPayload, canReorderDraftExercises } from '../utils/workoutSession';
 import type { WorkoutSetMetaPatch } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
@@ -164,6 +165,7 @@ interface CreatePresetModeProps {
 }
 
 const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, params }) => {
+  const { t } = useTranslation();
   const { sourceSession } = params;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = getWeightUnit(preferences?.default_weight_unit);
@@ -311,10 +313,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
   };
   return (
     <FormScreenChrome
-      title="New Preset"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
-      isSaving={isPending}
+       title={t('screens.newPreset')}
+       isSaving={isPending}
       headerAction={reorderAction}
       keyboardAccessory={accessoryBar}
       onSave={() => {
@@ -385,6 +385,7 @@ export function buildPresetEditPayload(args: {
 }
 
 const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, params }) => {
+  const { t } = useTranslation();
   const { preset, returnKey } = params;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = getWeightUnit(preferences?.default_weight_unit);
@@ -535,10 +536,8 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
   };
   return (
     <FormScreenChrome
-      title="Edit Preset"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
-      isSaving={isPending}
+       title={t('screens.editPreset')}
+       isSaving={isPending}
       headerAction={reorderAction}
       keyboardAccessory={accessoryBar}
       onSave={() => {

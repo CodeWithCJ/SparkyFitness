@@ -456,9 +456,9 @@ describe('native header navigation contract', () => {
         !new RegExp(`${name}Stack\\.Navigator[\\s\\S]*${name}Stack\\.Screen`).test(
           tabsSource,
         ) ||
-        !new RegExp(`${name}Stack\\.Screen[\\s\\S]*title: '${name}'`).test(
-          tabsSource,
-        ),
+         !new RegExp(`${name}Stack\\.Screen[\\s\\S]*title: .*(t\\(['"]navigation\\.${name.toLowerCase()}['"]\\)|'${name}')`).test(
+           tabsSource,
+         ),
     );
 
     if (missingContentTabs.length > 0 || missingStackScreens.length > 0) {

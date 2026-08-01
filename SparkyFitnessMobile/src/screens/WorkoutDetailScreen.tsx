@@ -56,7 +56,7 @@ import {
 } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
+import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { UpdatePresetSessionRequest } from '@workspace/shared';
@@ -559,8 +559,6 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const canReorderEdit = canReorderDraftExercises(formState.exercises);
   const saveHeaderItem: HeaderItem = {
     kind: 'primary',
-    label: SAVE_LABEL,
-    busyLabel: SAVING_LABEL,
     busy: isSaving,
     disabled: isSaving || !hasEditedExercisesWithSets,
     onPress: handleSave,

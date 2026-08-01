@@ -16,7 +16,7 @@ import type {
   RootStackScreenProps,
 } from '../types/navigation';
 import type { CreateExercisePayload, UpdateExercisePayload } from '../services/api/exerciseApi';
-import { SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
 
 const CATEGORY_OPTIONS = [
   { label: 'General', value: 'general' },
@@ -425,6 +425,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     force: null,
     mechanic: null,
   });
+  const { t } = useTranslation();
   const { createExerciseAsync, isPending } = useCreateExercise();
 
   const handleSave = async () => {
@@ -454,10 +455,8 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
 
   return (
     <FormScreenChrome
-      title="New Exercise"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
-      isSaving={isPending}
+       title={t('screens.newExercise')}
+       isSaving={isPending}
       onSave={() => {
         void handleSave();
       }}
@@ -570,6 +569,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     force: exercise.force ?? null,
     mechanic: exercise.mechanic ?? null,
   }));
+  const { t } = useTranslation();
   const { updateExerciseAsync, isPending } = useUpdateExercise();
 
   const handleSave = async () => {
@@ -608,10 +608,8 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
 
   return (
     <FormScreenChrome
-      title="Edit Exercise"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
-      isSaving={isPending}
+       title={t('screens.editExercise')}
+       isSaving={isPending}
       onSave={() => {
         void handleSave();
       }}

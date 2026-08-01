@@ -49,7 +49,8 @@ import {
 import { buildMealIngredientDraftFromSavedFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
@@ -460,6 +461,7 @@ function BarcodeField({
 }
 
 function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation']; routeKey: string }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [textPrimary, textSecondary, formEnabled, formDisabled] = useCSSVariable(['--color-text-primary', '--color-text-secondary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string];
@@ -754,10 +756,10 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
 
   // Library mode saves a food record (a form Save); the diary/meal-builder
   // modes commit the food to the diary, so keep the "Add Food" verb there.
-  const primaryLabel = isLibraryMode ? SAVE_LABEL : 'Add Food';
+  const primaryLabel = isLibraryMode ? t('common.save') : t('screens.addFood');
 
   const header = useScreenHeader({
-    title: 'New Food',
+    title: t('screens.newFood'),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -767,7 +769,6 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
     right: {
       kind: 'primary',
       label: primaryLabel,
-      busyLabel: SAVING_LABEL,
       busy: isSubmitting,
       disabled: isSubmitting,
       placement: 'native-only',
@@ -900,6 +901,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
 }
 
 function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionParams; navigation: FoodFormScreenProps['navigation'] }) {
+  const { t } = useTranslation();
   const {
     initialValues,
     returnKey,
@@ -1359,7 +1361,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
-    title: 'Adjust Nutrition',
+    title: t('screens.adjustNutrition'),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -1367,7 +1369,6 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
       placement: 'native-only',
       onPress: () => submitRequestRef.current?.(),
       identifier: 'food-adjust-save',
@@ -1382,7 +1383,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         onSubmit={handleSubmit}
         submitRequestRef={submitRequestRef}
         initialValues={initialValues}
-        submitLabel={SAVE_LABEL}
+        submitLabel={t('common.save')}
         hideSubmitButton={usesNativeHeader}
         showAutoScaleNutrition
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
@@ -1425,6 +1426,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 }
 
 function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
+  const { t } = useTranslation();
   const { item, initialValues, returnKey, foodId, variantId, customNutrients } = params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -1811,7 +1813,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
-    title: 'Edit Food',
+    title: t('screens.editFood'),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -1820,8 +1822,6 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
     },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
       busy: isSubmitting,
       disabled: isSubmitting,
       placement: 'native-only',
@@ -1840,7 +1840,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         }}
         submitRequestRef={submitRequestRef}
         initialValues={initialValues}
-        submitLabel={SAVE_LABEL}
+        submitLabel={t('common.save')}
         isSubmitting={isSubmitting}
         hideSubmitButton={usesNativeHeader}
         unitSelector={

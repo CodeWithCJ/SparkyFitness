@@ -12,7 +12,7 @@ import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import {
   buildActivitySetsPayload,
   effectiveSetDurationSec,
@@ -494,8 +494,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     right: isEditing
       ? {
           kind: 'primary',
-          label: SAVE_LABEL,
-          busyLabel: SAVING_LABEL,
           busy: isSaving,
           disabled: isSaving,
           onPress: handleSave,

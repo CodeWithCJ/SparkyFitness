@@ -4,6 +4,9 @@ import MeasurementsSummary from '../../src/components/MeasurementsSummary';
 import FoodLibraryRow from '../../src/components/FoodLibraryRow';
 import MealLibraryRow from '../../src/components/MealLibraryRow';
 import ExerciseHistoryList from '../../src/components/ExerciseHistoryList';
+import { useExerciseHistory } from '../../src/hooks/useExerciseHistory';
+
+const mockUseExerciseHistory = useExerciseHistory as jest.MockedFunction<typeof useExerciseHistory>;
 
 // Every component's useTranslation() call routes through this shared spy so we
 // can assert user/server-entered content (food names, meal names, custom
@@ -127,5 +130,31 @@ describe('dynamic user/server content is rendered literally, never translated', 
     );
     expect(getByText('Bulgarian Split Squat')).toBeTruthy();
     expect(mockT).not.toHaveBeenCalledWith('Bulgarian Split Squat');
+  });
+
+  it('renders preset names without passing them to t()', () => {
+    (mockUseExerciseHistory as jest.Mock).mockReturnValue({
+      sessions: [
+        {
+          id: 'preset-1',
+          type: 'preset',
+          name: 'My Custom Preset',
+          entry_date: '2024-06-15',
+          exercises: [],
+        },
+      ],
+      isLoading: false,
+      isLoadingMore: false,
+      isError: false,
+      refetch: jest.fn(),
+      loadMore: jest.fn(),
+      hasMore: false,
+    });
+
+    const { getByText } = render(
+      <ExerciseHistoryList exerciseId="ex-1" weightUnit="kg" />,
+    );
+    expect(getByText('My Custom Preset')).toBeTruthy();
+    expect(mockT).not.toHaveBeenCalledWith('My Custom Preset');
   });
 });
