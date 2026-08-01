@@ -1278,6 +1278,7 @@
       "backupDate": "Created",
       "backupSize": "Size",
       "download": "Download",
+      "downloadBackupFile": "Download {{fileName}}",
       "downloadBackupSuccess": "Backup downloaded successfully.",
       "failedToDownloadBackup": "Failed to download backup.",
       "failedToFetchBackups": "Failed to fetch backup files.",

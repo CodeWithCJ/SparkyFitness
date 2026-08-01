@@ -3,7 +3,7 @@ import { z } from "zod";
 export const backupFileInfoSchema = z.object({
   fileName: z.string(),
   size: z.number(),
-  createdAt: z.string(),
+  createdAt: z.iso.datetime(),
 });
 
 export const backupListResponseSchema = z.object({

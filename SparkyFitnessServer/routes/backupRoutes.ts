@@ -28,6 +28,8 @@ const backupSettingsBodySchema = z.object({
   backupTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   retentionDays: z.number().int().positive(),
 });
+
+const backupFileNameSchema = z.string().regex(BACKUP_FILE_PATTERN);
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'mult... Remove this comment to see the full error message
 import multer from 'multer';
 import path from 'path';
@@ -450,11 +452,14 @@ router.get('/list', authenticate, isAdmin, async (req, res) => {
  *         description: Server error.
  */
 router.get('/download/:fileName', authenticate, isAdmin, async (req, res) => {
-  const { fileName } = req.params;
-
-  if (!BACKUP_FILE_PATTERN.test(fileName)) {
-    return res.status(400).json({ message: 'Invalid backup file name.' });
+  const parsedFileName = backupFileNameSchema.safeParse(req.params.fileName);
+  if (!parsedFileName.success) {
+    return res.status(400).json({
+      message: 'Invalid backup file name.',
+      errors: parsedFileName.error.flatten(),
+    });
   }
+  const fileName = parsedFileName.data;
 
   const backupPath = path.join(BACKUP_DIR, fileName);
 

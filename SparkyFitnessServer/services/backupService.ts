@@ -181,7 +181,15 @@ interface BackupFileStats {
 }
 
 async function listBackups(backupDir: string): Promise<BackupFileStats[]> {
-  const files = await fsp.readdir(backupDir);
+  let files: string[];
+  try {
+    files = await fsp.readdir(backupDir);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
   const backupFiles = files.filter((file) => BACKUP_FILE_PATTERN.test(file));
 
   const backupFilesWithStats = await Promise.all(

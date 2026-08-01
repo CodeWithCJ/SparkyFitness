@@ -199,6 +199,11 @@ export const BackupListDialog: React.FC<BackupListDialogProps> = ({
                                   disabled={isPending}
                                   onClick={() => handleDownload(backup)}
                                   className="flex items-center gap-2"
+                                  aria-label={t(
+                                    'admin.backupSettings.downloadBackupFile',
+                                    'Download {{fileName}}',
+                                    { fileName: backup.fileName }
+                                  )}
                                 >
                                   {isDownloadingThis ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
