@@ -70,6 +70,13 @@ describe('getDeviceLanguage', () => {
     ]);
     expect(getDeviceLanguage()).toBe('en');
   });
+
+  it('returns en for unsupported device locale (de-DE)', () => {
+    (getLocales as jest.Mock).mockReturnValue([
+      { languageCode: 'de', languageTag: 'de-DE', regionCode: 'DE', textDirection: 'ltr' },
+    ]);
+    expect(getDeviceLanguage()).toBe('en');
+  });
 });
 
 describe('getAppLocale', () => {
@@ -150,6 +157,257 @@ describe('initializeI18n hydration', () => {
       // pl lookup must resolve to the English value instead of the raw key.
       i18n.addResource('en', 'translation', 'fallbackProbeKey', 'English fallback text');
       expect(i18n.t('fallbackProbeKey')).toBe('English fallback text');
+    });
+  });
+});
+
+describe('initializeI18n preference normalization', () => {
+  beforeEach(() => {
+    delete mockStorage['@SparkyFitness/app-preferences'];
+  });
+
+  it('stored pl preference sets pl', async () => {
+    mockStorage['@SparkyFitness/app-preferences'] = JSON.stringify({
+      state: { languagePreference: 'pl' },
+      version: 1,
+    });
+
+    await jest.isolateModulesAsync(async () => {
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      expect(i18n.resolvedLanguage).toBe('pl');
+    });
+  });
+
+  it('stored en preference sets en', async () => {
+    mockStorage['@SparkyFitness/app-preferences'] = JSON.stringify({
+      state: { languagePreference: 'en' },
+      version: 1,
+    });
+
+    await jest.isolateModulesAsync(async () => {
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      expect(i18n.resolvedLanguage).toBe('en');
+    });
+  });
+
+  it('system preference with pl-PL device sets pl', async () => {
+    mockStorage['@SparkyFitness/app-preferences'] = JSON.stringify({
+      state: { languagePreference: 'system' },
+      version: 1,
+    });
+
+    await jest.isolateModulesAsync(async () => {
+      const { getLocales } = require('expo-localization');
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'pl', languageTag: 'pl-PL', regionCode: 'PL', textDirection: 'ltr' },
+      ]);
+
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      expect(i18n.resolvedLanguage).toBe('pl');
+    });
+  });
+
+  it('system preference with en-US device sets en', async () => {
+    mockStorage['@SparkyFitness/app-preferences'] = JSON.stringify({
+      state: { languagePreference: 'system' },
+      version: 1,
+    });
+
+    await jest.isolateModulesAsync(async () => {
+      const { getLocales } = require('expo-localization');
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'en', languageTag: 'en-US', regionCode: 'US', textDirection: 'ltr' },
+      ]);
+
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      expect(i18n.resolvedLanguage).toBe('en');
+    });
+  });
+
+  it('system preference with unsupported de-DE device sets en', async () => {
+    mockStorage['@SparkyFitness/app-preferences'] = JSON.stringify({
+      state: { languagePreference: 'system' },
+      version: 1,
+    });
+
+    await jest.isolateModulesAsync(async () => {
+      const { getLocales } = require('expo-localization');
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'de', languageTag: 'de-DE', regionCode: 'DE', textDirection: 'ltr' },
+      ]);
+
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      expect(i18n.resolvedLanguage).toBe('en');
+    });
+  });
+
+  it('no stored preference uses system (device language)', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { getLocales } = require('expo-localization');
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'pl', languageTag: 'pl-PL', regionCode: 'PL', textDirection: 'ltr' },
+      ]);
+
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      expect(i18n.resolvedLanguage).toBe('pl');
+    });
+  });
+
+  it('missing languagePreference in stored state uses system', async () => {
+    mockStorage['@SparkyFitness/app-preferences'] = JSON.stringify({
+      state: { hapticsEnabled: false },
+      version: 1,
+    });
+
+    await jest.isolateModulesAsync(async () => {
+      const { getLocales } = require('expo-localization');
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'en', languageTag: 'en-US', regionCode: 'US', textDirection: 'ltr' },
+      ]);
+
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      expect(i18n.resolvedLanguage).toBe('en');
+    });
+  });
+
+  it('invalid preference value (de) uses system', async () => {
+    mockStorage['@SparkyFitness/app-preferences'] = JSON.stringify({
+      state: { languagePreference: 'de' },
+      version: 1,
+    });
+
+    await jest.isolateModulesAsync(async () => {
+      const { getLocales } = require('expo-localization');
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'en', languageTag: 'en-US', regionCode: 'US', textDirection: 'ltr' },
+      ]);
+
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      // 'de' is not a valid LanguagePreference → normalized to 'system' → device language (en)
+      expect(i18n.resolvedLanguage).toBe('en');
+    });
+  });
+});
+
+describe('initializeI18n error resilience', () => {
+  beforeEach(() => {
+    delete mockStorage['@SparkyFitness/app-preferences'];
+  });
+
+  it('corrupted JSON does not break initialization', async () => {
+    mockStorage['@SparkyFitness/app-preferences'] = '{ invalid json }';
+
+    await jest.isolateModulesAsync(async () => {
+      const { getLocales } = require('expo-localization');
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'en', languageTag: 'en-US', regionCode: 'US', textDirection: 'ltr' },
+      ]);
+
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      // Corrupted JSON → falls back to 'system' → device language (en)
+      expect(i18n.resolvedLanguage).toBe('en');
+    });
+  });
+
+  it('AsyncStorage.getItem error does not break initialization', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const AsyncStorage = require('@react-native-async-storage/async-storage');
+      AsyncStorage.getItem.mockImplementationOnce(() =>
+        Promise.reject(new Error('Storage error')),
+      );
+
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      // On AsyncStorage error → falls back to 'en'
+      expect(i18n.resolvedLanguage).toBe('en');
+    });
+  });
+
+  it('fallback to en on controlled error', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const AsyncStorage = require('@react-native-async-storage/async-storage');
+      AsyncStorage.getItem.mockImplementationOnce(() =>
+        Promise.reject(new Error('Storage error')),
+      );
+
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      const result = await initializeI18n();
+      expect(result).toBeUndefined();
+      expect(i18n.resolvedLanguage).toBe('en');
+    });
+  });
+});
+
+describe('initializeI18n idempotency', () => {
+  beforeEach(() => {
+    delete mockStorage['@SparkyFitness/app-preferences'];
+  });
+
+  it('multiple calls do not initialize i18n instance twice', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      const initSpy = jest.spyOn(i18n, 'init');
+
+      await initializeI18n();
+      await initializeI18n();
+
+      expect(initSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('parallel calls return the same in-flight initialization', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { initializeI18n, default: i18n } = require('../../src/localization/i18n');
+      const initSpy = jest.spyOn(i18n, 'init');
+
+      await Promise.all([initializeI18n(), initializeI18n()]);
+
+      expect(initSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+describe('applyLanguagePreference', () => {
+  beforeEach(() => {
+    delete mockStorage['@SparkyFitness/app-preferences'];
+  });
+
+  it('applyLanguagePreference(pl) works after initialization', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { initializeI18n, applyLanguagePreference, default: i18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+      await applyLanguagePreference('pl');
+      expect(i18n.resolvedLanguage).toBe('pl');
+    });
+  });
+
+  it('applyLanguagePreference(system) re-resolves device language at call time', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { getLocales } = require('expo-localization');
+      const { initializeI18n, applyLanguagePreference, default: i18n } = require('../../src/localization/i18n');
+
+      // Initialize with device as en-US
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'en', languageTag: 'en-US', regionCode: 'US', textDirection: 'ltr' },
+      ]);
+      await initializeI18n();
+      expect(i18n.resolvedLanguage).toBe('en');
+
+      // Change device language to pl-PL and apply 'system'
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'pl', languageTag: 'pl-PL', regionCode: 'PL', textDirection: 'ltr' },
+      ]);
+      await applyLanguagePreference('system');
+      expect(i18n.resolvedLanguage).toBe('pl');
     });
   });
 });

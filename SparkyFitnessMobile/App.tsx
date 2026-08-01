@@ -1,5 +1,5 @@
 import './global.css'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { StatusBar, Platform, Alert, AppState } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -131,7 +131,8 @@ import MedicationReminderReconciler from './src/components/MedicationReminderRec
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useAppPreferencesStore } from './src/stores/appPreferencesStore';
-import { applyLanguagePreference, initializeI18n } from './src/localization';
+import { applyLanguagePreference } from './src/localization';
+import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -261,8 +262,7 @@ function AppContent() {
     dismissModal, handleLoginSuccess, handleSwitchToApiKey, handleSwitchToApiKeyDone,
   } = useAuth();
 
-  const [initialRoute, setInitialRoute] = useState<'Tabs' | 'Onboarding' | null>(null);
-  const [linkingEnabled, setLinkingEnabled] = useState(false);
+  const { initialRoute, linkingEnabled, setLinkingEnabled } = useAppBootstrap();
 
   useEffect(() => {
     if (languagePreference !== 'system') return;
@@ -273,24 +273,6 @@ function AppContent() {
     });
     return () => subscription.remove();
   }, [languagePreference]);
-
-  useEffect(() => {
-    const determine = async () => {
-      try {
-        const config = await getActiveServerConfig();
-        const route = config ? 'Tabs' : 'Onboarding';
-        setInitialRoute(route);
-        setLinkingEnabled(route === 'Tabs');
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(`[App] Failed to load active server config on startup: ${message}`, 'ERROR');
-        setInitialRoute('Onboarding');
-      } finally {
-        await SplashScreen.hideAsync();
-      }
-    };
-    determine();
-  }, []);
 
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
   const foregroundAutoSyncWindowRef = useRef(false);
@@ -633,7 +615,6 @@ function AppContent() {
 
     // Reset the auto-open flag on every app start
     const initializeApp = async () => {
-      await initializeI18n();
       // Remove the flag so the dashboard will auto-open on first SyncScreen visit
       await AsyncStorage.removeItem('@HealthConnect:hasAutoOpenedDashboard');
       await initNotifications();

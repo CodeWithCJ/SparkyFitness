@@ -13,6 +13,22 @@ export type LanguagePreference = 'system' | SupportedLanguage;
 const STORE_KEY = '@SparkyFitness/app-preferences';
 const i18n = createInstance();
 
+const I18N_INIT_OPTIONS = {
+  resources: {
+    en: { translation: enTranslation },
+    pl: { translation: plTranslation },
+  },
+  fallbackLng: 'en',
+  supportedLngs: [...SUPPORTED_LANGUAGES],
+  initImmediate: false,
+  interpolation: {
+    escapeValue: false,
+  },
+  react: {
+    useSuspense: false,
+  },
+};
+
 function normalizeLanguage(language: string | null | undefined): SupportedLanguage {
   return language?.toLowerCase().startsWith('pl') ? 'pl' : 'en';
 }
@@ -27,43 +43,69 @@ export function resolveLanguagePreference(
   return preference === 'system' ? getDeviceLanguage() : preference;
 }
 
+function normalizePreference(value: unknown): LanguagePreference {
+  if (value === 'system' || value === 'en' || value === 'pl') {
+    return value;
+  }
+  return 'system';
+}
+
+function safeJsonParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function initI18nLanguage(language: SupportedLanguage): Promise<void> {
+  await i18n.use(initReactI18next).init({
+    ...I18N_INIT_OPTIONS,
+    lng: language,
+  });
+}
+
 let initPromise: Promise<void> | null = null;
 
 export async function initializeI18n(): Promise<void> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    let initialLanguage: SupportedLanguage;
+    let initialLanguage: SupportedLanguage = 'en';
+
     try {
       const raw = await AsyncStorage.getItem(STORE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as { state?: { languagePreference?: LanguagePreference } };
-        const stored = parsed?.state?.languagePreference;
-        initialLanguage = stored ? resolveLanguagePreference(stored) : getDeviceLanguage();
+        const parsed = safeJsonParse(raw);
+        const storedPreference = (
+          parsed as { state?: { languagePreference?: unknown } } | null
+        )?.state?.languagePreference;
+        const preference = normalizePreference(storedPreference);
+        initialLanguage = resolveLanguagePreference(preference);
       } else {
         initialLanguage = getDeviceLanguage();
       }
     } catch {
-      initialLanguage = getDeviceLanguage();
+      initialLanguage = 'en';
     }
 
-    await i18n.use(initReactI18next).init({
-      resources: {
-        en: { translation: enTranslation },
-        pl: { translation: plTranslation },
-      },
-      lng: initialLanguage,
-      fallbackLng: 'en',
-      supportedLngs: [...SUPPORTED_LANGUAGES],
-      initImmediate: false,
-      interpolation: {
-        escapeValue: false,
-      },
-      react: {
-        useSuspense: false,
-      },
-    });
-  })();
+    await initI18nLanguage(initialLanguage);
+  })().catch(async (error) => {
+    console.error(
+      '[i18n] initializeI18n failed:',
+      error instanceof Error ? error.message : String(error),
+    );
+    if (!i18n.isInitialized) {
+      try {
+        await initI18nLanguage('en');
+      } catch (fallbackError) {
+        console.error(
+          '[i18n] Fallback init with en failed:',
+          fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+        );
+      }
+    }
+  });
 
   return initPromise;
 }
