@@ -510,46 +510,43 @@ describe('exercisePresetEntryRoutes http (supertest)', () => {
     expect(response.body).toEqual(planSession);
   });
 
-  it.each(['Health Connect', 'garmin'])(
-    'returns http 409 for nested updates of %s sessions',
-    async (_source) => {
-      const error = Object.assign(
-        new Error(
-          'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.'
-        ),
-        { status: 409 }
-      );
-      // @ts-expect-error TS(2339): Property 'mockRejectedValue' does not exist on typ... Remove this comment to see the full error message
-      exerciseService.updateGroupedWorkoutSession.mockRejectedValue(error);
+  it('returns http 409 when grouped workout update rejects a non-editable session', async () => {
+    const error = Object.assign(
+      new Error(
+        'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.'
+      ),
+      { status: 409 }
+    );
+    // @ts-expect-error TS(2339): Property 'mockRejectedValue' does not exist on typ... Remove this comment to see the full error message
+    exerciseService.updateGroupedWorkoutSession.mockRejectedValue(error);
 
-      const response = await request(app)
-        .put(`/exercise-preset-entries/${sessionId}`)
-        .send({
-          exercises: [
-            {
-              id: exerciseEntryId,
-              exercise_id: exerciseId,
-              sort_order: 0,
-              duration_minutes: 12,
-              sets: [
-                {
-                  id: 1,
-                  set_number: 1,
-                  reps: 12,
-                  weight: 60,
-                  completed_at: '2026-03-12T10:00:00.000Z',
-                  is_pr: true,
-                },
-              ],
-            },
-          ],
-        });
-
-      expect(response.statusCode).toBe(409);
-      expect(response.body).toEqual({
-        message:
-          'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.',
+    const response = await request(app)
+      .put(`/exercise-preset-entries/${sessionId}`)
+      .send({
+        exercises: [
+          {
+            id: exerciseEntryId,
+            exercise_id: exerciseId,
+            sort_order: 0,
+            duration_minutes: 12,
+            sets: [
+              {
+                id: 1,
+                set_number: 1,
+                reps: 12,
+                weight: 60,
+                completed_at: '2026-03-12T10:00:00.000Z',
+                is_pr: true,
+              },
+            ],
+          },
+        ],
       });
-    }
-  );
+
+    expect(response.statusCode).toBe(409);
+    expect(response.body).toEqual({
+      message:
+        'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.',
+    });
+  });
 });
