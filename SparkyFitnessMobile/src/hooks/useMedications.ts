@@ -9,6 +9,9 @@ import {
   createMedication,
   updateMedication,
   deleteMedication,
+  createSchedule,
+  updateSchedule,
+  deleteSchedule,
   createEntry,
   updateEntry,
   deleteEntry,
@@ -27,6 +30,8 @@ import type {
   UpdateMedicationInput,
   CreateMedicationEntryInput,
   UpdateMedicationEntryInput,
+  CreateScheduleInput,
+  UpdateScheduleInput,
   Medication,
   MedicationEntry,
 } from '@workspace/shared';
@@ -97,6 +102,47 @@ export function useDeleteMedication() {
     mutationFn: (id: string) => deleteMedication(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
+    },
+  });
+}
+
+export function useCreateMedicationSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ medicationId, body }: { medicationId: string; body: CreateScheduleInput }) =>
+      createSchedule(medicationId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
+      queryClient.invalidateQueries({ queryKey: medicationDetailQueryKey(variables.medicationId) });
+    },
+  });
+}
+
+export function useUpdateMedicationSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      medicationId: string;
+      body: UpdateScheduleInput;
+    }) => updateSchedule(id, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
+      queryClient.invalidateQueries({ queryKey: medicationDetailQueryKey(variables.medicationId) });
+    },
+  });
+}
+
+export function useDeleteMedicationSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; medicationId: string }) => deleteSchedule(id),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
+      queryClient.invalidateQueries({ queryKey: medicationDetailQueryKey(variables.medicationId) });
     },
   });
 }
