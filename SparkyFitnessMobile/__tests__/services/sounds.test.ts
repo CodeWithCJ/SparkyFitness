@@ -83,6 +83,18 @@ describe('sounds service', () => {
       expect(mockCreatePlayer).not.toHaveBeenCalled();
     });
 
+    it('still plays and retries configuration when the audio mode call fails', async () => {
+      mockSetAudioMode.mockRejectedValueOnce(new Error('impossible audio mode'));
+      playRestCompleteSound();
+      await flush();
+      const player = mockCreatePlayer.mock.results[0].value;
+      expect(player.play).toHaveBeenCalledTimes(1);
+      playRestCompleteSound();
+      await flush();
+      expect(mockSetAudioMode).toHaveBeenCalledTimes(2);
+      expect(player.play).toHaveBeenCalledTimes(2);
+    });
+
     it('swallows playback errors', async () => {
       mockCreatePlayer.mockReturnValueOnce({
         play: jest.fn(),
