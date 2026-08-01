@@ -3,6 +3,7 @@ import {
   restoreBackup,
   saveBackupSettings,
   triggerManualBackup,
+  downloadLastBackup,
 } from '@/api/Admin/backup';
 import { backupKeys } from '@/api/keys/admin';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -70,6 +71,23 @@ export const useRestoreBackup = () => {
     mutationFn: restoreBackup,
     meta: {
       successMessage: 'Restored. Logging out..',
+    },
+  });
+};
+
+export const useDownloadLastBackup = () => {
+  const { t } = useTranslation();
+  return useMutation({
+    mutationFn: downloadLastBackup,
+    meta: {
+      successMessage: t(
+        'admin.backupSettings.backupDownloaded',
+        'Backup download started'
+      ),
+      errorMessage: t(
+        'admin.backupSettings.backupDownloadFailed',
+        'Failed to download backup'
+      ),
     },
   });
 };

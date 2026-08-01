@@ -1,13 +1,14 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Save, Play, Upload } from 'lucide-react';
+import { Loader2, Save, Play, Upload, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { BackupSettings, BackupSettingsMutator } from '@workspace/shared';
 import { toast } from '@/hooks/use-toast';
 import { getLocalTimeString } from './backupTimeUtils';
+import { useDownloadLastBackup } from '@/hooks/Admin/useBackups';
 
 interface BackupSettingsFormProps {
   initialSettings: BackupSettings;
@@ -31,6 +32,8 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   backupLocation,
 }) => {
   const { t } = useTranslation();
+  const { mutate: downloadBackup, isPending: isDownloading } =
+    useDownloadLastBackup();
 
   const getStatusText = (status?: string | null, timestamp?: Date | null) => {
     if (status && timestamp) {
@@ -115,6 +118,21 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
       onRestore(e.target.files[0]);
       e.target.value = '';
     }
+  };
+
+  const handleDownloadBackup = () => {
+    downloadBackup(undefined, {
+      onSuccess: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `sparkyfitness_backup_${new Date().toISOString().split('T')[0]}.tar.gz`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+    });
   };
 
   return (
@@ -233,6 +251,18 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
             <Play className="h-4 w-4" />
           )}
           {t('admin.backupSettings.runManualBackup', 'Run Manual Backup Now')}
+        </Button>
+        <Button
+          onClick={handleDownloadBackup}
+          disabled={isDownloading}
+          className="flex items-center gap-2"
+        >
+          {isDownloading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          {t('admin.backupSettings.downloadLastBackup', 'Download Last Backup')}
         </Button>
       </div>
 
