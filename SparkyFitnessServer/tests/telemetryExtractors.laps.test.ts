@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { extractGarminLaps } from '../services/garmin/garminTelemetryExtractors.js';
+import {
+  extractGarminLaps,
+  extractGarminGpsPoints,
+} from '../services/garmin/garminTelemetryExtractors.js';
 import { extractStravaLaps } from '../integrations/strava/stravaTelemetryExtractors.js';
 
 const lap = (over: Record<string, unknown> = {}) => ({
@@ -78,5 +81,63 @@ describe('laps without a usable start time are skipped, not stamped with now', (
       ],
     });
     expect(result.distance_meters).toBe(75);
+  });
+});
+
+// Same rule as laps, on all three GPS input shapes. A fabricated "now" is
+// indistinguishable from a real reading once stored, and the bulk insert orders
+// the track by timestamp — so those points reorder the route on the map.
+describe('GPS points without a usable timestamp are skipped', () => {
+  it('drops normalized gps_points with no timestamp', () => {
+    const results = extractGarminGpsPoints({
+      gps_points: [
+        { latitude: 1, longitude: 2 },
+        { timestamp: '2026-07-29T08:00:00Z', latitude: 3, longitude: 4 },
+      ],
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0].latitude).toBe(3);
+  });
+
+  it('drops activityDetailMetrics rows with no timestamp value', () => {
+    const payload = {
+      details: {
+        metricDescriptors: [
+          { key: 'directTimestamp', metricsIndex: 0 },
+          { key: 'directLatitude', metricsIndex: 1 },
+          { key: 'directLongitude', metricsIndex: 2 },
+        ],
+        activityDetailMetrics: [
+          { metrics: [null, 1, 2] },
+          { metrics: [1785225600000, 3, 4] },
+        ],
+      },
+    };
+    const results = extractGarminGpsPoints(payload);
+    expect(results).toHaveLength(1);
+    expect(results[0].latitude).toBe(3);
+  });
+
+  it('drops polyline points with no time', () => {
+    const results = extractGarminGpsPoints({
+      details: {
+        geoPolylineDTO: {
+          polyline: [
+            { lat: 1, lon: 2 },
+            { time: 1785225600000, lat: 3, lon: 4 },
+          ],
+        },
+      },
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0].latitude).toBe(3);
+  });
+
+  it('drops a point whose timestamp is unparseable', () => {
+    expect(
+      extractGarminGpsPoints({
+        gps_points: [{ timestamp: 'not-a-date', latitude: 1, longitude: 2 }],
+      })
+    ).toHaveLength(0);
   });
 });

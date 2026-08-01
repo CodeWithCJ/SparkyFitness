@@ -254,7 +254,12 @@ ALTER TABLE vitals_entries ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TI
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'uq_vitals_entry'
+    -- conname is only unique per table, so the relation has to be part of the
+    -- predicate: a same-named constraint on any other table would otherwise
+    -- make this skip and leave the vitals upsert without an ON CONFLICT target.
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'uq_vitals_entry'
+      AND conrelid = 'public.vitals_entries'::regclass
   ) THEN
     ALTER TABLE vitals_entries
       ADD CONSTRAINT uq_vitals_entry UNIQUE (user_id, source_provider, "timestamp");
@@ -336,8 +341,11 @@ BEGIN
     SELECT *
     FROM (VALUES
       -- category name,             target column,            max plausible value
-      ('Muscle Mass',           'muscle_mass_kg',        1000::numeric),
-      ('Bone Mass',             'bone_mass_kg',          1000::numeric),
+      -- The mass ceilings are the largest value numeric(5,2) can hold. A higher
+      -- bound would let an out-of-range provider value pass the filter and then
+      -- fail the INSERT with a numeric overflow, aborting the whole migration.
+      ('Muscle Mass',           'muscle_mass_kg',       999.99::numeric),
+      ('Bone Mass',             'bone_mass_kg',         999.99::numeric),
       -- Garmin-only. Withings reports water as MASS in kg ('Hydration', and
       -- 'Body Water Breakdown' for extra/intracellular), never a percentage,
       -- so those categories are deliberately out of scope here.

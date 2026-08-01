@@ -29,6 +29,7 @@ describe('exerciseStatsService', () => {
             total_calories_burned: '2800',
             workout_count: '4',
             avg_heart_rate: '152',
+            total_elevation_gain_meters: '320.5',
           },
         ],
       });
@@ -104,6 +105,9 @@ describe('exerciseStatsService', () => {
       expect(res.totals.workoutCount).toBe(4);
       expect(res.totals.avgHeartRate).toBe(152);
       expect(res.totals.totalLiftedVolumeKg).toBe(5000);
+      // Summed from the database, not hardcoded to 0 — otherwise the summary
+      // card contradicts the elevation shown in the interval breakdown below.
+      expect(res.totals.totalElevationGainMeters).toBe(321);
       expect(res.intervalsBreakdown.length).toBe(2);
 
       // Per-bucket elevation and lifted volume come from the database rather

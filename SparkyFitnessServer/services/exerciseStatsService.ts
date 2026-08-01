@@ -120,7 +120,8 @@ async function getExerciseStatsSummary(
         COALESCE(SUM(duration_minutes), 0) as total_duration_minutes,
         COALESCE(SUM(calories_burned), 0) as total_calories_burned,
         COUNT(DISTINCT id) as workout_count,
-        AVG(avg_heart_rate) as avg_heart_rate
+        AVG(avg_heart_rate) as avg_heart_rate,
+        COALESCE(SUM(elevation_gain_meters), 0) as total_elevation_gain_meters
       FROM public.exercise_entries
       WHERE user_id = $1 
         AND entry_date >= $2 
@@ -146,6 +147,9 @@ async function getExerciseStatsSummary(
       parseFloat(String(totalsRow.total_calories_burned || '0'))
     );
     const workoutCount = parseInt(String(totalsRow.workout_count || '0'), 10);
+    const totalElevationGainMeters = Math.round(
+      parseFloat(String(totalsRow.total_elevation_gain_meters || '0'))
+    );
     const avgHeartRate = totalsRow.avg_heart_rate
       ? Math.round(parseFloat(String(totalsRow.avg_heart_rate)))
       : null;
@@ -383,7 +387,7 @@ async function getExerciseStatsSummary(
         totalCaloriesBurned,
         workoutCount,
         avgHeartRate,
-        totalElevationGainMeters: 0,
+        totalElevationGainMeters,
         totalMovingDurationMinutes: totalDurationMinutes,
         totalLiftedVolumeKg,
         totalReps,

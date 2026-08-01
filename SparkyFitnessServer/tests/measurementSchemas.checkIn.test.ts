@@ -72,4 +72,43 @@ describe('check-in body schemas cover smart-scale composition', () => {
       expect(result.success).toBe(false);
     }
   );
+
+  // Coercion alone let a direct API call store a negative mass or a body-water
+  // percentage above 100 in the numeric(5,2) column. The other two write paths
+  // already bound these, so the route has to as well.
+  it.each(SMART_SCALE_FIELDS)('rejects a negative %s', (field) => {
+    const result = UpsertCheckInBodySchema.safeParse({
+      entry_date: '2026-07-31',
+      [field]: -1,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    ['muscle_mass_kg', 1000],
+    ['bone_mass_kg', 1000],
+    ['body_water_percentage', 101],
+  ] as const)('rejects an out-of-range %s of %s', (field, value) => {
+    expect(
+      UpsertCheckInBodySchema.safeParse({
+        entry_date: '2026-07-31',
+        [field]: value,
+      }).success
+    ).toBe(false);
+    expect(UpdateCheckInBodySchema.safeParse({ [field]: value }).success).toBe(
+      false
+    );
+  });
+
+  it('still accepts the boundary values', () => {
+    const result = UpsertCheckInBodySchema.safeParse({
+      entry_date: '2026-07-31',
+      muscle_mass_kg: 999.99,
+      bone_mass_kg: 0,
+      body_water_percentage: 100,
+    });
+
+    expect(result.success).toBe(true);
+  });
 });

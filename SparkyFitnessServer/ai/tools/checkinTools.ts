@@ -239,20 +239,21 @@ Actions:
               const defaultMeasurementUnit =
                 prefs.default_measurement_unit || 'cm';
 
-              // Convert to standard units (kg, cm) for storage
+              // Convert to standard units (kg, cm) for storage. These resolved
+              // units are also what the confirmation text reports: falling back
+              // to a literal 'kg'/'cm' there would tell the user a different
+              // unit than the one the value was actually interpreted as.
               const mUnit = args.measurements_unit || defaultMeasurementUnit;
+              const wUnit = args.weight_unit || defaultWeightUnit;
+              const hUnit = args.height_unit || defaultMeasurementUnit;
               const measurements: Record<string, number> = {};
               if (isSet(args.weight)) {
-                measurements.weight = convertWeight(
-                  args.weight,
-                  args.weight_unit || defaultWeightUnit,
-                  'kg'
-                );
+                measurements.weight = convertWeight(args.weight, wUnit, 'kg');
               }
               if (isSet(args.height)) {
                 measurements.height = convertMeasurement(
                   args.height,
-                  args.height_unit || defaultMeasurementUnit,
+                  hUnit,
                   'cm'
                 );
               }
@@ -277,7 +278,6 @@ Actions:
               }
               // Smart-scale composition. Masses are stored in kg like weight;
               // body water is already a percentage and needs no conversion.
-              const wUnit = args.weight_unit || defaultWeightUnit;
               if (isSet(args.muscle_mass)) {
                 measurements.muscle_mass_kg = convertWeight(
                   args.muscle_mass,
@@ -305,32 +305,19 @@ Actions:
 
               const parts: string[] = [];
               if (isSet(args.weight))
-                parts.push(`weight: ${args.weight}${args.weight_unit || 'kg'}`);
+                parts.push(`weight: ${args.weight}${wUnit}`);
               if (isSet(args.steps)) parts.push(`steps: ${args.steps}`);
               if (isSet(args.height))
-                parts.push(`height: ${args.height}${args.height_unit || 'cm'}`);
+                parts.push(`height: ${args.height}${hUnit}`);
               if (isSet(args.body_fat))
                 parts.push(`body fat: ${args.body_fat}%`);
-              if (isSet(args.neck))
-                parts.push(
-                  `neck: ${args.neck}${args.measurements_unit || 'cm'}`
-                );
-              if (isSet(args.waist))
-                parts.push(
-                  `waist: ${args.waist}${args.measurements_unit || 'cm'}`
-                );
-              if (isSet(args.hips))
-                parts.push(
-                  `hips: ${args.hips}${args.measurements_unit || 'cm'}`
-                );
+              if (isSet(args.neck)) parts.push(`neck: ${args.neck}${mUnit}`);
+              if (isSet(args.waist)) parts.push(`waist: ${args.waist}${mUnit}`);
+              if (isSet(args.hips)) parts.push(`hips: ${args.hips}${mUnit}`);
               if (isSet(args.muscle_mass))
-                parts.push(
-                  `muscle mass: ${args.muscle_mass}${args.weight_unit || 'kg'}`
-                );
+                parts.push(`muscle mass: ${args.muscle_mass}${wUnit}`);
               if (isSet(args.bone_mass))
-                parts.push(
-                  `bone mass: ${args.bone_mass}${args.weight_unit || 'kg'}`
-                );
+                parts.push(`bone mass: ${args.bone_mass}${wUnit}`);
               if (isSet(args.body_water))
                 parts.push(`body water: ${args.body_water}%`);
               const summary =

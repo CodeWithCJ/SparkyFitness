@@ -197,7 +197,7 @@ describe('log_biometrics', () => {
     );
   });
 
-  it("falls back to the user's preferred units for conversion (text still defaults to kg)", async () => {
+  it("falls back to the user's preferred units for both conversion and text", async () => {
     vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
       default_weight_unit: 'lbs',
     });
@@ -210,7 +210,11 @@ describe('log_biometrics', () => {
       opts
     );
 
-    expect(result).toBe('✅ Biometrics logged for 2026-06-01 (weight: 180kg).');
+    // The value is interpreted as lbs (the user's preference), so the text has
+    // to say lbs. Reporting 'kg' here told the user a unit that was never used.
+    expect(result).toBe(
+      '✅ Biometrics logged for 2026-06-01 (weight: 180lbs).'
+    );
     expect(measurementService.upsertCheckInMeasurements).toHaveBeenCalledWith(
       'user-1',
       'user-1',

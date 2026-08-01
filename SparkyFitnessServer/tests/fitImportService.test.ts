@@ -8,11 +8,11 @@ import { getOrCreateGarminExercise } from '../services/garminService.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { importFitFiles } from '../services/fitImportService.js';
 
-vi.mock('../db/poolManager', () => ({
+vi.mock('../db/poolManager.js', () => ({
   getClient: vi.fn(),
   getSystemClient: vi.fn(),
 }));
-vi.mock('../models/exerciseEntry', () => ({
+vi.mock('../models/exerciseEntry.js', () => ({
   default: {
     _createExerciseEntryWithClient: vi.fn(),
     updateExerciseEntryTelemetryOnly: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock('../models/exerciseEntry', () => ({
     _updateExerciseEntryTelemetryOnlyWithClient: vi.fn(),
   },
 }));
-vi.mock('../models/workoutTelemetryRepository', () => ({
+vi.mock('../models/workoutTelemetryRepository.js', () => ({
   _bulkInsertExerciseEntryLapsWithClient: vi.fn(),
   _bulkInsertExerciseEntryGpsPointsWithClient: vi.fn(),
   _bulkInsertExerciseEntryHrZonesWithClient: vi.fn(),
@@ -28,16 +28,16 @@ vi.mock('../models/workoutTelemetryRepository', () => ({
   bulkInsertExerciseEntryGpsPoints: vi.fn(),
   bulkInsertExerciseEntryHrZones: vi.fn(),
 }));
-vi.mock('../models/activityDetailsRepository', () => ({
+vi.mock('../models/activityDetailsRepository.js', () => ({
   default: {
     _createActivityDetailWithClient: vi.fn(),
     _deleteActivityDetailsByEntryIdAndProviderWithClient: vi.fn(),
   },
 }));
-vi.mock('../services/garminService', () => ({
+vi.mock('../services/garminService.js', () => ({
   getOrCreateGarminExercise: vi.fn(),
 }));
-vi.mock('../utils/timezoneLoader', () => ({
+vi.mock('../utils/timezoneLoader.js', () => ({
   loadUserTimezone: vi.fn(),
 }));
 
@@ -84,9 +84,9 @@ const mockClient = { query: vi.fn(), release: vi.fn() };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Default shape for any ad-hoc client.query() call (e.g. the telemetry writers'
-  // getClient() usage in workoutTelemetryRepository, which isn't mocked at module
-  // level like exerciseEntryRepository/activityDetailsRepository above).
+  // Default shape for any ad-hoc client.query() call made directly by the code
+  // under test, so a query that isn't explicitly stubbed returns an empty set
+  // rather than undefined.
   mockClient.query.mockResolvedValue({ rows: [] });
   vi.mocked(getClient).mockResolvedValue(mockClient);
   vi.mocked(

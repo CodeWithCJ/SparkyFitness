@@ -176,21 +176,36 @@ export function extractGarminLaps(payload: UnknownRecord): ExtractedLap[] {
 }
 
 /**
+ * Parses a raw trackpoint time, returning null when it is missing or unusable.
+ *
+ * A point with no usable time is skipped rather than stamped with the import
+ * time: the stored trackpoint would be indistinguishable from a real reading,
+ * and _bulkInsertExerciseEntryGpsPointsWithClient orders the track by this
+ * value, so fabricated "now" timestamps silently reorder the route. This mirrors
+ * the same decision in extractGarminLaps above.
+ */
+function toTrackpointTimestamp(raw: unknown): Date | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const timestamp = new Date(raw as string | number | Date);
+  return Number.isNaN(timestamp.getTime()) ? null : timestamp;
+}
+
+/**
  * Extracts GPS/telemetry trackpoints from a Garmin activity or workout-session payload.
  * Tries, in order: `payload.gps_points` (already-normalized), `payload.details.activityDetailMetrics`
  * (Garmin's column-indexed metric rows, using `metricDescriptors` to find each field's index),
  * then `payload.details.geoPolylineDTO.polyline` (map-only polyline, no telemetry).
+ *
+ * Points without a usable timestamp are dropped — see toTrackpointTimestamp.
  */
 export function extractGarminGpsPoints(
   payload: UnknownRecord
 ): ExtractedGpsPoint[] {
   if (Array.isArray(payload.gps_points)) {
-    return asArray<UnknownRecord>(payload.gps_points).map(
+    return asArray<UnknownRecord>(payload.gps_points).flatMap(
       (pt: UnknownRecord) => {
-        const tsVal = pt.timestamp;
-        const timestamp = tsVal
-          ? new Date(tsVal as string | number | Date)
-          : new Date();
+        const timestamp = toTrackpointTimestamp(pt.timestamp);
+        if (timestamp === null) return [];
         return {
           timestamp,
           latitude: firstNum(pt, ['latitude']) ?? 0,
@@ -229,49 +244,42 @@ export function extractGarminGpsPoints(
     const cadIdx = getMetricIdx('directRunCadence', 'cadence');
     const tsIdx = getMetricIdx('directTimestamp', 'timestamp');
 
-    return activityDetailMetrics
-      .map((metricRow: UnknownRecord) => {
-        const metrics = asArray<unknown>(metricRow.metrics);
-        const lat =
-          latIdx >= 0 &&
-          metrics[latIdx] !== null &&
-          metrics[latIdx] !== undefined
-            ? (num(metrics[latIdx]) ?? 0)
-            : 0;
-        const lon =
-          lonIdx >= 0 &&
-          metrics[lonIdx] !== null &&
-          metrics[lonIdx] !== undefined
-            ? (num(metrics[lonIdx]) ?? 0)
-            : 0;
-        const tsVal = tsIdx >= 0 ? metrics[tsIdx] : undefined;
-        const timestamp = tsVal
-          ? new Date(tsVal as string | number | Date)
-          : new Date();
-        return {
-          timestamp,
-          latitude: lat,
-          longitude: lon,
-          altitude_meters: altIdx >= 0 ? num(metrics[altIdx]) : null,
-          speed_mps: speedIdx >= 0 ? num(metrics[speedIdx]) : null,
-          heart_rate_bpm: hrIdx >= 0 ? int(metrics[hrIdx]) : null,
-          respiration_rate_brpm: null,
-          cadence: cadIdx >= 0 ? int(metrics[cadIdx]) : null,
-          power_watts: null,
-          timestampMs: timestamp.getTime(),
-        };
-      })
-      .filter(Boolean);
+    return activityDetailMetrics.flatMap((metricRow: UnknownRecord) => {
+      const metrics = asArray<unknown>(metricRow.metrics);
+      const timestamp = toTrackpointTimestamp(
+        tsIdx >= 0 ? metrics[tsIdx] : undefined
+      );
+      if (timestamp === null) return [];
+
+      const lat =
+        latIdx >= 0 && metrics[latIdx] !== null && metrics[latIdx] !== undefined
+          ? (num(metrics[latIdx]) ?? 0)
+          : 0;
+      const lon =
+        lonIdx >= 0 && metrics[lonIdx] !== null && metrics[lonIdx] !== undefined
+          ? (num(metrics[lonIdx]) ?? 0)
+          : 0;
+      return {
+        timestamp,
+        latitude: lat,
+        longitude: lon,
+        altitude_meters: altIdx >= 0 ? num(metrics[altIdx]) : null,
+        speed_mps: speedIdx >= 0 ? num(metrics[speedIdx]) : null,
+        heart_rate_bpm: hrIdx >= 0 ? int(metrics[hrIdx]) : null,
+        respiration_rate_brpm: null,
+        cadence: cadIdx >= 0 ? int(metrics[cadIdx]) : null,
+        power_watts: null,
+        timestampMs: timestamp.getTime(),
+      };
+    });
   }
 
   const geoPolylineDTO = asRecord(details?.geoPolylineDTO);
   const polyline = asArray<UnknownRecord>(geoPolylineDTO?.polyline);
   if (polyline.length > 0) {
-    return polyline.map((pt: UnknownRecord) => {
-      const timeVal = firstValue(pt, ['time']);
-      const timestamp = timeVal
-        ? new Date(timeVal as string | number | Date)
-        : new Date();
+    return polyline.flatMap((pt: UnknownRecord) => {
+      const timestamp = toTrackpointTimestamp(firstValue(pt, ['time']));
+      if (timestamp === null) return [];
       return {
         timestamp,
         latitude: firstNum(pt, ['lat', 'latitude']) ?? 0,
