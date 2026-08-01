@@ -81,35 +81,39 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
 jest.mock('../../src/components/TimeSheet', () => {
   const React = require('react');
   const { Pressable, Text } = require('react-native');
+  const MockTimeSheet = React.forwardRef(
+    ({ onSelectTime }: { onSelectTime: (time: string) => void }, _ref: unknown) => (
+      <Pressable onPress={() => onSelectTime('08:00')}>
+        <Text>mock-time-sheet</Text>
+      </Pressable>
+    ),
+  );
+  MockTimeSheet.displayName = 'MockTimeSheet';
   return {
     __esModule: true,
-    default: React.forwardRef(
-      ({ onSelectTime }: { onSelectTime: (time: string) => void }, _ref: unknown) => (
-        <Pressable onPress={() => onSelectTime('08:00')}>
-          <Text>mock-time-sheet</Text>
-        </Pressable>
-      ),
-    ),
+    default: MockTimeSheet,
   };
 });
 
 jest.mock('../../src/components/CalendarSheet', () => {
   const React = require('react');
   const { Pressable, Text, View } = require('react-native');
+  const MockCalendarSheet = React.forwardRef(
+    ({ onSelectDate }: { onSelectDate: (date: string) => void }, _ref: unknown) => (
+      <View>
+        <Pressable onPress={() => onSelectDate('2026-08-15')}>
+          <Text>cal-mid</Text>
+        </Pressable>
+        <Pressable onPress={() => onSelectDate('2026-08-01')}>
+          <Text>cal-early</Text>
+        </Pressable>
+      </View>
+    ),
+  );
+  MockCalendarSheet.displayName = 'MockCalendarSheet';
   return {
     __esModule: true,
-    default: React.forwardRef(
-      ({ onSelectDate }: { onSelectDate: (date: string) => void }, _ref: unknown) => (
-        <View>
-          <Pressable onPress={() => onSelectDate('2026-08-15')}>
-            <Text>cal-mid</Text>
-          </Pressable>
-          <Pressable onPress={() => onSelectDate('2026-08-01')}>
-            <Text>cal-early</Text>
-          </Pressable>
-        </View>
-      ),
-    ),
+    default: MockCalendarSheet,
   };
 });
 
@@ -342,6 +346,17 @@ describe('MedicationScheduleFormScreen', () => {
     );
   });
 
+  it('steps prnMaxPerDay from empty to 1, not past it', () => {
+    const screen = renderScreen({ medicationId: 'med-1' });
+
+    fireEvent.press(screen.getByText('opt-prn'));
+    fireEvent.press(screen.getByTestId('icon-add'));
+    expect(screen.getByDisplayValue('1')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('icon-add'));
+    expect(screen.getByDisplayValue('2')).toBeTruthy();
+  });
+
   it('clears stale weekly discriminators when the type changes to daily on edit', () => {
     setDetail(
       buildMedication({
@@ -474,6 +489,7 @@ describe('MedicationScheduleFormScreen', () => {
       expect.anything(),
     );
 
+    screen.unmount();
     jest.clearAllMocks();
     setDetail(
       buildMedication({ schedules: [buildSchedule({ schedule_type_id: 'taper' })] }),

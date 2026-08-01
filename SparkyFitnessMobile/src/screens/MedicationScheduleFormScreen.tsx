@@ -188,8 +188,8 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
       max?: number,
     ) => {
       const parsed = parseInt(current, 10);
-      const base = Number.isFinite(parsed) ? parsed : min;
-      let next = base + delta;
+      // An empty field steps straight to min, not min + delta.
+      let next = Number.isFinite(parsed) ? parsed + delta : min;
       next = Math.max(min, next);
       if (max != null) next = Math.min(max, next);
       updateField(key, String(next));
@@ -361,6 +361,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
       label: SAVE_LABEL,
       busy: createScheduleMutation.isPending || updateScheduleMutation.isPending,
       busyLabel: SAVING_LABEL,
+      disabled: isEditing && !existing,
       onPress: handleSave,
     },
   });
