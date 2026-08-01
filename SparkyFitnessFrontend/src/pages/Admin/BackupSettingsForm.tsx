@@ -122,11 +122,11 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
 
   const handleDownloadBackup = () => {
     downloadBackup(undefined, {
-      onSuccess: (blob) => {
+      onSuccess: ({ blob, filename }) => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `sparkyfitness_backup_${new Date().toISOString().split('T')[0]}.tar.gz`;
+        link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
