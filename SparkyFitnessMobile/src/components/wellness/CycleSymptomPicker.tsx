@@ -96,8 +96,8 @@ const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ date }) => {
       <View className="flex-row items-center justify-between mb-1">
         <Text className="text-text-primary text-sm font-semibold">Symptoms</Text>
         <TouchableOpacity onPress={() => setShowAll((v) => !v)} activeOpacity={0.7}>
-          <Text className="text-accent-primary text-xs font-semibold">
-            {showAll ? 'Show less' : '+ Show all'}
+          <Text className="text-accent-primary text-sm font-semibold">
+            {showAll ? 'Show less' : 'Show all'}
           </Text>
         </TouchableOpacity>
       </View>

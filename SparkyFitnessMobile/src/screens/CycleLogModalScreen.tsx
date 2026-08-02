@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, Platform } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
@@ -12,9 +13,9 @@ import CycleTodayView from '../components/wellness/CycleTodayView';
 import PregnancyLogView from '../components/wellness/pregnancy/PregnancyLogView';
 import FertilityCard from '../components/wellness/ttc/FertilityCard';
 import TestQuickLog from '../components/wellness/ttc/TestQuickLog';
-import DateNavigator from '../components/DateNavigator';
+import DateSelectRow from '../components/DateSelectRow';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { getTodayDate, addDays } from '../utils/dateUtils';
+import { getTodayDate } from '../utils/dateUtils';
 
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 
@@ -31,14 +32,8 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
   const [selectedDate, setSelectedDate] = React.useState(route.params?.date || getTodayDate());
 
   // Save lives in CycleTodayView; the header/footer buttons trigger it here.
-  // Pregnancy mode keeps PregnancyLogView's own save button instead.
   const saveRequestRef = useRef<(() => void) | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
-  const showsScreenSave = mode !== 'pregnant';
-
-  const handlePrevDay = () => setSelectedDate((d) => addDays(d, -1));
-  const handleNextDay = () => setSelectedDate((d) => addDays(d, 1));
-  const handleToday = () => setSelectedDate(getTodayDate());
 
   const headerTitle = React.useMemo(() => {
     if (discreetMode) return 'Log Entry';
@@ -51,18 +46,16 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
     title: headerTitle,
     nativeTitle: headerTitle,
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
-    right: showsScreenSave
-      ? {
-          kind: 'primary',
-          label: SAVE_LABEL,
-          busyLabel: SAVING_LABEL,
-          busy: isSaving,
-          disabled: isSaving,
-          placement: 'native-only',
-          onPress: () => saveRequestRef.current?.(),
-          identifier: 'cycle-log-save',
-        }
-      : undefined,
+    right: {
+      kind: 'primary',
+      label: SAVE_LABEL,
+      busyLabel: SAVING_LABEL,
+      busy: isSaving,
+      disabled: isSaving,
+      placement: 'native-only',
+      onPress: () => saveRequestRef.current?.(),
+      identifier: 'cycle-log-save',
+    },
   });
 
   return (
@@ -74,34 +67,33 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
     >
       {header}
 
-      {/* Integrated Header Date Bar */}
-      <View className="px-4 py-2 bg-background border-b border-border-subtle flex-row items-center justify-between z-10">
-        <Text className="text-sm font-semibold text-text-secondary">Selected Date</Text>
-        <DateNavigator
-          title=""
-          selectedDate={selectedDate}
-          onPreviousDay={handlePrevDay}
-          onNextDay={handleNextDay}
-          onToday={handleToday}
-          onDatePress={() => calendarRef.current?.present()}
-          showDateAlways
-          skipTopInset
-          skipHorizontalPadding
-          compact
-        />
-      </View>
-
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{
           padding: 16,
           paddingTop: 12,
           paddingBottom: insets.bottom + 40,
         }}
+        bottomOffset={80}
+        keyboardShouldPersistTaps="handled"
       >
         <View className="gap-3">
+          {/* Date card; pregnancy mode shows the date inside its weight card instead */}
+          {mode !== 'pregnant' && (
+            <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
+              <DateSelectRow date={selectedDate} onPress={() => calendarRef.current?.present()} />
+            </View>
+          )}
+
           {/* Mode-aware entry view */}
           {mode === 'pregnant' && (
-            <PregnancyLogView date={selectedDate} onSaveSuccess={() => navigation.goBack()} />
+            <PregnancyLogView
+              date={selectedDate}
+              onSaveSuccess={() => navigation.goBack()}
+              saveRequestRef={saveRequestRef}
+              onSavingChange={setIsSaving}
+              onDatePress={() => calendarRef.current?.present()}
+              hideSaveButton
+            />
           )}
 
           {mode === 'ttc' && (
@@ -135,10 +127,10 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
         <View className="mt-6 px-2">
           <MedicalDisclaimer />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Sticky footer save; the native-header path shows Save in the nav bar */}
-      {showsScreenSave && !usesNativeHeader && (
+      {!usesNativeHeader && (
         <View
           className="px-4 py-3"
           style={{

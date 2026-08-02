@@ -4,6 +4,9 @@ import CycleTodayView from '../../../src/components/wellness/CycleTodayView';
 
 const mockUpsertLogAsync = jest.fn().mockResolvedValue({});
 const mockUpsertBbt = jest.fn().mockResolvedValue({});
+const mockUpsertCheckInAsync = jest.fn().mockResolvedValue({});
+let mockMode = 'ttc';
+let mockMeasurements: { weight: number } | null = null;
 const mockLog: Record<string, unknown> = {
   cervical_mucus: 'creamy',
   cervical_position: 'high',
@@ -61,7 +64,19 @@ jest.mock('../../../src/hooks/useUpsertCycleLog', () => ({
 }));
 
 jest.mock('../../../src/hooks/useCycleMode', () => ({
-  useCycleMode: () => ({ mode: 'ttc' }),
+  useCycleMode: () => ({ mode: mockMode }),
+}));
+
+jest.mock('../../../src/hooks/useMeasurements', () => ({
+  useMeasurements: () => ({ measurements: mockMeasurements, isLoading: false }),
+}));
+
+jest.mock('../../../src/hooks/useUpsertCheckIn', () => ({
+  useUpsertCheckIn: () => ({ mutateAsync: mockUpsertCheckInAsync, isPending: false }),
+}));
+
+jest.mock('../../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({ preferences: { default_weight_unit: 'kg' } }),
 }));
 
 jest.mock('../../../src/services/api/cycleApi', () => ({
@@ -109,6 +124,64 @@ describe('CycleTodayView optional pickers', () => {
     expect(mockUpsertLogAsync.mock.calls[0][0].body).toMatchObject({
       cervical_mucus: 'watery',
     });
+  });
+});
+
+describe('CycleTodayView pregnant mode weight', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMode = 'pregnant';
+    mockMeasurements = null;
+  });
+
+  afterAll(() => {
+    mockMode = 'ttc';
+    mockMeasurements = null;
+  });
+
+  it('saves an entered weight through the check-in mutation on Save', async () => {
+    const { getByPlaceholderText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+
+    fireEvent.changeText(getByPlaceholderText('e.g. 65'), '66.5');
+    fireEvent.press(getByText('Save Log Entry'));
+
+    await waitFor(() =>
+      expect(mockUpsertCheckInAsync).toHaveBeenCalledWith({
+        entryDate: '2026-08-01',
+        weight: 66.5,
+      }),
+    );
+  });
+
+  it('does not save while typing or on blur', () => {
+    const { getByPlaceholderText } = render(<CycleTodayView date="2026-08-01" />);
+
+    const input = getByPlaceholderText('e.g. 65');
+    fireEvent.changeText(input, '66.5');
+    fireEvent(input, 'blur');
+
+    expect(mockUpsertCheckInAsync).not.toHaveBeenCalled();
+  });
+
+  it('skips the check-in when the weight is unchanged', async () => {
+    mockMeasurements = { weight: 65 };
+    const { getByText } = render(<CycleTodayView date="2026-08-01" />);
+
+    fireEvent.press(getByText('Save Log Entry'));
+
+    await waitFor(() => expect(mockUpsertLogAsync).toHaveBeenCalled());
+    expect(mockUpsertCheckInAsync).not.toHaveBeenCalled();
+  });
+
+  it('skips the check-in when the field is emptied', async () => {
+    mockMeasurements = { weight: 65 };
+    const { getByDisplayValue, getByText } = render(<CycleTodayView date="2026-08-01" />);
+
+    fireEvent.changeText(getByDisplayValue('65'), '');
+    fireEvent.press(getByText('Save Log Entry'));
+
+    await waitFor(() => expect(mockUpsertLogAsync).toHaveBeenCalled());
+    expect(mockUpsertCheckInAsync).not.toHaveBeenCalled();
   });
 });
 
