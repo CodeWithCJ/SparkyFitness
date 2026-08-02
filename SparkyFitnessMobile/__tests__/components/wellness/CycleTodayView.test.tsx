@@ -111,3 +111,21 @@ describe('CycleTodayView optional pickers', () => {
     });
   });
 });
+
+describe('CycleTodayView parent-owned save', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('hides the inline button and saves through saveRequestRef', async () => {
+    const saveRequestRef: React.MutableRefObject<(() => void) | null> = { current: null };
+    const { queryByText } = render(
+      <CycleTodayView date="2026-08-01" saveRequestRef={saveRequestRef} hideSaveButton />,
+    );
+
+    expect(queryByText('Save Log Entry')).toBeNull();
+
+    saveRequestRef.current?.();
+    await waitFor(() => expect(mockUpsertLogAsync).toHaveBeenCalled());
+  });
+});

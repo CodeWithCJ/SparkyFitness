@@ -17,6 +17,11 @@ import type { FlowLevel } from '@workspace/shared';
 interface CycleTodayViewProps {
   date: string;
   onSaveSuccess?: () => void;
+  /** Parent-triggered save: the view assigns its save handler to this ref. */
+  saveRequestRef?: React.MutableRefObject<(() => void) | null>;
+  /** Reports saving state so a parent-owned save button can mirror it. */
+  onSavingChange?: (saving: boolean) => void;
+  hideSaveButton?: boolean;
 }
 
 const FLOW_OPTIONS: { value: FlowLevel; label: string; icon: string }[] = [
@@ -45,7 +50,13 @@ const CERVICAL_POSITION_OPTIONS = [
   { value: 'high', label: 'High' },
 ];
 
-const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) => {
+const CycleTodayView: React.FC<CycleTodayViewProps> = ({
+  date,
+  onSaveSuccess,
+  saveRequestRef,
+  onSavingChange,
+  hideSaveButton = false,
+}) => {
   const { log, isLoading, refetch } = useCycleLog({ date });
   const { upsertLogAsync, isSaving } = useUpsertCycleLog();
   const { mode } = useCycleMode();
@@ -124,6 +135,19 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
       setSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!saveRequestRef) return;
+    saveRequestRef.current = handleSave;
+    return () => {
+      saveRequestRef.current = null;
+    };
+  });
+
+  const saving = isSaving || submitting;
+  useEffect(() => {
+    onSavingChange?.(saving);
+  }, [saving, onSavingChange]);
 
   if (isLoading) {
     return (
@@ -286,11 +310,13 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
         </View>
 
         {/* Save Button */}
-        <View className="px-4">
-          <Button variant="primary" disabled={isSaving || submitting} onPress={handleSave}>
-            {isSaving || submitting ? 'Saving...' : 'Save Log Entry'}
-          </Button>
-        </View>
+        {!hideSaveButton && (
+          <View className="px-4">
+            <Button variant="primary" disabled={saving} onPress={handleSave}>
+              {saving ? 'Saving...' : 'Save Log Entry'}
+            </Button>
+          </View>
+        )}
       </View>
     </ScrollView>
   );
