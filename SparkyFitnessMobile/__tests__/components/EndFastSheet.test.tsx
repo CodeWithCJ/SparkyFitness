@@ -2,6 +2,7 @@ import React, { createRef } from 'react';
 import { TouchableOpacity } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
+import type { ReactTestInstance } from 'react-test-renderer';
 import EndFastSheet, {
   type EndFastSheetRef,
 } from '../../src/components/EndFastSheet';
@@ -34,6 +35,17 @@ function buildFast(overrides: Partial<FastingLog> = {}): FastingLog {
     updated_at: null,
     ...overrides,
   };
+}
+
+function findDisabledAncestor(
+  node: ReactTestInstance,
+): ReactTestInstance | null {
+  let current: ReactTestInstance | null = node;
+  while (current) {
+    if (current.props.disabled !== undefined) return current;
+    current = current.parent;
+  }
+  return null;
 }
 
 jest.mock('../../src/hooks/useFasting', () => ({
@@ -163,9 +175,17 @@ describe('EndFastSheet', () => {
     expect(view.getAllByTestId('date-picker')).toHaveLength(2);
   });
 
-  it('rejects invalid ranges and sends exact ISO payload for valid picker changes', () => {
+  it.each([
+    ['en', 'Start time must be before the end time.', 'End Fast'],
+    [
+      'pl',
+      'Czas rozpoczęcia musi być wcześniejszy niż czas zakończenia.',
+      'Zakończ post',
+    ],
+  ] as const)('blocks invalid ranges in %s', (locale, invalidRange, action) => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-02-13T10:30:00.000Z'));
+    setTestLocale(locale);
     const ref = createRef<EndFastSheetRef>();
     const view = render(<EndFastSheet ref={ref} />);
     act(() => ref.current?.present(buildFast()));
@@ -177,8 +197,25 @@ describe('EndFastSheet', () => {
         date: new Date('2026-02-14T10:30:00.000Z'),
       }),
     );
-    fireEvent.press(view.getByText('End Fast'));
+    expect(view.getByText(invalidRange)).toBeTruthy();
+    const endButton = findDisabledAncestor(view.getAllByText(action).at(-1)!);
+    expect(endButton?.props.disabled).toBe(true);
+    fireEvent.press(view.getAllByText(action).at(-1)!);
     expect(mockEndFast).not.toHaveBeenCalled();
+  });
+
+  it('enables the end action for a valid range and sends exact ISO payload', () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-02-13T10:30:00.000Z'));
+    const ref = createRef<EndFastSheetRef>();
+    const view = render(<EndFastSheet ref={ref} />);
+    act(() => ref.current?.present(buildFast()));
+    fireEvent.press(view.UNSAFE_getAllByType(TouchableOpacity)[0]);
+    act(() =>
+      view
+        .getAllByTestId('date-picker')[0]
+        .props.onChange({ date: new Date('2026-02-14T10:30:00.000Z') }),
+    );
     fireEvent.press(view.UNSAFE_getAllByType(TouchableOpacity)[0]);
     fireEvent.press(view.UNSAFE_getAllByType(TouchableOpacity)[1]);
     const endPickers = view.getAllByTestId('date-picker');
@@ -187,6 +224,8 @@ describe('EndFastSheet', () => {
         date: new Date('2026-02-15T12:00:00.000Z'),
       }),
     );
+    const endButton = findDisabledAncestor(view.getByText('End Fast'));
+    expect(endButton?.props.disabled).toBe(false);
     fireEvent.press(view.getByText('End Fast'));
     expect(mockEndFast).toHaveBeenCalledWith(
       {
@@ -199,65 +238,60 @@ describe('EndFastSheet', () => {
   });
 
   it.each([
-    [
-      'en',
-      'Ending...',
-      'Fast ended',
-      'Failed to end fast',
-      'Please try again.',
-    ],
-    [
-      'pl',
-      'Kończenie...',
-      'Post zakończony',
-      'Nie udało się zakończyć postu',
-      'Spróbuj ponownie.',
-    ],
+    ['en', 'End Fast', 'Fast ended'],
+    ['pl', 'Zakończ post', 'Post zakończony'],
   ] as const)(
-    'handles pending, success and error in %s',
-    (locale, pending, success, failure, retry) => {
+    'handles end success independently in %s',
+    (locale, action, success) => {
       setTestLocale(locale);
       const onEnded = jest.fn();
       const ref = createRef<EndFastSheetRef>();
       const view = render(<EndFastSheet ref={ref} onEnded={onEnded} />);
       act(() => ref.current?.present(buildFast()));
-      mockPending = true;
-      view.rerender(<EndFastSheet ref={ref} onEnded={onEnded} />);
-      expect(view.getByText(pending)).toBeTruthy();
-      mockPending = false;
-      view.rerender(<EndFastSheet ref={ref} onEnded={onEnded} />);
-      fireEvent.press(
-        view
-          .getAllByText(locale === 'en' ? 'End Fast' : 'Zakończ post')
-          .at(-1)!,
-      );
+      fireEvent.press(view.getAllByText(action).at(-1)!);
       const options = mockEndFast.mock.calls[0][1] as {
         onSuccess: () => void;
-        onError: (error: Error) => void;
       };
       act(() => options.onSuccess());
+      expect(mockSheetDismiss).toHaveBeenCalledTimes(1);
+      expect(onEnded).toHaveBeenCalledTimes(1);
       expect(Toast.show).toHaveBeenCalledWith({
         type: 'success',
         text1: success,
       });
-      expect(onEnded).toHaveBeenCalledTimes(1);
-      mockEndFast.mockReset();
+    },
+  );
+
+  it.each([
+    ['en', 'End Fast', 'Failed to end fast', 'Please try again.'],
+    [
+      'pl',
+      'Zakończ post',
+      'Nie udało się zakończyć postu',
+      'Spróbuj ponownie.',
+    ],
+  ] as const)(
+    'handles end error independently in %s',
+    (locale, action, failure, retry) => {
+      setTestLocale(locale);
+      const onEnded = jest.fn();
+      const ref = createRef<EndFastSheetRef>();
+      const view = render(<EndFastSheet ref={ref} onEnded={onEnded} />);
       act(() => ref.current?.present(buildFast()));
-      fireEvent.press(
-        view
-          .getAllByText(locale === 'en' ? 'End Fast' : 'Zakończ post')
-          .at(-1)!,
-      );
-      const errorOptions = mockEndFast.mock.calls[0][1] as {
+      fireEvent.press(view.getAllByText(action).at(-1)!);
+      const options = mockEndFast.mock.calls[0][1] as {
         onError: (error: Error) => void;
       };
-      act(() => errorOptions.onError(new Error('boom')));
-      expect(Toast.show).toHaveBeenLastCalledWith({
+      mockSheetDismiss.mockClear();
+      onEnded.mockClear();
+      act(() => options.onError(new Error('boom')));
+      expect(mockSheetDismiss).not.toHaveBeenCalled();
+      expect(onEnded).not.toHaveBeenCalled();
+      expect(Toast.show).toHaveBeenCalledWith({
         type: 'error',
         text1: failure,
         text2: retry,
       });
-      expect(onEnded).toHaveBeenCalledTimes(1);
     },
   );
 

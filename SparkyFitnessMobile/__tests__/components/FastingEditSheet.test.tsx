@@ -2,6 +2,7 @@ import React, { createRef } from 'react';
 import { Alert, TouchableOpacity } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
+import type { ReactTestInstance } from 'react-test-renderer';
 import FastingEditSheet, {
   type FastingEditSheetRef,
 } from '../../src/components/FastingEditSheet';
@@ -36,6 +37,17 @@ function buildFast(overrides: Partial<FastingLog> = {}): FastingLog {
     updated_at: null,
     ...overrides,
   };
+}
+
+function findDisabledAncestor(
+  node: ReactTestInstance,
+): ReactTestInstance | null {
+  let current: ReactTestInstance | null = node;
+  while (current) {
+    if (current.props.disabled !== undefined) return current;
+    current = current.parent;
+  }
+  return null;
 }
 
 jest.mock('../../src/hooks/useFasting', () => ({
@@ -153,10 +165,17 @@ describe('FastingEditSheet', () => {
     ).toBe(true);
   });
 
-  it('rejects invalid ranges and sends exact update payload on success', () => {
-    const onSaved = jest.fn();
+  it.each([
+    ['en', 'Start time must be before the end time.', 'Save changes'],
+    [
+      'pl',
+      'Czas rozpoczęcia musi być wcześniejszy niż czas zakończenia.',
+      'Zapisz zmiany',
+    ],
+  ] as const)('blocks invalid ranges in %s', (locale, invalidRange, save) => {
+    setTestLocale(locale);
     const ref = createRef<FastingEditSheetRef>();
-    const view = render(<FastingEditSheet ref={ref} onSaved={onSaved} />);
+    const view = render(<FastingEditSheet ref={ref} />);
     act(() => ref.current?.present(buildFast()));
     fireEvent.press(view.UNSAFE_getAllByType(TouchableOpacity)[0]);
     act(() =>
@@ -164,55 +183,74 @@ describe('FastingEditSheet', () => {
         .getAllByTestId('date-picker')[0]
         .props.onChange({ date: new Date('2026-02-14T10:30:00.000Z') }),
     );
-    fireEvent.press(view.getByText('Save changes'));
+    expect(view.getByText(invalidRange)).toBeTruthy();
+    expect(findDisabledAncestor(view.getByText(save))?.props.disabled).toBe(
+      true,
+    );
+    fireEvent.press(view.getByText(save));
     expect(mockUpdateFast).not.toHaveBeenCalled();
-    fireEvent.press(view.UNSAFE_getAllByType(TouchableOpacity)[0]);
-    fireEvent.press(view.UNSAFE_getAllByType(TouchableOpacity)[1]);
-    act(() =>
-      view
-        .getAllByTestId('date-picker')[0]
-        .props.onChange({ date: new Date('2026-02-15T12:00:00.000Z') }),
-    );
-    fireEvent.press(view.getByText('Save changes'));
-    expect(mockUpdateFast).toHaveBeenCalledWith(
-      {
-        id: 'fast-edit-1',
-        updates: {
-          start_time: '2026-02-14T10:30:00.000Z',
-          end_time: '2026-02-15T12:00:00.000Z',
-        },
-      },
-      expect.anything(),
-    );
-    const options = mockUpdateFast.mock.calls[0][1] as {
-      onSuccess: () => void;
-    };
-    act(() => options.onSuccess());
-    expect(mockSheetDismiss).toHaveBeenCalledTimes(1);
-    expect(onSaved).toHaveBeenCalledTimes(1);
   });
 
   it.each([
-    [
-      'en',
-      'Fast updated',
-      'Failed to update fast',
-      'Fast deleted',
-      'Failed to delete fast',
-    ],
-    [
-      'pl',
-      'Post zaktualizowany',
-      'Nie udało się zaktualizować postu',
-      'Post usunięty',
-      'Nie udało się usunąć postu',
-    ],
+    ['en', 'Save changes', 'Fast updated'],
+    ['pl', 'Zapisz zmiany', 'Post zaktualizowany'],
   ] as const)(
-    'handles update and delete toasts in %s',
-    (locale, updated, updateFailed, deleted, deleteFailed) => {
+    'sends exact update payload and handles update success in %s',
+    (locale, save, updated) => {
+      setTestLocale(locale);
+      const onSaved = jest.fn();
+      const ref = createRef<FastingEditSheetRef>();
+      const view = render(<FastingEditSheet ref={ref} onSaved={onSaved} />);
+      act(() => ref.current?.present(buildFast()));
+      fireEvent.press(view.UNSAFE_getAllByType(TouchableOpacity)[0]);
+      act(() =>
+        view
+          .getAllByTestId('date-picker')[0]
+          .props.onChange({ date: new Date('2026-02-14T10:30:00.000Z') }),
+      );
+      fireEvent.press(view.getByText(save));
+      expect(mockUpdateFast).not.toHaveBeenCalled();
+      fireEvent.press(view.UNSAFE_getAllByType(TouchableOpacity)[0]);
+      fireEvent.press(view.UNSAFE_getAllByType(TouchableOpacity)[1]);
+      act(() =>
+        view
+          .getAllByTestId('date-picker')[0]
+          .props.onChange({ date: new Date('2026-02-15T12:00:00.000Z') }),
+      );
+      fireEvent.press(view.getByText(save));
+      expect(mockUpdateFast).toHaveBeenCalledWith(
+        {
+          id: 'fast-edit-1',
+          updates: {
+            start_time: '2026-02-14T10:30:00.000Z',
+            end_time: '2026-02-15T12:00:00.000Z',
+          },
+        },
+        expect.anything(),
+      );
+      const options = mockUpdateFast.mock.calls[0][1] as {
+        onSuccess: () => void;
+      };
+      act(() => options.onSuccess());
+      expect(mockSheetDismiss).toHaveBeenCalledTimes(1);
+      expect(onSaved).toHaveBeenCalledTimes(1);
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'success',
+        text1: updated,
+      });
+    },
+  );
+
+  it.each([
+    ['en', 'Failed to update fast', 'Please try again.'],
+    ['pl', 'Nie udało się zaktualizować postu', 'Spróbuj ponownie.'],
+  ] as const)(
+    'handles update error without dismissing in %s',
+    (locale, updateFailed, retry) => {
+      const onSaved = jest.fn();
       setTestLocale(locale);
       const ref = createRef<FastingEditSheetRef>();
-      const view = render(<FastingEditSheet ref={ref} />);
+      const view = render(<FastingEditSheet ref={ref} onSaved={onSaved} />);
       act(() => ref.current?.present(buildFast()));
       fireEvent.press(
         view.getByText(locale === 'en' ? 'Save changes' : 'Zapisz zmiany'),
@@ -221,67 +259,158 @@ describe('FastingEditSheet', () => {
         onSuccess: () => void;
         onError: (error: Error) => void;
       };
-      act(() => updateOptions.onSuccess());
+      mockSheetDismiss.mockClear();
+      onSaved.mockClear();
+      act(() => updateOptions.onError(new Error('boom')));
       expect(Toast.show).toHaveBeenCalledWith({
-        type: 'success',
-        text1: updated,
+        type: 'error',
+        text1: updateFailed,
+        text2: retry,
       });
-      mockUpdateFast.mockReset();
+      expect(mockSheetDismiss).not.toHaveBeenCalled();
+      expect(onSaved).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['en', 'Delete fast?', 'This cannot be undone.', ['Cancel', 'Delete']],
+    [
+      'pl',
+      'Usunąć post?',
+      'Tej operacji nie można cofnąć.',
+      ['Anuluj', 'Usuń'],
+    ],
+  ] as const)(
+    'shows the complete delete alert in %s',
+    (locale, title, message, buttons) => {
+      setTestLocale(locale);
+      const ref = createRef<FastingEditSheetRef>();
+      const view = render(<FastingEditSheet ref={ref} />);
       act(() => ref.current?.present(buildFast()));
       fireEvent.press(
         view.getByText(locale === 'en' ? 'Delete fast' : 'Usuń post'),
       );
+      expect(Alert.alert).toHaveBeenCalledWith(
+        title,
+        message,
+        expect.any(Array),
+      );
       const alertButtons = (Alert.alert as jest.Mock).mock.calls.at(
         -1,
-      )?.[2] as { text: string; onPress?: () => void }[];
-      expect(alertButtons.map(button => button.text)).toEqual(
-        locale === 'en' ? ['Cancel', 'Delete'] : ['Anuluj', 'Usuń'],
-      );
+      )?.[2] as {
+        text: string;
+        onPress?: () => void;
+      }[];
+      expect(alertButtons.map(button => button.text)).toEqual(buttons);
       alertButtons[0].onPress?.();
       expect(mockDeleteFast).not.toHaveBeenCalled();
+      alertButtons[1].onPress?.();
+      expect(mockDeleteFast).toHaveBeenCalledWith(
+        'fast-edit-1',
+        expect.anything(),
+      );
+    },
+  );
+
+  it.each([
+    ['en', 'Fast deleted', 'Failed to delete fast', 'Please try again.'],
+    ['pl', 'Post usunięty', 'Nie udało się usunąć postu', 'Spróbuj ponownie.'],
+  ] as const)(
+    'handles delete success and error in %s',
+    (locale, deleted, deleteFailed, retry) => {
+      setTestLocale(locale);
+      const onSaved = jest.fn();
+      const ref = createRef<FastingEditSheetRef>();
+      const view = render(<FastingEditSheet ref={ref} onSaved={onSaved} />);
+      act(() => ref.current?.present(buildFast()));
+      fireEvent.press(
+        view.getByText(locale === 'en' ? 'Delete fast' : 'Usuń post'),
+      );
+      let alertButtons = (Alert.alert as jest.Mock).mock.calls.at(-1)?.[2] as {
+        onPress?: () => void;
+      }[];
       alertButtons[1].onPress?.();
       const deleteOptions = mockDeleteFast.mock.calls[0][1] as {
         onSuccess: () => void;
         onError: (error: Error) => void;
       };
       act(() => deleteOptions.onSuccess());
+      expect(mockSheetDismiss).toHaveBeenCalledTimes(1);
+      expect(onSaved).toHaveBeenCalledTimes(1);
       expect(Toast.show).toHaveBeenCalledWith({
         type: 'success',
         text1: deleted,
       });
+
+      mockSheetDismiss.mockClear();
+      onSaved.mockClear();
       mockDeleteFast.mockReset();
       act(() => ref.current?.present(buildFast()));
       fireEvent.press(
         view.getByText(locale === 'en' ? 'Delete fast' : 'Usuń post'),
       );
-      const errorButtons = (Alert.alert as jest.Mock).mock.calls.at(
-        -1,
-      )?.[2] as { onPress?: () => void }[];
-      errorButtons[1].onPress?.();
+      alertButtons = (Alert.alert as jest.Mock).mock.calls.at(-1)?.[2] as {
+        onPress?: () => void;
+      }[];
+      alertButtons[1].onPress?.();
       const errorOptions = mockDeleteFast.mock.calls[0][1] as {
         onError: (error: Error) => void;
       };
       act(() => errorOptions.onError(new Error('boom')));
+      expect(mockSheetDismiss).not.toHaveBeenCalled();
+      expect(onSaved).not.toHaveBeenCalled();
       expect(Toast.show).toHaveBeenLastCalledWith({
         type: 'error',
         text1: deleteFailed,
-        text2: locale === 'en' ? 'Please try again.' : 'Spróbuj ponownie.',
+        text2: retry,
       });
     },
   );
 
-  it('blocks save and delete while either mutation is pending', () => {
+  it('blocks both buttons while save is pending and restores them afterward', () => {
     const ref = createRef<FastingEditSheetRef>();
     const view = render(<FastingEditSheet ref={ref} />);
     act(() => ref.current?.present(buildFast()));
     mockSavePending = true;
     mockDeletePending = false;
     view.rerender(<FastingEditSheet ref={ref} />);
-    expect(view.getByText('Saving...')).toBeTruthy();
-    expect(view.getByText('Delete fast')).toBeTruthy();
+    const saveButton = findDisabledAncestor(view.getByText('Saving...'));
+    const deleteButton = findDisabledAncestor(view.getByText('Delete fast'));
+    expect(saveButton?.props.disabled).toBe(true);
+    expect(deleteButton?.props.disabled).toBe(true);
+    expect(mockUpdateFast).not.toHaveBeenCalled();
+    expect(mockDeleteFast).not.toHaveBeenCalled();
+    expect(mockAlert).not.toHaveBeenCalled();
     mockSavePending = false;
+    view.rerender(<FastingEditSheet ref={ref} />);
+    expect(
+      findDisabledAncestor(view.getByText('Save changes'))?.props.disabled,
+    ).toBe(false);
+    expect(
+      findDisabledAncestor(view.getByText('Delete fast'))?.props.disabled,
+    ).toBe(false);
+  });
+
+  it('blocks both buttons while delete is pending and restores them afterward', () => {
+    const ref = createRef<FastingEditSheetRef>();
+    const view = render(<FastingEditSheet ref={ref} />);
+    act(() => ref.current?.present(buildFast()));
     mockDeletePending = true;
     view.rerender(<FastingEditSheet ref={ref} />);
-    expect(view.getByText('Deleting...')).toBeTruthy();
+    const saveButton = findDisabledAncestor(view.getByText('Save changes'));
+    const deleteButton = findDisabledAncestor(view.getByText('Deleting...'));
+    expect(saveButton?.props.disabled).toBe(true);
+    expect(deleteButton?.props.disabled).toBe(true);
+    expect(mockUpdateFast).not.toHaveBeenCalled();
+    expect(mockDeleteFast).not.toHaveBeenCalled();
+    expect(mockAlert).not.toHaveBeenCalled();
+    mockDeletePending = false;
+    view.rerender(<FastingEditSheet ref={ref} />);
+    expect(
+      findDisabledAncestor(view.getByText('Save changes'))?.props.disabled,
+    ).toBe(false);
+    expect(
+      findDisabledAncestor(view.getByText('Delete fast'))?.props.disabled,
+    ).toBe(false);
   });
 });
