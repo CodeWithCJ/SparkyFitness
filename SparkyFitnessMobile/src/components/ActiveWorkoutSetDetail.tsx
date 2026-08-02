@@ -1,7 +1,18 @@
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import WorkoutNotesField from './WorkoutNotesField';
 import type { WorkoutCardSet } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
+
+function interpolateTranslation(
+  template: string,
+  values: Record<string, string | number>,
+): string {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
+    template,
+  );
+}
 
 interface ActiveWorkoutSetDetailProps {
   set: WorkoutCardSet;
@@ -14,6 +25,7 @@ interface ActiveWorkoutSetDetailProps {
  * component so the per-set advanced area has a home to grow into.
  */
 function ActiveWorkoutSetDetail({ set, onCommitField }: ActiveWorkoutSetDetailProps) {
+  const { t } = useTranslation();
   const setId = String(set.id);
   return (
     <View className="px-3 pb-3 pt-1">
@@ -29,9 +41,9 @@ function ActiveWorkoutSetDetail({ set, onCommitField }: ActiveWorkoutSetDetailPr
           if ((set.notes ?? null) === nextNotes) return;
           onCommitField(setId, { notes: nextNotes });
         }}
-        label="Set notes"
-        placeholder="Add a note for this set…"
-        accessibilityLabel={`Notes for set ${set.set_number}`}
+        label={t('activeWorkout.setDetail.notes')}
+        placeholder={t('activeWorkout.setDetail.addNote')}
+        accessibilityLabel={interpolateTranslation(t('activeWorkout.setDetail.notesForSet', { setNumber: set.set_number }), { setNumber: set.set_number })}
       />
     </View>
   );

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import type { ExerciseEntryResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
@@ -84,6 +85,7 @@ function ActiveWorkoutRail({
   onPressExercise,
   onPressAdd,
 }: ActiveWorkoutRailProps) {
+  const { t } = useTranslation();
   const [textMuted, accentPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-accent-primary',
@@ -240,7 +242,7 @@ function ActiveWorkoutRail({
       <Pressable
         onPress={onPressAdd}
         accessibilityRole="button"
-        accessibilityLabel="Add exercise"
+         accessibilityLabel={t('activeWorkout.rail.addExercise')}
         className="items-center"
         style={{ width: THUMB_SIZE + 24 }}
       >
@@ -256,7 +258,7 @@ function ActiveWorkoutRail({
           className="mt-1 text-center text-xs leading-tight font-medium"
           style={{ color: accentPrimary }}
         >
-          Add
+           {t('activeWorkout.rail.add')}
         </Text>
       </Pressable>
     </ScrollView>

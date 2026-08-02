@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
 import CompletionCheck from './CompletionCheck';
@@ -50,6 +51,16 @@ export const METRIC_COLUMN_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
   e1rm: '1RM',
   tenrm: '10RM',
 };
+
+function interpolateTranslation(
+  template: string,
+  values: Record<string, string | number>,
+): string {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
+    template,
+  );
+}
 
 
 /** Working-set numbers per set index; warmup/drop/failure rows repeat the previous number (they render a letter instead). */
@@ -260,6 +271,7 @@ function ActiveWorkoutExerciseCard({
   onEditFieldChange,
   onRegisterAccessoryHandle,
 }: ActiveWorkoutExerciseCardProps) {
+  const { t } = useTranslation();
   const readOnly = mode === 'view';
   const isEdit = mode === 'edit';
   const isLive = mode === 'live';
@@ -559,7 +571,7 @@ function ActiveWorkoutExerciseCard({
             onLongPress={longPressMenu}
             hitSlop={{ top: 10, bottom: 10, left: 12, right: 12 }}
             accessibilityRole="button"
-            accessibilityLabel={`Expand ${name}`}
+            accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.expand', { exerciseName: name }), { exerciseName: name })}
             className="flex-1 self-stretch flex-row items-center gap-3"
           >
             <Text
@@ -590,7 +602,7 @@ function ActiveWorkoutExerciseCard({
           onPress={onPressThumb ? () => onPressThumb(exercise.id) : undefined}
           accessible={onPressThumb != null}
           accessibilityRole={onPressThumb != null ? 'button' : undefined}
-          accessibilityLabel={onPressThumb != null ? `View ${name} details` : undefined}
+           accessibilityLabel={onPressThumb != null ? interpolateTranslation(t('activeWorkout.exerciseCard.viewDetailsFor', { exerciseName: name }), { exerciseName: name }) : undefined}
         >
           {thumb}
         </Pressable>
@@ -603,7 +615,7 @@ function ActiveWorkoutExerciseCard({
           hitSlop={{ top: 10, bottom: 4 }}
           className="flex-1 self-stretch justify-center"
           accessibilityRole="button"
-          accessibilityLabel={`Collapse ${name}`}
+           accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.collapse', { exerciseName: name }), { exerciseName: name })}
         >
           <Text numberOfLines={2} className="text-base font-semibold text-text-primary">
             {name}
@@ -614,7 +626,7 @@ function ActiveWorkoutExerciseCard({
             onPress={openOverflowMenu}
             hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
             accessibilityRole="button"
-            accessibilityLabel={`More options for ${name}`}
+             accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.moreOptionsFor', { exerciseName: name }), { exerciseName: name })}
             className="p-1"
           >
             <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
@@ -624,7 +636,7 @@ function ActiveWorkoutExerciseCard({
           onPress={() => onToggleExpanded(exercise.id)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel={`Collapse ${name}`}
+           accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.collapse', { exerciseName: name }), { exerciseName: name })}
           className="p-1"
         >
           <Animated.View style={chevronStyle}>
@@ -650,14 +662,14 @@ function ActiveWorkoutExerciseCard({
               value={exercise.notes}
               onCommit={(text) => onCommitExerciseNote(exercise.id, text)}
               label=""
-              placeholder="Add a note for this exercise…"
-              accessibilityLabel={`Notes for ${name}`}
+               placeholder={t('activeWorkout.exerciseCard.addNote')}
+               accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.notesFor', { exerciseName: name }), { exerciseName: name })}
             />
           </View>
         )}
         {readOnly && !!exercise.notes && (
           <View className="mt-2 px-1">
-            <Text className="text-sm text-text-secondary" accessibilityLabel={`Notes for ${name}`}>
+             <Text className="text-sm text-text-secondary" accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.notesFor', { exerciseName: name }), { exerciseName: name })}>
               {exercise.notes}
             </Text>
           </View>
@@ -693,7 +705,7 @@ function ActiveWorkoutExerciseCard({
                   autoFocus
                   selectTextOnFocus
                   placeholder="–"
-                  accessibilityLabel={`Calories burned for ${name}`}
+                   accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.caloriesBurnedFor', { exerciseName: name }), { exerciseName: name })}
                   className="text-center"
                   style={{
                     paddingTop: 4,
@@ -705,7 +717,7 @@ function ActiveWorkoutExerciseCard({
                     minWidth: 52,
                   }}
                 />
-                <Text className="text-sm text-text-secondary">Cal</Text>
+                <Text className="text-sm text-text-secondary">{t('units.kcalShort')}</Text>
               </View>
             ) : (
               <Pressable
@@ -713,11 +725,11 @@ function ActiveWorkoutExerciseCard({
                 className="flex-row items-center gap-1"
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Edit calories burned for ${name}`}
+                 accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.editCaloriesFor', { exerciseName: name }), { exerciseName: name })}
               >
                 <Icon name="flame" size={14} color={accentPrimary} />
-                <Text className="text-sm" style={{ color: accentPrimary }}>
-                  {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} Cal
+                 <Text className="text-sm" style={{ color: accentPrimary }}>
+                   {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} {t('units.kcalShort')}
                 </Text>
                 <Icon name="chevron-down" size={10} color={accentPrimary} />
               </Pressable>
@@ -725,13 +737,13 @@ function ActiveWorkoutExerciseCard({
             {caloriesText != null && (
               <View className="flex-row items-center">
                 <Icon name="flame" size={14} color={textMuted} />
-                <Text className="text-sm text-text-secondary ml-1">{caloriesText} Cal</Text>
+                 <Text className="text-sm text-text-secondary ml-1">{caloriesText} {t('units.kcalShort')}</Text>
               </View>
             )}
             {bestDisplay != null && (
               <View
                 className="flex-row items-center"
-                accessibilityLabel={`Best ${bestText}`}
+                 accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.best', { value: bestText }), { value: bestText ?? '' })}
               >
                 <Icon
                   name="trophy-outline"
@@ -790,19 +802,19 @@ function ActiveWorkoutExerciseCard({
             <Text
               className={`${durationLike ? 'flex-1' : 'w-9'} text-center text-xs font-semibold uppercase text-text-muted`}
             >
-              Set
+              {t('activeWorkout.columns.set')}
             </Text>
             {!readOnly && (
               <Text
                 className={`${durationLike ? 'flex-1' : 'w-20'} text-center text-xs font-semibold uppercase text-text-muted`}
               >
-                Prev
+                {t('activeWorkout.columns.previous')}
               </Text>
             )}
             {durationLike ? (
               <>
                 <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-                  Sec
+                  {t('activeWorkout.columns.seconds')}
                 </Text>
                 {/* Read-only cardio tables surface per-set distance (imports,
                     intervals); live/edit tables keep the single editable Sec
@@ -821,7 +833,7 @@ function ActiveWorkoutExerciseCard({
                   </Text>
                 )}
                 <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-                  Reps
+                  {t('activeWorkout.setRow.reps')}
                 </Text>
               </>
             )}
@@ -830,7 +842,7 @@ function ActiveWorkoutExerciseCard({
                 onPress={openMetricMenu}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityRole="button"
-                accessibilityLabel="Change metric column"
+                accessibilityLabel={t('activeWorkout.exerciseCard.changeMetricColumn')}
                 className="flex-row items-center gap-0.5"
               >
                 <Text
@@ -906,7 +918,7 @@ function ActiveWorkoutExerciseCard({
                 <View className="px-1 pb-2">
                   <Text
                     className="text-xs text-text-secondary"
-                    accessibilityLabel={`Notes for set ${set.set_number}`}
+                     accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.notesForSet', { setNumber: set.set_number }), { setNumber: set.set_number })}
                   >
                     {set.notes}
                   </Text>
@@ -920,12 +932,12 @@ function ActiveWorkoutExerciseCard({
           <Pressable
             onPress={() => onAddSet?.(exercise.id)}
             accessibilityRole="button"
-            accessibilityLabel={`Add set to ${name}`}
+             accessibilityLabel={interpolateTranslation(t('activeWorkout.exerciseCard.addSetTo', { exerciseName: name }), { exerciseName: name })}
             className="flex-row items-center justify-center gap-1.5 py-2.5 mt-1"
           >
             <Icon name="add" size={15} color={accentPrimary} />
             <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
-              Add set
+               {t('activeWorkout.exerciseCard.addSet')}
             </Text>
           </Pressable>
         )}

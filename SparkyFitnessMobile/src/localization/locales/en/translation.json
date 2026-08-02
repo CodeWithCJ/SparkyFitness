@@ -21,6 +21,96 @@
     "collapseSection": "Collapse this section",
     "favorite": "Favorite"
   },
+  "activeWorkout": {
+    "bar": {
+      "clearWorkout": "Clear workout",
+      "clearWorkoutTitle": "Clear workout?",
+      "saveFailed": "Could not save your workout",
+      "unsavedChanges": "Some changes have not reached the server.",
+      "discardAnyway": "Discard anyway",
+      "endWithoutSaving": "This will end the current workout without saving progress.",
+      "doneStartNextSet": "Done, start next set",
+      "finishWorkout": "Finish workout",
+      "open": "Open active workout",
+      "pause": "Pause",
+      "resume": "Resume",
+      "skipRest": "Skip rest",
+      "resting": "Resting",
+      "paused": "Paused",
+      "workoutComplete": "Workout complete",
+      "workoutActive": "Workout active",
+      "next": "Next",
+      "nextUp": "Next Up",
+      "setProgress": "Set {{setNumber}}/{{setCount}}"
+    },
+    "header": {
+      "addExercise": "Add exercise",
+      "back": "Back",
+      "clearAllSets": "Clear all logged sets",
+      "discardWorkout": "Discard workout",
+      "elapsedTime": "{{time}} elapsed",
+      "endWorkout": "End workout",
+      "exerciseCount_one": "{{count}} exercise",
+      "exerciseCount_other": "{{count}} exercises",
+      "exerciseProgress_one": "{{completed}} / {{count}} exercise",
+      "exerciseProgress_other": "{{completed}} / {{count}} exercises",
+      "renameWorkout": "Rename workout",
+      "reorderExercises": "Reorder exercises",
+      "menu": "Workout menu",
+      "settings": "Workout settings"
+    },
+    "exerciseCard": {
+      "addNote": "Add a note for this exercise…",
+      "addSetTo": "Add set to {{exerciseName}}",
+      "addSet": "Add set",
+      "best": "Best {{value}}",
+      "caloriesBurnedFor": "Calories burned for {{exerciseName}}",
+      "changeMetricColumn": "Change metric column",
+      "collapse": "Collapse {{exerciseName}}",
+      "expand": "Expand {{exerciseName}}",
+      "viewDetailsFor": "View {{exerciseName}} details",
+      "editCaloriesFor": "Edit calories burned for {{exerciseName}}",
+      "moreOptionsFor": "More options for {{exerciseName}}",
+      "notesFor": "Notes for {{exerciseName}}",
+      "notesForSet": "Notes for set {{setNumber}}"
+    },
+    "rail": {
+      "add": "Add",
+      "addExercise": "Add exercise"
+    },
+    "rest": {
+      "addSecondsShort": "+{{seconds}} s",
+      "subtractSecondsShort": "−{{seconds}} s",
+      "completeSet": "Complete set",
+      "completeSetTitle": "Complete Set",
+      "extendBySeconds": "Extend rest by {{seconds}} seconds",
+      "shortenBySeconds": "Shorten rest by {{seconds}} seconds",
+      "skip": "Skip rest",
+      "pause": "Pause rest",
+      "resume": "Resume rest",
+      "target": "Target"
+    },
+    "setDetail": {
+      "addNote": "Add a note for this set…",
+      "notesForSet": "Notes for set {{setNumber}}",
+      "notes": "Set notes"
+    },
+    "setRow": {
+      "changeType": "Change type for set {{setNumber}}",
+      "delete": "Delete set {{setNumber}}",
+      "duration": "Duration",
+      "log": "Log set {{setNumber}}",
+      "reps": "Reps",
+      "complete": "Complete set {{setNumber}}",
+      "incomplete": "Mark set {{setNumber}} as incomplete",
+      "weight": "Weight"
+    },
+    "columns": {
+      "set": "Set",
+      "previous": "Prev",
+      "seconds": "Sec"
+    }
+  },
   "settings": {
     "title": "Settings",
     "app": "App Settings",

@@ -86,10 +86,16 @@ jest.mock('react-i18next', () => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key) => {
+      t: (key, options) => {
         if (typeof key !== 'string') return key;
-        const value = lookup(en, key);
-        return value ?? key;
+        const count = options && typeof options.count === 'number' ? options.count : null;
+        const pluralKey = count === null ? key : `${key}_${count === 1 ? 'one' : 'other'}`;
+        const value = lookup(en, pluralKey) ?? lookup(en, key);
+        if (typeof value !== 'string') return key;
+        return value.replace(/{{(\w+)}}/g, (_, name) => {
+          const replacement = options?.[name];
+          return replacement === undefined ? `{{${name}}}` : String(replacement);
+        });
       },
       i18n: null,
       ready: true,

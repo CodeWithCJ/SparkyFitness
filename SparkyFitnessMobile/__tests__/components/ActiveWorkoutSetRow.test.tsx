@@ -165,13 +165,13 @@ describe('ActiveWorkoutSetRow', () => {
       // The completion check sits outside the dimmed content so its green
       // matches the card/rail badges instead of fading with the row.
       expect(
-        StyleSheet.flatten(getByLabelText('Un-complete set 1').props.style)?.opacity,
+        StyleSheet.flatten(getByLabelText('Mark set 1 as incomplete').props.style)?.opacity,
       ).toBeUndefined();
     });
 
     it('un-completes on check press', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'done' });
-      fireEvent.press(getByLabelText('Un-complete set 1'));
+      fireEvent.press(getByLabelText('Mark set 1 as incomplete'));
       expect(callbacks.onUncomplete).toHaveBeenCalledWith('101');
     });
 
@@ -461,7 +461,7 @@ describe('ActiveWorkoutSetRow', () => {
     it('renders a static checkmark on done rows with no un-complete control', () => {
       const { getByTestId, queryByLabelText } = renderRow({ state: 'done', readOnly: true });
       expect(getByTestId('icon-checkmark')).toBeTruthy();
-      expect(queryByLabelText('Un-complete set 1')).toBeNull();
+      expect(queryByLabelText('Mark set 1 as incomplete')).toBeNull();
     });
 
     it('does not dim done rows', () => {
@@ -475,7 +475,7 @@ describe('ActiveWorkoutSetRow', () => {
       expect(done.queryByLabelText('Delete set 1')).toBeNull();
 
       const upcoming = renderRow({ state: 'upcoming', readOnly: true });
-      expect(upcoming.queryByLabelText('Mark set 1 complete')).toBeNull();
+      expect(upcoming.queryByLabelText('Complete set 1')).toBeNull();
       // View mode has no logging, so upcoming rows keep a blank last column.
       expect(upcoming.queryByLabelText('Log set 1')).toBeNull();
     });
@@ -784,7 +784,7 @@ describe('ActiveWorkoutSetRow', () => {
           enableToggle: true,
           set: editSet(),
         });
-        fireEvent.press(getByLabelText('Mark set 1 complete'));
+        fireEvent.press(getByLabelText('Complete set 1'));
         expect(callbacks.onToggleComplete).toHaveBeenCalledWith('101');
       });
 
@@ -992,8 +992,8 @@ describe('ActiveWorkoutSetRow', () => {
           set: editSet(),
         });
         expect(getByTestId('completed-badge')).toBeTruthy();
-        expect(queryByLabelText('Un-complete set 1')).toBeNull();
-        expect(queryByLabelText('Mark set 1 complete')).toBeNull();
+        expect(queryByLabelText('Mark set 1 as incomplete')).toBeNull();
+        expect(queryByLabelText('Complete set 1')).toBeNull();
       });
 
       it('un-completes a completed set via the toggle when enabled', () => {
@@ -1004,7 +1004,7 @@ describe('ActiveWorkoutSetRow', () => {
           enableToggle: true,
           set: editSet(),
         });
-        fireEvent.press(getByLabelText('Un-complete set 1'));
+        fireEvent.press(getByLabelText('Mark set 1 as incomplete'));
         expect(callbacks.onToggleComplete).toHaveBeenCalledWith('101');
       });
 

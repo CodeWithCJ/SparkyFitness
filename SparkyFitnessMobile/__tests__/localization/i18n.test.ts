@@ -183,6 +183,32 @@ describe('real i18next pluralization', () => {
       ]);
     });
   });
+
+  it('pluralizes active workout progress in English and Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+
+      await i18n.changeLanguage('en');
+      expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 1 })).toBe(
+        '1 / 1 exercise',
+      );
+      expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 2 })).toBe(
+        '1 / 2 exercises',
+      );
+
+      await i18n.changeLanguage('pl');
+      expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 1 })).toBe(
+        '1 / 1 ćwiczenie',
+      );
+      expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 2 })).toBe(
+        '1 / 2 ćwiczenia',
+      );
+      expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 5 })).toBe(
+        '1 / 5 ćwiczeń',
+      );
+    });
+  });
 });
 
 describe('initializeI18n hydration', () => {

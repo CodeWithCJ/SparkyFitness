@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import {
@@ -46,6 +47,16 @@ export const RPE_TONE_VARS: Record<RpeTone, string> = {
   hard: '--color-cat-orange',
   max: '--color-icon-danger',
 };
+
+function interpolateTranslation(
+  template: string,
+  values: Record<string, string | number>,
+): string {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
+    template,
+  );
+}
 
 function formatDisplayWeight(weightKg: number | null, unit: 'kg' | 'lbs'): string {
   if (weightKg == null) return '';
@@ -213,6 +224,7 @@ function ActiveWorkoutSetRow({
   onAddSet,
   onRegisterAccessoryHandle,
 }: ActiveWorkoutSetRowProps) {
+  const { t } = useTranslation();
   const readOnly = mode === 'view';
   const isEdit = mode === 'edit';
   const isLive = mode === 'live';
@@ -626,7 +638,7 @@ function ActiveWorkoutSetRow({
           onPress={openSetTypeMenu}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={`Change type for set ${set.set_number}`}
+           accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.changeType', { setNumber: set.set_number }), { setNumber: set.set_number })}
         >
           {setIndicator}
         </Pressable>
@@ -654,7 +666,7 @@ function ActiveWorkoutSetRow({
           onPress={() => onUncomplete?.(setId)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={`Un-complete set ${set.set_number}`}
+           accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.incomplete', { setNumber: set.set_number }), { setNumber: set.set_number })}
         >
           <CompletionCheck size={28} />
         </Pressable>
@@ -666,7 +678,7 @@ function ActiveWorkoutSetRow({
           onPress={handleLog}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={`Log set ${set.set_number}`}
+           accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.log', { setNumber: set.set_number }), { setNumber: set.set_number })}
         >
           <LogCircle color={accentPrimary} />
         </Pressable>
@@ -682,7 +694,7 @@ function ActiveWorkoutSetRow({
         onPress={handleLog}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
-        accessibilityLabel={`Log set ${set.set_number}`}
+         accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.log', { setNumber: set.set_number }), { setNumber: set.set_number })}
       >
         <View
           className="h-7 w-7 rounded-full border-2 items-center justify-center"
@@ -702,9 +714,11 @@ function ActiveWorkoutSetRow({
       onPress={() => onToggleComplete(setId)}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       accessibilityRole="button"
-      accessibilityLabel={
-        completedBadge ? `Un-complete set ${set.set_number}` : `Mark set ${set.set_number} complete`
-      }
+       accessibilityLabel={
+         completedBadge
+           ? interpolateTranslation(t('activeWorkout.setRow.incomplete', { setNumber: set.set_number }), { setNumber: set.set_number })
+           : interpolateTranslation(t('activeWorkout.setRow.complete', { setNumber: set.set_number }), { setNumber: set.set_number })
+       }
     >
       {completedBadge ? (
         completedCheck
@@ -806,7 +820,7 @@ function ActiveWorkoutSetRow({
         onBlur={isEdit ? undefined : () => commitWeight(weightDraft)}
         onFocus={() => onActivateSet?.(setId, 'weight')}
         keyboardType="decimal-pad"
-        accessibilityLabel="Weight"
+       accessibilityLabel={t('activeWorkout.setRow.weight')}
         className="w-16"
         placeholder={isEdit ? '–' : (assumedWeightText ?? '–')}
         flat
@@ -824,7 +838,7 @@ function ActiveWorkoutSetRow({
         onBlur={isEdit ? undefined : () => commitReps(repsDraft)}
         onFocus={() => onActivateSet?.(setId, 'reps')}
         keyboardType="number-pad"
-        accessibilityLabel="Reps"
+         accessibilityLabel={t('activeWorkout.setRow.reps')}
         className="w-16"
         placeholder={isEdit ? '–' : (assumedRepsText ?? '–')}
         flat
@@ -846,7 +860,7 @@ function ActiveWorkoutSetRow({
         onBlur={isEdit ? undefined : () => commitDuration(durationDraft)}
         onFocus={() => onActivateSet?.(setId, 'duration')}
         keyboardType="number-pad"
-        accessibilityLabel="Duration"
+         accessibilityLabel={t('activeWorkout.setRow.duration')}
         className="w-16"
         placeholder={
           isEdit
@@ -938,7 +952,7 @@ function ActiveWorkoutSetRow({
       renderRightActions={() => (
         <SetSwipeDeleteAction
           onPress={() => onDelete?.(setId)}
-          accessibilityLabel={`Delete set ${set.set_number}`}
+           accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.delete', { setNumber: set.set_number }), { setNumber: set.set_number })}
         />
       )}
       overshootRight={false}

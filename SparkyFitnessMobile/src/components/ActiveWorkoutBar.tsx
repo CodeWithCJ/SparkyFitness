@@ -19,6 +19,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 
 import Icon from './Icon';
 import { TAB_BAR_HEIGHT } from './CustomTabBar';
@@ -59,6 +60,16 @@ const SLIDE_ANIMATION_DURATION_MS = 220;
  * gap — content flows edge to edge and only the bottom ~20pt is "dead zone".
  */
 const EMBEDDED_FAB_CLEARANCE = 6;
+
+function interpolateTranslation(
+  template: string,
+  values: Record<string, string | number>,
+): string {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
+    template,
+  );
+}
 
 type StackTransitionSnapshot = {
   phase: 'idle' | 'start' | 'end';
@@ -242,6 +253,7 @@ type LegacyWorkoutBarContentProps = {
   primaryLine: string;
   secondaryLine: string;
   countdownLabel: string | null;
+  openLabel: string;
 };
 
 function LegacyWorkoutBarContent({
@@ -253,6 +265,7 @@ function LegacyWorkoutBarContent({
   primaryLine,
   secondaryLine,
   countdownLabel,
+  openLabel,
 }: LegacyWorkoutBarContentProps) {
   return (
     <>
@@ -270,7 +283,7 @@ function LegacyWorkoutBarContent({
           onPress={onCenterPress}
           className="flex-1 justify-center px-1"
           accessibilityRole="button"
-          accessibilityLabel="Open active workout"
+          accessibilityLabel={openLabel}
         >
           {topStatusLine != null && (
             <Text
@@ -314,6 +327,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   variant = 'floating',
 }) => {
   const sessionId = useActiveWorkoutStore(s => s.sessionId);
+  const { t } = useTranslation();
   const activeSession = useActiveWorkoutStore(s => s.session);
   const activeSetId = useActiveWorkoutStore(s => s.activeSetId);
   const previousSessionSets = useActiveWorkoutStore(s => s.previousSessionSets);
@@ -465,7 +479,16 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       ? null
       : {
           exerciseName: activeSetDescription.exerciseName ?? 'Exercise',
-          setNumber: `Set ${activeSetDescription.setNumber}/${activeSetDescription.setCount}`,
+          setNumber: interpolateTranslation(
+            t('activeWorkout.bar.setProgress', {
+              setNumber: activeSetDescription.setNumber,
+              setCount: activeSetDescription.setCount,
+            }),
+            {
+              setNumber: activeSetDescription.setNumber,
+              setCount: activeSetDescription.setCount,
+            },
+          ),
           loadText: formatSetLoad(activeSetDescription, weightUnit) ?? '',
         };
 
@@ -537,12 +560,12 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     const ok = await flushActiveWorkoutBeforeClear(queryClient);
     if (!ok) {
       Alert.alert(
-        'Could not save your workout',
-        'Some changes have not reached the server.',
+        t('activeWorkout.bar.saveFailed'),
+        t('activeWorkout.bar.unsavedChanges'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Discard anyway',
+            text: t('activeWorkout.bar.discardAnyway'),
             style: 'destructive',
             onPress: () => useActiveWorkoutStore.getState().clearWorkout(),
           },
@@ -559,12 +582,12 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       return;
     }
     Alert.alert(
-      'Clear workout?',
-      'This will end the current workout without saving progress.',
+      t('activeWorkout.bar.clearWorkoutTitle'),
+      t('activeWorkout.bar.endWithoutSaving'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('activeWorkout.bar.clearWorkout'),
           style: 'destructive',
           onPress: () => {
             void flushAndClear();
@@ -586,14 +609,16 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   const isResting = restState === 'resting' || restState === 'paused';
   const topStatusLine =
     restState === 'resting'
-      ? 'Resting'
-      : restState === 'paused'
-        ? 'Paused'
+       ? t('activeWorkout.bar.resting')
+       : restState === 'paused'
+        ? t('activeWorkout.bar.paused')
         : null;
   const primaryLine = (() => {
-    if (isWorkoutComplete) return 'Workout complete';
-    if (!activeSetLabel) return 'Workout active';
-    const prefix = isResting ? 'Next' : 'Next Up';
+    if (isWorkoutComplete) return t('activeWorkout.bar.workoutComplete');
+    if (!activeSetLabel) return t('activeWorkout.bar.workoutActive');
+    const prefix = isResting
+      ? t('activeWorkout.bar.next')
+      : t('activeWorkout.bar.nextUp');
     return `${prefix}: ${activeSetLabel.exerciseName} - ${activeSetLabel.setNumber}`;
   })();
   const secondaryLine = isWorkoutComplete
@@ -613,7 +638,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
         onPress={handlePausePlay}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel="Pause"
+         accessibilityLabel={t('activeWorkout.bar.pause')}
         className="p-2"
       >
         <Icon name="pause" size={20} color={accentPrimary} weight="bold" />
@@ -623,7 +648,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
         onPress={handleClear}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel="Clear workout"
+         accessibilityLabel={t('activeWorkout.bar.clearWorkout')}
         className="p-2"
       >
         <Icon name="close" size={20} color={textMuted} weight="bold" />
@@ -642,7 +667,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
           onPress={handleClear}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel="Finish workout"
+          accessibilityLabel={t('activeWorkout.bar.finishWorkout')}
           className="p-2"
         >
           <Icon
@@ -660,7 +685,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
           onPress={handleSkipRest}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel="Skip rest"
+          accessibilityLabel={t('activeWorkout.bar.skipRest')}
           // Filled accent pill so the "complete set" affordance pops against
           // the muted pause icon on the left and the countdown digits.
           className="h-8 w-8 items-center justify-center rounded-full border-2 border-accent-primary"
@@ -680,7 +705,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
           onPress={handlePausePlay}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel="Resume"
+          accessibilityLabel={t('activeWorkout.bar.resume')}
           className="p-2"
         >
           <Icon name="play" size={20} color={accentPrimary} weight="bold" />
@@ -692,7 +717,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
         onPress={handleDoneSet}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel="Done, start next set"
+        accessibilityLabel={t('activeWorkout.bar.doneStartNextSet')}
         className="p-2"
       >
         <Icon name="play" size={20} color={accentPrimary} weight="bold" />
@@ -724,8 +749,9 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
           onCenterPress={handleCenterTap}
           topStatusLine={topStatusLine}
           primaryLine={primaryLine}
-          secondaryLine={secondaryLine}
-          countdownLabel={countdownLabel}
+           secondaryLine={secondaryLine}
+           countdownLabel={countdownLabel}
+           openLabel={t('activeWorkout.bar.open')}
         />
       </View>
     );
@@ -751,6 +777,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
             primaryLine={primaryLine}
             secondaryLine={secondaryLine}
             countdownLabel={countdownLabel}
+            openLabel={t('activeWorkout.bar.open')}
           />
         </View>
       </View>
@@ -787,7 +814,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
             justifyContent: 'center',
           }}
           accessibilityRole="button"
-          accessibilityLabel="Open active workout"
+          accessibilityLabel={t('activeWorkout.bar.open')}
         >
           {topStatusLine != null && (
             <Text

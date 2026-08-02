@@ -21,6 +21,100 @@
     "collapseSection": "Zwiń tę sekcję",
     "favorite": "W ulubionych"
   },
+  "activeWorkout": {
+    "bar": {
+      "clearWorkout": "Wyczyść trening",
+      "clearWorkoutTitle": "Wyczyścić trening?",
+      "saveFailed": "Nie udało się zapisać treningu",
+      "unsavedChanges": "Niektóre zmiany nie dotarły do serwera.",
+      "discardAnyway": "Odrzuć mimo to",
+      "endWithoutSaving": "Spowoduje to zakończenie bieżącego treningu bez zapisania postępu.",
+      "doneStartNextSet": "Ukończ serię i rozpocznij następną",
+      "finishWorkout": "Zakończ trening",
+      "open": "Otwórz aktywny trening",
+      "pause": "Wstrzymaj",
+      "resume": "Wznów",
+      "skipRest": "Pomiń odpoczynek",
+      "resting": "Odpoczynek",
+      "paused": "Wstrzymano",
+      "workoutComplete": "Trening ukończony",
+      "workoutActive": "Trening aktywny",
+      "next": "Następna",
+      "nextUp": "Następna w kolejce",
+      "setProgress": "Seria {{setNumber}}/{{setCount}}"
+    },
+    "header": {
+      "addExercise": "Dodaj ćwiczenie",
+      "back": "Cofnij",
+      "clearAllSets": "Wyczyść wszystkie zapisane serie",
+      "discardWorkout": "Odrzuć trening",
+      "elapsedTime": "Czas: {{time}}",
+      "endWorkout": "Zakończ trening",
+      "exerciseCount_one": "{{count}} ćwiczenie",
+      "exerciseCount_few": "{{count}} ćwiczenia",
+      "exerciseCount_many": "{{count}} ćwiczeń",
+      "exerciseCount_other": "{{count}} ćwiczeń",
+      "exerciseProgress_one": "{{completed}} / {{count}} ćwiczenie",
+      "exerciseProgress_few": "{{completed}} / {{count}} ćwiczenia",
+      "exerciseProgress_many": "{{completed}} / {{count}} ćwiczeń",
+      "exerciseProgress_other": "{{completed}} / {{count}} ćwiczeń",
+      "renameWorkout": "Zmień nazwę treningu",
+      "reorderExercises": "Zmień kolejność ćwiczeń",
+      "menu": "Menu treningu",
+      "settings": "Ustawienia treningu"
+    },
+    "exerciseCard": {
+      "addNote": "Dodaj notatkę do tego ćwiczenia…",
+      "addSetTo": "Dodaj serię do {{exerciseName}}",
+      "addSet": "Dodaj serię",
+      "best": "Najlepszy wynik: {{value}}",
+      "caloriesBurnedFor": "Spalone kalorie dla {{exerciseName}}",
+      "changeMetricColumn": "Zmień kolumnę metryki",
+      "collapse": "Zwiń {{exerciseName}}",
+      "expand": "Rozwiń {{exerciseName}}",
+      "viewDetailsFor": "Wyświetl szczegóły {{exerciseName}}",
+      "editCaloriesFor": "Edytuj spalone kalorie dla {{exerciseName}}",
+      "moreOptionsFor": "Więcej opcji dla {{exerciseName}}",
+      "notesFor": "Notatki dla {{exerciseName}}",
+      "notesForSet": "Notatki dla serii {{setNumber}}"
+    },
+    "rail": {
+      "add": "Dodaj",
+      "addExercise": "Dodaj ćwiczenie"
+    },
+    "rest": {
+      "addSecondsShort": "+{{seconds}} s",
+      "subtractSecondsShort": "−{{seconds}} s",
+      "completeSet": "Ukończ serię",
+      "completeSetTitle": "Ukończ serię",
+      "extendBySeconds": "Wydłuż odpoczynek o {{seconds}} sekund",
+      "shortenBySeconds": "Skróć odpoczynek o {{seconds}} sekund",
+      "skip": "Pomiń odpoczynek",
+      "pause": "Wstrzymaj odpoczynek",
+      "resume": "Wznów odpoczynek",
+      "target": "Cel"
+    },
+    "setDetail": {
+      "addNote": "Dodaj notatkę do tej serii…",
+      "notesForSet": "Notatki dla serii {{setNumber}}",
+      "notes": "Notatki serii"
+    },
+    "setRow": {
+      "changeType": "Zmień typ serii {{setNumber}}",
+      "delete": "Usuń serię {{setNumber}}",
+      "duration": "Czas trwania",
+      "log": "Zapisz serię {{setNumber}}",
+      "reps": "Powtórzenia",
+      "complete": "Ukończ serię {{setNumber}}",
+      "incomplete": "Oznacz serię {{setNumber}} jako nieukończoną",
+      "weight": "Ciężar"
+    },
+    "columns": {
+      "set": "Seria",
+      "previous": "Poprz.",
+      "seconds": "Sek."
+    }
+  },
   "settings": {
     "title": "Ustawienia",
     "app": "Ustawienia aplikacji",

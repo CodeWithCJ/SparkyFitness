@@ -523,11 +523,11 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('shows read-only calories, hidden in live mode', () => {
       const view = renderCard(true, { mode: 'view' });
-      expect(view.getByText('150 Cal')).toBeTruthy();
+      expect(view.getByText('150 kcal')).toBeTruthy();
       expect(view.queryByLabelText('Edit calories burned for Bench Press')).toBeNull();
 
       const live = renderCard(true, { mode: 'live' });
-      expect(live.queryByText('150 Cal')).toBeNull();
+      expect(live.queryByText('150 kcal')).toBeNull();
     });
 
     it('skips the exercise stats fetch', () => {
@@ -632,7 +632,7 @@ describe('ActiveWorkoutExerciseCard', () => {
           exercise: { ...makeExercise(), editCaloriesText: '150' },
         });
 
-        expect(getByText('150 Cal')).toBeTruthy();
+        expect(getByText('150 kcal')).toBeTruthy();
         expect(queryByLabelText('Calories burned for Bench Press')).toBeNull();
 
         fireEvent.press(getByLabelText('Edit calories burned for Bench Press'));
@@ -647,7 +647,7 @@ describe('ActiveWorkoutExerciseCard', () => {
           onChangeCalories: jest.fn(),
           exercise: { ...makeExercise(), editCaloriesText: '' },
         });
-        expect(getByText('– Cal')).toBeTruthy();
+        expect(getByText('– kcal')).toBeTruthy();
       });
 
       it('is absent without an onChangeCalories handler', () => {
