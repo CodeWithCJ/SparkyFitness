@@ -1370,16 +1370,22 @@ Actions:
               // the nonsense "14 pieces" (serving_size concatenated with serving_unit)
               // and scales wrong. Peel a leading positive number off as a multiplier.
               const countPrefix = /^\s*(\d+(?:\.\d+)?)\s+(\S.*)$/.exec(rawUnit);
-              const unitMultiplier =
-                countPrefix && Number(countPrefix[1]) > 0
-                  ? Number(countPrefix[1])
-                  : 1;
+              const hasPositivePrefix =
+                countPrefix !== null && Number(countPrefix[1]) > 0;
+              const unitMultiplier = hasPositivePrefix
+                ? Number(countPrefix![1])
+                : 1;
               const targetUnit = countPrefix ? countPrefix[2].trim() : rawUnit;
               const isCountUnit = COUNT_BASED_UNITS.includes(
                 targetUnit.toLowerCase()
               );
+              // A numeric prefix already states the serving size ("250 ml" is one
+              // 250 ml serving), so the implicit base is 1 — not the 100 default
+              // used for bare mass/volume units, which would store 25,000 ml.
               const targetQuantity =
-                (args.quantity || (isCountUnit ? 1 : 100)) * unitMultiplier;
+                (args.quantity ||
+                  (hasPositivePrefix || isCountUnit ? 1 : 100)) *
+                unitMultiplier;
               // The `|| null` on optional fields is MCP's storage quirk
               // (an explicit 0 is stored as null), ported as-is.
               const food = await foodCoreService.createFood(userId, {
