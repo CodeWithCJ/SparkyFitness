@@ -99,11 +99,11 @@ export const useDownloadBackupFile = () => {
     meta: {
       successMessage: t(
         'admin.backupSettings.downloadBackupSuccess',
-        'Backup download started'
+        'Backup downloaded successfully.'
       ),
       errorMessage: t(
         'admin.backupSettings.failedToDownloadBackup',
-        'Failed to download backup'
+        'Failed to download backup.'
       ),
     },
   });

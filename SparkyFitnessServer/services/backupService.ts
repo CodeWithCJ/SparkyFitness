@@ -178,6 +178,7 @@ interface BackupFileStats {
   fileName: string;
   size: number;
   createdAt: Date;
+  completedAt: Date;
 }
 
 async function listBackups(backupDir: string): Promise<BackupFileStats[]> {
@@ -197,7 +198,14 @@ async function listBackups(backupDir: string): Promise<BackupFileStats[]> {
       const filePath = path.join(backupDir, file);
       const stats = await fsp.stat(filePath);
       const createdAt = parseBackupDate(file) ?? stats.mtime;
-      return { fileName: file, size: stats.size, createdAt };
+      // The archive's mtime is the moment its last byte was written, i.e. when
+      // the backup run finished.
+      return {
+        fileName: file,
+        size: stats.size,
+        createdAt,
+        completedAt: stats.mtime,
+      };
     })
   );
 

@@ -11,7 +11,6 @@ interface ApiCallOptions extends RequestInit {
   externalApi?: boolean;
   isFormData?: boolean; // New option to indicate if the body is FormData
   responseType?: 'json' | 'text' | 'blob'; // Add responseType option
-  returnHeaders?: boolean; // Option to return response headers with blob
 }
 
 class HttpApiError extends Error {}
@@ -56,15 +55,6 @@ function reloadOnceForGatewayInterception(): void {
   window.location.reload();
 }
 
-export interface BlobWithHeaders {
-  blob: Blob;
-  headers: Headers;
-}
-
-export function apiCall(
-  endpoint: string,
-  options: ApiCallOptions & { responseType: 'blob'; returnHeaders: true }
-): Promise<BlobWithHeaders>;
 export function apiCall(
   endpoint: string,
   options: ApiCallOptions & { responseType: 'blob' }
@@ -241,13 +231,6 @@ export async function apiCall(
         userLoggingLevel,
         `API Call: Received blob response from ${url}.`
       );
-
-      if (options?.returnHeaders) {
-        return {
-          blob: blobResponse,
-          headers: response.headers,
-        };
-      }
       return blobResponse;
     }
     // Handle cases where the response might be empty (e.g., DELETE requests)
@@ -277,10 +260,6 @@ export async function apiCall(
 }
 
 interface ApiGet {
-  (
-    endpoint: string,
-    options: ApiCallOptions & { responseType: 'blob'; returnHeaders: true }
-  ): Promise<BlobWithHeaders>;
   (
     endpoint: string,
     options: ApiCallOptions & { responseType: 'blob' }

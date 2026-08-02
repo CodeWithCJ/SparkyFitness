@@ -75,6 +75,24 @@ describe('Backup routes - /list', () => {
     expect(res.body.backups[0]).toHaveProperty('size');
   });
 
+  it('reports completedAt from the archive mtime, independently of the name-derived createdAt', async () => {
+    const fileName =
+      'sparkyfitness_full_backup_2026-03-01T00-00-00-000Z.tar.gz';
+    const filePath = path.join(TEMP_DIR_BASE, fileName);
+    writeFileSync(filePath, 'CONTENT');
+    // Backup started at the time in the name and finished 90 seconds later.
+    const finishedAt = new Date('2026-03-01T00:01:30.000Z');
+    utimesSync(filePath, finishedAt, finishedAt);
+
+    const res = await request(app).get('/admin/backup/list');
+
+    const entry = res.body.backups.find(
+      (b: { fileName: string }) => b.fileName === fileName
+    );
+    expect(entry.createdAt).toBe('2026-03-01T00:00:00.000Z');
+    expect(entry.completedAt).toBe('2026-03-01T00:01:30.000Z');
+  });
+
   it('falls back to mtime for a backup file whose name has no parseable timestamp', async () => {
     const fileName = 'sparkyfitness_full_backup_manual-restore-copy.tar.gz';
     const filePath = path.join(TEMP_DIR_BASE, fileName);
