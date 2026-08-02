@@ -32,6 +32,8 @@ export const PREFERENCE_DEFAULTS = {
   hapticsEnabled: true,
   soundsEnabled: true,
   notificationsEnabled: true,
+  restTimerNotificationsEnabled: true,
+  fastingGoalNotificationsEnabled: true,
   hydrationCardVisible: true,
   fastingCardVisible: true,
   cycleCardVisible: true,
@@ -53,6 +55,8 @@ export type AppPreferencesData = {
   hapticsEnabled: boolean;
   soundsEnabled: boolean;
   notificationsEnabled: boolean;
+  restTimerNotificationsEnabled: boolean;
+  fastingGoalNotificationsEnabled: boolean;
   hydrationCardVisible: boolean;
   fastingCardVisible: boolean;
   cycleCardVisible: boolean;
@@ -74,6 +78,8 @@ export interface AppPreferencesState extends AppPreferencesData {
   setHapticsEnabled: (value: boolean) => void;
   setSoundsEnabled: (value: boolean) => void;
   setNotificationsEnabled: (value: boolean) => void;
+  setRestTimerNotificationsEnabled: (value: boolean) => void;
+  setFastingGoalNotificationsEnabled: (value: boolean) => void;
   setHydrationCardVisible: (value: boolean) => void;
   setFastingCardVisible: (value: boolean) => void;
   setCycleCardVisible: (value: boolean) => void;
@@ -135,6 +141,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setHapticsEnabled: (value) => set({ hapticsEnabled: value }),
       setSoundsEnabled: (value) => set({ soundsEnabled: value }),
       setNotificationsEnabled: (value) => set({ notificationsEnabled: value }),
+      setRestTimerNotificationsEnabled: (value) => set({ restTimerNotificationsEnabled: value }),
+      setFastingGoalNotificationsEnabled: (value) => set({ fastingGoalNotificationsEnabled: value }),
       setHydrationCardVisible: (value) => set({ hydrationCardVisible: value }),
       setFastingCardVisible: (value) => set({ fastingCardVisible: value }),
       setCycleCardVisible: (value) => set({ cycleCardVisible: value }),
@@ -159,6 +167,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         hapticsEnabled: state.hapticsEnabled,
         soundsEnabled: state.soundsEnabled,
         notificationsEnabled: state.notificationsEnabled,
+        restTimerNotificationsEnabled: state.restTimerNotificationsEnabled,
+        fastingGoalNotificationsEnabled: state.fastingGoalNotificationsEnabled,
         hydrationCardVisible: state.hydrationCardVisible,
         fastingCardVisible: state.fastingCardVisible,
         cycleCardVisible: state.cycleCardVisible,
