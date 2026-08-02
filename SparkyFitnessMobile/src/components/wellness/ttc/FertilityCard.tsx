@@ -76,7 +76,7 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
         <Text className="text-text-primary text-sm font-semibold">Fertility</Text>
         {isFertileToday && (
           <View className="rounded-full bg-bg-success px-3 py-1">
-            <Text className="text-text-success text-xs font-semibold">Fertile window</Text>
+            <Text className="text-text-success text-xs font-semibold">Est. fertile window</Text>
           </View>
         )}
       </View>
@@ -104,11 +104,15 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
           </Text>
           {dpo >= 1 && dpo < 14 && (
             <Text className="text-text-secondary text-xs mt-1">
-              A test is typically most accurate around 12–14 DPO.
+              Home tests are usually most accurate 12 to 14 days past ovulation.
             </Text>
           )}
         </View>
       )}
+
+      <Text className="text-text-muted text-xs italic">
+        Estimates from your logged data. Not medical advice.
+      </Text>
     </View>
   );
 };

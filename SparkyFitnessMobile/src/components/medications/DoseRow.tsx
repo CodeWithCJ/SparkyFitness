@@ -38,7 +38,7 @@ const SizedActionColumn: React.FC<{ children: React.ReactNode }> = ({ children }
   <View className="items-center justify-center">
     <View className="flex-row items-center opacity-0" aria-hidden>
       <View className="rounded-full px-3 py-1">
-        <Text className="text-sm font-semibold">Take</Text>
+        <Text className="text-sm font-semibold">Log</Text>
       </View>
       <View className="rounded-full px-3 py-1 ml-1">
         <Text className="text-sm font-semibold">Skip</Text>
@@ -103,7 +103,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             accessibilityRole="button"
             className="rounded-full px-3 py-1 bg-raised"
           >
-            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Take</Text>
+            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Log</Text>
           </TouchableOpacity>
         </SizedActionColumn>
       );
@@ -116,10 +116,10 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.6}
             accessibilityRole="button"
-            accessibilityLabel={`Take ${title}`}
+            accessibilityLabel={`Log ${title} as taken`}
             className="rounded-full px-3 py-1 bg-raised"
           >
-            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Take</Text>
+            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Log</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={props.onSkip}

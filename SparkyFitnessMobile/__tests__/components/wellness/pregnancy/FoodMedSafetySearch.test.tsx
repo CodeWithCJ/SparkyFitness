@@ -13,7 +13,7 @@ describe('FoodMedSafetySearch', () => {
 
   it('shows a hint when the query is empty', () => {
     const { getByText } = render(<FoodMedSafetySearch />);
-    expect(getByText("Search to check if it's considered safe during pregnancy.")).toBeTruthy();
+    expect(getByText("Search to see how a food or medication is commonly categorized during pregnancy.")).toBeTruthy();
   });
 
   it('finds a known food item and shows its status', async () => {

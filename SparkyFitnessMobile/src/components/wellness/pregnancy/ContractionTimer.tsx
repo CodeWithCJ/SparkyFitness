@@ -119,7 +119,7 @@ const ContractionTimer: React.FC<ContractionTimerProps> = ({ pregnancyId }) => {
       {analysis?.shouldGoToHospital && (
         <View className="rounded-xl bg-bg-danger-subtle p-3">
           <Text className="text-text-danger text-xs font-semibold">
-            Your contractions match the 5-1-1 pattern — consider contacting your provider.
+            Your logged contractions fit the 5-1-1 pattern: about 5 minutes apart, lasting about 1 minute, for at least an hour. If you think labor may be starting, contact your provider.
           </Text>
         </View>
       )}

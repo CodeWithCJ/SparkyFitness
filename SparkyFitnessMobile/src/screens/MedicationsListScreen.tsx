@@ -7,6 +7,7 @@ import { useMedications } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
+import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import MedicationRow from '../components/medications/MedicationRow';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Medication } from '@workspace/shared';
@@ -121,6 +122,11 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
                 />
               </TouchableOpacity>
             ) : null
+          }
+          ListFooterComponent={
+            <View className="px-4 pt-6">
+              <MedicalDisclaimer />
+            </View>
           }
           contentContainerStyle={{
             paddingTop: 8,

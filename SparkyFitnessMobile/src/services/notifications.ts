@@ -132,7 +132,7 @@ export async function initNotifications(): Promise<void> {
     await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
       {
         identifier: MEDICATION_TAKEN_ACTION,
-        buttonTitle: 'Take',
+        buttonTitle: 'Log as taken',
         options: { opensAppToForeground: false },
       },
       {

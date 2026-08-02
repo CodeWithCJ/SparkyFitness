@@ -14,9 +14,9 @@ export function getPhaseDisplayName(phase: string, discreetMode = false): string
     case 'follicular':
       return 'Follicular Phase';
     case 'fertile':
-      return 'Fertile Window';
+      return 'Est. Fertile Window';
     case 'ovulation':
-      return 'Ovulation Day';
+      return 'Est. Ovulation';
     case 'luteal':
       return 'Luteal Phase';
     default:

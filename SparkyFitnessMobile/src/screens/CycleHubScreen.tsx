@@ -12,6 +12,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
+import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import SegmentedControl from '../components/SegmentedControl';
 import CycleCalendarGrid from '../components/wellness/CycleCalendarGrid';
 import CycleHistoryList from '../components/wellness/CycleHistoryList';
@@ -194,6 +195,10 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
             <CycleHistoryList />
           </View>
         )}
+
+        <View className="mt-6 px-2">
+          <MedicalDisclaimer />
+        </View>
       </ScrollView>
     </View>
   );

@@ -107,7 +107,7 @@ const CycleInsightsView: React.FC = () => {
             <Text className="text-text-primary text-base font-bold">Next Predictions</Text>
             <View className="bg-raised px-2.5 py-1 rounded-full">
               <Text className="text-text-secondary text-[10px] font-semibold uppercase tracking-wider">
-                {predictions.confidence} confidence
+                Estimates
               </Text>
             </View>
           </View>
@@ -166,7 +166,7 @@ const CycleInsightsView: React.FC = () => {
       {/* 3. Anomalies/Alerts */}
       {anomalies.length > 0 && (
         <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
-          <Text className="text-text-primary text-base font-bold">Clinical Health Alerts</Text>
+          <Text className="text-text-primary text-base font-bold">Patterns to Watch</Text>
           <View className="gap-2">
             {anomalies.map((anom: { message: string }, idx: number) => (
               <View
