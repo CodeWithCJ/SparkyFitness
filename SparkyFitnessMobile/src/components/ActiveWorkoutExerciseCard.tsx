@@ -271,7 +271,32 @@ function ActiveWorkoutExerciseCard({
     '--color-pr',
   ]) as [string, string, string, string];
 
-  const name = exercise.exercise_snapshot?.name ?? t('exerciseSummary.title');
+  const exerciseName = exercise.exercise_snapshot?.name ?? null;
+  const displayName = exerciseName ?? t('exerciseSummary.title');
+  const expandLabel = exerciseName
+    ? t('activeWorkout.exerciseCard.expand', { exerciseName })
+    : t('activeWorkout.exerciseCard.expandFallback');
+  const collapseLabel = exerciseName
+    ? t('activeWorkout.exerciseCard.collapse', { exerciseName })
+    : t('activeWorkout.exerciseCard.collapseFallback');
+  const viewDetailsLabel = exerciseName
+    ? t('activeWorkout.exerciseCard.viewDetailsFor', { exerciseName })
+    : t('activeWorkout.exerciseCard.viewDetailsFallback');
+  const moreOptionsLabel = exerciseName
+    ? t('activeWorkout.exerciseCard.moreOptionsFor', { exerciseName })
+    : t('activeWorkout.exerciseCard.moreOptionsFallback');
+  const notesLabel = exerciseName
+    ? t('activeWorkout.exerciseCard.notesFor', { exerciseName })
+    : t('activeWorkout.exerciseCard.notesFallback');
+  const caloriesBurnedLabel = exerciseName
+    ? t('activeWorkout.exerciseCard.caloriesBurnedFor', { exerciseName })
+    : t('activeWorkout.exerciseCard.caloriesBurnedFallback');
+  const editCaloriesLabel = exerciseName
+    ? t('activeWorkout.exerciseCard.editCaloriesFor', { exerciseName })
+    : t('activeWorkout.exerciseCard.editCaloriesFallback');
+  const addSetLabel = exerciseName
+    ? t('activeWorkout.exerciseCard.addSetTo', { exerciseName })
+    : t('activeWorkout.exerciseCard.addSetFallback');
   // Resolved once per exercise; every row and the column header derive from it.
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const durationLike = isDurationModality(modality);
@@ -529,8 +554,14 @@ function ActiveWorkoutExerciseCard({
     const subtitle = cardioForm
       ? cardioParts.join(' · ')
       : readOnly || isEdit || anyComplete
-        ? `${exercise.sets.length} sets${detail}`
-        : `${exercise.sets.length} sets`;
+        ? t('activeWorkout.exerciseCard.setSummary', {
+            count: exercise.sets.length,
+            detail,
+          })
+        : t('activeWorkout.exerciseCard.setSummary', {
+            count: exercise.sets.length,
+            detail: '',
+          });
 
     // The root → header row → thumb <Pressable> wrappers mirror the expanded
     // card exactly so the thumbnail <Image> keeps its position in the tree
@@ -560,14 +591,14 @@ function ActiveWorkoutExerciseCard({
             onLongPress={longPressMenu}
             hitSlop={{ top: 10, bottom: 10, left: 12, right: 12 }}
             accessibilityRole="button"
-            accessibilityLabel={t('activeWorkout.exerciseCard.expand', { exerciseName: name })}
+            accessibilityLabel={expandLabel}
             className="flex-1 self-stretch flex-row items-center gap-3"
           >
             <Text
               numberOfLines={2}
               className={`flex-1 text-base ${isDone ? 'text-text-secondary' : 'text-text-primary'}`}
             >
-              {name}
+              {displayName}
             </Text>
             <Text className="text-sm text-text-muted" style={{ fontVariant: ['tabular-nums'] }}>
               {subtitle}
@@ -591,7 +622,7 @@ function ActiveWorkoutExerciseCard({
           onPress={onPressThumb ? () => onPressThumb(exercise.id) : undefined}
           accessible={onPressThumb != null}
           accessibilityRole={onPressThumb != null ? 'button' : undefined}
-           accessibilityLabel={onPressThumb != null ? t('activeWorkout.exerciseCard.viewDetailsFor', { exerciseName: name }) : undefined}
+           accessibilityLabel={onPressThumb != null ? viewDetailsLabel : undefined}
         >
           {thumb}
         </Pressable>
@@ -604,10 +635,10 @@ function ActiveWorkoutExerciseCard({
           hitSlop={{ top: 10, bottom: 4 }}
           className="flex-1 self-stretch justify-center"
           accessibilityRole="button"
-            accessibilityLabel={t('activeWorkout.exerciseCard.collapse', { exerciseName: name })}
+             accessibilityLabel={collapseLabel}
         >
           <Text numberOfLines={2} className="text-base font-semibold text-text-primary">
-            {name}
+             {displayName}
           </Text>
         </Pressable>
         {!readOnly && (
@@ -615,7 +646,7 @@ function ActiveWorkoutExerciseCard({
             onPress={openOverflowMenu}
             hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
             accessibilityRole="button"
-              accessibilityLabel={t('activeWorkout.exerciseCard.moreOptionsFor', { exerciseName: name })}
+               accessibilityLabel={moreOptionsLabel}
             className="p-1"
           >
             <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
@@ -625,7 +656,7 @@ function ActiveWorkoutExerciseCard({
           onPress={() => onToggleExpanded(exercise.id)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-            accessibilityLabel={t('activeWorkout.exerciseCard.collapse', { exerciseName: name })}
+             accessibilityLabel={collapseLabel}
           className="p-1"
         >
           <Animated.View style={chevronStyle}>
@@ -652,13 +683,13 @@ function ActiveWorkoutExerciseCard({
               onCommit={(text) => onCommitExerciseNote(exercise.id, text)}
               label=""
                placeholder={t('activeWorkout.exerciseCard.addNote')}
-                accessibilityLabel={t('activeWorkout.exerciseCard.notesFor', { exerciseName: name })}
+                accessibilityLabel={notesLabel}
             />
           </View>
         )}
         {readOnly && !!exercise.notes && (
           <View className="mt-2 px-1">
-              <Text className="text-sm text-text-secondary" accessibilityLabel={t('activeWorkout.exerciseCard.notesFor', { exerciseName: name })}>
+              <Text className="text-sm text-text-secondary" accessibilityLabel={notesLabel}>
               {exercise.notes}
             </Text>
           </View>
@@ -694,7 +725,7 @@ function ActiveWorkoutExerciseCard({
                   autoFocus
                   selectTextOnFocus
                   placeholder="–"
-                    accessibilityLabel={t('activeWorkout.exerciseCard.caloriesBurnedFor', { exerciseName: name })}
+                    accessibilityLabel={caloriesBurnedLabel}
                   className="text-center"
                   style={{
                     paddingTop: 4,
@@ -714,7 +745,7 @@ function ActiveWorkoutExerciseCard({
                 className="flex-row items-center gap-1"
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 accessibilityRole="button"
-                  accessibilityLabel={t('activeWorkout.exerciseCard.editCaloriesFor', { exerciseName: name })}
+                  accessibilityLabel={editCaloriesLabel}
               >
                 <Icon name="flame" size={14} color={accentPrimary} />
                  <Text className="text-sm" style={{ color: accentPrimary }}>
@@ -724,7 +755,7 @@ function ActiveWorkoutExerciseCard({
               </Pressable>
             ))}
             {caloriesText != null && (
-              <View className="flex-row items-center">
+              <View className="flex-row items-center" accessibilityLabel={caloriesBurnedLabel}>
                 <Icon name="flame" size={14} color={textMuted} />
                  <Text className="text-sm text-text-secondary ml-1">{caloriesText} {t('units.kcalShort')}</Text>
               </View>
@@ -756,7 +787,7 @@ function ActiveWorkoutExerciseCard({
         {cardioForm && (
           <CardioEffortForm
             set={exercise.sets[0] ?? null}
-            exerciseName={name}
+            exerciseName={displayName}
             mode={mode}
             distanceUnit={distanceUnit}
             assumed={assumedSetValues?.[0] ?? null}
@@ -921,7 +952,7 @@ function ActiveWorkoutExerciseCard({
           <Pressable
             onPress={() => onAddSet?.(exercise.id)}
             accessibilityRole="button"
-              accessibilityLabel={t('activeWorkout.exerciseCard.addSetTo', { exerciseName: name })}
+              accessibilityLabel={addSetLabel}
             className="flex-row items-center justify-center gap-1.5 py-2.5 mt-1"
           >
             <Icon name="add" size={15} color={accentPrimary} />

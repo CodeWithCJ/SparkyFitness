@@ -238,7 +238,7 @@ describe('WorkoutDetailScreen', () => {
     const screen = renderScreen(buildSession());
 
     expect(screen.getByText('Bench Press')).toBeTruthy();
-    expect(screen.getByText('1 sets · 600 kg')).toBeTruthy();
+    expect(screen.getByText('1 set · 600 kg')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Expand Bench Press'));
 

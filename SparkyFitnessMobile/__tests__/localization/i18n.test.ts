@@ -221,6 +221,33 @@ describe('real i18next pluralization', () => {
       );
     });
   });
+
+  it('pluralizes active workout set summaries in English and Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+
+      await i18n.changeLanguage('en');
+      expect([1, 2, 5].map((count) => i18n.t('activeWorkout.exerciseCard.setSummary', { count, detail: '' }))).toEqual([
+        '1 set',
+        '2 sets',
+        '5 sets',
+      ]);
+
+      await i18n.changeLanguage('pl');
+      expect([1, 2, 5, 12, 22, 25].map((count) => i18n.t('activeWorkout.exerciseCard.setSummary', { count, detail: '' }))).toEqual([
+        '1 seria',
+        '2 serie',
+        '5 serii',
+        '12 serii',
+        '22 serie',
+        '25 serii',
+      ]);
+      expect(i18n.t('activeWorkout.exerciseCard.setSummary', { count: 2, detail: ' · 1:15' })).toBe(
+        '2 serie · 1:15',
+      );
+    });
+  });
 });
 
 describe('initializeI18n hydration', () => {
