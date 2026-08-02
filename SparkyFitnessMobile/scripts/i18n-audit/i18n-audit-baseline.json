@@ -9,173 +9,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/components/AnchoredMenu.tsx",
-      "value": "Dismiss menu",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/AnchoredMenu.tsx:Dismiss menu:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/AnnouncementModal.tsx",
-      "value": "Got it, don&apos;t show again",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/AnnouncementModal.tsx:Got it, don&apos;t show again:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/BottomSheetPicker.tsx",
-      "value": "Opens selection menu",
-      "context": {
-        "attr": "accessibilityHint"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/BottomSheetPicker.tsx:Opens selection menu:{\"attr\":\"accessibilityHint\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CardioEffortForm.tsx",
-      "value": "{{dynamic}} effort",
-      "context": {
-        "attr": "accessibilityLabel",
-        "form": "expression"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:{{dynamic}} effort:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CardioEffortForm.tsx",
-      "value": "Distance (",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance (:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CardioEffortForm.tsx",
-      "value": "Distance (",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance (:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CardioEffortForm.tsx",
-      "value": "Distance in {{dynamic}} for {{dynamic}}",
-      "context": {
-        "attr": "accessibilityLabel",
-        "form": "expression"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance in {{dynamic}} for {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CardioEffortForm.tsx",
-      "value": "Duration (min)",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Duration (min):{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CardioEffortForm.tsx",
-      "value": "Duration (min)",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Duration (min):{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CardioEffortForm.tsx",
-      "value": "Duration in minutes for {{dynamic}}",
-      "context": {
-        "attr": "accessibilityLabel",
-        "form": "expression"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Duration in minutes for {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/chat/TypingIndicator.tsx",
-      "value": "Sparky is typing",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/chat/TypingIndicator.tsx:Sparky is typing:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ConnectionStatus.tsx",
-      "value": "Connected",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ConnectionStatus.tsx:Connected:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ConnectionStatus.tsx",
-      "value": "Server Connected",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ConnectionStatus.tsx:Server Connected:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CopyMealSheet.tsx",
-      "value": "Copy",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CopyMealSheet.tsx:Copy:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CopyMealSheet.tsx",
-      "value": "From",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CopyMealSheet.tsx:From:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CopyMealSheet.tsx",
-      "value": "Target date",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CopyMealSheet.tsx:Target date:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/CopyMealSheet.tsx",
-      "value": "Target meal",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/CopyMealSheet.tsx:Target meal:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/components/CycleCard.tsx",
       "value": ", Day",
       "context": {
@@ -331,26 +164,6 @@
         "form": "text"
       },
       "fingerprint": "hardcoded-ui-text:src/components/CycleCard.tsx:Week:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/DateRangeSheet.tsx",
-      "value": "Remove selected range",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/DateRangeSheet.tsx:Remove selected range:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/DateRangeSheet.tsx",
-      "value": "Select a date range to remove",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/DateRangeSheet.tsx:Select a date range to remove:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -20054,21 +19867,6 @@
   ],
   "counts": {
     "dynamic-i18n-key:src/screens/MealTypeDetailScreen.tsx:translationKey": 1,
-    "hardcoded-ui-text:src/components/AnchoredMenu.tsx:Dismiss menu:{\"attr\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/components/AnnouncementModal.tsx:Got it, don&apos;t show again:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/BottomSheetPicker.tsx:Opens selection menu:{\"attr\":\"accessibilityHint\"}": 1,
-    "hardcoded-ui-text:src/components/CardioEffortForm.tsx:{{dynamic}} effort:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
-    "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance (:{\"element\":\"Text\",\"form\":\"text\"}": 2,
-    "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Distance in {{dynamic}} for {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
-    "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Duration (min):{\"element\":\"Text\",\"form\":\"text\"}": 2,
-    "hardcoded-ui-text:src/components/CardioEffortForm.tsx:Duration in minutes for {{dynamic}}:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
-    "hardcoded-ui-text:src/components/chat/TypingIndicator.tsx:Sparky is typing:{\"attr\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/components/ConnectionStatus.tsx:Connected:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/ConnectionStatus.tsx:Server Connected:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/CopyMealSheet.tsx:Copy:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/CopyMealSheet.tsx:From:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/CopyMealSheet.tsx:Target date:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/CopyMealSheet.tsx:Target meal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/CycleCard.tsx:, Day:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/CycleCard.tsx:cm:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/CycleCard.tsx:Hub:{\"element\":\"Text\",\"form\":\"text\"}": 1,
@@ -20085,8 +19883,6 @@
     "hardcoded-ui-text:src/components/CycleCard.tsx:Tap to view details:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/CycleCard.tsx:Tap to view gestational progress.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/CycleCard.tsx:Week:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/DateRangeSheet.tsx:Remove selected range:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/DateRangeSheet.tsx:Select a date range to remove:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/DevTools.tsx:(Steps):{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/DevTools.tsx:{{dynamic}} popover will re-appear.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/components/DevTools.tsx:1 Year:{\"element\":\"Text\",\"form\":\"text\"}": 1,

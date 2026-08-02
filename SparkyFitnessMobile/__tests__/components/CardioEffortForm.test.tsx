@@ -3,6 +3,12 @@ import { render, fireEvent } from '@testing-library/react-native';
 import CardioEffortForm from '../../src/components/CardioEffortForm';
 import type { WorkoutCardSet } from '../../src/utils/workoutSession';
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & {
+    __setTestLocale: (value: 'en' | 'pl') => void;
+  }).__setTestLocale(locale);
+}
+
 jest.mock('uniwind', () => ({
   useCSSVariable: jest.fn(() => '#000'),
 }));
@@ -20,6 +26,93 @@ const makeSet = (overrides?: Partial<WorkoutCardSet>): WorkoutCardSet => ({
 });
 
 describe('CardioEffortForm', () => {
+  it.each([
+    ['en', 'Duration (min)', 'Distance (km)', 'Distance (mi)'],
+    ['pl', 'Czas trwania (min)', 'Dystans (km)', 'Dystans (mi)'],
+  ] as const)('localizes visible headers in %s', (locale, duration, distanceKm, distanceMi) => {
+    setTestLocale(locale);
+    const km = render(<CardioEffortForm set={makeSet()} exerciseName="Run" mode="view" distanceUnit="km" />);
+    expect(km.getByText(duration)).toBeTruthy();
+    expect(km.getByText(distanceKm)).toBeTruthy();
+    km.unmount();
+
+    const miles = render(<CardioEffortForm set={makeSet()} exerciseName="Run" mode="view" distanceUnit="miles" />);
+    expect(miles.getByText(distanceMi)).toBeTruthy();
+  });
+
+  it.each([
+    ['en', 'Effort for Run', 'Duration in minutes for Run', 'Distance in km for Run', 'Complete Run', 'Mark Run as incomplete'],
+    ['pl', 'Parametry wysiłku: Run', 'Czas trwania w minutach: Run', 'Dystans w km: Run', 'Ukończ ćwiczenie: Run', 'Oznacz Run jako nieukończone'],
+  ] as const)('localizes named accessibility labels in %s', (locale, effort, duration, distance, complete, incomplete) => {
+    setTestLocale(locale);
+    const view = render(
+      <CardioEffortForm set={makeSet()} exerciseName="Run" mode="view" distanceUnit="km" />,
+    );
+    expect(view.getByLabelText(effort)).toBeTruthy();
+    view.unmount();
+    const active = render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        onComplete={jest.fn()}
+        onUncomplete={jest.fn()}
+      />,
+    );
+    expect(active.getByLabelText(duration)).toBeTruthy();
+    expect(active.getByLabelText(distance)).toBeTruthy();
+    expect(active.getByLabelText(complete)).toBeTruthy();
+    active.rerender(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="live"
+        distanceUnit="km"
+        state="done"
+        onComplete={jest.fn()}
+        onUncomplete={jest.fn()}
+      />,
+    );
+    expect(active.getByLabelText(incomplete)).toBeTruthy();
+  });
+
+  it.each([
+    ['en', 'Exercise effort', 'Exercise duration in minutes', 'Exercise distance in km', 'Complete exercise', 'Mark exercise as incomplete'],
+    ['pl', 'Parametry wysiłku ćwiczenia', 'Czas trwania ćwiczenia w minutach', 'Dystans ćwiczenia w km', 'Ukończ ćwiczenie', 'Oznacz ćwiczenie jako nieukończone'],
+  ] as const)('uses natural fallback accessibility labels without a name in %s', (locale, effort, duration, distance, complete, incomplete) => {
+    setTestLocale(locale);
+    const view = render(
+      <CardioEffortForm set={makeSet()} exerciseName={null} mode="view" distanceUnit="km" />,
+    );
+    expect(view.getByLabelText(effort)).toBeTruthy();
+    view.unmount();
+    const active = render(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName={null}
+        mode="live"
+        distanceUnit="km"
+        onComplete={jest.fn()}
+        onUncomplete={jest.fn()}
+      />,
+    );
+    expect(active.getByLabelText(duration)).toBeTruthy();
+    expect(active.getByLabelText(distance)).toBeTruthy();
+    expect(active.getByLabelText(complete)).toBeTruthy();
+    active.rerender(
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName={null}
+        mode="live"
+        distanceUnit="km"
+        state="done"
+        onComplete={jest.fn()}
+        onUncomplete={jest.fn()}
+      />,
+    );
+    expect(active.getByLabelText(incomplete)).toBeTruthy();
+  });
   it('seeds minutes from the set duration and km from the set distance', () => {
     const { getByLabelText } = render(
       <CardioEffortForm
@@ -208,7 +301,7 @@ describe('CardioEffortForm', () => {
         onUncomplete={onUncomplete}
       />,
     );
-    fireEvent.press(getByLabelText('Mark Run incomplete'));
+     fireEvent.press(getByLabelText('Mark Run as incomplete'));
     expect(onUncomplete).toHaveBeenCalledWith('101');
   });
 

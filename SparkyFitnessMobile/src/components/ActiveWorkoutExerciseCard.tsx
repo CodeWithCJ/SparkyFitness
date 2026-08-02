@@ -787,7 +787,7 @@ function ActiveWorkoutExerciseCard({
         {cardioForm && (
           <CardioEffortForm
             set={exercise.sets[0] ?? null}
-            exerciseName={displayName}
+            exerciseName={exerciseName}
             mode={mode}
             distanceUnit={distanceUnit}
             assumed={assumedSetValues?.[0] ?? null}

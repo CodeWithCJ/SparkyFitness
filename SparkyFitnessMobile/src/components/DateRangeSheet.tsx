@@ -8,10 +8,12 @@ import {
 } from '@gorhom/bottom-sheet';
 import { FullWindowOverlay } from 'react-native-screens';
 import { useUniwind, useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
 import Button from './ui/Button';
+import { getAppLocale } from '../localization';
 
 // Render inside an iOS UIWindow so the sheet sits above any native modal. No-op on Android.
 const sheetContainer =
@@ -36,6 +38,7 @@ interface DateRangeSheetProps {
  */
 const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
   ({ onConfirm }, ref) => {
+    const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -107,10 +110,11 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
       >
         <BottomSheetView className="pb-safe-or-5 px-2">
           <Text className="text-base font-semibold text-text-primary text-center mt-2 mb-1">
-            Select a date range to remove
+            {t('dateRange.title')}
           </Text>
           <DateTimePicker
             mode="range"
+            locale={getAppLocale()}
             startDate={start}
             endDate={end}
             maxDate={new Date()}
@@ -142,8 +146,13 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
             }}
           />
           <View className="px-2 mt-1">
-            <Button variant="primary" onPress={confirm} disabled={!start || !end}>
-              <Text className="text-base font-semibold text-white">Remove selected range</Text>
+            <Button
+              variant="primary"
+              onPress={confirm}
+              accessibilityLabel={t('dateRange.remove')}
+              disabled={!start || !end}
+            >
+              <Text className="text-base font-semibold text-white">{t('dateRange.remove')}</Text>
             </Button>
           </View>
         </BottomSheetView>

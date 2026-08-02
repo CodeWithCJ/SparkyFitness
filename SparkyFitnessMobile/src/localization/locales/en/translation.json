@@ -21,6 +21,55 @@
     "collapseSection": "Collapse this section",
     "favorite": "Favorite"
   },
+  "anchoredMenu": {
+    "dismiss": "Dismiss menu"
+  },
+  "announcement": {
+    "title": "Announcement",
+    "dismiss": "Got it, don't show again"
+  },
+  "picker": {
+    "selectOption": "Select an option",
+    "opensSelectionMenu": "Opens selection menu"
+  },
+  "cardioEffort": {
+    "duration": "Duration (min)",
+    "distance": "Distance ({{unit}})",
+    "effortForExercise": "Effort for {{exerciseName}}",
+    "effortFallback": "Exercise effort",
+    "durationForExercise": "Duration in minutes for {{exerciseName}}",
+    "durationFallback": "Exercise duration in minutes",
+    "distanceForExercise": "Distance in {{unit}} for {{exerciseName}}",
+    "distanceFallback": "Exercise distance in {{unit}}",
+    "completeExercise": "Complete {{exerciseName}}",
+    "completeFallback": "Complete exercise",
+    "incompleteExercise": "Mark {{exerciseName}} as incomplete",
+    "incompleteFallback": "Mark exercise as incomplete"
+  },
+  "chat": {
+    "typing": "Sparky is typing"
+  },
+  "connectionStatus": {
+    "serverConnected": "Server connected",
+    "connected": "Connected",
+    "connectionFailed": "Connection failed",
+    "configurationRequired": "Configuration required",
+    "connectedAccessibility": "Connected to server. Tap to refresh.",
+    "failedAccessibility": "Connection failed. Tap to retry.",
+    "configurationAccessibility": "Server configuration required."
+  },
+  "copyMeal": {
+    "title": "Copy meal: {{mealType}}",
+    "fromDate": "From {{date}}",
+    "targetDate": "Target date",
+    "targetMeal": "Target meal",
+    "copying": "Copying...",
+    "copy": "Copy"
+  },
+  "dateRange": {
+    "title": "Select a date range to remove",
+    "remove": "Remove selected range"
+  },
   "activeWorkout": {
     "bar": {
       "clearWorkout": "Clear workout",

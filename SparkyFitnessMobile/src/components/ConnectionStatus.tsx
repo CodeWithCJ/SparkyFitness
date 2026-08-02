@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 
 type ConnectionState = 'connected' | 'disconnected' | 'unconfigured';
 
@@ -21,6 +22,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   variant = 'inline',
   onRefresh,
 }) => {
+  const { t } = useTranslation();
   const [success, successBackground, danger, warning, warningText] = useCSSVariable([
     '--color-text-success',
     '--color-bg-success',
@@ -50,7 +52,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
           style={{ backgroundColor: success }}
         />
         <Text className="text-sm font-semibold" style={{ color: success }}>
-          Server Connected
+          {t('connectionStatus.serverConnected')}
         </Text>
       </View>
     );
@@ -71,11 +73,11 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   const getStatusText = () => {
     switch (state) {
       case 'connected':
-        return 'Connected';
+        return t('connectionStatus.connected');
       case 'disconnected':
-        return 'Connection failed';
+        return t('connectionStatus.connectionFailed');
       case 'unconfigured':
-        return 'Config required';
+        return t('connectionStatus.configurationRequired');
     }
   };
 
@@ -87,11 +89,11 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   const getAccessibilityLabel = () => {
     switch (state) {
       case 'connected':
-        return 'Connected to server. Tap to refresh.';
+        return t('connectionStatus.connectedAccessibility');
       case 'disconnected':
-        return 'Connection failed. Tap to retry.';
+        return t('connectionStatus.failedAccessibility');
       case 'unconfigured':
-        return 'Server configuration required.';
+        return t('connectionStatus.configurationAccessibility');
     }
   };
 
@@ -107,7 +109,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
           style={{ backgroundColor: success }}
         />
         <Text className="text-sm font-semibold" style={{ color: success }}>
-          Connected
+          {t('connectionStatus.connected')}
         </Text>
       </View>
     );

@@ -21,6 +21,55 @@
     "collapseSection": "Zwiń tę sekcję",
     "favorite": "W ulubionych"
   },
+  "anchoredMenu": {
+    "dismiss": "Zamknij menu"
+  },
+  "announcement": {
+    "title": "Ogłoszenie",
+    "dismiss": "Rozumiem, nie pokazuj ponownie"
+  },
+  "picker": {
+    "selectOption": "Wybierz opcję",
+    "opensSelectionMenu": "Otwiera menu wyboru"
+  },
+  "cardioEffort": {
+    "duration": "Czas trwania (min)",
+    "distance": "Dystans ({{unit}})",
+    "effortForExercise": "Parametry wysiłku: {{exerciseName}}",
+    "effortFallback": "Parametry wysiłku ćwiczenia",
+    "durationForExercise": "Czas trwania w minutach: {{exerciseName}}",
+    "durationFallback": "Czas trwania ćwiczenia w minutach",
+    "distanceForExercise": "Dystans w {{unit}}: {{exerciseName}}",
+    "distanceFallback": "Dystans ćwiczenia w {{unit}}",
+    "completeExercise": "Ukończ ćwiczenie: {{exerciseName}}",
+    "completeFallback": "Ukończ ćwiczenie",
+    "incompleteExercise": "Oznacz {{exerciseName}} jako nieukończone",
+    "incompleteFallback": "Oznacz ćwiczenie jako nieukończone"
+  },
+  "chat": {
+    "typing": "Sparky pisze"
+  },
+  "connectionStatus": {
+    "serverConnected": "Połączono z serwerem",
+    "connected": "Połączono",
+    "connectionFailed": "Połączenie nieudane",
+    "configurationRequired": "Wymagana konfiguracja",
+    "connectedAccessibility": "Połączono z serwerem. Dotknij, aby odświeżyć.",
+    "failedAccessibility": "Połączenie nieudane. Dotknij, aby spróbować ponownie.",
+    "configurationAccessibility": "Wymagana konfiguracja serwera."
+  },
+  "copyMeal": {
+    "title": "Kopiuj posiłek: {{mealType}}",
+    "fromDate": "Z dnia {{date}}",
+    "targetDate": "Data docelowa",
+    "targetMeal": "Posiłek docelowy",
+    "copying": "Kopiowanie...",
+    "copy": "Kopiuj"
+  },
+  "dateRange": {
+    "title": "Wybierz zakres dat do usunięcia",
+    "remove": "Usuń wybrany zakres"
+  },
   "activeWorkout": {
     "bar": {
       "clearWorkout": "Wyczyść trening",

@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon, { IconName } from './Icon';
 
 export type AnchorRect = {
@@ -64,6 +65,7 @@ const AnchoredMenu: React.FC<Props> = ({
   onClose,
   minWidth = 200,
 }) => {
+  const { t } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
   const accentColor = String(useCSSVariable('--color-accent-primary'));
   const textPrimary = String(useCSSVariable('--color-text-primary'));
@@ -98,7 +100,7 @@ const AnchoredMenu: React.FC<Props> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Dismiss menu">
+      <Pressable className="flex-1" onPress={onClose} accessibilityLabel={t('anchoredMenu.dismiss')}>
         <View
           className="absolute bg-surface rounded-xl border border-border-subtle shadow-lg py-1"
           style={menuStyle}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View, type TextInput } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import {
   SetCellInput,
@@ -35,7 +36,7 @@ interface CardioEffortFormProps {
    * legacy set-less entry in view mode. Duration is seconds, distance km.
    */
   set: WorkoutCardSet | null;
-  exerciseName: string;
+  exerciseName: string | null;
   mode: 'live' | 'view' | 'edit';
   distanceUnit: 'km' | 'miles';
   /**
@@ -101,12 +102,28 @@ export default function CardioEffortForm({
   onActivateSet,
   onRegisterAccessoryHandle,
 }: CardioEffortFormProps) {
+  const { t } = useTranslation();
   const [accentPrimary, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
   const completed = state === 'done';
   const distanceLabel = distanceUnit === 'miles' ? 'mi' : 'km';
+  const effortAccessibilityLabel = exerciseName
+    ? t('cardioEffort.effortForExercise', { exerciseName })
+    : t('cardioEffort.effortFallback');
+  const durationAccessibilityLabel = exerciseName
+    ? t('cardioEffort.durationForExercise', { exerciseName })
+    : t('cardioEffort.durationFallback');
+  const distanceAccessibilityLabel = exerciseName
+    ? t('cardioEffort.distanceForExercise', { unit: distanceLabel, exerciseName })
+    : t('cardioEffort.distanceFallback', { unit: distanceLabel });
+  const completeAccessibilityLabel = exerciseName
+    ? t('cardioEffort.completeExercise', { exerciseName })
+    : t('cardioEffort.completeFallback');
+  const incompleteAccessibilityLabel = exerciseName
+    ? t('cardioEffort.incompleteExercise', { exerciseName })
+    : t('cardioEffort.incompleteFallback');
 
   const setId = set != null ? String(set.id) : null;
   const [minutesDraft, setMinutesDraft] = useState(() => minutesDisplayText(set?.duration));
@@ -248,11 +265,11 @@ export default function CardioEffortForm({
     return (
       <View
         className="mt-2 px-1 pb-2 flex-row gap-3"
-        accessibilityLabel={`${exerciseName} effort`}
+        accessibilityLabel={effortAccessibilityLabel}
       >
         <View className="flex-1 items-center">
           <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-            Duration (min)
+            {t('cardioEffort.duration')}
           </Text>
           <Text
             className="text-center text-sm text-text-primary"
@@ -263,7 +280,7 @@ export default function CardioEffortForm({
         </View>
         <View className="flex-1 items-center">
           <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-            Distance ({distanceLabel})
+            {t('cardioEffort.distance', { unit: distanceLabel })}
           </Text>
           <Text
             className="text-center text-sm text-text-primary"
@@ -280,7 +297,7 @@ export default function CardioEffortForm({
     <View className="mt-2 px-1 pb-2 flex-row items-end gap-3">
       <View className="flex-1 items-center">
         <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-          Duration (min)
+          {t('cardioEffort.duration')}
         </Text>
         <SetCellInput
           inputRef={durationInputRef}
@@ -295,7 +312,7 @@ export default function CardioEffortForm({
             commitMinutes(minutesDraft);
           }}
           keyboardType="decimal-pad"
-          accessibilityLabel={`Duration in minutes for ${exerciseName}`}
+          accessibilityLabel={durationAccessibilityLabel}
           className="w-16"
           placeholder={assumedMinutesText ?? '–'}
           flat
@@ -303,7 +320,7 @@ export default function CardioEffortForm({
       </View>
       <View className="flex-1 items-center">
         <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-          Distance ({distanceLabel})
+          {t('cardioEffort.distance', { unit: distanceLabel })}
         </Text>
         <SetCellInput
           inputRef={distanceInputRef}
@@ -318,7 +335,7 @@ export default function CardioEffortForm({
             commitDistance(distanceDraft);
           }}
           keyboardType="decimal-pad"
-          accessibilityLabel={`Distance in ${distanceLabel} for ${exerciseName}`}
+          accessibilityLabel={distanceAccessibilityLabel}
           className="w-16"
           placeholder={assumedDistanceText ?? '–'}
           flat
@@ -331,7 +348,7 @@ export default function CardioEffortForm({
           accessibilityRole="button"
           accessibilityState={{ checked: completed }}
           accessibilityLabel={
-            completed ? `Mark ${exerciseName} incomplete` : `Complete ${exerciseName}`
+            completed ? incompleteAccessibilityLabel : completeAccessibilityLabel
           }
           className="pb-1"
         >

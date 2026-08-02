@@ -15,12 +15,13 @@ import {
 } from '@gorhom/bottom-sheet';
 import { FullWindowOverlay } from 'react-native-screens';
 import { useUniwind, useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import Button from './ui/Button';
 import Icon from './Icon';
 import { useMealTypes } from '../hooks/useMealTypes';
-import { getMealTypeLabel } from '../constants/meals';
-import { formatDateLabel } from '../utils/dateUtils';
+import { addDays, formatDate, getTodayDate } from '../utils/dateUtils';
+import { getAppLocale } from '../localization';
 import { dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
 
@@ -44,6 +45,7 @@ interface CopyMealSheetProps {
 const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
   ({ isPending = false, onCopy }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const { t } = useTranslation();
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
 
@@ -66,6 +68,31 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
     const [targetMealType, setTargetMealType] = useState<string>('');
 
     const { mealTypes } = useMealTypes();
+
+    const localizedMealType = (name: string): string => {
+      switch (name.toLowerCase()) {
+        case 'breakfast':
+          return t('mealTypes.breakfast');
+        case 'lunch':
+          return t('mealTypes.lunch');
+        case 'dinner':
+          return t('mealTypes.dinner');
+        case 'snack':
+        case 'snacks':
+          return t('mealTypes.snacks');
+        case 'other':
+          return t('mealTypes.other');
+        default:
+          return name;
+      }
+    };
+
+    const localizedDateLabel = (date: string): string => {
+      const today = getTodayDate();
+      if (date === today) return t('commonDates.today');
+      if (date === addDays(today, -1)) return t('commonDates.yesterday');
+      return formatDate(date);
+    };
 
     useImperativeHandle(ref, () => ({
       present: (sourceDate: string, sourceMealType: string) => {
@@ -139,19 +166,20 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
             <View className="px-5">
               <View className="items-center mb-4">
                 <Text className="text-text-primary text-lg font-semibold text-center">
-                  Copy {getMealTypeLabel(source.mealType)}
+                  {t('copyMeal.title', { mealType: localizedMealType(source.mealType) })}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-1 text-center">
-                  From {formatDateLabel(source.date)}
+                  {t('copyMeal.fromDate', { date: localizedDateLabel(source.date) })}
                 </Text>
               </View>
 
-              {/* Target date */}
+               {/* Destination day */}
               <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
-                Target date
+                {t('copyMeal.targetDate')}
               </Text>
               <DateTimePicker
                 mode="single"
+                locale={getAppLocale()}
                 date={dateValue}
                 onChange={handleDateChange}
                 components={{
@@ -176,9 +204,9 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                 }}
               />
 
-              {/* Target meal type */}
+               {/* Destination meal type */}
               <Text className="text-xs font-semibold uppercase text-text-muted mt-4 mb-2">
-                Target meal
+                {t('copyMeal.targetMeal')}
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-6">
                 {mealTypes.map((mt) => {
@@ -199,7 +227,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                           isSelected ? 'text-white font-semibold' : 'text-text-primary'
                         }`}
                       >
-                        {getMealTypeLabel(mt.name)}
+                        {localizedMealType(mt.name)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -209,6 +237,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
               <Button
                 variant="primary"
                 onPress={handleCopy}
+                accessibilityLabel={t('copyMeal.copy')}
                 disabled={
                   isPending ||
                   !targetDate ||
@@ -217,7 +246,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                     source.mealType.toLowerCase() === targetMealType.toLowerCase())
                 }
               >
-                {isPending ? 'Copying...' : 'Copy'}
+                {isPending ? t('copyMeal.copying') : t('copyMeal.copy')}
               </Button>
             </View>
           )}

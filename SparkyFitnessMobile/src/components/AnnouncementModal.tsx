@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View, StyleSheet, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import MarkdownMessage from './chat/MarkdownMessage';
 import { apiFetch } from '../services/api/apiClient';
@@ -22,6 +23,7 @@ interface AnnouncementPayload {
 }
 
 export const AnnouncementModal: React.FC = () => {
+  const { t } = useTranslation();
   const [announcement, setAnnouncement] = useState<AnnouncementPayload | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -97,9 +99,9 @@ export const AnnouncementModal: React.FC = () => {
           <View style={[styles.header, { borderBottomColor: borderSubtle || 'rgba(255, 255, 255, 0.1)' }]}>
             <View style={styles.titleRow}>
               <Icon name="sparkles" size={20} color={accentPrimary || '#3b82f6'} />
-              <Text style={[styles.titleText, { color: textPrimary || '#f8fafc' }]}>{announcement.title || 'Announcement'}</Text>
+              <Text style={[styles.titleText, { color: textPrimary || '#f8fafc' }]}>{announcement.title || t('announcement.title')}</Text>
             </View>
-            <Pressable onPress={handleClose} style={styles.closeButton}>
+            <Pressable onPress={handleClose} style={styles.closeButton} accessibilityLabel={t('common.close')}>
               <Icon name="close" size={18} color={textMuted || '#94a3b8'} />
             </Pressable>
           </View>
@@ -111,9 +113,10 @@ export const AnnouncementModal: React.FC = () => {
           <View style={[styles.footer, { borderTopColor: borderSubtle || 'rgba(255, 255, 255, 0.1)' }]}>
             <Pressable
               onPress={handleDismiss}
+              accessibilityLabel={t('announcement.dismiss')}
               style={[styles.dismissButton, { backgroundColor: accentPrimary || '#3b82f6' }]}
             >
-              <Text style={styles.dismissButtonText}>Got it, don&apos;t show again</Text>
+              <Text style={styles.dismissButtonText}>{t('announcement.dismiss')}</Text>
             </Pressable>
           </View>
         </View>
