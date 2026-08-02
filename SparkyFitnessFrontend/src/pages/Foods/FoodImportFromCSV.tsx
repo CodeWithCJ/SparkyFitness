@@ -203,16 +203,22 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       if (!textFields.has(header) && header !== 'serving_unit') {
         // toNumber (not parseFloat) so a locale-comma decimal like "80,2"
         // parses to 80.2 instead of silently truncating to 80 at the
-        // comma. A cell that still fails to parse falls back to the raw
-        // text below, same as before — visible per-row error reporting
-        // for that case is a separate, larger change (issue #1960 follow-up).
+        // comma. Visible per-row error reporting for cells that fail to
+        // parse at all is a separate, larger change (#1960 follow-up).
         const parsed = toNumber(value, format);
-        // serving_size is a divisor in the consumed-nutrition formula
-        // ((value * quantity) / serving_size), so it can never be 0.
+        // serving_size is the divisor in the consumed-nutrition formula
+        // ((value * quantity) / serving_size), so 0 would make every entry
+        // built from this food Infinity/NaN. Nothing downstream stops it —
+        // FoodVariants.zod.ts types it as a plain z.number() with no
+        // .positive() — so an unparseable or non-positive cell has to land
+        // on the same 100 default a manually added row starts with.
         if (header === 'serving_size') {
-          return parsed && parsed > 0 ? parsed : DEFAULT_SERVING_SIZE;
+          return parsed !== undefined && parsed > 0
+            ? parsed
+            : DEFAULT_SERVING_SIZE;
         }
-        return parsed !== undefined ? parsed : 0; // Fall back to 0 for unparseable numeric cells
+        // Nutrients are safe at 0 (they're multiplied, never divided by).
+        return parsed !== undefined ? parsed : 0;
       }
       return value;
     };
