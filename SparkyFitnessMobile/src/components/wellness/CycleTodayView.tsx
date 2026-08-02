@@ -27,7 +27,10 @@ const FLOW_OPTIONS: { value: FlowLevel; label: string; icon: string }[] = [
   { value: 'heavy', label: 'Heavy', icon: 'flow-heavy' },
 ];
 
+// Both fields are optional, so each picker leads with an empty value the save
+// handler maps back to null.
 const MUCUS_OPTIONS = [
+  { value: '', label: 'None' },
   { value: 'dry', label: 'Dry' },
   { value: 'sticky', label: 'Sticky' },
   { value: 'creamy', label: 'Creamy' },
@@ -36,6 +39,7 @@ const MUCUS_OPTIONS = [
 ];
 
 const CERVICAL_POSITION_OPTIONS = [
+  { value: '', label: 'None' },
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
   { value: 'high', label: 'High' },
@@ -171,7 +175,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
               title="Select Cervical Mucus"
               options={MUCUS_OPTIONS}
               value={mucus || ''}
-              onSelect={setMucus}
+              onSelect={(value) => setMucus(value || null)}
               placeholder="Tap to select..."
             />
           </View>
@@ -239,7 +243,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({ date, onSaveSuccess }) 
                 title="Select Cervical Position"
                 options={CERVICAL_POSITION_OPTIONS}
                 value={cervicalPosition || ''}
-                onSelect={setCervicalPosition}
+                onSelect={(value) => setCervicalPosition(value || null)}
                 placeholder="Tap to select..."
               />
             </View>
