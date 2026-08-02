@@ -15,6 +15,8 @@ interface CsvFormatPreviewProps {
   numericColumns?: string[];
   dateColumn?: string;
   totalRowCount: number;
+  /** True when `totalRowCount` is a lower bound (the parse hit its row cap). */
+  totalRowCountIsPartial?: boolean;
 }
 
 const MAX_PREVIEW_ROWS = 5;
@@ -34,6 +36,7 @@ const CsvFormatPreview = ({
   numericColumns = [],
   dateColumn,
   totalRowCount,
+  totalRowCountIsPartial = false,
 }: CsvFormatPreviewProps) => {
   const { t } = useTranslation();
   const resolvedDecimal =
@@ -108,7 +111,10 @@ const CsvFormatPreview = ({
         {t(
           'csvImport.previewSummary',
           '{{columns}} columns, {{rows}} rows detected.',
-          { columns: headers.length, rows: totalRowCount }
+          {
+            columns: headers.length,
+            rows: totalRowCountIsPartial ? `${totalRowCount}+` : totalRowCount,
+          }
         )}
       </p>
     </div>

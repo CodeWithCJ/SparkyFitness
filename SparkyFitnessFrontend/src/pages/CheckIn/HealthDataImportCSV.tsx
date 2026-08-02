@@ -290,7 +290,10 @@ const HealthDataImportCSV = () => {
               delimiter: true,
               decimal: true,
               quote: true,
-              date: true,
+              // No date control: mapRowsToHealthItems passes the `date` cell
+              // through verbatim, so a non-ISO date would preview correctly
+              // under the chosen format and then fail at conversion.
+              date: false,
             }}
             value={csvFormat.options}
             onChange={csvFormat.setOptions}
@@ -311,8 +314,8 @@ const HealthDataImportCSV = () => {
               options={csvFormat.options}
               decimalDetection={preview.decimal}
               numericColumns={numericColumns}
-              dateColumn="date"
               totalRowCount={preview.rows.length}
+              totalRowCountIsPartial={preview.previewTruncated}
             />
           )}
           {csvData.length > 0 && (

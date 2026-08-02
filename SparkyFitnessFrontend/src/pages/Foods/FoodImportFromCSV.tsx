@@ -79,6 +79,8 @@ const generateUniqueId = () =>
 // format-bar clicks into a single re-parse instead of one per click.
 const REPARSE_DEBOUNCE_MS = 400;
 
+const DEFAULT_SERVING_SIZE = 100;
+
 const servingUnitOptions = [
   'g',
   'kg',
@@ -205,6 +207,11 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         // text below, same as before — visible per-row error reporting
         // for that case is a separate, larger change (issue #1960 follow-up).
         const parsed = toNumber(value, format);
+        // serving_size is a divisor in the consumed-nutrition formula
+        // ((value * quantity) / serving_size), so it can never be 0.
+        if (header === 'serving_size') {
+          return parsed && parsed > 0 ? parsed : DEFAULT_SERVING_SIZE;
+        }
         return parsed !== undefined ? parsed : 0; // Fall back to 0 for unparseable numeric cells
       }
       return value;
@@ -231,8 +238,10 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
   // Header row only, via the same options as parseCSV so a quoted or
   // delimiter-containing header name is read the same way in both places.
-  const getCsvHeaders = (text: string): string[] =>
-    parseCsvHeaders(text, csvFormat.options).headers;
+  const getCsvHeaders = (
+    text: string,
+    options: CsvFormatOptions = csvFormat.options
+  ): string[] => parseCsvHeaders(text, options).headers;
 
   // Decides whether `text` parses directly under the current format, or
   // needs the header-mapping dialog, and acts on that decision. Shared by
@@ -242,15 +251,23 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   // re-upload. Subset match (all required headers present, in any order),
   // unlike the strict exact-order check this replaced — a file with extra
   // or reordered columns no longer hard-fails with no recovery.
-  const evaluateAndParse = (text: string, { silent = false } = {}) => {
-    const fileHeaders = getCsvHeaders(text);
+  const evaluateAndParse = (
+    text: string,
+    {
+      silent = false,
+      // Callers that reset the format bar in the same tick must pass the
+      // fresh options — `csvFormat.options` is still the outgoing file's.
+      options = csvFormat.options,
+    }: { silent?: boolean; options?: CsvFormatOptions } = {}
+  ) => {
+    const fileHeaders = getCsvHeaders(text, options);
     const areHeadersValid = requiredHeaders.every((h) =>
       fileHeaders.includes(h)
     );
     if (areHeadersValid) {
       setMappingConfirmed(false);
       setShowMapping(false);
-      const parsedData = parseCSV(text, csvFormat.options);
+      const parsedData = parseCSV(text, options);
       const parsedHeaders = parsedData[0];
       if (parsedData.length > 0 && parsedHeaders) {
         setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
@@ -295,9 +312,9 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       return;
     }
 
-    csvFormat.resetForNewInput();
+    const options = csvFormat.resetForNewInput();
     setLoadedText(csvText);
-    evaluateAndParse(csvText);
+    evaluateAndParse(csvText, { options });
     setCsvText('');
   };
 
@@ -316,7 +333,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
-    csvFormat.resetForNewInput();
+    const options = csvFormat.resetForNewInput();
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -334,7 +351,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         return;
       }
       setLoadedText(text);
-      evaluateAndParse(text);
+      evaluateAndParse(text, { options });
     };
     reader.readAsText(file);
   };
@@ -374,8 +391,10 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   // Deliberately NOT keyed on showMapping/mappingConfirmed — see the
   // matching comment in useExerciseImport.ts for why.
   useEffect(() => {
-    if (!loadedText || headers.length === 0 || showMapping || mappingConfirmed)
-      return;
+    // Not gated on headers.length: after cancelling out of the mapping
+    // dialog there are no headers yet, and a delimiter fix in the format bar
+    // is exactly what needs to re-evaluate the file.
+    if (!loadedText || showMapping || mappingConfirmed) return;
     const timer = setTimeout(() => {
       evaluateAndParse(loadedText, { silent: true });
     }, REPARSE_DEBOUNCE_MS);
@@ -478,7 +497,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       brand: '',
       is_custom: true,
       shared_with_public: false,
-      serving_size: 100,
+      serving_size: DEFAULT_SERVING_SIZE,
       serving_unit: 'g',
       calories: 0, // kcal
       protein: 0,
@@ -707,7 +726,8 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                 options={csvFormat.options}
                 decimalDetection={preview.decimal}
                 numericColumns={numericColumns}
-                totalRowCount={csvData.length}
+                totalRowCount={preview.rows.length}
+                totalRowCountIsPartial={preview.previewTruncated}
               />
             )}
             <CsvHeaderMappingDialog
