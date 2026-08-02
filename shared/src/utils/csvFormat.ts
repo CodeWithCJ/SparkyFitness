@@ -83,8 +83,8 @@ export interface DecimalDetection {
   evidence?: string;
 }
 
-const US_DECIMAL_EVIDENCE = /^-?\d+\.\d{1,2}$|\.\d{4,}$/;
-const EU_DECIMAL_EVIDENCE = /^-?\d+,\d{1,2}$|,\d{4,}$/;
+const US_DECIMAL_EVIDENCE = /^-?\d+\.\d{1,2}$|^-?\d+\.\d{4,}$/;
+const EU_DECIMAL_EVIDENCE = /^-?\d+,\d{1,2}$|^-?\d+,\d{4,}$/;
 const HAS_DOT = /\./;
 const HAS_COMMA = /,/;
 
