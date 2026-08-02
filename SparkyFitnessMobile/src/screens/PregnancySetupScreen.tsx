@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { eddFromLmp, eddFromConception, compareDays } from '@workspace/shared';
@@ -57,7 +57,6 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const [basis, setBasis] = useState<PregnancyDueDateBasis>(initialBasis);
   const [date, setDate] = useState<string>(initialDate);
   const [fetusCount, setFetusCount] = useState(existing?.fetus_count ?? 1);
-  const [notes, setNotes] = useState(existing?.notes ?? '');
 
   const fetusCountProps = useStepperDraft({
     value: fetusCount,
@@ -106,7 +105,6 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
       conception_date: basis === 'conception' ? date : null,
       fetus_count: fetusCount,
       status: 'active' as const,
-      notes: notes || null,
     };
     try {
       if (isEdit && existing?.id) {
@@ -128,7 +126,12 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   return (
-    <View className="flex-1 bg-background">
+    <View
+      className="flex-1 bg-background"
+      // iOS keeps no top inset even without the native header: this modal
+      // sheet already starts below the status bar.
+      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+    >
       {header}
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 96 }}>
         <Text className="text-text-secondary text-sm mb-4">
@@ -167,18 +170,6 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
         <View className="bg-surface rounded-2xl p-4 mt-4 border border-border-subtle shadow-sm">
           <Text className="text-text-secondary text-xs">Estimated due date</Text>
           <Text className="text-text-primary text-lg font-bold">{formatDate(computedDueDate)}</Text>
-        </View>
-
-        <View className="bg-surface rounded-2xl p-4 mt-4 border border-border-subtle shadow-sm">
-          <Text className="text-text-primary text-sm font-semibold mb-2">Notes</Text>
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Anything you'd like to remember…"
-            multiline
-            className="bg-raised rounded-xl p-3 text-text-primary text-sm min-h-[70px]"
-            style={{ textAlignVertical: 'top' }}
-          />
         </View>
       </ScrollView>
 

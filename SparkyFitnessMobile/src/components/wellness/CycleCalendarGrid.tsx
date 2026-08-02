@@ -277,7 +277,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
                     testID={`logged-dot-${dateStr}`}
                     style={{
                       position: 'absolute',
-                      bottom: 4,
+                      bottom: 6,
                       width: 4,
                       height: 4,
                       borderRadius: 2,
