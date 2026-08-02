@@ -161,16 +161,34 @@ describe('real i18next pluralization', () => {
       await initializeI18n();
 
       await i18n.changeLanguage('en');
-      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 1 })).toBe('1 day to due date');
-      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 2 })).toBe('2 days to due date');
-      expect(i18n.t('cycleCard.cycle.periodLate', { count: 1 })).toBe('Period is 1 day late');
+      expect([1, 2, 5].map((count) => i18n.t('cycleCard.pregnancy.daysToDue', { count }))).toEqual([
+        '1 day to due date',
+        '2 days to due date',
+        '5 days to due date',
+      ]);
+      expect([1, 2, 5].map((count) => i18n.t('cycleCard.cycle.periodLate', { count }))).toEqual([
+        'Period is 1 day late',
+        'Period is 2 days late',
+        'Period is 5 days late',
+      ]);
 
       await i18n.changeLanguage('pl');
-      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 1 })).toBe('1 dzień do terminu porodu');
-      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 2 })).toBe('2 dni do terminu porodu');
-      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 5 })).toBe('5 dni do terminu porodu');
-      expect(i18n.t('cycleCard.cycle.periodLate', { count: 1 })).toBe('Okres spóźnia się o 1 dzień');
-      expect(i18n.t('cycleCard.cycle.periodLate', { count: 5 })).toBe('Okres spóźnia się o 5 dni');
+      expect([1, 2, 5, 12, 22, 25].map((count) => i18n.t('cycleCard.pregnancy.daysToDue', { count }))).toEqual([
+        '1 dzień do terminu porodu',
+        '2 dni do terminu porodu',
+        '5 dni do terminu porodu',
+        '12 dni do terminu porodu',
+        '22 dni do terminu porodu',
+        '25 dni do terminu porodu',
+      ]);
+      expect([1, 2, 5, 12, 22, 25].map((count) => i18n.t('cycleCard.cycle.periodLate', { count }))).toEqual([
+        'Okres spóźnia się o 1 dzień',
+        'Okres spóźnia się o 2 dni',
+        'Okres spóźnia się o 5 dni',
+        'Okres spóźnia się o 12 dni',
+        'Okres spóźnia się o 22 dni',
+        'Okres spóźnia się o 25 dni',
+      ]);
     });
   });
 

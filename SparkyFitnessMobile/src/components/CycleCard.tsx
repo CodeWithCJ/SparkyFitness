@@ -69,7 +69,11 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
         className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
         onPress={() => navigation.navigate('CycleOnboarding')}
         accessibilityRole="button"
-        accessibilityLabel={t('cycleCard.setup.accessibility')}
+        accessibilityLabel={
+          discreetMode
+            ? t('cycleCard.setup.discreetAccessibility')
+            : t('cycleCard.setup.accessibility')
+        }
       >
         <View className="flex-row items-center justify-between mb-2">
           <Text className="text-md font-bold text-text-secondary">{title}</Text>
@@ -228,7 +232,11 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
       className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
       onPress={() => navigation.navigate('CycleHub')}
       accessibilityRole="button"
-      accessibilityLabel={t('cycleCard.actions.openHub')}
+      accessibilityLabel={
+        discreetMode
+          ? t('cycleCard.actions.openWellnessHub')
+          : t('cycleCard.actions.openHub')
+      }
     >
       <View className="flex-row items-center justify-between mb-2">
         <Text className="text-md font-bold text-text-secondary">{title}</Text>

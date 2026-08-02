@@ -33,6 +33,7 @@
     },
     "setup": {
       "accessibility": "Skonfiguruj monitorowanie cyklu i ciąży",
+      "discreetAccessibility": "Skonfiguruj monitorowanie zdrowia",
       "action": "Skonfiguruj",
       "description": "Monitoruj fazy cyklu, prognozy, objawy i etapy ciąży.",
       "discreetDescription": "Monitoruj parametry zdrowotne i prognozy."
@@ -115,7 +116,8 @@
     },
     "actions": {
       "hub": "Centrum",
-      "openHub": "Otwórz centrum monitorowania cyklu i ciąży"
+      "openHub": "Otwórz centrum monitorowania cyklu i ciąży",
+      "openWellnessHub": "Otwórz centrum monitorowania zdrowia"
     }
   },
   "anchoredMenu": {

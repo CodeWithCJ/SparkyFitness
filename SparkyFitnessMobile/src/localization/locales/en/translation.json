@@ -33,6 +33,7 @@
     },
     "setup": {
       "accessibility": "Set up cycle and pregnancy tracking",
+      "discreetAccessibility": "Set up wellness tracking",
       "action": "Set up",
       "description": "Track cycle phases, predictions, symptoms, and pregnancy milestones.",
       "discreetDescription": "Track your wellness parameters and predictions."
@@ -111,7 +112,8 @@
     },
     "actions": {
       "hub": "Hub",
-      "openHub": "Open cycle and pregnancy tracking hub"
+      "openHub": "Open cycle and pregnancy tracking hub",
+      "openWellnessHub": "Open wellness tracking hub"
     }
   },
   "anchoredMenu": {
