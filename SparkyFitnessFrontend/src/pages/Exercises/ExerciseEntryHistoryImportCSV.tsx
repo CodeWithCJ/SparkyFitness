@@ -240,7 +240,7 @@ const ExerciseEntryHistoryImportCSV = ({
               decimalDetection={preview.decimal}
               numericColumns={numericColumns}
               dateColumn="entry_date"
-              totalRowCount={groupedEntries.length}
+              totalRowCount={preview.rows.length}
             />
           )}
           <div className="flex flex-wrap gap-2">

@@ -205,7 +205,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         // text below, same as before — visible per-row error reporting
         // for that case is a separate, larger change (issue #1960 follow-up).
         const parsed = toNumber(value, format);
-        return parsed !== undefined ? parsed : value; // All numeric values (including calories) are treated as kcal
+        return parsed !== undefined ? parsed : 0; // Fall back to 0 for unparseable numeric cells
       }
       return value;
     };
